@@ -22,6 +22,7 @@ export default function DashboardPage() {
 
     // Editor State
     const [activeMode, setActiveMode] = useState<ModeId | null>(null);
+    const [isSeeAllOpen, setIsSeeAllOpen] = useState(false);
     const mathInputRef = useRef<MathInputRef>(null);
 
     const router = useRouter();
@@ -52,17 +53,17 @@ export default function DashboardPage() {
         if (!mathInputRef.current) return;
 
         if (suggestion.insertMode === 'replace') {
-            setQuery(suggestion.latex.replace(/#\?/g, '')); // Basic cleanup if direct set, or let MathInput handle it
-            // Actually, MathLive behaves better if we use setValue for full replace
+            setQuery(suggestion.latex.replace(/#\?/g, ''));
             mathInputRef.current.setValue(suggestion.latex);
         } else {
             mathInputRef.current.insert(suggestion.latex);
         }
-        // Optionally close dropdown or keep open. Let's keep open for rapid exploration, or close?
-        // User spec: "Clicking a suggestion: Inserts... OR Replaces..."
-        // Let's keep it open if it's "append", close if "replace"? 
-        // For now, let's just focus the input
+
+        // Focus the input
         mathInputRef.current.focus();
+
+        // Close the dropdown panel
+        setActiveMode(null);
     };
 
     const handleClear = () => {
@@ -201,21 +202,34 @@ export default function DashboardPage() {
     };
 
     const handleSolve = async () => {
-        const userId = localStorage.getItem("user_id");
-        if (!userId) {
-            // For demo purposes, if no user is logged in, just go to demo
-            // router.push("/login"); 
-            // return;
-        }
+        const userId = localStorage.getItem("user_id") || "1";
+
+        if (!query.trim()) return;
 
         setIsSolving(true);
 
-        // SIMULATION MODE: Directly route to the demo session
-        // In a real app, this would call the API which would use the strict JSON prompt
-        setTimeout(() => {
+        try {
+            const res = await fetch('http://localhost:8000/api/v1/solve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    text_query: query,
+                    mode: 'general',
+                    user_id: parseInt(userId)
+                })
+            });
+
+            if (!res.ok) throw new Error("Solve request failed");
+
+            const data = await res.json();
+            router.push(`/chat/${data.session_id}`);
+
+        } catch (err) {
+            console.error(err);
+            alert("Failed to generate solution. Make sure the backend is running.");
+        } finally {
             setIsSolving(false);
-            router.push(`/chat/demo-1`);
-        }, 1500);
+        }
     };
 
     return (
@@ -466,19 +480,57 @@ export default function DashboardPage() {
                                         {/* 2. Visual Math Editor Layout */}
 
                                         {/* Mode Bar */}
-                                        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                                            {MODES.map(mode => (
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-1 flex gap-2 overflow-x-auto pb-2 scrollbar-hide items-center">
+                                                {MODES.slice(0, 5).map(mode => (
+                                                    <button
+                                                        key={mode.id}
+                                                        onClick={() => {
+                                                            setActiveMode(mode.id === activeMode ? null : mode.id);
+                                                            setIsSeeAllOpen(false);
+                                                        }}
+                                                        className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all border ${activeMode === mode.id
+                                                            ? 'bg-primary text-white border-primary shadow-lg shadow-primary/25'
+                                                            : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-primary/50'
+                                                            }`}
+                                                    >
+                                                        {mode.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+
+                                            {/* See All Dropdown */}
+                                            <div className="relative pb-2">
                                                 <button
-                                                    key={mode.id}
-                                                    onClick={() => setActiveMode(mode.id === activeMode ? null : mode.id)}
-                                                    className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all border ${activeMode === mode.id
-                                                        ? 'bg-primary text-white border-primary shadow-lg shadow-primary/25'
+                                                    onClick={() => setIsSeeAllOpen(!isSeeAllOpen)}
+                                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-all border ${isSeeAllOpen || MODES.slice(5).some(m => m.id === activeMode)
+                                                        ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 shadow-sm'
                                                         : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-primary/50'
                                                         }`}
                                                 >
-                                                    {mode.label}
+                                                    <span>See All</span>
+                                                    <span className={`material-symbols-outlined text-lg transition-transform ${isSeeAllOpen ? 'rotate-180' : ''}`}>expand_more</span>
                                                 </button>
-                                            ))}
+
+                                                {isSeeAllOpen && (
+                                                    <div className="absolute top-full right-0 mt-2 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] z-[100] overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top-right">
+                                                        <div className="max-h-80 overflow-y-auto custom-scrollbar">
+                                                            {MODES.slice(5).map((mode) => (
+                                                                <button
+                                                                    key={mode.id}
+                                                                    onClick={() => {
+                                                                        setActiveMode(mode.id);
+                                                                        setIsSeeAllOpen(false);
+                                                                    }}
+                                                                    className={`w-full py-4 text-center transition-colors border-b border-slate-50 dark:border-slate-800/50 last:border-0 font-bold text-slate-700 dark:text-slate-200 hover:bg-primary/5 hover:text-primary dark:hover:bg-primary/10 ${activeMode === mode.id ? 'bg-primary/5 text-primary' : ''}`}
+                                                                >
+                                                                    {mode.label.toLowerCase()}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {/* Input Area with Dropdown Anchor */}

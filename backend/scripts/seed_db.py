@@ -86,7 +86,67 @@ def active_seed():
         session.refresh(s1)
 
         session.add(ChatMessage(session_id=s1.id, role="user", content="Analyze the trajectory of a ball thrown at 45 degrees.", media_url="https://example.com/ball.jpg"))
-        session.add(ChatMessage(session_id=s1.id, role="assistant", content="The optimal angle for maximum range is 45 degrees in a vacuum.", structured_data={"formula": "R = v^2/g"}))
+        
+        physics_structured = {
+            "problem": {
+                "goal": "Analyze Projectile Motion",
+                "latex": "v_0 = 25m/s, \\theta = 45^\\circ"
+            },
+            "solution": {
+                "steps": [
+                    {
+                        "index": 1,
+                        "title": "Initial Components",
+                        "explanation": "Break the initial velocity vector into horizontal and vertical components using trigonometry.",
+                        "math": {
+                            "latex_lines": [
+                                "v_{0x} = v_0 \\cos(45^\\circ) = 25 \\cdot \\frac{\\sqrt{2}}{2} \\approx 17.68 \\text{ m/s}",
+                                "v_{0y} = v_0 \\sin(45^\\circ) = 25 \\cdot \\frac{\\sqrt{2}}{2} \\approx 17.68 \\text{ m/s}"
+                            ]
+                        }
+                    },
+                    {
+                        "index": 2,
+                        "title": "Time of Flight",
+                        "explanation": "Calculate the time it takes for the ball to return to the ground (where $y=0$).",
+                        "math": {
+                            "latex_lines": [
+                                "y = v_{0y}t - \\frac{1}{2}gt^2",
+                                "0 = 17.68t - 4.9t^2 \\implies t \\approx 3.61 \\text{ s}"
+                            ]
+                        }
+                    }
+                ],
+                "final_answer": "R = 63.7m, t = 3.61s"
+            },
+            "verification": {
+                "methods_used": [
+                    {
+                        "method": "Range Formula",
+                        "description": "Cross-check with standard range formula $R = \\frac{v_0^2 \\sin(2\\theta)}{g}$",
+                        "work": {
+                            "latex_lines": ["R = \\frac{25^2 \\sin(90^\\circ)}{9.8} = 63.77 \\text{ m}"]
+                        },
+                        "conclusion": "Pass"
+                    }
+                ]
+            },
+            "concepts": [
+                {
+                    "title": "Projectile Motion",
+                    "category": "Physics",
+                    "description": "Form of motion experienced by an object thrown near the Earth's surface.",
+                    "tags": ["Kinematics", "Mechanics"]
+                }
+            ]
+        }
+
+        session.add(ChatMessage(
+            session_id=s1.id, 
+            role="assistant", 
+            content="The optimal angle for maximum range is 45 degrees in a vacuum.", 
+            structured_data=physics_structured
+        ))
 
         # Session 2: Calculus
         s2 = ChatSession(

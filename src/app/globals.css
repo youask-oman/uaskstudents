@@ -97,3 +97,61 @@
   --key-background: #fff;
   --key-content-primary: #333;
 }
+
+/* Print Styles for PDF Export */
+@media print {
+
+  header,
+  aside,
+  .print\:hidden,
+  nav,
+  button,
+  .context-action-bar {
+    display: none !important;
+  }
+
+  main {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .flex-1 {
+    flex: none !important;
+  }
+
+  body {
+    background-color: white !important;
+    color: black !important;
+  }
+
+  .dark {
+    --tw-bg-opacity: 1 !important;
+    background-color: white !important;
+  }
+
+  .dark * {
+    color: black !important;
+    border-color: #e2e8f0 !important;
+  }
+
+  .dark .bg-surface-dark,
+  .dark .bg-card-dark,
+  .dark .bg-background-dark {
+    background-color: white !important;
+    border-color: #e2e8f0 !important;
+  }
+
+  .dark .text-latex-cyan,
+  .dark .text-accent {
+    color: #135bec !important;
+  }
+
+  .print\:p-0 {
+    padding: 0 !important;
+  }
+
+  .custom-scrollbar {
+    overflow: visible !important;
+  }
+}

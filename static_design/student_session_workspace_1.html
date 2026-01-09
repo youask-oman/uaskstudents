@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html class="dark" lang="en"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
@@ -7,284 +6,292 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
             theme: {
                 extend: {
                     colors: {
-                        "primary": "#135bec",
-                        "background-light": "#f6f6f8",
-                        "background-dark": "#0a0c10",
-                        "surface-dark": "#161b22",
-                        "border-dark": "#282e39",
+                        "primary": "#3b82f6",
+                        "accent": "#0ea5e9",
+                        "background-dark": "#0f1115",
+                        "surface-dark": "#1a1d23",
+                        "card-dark": "#121212",
+                        "border-dark": "#2d333b",
+                        "latex-cyan": "#a5f3fc",
                     },
                     fontFamily: {
                         "display": ["Lexend", "sans-serif"]
                     },
-                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
                 },
             },
         }
     </script>
-<style>
+<style type="text/tailwindcss">
         body { font-family: 'Lexend', sans-serif; }
         .math-font { font-family: "Times New Roman", Times, serif; }
         .latex-block { font-style: italic; }
+        .tab-active {
+            @apply border-accent text-accent;
+            text-shadow: 0 0 12px rgba(14, 165, 233, 0.4);
+        }
+        .glass-panel {
+            background: rgba(26, 29, 35, 0.6);
+            backdrop-filter: blur(12px);
+        }
+        .solution-card {
+            background: #121212;
+            border: 1px solid #2d333b;
+            transition: border-color 0.2s ease;
+        }
+        .solution-card:hover {
+            border-color: #3b82f6;
+        }
     </style>
 </head>
-<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
-<!-- Top Navigation Bar -->
-<header class="flex items-center justify-between border-b border-solid border-slate-200 dark:border-border-dark px-6 py-3 bg-white dark:bg-background-dark sticky top-0 z-50">
+<body class="bg-background-dark text-slate-100 min-h-screen flex flex-col selection:bg-accent/30">
+<header class="flex items-center justify-between border-b border-border-dark px-6 py-3 bg-background-dark sticky top-0 z-50">
 <div class="flex items-center gap-8">
 <div class="flex items-center gap-3">
-<div class="size-8 bg-primary rounded flex items-center justify-center text-white">
+<div class="size-8 bg-accent rounded flex items-center justify-center text-white shadow-[0_0_15px_rgba(14,165,233,0.3)]">
 <span class="material-symbols-outlined">functions</span>
 </div>
-<h2 class="text-lg font-bold leading-tight tracking-tight">uask.ai</h2>
+<h2 class="text-lg font-bold leading-tight tracking-tight text-white">uask.ai</h2>
 </div>
 <nav class="hidden md:flex items-center gap-6">
-<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Dashboard</a>
-<a class="text-sm font-medium text-primary border-b-2 border-primary pb-1" href="#">Workspace</a>
-<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Library</a>
+<a class="text-sm font-medium text-slate-400 hover:text-white transition-colors" href="#">Dashboard</a>
+<a class="text-sm font-medium text-accent border-b-2 border-accent pb-1" href="#">Workspace</a>
+<a class="text-sm font-medium text-slate-400 hover:text-white transition-colors" href="#">Library</a>
 </nav>
 </div>
 <div class="flex items-center gap-4">
 <div class="flex items-center gap-2">
-<button class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-surface-dark transition-colors">
+<button class="p-2 rounded-lg hover:bg-surface-dark transition-colors text-slate-400 hover:text-white">
 <span class="material-symbols-outlined text-xl">notifications</span>
 </button>
-<button class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-surface-dark transition-colors">
+<button class="p-2 rounded-lg hover:bg-surface-dark transition-colors text-slate-400 hover:text-white">
 <span class="material-symbols-outlined text-xl">settings</span>
 </button>
 </div>
-<div class="h-8 w-[1px] bg-slate-200 dark:border-border-dark mx-1"></div>
+<div class="h-8 w-[1px] bg-border-dark mx-1"></div>
 <div class="flex items-center gap-3">
-<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8 border border-primary/20" data-alt="User profile avatar minimalist illustration" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCJQsi4Do0nD_nSwlJFCO011UDnVu3_UDKt2G9Q5gveExIvrT5MN9m02DOXIufov9xZ58kpbjtpIrBhxNq1gY2FFwLQece5ba2IML-3TnlcXc2nfSnLtdtdHnrrtUnnIXik87tj-vEgtU70o_XwcU-BdznztoaXiTtH0V5VqrqTSLPsZRKoRF5EMk0ZkPmUGhK24U74jF4lFjCIAFqvbpJuBK2f44pMW6wo6Yfb0Rya5vehmfkV-87dqIBTdO3cggxDYjNDGNuo5abz");'></div>
-<span class="text-sm font-medium hidden sm:inline">Alex Chen</span>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8 border border-accent/40" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCJQsi4Do0nD_nSwlJFCO011UDnVu3_UDKt2G9Q5gveExIvrT5MN9m02DOXIufov9xZ58kpbjtpIrBhxNq1gY2FFwLQece5ba2IML-3TnlcXc2nfSnLtdtdHnrrtUnnIXik87tj-vEgtU70o_XwcU-BdznztoaXiTtH0V5VqrqTSLPsZRKoRF5EMk0ZkPmUGhK24U74jF4lFjCIAFqvbpJuBK2f44pMW6wo6Yfb0Rya5vehmfkV-87dqIBTdO3cggxDYjNDGNuo5abz");'></div>
+<span class="text-sm font-medium hidden sm:inline text-slate-200">Alex Chen</span>
 </div>
 </div>
 </header>
 <main class="flex flex-1 overflow-hidden h-[calc(100vh-65px)]">
-<!-- Left Sidebar: Chat & OCR -->
-<aside class="w-80 flex-shrink-0 border-r border-slate-200 dark:border-border-dark flex flex-col bg-white dark:bg-background-dark">
-<div class="p-4 border-b border-slate-200 dark:border-border-dark flex justify-between items-center">
-<div class="flex items-center gap-2 text-primary font-semibold">
+<aside class="w-80 flex-shrink-0 border-r border-border-dark flex flex-col bg-background-dark">
+<div class="p-4 border-b border-border-dark flex justify-between items-center">
+<div class="flex items-center gap-2 text-accent font-semibold">
 <span class="material-symbols-outlined text-lg">chat_bubble</span>
 <span>Tutor Chat</span>
 </div>
-<button class="p-1 hover:bg-slate-100 dark:hover:bg-surface-dark rounded text-xs uppercase font-bold text-slate-500">History</button>
+<button class="p-1 hover:bg-surface-dark rounded text-xs uppercase font-bold text-slate-500">History</button>
 </div>
 <div class="flex-1 overflow-y-auto p-4 space-y-4">
-<!-- User Message -->
 <div class="flex flex-col gap-1 items-end">
-<div class="bg-primary text-white p-3 rounded-lg rounded-tr-none text-sm max-w-[90%]">
-                        Help me solve this projectile motion problem. Initial velocity is 25m/s at 30°.
-                    </div>
+<div class="bg-surface-dark border border-border-dark text-slate-200 p-3 rounded-xl rounded-tr-none text-sm max-w-[90%]">
+                    Help me solve this projectile motion problem. Initial velocity is 25m/s at 30°.
+                </div>
 <span class="text-[10px] text-slate-500">10:42 AM</span>
 </div>
-<!-- AI Message -->
 <div class="flex flex-col gap-1 items-start">
 <div class="flex items-center gap-2 mb-1">
-<div class="size-5 bg-primary/20 rounded-full flex items-center justify-center">
-<span class="material-symbols-outlined text-[12px] text-primary">robot_2</span>
+<div class="size-5 bg-accent/20 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-[12px] text-accent">robot_2</span>
 </div>
-<span class="text-xs font-bold">uask AI</span>
+<span class="text-xs font-bold text-slate-300">uask AI</span>
 </div>
-<div class="bg-slate-100 dark:bg-surface-dark p-3 rounded-lg rounded-tl-none text-sm max-w-[90%] leading-relaxed">
-                        Understood. I'll break down the components and calculate the trajectory steps for you in the Solution Panel.
-                    </div>
+<div class="bg-[#24292f] border border-border-dark p-3 rounded-xl rounded-tl-none text-sm max-w-[90%] leading-relaxed text-slate-200">
+                    Understood. I'll break down the components and calculate the trajectory steps for you in the Solution Panel.
+                </div>
 </div>
-<!-- AI Thought Process -->
-<div class="border-l-2 border-slate-200 dark:border-border-dark ml-2 pl-4 py-1 space-y-2 opacity-60">
-<div class="flex items-center gap-2">
+<div class="border-l-2 border-border-dark ml-2 pl-4 py-1 space-y-2 opacity-60">
+<div class="flex items-center gap-2 text-accent">
 <span class="material-symbols-outlined text-sm">memory</span>
 <span class="text-[11px] font-medium italic">Analyzing kinematic variables...</span>
 </div>
 </div>
 </div>
-<!-- Chat Input / OCR -->
-<div class="p-4 border-t border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-background-dark">
+<div class="p-4 border-t border-border-dark bg-background-dark">
 <div class="relative">
-<textarea class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-primary focus:border-primary resize-none pr-12" placeholder="Ask a question..." rows="3"></textarea>
+<textarea class="w-full bg-surface-dark border border-border-dark rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-500 focus:ring-1 focus:ring-accent focus:border-accent resize-none pr-12" placeholder="Ask a question..." rows="3"></textarea>
 <div class="absolute right-2 bottom-3 flex gap-1">
-<button class="p-2 text-slate-400 hover:text-primary transition-colors">
+<button class="p-2 text-slate-500 hover:text-accent transition-colors">
 <span class="material-symbols-outlined">photo_camera</span>
 </button>
-<button class="p-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+<button class="p-2 bg-accent text-white rounded-lg hover:bg-accent/80 transition-colors shadow-lg shadow-accent/20">
 <span class="material-symbols-outlined text-sm">send</span>
 </button>
 </div>
 </div>
 <div class="mt-2 flex items-center justify-between px-1">
-<span class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Tutor Mode: Calculus &amp; Mechanics</span>
-<button class="text-[10px] text-primary font-bold hover:underline">Change</button>
+<span class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Tutor Mode: Physics</span>
+<button class="text-[10px] text-accent font-bold hover:underline">Change</button>
 </div>
 </div>
 </aside>
-<!-- Main Solution Panel -->
-<div class="flex-1 flex flex-col bg-slate-50 dark:bg-[#0d1117] overflow-hidden">
-<!-- Progress / Streaming Indicator -->
-<div class="px-6 py-3 border-b border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark">
+<div class="flex-1 flex flex-col bg-[#0d1117] overflow-hidden">
+<div class="px-6 py-3 border-b border-border-dark bg-background-dark">
 <div class="flex items-center justify-between mb-2">
 <div class="flex items-center gap-2">
 <span class="relative flex h-2 w-2">
-<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-<span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
 </span>
-<h3 class="text-sm font-semibold">Generating Solution</h3>
+<h3 class="text-sm font-semibold text-slate-200">Generating Solution</h3>
 </div>
 <span class="text-xs font-medium text-slate-500">Step 3 of 4 · 75% Complete</span>
 </div>
-<div class="w-full h-1 bg-slate-100 dark:bg-surface-dark rounded-full overflow-hidden">
-<div class="bg-primary h-full rounded-full transition-all duration-500" style="width: 75%"></div>
+<div class="w-full h-1 bg-surface-dark rounded-full overflow-hidden">
+<div class="bg-accent h-full rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(14,165,233,0.5)]" style="width: 75%"></div>
 </div>
 </div>
-<!-- Tab Navigation -->
-<div class="bg-white dark:bg-background-dark px-6 border-b border-slate-200 dark:border-border-dark">
+<div class="bg-background-dark px-6 border-b border-border-dark">
 <div class="flex gap-8">
-<button class="flex items-center gap-2 py-4 border-b-2 border-primary text-primary font-bold text-sm">
+<button class="flex items-center gap-2 py-4 border-b-2 tab-active text-sm font-bold">
 <span class="material-symbols-outlined text-lg">format_list_numbered</span>
-                        Steps
-                    </button>
-<button class="flex items-center gap-2 py-4 border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white font-medium text-sm transition-colors">
+                    Steps
+                </button>
+<button class="flex items-center gap-2 py-4 border-b-2 border-transparent text-slate-500 hover:text-slate-300 font-medium text-sm transition-colors">
 <span class="material-symbols-outlined text-lg">verified</span>
-                        Verification
-                    </button>
-<button class="flex items-center gap-2 py-4 border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white font-medium text-sm transition-colors">
+                    Verification
+                </button>
+<button class="flex items-center gap-2 py-4 border-b-2 border-transparent text-slate-500 hover:text-slate-300 font-medium text-sm transition-colors">
 <span class="material-symbols-outlined text-lg">auto_stories</span>
-                        Concepts
-                    </button>
-<button class="flex items-center gap-2 py-4 border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white font-medium text-sm transition-colors">
+                    Concepts
+                </button>
+<button class="flex items-center gap-2 py-4 border-b-2 border-transparent text-slate-500 hover:text-slate-300 font-medium text-sm transition-colors">
 <span class="material-symbols-outlined text-lg">quiz</span>
-                        Practice
-                    </button>
+                    Practice
+                </button>
 </div>
 </div>
-<!-- Solution Content Area -->
 <div class="flex-1 overflow-y-auto p-8 max-w-4xl mx-auto w-full space-y-8">
 <div class="flex items-center justify-between">
-<h1 class="text-2xl font-bold tracking-tight">Projectile Motion Trajectory</h1>
+<h1 class="text-2xl font-bold tracking-tight text-white">Projectile Motion Trajectory</h1>
 <div class="flex gap-2">
-<button class="flex items-center gap-2 px-3 py-1.5 text-xs font-bold border border-slate-200 dark:border-border-dark rounded-lg hover:bg-white dark:hover:bg-surface-dark transition-colors">
+<button class="flex items-center gap-2 px-3 py-1.5 text-xs font-bold border border-border-dark rounded-lg hover:bg-surface-dark transition-colors text-slate-300">
 <span class="material-symbols-outlined text-sm">download</span>
-                            Export PDF
-                        </button>
-<button class="flex items-center gap-2 px-3 py-1.5 text-xs font-bold bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                        Export PDF
+                    </button>
+<button class="flex items-center gap-2 px-3 py-1.5 text-xs font-bold bg-accent text-white rounded-lg hover:bg-accent/80 transition-colors shadow-lg shadow-accent/20">
 <span class="material-symbols-outlined text-sm">share</span>
-                            Share
-                        </button>
+                        Share
+                    </button>
 </div>
 </div>
-<!-- Solution Card Step 1 -->
-<div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm overflow-hidden">
-<div class="bg-slate-50 dark:bg-white/5 px-6 py-3 border-b border-slate-200 dark:border-border-dark flex items-center justify-between">
+<div class="solution-card rounded-xl shadow-2xl overflow-hidden">
+<div class="bg-white/5 px-6 py-3 border-b border-border-dark flex items-center justify-between">
 <div class="flex items-center gap-3">
-<span class="flex items-center justify-center size-6 bg-primary text-white text-xs font-bold rounded">1</span>
-<h4 class="text-sm font-bold uppercase tracking-wider text-slate-500">Decompose Initial Velocity</h4>
+<span class="flex items-center justify-center size-6 bg-accent text-white text-xs font-bold rounded shadow-sm shadow-accent/30">1</span>
+<h4 class="text-sm font-bold uppercase tracking-wider text-slate-400">Decompose Initial Velocity</h4>
 </div>
-<button class="text-primary"><span class="material-symbols-outlined text-lg">info</span></button>
+<button class="text-accent hover:text-white transition-colors"><span class="material-symbols-outlined text-lg">info</span></button>
 </div>
 <div class="p-6">
-<p class="text-sm mb-4">First, we resolve the initial velocity vector $v_0$ into horizontal ($v_{0x}$) and vertical ($v_{0y}$) components using trigonometric identities:</p>
-<div class="bg-slate-50 dark:bg-[#0d1117] p-4 rounded-lg flex flex-col items-center gap-3 border border-slate-100 dark:border-border-dark">
-<div class="math-font text-xl latex-block">
-                                v_{0x} = v_0 \cdot \cos(\theta) = 25 \cdot \cos(30^\circ) = 21.65 \, \text{m/s}
-                            </div>
-<div class="math-font text-xl latex-block">
-                                v_{0y} = v_0 \cdot \sin(\theta) = 25 \cdot \sin(30^\circ) = 12.50 \, \text{m/s}
-                            </div>
+<p class="text-sm text-slate-300 mb-4">First, we resolve the initial velocity vector $v_0$ into horizontal ($v_{0x}$) and vertical ($v_{0y}$) components using trigonometric identities:</p>
+<div class="bg-surface-dark/40 p-6 rounded-lg flex flex-col items-center gap-4 border border-border-dark">
+<div class="math-font text-xl latex-block text-latex-cyan">
+                            v_{0x} = v_0 \cdot \cos(\theta) = 25 \cdot \cos(30^\circ) = 21.65 \, \text{m/s}
+                        </div>
+<div class="math-font text-xl latex-block text-latex-cyan">
+                            v_{0y} = v_0 \cdot \sin(\theta) = 25 \cdot \sin(30^\circ) = 12.50 \, \text{m/s}
+                        </div>
 </div>
 </div>
 </div>
-<!-- Solution Card Step 2 -->
-<div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm overflow-hidden">
-<div class="bg-slate-50 dark:bg-white/5 px-6 py-3 border-b border-slate-200 dark:border-border-dark flex items-center justify-between">
+<div class="solution-card rounded-xl shadow-2xl overflow-hidden">
+<div class="bg-white/5 px-6 py-3 border-b border-border-dark flex items-center justify-between">
 <div class="flex items-center gap-3">
-<span class="flex items-center justify-center size-6 bg-primary text-white text-xs font-bold rounded">2</span>
-<h4 class="text-sm font-bold uppercase tracking-wider text-slate-500">Time to Peak Height</h4>
+<span class="flex items-center justify-center size-6 bg-accent text-white text-xs font-bold rounded shadow-sm shadow-accent/30">2</span>
+<h4 class="text-sm font-bold uppercase tracking-wider text-slate-400">Time to Peak Height</h4>
 </div>
-<button class="text-primary"><span class="material-symbols-outlined text-lg">info</span></button>
+<button class="text-accent hover:text-white transition-colors"><span class="material-symbols-outlined text-lg">info</span></button>
 </div>
 <div class="p-6">
-<p class="text-sm mb-4">At the maximum height, the vertical velocity $v_y$ is zero. Using the first equation of motion:</p>
-<div class="bg-slate-50 dark:bg-[#0d1117] p-4 rounded-lg flex flex-col items-center gap-3 border border-slate-100 dark:border-border-dark">
-<div class="math-font text-xl latex-block">
-                                v_y = v_{0y} - g \cdot t_{\text{peak}} \implies 0 = 12.5 - 9.8 \cdot t_{\text{peak}}
-                            </div>
-<div class="math-font text-xl font-bold text-primary latex-block mt-2">
-                                t_{\text{peak}} \approx 1.28 \, \text{s}
-                            </div>
+<p class="text-sm text-slate-300 mb-4">At the maximum height, the vertical velocity $v_y$ is zero. Using the first equation of motion:</p>
+<div class="bg-surface-dark/40 p-6 rounded-lg flex flex-col items-center gap-4 border border-border-dark">
+<div class="math-font text-xl latex-block text-latex-cyan">
+                            v_y = v_{0y} - g \cdot t_{\text{peak}} \implies 0 = 12.5 - 9.8 \cdot t_{\text{peak}}
+                        </div>
+<div class="math-font text-xl font-bold text-accent latex-block mt-2">
+                            t_{\text{peak}} \approx 1.28 \, \text{s}
+                        </div>
 </div>
 </div>
 </div>
-<!-- Solution Card Step 3 (Active Generating) -->
-<div class="bg-white dark:bg-surface-dark rounded-xl border-2 border-primary shadow-lg overflow-hidden animate-pulse">
-<div class="bg-primary/10 px-6 py-3 border-b border-primary/20 flex items-center justify-between">
+<div class="bg-card-dark rounded-xl border border-accent shadow-[0_0_20px_rgba(59,130,246,0.15)] overflow-hidden">
+<div class="bg-accent/10 px-6 py-3 border-b border-accent/20 flex items-center justify-between">
 <div class="flex items-center gap-3">
-<span class="flex items-center justify-center size-6 bg-primary text-white text-xs font-bold rounded">3</span>
-<h4 class="text-sm font-bold uppercase tracking-wider text-primary">Calculating Max Altitude</h4>
+<span class="flex items-center justify-center size-6 bg-accent text-white text-xs font-bold rounded">3</span>
+<h4 class="text-sm font-bold uppercase tracking-wider text-accent animate-pulse">Calculating Max Altitude</h4>
 </div>
 <div class="flex items-center gap-1">
-<div class="w-1 h-1 bg-primary rounded-full"></div>
-<div class="w-1 h-1 bg-primary rounded-full opacity-60"></div>
-<div class="w-1 h-1 bg-primary rounded-full opacity-30"></div>
+<div class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+<div class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+<div class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce"></div>
 </div>
 </div>
-<div class="p-6 bg-primary/[0.02]">
-<div class="h-4 bg-slate-200 dark:bg-border-dark rounded w-3/4 mb-4"></div>
-<div class="h-12 bg-slate-100 dark:bg-[#0d1117] rounded-lg w-full mb-4"></div>
-<div class="h-4 bg-slate-200 dark:bg-border-dark rounded w-1/2"></div>
+<div class="p-6">
+<div class="h-4 bg-surface-dark rounded-full w-3/4 mb-4 animate-pulse"></div>
+<div class="h-14 bg-surface-dark border border-border-dark rounded-lg w-full mb-4 flex items-center px-4">
+<div class="h-2 bg-accent/20 rounded-full w-1/2"></div>
+</div>
+<div class="h-4 bg-surface-dark rounded-full w-1/2 animate-pulse"></div>
 </div>
 </div>
-<!-- Concept Retrieval Card (Mini Preview) -->
-<div class="flex items-center gap-4 p-4 border border-dashed border-slate-300 dark:border-border-dark rounded-xl bg-slate-50/50 dark:bg-transparent">
-<div class="size-12 rounded-lg bg-white dark:bg-surface-dark flex items-center justify-center border border-slate-200 dark:border-border-dark shadow-sm">
-<span class="material-symbols-outlined text-primary">lightbulb</span>
+<div class="flex items-center gap-4 p-5 border border-dashed border-border-dark rounded-xl bg-surface-dark/20 hover:bg-surface-dark/40 transition-colors cursor-pointer group">
+<div class="size-12 rounded-lg bg-card-dark flex items-center justify-center border border-border-dark shadow-lg group-hover:border-accent transition-colors">
+<span class="material-symbols-outlined text-accent text-2xl">lightbulb</span>
 </div>
 <div class="flex-1">
-<h5 class="text-xs font-bold uppercase text-slate-500 mb-1">Related Concept Retrieval</h5>
-<p class="text-sm font-semibold">Kinematic Equations for Constant Acceleration</p>
+<h5 class="text-[10px] font-bold uppercase text-slate-500 mb-1 tracking-[0.1em]">Related Concept Retrieval</h5>
+<p class="text-sm font-semibold text-slate-200">Kinematic Equations for Constant Acceleration</p>
 </div>
-<button class="px-3 py-1 bg-white dark:bg-surface-dark rounded-lg text-xs font-bold border border-slate-200 dark:border-border-dark hover:shadow-sm">View Card</button>
-</div>
-</div>
-<!-- Context Action Bar -->
-<div class="p-4 bg-white dark:bg-background-dark border-t border-slate-200 dark:border-border-dark flex justify-center gap-4">
-<button class="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-surface-dark rounded-lg text-sm font-bold hover:bg-slate-200 dark:hover:bg-border-dark transition-colors">
-<span class="material-symbols-outlined text-lg">psychology_alt</span>
-                    Explain the logic
-                </button>
-<button class="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-surface-dark rounded-lg text-sm font-bold hover:bg-slate-200 dark:hover:bg-border-dark transition-colors">
-<span class="material-symbols-outlined text-lg">add_circle</span>
-                    Apply air resistance
-                </button>
-<button class="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-surface-dark rounded-lg text-sm font-bold hover:bg-slate-200 dark:hover:bg-border-dark transition-colors">
-<span class="material-symbols-outlined text-lg">science</span>
-                    Simulate Lab
-                </button>
+<button class="px-3 py-1.5 bg-surface-dark text-white rounded-lg text-xs font-bold border border-border-dark hover:border-accent transition-colors">View Card</button>
 </div>
 </div>
-<!-- Right Toolbelt (Collapsible) -->
-<aside class="w-14 flex-shrink-0 border-l border-slate-200 dark:border-border-dark flex flex-col items-center py-6 gap-6 bg-white dark:bg-background-dark">
-<button class="group relative p-2 rounded-lg hover:bg-primary/10 transition-colors">
-<span class="material-symbols-outlined text-slate-500 group-hover:text-primary">draw</span>
-<span class="absolute left-[-80px] top-1 bg-slate-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">Canvas</span>
+<div class="p-4 bg-background-dark border-t border-border-dark flex justify-center gap-4">
+<button class="flex items-center gap-2 px-5 py-2.5 bg-surface-dark border border-border-dark rounded-lg text-sm font-bold text-slate-300 hover:text-white hover:bg-border-dark transition-all">
+<span class="material-symbols-outlined text-lg text-accent">psychology_alt</span>
+                Explain the logic
+            </button>
+<button class="flex items-center gap-2 px-5 py-2.5 bg-surface-dark border border-border-dark rounded-lg text-sm font-bold text-slate-300 hover:text-white hover:bg-border-dark transition-all">
+<span class="material-symbols-outlined text-lg text-accent">add_circle</span>
+                Apply air resistance
+            </button>
+<button class="flex items-center gap-2 px-5 py-2.5 bg-surface-dark border border-border-dark rounded-lg text-sm font-bold text-slate-300 hover:text-white hover:bg-border-dark transition-all">
+<span class="material-symbols-outlined text-lg text-accent">science</span>
+                Simulate Lab
+            </button>
+</div>
+</div>
+<aside class="w-14 flex-shrink-0 border-l border-border-dark flex flex-col items-center py-6 gap-6 bg-background-dark">
+<button class="group relative p-2 rounded-lg hover:bg-surface-dark transition-colors">
+<span class="material-symbols-outlined text-slate-500 group-hover:text-accent">draw</span>
+<span class="absolute right-full mr-2 top-1 bg-slate-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap">Canvas</span>
 </button>
-<button class="group relative p-2 rounded-lg hover:bg-primary/10 transition-colors">
-<span class="material-symbols-outlined text-slate-500 group-hover:text-primary">calculate</span>
-<span class="absolute left-[-90px] top-1 bg-slate-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">Calculator</span>
+<button class="group relative p-2 rounded-lg hover:bg-surface-dark transition-colors">
+<span class="material-symbols-outlined text-slate-500 group-hover:text-accent">calculate</span>
+<span class="absolute right-full mr-2 top-1 bg-slate-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap">Calculator</span>
 </button>
-<button class="group relative p-2 rounded-lg hover:bg-primary/10 transition-colors">
-<span class="material-symbols-outlined text-slate-500 group-hover:text-primary">book</span>
-<span class="absolute left-[-95px] top-1 bg-slate-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">Reference</span>
+<button class="group relative p-2 rounded-lg hover:bg-surface-dark transition-colors">
+<span class="material-symbols-outlined text-slate-500 group-hover:text-accent">book</span>
+<span class="absolute right-full mr-2 top-1 bg-slate-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap">Reference</span>
 </button>
 <div class="flex-1"></div>
-<button class="p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white">
+<button class="p-2 rounded-lg text-slate-600 hover:text-white transition-colors">
 <span class="material-symbols-outlined">help_outline</span>
 </button>
 </aside>
 </main>
-<!-- Latex support scripts would go here, but omitted as per instructions -->
+
 </body></html>

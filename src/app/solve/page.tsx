@@ -9,6 +9,7 @@ export default function SessionWorkspacePage() {
     const [activeTab, setActiveTab] = useState<'steps' | 'verification' | 'concepts' | 'practice'>('steps');
     const [isDark, setIsDark] = useState(false);
     const [inputValue, setInputValue] = useState('');
+    const router = useRouter();
 
     // OCR & Workflow State
     type WorkflowStage = 'idle' | 'selecting' | 'processing' | 'review' | 'error';
@@ -157,7 +158,7 @@ export default function SessionWorkspacePage() {
         if (!inputValue.trim()) return;
 
         setIsSolving(true);
-        setSolution(null);
+        const userId = localStorage.getItem("user_id") || "1";
 
         try {
             const res = await fetch('http://localhost:8000/api/v1/solve', {
@@ -165,17 +166,16 @@ export default function SessionWorkspacePage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     text_query: inputValue,
-                    mode: 'general'
+                    mode: 'general',
+                    user_id: parseInt(userId)
                 })
             });
 
             if (!res.ok) throw new Error("Solve request failed");
 
             const data = await res.json();
-            // The API returns structured_data in solution field or wrapper
-            // Adjust based on api.py response structure. 
-            // Update: api.py returns SolveResponse(solution=dict, ...)
-            setSolution(data.solution);
+            // Redirect to the persistent session
+            router.push(`/chat/${data.session_id}`);
 
         } catch (err) {
             console.error(err);

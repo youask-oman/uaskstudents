@@ -39,12 +39,15 @@ export default function RootLayout({
                     extend: {
                         colors: {
                             "primary": "#135bec", // Student Primary
+                            "accent": "#0ea5e9", // Workspace accent
                             "background-light": "#f6f6f8",
-                            "background-dark": "#0a0c10", // Updated for Workspace deep dark
+                            "background-dark": "#0f1115", // Updated for Workspace deep dark
                             
                             // Workspace specialized dark colors
-                            "surface-dark": "#161b22",
-                            "border-dark": "#282e39",
+                            "surface-dark": "#1a1d23",
+                            "card-dark": "#121212",
+                            "border-dark": "#2d333b",
+                            "latex-cyan": "#a5f3fc",
 
                             // Admin Colors
                             "admin-primary": "#0ea5e9",

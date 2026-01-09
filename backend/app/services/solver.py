@@ -33,19 +33,48 @@ class SolverService:
         OUTPUT FORMAT:
         Return ONLY valid JSON with this structure:
         {
-            "summary": "Brief 1-sentence summary of the approach",
-            "steps": [
+            "problem": {
+                "goal": "Brief description of the objective (e.g. 'Solve for x')",
+                "latex": "The original problem in LaTeX"
+            },
+            "solution": {
+                "steps": [
+                    {
+                        "index": 1,
+                        "title": "Step Heading",
+                        "explanation": "Clear pedagogical explanation without math",
+                        "math": {
+                            "latex_lines": ["Line 1 of math", "Line 2 of math"]
+                        }
+                    }
+                ],
+                "final_answer": "The final concise result"
+            },
+            "verification": {
+                "methods_used": [
+                    {
+                        "method": "substitution / sanity check / dimension matching",
+                        "description": "How we verified",
+                        "work": {
+                            "latex_lines": ["Latex showing the check"]
+                        },
+                        "conclusion": "Pass/Fail statement"
+                    }
+                ]
+            },
+            "concepts": [
                 {
-                    "title": "Step Title",
-                    "content": "Explanation with LaTeX math in $...$ or $$...$$"
+                    "title": "Concept Name",
+                    "category": "Subject area",
+                    "description": "Brief explanation",
+                    "tags": ["tag1", "tag2"]
                 }
-            ],
-            "related_concepts": ["Concept 1", "Concept 2"],
-            "final_answer": "The final result"
+            ]
         }
         
         RULES:
-        - Use LaTeX for ALL math expressions.
+        - Use LaTeX for ALL math expressions in latex_lines.
+        - DO NOT put math inside 'explanation' if possible; use 'math.latex_lines'.
         - Be educational and clear.
         """
 

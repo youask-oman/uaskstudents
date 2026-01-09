@@ -13,7 +13,7 @@ from app.services.rag import rag_service
 
 
 
-from app.auth import verify_password, create_access_token, Token
+from app.auth import verify_password, create_access_token, Token, get_password_hash
 
 api_router = APIRouter()
 
@@ -29,7 +29,7 @@ class SolveRequest(BaseModel):
 class SolveResponse(BaseModel):
     session_id: int
     solution: dict
-    related_concepts: List[str]
+    concepts: List[dict]
 
 class ChatHistoryItem(BaseModel):
     id: int
@@ -39,6 +39,37 @@ class ChatHistoryItem(BaseModel):
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+class SignupRequest(BaseModel):
+    full_name: str
+    email: str
+    password: str
+    academic_level: Optional[str] = None
+
+@api_router.post("/signup")
+async def signup(form_data: SignupRequest, session: Session = Depends(get_session)):
+    # Check if user already exists
+    existing_user = session.exec(select(User).where(User.email == form_data.email)).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=400,
+            detail="User with this email already exists"
+        )
+    
+    # Create new user
+    new_user = User(
+        email=form_data.email,
+        full_name=form_data.full_name,
+        password_hash=get_password_hash(form_data.password),
+        academic_level=form_data.academic_level,
+        is_verified=False # Setting to false as frontend mentions a verification link
+    )
+    
+    session.add(new_user)
+    session.commit()
+    session.refresh(new_user)
+    
+    return {"status": "ok", "message": "User created successfully. Please check your email for verification.", "user_id": new_user.id}
 
 @api_router.post("/login", response_model=Token)
 async def login_for_access_token(form_data: LoginRequest, session: Session = Depends(get_session)):
@@ -131,7 +162,7 @@ async def solve_problem(
     # Create Session
     new_chat = ChatSession(
         user_id=user_id,
-        title=solution_data.get("summary", "New Problem")[:50],
+        title=solution_data.get("problem", {}).get("goal", "New Problem")[:50],
         subject=request.subject or "General"
     )
     session.add(new_chat)
@@ -151,7 +182,7 @@ async def solve_problem(
     ai_msg = ChatMessage(
         session_id=new_chat.id,
         role="assistant",
-        content=solution_data.get("final_answer", ""),
+        content=solution_data.get("solution", {}).get("final_answer", ""),
         structured_data=solution_data
     )
     session.add(ai_msg)
@@ -164,7 +195,7 @@ async def solve_problem(
     return SolveResponse(
         session_id=new_chat.id,
         solution=solution_data,
-        related_concepts=concepts
+        concepts=solution_data.get("concepts", [])
     )
 
 @api_router.get("/history", response_model=List[ChatHistoryItem])
@@ -185,6 +216,7 @@ class ChatMessageSchema(BaseModel):
     role: str
     content: str
     media_url: Optional[str] = None
+    structured_data: Optional[dict] = None
     created_at: str
 
 class ChatSessionResponse(BaseModel):
@@ -210,6 +242,7 @@ async def get_session_details(session_id: int, session: Session = Depends(get_se
                 role=msg.role,
                 content=msg.content,
                 media_url=msg.media_url,
+                structured_data=msg.structured_data,
                 created_at=msg.created_at.isoformat()
             )
             for msg in chat_session.messages
