@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Admin Models and Orchestration | uask.ai</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: "Space Grotesk", sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #282e39;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<!-- TopNavBar Component -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 dark:border-[#282e39] bg-background-light dark:bg-background-dark px-6 py-3 sticky top-0 z-50">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-4 text-primary">
+<div class="size-6">
+<svg fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path clip-rule="evenodd" d="M24 18.4228L42 11.475V34.3663C42 34.7796 41.7457 35.1504 41.3601 35.2992L24 42V18.4228Z" fill="currentColor" fill-rule="evenodd"></path>
+<path clip-rule="evenodd" d="M24 8.18819L33.4123 11.574L24 15.2071L14.5877 11.574L24 8.18819ZM9 15.8487L21 20.4805V37.6263L9 32.9945V15.8487ZM27 37.6263V20.4805L39 15.8487V32.9945L27 37.6263ZM25.354 2.29885C24.4788 1.98402 23.5212 1.98402 22.646 2.29885L4.98454 8.65208C3.7939 9.08038 3 10.2097 3 11.475V34.3663C3 36.0196 4.01719 37.5026 5.55962 38.098L22.9197 44.7987C23.6149 45.0671 24.3851 45.0671 25.0803 44.7987L42.4404 38.098C43.9828 37.5026 45 36.0196 45 34.3663V11.475C45 10.2097 44.2061 9.08038 43.0155 8.65208L25.354 2.29885Z" fill="currentColor" fill-rule="evenodd"></path>
+</svg>
+</div>
+<h2 class="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">uask.ai Admin</h2>
+</div>
+<nav class="hidden lg:flex items-center gap-6">
+<a class="text-slate-600 dark:text-[#9da6b9] hover:text-primary dark:hover:text-white text-sm font-medium transition-colors" href="#">Dashboard</a>
+<a class="text-primary dark:text-white text-sm font-bold border-b-2 border-primary pb-1" href="#">Models</a>
+<a class="text-slate-600 dark:text-[#9da6b9] hover:text-primary dark:hover:text-white text-sm font-medium transition-colors" href="#">Datasets</a>
+<a class="text-slate-600 dark:text-[#9da6b9] hover:text-primary dark:hover:text-white text-sm font-medium transition-colors" href="#">Logs</a>
+</nav>
+</div>
+<div class="flex flex-1 justify-end gap-4 items-center">
+<label class="hidden md:flex flex-col min-w-40 h-9 max-w-64">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full overflow-hidden border border-slate-200 dark:border-[#282e39]">
+<div class="text-slate-400 dark:text-[#9da6b9] flex bg-slate-100 dark:bg-[#1e2533] items-center justify-center px-3">
+<span class="material-symbols-outlined text-sm">search</span>
+</div>
+<input class="w-full bg-slate-100 dark:bg-[#1e2533] text-sm text-slate-900 dark:text-white focus:outline-0 border-none placeholder:text-slate-400 dark:placeholder:text-[#9da6b9]" placeholder="Search controls..."/>
+</div>
+</label>
+<button class="flex min-w-[120px] items-center justify-center rounded-lg h-9 px-4 bg-primary text-white text-sm font-bold tracking-tight hover:bg-blue-700 transition-colors">
+<span class="truncate">Sync to Production</span>
+</button>
+<div class="size-9 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden ring-2 ring-slate-100 dark:ring-slate-800">
+<img class="object-cover w-full h-full" data-alt="Admin user avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCFWHhZ-jIghhgqLYMrdQ5rOjnQIfKpaoGNkgv0Ws20i9u2w7qiCsdvOOFiU0CiMceR95O150CWPFmVj3C5WoXl5Egwdem89-qsrRsGg_S3-IcUe1jeMkFhgndCpssiwZd9RQiilqlQiJtSRQd1poVRRfEtJJUeXTAUod4xbTnHHTKr32p9t1BP-vp2eFIgr_9BN37MURbbvscls04CljzW_b5tiDg0X4NAuxg5ajNhIG5KIDh9Ur2JzglUsveL1hnHlVE76Duaf3jK"/>
+</div>
+</div>
+</header>
+<main class="max-w-[1400px] mx-auto p-6 flex flex-col gap-6">
+<!-- PageHeading Component -->
+<div class="flex flex-wrap justify-between items-end gap-4 border-b border-slate-200 dark:border-[#282e39] pb-6">
+<div class="flex flex-col gap-1">
+<h1 class="text-slate-900 dark:text-white text-3xl font-black tracking-tight">Models &amp; Orchestration</h1>
+<p class="text-slate-500 dark:text-[#9da6b9] text-base font-normal">Manage routing logic, prompt versioning, and verification parameters.</p>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center gap-2 rounded-lg h-10 px-4 bg-slate-200 dark:bg-[#282e39] text-slate-800 dark:text-white text-sm font-bold hover:bg-slate-300 dark:hover:bg-[#323946] transition-colors">
+<span class="material-symbols-outlined text-lg">history</span>
+<span class="truncate">Audit Logs</span>
+</button>
+<button class="flex items-center gap-2 rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
+<span class="material-symbols-outlined text-lg">add</span>
+<span class="truncate">Add Model</span>
+</button>
+</div>
+</div>
+<!-- Tabs Component -->
+<div class="flex border-b border-slate-200 dark:border-[#3b4354] gap-8">
+<a class="flex items-center gap-2 border-b-2 border-primary text-primary pb-3 pt-2 px-1 transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">alt_route</span>
+<span class="text-sm font-bold tracking-wide">Routing</span>
+</a>
+<a class="flex items-center gap-2 border-b-2 border-transparent text-slate-500 dark:text-[#9da6b9] hover:text-slate-700 dark:hover:text-white pb-3 pt-2 px-1 transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">edit_note</span>
+<span class="text-sm font-bold tracking-wide">Prompt Templates</span>
+</a>
+<a class="flex items-center gap-2 border-b-2 border-transparent text-slate-500 dark:text-[#9da6b9] hover:text-slate-700 dark:hover:text-white pb-3 pt-2 px-1 transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">check_circle</span>
+<span class="text-sm font-bold tracking-wide">Verification Tools</span>
+</a>
+</div>
+<div class="grid grid-cols-12 gap-6">
+<!-- Left Side: Routing & Policy (Dense Controls) -->
+<div class="col-span-12 lg:col-span-8 flex flex-col gap-6">
+<!-- Section: Model Health Grid -->
+<div class="bg-white dark:bg-[#1a212e] rounded-xl border border-slate-200 dark:border-[#282e39] overflow-hidden">
+<div class="p-4 border-b border-slate-200 dark:border-[#282e39] flex justify-between items-center">
+<h2 class="text-slate-900 dark:text-white text-lg font-bold flex items-center gap-2">
+<span class="material-symbols-outlined text-green-500">sensors</span>
+                            Model Health Monitor
+                        </h2>
+<span class="text-xs font-mono bg-green-500/10 text-green-500 px-2 py-1 rounded">LIVE UPDATES</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 p-4">
+<!-- Health Cards -->
+<div class="flex flex-col gap-2 p-3 bg-slate-50 dark:bg-[#222b3a] rounded-lg border border-slate-100 dark:border-[#2d3748]">
+<div class="flex justify-between items-center">
+<span class="text-xs font-bold text-slate-500 dark:text-[#9da6b9]">QWEN-2.5-72B</span>
+<div class="size-2 rounded-full bg-green-500 animate-pulse"></div>
+</div>
+<div class="flex items-baseline gap-1">
+<span class="text-xl font-bold dark:text-white">120</span>
+<span class="text-[10px] text-slate-500">ms</span>
+</div>
+<div class="w-full bg-slate-200 dark:bg-slate-700 h-1 rounded-full overflow-hidden">
+<div class="bg-green-500 h-full w-[95%]"></div>
+</div>
+<p class="text-[10px] text-slate-400 dark:text-[#9da6b9]">Error Rate: 0.01%</p>
+</div>
+<div class="flex flex-col gap-2 p-3 bg-slate-50 dark:bg-[#222b3a] rounded-lg border border-slate-100 dark:border-[#2d3748]">
+<div class="flex justify-between items-center">
+<span class="text-xs font-bold text-slate-500 dark:text-[#9da6b9]">DEEPSEEK-V3</span>
+<div class="size-2 rounded-full bg-green-500 animate-pulse"></div>
+</div>
+<div class="flex items-baseline gap-1">
+<span class="text-xl font-bold dark:text-white">240</span>
+<span class="text-[10px] text-slate-500">ms</span>
+</div>
+<div class="w-full bg-slate-200 dark:bg-slate-700 h-1 rounded-full overflow-hidden">
+<div class="bg-yellow-500 h-full w-[70%]"></div>
+</div>
+<p class="text-[10px] text-slate-400 dark:text-[#9da6b9]">Error Rate: 0.04%</p>
+</div>
+<div class="flex flex-col gap-2 p-3 bg-slate-50 dark:bg-[#222b3a] rounded-lg border border-slate-100 dark:border-[#2d3748]">
+<div class="flex justify-between items-center">
+<span class="text-xs font-bold text-slate-500 dark:text-[#9da6b9]">GPT-4O-MINI</span>
+<div class="size-2 rounded-full bg-green-500"></div>
+</div>
+<div class="flex items-baseline gap-1">
+<span class="text-xl font-bold dark:text-white">95</span>
+<span class="text-[10px] text-slate-500">ms</span>
+</div>
+<div class="w-full bg-slate-200 dark:bg-slate-700 h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[99%]"></div>
+</div>
+<p class="text-[10px] text-slate-400 dark:text-[#9da6b9]">Error Rate: 0.00%</p>
+</div>
+<div class="flex flex-col gap-2 p-3 bg-slate-50 dark:bg-[#222b3a] rounded-lg border border-slate-100 dark:border-[#2d3748]">
+<div class="flex justify-between items-center">
+<span class="text-xs font-bold text-slate-500 dark:text-[#9da6b9]">LLAMA-3.1-405</span>
+<div class="size-2 rounded-full bg-red-500"></div>
+</div>
+<div class="flex items-baseline gap-1">
+<span class="text-xl font-bold dark:text-white">310</span>
+<span class="text-[10px] text-slate-500">ms</span>
+</div>
+<div class="w-full bg-slate-200 dark:bg-slate-700 h-1 rounded-full overflow-hidden">
+<div class="bg-red-500 h-full w-[40%]"></div>
+</div>
+<p class="text-[10px] text-slate-400 dark:text-[#9da6b9]">Error Rate: 1.2%</p>
+</div>
+</div>
+</div>
+<!-- Section: Subject Assignment -->
+<div class="bg-white dark:bg-[#1a212e] rounded-xl border border-slate-200 dark:border-[#282e39] p-5">
+<h2 class="text-slate-900 dark:text-white text-[20px] font-bold pb-4 border-b border-slate-100 dark:border-[#282e39] mb-4">Subject-Based Assignment</h2>
+<div class="space-y-4">
+<div class="flex items-center justify-between p-3 border border-slate-100 dark:border-[#2d3748] rounded-lg">
+<div class="flex items-center gap-4">
+<div class="size-10 rounded bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
+<span class="material-symbols-outlined">calculate</span>
+</div>
+<div>
+<p class="font-bold text-sm dark:text-white">Mathematics &amp; Physics</p>
+<p class="text-xs text-slate-500">Complex logical reasoning</p>
+</div>
+</div>
+<select class="bg-slate-100 dark:bg-[#282e39] border-none rounded text-xs py-1 px-3 focus:ring-primary dark:text-white min-w-[150px]">
+<option>DeepSeek-V3 (Primary)</option>
+<option>Qwen-2.5-72B</option>
+<option>GPT-4o</option>
+</select>
+</div>
+<div class="flex items-center justify-between p-3 border border-slate-100 dark:border-[#2d3748] rounded-lg">
+<div class="flex items-center gap-4">
+<div class="size-10 rounded bg-blue-500/10 text-blue-500 flex items-center justify-center">
+<span class="material-symbols-outlined">translate</span>
+</div>
+<div>
+<p class="font-bold text-sm dark:text-white">Humanities &amp; Languages</p>
+<p class="text-xs text-slate-500">Nuanced text generation</p>
+</div>
+</div>
+<select class="bg-slate-100 dark:bg-[#282e39] border-none rounded text-xs py-1 px-3 focus:ring-primary dark:text-white min-w-[150px]">
+<option>GPT-4o-Mini</option>
+<option>Llama-3.1-405B</option>
+<option>Qwen-2.5-72B</option>
+</select>
+</div>
+</div>
+</div>
+<!-- Section: Disagreement Policy -->
+<div class="bg-white dark:bg-[#1a212e] rounded-xl border border-slate-200 dark:border-[#282e39] p-5">
+<div class="flex items-center gap-3 mb-4">
+<div class="size-8 rounded-full bg-orange-500/20 text-orange-500 flex items-center justify-center">
+<span class="material-symbols-outlined text-sm">warning</span>
+</div>
+<h2 class="text-slate-900 dark:text-white text-[20px] font-bold">Disagreement Policy</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="flex flex-col gap-3">
+<label class="text-sm font-bold text-slate-600 dark:text-[#9da6b9]">Primary Strategy</label>
+<div class="flex flex-col gap-2">
+<label class="flex items-center gap-3 p-3 bg-slate-50 dark:bg-[#222b3a] rounded-lg border-2 border-primary cursor-pointer">
+<input checked="" class="text-primary focus:ring-0" name="policy" type="radio"/>
+<div class="flex flex-col">
+<span class="text-sm font-bold dark:text-white">Majority Consensus</span>
+<span class="text-xs text-slate-500">Pick solution with most overlaps</span>
+</div>
+</label>
+<label class="flex items-center gap-3 p-3 bg-slate-50 dark:bg-[#222b3a] rounded-lg border border-slate-100 dark:border-[#2d3748] cursor-pointer">
+<input class="text-primary focus:ring-0" name="policy" type="radio"/>
+<div class="flex flex-col">
+<span class="text-sm font-bold dark:text-white">High-Tier Priority</span>
+<span class="text-xs text-slate-500">Always defer to GPT-4o on clash</span>
+</div>
+</label>
+</div>
+</div>
+<div class="flex flex-col gap-4">
+<div>
+<label class="text-sm font-bold text-slate-600 dark:text-[#9da6b9] block mb-2">Escalation Threshold</label>
+<input class="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary" type="range"/>
+<div class="flex justify-between text-[10px] text-slate-500 mt-1">
+<span>Relaxed (20%)</span>
+<span>Strict (85%)</span>
+</div>
+</div>
+<div class="p-3 bg-primary/10 border border-primary/20 rounded-lg">
+<p class="text-xs text-primary font-medium flex gap-2">
+<span class="material-symbols-outlined text-sm">info</span>
+                                    Strict settings will increase human moderator load by ~12%.
+                                </p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Side: Prompt & Verification (Condensed Panels) -->
+<div class="col-span-12 lg:col-span-4 flex flex-col gap-6">
+<!-- Section: Active Prompt Editor Preview -->
+<div class="bg-white dark:bg-[#1a212e] rounded-xl border border-slate-200 dark:border-[#282e39] overflow-hidden">
+<div class="p-4 bg-slate-50 dark:bg-[#222b3a] border-b border-slate-200 dark:border-[#282e39] flex justify-between items-center">
+<span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#9da6b9]">Prompt: SOLVER_V4.2</span>
+<div class="flex gap-2">
+<span class="size-2 rounded-full bg-primary"></span>
+<span class="size-2 rounded-full bg-slate-400"></span>
+</div>
+</div>
+<div class="p-4">
+<div class="bg-[#111318] rounded-lg p-3 font-mono text-xs text-green-400 min-h-[160px] custom-scrollbar overflow-y-auto leading-relaxed border border-[#2d3748]">
+<span class="text-slate-500">// System Prompt for Logic Solver</span><br/>
+                            &lt;instructions&gt;<br/>
+                            Analyze the input carefully. <br/>
+                            Use step-by-step reasoning.<br/>
+                            Output final answer in JSON format.<br/>
+                            &lt;/instructions&gt;<br/><br/>
+<span class="text-primary font-bold">{{INPUT_PROBLEM}}</span><br/><br/>
+<span class="text-slate-500">// End of template</span>
+</div>
+<div class="mt-4 flex flex-col gap-3">
+<button class="w-full h-9 rounded-lg border border-slate-200 dark:border-[#282e39] text-sm font-bold flex items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-[#282e39]">
+<span class="material-symbols-outlined text-base">edit</span> Edit Template
+                            </button>
+<button class="w-full h-9 rounded-lg border border-slate-200 dark:border-[#282e39] text-sm font-bold flex items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-[#282e39]">
+<span class="material-symbols-outlined text-base">history</span> Version History
+                            </button>
+</div>
+</div>
+</div>
+<!-- Section: Verification Tools -->
+<div class="bg-white dark:bg-[#1a212e] rounded-xl border border-slate-200 dark:border-[#282e39] p-5">
+<h2 class="text-slate-900 dark:text-white text-lg font-bold mb-4">Verification Tools</h2>
+<div class="space-y-4">
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-center">
+<span class="text-xs font-medium dark:text-white">Unit Consistency</span>
+<span class="text-xs text-primary font-bold">95%</span>
+</div>
+<div class="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[95%]"></div>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-center">
+<span class="text-xs font-medium dark:text-white">Substitution Check</span>
+<span class="text-xs text-primary font-bold">80%</span>
+</div>
+<div class="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[80%]"></div>
+</div>
+</div>
+<div class="pt-4 mt-4 border-t border-slate-100 dark:border-[#282e39]">
+<label class="flex items-center justify-between cursor-pointer">
+<span class="text-xs font-bold dark:text-white">Auto-Fix Errors</span>
+<div class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-8 h-4 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+</div>
+</label>
+<p class="text-[10px] text-slate-500 mt-1">Automatically resolve minor formatting issues before final verification.</p>
+</div>
+</div>
+</div>
+<!-- ImageGrid Component Mockup (Models in Sandbox) -->
+<div class="bg-white dark:bg-[#1a212e] rounded-xl border border-slate-200 dark:border-[#282e39] overflow-hidden">
+<div class="p-4 border-b border-slate-200 dark:border-[#282e39]">
+<h3 class="text-sm font-bold dark:text-white uppercase tracking-wider">Experimental Sandbox</h3>
+</div>
+<div class="grid grid-cols-2 gap-px bg-slate-200 dark:bg-[#282e39]">
+<div class="bg-white dark:bg-[#1a212e] p-3 flex flex-col items-center text-center gap-2">
+<div class="size-12 rounded-lg bg-slate-100 dark:bg-[#222b3a] flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-400">biotech</span>
+</div>
+<p class="text-xs font-bold dark:text-white">DeepSeek-R1</p>
+<span class="text-[10px] bg-yellow-500/10 text-yellow-500 px-2 py-0.5 rounded">BETA</span>
+</div>
+<div class="bg-white dark:bg-[#1a212e] p-3 flex flex-col items-center text-center gap-2">
+<div class="size-12 rounded-lg bg-slate-100 dark:bg-[#222b3a] flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-400">science</span>
+</div>
+<p class="text-xs font-bold dark:text-white">Claude-3.5</p>
+<span class="text-[10px] bg-slate-500/10 text-slate-500 px-2 py-0.5 rounded">STAGING</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Global Footer Status -->
+<footer class="mt-12 border-t border-slate-200 dark:border-[#282e39] bg-white dark:bg-background-dark py-4 px-6 flex justify-between items-center sticky bottom-0 z-40">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 text-green-500 text-xs font-bold">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+</span>
+                SYSTEMS NOMINAL
+            </div>
+<div class="h-4 w-px bg-slate-200 dark:bg-[#282e39]"></div>
+<div class="text-[10px] text-slate-500 font-medium">Uptime: 99.992% | Avg Latency: 142ms</div>
+</div>
+<div class="flex gap-4">
+<button class="text-slate-500 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-xl">help</span>
+</button>
+<button class="text-slate-500 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-xl">settings</span>
+</button>
+</div>
+</footer>
+</body></html>

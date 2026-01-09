@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Admin Security Audit Logs | uask.ai</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#3b82f6",
+                        "deep-charcoal": "#111827",
+                        "card-bg": "#1a2234",
+                        "row-bg": "#161d2f",
+                        "alert-red": "#f87171",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.375rem",
+                        "lg": "0.625rem",
+                        "xl": "1rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        body { 
+            font-family: 'Manrope', sans-serif;
+            background-color: #111827;
+        }
+        .monospace { 
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; 
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #111827;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 10px;
+        }.drawer-open {
+            transform: translateX(0);
+        }
+        .drawer-closed {
+            transform: translateX(100%);
+        }
+    </style>
+</head>
+<body class="text-gray-300 min-h-screen">
+<header class="sticky top-0 z-40 w-full border-b border-gray-800 bg-deep-charcoal/90 backdrop-blur-md">
+<div class="max-w-[1536px] mx-auto flex items-center justify-between px-6 py-4">
+<div class="flex items-center gap-10">
+<div class="flex items-center gap-3">
+<div class="size-8 text-primary">
+<svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path clip-rule="evenodd" d="M24 18.4228L42 11.475V34.3663C42 34.7796 41.7457 35.1504 41.3601 35.2992L24 42V18.4228Z" fill="currentColor" fill-rule="evenodd"></path>
+<path clip-rule="evenodd" d="M24 8.18819L33.4123 11.574L24 15.2071L14.5877 11.574L24 8.18819ZM9 15.8487L21 20.4805V37.6263L9 32.9945V15.8487ZM27 37.6263V20.4805L39 15.8487V32.9945L27 37.6263ZM25.354 2.29885C24.4788 1.98402 23.5212 1.98402 22.646 2.29885L4.98454 8.65208C3.7939 9.08038 3 10.2097 3 11.475V34.3663C3 36.0196 4.01719 37.5026 5.55962 38.098L22.9197 44.7987C23.6149 45.0671 24.3851 45.0671 25.0803 44.7987L42.4404 38.098C43.9828 37.5026 45 36.0196 45 34.3663V11.475C45 10.2097 44.2061 9.08038 43.0155 8.65208L25.354 2.29885Z" fill="currentColor" fill-rule="evenodd"></path>
+</svg>
+</div>
+<h2 class="text-xl font-bold tracking-tight text-white">uask.ai <span class="text-primary">Admin</span></h2>
+</div>
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-gray-400 hover:text-white text-sm font-semibold transition-colors" href="#">Dashboard</a>
+<a class="text-gray-400 hover:text-white text-sm font-semibold transition-colors" href="#">Users</a>
+<a class="text-gray-400 hover:text-white text-sm font-semibold transition-colors" href="#">Models</a>
+<a class="text-white text-sm font-bold border-b-2 border-primary pb-1" href="#">Audit Logs</a>
+<a class="text-gray-400 hover:text-white text-sm font-semibold transition-colors" href="#">Settings</a>
+</nav>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative w-72 hidden lg:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-lg">search</span>
+<input class="w-full bg-gray-800/50 border border-gray-700 rounded-lg py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none text-white placeholder-gray-500" placeholder="Search security events..."/>
+</div>
+<div class="flex items-center gap-3 pl-6 border-l border-gray-800">
+<div class="size-9 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden border border-primary/30">
+<img alt="Admin" class="object-cover size-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBlY-EZFg2Rpvj6KrEHngHWf3NZ_KKdCb84hJTbrKD2cYKuLoZqsOKJMlizv1kBOFI731fGpbtfFa9VheIl2LgsKr_g0MUSy-qEvODqNZZPDSu7O7BD-vy8orhe0nv7XRjcZpUZH02s7o9hGsVx3RRH1w5DCT4HRRTXeH_FQISYHiB60g12I3mQ8mMcy9cg4ckT1_qfUGDahnjCJ65HRGQNbZCXdxQWIx35GapZRo9AU85VhA37x0iYUFnHBCsD4oUifI9EmgSkTqlJ"/>
+</div>
+<span class="text-sm font-bold text-gray-200 hidden sm:inline">Alex Rivera</span>
+</div>
+</div>
+</div>
+</header>
+<main class="max-w-[1536px] mx-auto px-6 py-10 relative">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-10">
+<div class="space-y-2">
+<h1 class="text-4xl font-extrabold tracking-tight text-white">Security Audit Logs</h1>
+<p class="text-gray-400 text-lg max-w-3xl font-medium">Compliance-grade tracking for all administrative actions and system events.</p>
+</div>
+<div class="flex items-center gap-4">
+<button class="flex items-center gap-2 px-5 py-2.5 bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-gray-600 rounded-lg text-sm font-bold transition-all text-white">
+<span class="material-symbols-outlined text-lg">download</span>
+                Export for Compliance
+            </button>
+<button class="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-blue-600 text-white rounded-lg text-sm font-extrabold shadow-lg shadow-primary/20 transition-all">
+<span class="material-symbols-outlined text-lg">refresh</span>
+                Refresh Feed
+            </button>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+<div class="bg-card-bg border-l-4 border-alert-red p-6 rounded-r-xl shadow-2xl">
+<div class="flex justify-between items-start mb-4">
+<p class="text-xs font-black uppercase tracking-widest text-gray-500">Recent High-Risk Actions</p>
+<span class="text-alert-red bg-alert-red/10 px-2 py-1 rounded">
+<span class="material-symbols-outlined text-xl">gpp_maybe</span>
+</span>
+</div>
+<div class="flex items-baseline gap-2">
+<p class="text-3xl font-black text-white">12</p>
+<p class="text-xs font-bold text-alert-red">+4 from prev period</p>
+</div>
+</div>
+<div class="bg-card-bg border-l-4 border-amber-500 p-6 rounded-r-xl shadow-2xl">
+<div class="flex justify-between items-start mb-4">
+<p class="text-xs font-black uppercase tracking-widest text-gray-500">Failed Auth Attempts</p>
+<span class="text-amber-500 bg-amber-500/10 px-2 py-1 rounded">
+<span class="material-symbols-outlined text-xl">security</span>
+</span>
+</div>
+<div class="flex items-baseline gap-2">
+<p class="text-3xl font-black text-white">04</p>
+<p class="text-xs font-bold text-emerald-400">-5% vs last week</p>
+</div>
+</div>
+<div class="bg-card-bg border-l-4 border-primary p-6 rounded-r-xl shadow-2xl">
+<div class="flex justify-between items-start mb-4">
+<p class="text-xs font-black uppercase tracking-widest text-gray-500">System Config Changes</p>
+<span class="text-primary bg-primary/10 px-2 py-1 rounded">
+<span class="material-symbols-outlined text-xl">manufacturing</span>
+</span>
+</div>
+<div class="flex items-baseline gap-2">
+<p class="text-3xl font-black text-white">45</p>
+<p class="text-xs font-bold text-gray-500">Operational Stable</p>
+</div>
+</div>
+<div class="bg-card-bg border-l-4 border-emerald-500 p-6 rounded-r-xl shadow-2xl">
+<div class="flex justify-between items-start mb-4">
+<p class="text-xs font-black uppercase tracking-widest text-gray-500">Active Admin Session</p>
+<span class="text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded">
+<span class="material-symbols-outlined text-xl">verified_user</span>
+</span>
+</div>
+<div class="flex items-baseline gap-2">
+<p class="text-3xl font-black text-white">08</p>
+<p class="text-xs font-bold text-emerald-400">All Nodes Secure</p>
+</div>
+</div>
+</div>
+<div class="bg-card-bg border border-gray-800 rounded-xl mb-6 shadow-xl overflow-hidden">
+<div class="p-5 border-b border-gray-800 flex flex-wrap items-center justify-between gap-6">
+<div class="flex flex-wrap items-center gap-3">
+<button class="flex items-center gap-3 px-4 py-2 bg-gray-900/50 border border-gray-700 rounded-lg text-xs font-bold hover:border-gray-500 transition-colors text-gray-300">
+<span class="material-symbols-outlined text-lg">calendar_month</span>
+                    Last 24 Hours
+                    <span class="material-symbols-outlined text-lg">expand_more</span>
+</button>
+<button class="flex items-center gap-3 px-4 py-2 bg-gray-900/50 border border-gray-700 rounded-lg text-xs font-bold hover:border-gray-500 transition-colors text-gray-300">
+<span class="material-symbols-outlined text-lg">admin_panel_settings</span>
+                    Admin: All
+                    <span class="material-symbols-outlined text-lg">expand_more</span>
+</button>
+<button class="flex items-center gap-3 px-4 py-2 bg-gray-900/50 border border-gray-700 rounded-lg text-xs font-bold hover:border-gray-500 transition-colors text-gray-300">
+<span class="material-symbols-outlined text-lg">category</span>
+                    Category: All
+                    <span class="material-symbols-outlined text-lg">expand_more</span>
+</button>
+<div class="w-px h-6 bg-gray-800 mx-1"></div>
+<button class="text-primary hover:text-white text-xs font-black uppercase tracking-widest transition-colors">
+                    Reset
+                </button>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Active Constraints</span>
+<div class="flex gap-2">
+<span class="flex items-center gap-2 bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-extrabold border border-primary/20">
+                        High Risk <span class="material-symbols-outlined text-sm cursor-pointer hover:text-white">close</span>
+</span>
+<span class="flex items-center gap-2 bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full text-xs font-extrabold border border-emerald-500/20">
+                        Status: Success <span class="material-symbols-outlined text-sm cursor-pointer hover:text-white">close</span>
+</span>
+</div>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-gray-900/50 text-gray-500 text-[10px] font-black uppercase tracking-[0.15em]">
+<th class="px-6 py-5 border-b border-gray-800">Timestamp (UTC)</th>
+<th class="px-6 py-5 border-b border-gray-800">Admin Identity</th>
+<th class="px-6 py-5 border-b border-gray-800">Action Event</th>
+<th class="px-6 py-5 border-b border-gray-800">Resource Path</th>
+<th class="px-6 py-5 border-b border-gray-800">Source IP</th>
+<th class="px-6 py-5 border-b border-gray-800">Resolution</th>
+<th class="px-6 py-5 border-b border-gray-800 text-right">Inspection</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-gray-800 text-sm">
+<tr class="bg-row-bg/40 hover:bg-gray-800/60 transition-colors">
+<td class="px-6 py-4 whitespace-nowrap monospace text-gray-400 text-xs">2023-11-24 14:22:01.042</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-3">
+<div class="size-6 rounded bg-primary/20 flex items-center justify-center text-[10px] text-primary font-black border border-primary/30">AR</div>
+<span class="font-bold text-gray-200">alex.rivera@uask.ai</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="flex items-center gap-2 text-alert-red font-black text-xs">
+<span class="material-symbols-outlined text-lg">person_off</span>
+                                USER BAN
+                            </span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-gray-500 monospace text-xs">usr_99d281a_sec</td>
+<td class="px-6 py-4 whitespace-nowrap monospace text-gray-500 text-xs">192.168.1.104</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 px-2 py-0.5 rounded text-[10px] font-black uppercase">Authorized</span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-right">
+<button class="text-primary hover:text-white bg-primary/5 hover:bg-primary/20 border border-primary/20 px-4 py-1.5 rounded-lg transition-all font-black text-[10px] uppercase tracking-widest" onclick="document.getElementById('side-drawer').classList.remove('translate-x-full')">View Details</button>
+</td>
+</tr>
+<tr class="bg-deep-charcoal hover:bg-gray-800/60 transition-colors">
+<td class="px-6 py-4 whitespace-nowrap monospace text-gray-400 text-xs">2023-11-24 13:58:44.891</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-3">
+<div class="size-6 rounded bg-amber-500/20 flex items-center justify-center text-[10px] text-amber-500 font-black border border-amber-500/30">SK</div>
+<span class="font-bold text-gray-200">sarah.k@uask.ai</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="flex items-center gap-2 text-primary font-black text-xs">
+<span class="material-symbols-outlined text-lg">edit_note</span>
+                                CONTENT EDIT
+                            </span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-gray-500 monospace text-xs">cms_article_v1</td>
+<td class="px-6 py-4 whitespace-nowrap monospace text-gray-500 text-xs">45.12.98.221</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 px-2 py-0.5 rounded text-[10px] font-black uppercase">Authorized</span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-right">
+<button class="text-primary hover:text-white bg-primary/5 hover:bg-primary/20 border border-primary/20 px-4 py-1.5 rounded-lg transition-all font-black text-[10px] uppercase tracking-widest">View Details</button>
+</td>
+</tr>
+<tr class="bg-alert-red/5 hover:bg-alert-red/10 transition-colors border-l-2 border-alert-red">
+<td class="px-6 py-4 whitespace-nowrap monospace text-gray-400 text-xs">2023-11-24 13:12:15.002</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-3">
+<div class="size-6 rounded bg-gray-500/20 flex items-center justify-center text-[10px] text-gray-400 font-black border border-gray-600/30">UN</div>
+<span class="font-bold text-gray-200">unknown.origin</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="flex items-center gap-2 text-alert-red font-black text-xs uppercase">
+<span class="material-symbols-outlined text-lg">dangerous</span>
+                                SYSTEM CONFIG EDIT
+                            </span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-gray-500 monospace text-xs">cfg_main_api</td>
+<td class="px-6 py-4 whitespace-nowrap monospace text-gray-500 text-xs">88.192.12.2</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="bg-alert-red/10 text-alert-red border border-alert-red/30 px-2 py-0.5 rounded text-[10px] font-black uppercase">Access Denied</span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-right">
+<button class="text-primary hover:text-white bg-primary/5 hover:bg-primary/20 border border-primary/20 px-4 py-1.5 rounded-lg transition-all font-black text-[10px] uppercase tracking-widest">View Details</button>
+</td>
+</tr>
+<tr class="bg-row-bg/40 hover:bg-gray-800/60 transition-colors">
+<td class="px-6 py-4 whitespace-nowrap monospace text-gray-400 text-xs">2023-11-24 12:45:10.512</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-3">
+<div class="size-6 rounded bg-emerald-500/20 flex items-center justify-center text-[10px] text-emerald-500 font-black border border-emerald-500/30">JD</div>
+<span class="font-bold text-gray-200">john.doe@uask.ai</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="flex items-center gap-2 text-gray-400 font-black text-xs uppercase">
+<span class="material-symbols-outlined text-lg">deployed_code</span>
+                                MODEL UPDATE
+                            </span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-gray-500 monospace text-xs">gpt-4o-v2_prod</td>
+<td class="px-6 py-4 whitespace-nowrap monospace text-gray-500 text-xs">10.0.4.52</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 px-2 py-0.5 rounded text-[10px] font-black uppercase">Authorized</span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-right">
+<button class="text-primary hover:text-white bg-primary/5 hover:bg-primary/20 border border-primary/20 px-4 py-1.5 rounded-lg transition-all font-black text-[10px] uppercase tracking-widest">View Details</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-6 bg-gray-900/30 flex items-center justify-between border-t border-gray-800">
+<span class="text-xs text-gray-500 font-bold uppercase tracking-widest">Displaying 1 - 25 of 12,442 entries</span>
+<div class="flex items-center gap-2">
+<button class="size-9 flex items-center justify-center rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800 transition-colors">
+<span class="material-symbols-outlined text-lg">chevron_left</span>
+</button>
+<button class="size-9 flex items-center justify-center rounded-lg bg-primary text-white font-black text-xs">1</button>
+<button class="size-9 flex items-center justify-center rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800 text-xs font-bold transition-colors">2</button>
+<button class="size-9 flex items-center justify-center rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800 text-xs font-bold transition-colors">3</button>
+<span class="px-3 text-gray-600 font-bold">...</span>
+<button class="size-9 flex items-center justify-center rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800 text-xs font-bold transition-colors">498</button>
+<button class="size-9 flex items-center justify-center rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800 transition-colors">
+<span class="material-symbols-outlined text-lg">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+<div class="fixed inset-y-0 right-0 w-full lg:w-[600px] bg-deep-charcoal border-l border-gray-800 shadow-2xl z-[60] transform translate-x-full transition-transform duration-300 ease-in-out" id="side-drawer">
+<div class="flex flex-col h-full">
+<div class="px-8 py-6 border-b border-gray-800 flex items-center justify-between bg-card-bg">
+<div class="space-y-1">
+<h3 class="text-lg font-black text-white flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">analytics</span>
+                    Event Analysis
+                </h3>
+<p class="text-xs font-bold text-gray-500 monospace tracking-tighter">REF: 998-AC-22-BAN-USR-01</p>
+</div>
+<button class="p-2 hover:bg-gray-800 rounded-lg text-gray-500 hover:text-white transition-all" onclick="document.getElementById('side-drawer').classList.add('translate-x-full')">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
+<div class="grid grid-cols-2 gap-4">
+<div class="p-4 bg-gray-900/50 rounded-lg border border-gray-800">
+<p class="text-[10px] font-black text-gray-500 uppercase mb-1">Status</p>
+<p class="text-emerald-500 font-bold text-sm">Success (Auth-OK)</p>
+</div>
+<div class="p-4 bg-gray-900/50 rounded-lg border border-gray-800">
+<p class="text-[10px] font-black text-gray-500 uppercase mb-1">Latency</p>
+<p class="text-gray-300 font-bold text-sm">124ms</p>
+</div>
+</div>
+<div class="space-y-6">
+<div>
+<div class="flex items-center justify-between mb-3">
+<h4 class="text-xs font-black uppercase tracking-widest text-gray-500 flex items-center gap-2">
+<span class="size-2 rounded-full bg-alert-red"></span>
+                            Baseline State (Before)
+                        </h4>
+<span class="text-[9px] bg-alert-red/10 text-alert-red px-2 py-0.5 rounded font-black uppercase border border-alert-red/20">Read-Only</span>
+</div>
+<div class="bg-[#0b0f19] p-6 rounded-xl border border-gray-800 monospace text-xs leading-relaxed overflow-x-auto shadow-inner">
+<pre class="text-gray-400"><span class="text-gray-600">{</span>
+  <span class="text-primary">"user_id"</span>: <span class="text-emerald-500">"usr_99d281a"</span>,
+  <span class="text-primary">"status"</span>: <span class="text-emerald-500">"active"</span>,
+  <span class="text-primary">"quota_limits"</span>: <span class="text-amber-500">5000</span>,
+  <span class="bg-alert-red/10 text-alert-red px-1 rounded"><span class="text-primary">"security_profile"</span>: <span class="text-emerald-500">"unrestricted"</span></span>
+<span class="text-gray-600">}</span></pre>
+</div>
+</div>
+<div>
+<div class="flex items-center justify-between mb-3">
+<h4 class="text-xs font-black uppercase tracking-widest text-gray-500 flex items-center gap-2">
+<span class="size-2 rounded-full bg-emerald-500"></span>
+                            Resultant State (After)
+                        </h4>
+<span class="text-[9px] bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded font-black uppercase border border-emerald-500/20">Commit Sync</span>
+</div>
+<div class="bg-[#0b0f19] p-6 rounded-xl border border-gray-800 monospace text-xs leading-relaxed overflow-x-auto shadow-inner">
+<pre class="text-gray-400"><span class="text-gray-600">{</span>
+  <span class="text-primary">"user_id"</span>: <span class="text-emerald-500">"usr_99d281a"</span>,
+  <span class="text-primary">"status"</span>: <span class="text-alert-red font-bold">"banned"</span>,
+  <span class="text-primary">"quota_limits"</span>: <span class="text-amber-500">0</span>,
+  <span class="bg-emerald-500/10 text-emerald-500 px-1 rounded font-bold"><span class="text-primary">"security_profile"</span>: <span class="text-emerald-500">"restricted"</span>,</span>
+  <span class="bg-emerald-500/10 text-emerald-500 px-1 rounded font-bold"><span class="text-primary">"ban_reason"</span>: <span class="text-emerald-500">"Policy Violation: API Spam"</span></span>
+<span class="text-gray-600">}</span></pre>
+</div>
+</div>
+</div>
+<div class="p-6 bg-card-bg rounded-xl border border-gray-800">
+<h5 class="text-xs font-black text-white uppercase mb-4 tracking-widest">Metadata Context</h5>
+<ul class="space-y-3 text-xs">
+<li class="flex justify-between border-b border-gray-800 pb-2">
+<span class="text-gray-500 font-bold">Agent String</span>
+<span class="text-gray-400 monospace">Mozilla/5.0 (Admin Console)</span>
+</li>
+<li class="flex justify-between border-b border-gray-800 pb-2">
+<span class="text-gray-500 font-bold">Request ID</span>
+<span class="text-gray-400 monospace">req-z49-21-x9</span>
+</li>
+<li class="flex justify-between">
+<span class="text-gray-500 font-bold">MFA Verified</span>
+<span class="text-emerald-500 font-black">YES</span>
+</li>
+</ul>
+</div>
+</div>
+<div class="p-8 border-t border-gray-800 bg-deep-charcoal flex gap-3">
+<button class="flex-1 bg-primary hover:bg-blue-600 text-white py-3 rounded-lg font-black text-xs uppercase tracking-widest transition-all">Download Audit Report</button>
+<button class="px-5 py-3 border border-gray-700 hover:bg-gray-800 text-white rounded-lg font-black text-xs transition-all">
+<span class="material-symbols-outlined">content_copy</span>
+</button>
+</div>
+</div>
+</div>
+<footer class="max-w-[1536px] mx-auto px-6 py-12 mt-20 border-t border-gray-800">
+<div class="flex flex-col md:flex-row justify-between items-center gap-6">
+<div class="space-y-2 text-center md:text-left">
+<p class="text-xs font-bold text-gray-500 uppercase tracking-widest">© 2023 uask.ai Infrastructure Security</p>
+<p class="text-[10px] text-gray-600">Immutable audit logs. Records are cryptographically signed and stored for 365 days.</p>
+</div>
+<div class="flex gap-8">
+<a class="text-xs font-black text-gray-500 hover:text-primary uppercase tracking-widest transition-colors" href="#">Security Policy</a>
+<a class="text-xs font-black text-gray-500 hover:text-primary uppercase tracking-widest transition-colors" href="#">Data Governance</a>
+<a class="text-xs font-black text-gray-500 hover:text-primary uppercase tracking-widest transition-colors" href="#">Support</a>
+</div>
+</div>
+</footer>
+
+</body></html>

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>uask.ai | Concept Library</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-white font-display antialiased">
+<div class="relative flex h-auto min-h-screen w-full flex-col group/design-root overflow-x-hidden">
+<div class="layout-container flex h-full grow flex-col">
+<!-- Desktop Top Navigation -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-b-white/10 px-6 py-4 lg:px-40 bg-background-dark/80 backdrop-blur-md sticky top-0 z-50">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-4 text-white">
+<div class="size-6 text-primary">
+<svg fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M44 4H30.6666V17.3334H17.3334V30.6666H4V44H44V4Z" fill="currentColor"></path>
+</svg>
+</div>
+<h2 class="text-white text-xl font-bold leading-tight tracking-[-0.015em]">uask.ai</h2>
+</div>
+</div>
+<div class="flex flex-1 justify-end gap-8">
+<nav class="hidden md:flex items-center gap-9">
+<a class="text-white/70 hover:text-white text-sm font-medium transition-colors" href="#">Home</a>
+<a class="text-primary text-sm font-bold" href="#">Library</a>
+<a class="text-white/70 hover:text-white text-sm font-medium transition-colors" href="#">AI Tutor</a>
+<a class="text-white/70 hover:text-white text-sm font-medium transition-colors" href="#">Profile</a>
+</nav>
+<div class="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30">
+<span class="material-symbols-outlined text-primary text-xl">person</span>
+</div>
+</div>
+</header>
+<!-- Main Content Container -->
+<main class="flex-1 flex flex-col items-center">
+<div class="layout-content-container flex flex-col w-full max-w-[1024px] px-4 py-8">
+<!-- Search & Filter Area -->
+<div class="flex items-center gap-3 w-full mb-6">
+<div class="flex-1">
+<label class="flex flex-col h-12 w-full">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full bg-[#1c2230] border border-white/5 focus-within:border-primary/50 transition-all">
+<div class="text-[#9da6b9] flex items-center justify-center pl-4">
+<span class="material-symbols-outlined">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 border-none bg-transparent focus:ring-0 text-white placeholder:text-[#9da6b9] px-4 text-base font-normal" placeholder="Search concepts (e.g. Quantum Physics)" value=""/>
+</div>
+</label>
+</div>
+<button class="flex size-12 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-[#1c2230] text-white hover:bg-[#282e39] border border-white/5 transition-colors">
+<span class="material-symbols-outlined">tune</span>
+</button>
+</div>
+<!-- Subject Chips -->
+<div class="flex gap-3 pb-6 overflow-x-auto no-scrollbar w-full">
+<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-full bg-primary px-6 transition-transform active:scale-95 cursor-pointer">
+<p class="text-white text-sm font-bold">All Subjects</p>
+</div>
+<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#1c2230] border border-white/5 px-6 hover:bg-[#282e39] cursor-pointer">
+<p class="text-white/70 text-sm font-medium">Mathematics</p>
+</div>
+<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#1c2230] border border-white/5 px-6 hover:bg-[#282e39] cursor-pointer">
+<p class="text-white/70 text-sm font-medium">Physics</p>
+</div>
+<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#1c2230] border border-white/5 px-6 hover:bg-[#282e39] cursor-pointer">
+<p class="text-white/70 text-sm font-medium">Chemistry</p>
+</div>
+<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#1c2230] border border-white/5 px-6 hover:bg-[#282e39] cursor-pointer">
+<p class="text-white/70 text-sm font-medium">Biology</p>
+</div>
+<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#1c2230] border border-white/5 px-6 hover:bg-[#282e39] cursor-pointer">
+<p class="text-white/70 text-sm font-medium">Astronomy</p>
+</div>
+</div>
+<!-- Grid Concept Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 py-4">
+<!-- Card 1 -->
+<div class="group flex flex-col gap-3 p-4 rounded-xl bg-[#1c2230] border border-white/5 hover:border-primary/50 transition-all cursor-pointer">
+<div class="w-full bg-center bg-no-repeat aspect-video sm:aspect-[3/4] bg-cover rounded-lg overflow-hidden relative" data-alt="Abstract blue geometry representing Newton laws" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBrSfXkZ26fCH91KQB9r-RgyIq8t0KmmXry5tpp1A9pS76zYFdkEpc6-HMXS0PQJ1DC15bDe0TPM1DlxETTXcyzhfE2O6rmFLz2QTiTzmK8YLywm0Cy1QPqHqMtkZ5dDbttVPHKIEaU5XaA5nIhV6AA4wMSapBWwAxUHp5rXlZWyg7NfNVhqzd45uOBRu_aX11JSD42fFt_PKMHpcX4qq8dxGcC1DQhcpLRfPVaJBSmLCyEUqtMNZIVHWVUuKbDqJNFtMuAgVOzZLyZ");'>
+<div class="absolute inset-0 bg-gradient-to-t from-[#101622]/80 to-transparent"></div>
+<div class="absolute top-3 left-3 px-2 py-1 rounded bg-orange-500/20 text-orange-400 text-[10px] font-bold uppercase tracking-wider border border-orange-500/30">Medium</div>
+</div>
+<div class="flex flex-col gap-1">
+<p class="text-white text-lg font-bold leading-tight group-hover:text-primary transition-colors">Newton's Laws</p>
+<p class="text-[#9da6b9] text-sm font-medium uppercase tracking-tight">Physics • Mechanics</p>
+</div>
+<button class="mt-2 w-full py-2.5 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2">
+                                Explore <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+<!-- Card 2 -->
+<div class="group flex flex-col gap-3 p-4 rounded-xl bg-[#1c2230] border border-white/5 hover:border-primary/50 transition-all cursor-pointer">
+<div class="w-full bg-center bg-no-repeat aspect-video sm:aspect-[3/4] bg-cover rounded-lg overflow-hidden relative" data-alt="Complex calculus derivative graph visual" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBKs8NibOheLXQ2-7QDjgTSzwlp1KOwGHSmhsJSWN7_hHneGUWsUxYo_113Ew58VOkTlovJtofXp2MH7JVbGPw5s-p_ZpJ9nc8UzdMC1I8Z8W142KlvBPOi7JZ8-gx7dqzhhgU3W7pEBTPwlk6cMzhy5VQxuXth3914t-wPsjEXIrLoLWMcKtizvUKfv1mUV59oRt_yznSoERRbPtwABN3GQ_dJt-hqzINcn75v6Hf9h6n3urhT4pgxTKJGPJ1xL6vdD84a5fYnnOdo");'>
+<div class="absolute inset-0 bg-gradient-to-t from-[#101622]/80 to-transparent"></div>
+<div class="absolute top-3 left-3 px-2 py-1 rounded bg-red-500/20 text-red-400 text-[10px] font-bold uppercase tracking-wider border border-red-500/30">Hard</div>
+</div>
+<div class="flex flex-col gap-1">
+<p class="text-white text-lg font-bold leading-tight group-hover:text-primary transition-colors">Calculus: Derivatives</p>
+<p class="text-[#9da6b9] text-sm font-medium uppercase tracking-tight">Math • Analysis</p>
+</div>
+<button class="mt-2 w-full py-2.5 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2">
+                                Explore <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+<!-- Card 3 -->
+<div class="group flex flex-col gap-3 p-4 rounded-xl bg-[#1c2230] border border-white/5 hover:border-primary/50 transition-all cursor-pointer">
+<div class="w-full bg-center bg-no-repeat aspect-video sm:aspect-[3/4] bg-cover rounded-lg overflow-hidden relative" data-alt="Atomic particles moving representing thermodynamics" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBkBCf9BaE8y-0TMeCEHuE5nBcXdK2O6Ci8HxVQxM5pHIyNSPfYciNu3S1OVQL04v50CaDXzJFP7NP1u52oWRZB8ZXMBC5svZV6i2wNJslSKlyzgw21jjOmYDcg9i2HvG7MeOAqxVUCQUuRS-Y8lBk24p3Lsyv5sC0jJM4yXiQPUVmVJJhpf-GJbr1s5trUH-KOfJLm7QvnsIuDavCKp2SEIfyPfMyghha_oeO5CFm0VmYcWwUfDpn5rRBOEED30uFVWRwgyvp1Gx5l");'>
+<div class="absolute inset-0 bg-gradient-to-t from-[#101622]/80 to-transparent"></div>
+<div class="absolute top-3 left-3 px-2 py-1 rounded bg-red-500/20 text-red-400 text-[10px] font-bold uppercase tracking-wider border border-red-500/30">Hard</div>
+</div>
+<div class="flex flex-col gap-1">
+<p class="text-white text-lg font-bold leading-tight group-hover:text-primary transition-colors">Thermodynamics</p>
+<p class="text-[#9da6b9] text-sm font-medium uppercase tracking-tight">Physics • Energy</p>
+</div>
+<button class="mt-2 w-full py-2.5 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2">
+                                Explore <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+<!-- Card 4 -->
+<div class="group flex flex-col gap-3 p-4 rounded-xl bg-[#1c2230] border border-white/5 hover:border-primary/50 transition-all cursor-pointer">
+<div class="w-full bg-center bg-no-repeat aspect-video sm:aspect-[3/4] bg-cover rounded-lg overflow-hidden relative" data-alt="Grid patterns representing linear algebra matrices" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCDaaP7WC-OtpAOJfy-Yglo-pdszHOAJVg9Eica9dD-5cFmtPN0wB2YBYSui06QYQaYT8iCzNUoCSoEKU5DhFwUnoFZ5xf-h9MtlnZHxye3HmqVuJ3vMRBgoik-0KB-JJsLy-3e21E1FFLgtflpk8ziHN0dmsMOUozajttd127h98t3SOrZcHyVIRWQhhev-xu6dSbPIcnNyXTw4-B9jRyaCGK_Tz4plEILgrGA7k-wLgBHBBwDzm3QVkKv37L7o-KuuLeARleMOpWi");'>
+<div class="absolute inset-0 bg-gradient-to-t from-[#101622]/80 to-transparent"></div>
+<div class="absolute top-3 left-3 px-2 py-1 rounded bg-orange-500/20 text-orange-400 text-[10px] font-bold uppercase tracking-wider border border-orange-500/30">Medium</div>
+</div>
+<div class="flex flex-col gap-1">
+<p class="text-white text-lg font-bold leading-tight group-hover:text-primary transition-colors">Linear Algebra</p>
+<p class="text-[#9da6b9] text-sm font-medium uppercase tracking-tight">Math • Vectors</p>
+</div>
+<button class="mt-2 w-full py-2.5 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2">
+                                Explore <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Pagination or Load More (Desktop styling) -->
+<div class="flex justify-center py-12">
+<button class="px-8 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium border border-white/10 transition-colors">
+                            Load more topics
+                        </button>
+</div>
+</div>
+</main>
+<!-- Bottom Floating Action Button -->
+<div class="fixed bottom-8 right-8 z-[100] md:bottom-12 md:right-12">
+<button class="group flex items-center justify-center h-14 w-14 md:h-16 md:w-auto md:px-6 rounded-full bg-primary text-white shadow-lg shadow-primary/40 hover:scale-105 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-2xl">auto_awesome</span>
+<span class="hidden md:block ml-2 font-bold tracking-wide">Ask uask.ai</span>
+</button>
+</div>
+<!-- Mobile-Style Bottom Nav (Visual Reference) -->
+<footer class="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#1c2230]/95 backdrop-blur-md border-t border-white/10 flex items-center justify-around px-2 z-50">
+<button class="flex flex-col items-center gap-1 text-white/50">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-medium">Home</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">library_books</span>
+<span class="text-[10px] font-bold">Library</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-white/50">
+<span class="material-symbols-outlined">psychology</span>
+<span class="text-[10px] font-medium">Tutor</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-white/50">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-medium">Profile</span>
+</button>
+</footer>
+</div>
+</div>
+</body></html>

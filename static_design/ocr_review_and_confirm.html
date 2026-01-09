@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>OCR Review and Confirm | uask.ai</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Lexend', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #282e39;
+            border-radius: 10px;
+        }
+        .bounding-box {
+            border: 2px solid #135bec;
+            background: rgba(19, 91, 236, 0.1);
+            position: absolute;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 dark:border-slate-800 px-6 py-3 bg-white dark:bg-background-dark sticky top-0 z-50">
+<div class="flex items-center gap-4">
+<div class="size-8 text-primary">
+<svg fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M44 4H30.6666V17.3334H17.3334V30.6666H4V44H44V4Z" fill="currentColor"></path>
+</svg>
+</div>
+<h2 class="text-slate-900 dark:text-white text-xl font-bold leading-tight tracking-[-0.015em]">uask.ai</h2>
+</div>
+<div class="flex flex-1 justify-center">
+<nav class="flex items-center gap-2">
+<div class="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800">
+<span class="size-6 rounded-full bg-slate-400 text-white flex items-center justify-center text-xs">1</span>
+<span class="text-sm font-medium text-slate-500 dark:text-slate-400">Upload</span>
+</div>
+<div class="h-px w-8 bg-slate-300 dark:bg-slate-700"></div>
+<div class="flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20">
+<span class="size-6 rounded-full bg-primary text-white flex items-center justify-center text-xs">2</span>
+<span class="text-sm font-bold text-primary">Review</span>
+</div>
+<div class="h-px w-8 bg-slate-300 dark:bg-slate-700"></div>
+<div class="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800">
+<span class="size-6 rounded-full bg-slate-400 text-white flex items-center justify-center text-xs">3</span>
+<span class="text-sm font-medium text-slate-500 dark:text-slate-400">Solve</span>
+</div>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="flex min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-white text-sm font-bold leading-normal">
+<span class="truncate">Help</span>
+</button>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border border-slate-200 dark:border-slate-700" data-alt="User profile avatar" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDXW6tIBH1fHP83F_Qokp43Q7e0MCRvWvk6_00FnjdnMy9SZN4E0SH4LXrNVzUECt4y71hrFo8OEm4gr8cGB2kxYfIvggVxkZjRcXP78gTSBHK3j4uKAZW-1lQG0MjsMrMliOSSpntGdZnC7N_TBlMfdk7w3jEw5RXQkmF15p59bC5pCUGiPmRkcBT8gfLC3XrktLWRTlaZt4rwo9RFm_RHALT6MNteqct2xHd8OosI57nmqRqJm6Ysua5q4J3HZeiUxq0rZ-1K8EOR");'></div>
+</div>
+</header>
+<!-- Main Workspace -->
+<main class="flex-1 flex overflow-hidden">
+<!-- Left Pane: Image Viewer -->
+<section class="w-[55%] flex flex-col border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#0b0f1a] relative">
+<!-- Toolbar -->
+<div class="flex justify-between items-center px-6 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-background-dark/50">
+<div class="flex items-center gap-2">
+<button class="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400 transition-colors">
+<span class="material-symbols-outlined">zoom_in</span>
+</button>
+<button class="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400 transition-colors">
+<span class="material-symbols-outlined">zoom_out</span>
+</button>
+<div class="w-px h-6 bg-slate-300 dark:bg-slate-700 mx-1"></div>
+<button class="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400 transition-colors">
+<span class="material-symbols-outlined">rotate_right</span>
+</button>
+<button class="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400 transition-colors">
+<span class="material-symbols-outlined">fullscreen_exit</span>
+</button>
+</div>
+<div class="text-xs font-medium text-slate-500 uppercase tracking-wider">Source: homework_physics_01.jpg</div>
+</div>
+<!-- Image Canvas -->
+<div class="flex-1 overflow-auto p-8 flex justify-center items-start relative custom-scrollbar">
+<div class="relative shadow-2xl rounded-lg overflow-hidden bg-white">
+<img alt="Math and physics problem paper" class="max-w-none w-[600px]" data-alt="Uploaded physics problem handwritten on paper" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDsepW1vtCpzf_4yBsVsN8bdf-FdgeLBakl3GJ5SDfoM3RcP2uIEdMYTDiQVzTHDOty8lxvj7W1T_ksH_8s-IWmf8lQskgLEbE4qs1AMgp515qX6ADF4uWijlYxgFMPFkWuGcROmig9B6EWfUEcNSnAS6fP9sPBqUM2GKe3WUbFdZDm6MeEvbbgnAqRomnoNnOXhRMZN6WZgn7rBXAXnVneeQpRPoDBgj8Q0dueoAOTcAH1_TXC2DOEzZElAgs84VgNM-XNplTjaQNL"/>
+<!-- Simulated Bounding Boxes -->
+<div class="bounding-box" style="top: 120px; left: 40px; width: 520px; height: 80px;" title="Detected Text Block"></div>
+<div class="bounding-box border-emerald-500 bg-emerald-500/10" style="top: 240px; left: 150px; width: 300px; height: 60px;" title="Detected Equation"></div>
+<div class="bounding-box" style="top: 340px; left: 40px; width: 520px; height: 120px;" title="Detected Text Block"></div>
+<div class="bounding-box border-emerald-500 bg-emerald-500/10" style="top: 480px; left: 180px; width: 240px; height: 70px;" title="Detected Equation"></div>
+</div>
+</div>
+<!-- Breadcrumbs -->
+<div class="absolute bottom-4 left-6 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/80 dark:bg-background-dark/80 backdrop-blur-sm border border-slate-200 dark:border-slate-800 text-sm">
+<span class="text-slate-500 dark:text-slate-400">My Files</span>
+<span class="material-symbols-outlined text-xs">chevron_right</span>
+<span class="text-slate-900 dark:text-white font-medium">physics_problem_1.jpg</span>
+</div>
+</section>
+<!-- Right Pane: Editor -->
+<section class="w-[45%] flex flex-col bg-white dark:bg-background-dark">
+<!-- Tabs Navigation -->
+<div class="flex px-6 pt-4 border-b border-slate-200 dark:border-slate-800">
+<button class="px-4 py-3 text-sm font-bold border-b-2 border-primary text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-lg">description</span>
+                    Extracted Problem
+                </button>
+<button class="px-4 py-3 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center gap-2">
+<span class="material-symbols-outlined text-lg">functions</span>
+                    Equations
+                    <span class="px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px]">2</span>
+</button>
+<button class="px-4 py-3 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center gap-2">
+<span class="material-symbols-outlined text-lg">settings</span>
+                    Settings
+                </button>
+</div>
+<!-- Tab Content: Extracted Problem -->
+<div class="flex-1 overflow-y-auto p-6 custom-scrollbar">
+<div class="mb-4 flex justify-between items-center">
+<h3 class="text-sm font-semibold text-slate-400 uppercase tracking-widest">Editor Workspace</h3>
+<div class="flex gap-2">
+<button class="text-xs text-primary font-bold hover:underline">Auto-Format</button>
+<span class="text-slate-300 dark:text-slate-700">|</span>
+<button class="text-xs text-slate-500 hover:underline">Clear All</button>
+</div>
+</div>
+<!-- Text Area with LaTeX Support -->
+<div class="relative group">
+<textarea class="w-full h-80 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl p-5 font-mono text-sm leading-relaxed focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all resize-none text-slate-800 dark:text-slate-200" placeholder="Extracted text will appear here...">A car starts from rest and accelerates uniformly at a rate of $a = 2.5 \, \text{m/s}^2$ for $t = 10 \, \text{s}$. 
+
+Calculate:
+1. The final velocity $v_f$ reached by the car.
+2. The total distance $d$ traveled during this time interval.
+
+Assume the car moves in a straight line.</textarea>
+<div class="absolute bottom-4 right-4 text-[10px] text-slate-400 bg-white dark:bg-slate-800 px-2 py-1 rounded border border-slate-200 dark:border-slate-700">
+                        Markdown &amp; LaTeX Enabled
+                    </div>
+</div>
+<!-- Equation Preview -->
+<div class="mt-8 space-y-4">
+<h4 class="text-sm font-semibold text-slate-500 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">visibility</span>
+                        Live Preview
+                    </h4>
+<div class="p-6 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
+<p class="mb-4">A car starts from rest and accelerates uniformly at a rate of <span class="text-primary font-medium italic">a = 2.5 m/s²</span> for <span class="text-primary font-medium italic">t = 10 s</span>.</p>
+<p class="mb-2">Calculate:</p>
+<ol class="list-decimal pl-5 space-y-2">
+<li>The final velocity <span class="text-primary italic">v<sub>f</sub></span> reached by the car.</li>
+<li>The total distance <span class="text-primary italic">d</span> traveled during this time interval.</li>
+</ol>
+<p class="mt-4 text-slate-500 italic text-sm">Assume the car moves in a straight line.</p>
+</div>
+</div>
+</div>
+<!-- Sticky Action Footer -->
+<div class="p-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-background-dark/80 backdrop-blur-md">
+<div class="flex items-center justify-between gap-4">
+<button class="flex items-center gap-2 px-6 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-bold text-sm text-slate-700 dark:text-slate-200">
+<span class="material-symbols-outlined text-lg">sync</span>
+                        Re-scan Image
+                    </button>
+<div class="flex items-center gap-4">
+<div class="flex flex-col items-end">
+<span class="text-[10px] font-bold text-slate-400 uppercase">Selected Subject</span>
+<span class="text-xs font-semibold text-primary">Physics • High School</span>
+</div>
+<button class="flex items-center gap-2 px-8 py-3 rounded-lg bg-primary hover:bg-blue-600 text-white font-bold transition-all shadow-lg shadow-primary/25">
+                            Confirm &amp; Solve
+                            <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Loading Overlay (Hidden by default, used for Re-scan state) -->
+<div class="fixed inset-0 bg-background-dark/60 backdrop-blur-sm z-[100] flex items-center justify-center pointer-events-none opacity-0 transition-opacity">
+<div class="bg-white dark:bg-slate-900 p-8 rounded-2xl shadow-2xl flex flex-col items-center gap-4 border border-slate-200 dark:border-slate-800">
+<div class="relative size-16">
+<div class="absolute inset-0 rounded-full border-4 border-primary/20"></div>
+<div class="absolute inset-0 rounded-full border-4 border-t-primary animate-spin"></div>
+</div>
+<div class="text-center">
+<h3 class="text-lg font-bold">Refining OCR Data</h3>
+<p class="text-sm text-slate-500">Detecting equations and structure...</p>
+</div>
+</div>
+</div>
+</body></html>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>New Solve - uask.ai</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800;900&amp;family=Noto+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#3b82f6",
+                        "background-dark": "#0a0c10",
+                        "charcoal": "#111827",
+                        "slate-card": "#1f2937",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"],
+                        "sans": ["Noto Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        body {
+            font-family: 'Lexend', sans-serif;
+        }
+        .math-preview-bg {
+            background-image: radial-gradient(#374151 1px, transparent 1px);
+            background-size: 20px 20px;
+        }::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0a0c10;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+    </style>
+</head>
+<body class="bg-background-dark text-slate-100 min-h-screen">
+<header class="border-b border-slate-800 bg-background-dark/80 backdrop-blur-xl sticky top-0 z-50">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex justify-between items-center h-16">
+<div class="flex items-center gap-3">
+<div class="bg-primary p-1.5 rounded-lg">
+<svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M44 4H30.6666V17.3334H17.3334V30.6666H4V44H44V4Z" fill="currentColor"></path>
+</svg>
+</div>
+<span class="text-xl font-bold tracking-tight text-white">uask.ai</span>
+</div>
+<nav class="hidden md:flex space-x-8">
+<a class="text-slate-400 hover:text-white transition-colors text-sm font-medium" href="#">Dashboard</a>
+<a class="text-white border-b-2 border-primary pb-1 text-sm font-medium" href="#">New Solve</a>
+<a class="text-slate-400 hover:text-white transition-colors text-sm font-medium" href="#">History</a>
+<a class="text-slate-400 hover:text-white transition-colors text-sm font-medium" href="#">Resources</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="p-2 text-slate-400 hover:bg-slate-800 rounded-full transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="h-8 w-px bg-slate-800"></div>
+<div class="flex items-center gap-3 cursor-pointer group">
+<div class="w-9 h-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="User profile avatar placeholder" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAXYVbFfVBihqvOGXdUgQeFj3bBK56JWwJVwY0vHS3d_muo1q74kW5qIOfQePEV1c7AAUsvFWeNgynfnwD8zU0AfkFQW7u66ROKZaze1j4dD4kQFDi-LopffszdUQ5N5-xc7Kf108CGZLvA9vs49eetg9ucr2APBoHzjuDMJkoMTDTiZFsh0L7QHFzqYvIKN5JXNufZOslKMrUig-s00M1n_Q27MaX2Mcn4Z5xHgAo5Dk8a46yKVidS1eYrHxji1z05Is4fUzxBIATw"/>
+</div>
+<span class="text-sm font-semibold hidden sm:block text-slate-200">Alex Rivera</span>
+</div>
+</div>
+</div>
+</div>
+</header>
+<main class="max-w-5xl mx-auto px-4 py-8 md:py-12">
+<div class="mb-10">
+<h1 class="text-4xl font-black tracking-tight mb-2 text-white">New Solve</h1>
+<p class="text-slate-400 text-lg">Input your problem using AI-powered tools for precise solutions.</p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<div class="lg:col-span-8 space-y-6">
+<div class="bg-charcoal rounded-xl shadow-2xl shadow-black/50 overflow-hidden border border-slate-800">
+<div class="flex bg-black/20 border-b border-slate-800">
+<button class="flex-1 flex flex-col items-center py-5 text-slate-500 hover:text-slate-200 transition-all border-b-2 border-transparent">
+<span class="material-symbols-outlined mb-1">edit_note</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Text</span>
+</button>
+<button class="flex-1 flex flex-col items-center py-5 text-primary border-b-2 border-primary bg-primary/10">
+<span class="material-symbols-outlined mb-1">add_a_photo</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Snap &amp; Solve</span>
+</button>
+<button class="flex-1 flex flex-col items-center py-5 text-slate-500 hover:text-slate-200 transition-all border-b-2 border-transparent">
+<span class="material-symbols-outlined mb-1">mic</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Voice</span>
+</button>
+</div>
+<div class="p-8">
+<div class="flex flex-col gap-8">
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="text-xs font-bold uppercase tracking-wider text-slate-400">Subject Area</label>
+<div class="relative">
+<select class="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg h-12 px-4 appearance-none focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all">
+<option>Mathematics</option>
+<option>Physics</option>
+<option>Chemistry</option>
+<option>Engineering</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-slate-500">expand_more</span>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold uppercase tracking-wider text-slate-400">Difficulty Level</label>
+<div class="relative">
+<select class="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg h-12 px-4 appearance-none focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all">
+<option>High School / AP</option>
+<option>Undergraduate</option>
+<option>Graduate (Masters)</option>
+<option>PhD / Researcher</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-slate-500">expand_more</span>
+</div>
+</div>
+</div>
+<div class="group relative flex flex-col items-center justify-center border-2 border-dashed border-slate-700 bg-black/30 rounded-2xl px-6 py-20 hover:border-primary hover:bg-primary/5 transition-all cursor-pointer">
+<div class="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center text-primary mb-6 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all shadow-inner">
+<span class="material-symbols-outlined text-4xl">upload_file</span>
+</div>
+<h3 class="text-xl font-bold mb-2 text-white">Snap &amp; Solve</h3>
+<p class="text-slate-400 text-center max-w-sm mb-8 leading-relaxed">
+                                Drag and drop an image or PDF here, or <span class="text-primary font-semibold hover:underline">browse your files</span>
+</p>
+<div class="flex gap-4">
+<span class="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-md text-[10px] font-black text-slate-300 uppercase tracking-tighter">JPG</span>
+<span class="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-md text-[10px] font-black text-slate-300 uppercase tracking-tighter">PNG</span>
+<span class="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-md text-[10px] font-black text-slate-300 uppercase tracking-tighter">PDF</span>
+</div>
+</div>
+<div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-800">
+<div class="flex items-center gap-2 text-slate-500">
+<span class="material-symbols-outlined text-sm">verified_user</span>
+<span class="text-xs">Secure, private, and encrypted.</span>
+</div>
+<button class="w-full sm:w-auto flex items-center justify-center gap-3 bg-primary hover:bg-blue-600 text-white px-10 py-4 rounded-xl font-black transition-all shadow-xl shadow-primary/20 active:scale-95">
+<span>SOLVE PROBLEM</span>
+<span class="material-symbols-outlined text-xl">auto_awesome</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-charcoal border border-slate-800 rounded-xl p-6">
+<div class="flex items-center justify-between mb-4">
+<h4 class="font-bold flex items-center gap-2 text-slate-200">
+<span class="material-symbols-outlined text-primary">terminal</span>
+                        Live Output Preview
+                    </h4>
+<span class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">OCR Engine v2.4</span>
+</div>
+<div class="w-full h-40 math-preview-bg bg-black/40 rounded-lg flex items-center justify-center border border-slate-800">
+<div class="text-center">
+<span class="material-symbols-outlined text-slate-600 text-4xl mb-2 block">query_stats</span>
+<p class="text-slate-600 font-medium text-sm">Upload a problem to see preview results...</p>
+</div>
+</div>
+</div>
+</div>
+<div class="lg:col-span-4 space-y-6">
+<div class="bg-primary/5 border border-primary/20 rounded-xl p-6">
+<h3 class="text-primary font-bold flex items-center gap-2 mb-5">
+<span class="material-symbols-outlined">tips_and_updates</span>
+                    Good Photo Tips
+                </h3>
+<ul class="space-y-5">
+<li class="flex gap-4">
+<div class="w-6 h-6 bg-primary/20 text-primary text-[11px] font-bold rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 border border-primary/30">1</div>
+<p class="text-sm text-slate-300 leading-relaxed"><strong class="text-white">Bright Lighting.</strong> Ensure the text is clear and shadow-free.</p>
+</li>
+<li class="flex gap-4">
+<div class="w-6 h-6 bg-primary/20 text-primary text-[11px] font-bold rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 border border-primary/30">2</div>
+<p class="text-sm text-slate-300 leading-relaxed"><strong class="text-white">Single Focus.</strong> Capture one problem at a time for 99% accuracy.</p>
+</li>
+<li class="flex gap-4">
+<div class="w-6 h-6 bg-primary/20 text-primary text-[11px] font-bold rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 border border-primary/30">3</div>
+<p class="text-sm text-slate-300 leading-relaxed"><strong class="text-white">Include Context.</strong> Diagrams and graphs should be fully visible.</p>
+</li>
+</ul>
+</div>
+<div class="bg-charcoal border border-slate-800 rounded-xl p-6">
+<div class="flex items-center justify-between mb-5">
+<h3 class="font-bold text-slate-200">Recent History</h3>
+<a class="text-primary text-xs font-bold hover:underline tracking-tight" href="#">VIEW ALL</a>
+</div>
+<div class="space-y-3">
+<div class="p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-primary/50 hover:bg-slate-800/50 transition-all cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[10px] font-black text-primary uppercase tracking-tighter">Mathematics</span>
+<span class="text-[10px] text-slate-500">2h ago</span>
+</div>
+<p class="text-sm font-medium text-slate-200 line-clamp-1 group-hover:text-white">Derivative of f(x) = sin²(x)</p>
+</div>
+<div class="p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-primary/50 hover:bg-slate-800/50 transition-all cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[10px] font-black text-emerald-500 uppercase tracking-tighter">Physics</span>
+<span class="text-[10px] text-slate-500">Yesterday</span>
+</div>
+<p class="text-sm font-medium text-slate-200 line-clamp-1 group-hover:text-white">Pulley System Tension Analysis</p>
+</div>
+</div>
+</div>
+<div class="relative overflow-hidden bg-gradient-to-br from-slate-900 to-black border border-slate-800 rounded-xl p-7 group shadow-2xl">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-3xl -mr-16 -mt-16 group-hover:bg-primary/20 transition-all duration-500"></div>
+<div class="relative z-10">
+<div class="flex items-center gap-2 mb-3">
+<span class="bg-primary text-[10px] font-black px-2 py-0.5 rounded text-white tracking-widest">PRO</span>
+<h4 class="text-lg font-bold text-white">uask Unlimited</h4>
+</div>
+<p class="text-slate-400 text-sm mb-6 leading-relaxed">Get unlimited OCR scans and priority access to expert tutor responses.</p>
+<button class="w-full bg-white text-black font-black py-3 rounded-lg text-xs hover:bg-slate-200 transition-colors uppercase tracking-widest shadow-lg">
+                        Go Pro Now
+                    </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<footer class="max-w-7xl mx-auto px-4 py-12 border-t border-slate-800 text-center">
+<div class="flex justify-center gap-6 mb-6">
+<a class="text-slate-500 hover:text-white transition-colors" href="#"><span class="material-symbols-outlined">help</span></a>
+<a class="text-slate-500 hover:text-white transition-colors" href="#"><span class="material-symbols-outlined">settings</span></a>
+<a class="text-slate-500 hover:text-white transition-colors" href="#"><span class="material-symbols-outlined">mail</span></a>
+</div>
+<p class="text-slate-500 text-xs font-bold tracking-widest uppercase">© 2024 uask.ai • The Next Generation of STEM Learning</p>
+</footer>
+
+</body></html>

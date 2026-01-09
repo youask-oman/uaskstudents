@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Admin Usage &amp; Quotas Management - uask.ai</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: "Space Grotesk", sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark min-h-screen text-[#111318] dark:text-white">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-[#dbdfe6] dark:border-gray-800 bg-white dark:bg-background-dark px-10 py-3 sticky top-0 z-50">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3 text-primary">
+<div class="size-8">
+<svg fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path clip-rule="evenodd" d="M24 18.4228L42 11.475V34.3663C42 34.7796 41.7457 35.1504 41.3601 35.2992L24 42V18.4228Z" fill="currentColor" fill-rule="evenodd"></path>
+<path clip-rule="evenodd" d="M24 8.18819L33.4123 11.574L24 15.2071L14.5877 11.574L24 8.18819ZM9 15.8487L21 20.4805V37.6263L9 32.9945V15.8487ZM27 37.6263V20.4805L39 15.8487V32.9945L27 37.6263ZM25.354 2.29885C24.4788 1.98402 23.5212 1.98402 22.646 2.29885L4.98454 8.65208C3.7939 9.08038 3 10.2097 3 11.475V34.3663C3 36.0196 4.01719 37.5026 5.55962 38.098L22.9197 44.7987C23.6149 45.0671 24.3851 45.0671 25.0803 44.7987L42.4404 38.098C43.9828 37.5026 45 36.0196 45 34.3663V11.475C45 10.2097 44.2061 9.08038 43.0155 8.65208L25.354 2.29885Z" fill="currentColor" fill-rule="evenodd"></path>
+</svg>
+</div>
+<h2 class="text-[#111318] dark:text-white text-xl font-bold leading-tight tracking-tight">uask.ai Admin</h2>
+</div>
+<nav class="flex items-center gap-6">
+<a class="text-primary border-b-2 border-primary text-sm font-semibold h-14 flex items-center px-1" href="#">System Usage</a>
+<a class="text-[#616f89] dark:text-gray-400 hover:text-primary transition-colors text-sm font-medium" href="#">Model Config</a>
+<a class="text-[#616f89] dark:text-gray-400 hover:text-primary transition-colors text-sm font-medium" href="#">Billing Logs</a>
+<a class="text-[#616f89] dark:text-gray-400 hover:text-primary transition-colors text-sm font-medium" href="#">Support</a>
+</nav>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative w-64">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#616f89] text-xl">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-background-light dark:bg-gray-800 border-none rounded-lg text-sm focus:ring-2 focus:ring-primary/50" placeholder="Search resources..." type="text"/>
+</div>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-primary" data-alt="User profile avatar placeholder" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuC7wEIwlEnulVjo-J2SSahHfc61DU9bjb4JzsveAJI3sv5eoNaJoBSsUubFB2rfxS0td8zpI3FByCk9U-BeMFo2syLM1pgSxbNHArgHXX3HGIysiLxTn8gWnPy2f6fF6zNZg7090Owz8Kj2E6y1gcLJEkpfq-r25kgofe8aObqyswVc8LHS9EAm1KYbx08hlr7kXEGz57LPlEak3m3YlrpnBlkabGkBiS6VSi39ompAuMHqddOva00Uin9O-xqWnKs9U1UVB8cDIwhG");'></div>
+</div>
+</header>
+<main class="max-w-[1280px] mx-auto py-8 px-6">
+<!-- Page Heading -->
+<div class="flex flex-wrap justify-between items-end gap-3 mb-8">
+<div class="flex flex-col gap-2">
+<h1 class="text-[#111318] dark:text-white text-4xl font-black leading-tight tracking-tight">Usage &amp; Quotas Management</h1>
+<p class="text-[#616f89] dark:text-gray-400 text-base font-normal leading-normal">Monitor resource consumption, manage user plans, and override manual quotas.</p>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center gap-2 bg-white dark:bg-gray-800 border border-[#dbdfe6] dark:border-gray-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors">
+<span class="material-symbols-outlined text-lg">download</span> Export Report
+                </button>
+<button class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">
+                    Global Quota Update
+                </button>
+</div>
+</div>
+<!-- Global Stats Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+<div class="flex flex-col gap-4 rounded-xl p-6 bg-white dark:bg-gray-800 border border-[#dbdfe6] dark:border-gray-700 shadow-sm">
+<div class="flex justify-between items-start">
+<div>
+<p class="text-[#616f89] dark:text-gray-400 text-sm font-medium">Global API Consumption</p>
+<p class="text-3xl font-bold mt-1">72.4%</p>
+</div>
+<div class="p-2 bg-primary/10 rounded-lg text-primary">
+<span class="material-symbols-outlined">data_usage</span>
+</div>
+</div>
+<div class="w-full bg-[#f0f2f4] dark:bg-gray-700 h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full" style="width: 72.4%"></div>
+</div>
+<p class="text-[#07883b] text-sm font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">trending_up</span> +5.2% from last hour
+                </p>
+</div>
+<div class="flex flex-col gap-4 rounded-xl p-6 bg-white dark:bg-gray-800 border border-[#dbdfe6] dark:border-gray-700 shadow-sm">
+<div class="flex justify-between items-start">
+<div>
+<p class="text-[#616f89] dark:text-gray-400 text-sm font-medium">Daily Active Quota Holders</p>
+<p class="text-3xl font-bold mt-1">14,205</p>
+</div>
+<div class="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg text-green-600">
+<span class="material-symbols-outlined">group</span>
+</div>
+</div>
+<div class="w-full bg-[#f0f2f4] dark:bg-gray-700 h-2 rounded-full overflow-hidden">
+<div class="bg-green-500 h-full" style="width: 48%"></div>
+</div>
+<p class="text-[#07883b] text-sm font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">trending_up</span> +1.8% vs yesterday
+                </p>
+</div>
+<div class="flex flex-col gap-4 rounded-xl p-6 bg-white dark:bg-gray-800 border border-[#dbdfe6] dark:border-gray-700 shadow-sm">
+<div class="flex justify-between items-start">
+<div>
+<p class="text-[#616f89] dark:text-gray-400 text-sm font-medium">Tokens Burned (24h)</p>
+<p class="text-3xl font-bold mt-1">4.2M</p>
+</div>
+<div class="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg text-orange-600">
+<span class="material-symbols-outlined">toll</span>
+</div>
+</div>
+<div class="w-full bg-[#f0f2f4] dark:bg-gray-700 h-2 rounded-full overflow-hidden">
+<div class="bg-orange-500 h-full" style="width: 85%"></div>
+</div>
+<p class="text-red-500 text-sm font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">trending_down</span> -0.4% from peak
+                </p>
+</div>
+</div>
+<!-- Navigation Tabs -->
+<div class="mb-6 border-b border-[#dbdfe6] dark:border-gray-700">
+<div class="flex gap-8">
+<a class="flex flex-col items-center justify-center border-b-[3px] border-primary text-primary pb-3 pt-4 px-2 font-bold text-sm tracking-wide" href="#">
+                    Users
+                </a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-transparent text-[#616f89] dark:text-gray-400 hover:text-[#111318] dark:hover:text-white pb-3 pt-4 px-2 font-bold text-sm tracking-wide transition-all" href="#">
+                    Requests
+                </a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-transparent text-[#616f89] dark:text-gray-400 hover:text-[#111318] dark:hover:text-white pb-3 pt-4 px-2 font-bold text-sm tracking-wide transition-all" href="#">
+                    OCR Jobs
+                </a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-transparent text-[#616f89] dark:text-gray-400 hover:text-[#111318] dark:hover:text-white pb-3 pt-4 px-2 font-bold text-sm tracking-wide transition-all" href="#">
+                    Abuse &amp; Limits
+                </a>
+</div>
+</div>
+<div class="flex gap-6 relative">
+<!-- Main Content: User Table -->
+<div class="flex-1 overflow-hidden rounded-xl border border-[#dbdfe6] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-[#f8f9fb] dark:bg-gray-900/50 border-b border-[#dbdfe6] dark:border-gray-700">
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#616f89] dark:text-gray-400">User ID</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#616f89] dark:text-gray-400">Plan</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#616f89] dark:text-gray-400 w-64">Daily Usage %</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#616f89] dark:text-gray-400">Last Active</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#616f89] dark:text-gray-400 text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-[#dbdfe6] dark:divide-gray-700">
+<tr class="hover:bg-primary/5 cursor-pointer transition-colors group">
+<td class="px-6 py-5 font-medium">USR-9281</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 rounded-full text-xs font-bold bg-primary/10 text-primary uppercase">Pro</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="flex-1 bg-[#f0f2f4] dark:bg-gray-700 h-1.5 rounded-full overflow-hidden">
+<div class="bg-red-500 h-full" style="width: 85%"></div>
+</div>
+<span class="text-sm font-bold w-8 text-right">85%</span>
+</div>
+</td>
+<td class="px-6 py-5 text-[#616f89] dark:text-gray-400 text-sm">2 mins ago</td>
+<td class="px-6 py-5 text-right">
+<button class="text-red-600 font-bold text-xs uppercase tracking-widest hover:underline decoration-2 underline-offset-4">Ban User</button>
+</td>
+</tr>
+<tr class="hover:bg-primary/5 cursor-pointer transition-colors">
+<td class="px-6 py-5 font-medium">USR-4412</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 rounded-full text-xs font-bold bg-[#f0f2f4] dark:bg-gray-700 text-[#111318] dark:text-white uppercase">Free</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="flex-1 bg-[#f0f2f4] dark:bg-gray-700 h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full" style="width: 42%"></div>
+</div>
+<span class="text-sm font-bold w-8 text-right">42%</span>
+</div>
+</td>
+<td class="px-6 py-5 text-[#616f89] dark:text-gray-400 text-sm">15 mins ago</td>
+<td class="px-6 py-5 text-right">
+<button class="text-red-600 font-bold text-xs uppercase tracking-widest hover:underline decoration-2 underline-offset-4">Ban User</button>
+</td>
+</tr>
+<tr class="hover:bg-primary/5 cursor-pointer transition-colors">
+<td class="px-6 py-5 font-medium text-red-500">USR-1092</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 rounded-full text-xs font-bold bg-primary/10 text-primary uppercase">Pro</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="flex-1 bg-[#f0f2f4] dark:bg-gray-700 h-1.5 rounded-full overflow-hidden">
+<div class="bg-red-600 h-full" style="width: 98%"></div>
+</div>
+<span class="text-sm font-bold w-8 text-right text-red-600">98%</span>
+</div>
+</td>
+<td class="px-6 py-5 text-[#616f89] dark:text-gray-400 text-sm">Just now</td>
+<td class="px-6 py-5 text-right">
+<button class="text-red-600 font-bold text-xs uppercase tracking-widest hover:underline decoration-2 underline-offset-4">Ban User</button>
+</td>
+</tr>
+<tr class="hover:bg-primary/5 cursor-pointer transition-colors bg-red-50/50 dark:bg-red-900/10">
+<td class="px-6 py-5 font-medium line-through opacity-50">USR-8823</td>
+<td class="px-6 py-5 opacity-50">
+<span class="px-3 py-1 rounded-full text-xs font-bold bg-[#f0f2f4] dark:bg-gray-700 text-[#111318] dark:text-white uppercase">Free</span>
+</td>
+<td class="px-6 py-5 opacity-50">
+<div class="flex items-center gap-3">
+<div class="flex-1 bg-[#f0f2f4] dark:bg-gray-700 h-1.5 rounded-full overflow-hidden">
+<div class="bg-gray-400 h-full" style="width: 12%"></div>
+</div>
+<span class="text-sm font-bold w-8 text-right">12%</span>
+</div>
+</td>
+<td class="px-6 py-5 text-[#616f89] dark:text-gray-400 text-sm opacity-50">1 hour ago</td>
+<td class="px-6 py-5 text-right">
+<button class="text-primary font-bold text-xs uppercase tracking-widest hover:underline decoration-2 underline-offset-4">Unban User</button>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="px-6 py-4 flex items-center justify-between border-t border-[#dbdfe6] dark:border-gray-700">
+<p class="text-sm text-[#616f89] dark:text-gray-400 font-medium">Showing 4 of 1,284 users</p>
+<div class="flex gap-2">
+<button class="size-8 rounded border border-[#dbdfe6] dark:border-gray-700 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined text-sm">chevron_left</span>
+</button>
+<button class="size-8 rounded border border-[#dbdfe6] dark:border-gray-700 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700">
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Side Drawer: User Quota Override -->
+<div class="w-[400px] shrink-0 bg-white dark:bg-gray-800 border border-[#dbdfe6] dark:border-gray-700 rounded-xl shadow-lg p-6 flex flex-col gap-6 sticky top-24 h-fit">
+<div class="flex items-center justify-between">
+<h3 class="text-xl font-bold">User Override</h3>
+<button class="text-gray-400 hover:text-gray-600 transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="flex items-center gap-4 bg-background-light dark:bg-gray-900/50 p-4 rounded-lg">
+<div class="size-12 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-lg">U</div>
+<div>
+<p class="font-bold text-base leading-tight">USR-9281</p>
+<p class="text-xs text-[#616f89] dark:text-gray-400 uppercase tracking-wider font-bold">Pro Account</p>
+</div>
+</div>
+<div class="space-y-4">
+<div class="flex flex-col gap-2">
+<label class="text-sm font-bold text-[#111318] dark:text-white">Daily Token Limit Override</label>
+<div class="flex items-center gap-2">
+<input class="flex-1 rounded-lg border-[#dbdfe6] dark:border-gray-700 dark:bg-gray-900 px-4 py-2 text-sm focus:ring-primary focus:border-primary" type="number" value="1000000"/>
+<span class="text-sm font-medium text-[#616f89] dark:text-gray-400">Tokens</span>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-sm font-bold text-[#111318] dark:text-white">OCR Job Concurrency</label>
+<select class="rounded-lg border-[#dbdfe6] dark:border-gray-700 dark:bg-gray-900 px-4 py-2 text-sm focus:ring-primary focus:border-primary w-full">
+<option>Default (5)</option>
+<option>High Priority (10)</option>
+<option selected="">Extreme Override (25)</option>
+<option>Unlimited</option>
+</select>
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-sm font-bold text-[#111318] dark:text-white">Override Duration</label>
+<div class="grid grid-cols-2 gap-2">
+<button class="py-2 text-xs font-bold rounded-lg border-2 border-primary bg-primary/5 text-primary">24 Hours</button>
+<button class="py-2 text-xs font-bold rounded-lg border-2 border-transparent bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">Permanent</button>
+</div>
+</div>
+</div>
+<div class="pt-4 border-t border-[#dbdfe6] dark:border-gray-700 mt-auto">
+<div class="flex flex-col gap-3">
+<button class="w-full bg-primary text-white py-3 rounded-lg font-bold hover:bg-primary/90 transition-colors">Apply Override</button>
+<button class="w-full bg-white dark:bg-gray-800 text-red-600 border border-red-600/30 py-3 rounded-lg font-bold hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors">Reset to Plan Defaults</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Secondary Section: Recent Requests Live Stream (Mocked) -->
+<div class="mt-12">
+<div class="flex items-center justify-between mb-6">
+<div class="flex items-center gap-3">
+<h2 class="text-2xl font-bold tracking-tight">Recent Solve Requests</h2>
+<span class="px-2 py-0.5 rounded bg-green-500 text-white text-[10px] font-bold uppercase animate-pulse">Live</span>
+</div>
+<button class="text-primary text-sm font-bold hover:underline">View All Requests</button>
+</div>
+<div class="rounded-xl border border-[#dbdfe6] dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden shadow-sm">
+<div class="grid grid-cols-5 gap-4 px-6 py-4 bg-[#f8f9fb] dark:bg-gray-900/50 border-b border-[#dbdfe6] dark:border-gray-700 text-xs font-bold uppercase text-[#616f89] dark:text-gray-400">
+<div>Timestamp</div>
+<div>User / Solve ID</div>
+<div class="text-center">Tokens (In/Out)</div>
+<div class="text-center">Cache Status</div>
+<div class="text-right">Execution</div>
+</div>
+<div class="divide-y divide-[#dbdfe6] dark:divide-gray-700">
+<div class="grid grid-cols-5 gap-4 px-6 py-4 text-sm items-center">
+<div class="text-[#616f89] dark:text-gray-400">14:22:01.092</div>
+<div class="flex flex-col">
+<span class="font-medium">USR-9281</span>
+<span class="text-xs text-gray-400">#slv_98a21...</span>
+</div>
+<div class="text-center font-mono">1,024 / 248</div>
+<div class="flex justify-center">
+<span class="px-2 py-1 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-600 text-[10px] font-bold uppercase">Hit</span>
+</div>
+<div class="text-right text-[#07883b] font-medium">0.82s</div>
+</div>
+<div class="grid grid-cols-5 gap-4 px-6 py-4 text-sm items-center">
+<div class="text-[#616f89] dark:text-gray-400">14:21:58.421</div>
+<div class="flex flex-col">
+<span class="font-medium">USR-4412</span>
+<span class="text-xs text-gray-400">#slv_33b12...</span>
+</div>
+<div class="text-center font-mono">4,120 / 1,200</div>
+<div class="flex justify-center">
+<span class="px-2 py-1 rounded bg-orange-100 dark:bg-orange-900/30 text-orange-600 text-[10px] font-bold uppercase">Miss</span>
+</div>
+<div class="text-right text-[#07883b] font-medium">3.41s</div>
+</div>
+<div class="grid grid-cols-5 gap-4 px-6 py-4 text-sm items-center">
+<div class="text-[#616f89] dark:text-gray-400">14:21:42.992</div>
+<div class="flex flex-col">
+<span class="font-medium">USR-1092</span>
+<span class="text-xs text-gray-400">#slv_42c90...</span>
+</div>
+<div class="text-center font-mono">256 / 84</div>
+<div class="flex justify-center">
+<span class="px-2 py-1 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-600 text-[10px] font-bold uppercase">Hit</span>
+</div>
+<div class="text-right text-[#07883b] font-medium">0.12s</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer System Status -->
+<footer class="mt-20 border-t border-[#dbdfe6] dark:border-gray-800 bg-white dark:bg-background-dark py-6 px-10 flex items-center justify-between text-[#616f89] dark:text-gray-500 text-xs font-medium uppercase tracking-widest">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2">
+<div class="size-2 rounded-full bg-green-500"></div>
+                System Healthy
+            </div>
+<div class="flex items-center gap-2">
+                Latency: <span class="text-[#111318] dark:text-white font-bold">142ms</span>
+</div>
+<div class="flex items-center gap-2">
+                Version: <span class="text-[#111318] dark:text-white font-bold">v4.2.1-stable</span>
+</div>
+</div>
+<div>
+            © 2024 uask.ai Infrastructure Services
+        </div>
+</footer>
+</body></html>

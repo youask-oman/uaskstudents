@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Plan &amp; Billing | uask.ai</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Space Grotesk', sans-serif; }
+        .progress-ring-circle { transition: stroke-dashoffset 0.35s; transform: rotate(-90deg); transform-origin: 50% 50%; }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white min-h-screen">
+<div class="layout-container flex h-full grow flex-col">
+<!-- Top Navigation -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 dark:border-[#282e39] px-6 lg:px-10 py-3 bg-white dark:bg-background-dark">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-4 text-primary">
+<div class="size-6">
+<svg fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M44 4H30.6666V17.3334H17.3334V30.6666H4V44H44V4Z" fill="currentColor"></path>
+</svg>
+</div>
+<h2 class="text-slate-900 dark:text-white text-xl font-bold leading-tight tracking-[-0.015em]">uask.ai</h2>
+</div>
+<label class="hidden md:flex flex-col min-w-40 !h-10 max-w-64">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full">
+<div class="text-[#9da6b9] flex border-none bg-slate-100 dark:bg-[#282e39] items-center justify-center pl-4 rounded-l-lg border-r-0">
+<span class="material-symbols-outlined text-sm">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-slate-900 dark:text-white focus:outline-0 focus:ring-0 border-none bg-slate-100 dark:bg-[#282e39] focus:border-none h-full placeholder:text-[#9da6b9] px-4 rounded-l-none border-l-0 pl-2 text-base font-normal leading-normal" placeholder="Search problems..." value=""/>
+</div>
+</label>
+</div>
+<div class="flex flex-1 justify-end gap-8">
+<div class="hidden lg:flex items-center gap-9">
+<a class="text-slate-600 dark:text-white text-sm font-medium leading-normal hover:text-primary transition-colors" href="#">Dashboard</a>
+<a class="text-slate-600 dark:text-white text-sm font-medium leading-normal hover:text-primary transition-colors" href="#">Problems</a>
+<a class="text-slate-600 dark:text-white text-sm font-medium leading-normal hover:text-primary transition-colors" href="#">Library</a>
+<a class="text-primary text-sm font-bold leading-normal border-b-2 border-primary" href="#">Billing</a>
+</div>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-primary/30" data-alt="User avatar placeholder" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCG93JqG03XppzUQK90cwmfzUsO5KaYPDn2Gspl4Gmx-b992XdiXy-zmq5EuMVToRilSYsLNugWsUN-Fr8USaJh46y-mqRPrbS2Vy4aU7pXPnWrYw2h7ihzcrQDrriibiojMnIBKjdoTMI8XGrlPJzryDa3shHQmFtN1SrynAcxwF-CrbrviVz6SbjPC8ejKYq5rFnanlpKm5-shLPcV5rVHDGP9B6YhtmTKaC3ZnTsSdem1YQG1PCoz77xaUdgBAhrXV1AaR30Wv_j");'></div>
+</div>
+</header>
+<main class="flex flex-1 justify-center py-8 px-4 lg:px-10">
+<div class="layout-content-container flex flex-col max-w-[1200px] flex-1 gap-8">
+<!-- Page Heading -->
+<div class="flex flex-wrap justify-between items-end gap-4 px-2">
+<div class="flex min-w-72 flex-col gap-2">
+<p class="text-slate-900 dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">Plan &amp; Billing</p>
+<p class="text-slate-500 dark:text-[#9da6b9] text-base font-normal leading-normal">Manage your subscription, view usage quotas, and download invoices.</p>
+</div>
+<div class="flex gap-3">
+<button class="flex min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-slate-200 dark:bg-[#282e39] text-slate-900 dark:text-white text-sm font-bold leading-normal transition-all hover:opacity-80">
+<span class="truncate">Cancel Plan</span>
+</button>
+<button class="flex min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-10 px-6 bg-primary text-white text-sm font-bold leading-normal shadow-lg shadow-primary/20 transition-all hover:scale-[1.02]">
+<span class="truncate">Manage in Stripe</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Left Column: Usage & History -->
+<div class="lg:col-span-2 flex flex-col gap-8">
+<!-- Usage Metrics Section -->
+<section class="bg-white dark:bg-[#161b26] rounded-xl border border-slate-200 dark:border-[#282e39] p-6">
+<h3 class="text-lg font-bold mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">analytics</span>
+                                Usage This Period
+                            </h3>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Metric Ring 1 -->
+<div class="flex flex-col items-center gap-3 p-4 rounded-lg bg-slate-50 dark:bg-[#212735] border border-slate-100 dark:border-[#2d3545]">
+<div class="relative size-24">
+<svg class="size-full" viewbox="0 0 36 36">
+<path class="text-slate-200 dark:text-[#2d3545]" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"></path>
+<path class="text-primary progress-ring-circle" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="45, 100" stroke-linecap="round" stroke-width="3"></path>
+</svg>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="text-sm font-bold">45%</span>
+</div>
+</div>
+<div class="text-center">
+<p class="text-sm font-medium opacity-80">Daily AI Solves</p>
+<p class="text-lg font-bold">45 / 100</p>
+</div>
+</div>
+<!-- Metric Ring 2 -->
+<div class="flex flex-col items-center gap-3 p-4 rounded-lg bg-slate-50 dark:bg-[#212735] border border-slate-100 dark:border-[#2d3545]">
+<div class="relative size-24">
+<svg class="size-full" viewbox="0 0 36 36">
+<path class="text-slate-200 dark:text-[#2d3545]" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"></path>
+<path class="text-primary progress-ring-circle" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="24, 100" stroke-linecap="round" stroke-width="3"></path>
+</svg>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="text-sm font-bold">24%</span>
+</div>
+</div>
+<div class="text-center">
+<p class="text-sm font-medium opacity-80">OCR Scans</p>
+<p class="text-lg font-bold">12 / 50</p>
+</div>
+</div>
+<!-- Metric Ring 3 (Unlimited) -->
+<div class="flex flex-col items-center gap-3 p-4 rounded-lg bg-slate-50 dark:bg-[#212735] border border-slate-100 dark:border-[#2d3545]">
+<div class="relative size-24">
+<svg class="size-full" viewbox="0 0 36 36">
+<path class="text-primary/20" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"></path>
+<path class="text-primary progress-ring-circle" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="100, 100" stroke-linecap="round" stroke-width="3"></path>
+</svg>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-3xl">all_inclusive</span>
+</div>
+</div>
+<div class="text-center">
+<p class="text-sm font-medium opacity-80">Concept Library</p>
+<p class="text-lg font-bold">Unlimited</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Billing History Table -->
+<section class="bg-white dark:bg-[#161b26] rounded-xl border border-slate-200 dark:border-[#282e39] overflow-hidden">
+<div class="p-6 border-b border-slate-200 dark:border-[#282e39] flex justify-between items-center">
+<h3 class="text-lg font-bold flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">receipt_long</span>
+                                    Billing History
+                                </h3>
+<button class="text-primary text-sm font-bold hover:underline">View All</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left text-sm">
+<thead class="bg-slate-50 dark:bg-[#212735] text-slate-500 dark:text-[#9da6b9] uppercase text-[11px] tracking-wider">
+<tr>
+<th class="px-6 py-4 font-bold">Date</th>
+<th class="px-6 py-4 font-bold">Amount</th>
+<th class="px-6 py-4 font-bold">Status</th>
+<th class="px-6 py-4 font-bold text-right">Invoice</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 dark:divide-[#282e39]">
+<tr>
+<td class="px-6 py-4 font-medium">Oct 24, 2023</td>
+<td class="px-6 py-4">$19.00</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[10px] font-bold uppercase">Paid</span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="inline-flex items-center gap-1 text-primary hover:text-primary/80 font-bold">
+<span class="material-symbols-outlined text-base">download</span> PDF
+                                                </button>
+</td>
+</tr>
+<tr>
+<td class="px-6 py-4 font-medium">Sep 24, 2023</td>
+<td class="px-6 py-4">$19.00</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[10px] font-bold uppercase">Paid</span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="inline-flex items-center gap-1 text-primary hover:text-primary/80 font-bold">
+<span class="material-symbols-outlined text-base">download</span> PDF
+                                                </button>
+</td>
+</tr>
+<tr>
+<td class="px-6 py-4 font-medium">Aug 24, 2023</td>
+<td class="px-6 py-4">$19.00</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[10px] font-bold uppercase">Paid</span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="inline-flex items-center gap-1 text-primary hover:text-primary/80 font-bold">
+<span class="material-symbols-outlined text-base">download</span> PDF
+                                                </button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</div>
+<!-- Right Column: Plan Sidebar & Payment -->
+<div class="flex flex-col gap-6">
+<!-- Current Plan Card -->
+<div class="bg-primary rounded-xl p-6 text-white shadow-xl shadow-primary/20 relative overflow-hidden group">
+<div class="absolute -right-8 -top-8 size-32 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-all"></div>
+<div class="relative z-10">
+<div class="flex justify-between items-start mb-4">
+<span class="px-3 py-1 bg-white/20 rounded-full text-xs font-bold uppercase tracking-widest">Active</span>
+<span class="material-symbols-outlined">rocket_launch</span>
+</div>
+<h4 class="text-2xl font-black mb-1">Pro Plan</h4>
+<p class="text-white/80 text-sm mb-6">Renews Oct 24, 2023</p>
+<div class="flex items-baseline gap-1 mb-6">
+<span class="text-3xl font-bold">$19</span>
+<span class="text-sm text-white/70">/ month</span>
+</div>
+<button class="w-full bg-white text-primary font-bold py-3 rounded-lg hover:bg-slate-50 transition-colors">
+                                    Upgrade to Ultra
+                                </button>
+</div>
+</div>
+<!-- Payment Method -->
+<div class="bg-white dark:bg-[#161b26] rounded-xl border border-slate-200 dark:border-[#282e39] p-6">
+<h3 class="text-base font-bold mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">credit_card</span>
+                                Payment Method
+                            </h3>
+<div class="flex items-center gap-4 p-4 rounded-lg bg-slate-50 dark:bg-[#212735] border border-slate-100 dark:border-[#2d3545] mb-4">
+<div class="size-10 bg-white rounded flex items-center justify-center p-1 border border-slate-200">
+<img alt="Card Provider" class="w-full h-auto" data-alt="Mastercard logo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCNxq0h7EjyYR1DKB9tx1Lopp7I4M-ECNQyWO9bwHITCin2_ADxMwtukzu-Yd9PxXUc1shAihPzBXfe6ZhhxNOWggRG8l2qKsA3zKLHFRHR0X2VEsBjcmfOUEO5rPPbw_z70DC2-fxcRjqJsDDo65LD4jqMuuv8gAZ80UIVLMCs6J4X2SO99aIggvDrKhjs-z5WSgBiz5h6lDUVaJeuU8y_semyAhv4SsvLij780fMzzU15OcV1H-ARN4sYaaOW5WmAGmcnQuDpQN06"/>
+</div>
+<div class="flex-1">
+<p class="text-sm font-bold">•••• 4242</p>
+<p class="text-xs text-slate-500 dark:text-[#9da6b9]">Expires 12/26</p>
+</div>
+<button class="text-primary text-xs font-bold hover:underline">Edit</button>
+</div>
+<button class="w-full border border-dashed border-slate-300 dark:border-[#3b4354] text-slate-500 dark:text-[#9da6b9] text-xs font-bold py-3 rounded-lg hover:border-primary hover:text-primary transition-all">
+                                + Add New Method
+                            </button>
+</div>
+<!-- Upgrade Promo -->
+<div class="bg-slate-900 rounded-xl p-6 border border-slate-800 flex flex-col gap-4">
+<div class="flex items-center gap-3">
+<div class="size-8 rounded-lg bg-yellow-500/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-yellow-500 text-xl">star</span>
+</div>
+<p class="text-sm font-bold text-white">Unlock Ultra</p>
+</div>
+<ul class="space-y-2">
+<li class="text-xs text-slate-400 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[14px]">check_circle</span>
+                                    Unlimited AI Solves
+                                </li>
+<li class="text-xs text-slate-400 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[14px]">check_circle</span>
+                                    Priority Server Access
+                                </li>
+<li class="text-xs text-slate-400 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[14px]">check_circle</span>
+                                    1-on-1 Tutor Support
+                                </li>
+</ul>
+<p class="text-[10px] text-slate-500 mt-2">Get 2 months free with an annual plan upgrade.</p>
+</div>
+</div>
+</div>
+<!-- Footer Links -->
+<div class="flex justify-center gap-8 py-8 border-t border-slate-200 dark:border-[#282e39] mt-8 text-slate-400 text-xs font-medium">
+<a class="hover:text-primary transition-colors" href="#">Terms of Service</a>
+<a class="hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="hover:text-primary transition-colors" href="#">Contact Support</a>
+<p>© 2023 uask.ai Inc.</p>
+</div>
+</div>
+</main>
+</div>
+</body></html>

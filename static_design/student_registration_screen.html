@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>uask.ai - Student Registration</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+</head>
+<body class="font-display bg-background-light dark:bg-background-dark min-h-screen text-[#111318] dark:text-white transition-colors duration-200">
+<div class="flex flex-col min-h-screen">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-gray-200 dark:border-gray-800 px-6 py-4 md:px-10 bg-white dark:bg-background-dark">
+<div class="flex items-center gap-3">
+<div class="size-8 text-primary">
+<svg fill="currentColor" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M44 4H30.6666V17.3334H17.3334V30.6666H4V44H44V4Z"></path>
+</svg>
+</div>
+<h2 class="text-[#111318] dark:text-white text-xl font-bold leading-tight tracking-tight">uask.ai</h2>
+</div>
+<div class="flex items-center gap-4">
+<span class="hidden md:inline text-sm text-gray-500 dark:text-gray-400">Already have an account?</span>
+<button class="flex min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-10 px-6 bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-sm font-bold leading-normal">
+<span>Log in</span>
+</button>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 flex items-center justify-center p-6 md:p-12">
+<div class="w-full max-w-[540px] bg-white dark:bg-[#1a2130] rounded-xl shadow-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+<div class="p-8 md:p-12">
+<!-- Heading & Subtext -->
+<div class="text-center mb-8">
+<h1 class="text-[#111318] dark:text-white text-3xl font-extrabold tracking-tight mb-2">Start Your Learning Journey</h1>
+<p class="text-gray-500 dark:text-gray-400 text-base">Empowering your Math &amp; Physics journey with AI</p>
+</div>
+<!-- Registration Form -->
+<form class="space-y-5">
+<!-- Language Toggle -->
+<div class="flex flex-col gap-2">
+<p class="text-[#111318] dark:text-gray-200 text-sm font-semibold uppercase tracking-wider">Preferred Language</p>
+<div class="grid grid-cols-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+<button class="flex items-center justify-center gap-2 py-2 px-4 rounded-md bg-white dark:bg-[#252d3d] shadow-sm text-primary font-bold transition-all" type="button">
+<span class="material-symbols-outlined text-sm">language</span> English
+                                </button>
+<button class="flex items-center justify-center gap-2 py-2 px-4 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-all" type="button">
+<span class="text-sm">العربية</span> Arabic
+                                </button>
+</div>
+</div>
+<!-- Full Name -->
+<label class="block">
+<p class="text-[#111318] dark:text-gray-200 text-sm font-semibold mb-2">Full Name</p>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">person</span>
+<input class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary py-3.5 pl-11 pr-4 text-[#111318] dark:text-white transition-all outline-none placeholder:text-gray-400" placeholder="Enter your full name" type="text"/>
+</div>
+</label>
+<!-- Email Address -->
+<label class="block">
+<p class="text-[#111318] dark:text-gray-200 text-sm font-semibold mb-2">Email Address</p>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">mail</span>
+<input class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary py-3.5 pl-11 pr-4 text-[#111318] dark:text-white transition-all outline-none placeholder:text-gray-400" placeholder="student@university.edu" type="email"/>
+</div>
+</label>
+<!-- Academic Level -->
+<label class="block">
+<p class="text-[#111318] dark:text-gray-200 text-sm font-semibold mb-2">Academic Level</p>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">school</span>
+<select class="w-full appearance-none rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary py-3.5 pl-11 pr-10 text-[#111318] dark:text-white transition-all outline-none">
+<option disabled="" selected="" value="">Select your level</option>
+<option value="middle">Middle School</option>
+<option value="high">High School</option>
+<option value="college">College / University</option>
+<option value="advanced">Advanced Research</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">expand_more</span>
+</div>
+</label>
+<!-- Password -->
+<label class="block">
+<p class="text-[#111318] dark:text-gray-200 text-sm font-semibold mb-2">Password</p>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">lock</span>
+<input class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary py-3.5 pl-11 pr-4 text-[#111318] dark:text-white transition-all outline-none placeholder:text-gray-400" placeholder="Create a strong password" type="password"/>
+</div>
+</label>
+<!-- Terms -->
+<label class="flex items-start gap-3 cursor-pointer pt-2">
+<div class="mt-1">
+<input class="w-5 h-5 rounded border-gray-300 dark:border-gray-700 text-primary focus:ring-primary/30" type="checkbox"/>
+</div>
+<span class="text-sm text-gray-600 dark:text-gray-400 leading-tight">
+                                I agree to the <a class="text-primary font-bold hover:underline" href="#">Terms of Service</a> and <a class="text-primary font-bold hover:underline" href="#">Privacy Policy</a>
+</span>
+</label>
+<!-- Submit Button -->
+<button class="w-full flex items-center justify-center h-14 bg-primary hover:bg-blue-700 text-white text-base font-bold rounded-lg shadow-lg shadow-primary/20 transition-all mt-4" type="submit">
+<span>Create Account</span>
+</button>
+</form>
+</div>
+<!-- Footer / Login link mobile -->
+<div class="bg-gray-50 dark:bg-black/20 p-6 text-center border-t border-gray-100 dark:border-gray-800">
+<p class="text-gray-600 dark:text-gray-400 text-sm">
+                        Existing user? <a class="text-primary font-bold hover:underline" href="#">Log in to your account</a>
+</p>
+</div>
+</div>
+</main>
+<!-- Footer Credits -->
+<footer class="py-6 text-center text-gray-400 dark:text-gray-600 text-xs">
+            © 2023 uask.ai. All rights reserved. Designed for the next generation of scientists.
+        </footer>
+</div>
+</body></html>

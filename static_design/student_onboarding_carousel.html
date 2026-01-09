@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Student Onboarding | uask.ai</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0d59f2",
+                        "background-light": "#f5f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: "Space Grotesk", sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white min-h-screen flex flex-col font-display">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 dark:border-slate-800 px-6 py-4 md:px-10">
+<div class="flex items-center gap-3">
+<div class="size-8 text-primary">
+<svg fill="currentColor" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M44 4H30.6666V17.3334H17.3334V30.6666H4V44H44V4Z"></path>
+</svg>
+</div>
+<h2 class="text-slate-900 dark:text-white text-xl font-bold leading-tight tracking-tight">uask.ai</h2>
+</div>
+<button class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-bold hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors">
+<span class="truncate">Skip</span>
+</button>
+</header>
+<main class="flex-1 flex items-center justify-center p-4 md:p-10">
+<div class="w-full max-w-5xl bg-white dark:bg-[#1b1f27] rounded-xl shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[500px] border border-slate-200 dark:border-slate-800">
+<!-- Left Side: Visual Content (Carousel Image Container) -->
+<div class="w-full md:w-1/2 relative bg-primary/5 dark:bg-primary/10 p-8 flex items-center justify-center">
+<!-- Spotlight Effect -->
+<div class="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-transparent opacity-50"></div>
+<!-- Illustration Frame (Currently showing Slide 1 context) -->
+<div class="relative z-10 w-full aspect-square max-w-[360px] rounded-2xl bg-slate-900 shadow-2xl overflow-hidden border border-white/10 flex flex-col">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="Stylized 3D physics problem on a digital interface" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCfE-8HFZE_dmoSFGWrMU5AdN5MnD7QATK6_sPtXFD_0elJDVkqvJNS4uggpsuVHBG9ZE_0-R0DuAcyOnfaNQXzA817q69BBrPZy4I9JCkVNFIdXzzNQFKuyGB2fiz4lRsOqhNPWMBWPrpHZ_X0pyr1pO1RRdJKEu3a1qaNiMQr0zxzFHSHUdyTQnemOnQ8z4s6fmUvwFsh4GvqzZ9f6MxdnPLVjX3RfD7FOux0uVh0d0IA7f1MxWW8EQoyGbBqHWP-u2ouhYoA73b1');">
+</div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+<!-- Floating UI Element Overlay -->
+<div class="mt-auto p-6 relative">
+<div class="bg-white/10 backdrop-blur-md rounded-lg p-3 border border-white/20">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">camera_alt</span>
+<div class="h-2 w-24 bg-white/20 rounded-full overflow-hidden">
+<div class="h-full bg-primary w-2/3"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Side: Content & Controls -->
+<div class="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-center">
+<div class="space-y-6">
+<!-- Carousel Indicator (Top) -->
+<div class="flex gap-2">
+<div class="h-1.5 w-8 rounded-full bg-primary"></div>
+<div class="h-1.5 w-4 rounded-full bg-slate-300 dark:bg-slate-700"></div>
+<div class="h-1.5 w-4 rounded-full bg-slate-300 dark:bg-slate-700"></div>
+</div>
+<div class="space-y-4">
+<h1 class="text-4xl md:text-5xl font-bold tracking-tighter text-slate-900 dark:text-white">
+                            Snap &amp; Solve
+                        </h1>
+<p class="text-lg text-slate-600 dark:text-slate-400 leading-relaxed max-w-md">
+                            Take a photo of any math or physics problem and get instant, accurate solutions with detailed breakdowns.
+                        </p>
+</div>
+<div class="pt-8 flex flex-col sm:flex-row gap-4">
+<button class="flex-1 min-w-[160px] h-14 bg-primary text-white rounded-xl font-bold text-lg hover:brightness-110 transition-all flex items-center justify-center gap-2 group">
+<span>Next Step</span>
+<span class="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Pagination for Desktop -->
+<div class="mt-12 flex items-center gap-4 text-slate-400">
+<span class="text-sm font-bold text-slate-900 dark:text-white">01</span>
+<div class="h-px flex-1 bg-slate-200 dark:bg-slate-800"></div>
+<span class="text-sm">03</span>
+</div>
+</div>
+</div>
+</main>
+<!-- Content Sections for Reference (Hidden or Secondary) -->
+<section class="px-4 md:px-40 py-10 opacity-50">
+<h3 class="text-center mb-8 text-sm uppercase tracking-widest text-slate-500">What's Inside</h3>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Slide 1 Summary -->
+<div class="p-6 rounded-xl bg-white dark:bg-[#1b1f27] border border-primary/40">
+<div class="size-10 bg-primary/20 rounded-lg flex items-center justify-center text-primary mb-4">
+<span class="material-symbols-outlined">photo_camera</span>
+</div>
+<h4 class="font-bold mb-2">Snap &amp; Solve</h4>
+<p class="text-sm text-slate-500">Instant vision-based problem solving.</p>
+</div>
+<!-- Slide 2 Summary -->
+<div class="p-6 rounded-xl bg-white dark:bg-[#1b1f27] border border-slate-200 dark:border-slate-800">
+<div class="size-10 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-slate-500 mb-4">
+<span class="material-symbols-outlined">psychology</span>
+</div>
+<h4 class="font-bold mb-2 text-slate-400">Socratic Tutoring</h4>
+<p class="text-sm text-slate-500">Guided logic instead of just answers.</p>
+</div>
+<!-- Slide 3 Summary -->
+<div class="p-6 rounded-xl bg-white dark:bg-[#1b1f27] border border-slate-200 dark:border-slate-800">
+<div class="size-10 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-slate-500 mb-4">
+<span class="material-symbols-outlined">library_books</span>
+</div>
+<h4 class="font-bold mb-2 text-slate-400">Master Concepts</h4>
+<p class="text-sm text-slate-500">Deep dive into a library of physics topics.</p>
+</div>
+</div>
+</section>
+<!-- Mobile Navigation Controls (Sticky Bottom) -->
+<div class="md:hidden sticky bottom-0 p-4 bg-white dark:bg-background-dark border-t border-slate-200 dark:border-slate-800 flex justify-between items-center">
+<div class="flex gap-1">
+<div class="size-2 rounded-full bg-primary"></div>
+<div class="size-2 rounded-full bg-slate-700"></div>
+<div class="size-2 rounded-full bg-slate-700"></div>
+</div>
+<button class="px-6 py-2 bg-primary rounded-lg font-bold text-white text-sm">
+            Next
+        </button>
+</div>
+</body></html>

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Admin Developer API Keys | uask.ai</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#0f1115",
+                        "surface-dark": "#1a1d23",
+                        "border-dark": "#2d3139",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .code-block {
+            font-family: 'JetBrains Mono', monospace;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="flex h-full min-h-screen">
+<!-- SideNavBar Component -->
+<aside class="w-64 border-r border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark flex flex-col fixed h-full">
+<div class="p-6 flex flex-col h-full justify-between">
+<div class="flex flex-col gap-8">
+<div class="flex items-center gap-3">
+<div class="bg-primary rounded-lg size-10 flex items-center justify-center">
+<span class="material-symbols-outlined text-white">bolt</span>
+</div>
+<div class="flex flex-col">
+<h1 class="text-white text-base font-bold leading-none">uask.ai</h1>
+<p class="text-[#9da6b9] text-xs font-medium uppercase tracking-wider mt-1">Admin Portal</p>
+</div>
+</div>
+<nav class="flex flex-col gap-1">
+<div class="flex items-center gap-3 px-3 py-2 text-[#9da6b9] hover:text-white cursor-pointer transition-colors">
+<span class="material-symbols-outlined" style="font-size: 20px;">dashboard</span>
+<p class="text-sm font-medium">Dashboard</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary border border-primary/20">
+<span class="material-symbols-outlined" style="font-size: 20px; font-variation-settings: 'FILL' 1;">key</span>
+<p class="text-sm font-medium">API Keys</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-[#9da6b9] hover:text-white cursor-pointer transition-colors">
+<span class="material-symbols-outlined" style="font-size: 20px;">analytics</span>
+<p class="text-sm font-medium">Usage Log</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-[#9da6b9] hover:text-white cursor-pointer transition-colors">
+<span class="material-symbols-outlined" style="font-size: 20px;">webhook</span>
+<p class="text-sm font-medium">Webhooks</p>
+</div>
+<div class="mt-4 pt-4 border-t border-border-dark flex flex-col gap-1">
+<div class="flex items-center gap-3 px-3 py-2 text-[#9da6b9] hover:text-white cursor-pointer transition-colors">
+<span class="material-symbols-outlined" style="font-size: 20px;">settings</span>
+<p class="text-sm font-medium">Settings</p>
+</div>
+</div>
+</nav>
+</div>
+<div class="flex items-center gap-3 p-3 bg-surface-dark rounded-xl border border-border-dark">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8" data-alt="User profile avatar" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDx4XD4OMdTQoC7zQuEG8ZjrNZI4UQR9xPsxOy1rYHGvLO1nwiJg_S-EuzVmgWYfQS04zsZuspFGt2eoTZ4xemZTB_1CiyofaUf7hD6_lOFvDVnV95Xfxlz6YfPUfyb_ZrjuZZssxJNlKcN5xyZuTiqazCoQW31N04I1qjwWKr7GRb75qcvNzCOn6joD6WFKvym7PIMSjdnuC2zbAP6LSejm7b0LPLz5bUlmLAQ0jvkcg-Q9ctn8uddmuoZUp9MgNKVGFuMbDbdmCK4");'></div>
+<div class="flex flex-col overflow-hidden">
+<p class="text-white text-xs font-bold truncate">Alex Dev</p>
+<p class="text-[#9da6b9] text-[10px] truncate">alex@uask.ai</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 ml-64 p-8">
+<!-- PageHeading -->
+<div class="max-w-6xl mx-auto mb-8">
+<div class="flex flex-wrap justify-between items-end gap-3 mb-6">
+<div class="flex flex-col gap-1">
+<h2 class="text-white text-4xl font-black leading-tight tracking-tight font-display">Developer API Keys</h2>
+<p class="text-[#9da6b9] text-base font-normal">Manage your API authentication keys and monitor integration health.</p>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-dark border border-border-dark text-white text-sm font-medium hover:bg-border-dark transition-all">
+<span class="material-symbols-outlined text-sm">description</span>
+                            Documentation
+                        </button>
+</div>
+</div>
+<!-- Stats Section -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+<div class="flex flex-col gap-2 rounded-xl p-6 border border-border-dark bg-surface-dark/50">
+<div class="flex justify-between items-start">
+<p class="text-[#9da6b9] text-sm font-medium">Total Requests (30d)</p>
+<span class="material-symbols-outlined text-primary text-xl">trending_up</span>
+</div>
+<p class="text-white tracking-tight text-3xl font-bold">1,248,592</p>
+<p class="text-[#0bda5e] text-xs font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">arrow_upward</span>
+                            +12.4% from last month
+                        </p>
+</div>
+<div class="flex flex-col gap-2 rounded-xl p-6 border border-border-dark bg-surface-dark/50">
+<div class="flex justify-between items-start">
+<p class="text-[#9da6b9] text-sm font-medium">Avg. Latency</p>
+<span class="material-symbols-outlined text-primary text-xl">timer</span>
+</div>
+<p class="text-white tracking-tight text-3xl font-bold">142ms</p>
+<p class="text-[#0bda5e] text-xs font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">arrow_downward</span>
+                            -4ms improvement
+                        </p>
+</div>
+<div class="flex flex-col gap-2 rounded-xl p-6 border border-border-dark bg-surface-dark/50">
+<div class="flex justify-between items-start">
+<p class="text-[#9da6b9] text-sm font-medium">Error Rate</p>
+<span class="material-symbols-outlined text-red-400 text-xl">error</span>
+</div>
+<p class="text-white tracking-tight text-3xl font-bold">0.04%</p>
+<p class="text-[#fa6238] text-xs font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">arrow_upward</span>
+                            +0.01% spike detected
+                        </p>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Left Column: Table and Generator -->
+<div class="lg:col-span-2 space-y-8">
+<!-- Generate New API Key Section -->
+<div class="bg-surface-dark rounded-xl border border-border-dark overflow-hidden">
+<div class="px-6 py-4 border-b border-border-dark flex items-center justify-between">
+<h3 class="text-white text-lg font-bold font-display">Generate New API Key</h3>
+<span class="px-2 py-1 rounded bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider">Secure</span>
+</div>
+<div class="p-6">
+<div class="flex flex-col md:flex-row items-end gap-4">
+<div class="flex flex-col flex-1 gap-2">
+<label class="text-white text-xs font-bold uppercase tracking-wider text-[#9da6b9]">Key Name</label>
+<input class="w-full rounded-lg text-white border border-border-dark bg-background-dark focus:ring-2 focus:ring-primary focus:border-transparent h-12 px-4 text-sm font-normal transition-all" placeholder="e.g. Production Mobile App"/>
+</div>
+<div class="flex flex-col w-full md:w-48 gap-2">
+<label class="text-white text-xs font-bold uppercase tracking-wider text-[#9da6b9]">Role</label>
+<select class="w-full rounded-lg text-white border border-border-dark bg-background-dark focus:ring-2 focus:ring-primary focus:border-transparent h-12 px-4 text-sm font-normal appearance-none cursor-pointer">
+<option>Full Access</option>
+<option>Read-only</option>
+<option>Analytics only</option>
+</select>
+</div>
+<button class="bg-primary hover:bg-blue-600 text-white font-bold h-12 px-8 rounded-lg transition-all flex items-center gap-2 whitespace-nowrap">
+<span class="material-symbols-outlined">add</span>
+                                        Create Key
+                                    </button>
+</div>
+</div>
+</div>
+<!-- API Keys Table -->
+<div class="bg-surface-dark rounded-xl border border-border-dark overflow-hidden">
+<div class="px-6 py-4 border-b border-border-dark bg-surface-dark flex justify-between items-center">
+<h3 class="text-white text-lg font-bold font-display">Active Keys</h3>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#9da6b9] text-sm">search</span>
+<input class="bg-background-dark border border-border-dark rounded-md pl-9 pr-4 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-primary w-48" placeholder="Filter keys..." type="text"/>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="text-[#9da6b9] text-xs font-bold uppercase tracking-wider border-b border-border-dark">
+<th class="px-6 py-4">Key Name</th>
+<th class="px-6 py-4">Prefix</th>
+<th class="px-6 py-4">Created Date</th>
+<th class="px-6 py-4">Status</th>
+<th class="px-6 py-4 text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border-dark">
+<tr class="hover:bg-background-dark/30 transition-colors">
+<td class="px-6 py-4">
+<div class="flex flex-col">
+<span class="text-white text-sm font-medium">Main Frontend</span>
+<span class="text-[#9da6b9] text-[10px]">Full Access</span>
+</div>
+</td>
+<td class="px-6 py-4 font-mono text-xs text-primary/80">uk_live_v82p...</td>
+<td class="px-6 py-4 text-[#9da6b9] text-sm">Oct 12, 2023</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 rounded-full bg-green-500/10 text-green-500 text-[10px] font-bold uppercase tracking-wider border border-green-500/20">Active</span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-[#fa6238] hover:bg-red-500/10 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-red-500/20">Revoke</button>
+</td>
+</tr>
+<tr class="hover:bg-background-dark/30 transition-colors">
+<td class="px-6 py-4">
+<div class="flex flex-col">
+<span class="text-white text-sm font-medium">Internal Analytics</span>
+<span class="text-[#9da6b9] text-[10px]">Read-only</span>
+</div>
+</td>
+<td class="px-6 py-4 font-mono text-xs text-primary/80">uk_live_k91m...</td>
+<td class="px-6 py-4 text-[#9da6b9] text-sm">Sep 05, 2023</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 rounded-full bg-slate-500/10 text-slate-400 text-[10px] font-bold uppercase tracking-wider border border-slate-500/20">Never Used</span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-[#fa6238] hover:bg-red-500/10 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-red-500/20">Revoke</button>
+</td>
+</tr>
+<tr class="hover:bg-background-dark/30 transition-colors opacity-60">
+<td class="px-6 py-4">
+<div class="flex flex-col">
+<span class="text-white text-sm font-medium line-through">Legacy Dashboard</span>
+<span class="text-[#9da6b9] text-[10px]">Full Access</span>
+</div>
+</td>
+<td class="px-6 py-4 font-mono text-xs text-primary/40">uk_live_a2z4...</td>
+<td class="px-6 py-4 text-[#9da6b9] text-sm">Jan 10, 2023</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 rounded-full bg-red-500/10 text-red-500 text-[10px] font-bold uppercase tracking-wider border border-red-500/20">Revoked</span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-[#9da6b9] px-3 py-1.5 rounded-lg text-xs font-bold cursor-not-allowed">Archived</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Right Column: Quick Start & Guides -->
+<div class="space-y-6">
+<div class="bg-surface-dark rounded-xl border border-border-dark overflow-hidden">
+<div class="p-6">
+<h3 class="text-white text-lg font-bold font-display mb-4">Quick Start Guide</h3>
+<p class="text-[#9da6b9] text-sm mb-6">Integrate uask.ai into your application using this cURL example. Replace the token with your active key.</p>
+<div class="bg-background-dark rounded-lg p-4 relative group">
+<button class="absolute right-3 top-3 text-[#9da6b9] hover:text-white transition-colors">
+<span class="material-symbols-outlined text-sm">content_copy</span>
+</button>
+<pre class="code-block text-[13px] leading-relaxed text-blue-300 overflow-x-auto"><span class="text-primary">curl</span> -X POST https://api.uask.ai/v1/query \
+  -H "Authorization: Bearer <span class="text-green-400">YOUR_API_KEY</span>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "What is the status?",
+    "stream": true
+  }'</pre>
+</div>
+<div class="mt-8 space-y-4">
+<h4 class="text-white text-xs font-bold uppercase tracking-wider">Helpful Resources</h4>
+<a class="flex items-center justify-between p-3 rounded-lg bg-background-dark border border-border-dark group hover:border-primary/50 transition-all" href="#">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">terminal</span>
+<span class="text-sm text-white">SDK Documentation</span>
+</div>
+<span class="material-symbols-outlined text-sm text-[#9da6b9] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</a>
+<a class="flex items-center justify-between p-3 rounded-lg bg-background-dark border border-border-dark group hover:border-primary/50 transition-all" href="#">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">security</span>
+<span class="text-sm text-white">Best Security Practices</span>
+</div>
+<span class="material-symbols-outlined text-sm text-[#9da6b9] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</a>
+</div>
+</div>
+</div>
+<!-- Integration Health Card -->
+<div class="bg-primary/10 border border-primary/30 rounded-xl p-6 relative overflow-hidden">
+<div class="absolute -right-4 -bottom-4 opacity-10">
+<span class="material-symbols-outlined text-[100px] text-primary">verified_user</span>
+</div>
+<h4 class="text-white text-sm font-bold mb-2">Service Health</h4>
+<div class="flex items-center gap-2 mb-4">
+<div class="size-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+<span class="text-green-500 text-xs font-bold">API Systems Operational</span>
+</div>
+<p class="text-slate-300 text-[11px] leading-tight">All endpoints are performing within normal parameters. No active incidents reported in the last 24 hours.</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

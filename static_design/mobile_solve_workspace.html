@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Mobile Solve Workspace | uask.ai</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#13ec5b",
+                        "background-light": "#f6f8f6",
+                        "background-dark": "#102216",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .latex-font { font-family: "Times New Roman", serif; font-style: italic; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #28392e; border-radius: 10px; }
+        .streaming-glow { box-shadow: 0 0 15px rgba(19, 236, 91, 0.2); }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-white overflow-hidden h-screen flex justify-center">
+<!-- Mobile Container Emulator -->
+<div class="w-full max-w-[480px] h-screen bg-background-dark border-x border-[#28392e] flex flex-col relative overflow-hidden shadow-2xl">
+<!-- TopNavBar Component -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-[#28392e] px-4 py-3 bg-background-dark/80 backdrop-blur-md sticky top-0 z-50">
+<div class="flex items-center gap-3 text-white">
+<button class="flex items-center justify-center rounded-lg h-9 w-9 bg-[#28392e] text-white hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined text-[20px]">arrow_back</span>
+</button>
+<div class="flex flex-col">
+<h2 class="text-white text-sm font-bold leading-tight tracking-tight">Physics: Quantum Mechanics</h2>
+<span class="text-primary text-[10px] uppercase tracking-widest font-bold">Session Active</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="size-2 bg-primary rounded-full animate-pulse"></span>
+<span class="text-[11px] text-[#9db9a6]">Live</span>
+</div>
+</header>
+<!-- Main Workspace: Scrollable Content -->
+<main class="flex-1 flex flex-col overflow-hidden">
+<!-- Top Section: Chat Interface -->
+<section class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+<!-- Student Message -->
+<div class="flex flex-col items-end gap-1">
+<p class="text-[#9db9a6] text-[11px] font-normal px-2">Student</p>
+<p class="text-sm font-normal leading-relaxed rounded-xl rounded-tr-none px-4 py-3 bg-[#13ec5b]/10 border border-primary/20 text-white max-w-[85%]">
+                        How do I apply the boundary conditions to find the normalization constant A?
+                    </p>
+</div>
+<!-- AI Message / SingleMessage Component Variant -->
+<div class="flex items-start gap-3">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-8 shrink-0 border border-primary/30" data-alt="AI assistant avatar showing a green circuit pattern" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAutp8dCUt662Vgp7dKN44AEN5cd94MHIZUyJnyiOoMIW0YYU4tMK9aApHazhcLD3P-KVxaClavg5FiddgqsLYzJNbwbPZ3za5M2dlDtRUw6fqwULzfEHxSMI9ZZzzy1fDK8ryzxnbliznlyvVNg39W3fzCL7e0b0HAOppXksaaBYsSSRm0G_vuBmpd86KE3HMfyIMurpY9Kr2wOyb8HVfl5XXzZjJlLw_JuGhCeOY58HRA-tG8rLSdT1x4Qdb8YaQY6Hh3CmQoIB7k");'></div>
+<div class="flex flex-1 flex-col gap-1 items-start">
+<p class="text-[#9db9a6] text-[11px] font-normal">uask AI</p>
+<div class="text-sm font-normal leading-relaxed flex flex-col gap-3 max-w-[90%] rounded-xl rounded-tl-none px-4 py-3 bg-[#28392e] text-white streaming-glow border border-primary/10">
+<p>Excellent question. To find A, we use the normalization condition that the total probability must be 1 across the entire box.</p>
+<!-- ProgressBar Component -->
+<div class="flex flex-col gap-2 py-1">
+<div class="flex gap-4 justify-between">
+<p class="text-primary text-[11px] font-medium leading-normal flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">psychology</span> AI is thinking...
+                                    </p>
+<p class="text-primary text-[11px] font-normal leading-normal">85%</p>
+</div>
+<div class="rounded-full bg-background-dark h-1.5 w-full">
+<div class="h-full rounded-full bg-primary" style="width: 85%;"></div>
+</div>
+<p class="text-[#9db9a6] text-[10px] italic">Deriving integral for normalization...</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Bottom Section: Solution Panel (Card & SectionHeader) -->
+<section class="h-[45%] bg-[#1a2b21] border-t border-primary/20 flex flex-col shadow-[0_-8px_30px_rgb(0,0,0,0.5)] rounded-t-xl overflow-hidden">
+<!-- SectionHeader -->
+<div class="flex items-center justify-between px-4 pt-4 pb-2">
+<h2 class="text-white text-lg font-bold leading-tight tracking-tight flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">function</span>
+                        Solution Panel
+                    </h2>
+<span class="bg-primary/20 text-primary text-[10px] font-bold px-2 py-1 rounded">Step 3 of 5</span>
+</div>
+<!-- Scrollable Step Content (Card Variant) -->
+<div class="flex-1 overflow-y-auto custom-scrollbar px-4 pb-20">
+<div class="bg-background-dark/50 border border-[#28392e] rounded-xl p-4 mt-2 mb-4">
+<p class="text-[#9db9a6] text-xs font-medium uppercase mb-2 tracking-wider">Step 3: Normalization Condition</p>
+<p class="text-white text-sm mb-4 leading-relaxed">
+                            Integrate the squared magnitude of the wave function over the entire width of the box (0 to L) and set it to 1:
+                        </p>
+<!-- LaTeX Display Area -->
+<div class="bg-black/40 rounded-lg p-6 flex flex-col items-center justify-center gap-4 text-white border-l-2 border-primary">
+<div class="text-xl latex-font">
+                                ∫₀ᴸ |ψ(x)|² dx = 1
+                            </div>
+<div class="text-xl latex-font">
+                                ∫₀ᴸ A² sin²(nπx/L) dx = 1
+                            </div>
+<div class="w-full border-t border-[#28392e] my-2"></div>
+<div class="text-xl latex-font text-primary">
+                                A = √(2/L)
+                            </div>
+</div>
+<p class="text-[#9db9a6] text-xs mt-4 italic">
+                            Tip: Use the identity sin²θ = (1 - cos 2θ)/2 to solve the integral.
+                        </p>
+</div>
+</div>
+<!-- Step Navigation Footer -->
+<div class="absolute bottom-0 left-0 w-full bg-[#1a2b21] border-t border-[#28392e] p-3 flex items-center justify-between gap-3">
+<button class="flex-1 flex items-center justify-center gap-2 rounded-lg h-11 bg-[#28392e] text-[#9db9a6] text-sm font-bold hover:text-white transition-colors">
+<span class="material-symbols-outlined">chevron_left</span> Previous
+                    </button>
+<button class="flex-1 flex items-center justify-center gap-2 rounded-lg h-11 bg-primary text-background-dark text-sm font-bold hover:scale-[1.02] transition-transform">
+                        Next Step <span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</section>
+</main>
+<!-- Floating Action Button (FAB) -->
+<button class="absolute bottom-24 right-4 size-14 rounded-full bg-primary text-background-dark shadow-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-[60] group">
+<span class="material-symbols-outlined text-[28px]">chat_paste_go</span>
+<div class="absolute right-16 bg-primary text-background-dark text-xs font-bold px-3 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
+                Ask a Follow-up
+            </div>
+</button>
+</div>
+</body></html>

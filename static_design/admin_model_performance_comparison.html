@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Model Performance Comparison | uask.ai Admin</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Noto+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#0b0e14",
+                        "card-dark": "#161d2b",
+                        "accent-neon": "#0bda5e",
+                        "accent-cyan": "#00f2ff"
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 dark:border-slate-800 bg-background-light dark:bg-background-dark px-10 py-3 sticky top-0 z-50">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-4">
+<div class="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
+<span class="material-symbols-outlined">analytics</span>
+</div>
+<h2 class="text-lg font-bold leading-tight tracking-tight">uask.ai Admin</h2>
+</div>
+<nav class="flex items-center gap-6">
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Dashboard</a>
+<a class="text-sm font-medium hover:text-primary transition-colors border-b-2 border-primary pb-1" href="#">Model Logs</a>
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Benchmarking</a>
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Settings</a>
+</nav>
+</div>
+<div class="flex flex-1 justify-end gap-4 items-center">
+<label class="flex flex-col min-w-40 h-10 max-w-64">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full bg-slate-100 dark:bg-slate-800">
+<div class="text-slate-500 flex items-center justify-center pl-4">
+<span class="material-symbols-outlined text-[20px]">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 border-none bg-transparent focus:ring-0 h-full placeholder:text-slate-500 px-4 text-sm font-normal" placeholder="Search experiments..." value=""/>
+</div>
+</label>
+<button class="flex items-center justify-center rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold transition-all hover:bg-blue-700">
+<span class="material-symbols-outlined mr-2 text-[18px]">download</span>
+<span>Export Report</span>
+</button>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border border-slate-700" data-alt="User avatar profile picture" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDgbnG3SHgN5UNbhArXzz57m_xc_XF2CV_S_bSPns8jfpIaz_KIuxAjGtTuw3GibP2VzhcYA8Du2nYbmwe_vZJKuqMWMSfOCn1NRlQsqvf3K1Owlur9AqsW3UeWII7NQya6_VJZH017t-mypZF56Re-tJa-ekCaKv6DRKKoBMwFzqWz_rJgdHzxzjuYmUD_ZhgYIl_dudqS5nQroctwsKuvlv7UoIcjJA_25v6ttHnaGyknytDkUbUhG6xaF48YtcvRdao4f7nO9JH4");'></div>
+</div>
+</header>
+<main class="max-w-[1280px] mx-auto px-6 py-8">
+<!-- Page Heading -->
+<div class="flex flex-wrap justify-between items-end gap-4 mb-8">
+<div class="flex flex-col gap-2">
+<h1 class="text-4xl font-black leading-tight tracking-tight text-slate-900 dark:text-white">Model Performance Comparison</h1>
+<p class="text-slate-500 dark:text-slate-400 text-lg">Head-to-head analysis: Qwen 2.5 72B vs. DeepSeek-V3 (Math &amp; Physics Focus)</p>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center justify-center rounded-lg h-10 px-4 bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-bold hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors">
+<span class="material-symbols-outlined mr-2 text-[18px]">share</span>
+<span>Share Comparison</span>
+</button>
+<button class="flex items-center justify-center rounded-lg h-10 px-4 bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-bold hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Filter Chips Bar -->
+<div class="flex gap-3 mb-8 flex-wrap">
+<button class="flex h-10 items-center justify-center gap-x-2 rounded-lg bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-slate-800 px-4 hover:border-primary transition-all">
+<span class="material-symbols-outlined text-slate-500 text-[18px]">calendar_today</span>
+<p class="text-sm font-medium">Time Range: Last 7 Days</p>
+<span class="material-symbols-outlined text-slate-500 text-[18px]">expand_more</span>
+</button>
+<button class="flex h-10 items-center justify-center gap-x-2 rounded-lg bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-slate-800 px-4 hover:border-primary transition-all">
+<span class="material-symbols-outlined text-slate-500 text-[18px]">science</span>
+<p class="text-sm font-medium">Subject: Math &amp; Physics</p>
+<span class="material-symbols-outlined text-slate-500 text-[18px]">expand_more</span>
+</button>
+<div class="flex items-center px-4 bg-primary/10 border border-primary/30 rounded-lg text-primary text-sm font-bold">
+                Qwen 2.5 72B
+                <span class="mx-3 text-slate-400">vs</span>
+                DeepSeek-V3
+            </div>
+<button class="flex h-10 items-center justify-center gap-x-2 rounded-lg bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-slate-800 px-4 hover:border-primary transition-all ml-auto">
+<span class="material-symbols-outlined text-slate-500 text-[18px]">filter_list</span>
+<p class="text-sm font-medium">Advanced Filters</p>
+</button>
+</div>
+<!-- Qualitative Dimension Charts (Radar Charts Replacement) -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+<!-- Model A: Qwen -->
+<div class="flex flex-col gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card-dark p-6 shadow-sm">
+<div class="flex justify-between items-start">
+<div>
+<p class="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">Model A Performance</p>
+<h3 class="text-2xl font-bold text-slate-900 dark:text-white">Qwen 2.5 72B</h3>
+</div>
+<div class="text-right">
+<p class="text-4xl font-black text-primary">94.2%</p>
+<p class="text-accent-neon text-sm font-bold flex items-center justify-end">
+<span class="material-symbols-outlined text-[16px]">trending_up</span> +2.4%
+                        </p>
+</div>
+</div>
+<div class="flex min-h-[220px] flex-col gap-6 py-4 items-center justify-center relative">
+<!-- Abstract Radar Visualization with Neon Accents -->
+<div class="relative w-48 h-48 flex items-center justify-center">
+<div class="absolute inset-0 border-[1px] border-slate-700 rounded-full opacity-20 scale-100"></div>
+<div class="absolute inset-0 border-[1px] border-slate-700 rounded-full opacity-20 scale-75"></div>
+<div class="absolute inset-0 border-[1px] border-slate-700 rounded-full opacity-20 scale-50"></div>
+<!-- Radar Shape (Custom SVG) -->
+<svg class="absolute inset-0 w-full h-full drop-shadow-[0_0_8px_rgba(19,91,236,0.4)]" viewbox="0 0 100 100">
+<polygon fill="rgba(19,91,236,0.2)" points="50,10 85,35 75,80 25,80 15,35" stroke="#135bec" stroke-width="2"></polygon>
+<circle cx="50" cy="10" fill="#135bec" r="3"></circle>
+<circle cx="85" cy="35" fill="#135bec" r="3"></circle>
+<circle cx="75" cy="80" fill="#135bec" r="3"></circle>
+<circle cx="25" cy="80" fill="#135bec" r="3"></circle>
+<circle cx="15" cy="35" fill="#135bec" r="3"></circle>
+</svg>
+</div>
+<div class="grid grid-cols-5 w-full">
+<div class="text-center">
+<p class="text-slate-500 dark:text-slate-500 text-[11px] font-bold uppercase">Accuracy</p>
+<p class="text-sm font-bold">96%</p>
+</div>
+<div class="text-center">
+<p class="text-slate-500 dark:text-slate-500 text-[11px] font-bold uppercase">Reasoning</p>
+<p class="text-sm font-bold">92%</p>
+</div>
+<div class="text-center">
+<p class="text-slate-500 dark:text-slate-500 text-[11px] font-bold uppercase">Speed</p>
+<p class="text-sm font-bold">88%</p>
+</div>
+<div class="text-center">
+<p class="text-slate-500 dark:text-slate-500 text-[11px] font-bold uppercase">Consistency</p>
+<p class="text-sm font-bold">94%</p>
+</div>
+<div class="text-center">
+<p class="text-slate-500 dark:text-slate-500 text-[11px] font-bold uppercase">Context</p>
+<p class="text-sm font-bold">91%</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Model B: DeepSeek -->
+<div class="flex flex-col gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card-dark p-6 shadow-sm">
+<div class="flex justify-between items-start">
+<div>
+<p class="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">Model B Performance</p>
+<h3 class="text-2xl font-bold text-slate-900 dark:text-white">DeepSeek-V3</h3>
+</div>
+<div class="text-right">
+<p class="text-4xl font-black text-accent-cyan">91.8%</p>
+<p class="text-accent-neon text-sm font-bold flex items-center justify-end">
+<span class="material-symbols-outlined text-[16px]">trending_up</span> +1.8%
+                        </p>
+</div>
+</div>
+<div class="flex min-h-[220px] flex-col gap-6 py-4 items-center justify-center relative">
+<div class="relative w-48 h-48 flex items-center justify-center">
+<div class="absolute inset-0 border-[1px] border-slate-700 rounded-full opacity-20 scale-100"></div>
+<div class="absolute inset-0 border-[1px] border-slate-700 rounded-full opacity-20 scale-75"></div>
+<div class="absolute inset-0 border-[1px] border-slate-700 rounded-full opacity-20 scale-50"></div>
+<!-- Radar Shape (Custom SVG) -->
+<svg class="absolute inset-0 w-full h-full drop-shadow-[0_0_8px_rgba(0,242,255,0.4)]" viewbox="0 0 100 100">
+<polygon fill="rgba(0,242,255,0.1)" points="50,15 80,45 70,85 30,85 20,40" stroke="#00f2ff" stroke-width="2"></polygon>
+<circle cx="50" cy="15" fill="#00f2ff" r="3"></circle>
+<circle cx="80" cy="45" fill="#00f2ff" r="3"></circle>
+<circle cx="70" cy="85" fill="#00f2ff" r="3"></circle>
+<circle cx="30" cy="85" fill="#00f2ff" r="3"></circle>
+<circle cx="20" cy="40" fill="#00f2ff" r="3"></circle>
+</svg>
+</div>
+<div class="grid grid-cols-5 w-full">
+<div class="text-center">
+<p class="text-slate-500 dark:text-slate-500 text-[11px] font-bold uppercase">Accuracy</p>
+<p class="text-sm font-bold">89%</p>
+</div>
+<div class="text-center">
+<p class="text-slate-500 dark:text-slate-500 text-[11px] font-bold uppercase">Reasoning</p>
+<p class="text-sm font-bold">95%</p>
+</div>
+<div class="text-center">
+<p class="text-slate-500 dark:text-slate-500 text-[11px] font-bold uppercase">Speed</p>
+<p class="text-sm font-bold">92%</p>
+</div>
+<div class="text-center">
+<p class="text-slate-500 dark:text-slate-500 text-[11px] font-bold uppercase">Consistency</p>
+<p class="text-sm font-bold">87%</p>
+</div>
+<div class="text-center">
+<p class="text-slate-500 dark:text-slate-500 text-[11px] font-bold uppercase">Context</p>
+<p class="text-sm font-bold">94%</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Metric Scorecards (Latency/Pass@1/Cost) -->
+<h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">analytics</span>
+            Key Efficiency Metrics
+        </h2>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+<div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card-dark p-6">
+<p class="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1">Avg. Latency</p>
+<div class="flex items-end justify-between">
+<div>
+<div class="text-2xl font-bold flex items-center gap-2">
+                            1.2s <span class="text-xs font-normal text-slate-500">vs</span> 0.9s
+                        </div>
+<p class="text-xs text-slate-500 mt-1">DeepSeek is 25% faster</p>
+</div>
+<span class="material-symbols-outlined text-accent-neon bg-accent-neon/10 p-2 rounded-lg">timer</span>
+</div>
+</div>
+<div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card-dark p-6">
+<p class="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1">Pass @ 1 Rate</p>
+<div class="flex items-end justify-between">
+<div>
+<div class="text-2xl font-bold flex items-center gap-2">
+                            84.2% <span class="text-xs font-normal text-slate-500">vs</span> 81.5%
+                        </div>
+<p class="text-xs text-accent-neon mt-1 font-medium">Qwen leads in Math accuracy</p>
+</div>
+<span class="material-symbols-outlined text-primary bg-primary/10 p-2 rounded-lg">check_circle</span>
+</div>
+</div>
+<div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card-dark p-6">
+<p class="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1">Cost per 1M Tokens</p>
+<div class="flex items-end justify-between">
+<div>
+<div class="text-2xl font-bold flex items-center gap-2">
+                            $0.80 <span class="text-xs font-normal text-slate-500">vs</span> $0.20
+                        </div>
+<p class="text-xs text-accent-neon mt-1 font-medium">DeepSeek is 4x cheaper</p>
+</div>
+<span class="material-symbols-outlined text-slate-400 bg-slate-400/10 p-2 rounded-lg">payments</span>
+</div>
+</div>
+</div>
+<!-- Comparative Data Table -->
+<div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card-dark overflow-hidden mb-8 shadow-sm">
+<div class="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+<h3 class="font-bold">Detailed Benchmark Breakdown</h3>
+<button class="text-primary text-xs font-bold uppercase tracking-wider">Full Dataset View</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">
+<th class="px-6 py-4">Benchmark Subject</th>
+<th class="px-6 py-4">Qwen Accuracy</th>
+<th class="px-6 py-4">DeepSeek Accuracy</th>
+<th class="px-6 py-4">Avg. Diff</th>
+<th class="px-6 py-4">Winner</th>
+</tr>
+</thead>
+<tbody class="text-sm divide-y divide-slate-200 dark:divide-slate-800">
+<tr>
+<td class="px-6 py-4 font-medium">GSM8K (Math)</td>
+<td class="px-6 py-4">91.2%</td>
+<td class="px-6 py-4">88.4%</td>
+<td class="px-6 py-4 text-accent-neon">+2.8%</td>
+<td class="px-6 py-4"><span class="px-2 py-1 rounded bg-primary/20 text-primary text-[10px] font-bold">QWEN</span></td>
+</tr>
+<tr>
+<td class="px-6 py-4 font-medium">HumanEval (Coding)</td>
+<td class="px-6 py-4">82.5%</td>
+<td class="px-6 py-4">85.1%</td>
+<td class="px-6 py-4 text-accent-neon">+2.6%</td>
+<td class="px-6 py-4"><span class="px-2 py-1 rounded bg-accent-cyan/20 text-accent-cyan text-[10px] font-bold">DEEPSEEK</span></td>
+</tr>
+<tr>
+<td class="px-6 py-4 font-medium">MBPP (Python)</td>
+<td class="px-6 py-4">79.8%</td>
+<td class="px-6 py-4">81.2%</td>
+<td class="px-6 py-4 text-accent-neon">+1.4%</td>
+<td class="px-6 py-4"><span class="px-2 py-1 rounded bg-accent-cyan/20 text-accent-cyan text-[10px] font-bold">DEEPSEEK</span></td>
+</tr>
+<tr>
+<td class="px-6 py-4 font-medium">MMLU (Physics)</td>
+<td class="px-6 py-4">74.2%</td>
+<td class="px-6 py-4">68.9%</td>
+<td class="px-6 py-4 text-accent-neon">+5.3%</td>
+<td class="px-6 py-4"><span class="px-2 py-1 rounded bg-primary/20 text-primary text-[10px] font-bold">QWEN</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Disagreement Heatmap -->
+<div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card-dark p-6">
+<div class="flex justify-between items-center mb-6">
+<div>
+<h3 class="text-xl font-bold">Disagreement Heatmap</h3>
+<p class="text-slate-500 text-sm">Frequency of divergent outputs by sub-topic (Last 5,000 requests)</p>
+</div>
+<div class="flex items-center gap-4 text-xs font-medium">
+<span class="flex items-center gap-1"><div class="size-3 rounded bg-slate-800 border border-slate-700"></div> Low</span>
+<span class="flex items-center gap-1"><div class="size-3 rounded bg-primary/40"></div> Med</span>
+<span class="flex items-center gap-1"><div class="size-3 rounded bg-primary"></div> High</span>
+</div>
+</div>
+<div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
+<!-- Mock heatmap grid cells -->
+<div class="aspect-square bg-primary/20 rounded flex items-center justify-center group relative cursor-help">
+<span class="text-[10px] font-bold opacity-0 group-hover:opacity-100">Alg</span>
+<div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-black text-white px-2 py-1 rounded text-[10px] whitespace-nowrap hidden group-hover:block z-10">Algebra: 12% Diff</div>
+</div>
+<div class="aspect-square bg-primary rounded flex items-center justify-center group relative cursor-help">
+<span class="text-[10px] font-bold opacity-0 group-hover:opacity-100">Calc</span>
+<div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-black text-white px-2 py-1 rounded text-[10px] whitespace-nowrap hidden group-hover:block z-10">Calculus: 42% Diff</div>
+</div>
+<div class="aspect-square bg-primary/60 rounded flex items-center justify-center group relative cursor-help">
+<span class="text-[10px] font-bold opacity-0 group-hover:opacity-100">Geo</span>
+</div>
+<div class="aspect-square bg-slate-800/50 rounded flex items-center justify-center group relative cursor-help">
+<span class="text-[10px] font-bold opacity-0 group-hover:opacity-100">Log</span>
+</div>
+<div class="aspect-square bg-primary/40 rounded flex items-center justify-center group relative cursor-help">
+<span class="text-[10px] font-bold opacity-0 group-hover:opacity-100">Phys</span>
+</div>
+<div class="aspect-square bg-primary rounded flex items-center justify-center group relative cursor-help">
+<span class="text-[10px] font-bold opacity-0 group-hover:opacity-100">Quant</span>
+</div>
+<div class="aspect-square bg-primary/10 rounded flex items-center justify-center group relative cursor-help">
+<span class="text-[10px] font-bold opacity-0 group-hover:opacity-100">Stat</span>
+</div>
+<div class="aspect-square bg-primary/80 rounded flex items-center justify-center group relative cursor-help">
+<span class="text-[10px] font-bold opacity-0 group-hover:opacity-100">Ther</span>
+</div>
+<!-- Row 2 -->
+<div class="aspect-square bg-primary/10 rounded flex items-center justify-center group relative cursor-help"></div>
+<div class="aspect-square bg-primary/20 rounded flex items-center justify-center group relative cursor-help"></div>
+<div class="aspect-square bg-slate-800/50 rounded flex items-center justify-center group relative cursor-help"></div>
+<div class="aspect-square bg-primary/40 rounded flex items-center justify-center group relative cursor-help"></div>
+<div class="aspect-square bg-primary rounded flex items-center justify-center group relative cursor-help"></div>
+<div class="aspect-square bg-primary/10 rounded flex items-center justify-center group relative cursor-help"></div>
+<div class="aspect-square bg-slate-800/50 rounded flex items-center justify-center group relative cursor-help"></div>
+<div class="aspect-square bg-primary/20 rounded flex items-center justify-center group relative cursor-help"></div>
+</div>
+</div>
+</main>
+<footer class="max-w-[1280px] mx-auto px-6 py-12 text-center text-slate-500 text-sm">
+<p>© 2024 uask.ai Engineering. All benchmark data refreshed every 15 minutes.</p>
+</footer>
+</body></html>

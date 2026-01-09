@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Mobile Student Dashboard - uask.ai</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#13ec5b",
+                        "background-light": "#f6f8f6",
+                        "background-dark": "#102216",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .custom-scroll::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white min-h-screen flex flex-col items-center">
+<!-- Mobile-responsive wrapper -->
+<div class="w-full max-w-[480px] min-h-screen bg-background-light dark:bg-background-dark flex flex-col relative pb-20 shadow-2xl">
+<!-- TopNavBar -->
+<header class="flex items-center justify-between border-b border-slate-200 dark:border-white/10 px-6 py-4 sticky top-0 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md z-50">
+<div class="flex items-center gap-4">
+<button class="text-slate-900 dark:text-white">
+<span class="material-symbols-outlined text-2xl">menu</span>
+</button>
+<div class="flex items-center gap-2">
+<div class="size-6 text-primary">
+<svg fill="currentColor" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M44 4H30.6666V17.3334H17.3334V30.6666H4V44H44V4Z"></path>
+</svg>
+</div>
+<h2 class="text-xl font-bold leading-tight tracking-tight">uask.ai</h2>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 border-2 border-primary/20" data-alt="Student profile portrait" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBLJi4NyrokPVFnfByNj9C-hCpQJneAGqmELU78wl96JzHePKZXZeB2Iw8KjChkaKcFOzUudbHtp_E8cEYDoZRMY869hRzWDEkV8daFHbOsBMHRJsLvu4P35SxpcsbgE05HCSYo8VUmGIFlWNXVfghI9-U8T_qoMZwRiGQgkLyrGZRTzsVaKvJ5rBRT9HTYZohncP3B0jTb1UqBoFMhKB6BcQWlZhHehBAgDkVv6F8XkXofgeYSyvHGnEdMH4nBizc2rsKH3VEK9DoZ");'></div>
+</div>
+</header>
+<main class="flex-1 overflow-y-auto custom-scroll">
+<!-- SearchBar Section -->
+<div class="px-6 py-6">
+<h1 class="text-2xl font-bold mb-4">Hello, Alex</h1>
+<label class="flex flex-col w-full">
+<div class="flex w-full items-stretch rounded-xl h-14 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 shadow-sm overflow-hidden focus-within:border-primary transition-colors">
+<div class="text-primary flex items-center justify-center pl-4">
+<span class="material-symbols-outlined">search</span>
+</div>
+<input class="w-full bg-transparent border-none focus:ring-0 text-base font-normal placeholder:text-slate-400 dark:placeholder:text-white/40 px-3" placeholder="Ask a question..." value=""/>
+</div>
+</label>
+</div>
+<!-- ImageGrid / Quick Actions -->
+<div class="grid grid-cols-2 gap-4 px-6 pb-6">
+<div class="flex flex-col gap-3 group cursor-pointer">
+<div class="w-full aspect-[4/3] bg-primary/10 dark:bg-primary/5 border border-primary/20 rounded-xl flex items-center justify-center transition-all group-active:scale-95 group-hover:bg-primary/20">
+<span class="material-symbols-outlined text-4xl text-primary">photo_camera</span>
+</div>
+<div>
+<p class="text-base font-bold">Snap &amp; Solve</p>
+<p class="text-slate-500 dark:text-white/50 text-xs">Use your camera</p>
+</div>
+</div>
+<div class="flex flex-col gap-3 group cursor-pointer">
+<div class="w-full aspect-[4/3] bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl flex items-center justify-center transition-all group-active:scale-95 group-hover:bg-white/10">
+<span class="material-symbols-outlined text-4xl text-slate-400 dark:text-white/60">keyboard</span>
+</div>
+<div>
+<p class="text-base font-bold">New Text Solve</p>
+<p class="text-slate-500 dark:text-white/50 text-xs">Type your problem</p>
+</div>
+</div>
+</div>
+<!-- SectionHeader -->
+<div class="px-6 pb-2 pt-4 flex items-center justify-between">
+<h2 class="text-lg font-bold">Recent Sessions</h2>
+<button class="text-primary text-sm font-medium">View all</button>
+</div>
+<!-- ListItem List -->
+<div class="px-4 flex flex-col gap-2">
+<!-- Session Item 1 -->
+<div class="flex items-center gap-4 bg-white dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-xl px-4 min-h-[72px] py-2 justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-white/10 transition-colors">
+<div class="flex items-center gap-4">
+<div class="text-primary flex items-center justify-center rounded-lg bg-primary/20 shrink-0 size-12">
+<span class="material-symbols-outlined">functions</span>
+</div>
+<div class="flex flex-col justify-center">
+<p class="text-base font-semibold line-clamp-1">Quadratic Equations</p>
+<p class="text-slate-500 dark:text-white/50 text-xs font-medium uppercase tracking-wider">Math</p>
+</div>
+</div>
+<div class="shrink-0 text-right">
+<p class="text-slate-400 dark:text-white/40 text-xs">2 mins ago</p>
+</div>
+</div>
+<!-- Session Item 2 -->
+<div class="flex items-center gap-4 bg-white dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-xl px-4 min-h-[72px] py-2 justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-white/10 transition-colors">
+<div class="flex items-center gap-4">
+<div class="text-blue-400 flex items-center justify-center rounded-lg bg-blue-400/20 shrink-0 size-12">
+<span class="material-symbols-outlined">bolt</span>
+</div>
+<div class="flex flex-col justify-center">
+<p class="text-base font-semibold line-clamp-1">Newton's Laws</p>
+<p class="text-slate-500 dark:text-white/50 text-xs font-medium uppercase tracking-wider">Physics</p>
+</div>
+</div>
+<div class="shrink-0 text-right">
+<p class="text-slate-400 dark:text-white/40 text-xs">3 hours ago</p>
+</div>
+</div>
+<!-- Session Item 3 -->
+<div class="flex items-center gap-4 bg-white dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-xl px-4 min-h-[72px] py-2 justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-white/10 transition-colors">
+<div class="flex items-center gap-4">
+<div class="text-primary flex items-center justify-center rounded-lg bg-primary/20 shrink-0 size-12">
+<span class="material-symbols-outlined">calculate</span>
+</div>
+<div class="flex flex-col justify-center">
+<p class="text-base font-semibold line-clamp-1">Integrals: Part 1</p>
+<p class="text-slate-500 dark:text-white/50 text-xs font-medium uppercase tracking-wider">Math</p>
+</div>
+</div>
+<div class="shrink-0 text-right">
+<p class="text-slate-400 dark:text-white/40 text-xs">Yesterday</p>
+</div>
+</div>
+<!-- Session Item 4 -->
+<div class="flex items-center gap-4 bg-white dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-xl px-4 min-h-[72px] py-2 justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-white/10 transition-colors">
+<div class="flex items-center gap-4">
+<div class="text-primary flex items-center justify-center rounded-lg bg-primary/20 shrink-0 size-12">
+<span class="material-symbols-outlined">architecture</span>
+</div>
+<div class="flex flex-col justify-center">
+<p class="text-base font-semibold line-clamp-1">Trigonometry Basics</p>
+<p class="text-slate-500 dark:text-white/50 text-xs font-medium uppercase tracking-wider">Math</p>
+</div>
+</div>
+<div class="shrink-0 text-right">
+<p class="text-slate-400 dark:text-white/40 text-xs">Oct 12</p>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 w-full max-w-[480px] bg-white dark:bg-[#152a1c] border-t border-slate-200 dark:border-white/10 flex justify-around py-3 px-2 z-50">
+<button class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-2xl font-bold">home</span>
+<span class="text-[10px] font-bold">Home</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-400 dark:text-white/40">
+<span class="material-symbols-outlined text-2xl">auto_fix_high</span>
+<span class="text-[10px] font-medium">Solve</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-400 dark:text-white/40 relative">
+<span class="material-symbols-outlined text-2xl">history</span>
+<span class="text-[10px] font-medium">History</span>
+<!-- Badge example -->
+<span class="absolute top-0 right-1 size-2 bg-primary rounded-full ring-2 ring-white dark:ring-[#152a1c]"></span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-400 dark:text-white/40">
+<span class="material-symbols-outlined text-2xl">lightbulb</span>
+<span class="text-[10px] font-medium">Concepts</span>
+</button>
+</nav>
+<!-- Floating Action Button for Snap (alternative UI) -->
+<button class="absolute bottom-24 right-6 size-14 bg-primary text-black rounded-full shadow-lg shadow-primary/20 flex items-center justify-center z-40 active:scale-90 transition-transform">
+<span class="material-symbols-outlined font-bold text-3xl">add</span>
+</button>
+</div>
+</body></html>

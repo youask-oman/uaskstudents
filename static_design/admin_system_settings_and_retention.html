@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Admin System Settings - uask.ai</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body {
+            font-family: 'Manrope', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-[#111318] dark:text-white min-h-screen flex flex-col">
+<!-- Top Navigation Bar -->
+<header class="sticky top-0 z-50 w-full bg-white dark:bg-background-dark border-b border-solid border-[#dbdfe6] dark:border-gray-800">
+<div class="max-w-[1280px] mx-auto px-6 h-16 flex items-center justify-between">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3">
+<div class="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-xl">settings_input_component</span>
+</div>
+<h1 class="text-[#111318] dark:text-white text-lg font-extrabold tracking-tight">uask.ai <span class="font-medium text-gray-500">Admin</span></h1>
+</div>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-gray-500 hover:text-primary text-sm font-semibold transition-colors" href="#">Dashboard</a>
+<a class="text-gray-500 hover:text-primary text-sm font-semibold transition-colors" href="#">Analytics</a>
+<a class="text-gray-500 hover:text-primary text-sm font-semibold transition-colors" href="#">Users</a>
+<a class="text-primary text-sm font-bold border-b-2 border-primary py-5" href="#">Settings</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative group hidden sm:block">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-sm">search</span>
+<input class="pl-9 pr-4 py-1.5 bg-background-light dark:bg-gray-800 border-none rounded-lg text-sm focus:ring-2 focus:ring-primary/20 w-64" placeholder="Search settings..." type="text"/>
+</div>
+<button class="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="size-9 bg-center bg-no-repeat bg-cover rounded-full border border-gray-200" data-alt="Admin user avatar" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBpoTiNh6Ww8WqoMSmantl5xWmcd0Dk0U1IcyVr75U1bOyW_BrrMdghaFHc34YJPMPbAVZtA2FATkPAw4YQyR5i3BZoiDxTRBstUIOQQrN8FpAaS2zhRUKcRwBDLgBa3OsPo5Xlag4FaI_hS2Q47pkBQvv6DxknUTZtGuJrCTkx_byJ23BsNifG6-zZnB1C9uNFUxlpr60mnRsDXhR2ewv-aqS2bcjxDKTL3rk6egS_W2SjCIhH5USBCH95aA1UI8qjzdObgnM42O0U");'></div>
+</div>
+</div>
+</header>
+<main class="flex-1 max-w-[1280px] mx-auto w-full px-6 py-8 pb-32">
+<!-- Page Heading -->
+<div class="mb-8">
+<h2 class="text-[#111318] dark:text-white text-3xl font-black leading-tight tracking-tight">System Settings</h2>
+<p class="text-gray-500 dark:text-gray-400 text-base mt-1">Manage global infrastructure, compliance parameters, and security protocols.</p>
+</div>
+<!-- Tabbed Interface -->
+<div class="flex border-b border-[#dbdfe6] dark:border-gray-800 mb-8 overflow-x-auto whitespace-nowrap">
+<a class="px-6 py-3 border-b-2 border-transparent text-gray-500 hover:text-primary font-bold text-sm transition-all" href="#">General</a>
+<a class="px-6 py-3 border-b-2 border-primary text-primary font-bold text-sm" href="#">Retention</a>
+<a class="px-6 py-3 border-b-2 border-transparent text-gray-500 hover:text-primary font-bold text-sm transition-all" href="#">Limits</a>
+<a class="px-6 py-3 border-b-2 border-transparent text-gray-500 hover:text-primary font-bold text-sm transition-all" href="#">Security</a>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Left Content Area -->
+<div class="lg:col-span-8 space-y-8">
+<!-- Section: Data Retention Policies -->
+<section class="bg-white dark:bg-background-dark/50 rounded-xl border border-[#dbdfe6] dark:border-gray-800 p-6">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary">history</span>
+<h3 class="text-xl font-bold">Data Retention Policies</h3>
+</div>
+<div class="space-y-8">
+<!-- Slider Component: Upload Retention -->
+<div class="space-y-4">
+<div class="flex justify-between items-end">
+<div>
+<label class="text-sm font-bold text-[#111318] dark:text-white block mb-1">Upload Retention Period</label>
+<p class="text-xs text-gray-500">Number of days to keep user-uploaded files before permanent deletion.</p>
+</div>
+<div class="flex items-center gap-2">
+<input class="w-20 px-2 py-1 border border-gray-300 rounded text-right text-sm font-bold" type="number" value="180"/>
+<span class="text-sm text-gray-500">Days</span>
+</div>
+</div>
+<div class="relative h-6 flex items-center group">
+<div class="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full">
+<div class="h-full w-[49%] bg-primary rounded-full relative">
+<div class="absolute -right-2 top-1/2 -translate-y-1/2 size-5 bg-white border-2 border-primary rounded-full shadow-lg cursor-pointer"></div>
+</div>
+</div>
+</div>
+<div class="flex justify-between text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+<span>1 Day</span>
+<span>90 Days</span>
+<span>180 Days</span>
+<span>270 Days</span>
+<span>365 Days</span>
+</div>
+</div>
+<hr class="border-gray-100 dark:border-gray-800"/>
+<!-- Policy Options -->
+<div class="grid md:grid-cols-2 gap-6">
+<div class="space-y-3">
+<label class="text-sm font-bold block">Session History Deletion</label>
+<select class="w-full rounded-lg border-gray-300 dark:bg-gray-800 dark:border-gray-700 text-sm">
+<option>Never (Keep all history)</option>
+<option>Immediate upon logout</option>
+<option selected="">30 days after session</option>
+<option>90 days after session</option>
+</select>
+</div>
+<div class="space-y-3">
+<label class="text-sm font-bold block">Anonymous Data Anonymization</label>
+<div class="flex items-center justify-between p-3 bg-background-light dark:bg-gray-800 rounded-lg">
+<span class="text-sm">Auto-scrub IP addresses</span>
+<button class="w-10 h-5 bg-primary rounded-full relative transition-all">
+<span class="absolute right-1 top-1 size-3 bg-white rounded-full"></span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section: Resource Limits -->
+<section class="bg-white dark:bg-background-dark/50 rounded-xl border border-[#dbdfe6] dark:border-gray-800 p-6">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary">database</span>
+<h3 class="text-xl font-bold">System Resource Limits</h3>
+</div>
+<div class="grid md:grid-cols-3 gap-6">
+<div class="space-y-2">
+<label class="text-xs font-bold uppercase text-gray-500">Max File Size</label>
+<div class="flex items-center">
+<input class="w-full border-r-0 rounded-l-lg border-gray-300 dark:bg-gray-800 text-sm font-bold" type="text" value="500"/>
+<span class="bg-gray-100 dark:bg-gray-700 px-3 py-[9px] border border-gray-300 border-l-0 rounded-r-lg text-xs font-bold">MB</span>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold uppercase text-gray-500">Global Quota</label>
+<div class="flex items-center">
+<input class="w-full border-r-0 rounded-l-lg border-gray-300 dark:bg-gray-800 text-sm font-bold" type="text" value="2"/>
+<span class="bg-gray-100 dark:bg-gray-700 px-3 py-[9px] border border-gray-300 border-l-0 rounded-r-lg text-xs font-bold">TB</span>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold uppercase text-gray-500">API Rate Limit</label>
+<div class="flex items-center">
+<input class="w-full border-r-0 rounded-l-lg border-gray-300 dark:bg-gray-800 text-sm font-bold" type="text" value="1000"/>
+<span class="bg-gray-100 dark:bg-gray-700 px-3 py-[9px] border border-gray-300 border-l-0 rounded-r-lg text-xs font-bold">REQ/M</span>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Sidebar Area -->
+<div class="lg:col-span-4 space-y-6">
+<!-- API Rotation Checklist -->
+<div class="bg-white dark:bg-background-dark/50 rounded-xl border border-[#dbdfe6] dark:border-gray-800 overflow-hidden">
+<div class="p-4 bg-gray-50 dark:bg-gray-800 border-b border-[#dbdfe6] dark:border-gray-700">
+<h4 class="font-bold text-sm">Security Maintenance</h4>
+</div>
+<div class="p-4 space-y-4">
+<div class="flex items-start gap-3">
+<div class="mt-0.5">
+<input checked="" class="rounded text-primary focus:ring-primary size-4" type="checkbox"/>
+</div>
+<div>
+<p class="text-sm font-semibold">Rotate Stripe API Key</p>
+<p class="text-xs text-gray-500">Last rotated: 12 days ago</p>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<div class="mt-0.5">
+<input class="rounded text-primary focus:ring-primary size-4" type="checkbox"/>
+</div>
+<div>
+<p class="text-sm font-semibold">Audit Admin Logins</p>
+<p class="text-xs text-gray-500">Overdue by 3 days</p>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<div class="mt-0.5">
+<input class="rounded text-primary focus:ring-primary size-4" type="checkbox"/>
+</div>
+<div>
+<p class="text-sm font-semibold">Rotate AWS IAM Credentials</p>
+<p class="text-xs text-gray-500">Schedule: Every 90 days</p>
+</div>
+</div>
+<button class="w-full py-2 bg-background-light dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg text-xs font-bold transition-colors">
+                            VIEW ALL SECURITY TASKS
+                        </button>
+</div>
+</div>
+<!-- Admin Roles Summary -->
+<div class="bg-primary/5 dark:bg-primary/10 rounded-xl border border-primary/20 p-5 space-y-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-xl">shield_person</span>
+<h4 class="font-bold text-sm">Admin Role Management</h4>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between items-center text-sm">
+<span class="text-gray-600 dark:text-gray-400">Super Admins</span>
+<span class="font-bold">2</span>
+</div>
+<div class="flex justify-between items-center text-sm">
+<span class="text-gray-600 dark:text-gray-400">Content Moderators</span>
+<span class="font-bold">8</span>
+</div>
+<div class="flex justify-between items-center text-sm">
+<span class="text-gray-600 dark:text-gray-400">Security Officers</span>
+<span class="font-bold">1</span>
+</div>
+</div>
+<button class="w-full flex items-center justify-center gap-2 text-primary text-xs font-extrabold uppercase tracking-wider mt-2">
+                        Edit Permissions <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Sticky Footer Action Bar -->
+<footer class="fixed bottom-0 left-0 right-0 bg-white dark:bg-background-dark border-t border-[#dbdfe6] dark:border-gray-800 py-4 z-40">
+<div class="max-w-[1280px] mx-auto px-6 flex items-center justify-between">
+<div class="flex items-center gap-2 text-sm text-gray-500">
+<span class="material-symbols-outlined text-primary text-lg">info</span>
+<span>You have 3 unsaved changes in 'Retention' and 'Limits'.</span>
+</div>
+<div class="flex items-center gap-3">
+<button class="px-5 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 rounded-lg transition-colors">
+                    Discard Changes
+                </button>
+<button class="px-8 py-2.5 text-sm font-bold text-white bg-primary hover:bg-blue-700 rounded-lg shadow-lg shadow-primary/20 transition-all">
+                    Save Changes
+                </button>
+</div>
+</div>
+</footer>
+</body></html>
