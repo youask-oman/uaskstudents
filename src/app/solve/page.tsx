@@ -1,68 +1,99 @@
 "use client";
 
-import Link from "next/link";
+import DashboardNavBar from "@/components/DashboardNavBar";
 import { useState, useEffect, useRef } from "react";
-import ImageCropper from "@/components/ImageCropper";
 import { useRouter } from "next/navigation";
+import katex from 'katex';
+import MathInput, { MathInputRef } from "@/components/MathInput";
+import { MODES, ModeId, Suggestion } from "@/lib/modes";
+import ImageCropper from "@/components/ImageCropper";
 
-export default function SessionWorkspacePage() {
-    const [activeTab, setActiveTab] = useState<'steps' | 'verification' | 'concepts' | 'practice'>('steps');
-    const [isDark, setIsDark] = useState(false);
-    const [inputValue, setInputValue] = useState('');
+interface ChatSession {
+    id: number;
+    title: string;
+    created_at: string;
+}
+
+export default function DashboardPage() {
+    const [activeTab, setActiveTab] = useState<'text' | 'snap' | 'voice'>('text');
+    const [history, setHistory] = useState<ChatSession[]>([]);
+    const [query, setQuery] = useState("sqrt(x+5) = x - 1");
+    const [isSolving, setIsSolving] = useState(false);
+
+    // Editor State
+    const [activeMode, setActiveMode] = useState<ModeId | null>(null);
+    const [isSeeAllOpen, setIsSeeAllOpen] = useState(false);
+    const mathInputRef = useRef<MathInputRef>(null);
+
     const router = useRouter();
 
-    // OCR & Workflow State
-    type WorkflowStage = 'idle' | 'selecting' | 'processing' | 'review' | 'error';
-    // Solver State
-    interface Step {
-        title: string;
-        content: string;
-    }
-    interface SolutionData {
-        summary: string;
-        steps: Step[];
-        final_answer: string;
-    }
+    useEffect(() => {
+        const userId = localStorage.getItem("user_id");
+        if (!userId) {
+            router.push("/login");
+            return;
+        }
 
-    const [workflowStage, setWorkflowStage] = useState<WorkflowStage>('idle');
+        const fetchHistory = async () => {
+            try {
+                const response = await fetch(`http://localhost:8000/api/v1/history?user_id=${userId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setHistory(data);
+                }
+            } catch (error) {
+                console.error("Failed to fetch history:", error);
+            }
+        };
+
+        fetchHistory();
+    }, [router]);
+
+    const handleSuggestionClick = (suggestion: Suggestion) => {
+        if (!mathInputRef.current) return;
+
+        if (suggestion.insertMode === 'replace') {
+            setQuery(suggestion.latex.replace(/#\?/g, ''));
+            mathInputRef.current.setValue(suggestion.latex);
+        } else {
+            mathInputRef.current.insert(suggestion.latex);
+        }
+
+        // Focus the input
+        mathInputRef.current.focus();
+
+        // Close the dropdown panel
+        setActiveMode(null);
+    };
+
+    const handleClear = () => {
+        setQuery("");
+        if (mathInputRef.current) {
+            mathInputRef.current.setValue("");
+            mathInputRef.current.focus();
+        }
+    };
+
+    // OCR & Workflow State
+    const [workflowStage, setWorkflowStage] = useState<'input' | 'selecting' | 'processing' | 'review'>('input');
     const [capturedImage, setCapturedImage] = useState<string | null>(null);
     const [croppedImage, setCroppedImage] = useState<string | null>(null);
+    const [ocrConfidence, setOcrConfidence] = useState<number>(0);
     const [progressStep, setProgressStep] = useState(0);
     const [processingTime, setProcessingTime] = useState(0);
 
-    // New Solver States
-    const [isSolving, setIsSolving] = useState(false);
-    const [solution, setSolution] = useState<SolutionData | null>(null);
-
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
     const PROGRESS_STEPS = [
         { label: "Uploading crop...", percent: 20 },
-        { label: "Analyzing with OpenAI Vision...", percent: 60 },
+        { label: "Analyzing with YouAsk.ai Vision...", percent: 60 },
         { label: "Extracting LaTeX...", percent: 90 },
-        { label: "Done", percent: 100 }
+        { label: "Done!", percent: 100 }
     ];
 
     const processFile = (file: File) => {
-        console.log("Processing file selection...");
         if (!file) return;
-
         const objectUrl = URL.createObjectURL(file);
         setCapturedImage(objectUrl);
         setWorkflowStage('selecting');
-    };
-
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) processFile(file);
-    };
-
-    const resetWorkflow = () => {
-        setWorkflowStage('idle');
-        setCapturedImage(null);
-        setCroppedImage(null);
-        setProgressStep(0);
-        setProcessingTime(0);
     };
 
     const handleCropConfirm = async (blob: Blob) => {
@@ -79,93 +110,110 @@ export default function SessionWorkspacePage() {
             const formData = new FormData();
             formData.append('file', blob, 'crop.jpg');
 
-            // NEW: Direct call to OpenAI Vision Endpoint
-            setProgressStep(1); // Analyzing...
+            const userId = localStorage.getItem("user_id") || "1";
 
-            const res = await fetch('http://localhost:8000/api/v1/latex-from-image?user_id=1', {
+            // Step 1: Uploading
+            setProgressStep(0);
+
+            // Step 2: Analyzing (simulated delay for UX if network is too fast, or just let it fly)
+            setTimeout(() => setProgressStep(1), 500);
+
+            const res = await fetch(`http://localhost:8000/api/v1/latex-from-image?user_id=${userId}`, {
                 method: 'POST',
                 body: formData
             });
 
-            if (!res.ok) throw new Error("Analysis failed");
+            if (!res.ok) {
+                const errData = await res.json();
+                console.error("Vision API Error:", errData);
+                throw new Error(errData.detail || "Analysis failed");
+            }
 
             const data = await res.json();
+            console.log("Raw Vision Response:", data);
 
-            // Success
-            clearInterval(timer);
+            // Client-side Cleanup (Failsafe)
+            let cleanLatex = (data.latex || "").trim();
+
+            // 1. Strip $$ wrappers
+            cleanLatex = cleanLatex.replace(/^\s*\$\$|\$\$\s*$/g, "");
+            cleanLatex = cleanLatex.replace(/^\s*\$|\$\s*$/g, "");
+            cleanLatex = cleanLatex.replace(/^\\\[|\\\]$/g, "");
+
+            // 2. Normalize whitespace (tabs -> spaces, multiple spaces -> single)
+            cleanLatex = cleanLatex
+                .replace(/\\t/g, " ")
+                .replace(/\t/g, " ")
+                .replace(/[ ]{2,}/g, " ")
+                .trim();
+
+            console.log("Cleaned LaTeX:", cleanLatex);
+
+            // Step 3: Success
             setProgressStep(3); // Done
-
-            setTimeout(() => {
-                setInputValue(prev => {
-                    const newText = data.latex || "";
-                    return prev ? `${prev}\n\n${newText}` : newText;
-                });
-                setWorkflowStage('idle');
-            }, 600);
-
-        } catch (err) {
-            console.error(err);
             clearInterval(timer);
-            setWorkflowStage('error');
-            alert("Analysis failed. Please check your connection or API key.");
+
+            setQuery(cleanLatex);
+            if (mathInputRef.current) {
+                mathInputRef.current.setValue(cleanLatex);
+            }
+            setOcrConfidence(0.99);
+
+            // Small delay to show "Done" state
+            setTimeout(() => {
+                setWorkflowStage('review');
+                setActiveTab('text'); // Switch to editor
+            }, 800);
+
+        } catch (e) {
+            console.error("Analysis error", e);
+            alert("Analysis failed. Please check your connection.");
+            clearInterval(timer);
+            setWorkflowStage('input');
         }
     };
 
-    useEffect(() => {
-        // Check initial preference logic
-        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-            setIsDark(true);
-        } else {
-            document.documentElement.classList.remove('dark');
-            setIsDark(false);
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            processFile(e.target.files[0]);
         }
-    }, []);
+    };
 
-    // Math Rendering using KaTeX Auto-Render
-    useEffect(() => {
-        const timeoutId = setTimeout(() => {
-            // @ts-ignore
-            if (window.renderMathInElement) {
-                // @ts-ignore
-                window.renderMathInElement(document.body, {
-                    delimiters: [
-                        { left: '$$', right: '$$', display: true },
-                        { left: '$', right: '$', display: false },
-                        { left: '\\(', right: '\\)', display: false },
-                        { left: '\\[', right: '\\]', display: true }
-                    ],
-                    throwOnError: false
-                });
-            }
-        }, 1000);
-        return () => clearTimeout(timeoutId);
-    }, []);
-
-    const toggleTheme = () => {
-        if (isDark) {
-            document.documentElement.classList.remove("dark");
-            localStorage.theme = 'light';
-            setIsDark(false);
-        } else {
-            document.documentElement.classList.add("dark");
-            localStorage.theme = 'dark';
-            setIsDark(true);
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            processFile(e.dataTransfer.files[0]);
         }
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+
+    const resetWorkflow = () => {
+        setWorkflowStage('input');
+        setCapturedImage(null);
+        setCroppedImage(null);
+        setQuery("");
+        setProgressStep(0);
+        if (mathInputRef.current) mathInputRef.current.setValue("");
     };
 
     const handleSolve = async () => {
-        if (!inputValue.trim()) return;
+        const userId = localStorage.getItem("user_id") || "1";
+
+        if (!query.trim()) return;
 
         setIsSolving(true);
-        const userId = localStorage.getItem("user_id") || "1";
 
         try {
             const res = await fetch('http://localhost:8000/api/v1/solve', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    text_query: inputValue,
+                    text_query: query,
                     mode: 'general',
                     user_id: parseInt(userId)
                 })
@@ -174,367 +222,488 @@ export default function SessionWorkspacePage() {
             if (!res.ok) throw new Error("Solve request failed");
 
             const data = await res.json();
-            // Redirect to the persistent session
             router.push(`/chat/${data.session_id}`);
 
         } catch (err) {
             console.error(err);
-            alert("Failed to generate solution");
+            alert("Failed to generate solution. Make sure the backend is running.");
         } finally {
             setIsSolving(false);
         }
     };
 
     return (
-        <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-display transition-colors duration-200">
-            {/* Top Navigation Bar */}
-            <header className="flex items-center justify-between border-b border-solid border-slate-200 dark:border-border-dark px-6 py-3 bg-white dark:bg-background-dark sticky top-0 z-50">
-                <div className="flex items-center gap-8">
-                    <Link href="/dashboard" className="flex items-center gap-3">
-                        <div className="size-8 bg-primary rounded flex items-center justify-center text-white">
-                            <span className="material-symbols-outlined">functions</span>
-                        </div>
-                        <h2 className="text-lg font-bold leading-tight tracking-tight">uask.ai</h2>
-                    </Link>
-                    <nav className="hidden md:flex items-center gap-6">
-                        <Link className="text-sm font-medium hover:text-primary transition-colors" href="/dashboard">Dashboard</Link>
-                        <Link className="text-sm font-medium text-primary border-b-2 border-primary pb-1" href="/solve">Workspace</Link>
-                        <Link className="text-sm font-medium hover:text-primary transition-colors" href="#">Library</Link>
-                    </nav>
-                </div>
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={toggleTheme}
-                        className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-surface-dark rounded-full transition-colors flex items-center"
-                        aria-label="Toggle Dark Mode"
-                    >
-                        <span className="material-symbols-outlined">{isDark ? 'light_mode' : 'dark_mode'}</span>
-                    </button>
-                    <div className="flex items-center gap-2">
-                        <button className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-surface-dark transition-colors">
-                            <span className="material-symbols-outlined text-xl">notifications</span>
-                        </button>
-                        <button className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-surface-dark transition-colors">
-                            <span className="material-symbols-outlined text-xl">settings</span>
-                        </button>
-                    </div>
-                    <div className="h-8 w-[1px] bg-slate-200 dark:border-border-dark mx-1"></div>
-                    <div className="flex items-center gap-3">
-                        <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8 border border-primary/20" data-alt="User profile avatar minimalist illustration" style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuCJQsi4Do0nD_nSwlJFCO011UDnVu3_UDKt2G9Q5gveExIvrT5MN9m02DOXIufov9xZ58kpbjtpIrBhxNq1gY2FFwLQece5ba2IML-3TnlcXc2nfSnLtdtdHnrrtUnnIXik87tj-vEgtU70o_XwcU-BdznztoaXiTtH0V5VqrqTSLPsZRKoRF5EMk0ZkPmUGhK24U74jF4lFjCIAFqvbpJuBK2f44pMW6wo6Yfb0Rya5vehmfkV-87dqIBTdO3cggxDYjNDGNuo5abz")' }}></div>
-                        <span className="text-sm font-medium hidden sm:inline">Alex Chen</span>
-                    </div>
-                </div>
-            </header>
+        <div className="bg-background-light dark:bg-background-dark min-h-screen text-slate-900 dark:text-slate-100 font-display transition-colors duration-200">
+            <DashboardNavBar />
 
-            <main className="flex flex-1 overflow-hidden h-[calc(100vh-65px)]">
-                {/* Left Sidebar: Chat & OCR */}
-                <aside className="w-80 flex-shrink-0 border-r border-slate-200 dark:border-border-dark flex flex-col bg-white dark:bg-background-dark">
-                    <div className="p-4 border-b border-slate-200 dark:border-border-dark flex justify-between items-center">
-                        <div className="flex items-center gap-2 text-primary font-semibold">
-                            <span className="material-symbols-outlined text-lg">chat_bubble</span>
-                            <span>Tutor Chat</span>
-                        </div>
-                        <button className="p-1 hover:bg-slate-100 dark:hover:bg-surface-dark rounded text-xs uppercase font-bold text-slate-500">History</button>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                        {/* User Message */}
-                        <div className="flex flex-col gap-1 items-end">
-                            <div className="bg-primary text-white p-3 rounded-lg rounded-tr-none text-sm max-w-[90%]">
-                                Help me solve this projectile motion problem. Initial velocity is 25m/s at 30°.
-                            </div>
-                            <span className="text-[10px] text-slate-500">10:42 AM</span>
-                        </div>
-                        {/* AI Message */}
-                        <div className="flex flex-col gap-1 items-start">
-                            <div className="flex items-center gap-2 mb-1">
-                                <div className="size-5 bg-primary/20 rounded-full flex items-center justify-center">
-                                    <span className="material-symbols-outlined text-[12px] text-primary">smart_toy</span>
-                                </div>
-                                <span className="text-xs font-bold">uask AI</span>
-                            </div>
-                            <div className="bg-slate-100 dark:bg-surface-dark p-3 rounded-lg rounded-tl-none text-sm max-w-[90%] leading-relaxed">
-                                Understood. I'll break down the components and calculate the trajectory steps for you in the Solution Panel.
-                            </div>
-                        </div>
-                        {/* AI Thought Process */}
-                        <div className="border-l-2 border-slate-200 dark:border-border-dark ml-2 pl-4 py-1 space-y-2 opacity-60">
-                            <div className="flex items-center gap-2">
-                                <span className="material-symbols-outlined text-sm">memory</span>
-                                <span className="text-[11px] font-medium italic">Analyzing kinematic variables...</span>
-                            </div>
-                        </div>
-                    </div>
-                    {/* Chat Input / OCR */}
-                    <div className="p-4 border-t border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-background-dark">
-                        <div className="relative">
-                            <textarea
-                                value={inputValue}
-                                onChange={(e) => setInputValue(e.target.value)}
-                                className="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-primary focus:border-primary resize-none pr-12"
-                                placeholder={
-                                    workflowStage === 'processing'
-                                        ? "Analyzing..."
-                                        : "Ask a question..."
-                                }
-                                rows={3}
-                                disabled={workflowStage === 'processing'}
-                            ></textarea>
-                            <div className="absolute right-2 bottom-3 flex gap-1">
-                                <input
-                                    type="file"
-                                    ref={fileInputRef}
-                                    className="hidden"
-                                    onChange={handleFileUpload}
-                                    accept="image/*"
-                                />
+            <main className="max-w-5xl mx-auto px-4 py-8 md:py-12">
+                {/* Page Heading */}
+                <div className="mb-8">
+                    <h1 className="text-4xl font-black tracking-tight mb-2">New Solve</h1>
+                    <p className="text-slate-500 dark:text-slate-400 text-lg">Select your preferred input method and define the context for the best tutor results.</p>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    {/* Main Interaction Area */}
+                    <div className="lg:col-span-8 space-y-6">
+                        {/* Input Mode Tabs */}
+                        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl shadow-black/5 border border-slate-200 dark:border-slate-800 transition-colors">
+                            <div className="flex border-b border-slate-200 dark:border-slate-800">
                                 <button
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className={`p-2 transition-colors ${workflowStage === 'processing' ? 'text-primary animate-pulse' : 'text-slate-400 hover:text-primary'}`}
-                                    disabled={workflowStage === 'processing' || workflowStage === 'selecting'}
+                                    onClick={() => setActiveTab('text')}
+                                    className={`flex-1 flex flex-col items-center py-4 transition-all border-b-2 ${activeTab === 'text' ? 'text-primary border-primary bg-primary/5' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 border-transparent'}`}
                                 >
-                                    <span className="material-symbols-outlined">photo_camera</span>
+                                    <span className="material-symbols-outlined mb-1">edit_note</span>
+                                    <span className="text-xs font-bold uppercase tracking-wider">Text</span>
                                 </button>
                                 <button
-                                    onClick={handleSolve}
-                                    disabled={isSolving || !inputValue.trim()}
-                                    className={`p-2 bg-primary text-white rounded-lg transition-colors ${isSolving || !inputValue.trim() ? 'opacity-50 cursor-not-allowed' : 'hover:bg-primary/90'}`}
+                                    onClick={() => setActiveTab('snap')}
+                                    className={`flex-1 flex flex-col items-center py-4 transition-all border-b-2 ${activeTab === 'snap' ? 'text-primary border-primary bg-primary/5' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 border-transparent'}`}
                                 >
-                                    {isSolving ? (
-                                        <span className="material-symbols-outlined text-sm animate-spin">refresh</span>
-                                    ) : (
-                                        <span className="material-symbols-outlined text-sm">send</span>
-                                    )}
+                                    <span className="material-symbols-outlined mb-1">add_a_photo</span>
+                                    <span className="text-xs font-bold uppercase tracking-wider">Snap & Solve</span>
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('voice')}
+                                    className={`flex-1 flex flex-col items-center py-4 transition-all border-b-2 ${activeTab === 'voice' ? 'text-primary border-primary bg-primary/5' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 border-transparent'}`}
+                                >
+                                    <span className="material-symbols-outlined mb-1">mic</span>
+                                    <span className="text-xs font-bold uppercase tracking-wider">Voice</span>
                                 </button>
                             </div>
-                        </div>
-                        <div className="mt-2 flex items-center justify-between px-1">
-                            <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Tutor Mode: Calculus &amp; Mechanics</span>
-                            <button className="text-[10px] text-primary font-bold hover:underline">Change</button>
-                        </div>
-                    </div>
-                </aside>
 
-                {/* Main Solution Panel */}
-                <div className="flex-1 flex flex-col bg-slate-50 dark:bg-[#0d1117] overflow-hidden">
-                    {/* Progress / Streaming Indicator */}
-                    <div className="px-6 py-3 border-b border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark">
-                        <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                                <span className="relative flex h-2 w-2">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                                </span>
-                                <h3 className="text-sm font-semibold">Generating Solution</h3>
-                            </div>
-                            <span className="text-xs font-medium text-slate-500">Step 3 of 4 · 75% Complete</span>
-                        </div>
-                        <div className="w-full h-1 bg-slate-100 dark:bg-surface-dark rounded-full overflow-hidden">
-                            <div className="bg-primary h-full rounded-full transition-all duration-500" style={{ width: '75%' }}></div>
-                        </div>
-                    </div>
+                            {/* Tab Content */}
+                            <div className="p-6">
+                                {activeTab === 'snap' && (
+                                    <div className="flex flex-col gap-6 relative min-h-[400px]">
+                                        {/* STAGE 1: INPUT */}
+                                        {workflowStage === 'input' && (
+                                            <>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Subject Area</label>
+                                                        <div className="relative">
+                                                            <select className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg h-12 px-4 appearance-none focus:ring-2 focus:ring-primary outline-none">
+                                                                <option>Mathematics</option>
+                                                                <option>Physics</option>
+                                                                <option>Chemistry</option>
+                                                            </select>
+                                                            <span className="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-slate-400">expand_more</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Difficulty</label>
+                                                        <div className="relative">
+                                                            <select className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg h-12 px-4 appearance-none focus:ring-2 focus:ring-primary outline-none">
+                                                                <option>High School</option>
+                                                                <option>College</option>
+                                                            </select>
+                                                            <span className="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-slate-400">expand_more</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
 
-                    {/* Tab Navigation */}
-                    <div className="bg-white dark:bg-background-dark px-6 border-b border-slate-200 dark:border-border-dark">
-                        <div className="flex gap-8">
-                            <button
-                                onClick={() => setActiveTab('steps')}
-                                className={`flex items-center gap-2 py-4 border-b-2 font-bold text-sm transition-colors ${activeTab === 'steps' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white'}`}
-                            >
-                                <span className="material-symbols-outlined text-lg">format_list_numbered</span>
-                                Steps
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('verification')}
-                                className={`flex items-center gap-2 py-4 border-b-2 font-medium text-sm transition-colors ${activeTab === 'verification' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white'}`}
-                            >
-                                <span className="material-symbols-outlined text-lg">verified</span>
-                                Verification
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('concepts')}
-                                className={`flex items-center gap-2 py-4 border-b-2 font-medium text-sm transition-colors ${activeTab === 'concepts' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white'}`}
-                            >
-                                <span className="material-symbols-outlined text-lg">auto_stories</span>
-                                Concepts
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('practice')}
-                                className={`flex items-center gap-2 py-4 border-b-2 font-medium text-sm transition-colors ${activeTab === 'practice' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white'}`}
-                            >
-                                <span className="material-symbols-outlined text-lg">quiz</span>
-                                Practice
-                            </button>
-                        </div>
-                    </div>
+                                                <label
+                                                    onDrop={handleDrop}
+                                                    onDragOver={handleDragOver}
+                                                    className="group relative flex flex-col items-center justify-center border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl px-6 py-16 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer"
+                                                >
+                                                    <input
+                                                        type="file"
+                                                        className="hidden"
+                                                        onChange={handleFileSelect}
+                                                        accept="image/*,application/pdf"
+                                                    />
+                                                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
+                                                        <span className="material-symbols-outlined text-3xl">upload_file</span>
+                                                    </div>
+                                                    <h3 className="text-lg font-bold mb-1">Drag & Drop or Click</h3>
+                                                    <p className="text-slate-500 dark:text-slate-400 text-center max-w-sm mb-6">
+                                                        Upload an image of your math problem. Max 5MB.
+                                                    </p>
+                                                    <div className="flex gap-3">
+                                                        <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-[10px] font-bold text-slate-500 uppercase">JPG</span>
+                                                        <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-[10px] font-bold text-slate-500 uppercase">PNG</span>
+                                                    </div>
+                                                </label>
 
-                    {/* Solution Content Area */}
-                    <div className="flex-1 overflow-y-auto p-8 max-w-4xl mx-auto w-full space-y-8">
+                                                <div className="flex items-center justify-center">
+                                                    <label className="flex items-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-90 px-8 py-3 rounded-lg font-bold transition-all shadow-lg cursor-pointer">
+                                                        <input
+                                                            type="file"
+                                                            className="hidden"
+                                                            accept="image/*"
+                                                            capture="environment"
+                                                            onChange={handleFileSelect}
+                                                        />
+                                                        <span className="material-symbols-outlined">photo_camera</span>
+                                                        <span>Snap Photo</span>
+                                                    </label>
+                                                </div>
+                                            </>
+                                        )}
 
-                        {isSolving && (
-                            <div className="flex flex-col items-center justify-center py-20 opacity-50">
-                                <div className="size-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-                                <p className="text-lg font-bold text-slate-500">Generating Step-by-Step Solution...</p>
-                                <p className="text-sm text-slate-400">Consulting external knowledge bases</p>
-                            </div>
-                        )}
-
-                        {!isSolving && !solution && (
-                            <div className="flex flex-col items-center justify-center py-20 opacity-40">
-                                <span className="material-symbols-outlined text-6xl mb-4">school</span>
-                                <p className="text-lg font-bold">Ready to Learn</p>
-                                <p className="text-sm">Enter a problem or upload an image to start.</p>
-                            </div>
-                        )}
-
-                        {!isSolving && solution && (
-                            <>
-                                <div className="flex items-center justify-between">
-                                    <h1 className="text-2xl font-bold tracking-tight">{solution.summary}</h1>
-                                    <div className="flex gap-2">
-                                        <button className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold border border-slate-200 dark:border-border-dark rounded-lg hover:bg-white dark:hover:bg-surface-dark transition-colors">
-                                            <span className="material-symbols-outlined text-sm">download</span>
-                                            Export PDF
-                                        </button>
-                                        <button className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
-                                            <span className="material-symbols-outlined text-sm">share</span>
-                                            Share
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {solution.steps.map((step, idx) => (
-                                    <div key={idx} className="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm overflow-hidden">
-                                        <div className="bg-slate-50 dark:bg-white/5 px-6 py-3 border-b border-slate-200 dark:border-border-dark flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <span className="flex items-center justify-center size-6 bg-primary text-white text-xs font-bold rounded">{idx + 1}</span>
-                                                <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500">{step.title}</h4>
+                                        {/* STAGE 1.5: SELECTING (Cropper) */}
+                                        {workflowStage === 'selecting' && capturedImage && (
+                                            <div className="absolute inset-0 z-50">
+                                                <ImageCropper
+                                                    imageSrc={capturedImage}
+                                                    onCancel={resetWorkflow}
+                                                    onConfirm={handleCropConfirm}
+                                                />
                                             </div>
-                                            <button className="text-primary"><span className="material-symbols-outlined text-lg">info</span></button>
+                                        )}
+
+                                        {/* STAGE 2: PROCESSING */}
+                                        {workflowStage === 'processing' && (
+                                            <div className="absolute inset-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center rounded-xl p-8">
+                                                <div className="w-full max-w-sm space-y-6 text-center">
+                                                    {/* Animated Icon */}
+                                                    <div className="relative size-16 mx-auto">
+                                                        <div className="absolute inset-0 border-4 border-slate-100 dark:border-slate-800 rounded-full"></div>
+                                                        <div className="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
+                                                        <div className="absolute inset-0 flex items-center justify-center">
+                                                            <span className="material-symbols-outlined text-2xl text-primary font-bold">document_scanner</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="space-y-1">
+                                                        <h3 className="text-lg font-bold dark:text-white">
+                                                            {PROGRESS_STEPS[progressStep]?.label || "Processing..."}
+                                                        </h3>
+                                                        <p className="text-xs text-slate-500">
+                                                            Please wait while we analyze your image.
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Progress Bar */}
+                                                    <div className="space-y-2">
+                                                        <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                            <span>Progress</span>
+                                                            <span>{PROGRESS_STEPS[progressStep]?.percent || 0}%</span>
+                                                        </div>
+                                                        <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                                            <div
+                                                                className="h-full bg-primary transition-all duration-500 ease-out"
+                                                                style={{ width: `${PROGRESS_STEPS[progressStep]?.percent || 0}%` }}
+                                                            ></div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Long Loading Warning */}
+                                                    {(processingTime > 8) && (
+                                                        <div className="flex gap-2 items-center justify-center text-amber-600 dark:text-amber-400 text-xs">
+                                                            <span className="material-symbols-outlined text-sm">schedule</span>
+                                                            <p>Taking longer than usual...</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* STAGE 3: REVIEW (MANDATORY) */}
+                                        {workflowStage === 'review' && (
+                                            <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <h3 className="font-bold flex items-center gap-2 text-lg">
+                                                        <span className="material-symbols-outlined text-green-500">check_circle</span>
+                                                        Review & OCR Check
+                                                    </h3>
+                                                    <button onClick={resetWorkflow} className="text-xs text-slate-500 hover:text-red-500 underline">
+                                                        Retake Photo
+                                                    </button>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {/* Left: Original Image */}
+                                                    <div className="bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden relative group h-48 md:h-auto">
+                                                        {/* Left: Original Image (Cropped) */}
+                                                        <div className="bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden relative group h-48 md:h-auto flex items-center justify-center">
+                                                            {croppedImage && (
+                                                                <img
+                                                                    src={croppedImage}
+                                                                    alt="Original Capture"
+                                                                    className="max-w-full max-h-full object-contain"
+                                                                />
+                                                            )}
+                                                            <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] px-2 py-1 text-center">
+                                                                Your Selection
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Right: Editable Math */}
+                                                    <div className="flex flex-col gap-2">
+                                                        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/30 rounded-lg p-3 flex justify-between items-center">
+                                                            <span className="text-xs font-bold text-green-700 dark:text-green-300 uppercase tracking-wider">
+                                                                AI Confidence
+                                                            </span>
+                                                            <span className="font-mono font-bold text-green-600 dark:text-green-400">
+                                                                {(ocrConfidence * 100).toFixed(0)}%
+                                                            </span>
+                                                        </div>
+
+                                                        <div className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">
+                                                            Detected Math (Editable)
+                                                        </div>
+                                                        <div className="relative border border-primary ring-2 ring-primary/20 rounded-xl bg-white dark:bg-slate-900 overflow-hidden shadow-lg min-h-[120px] flex flex-col">
+                                                            <div className="flex-1 p-2">
+                                                                <MathInput
+                                                                    ref={mathInputRef}
+                                                                    value={query}
+                                                                    onChange={setQuery}
+                                                                    onEnter={handleSolve}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/20 p-3 rounded-lg text-xs text-amber-800 dark:text-amber-200 flex gap-2">
+                                                    <span className="material-symbols-outlined text-sm">info</span>
+                                                    <span>Please verify symbols (exponents, minus signs) match your image before solving.</span>
+                                                </div>
+
+                                                <button
+                                                    onClick={handleSolve}
+                                                    className="w-full bg-primary hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-lg shadow-xl shadow-primary/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
+                                                >
+                                                    <span>Confirm & Solve</span>
+                                                    <span className="material-symbols-outlined">arrow_forward</span>
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                {activeTab === 'text' && (
+                                    <div className="flex flex-col gap-6 relative">
+                                        {/* 2. Visual Math Editor Layout */}
+
+                                        {/* Mode Bar */}
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-1 flex gap-2 overflow-x-auto pb-2 scrollbar-hide items-center">
+                                                {MODES.slice(0, 5).map(mode => (
+                                                    <button
+                                                        key={mode.id}
+                                                        onClick={() => {
+                                                            setActiveMode(mode.id === activeMode ? null : mode.id);
+                                                            setIsSeeAllOpen(false);
+                                                        }}
+                                                        className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all border ${activeMode === mode.id
+                                                            ? 'bg-primary text-white border-primary shadow-lg shadow-primary/25'
+                                                            : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-primary/50'
+                                                            }`}
+                                                    >
+                                                        {mode.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+
+                                            {/* See All Dropdown */}
+                                            <div className="relative pb-2">
+                                                <button
+                                                    onClick={() => setIsSeeAllOpen(!isSeeAllOpen)}
+                                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-all border ${isSeeAllOpen || MODES.slice(5).some(m => m.id === activeMode)
+                                                        ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 shadow-sm'
+                                                        : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-primary/50'
+                                                        }`}
+                                                >
+                                                    <span>See All</span>
+                                                    <span className={`material-symbols-outlined text-lg transition-transform ${isSeeAllOpen ? 'rotate-180' : ''}`}>expand_more</span>
+                                                </button>
+
+                                                {isSeeAllOpen && (
+                                                    <div className="absolute top-full right-0 mt-2 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] z-[100] overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top-right">
+                                                        <div className="max-h-80 overflow-y-auto custom-scrollbar">
+                                                            {MODES.slice(5).map((mode) => (
+                                                                <button
+                                                                    key={mode.id}
+                                                                    onClick={() => {
+                                                                        setActiveMode(mode.id);
+                                                                        setIsSeeAllOpen(false);
+                                                                    }}
+                                                                    className={`w-full py-4 text-center transition-colors border-b border-slate-50 dark:border-slate-800/50 last:border-0 font-bold text-slate-700 dark:text-slate-200 hover:bg-primary/5 hover:text-primary dark:hover:bg-primary/10 ${activeMode === mode.id ? 'bg-primary/5 text-primary' : ''}`}
+                                                                >
+                                                                    {mode.label.toLowerCase()}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
-                                        <div className="p-6">
-                                            <div className="bg-slate-50 dark:bg-[#0d1117] p-4 rounded-lg flex flex-col items-start gap-3 border border-slate-100 dark:border-border-dark">
-                                                {/* Render math content */}
-                                                <div className="text-base leading-relaxed">
-                                                    {step.content.split('\n').map((line, i) => (
-                                                        <p key={i} className="mb-2 latex-block">{line}</p>
-                                                    ))}
+
+                                        {/* Input Area with Dropdown Anchor */}
+                                        <div className="relative group z-10">
+                                            <div className={`bg-white dark:bg-slate-900 border rounded-xl transition-all shadow-sm flex flex-col min-h-[150px] ${activeMode ? 'border-primary ring-1 ring-primary' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
+                                                }`}>
+
+                                                {/* Suggestions Dropdown (Combobox) */}
+                                                {activeMode && (
+                                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl overflow-hidden z-50">
+                                                        <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-2 border-b border-slate-100 dark:border-slate-800 text-xs font-bold text-slate-500 uppercase tracking-widest flex justify-between">
+                                                            <span>{MODES.find(m => m.id === activeMode)?.label} Templates</span>
+                                                            <span className="text-[10px]">Select to insert</span>
+                                                        </div>
+                                                        <div className="max-h-64 overflow-y-auto p-1">
+                                                            {MODES.find(m => m.id === activeMode)?.suggestions.map((suggestion, idx) => (
+                                                                <button
+                                                                    key={idx}
+                                                                    onClick={() => handleSuggestionClick(suggestion)}
+                                                                    className="w-full text-left px-4 py-3 rounded-lg hover:bg-primary/5 hover:text-primary dark:hover:bg-primary/10 transition-colors flex items-center gap-3 group/item"
+                                                                >
+                                                                    <span className="w-8 h-8 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover/item:text-primary transition-colors text-xs font-mono">
+                                                                        TeX
+                                                                    </span>
+                                                                    <div className="flex-1">
+                                                                        <span
+                                                                            className="font-medium text-slate-700 dark:text-slate-200"
+                                                                            dangerouslySetInnerHTML={{
+                                                                                __html: katex.renderToString(suggestion.title, {
+                                                                                    throwOnError: false,
+                                                                                    displayMode: false
+                                                                                })
+                                                                            }}
+                                                                        />
+                                                                    </div>
+                                                                    <span className="material-symbols-outlined text-slate-300 group-hover/item:text-primary text-sm opacity-0 group-hover/item:opacity-100 transition-all">
+                                                                        arrow_forward
+                                                                    </span>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                <MathInput
+                                                    ref={mathInputRef}
+                                                    value={query}
+                                                    onChange={setQuery}
+                                                    onEnter={handleSolve}
+                                                    className="flex-1 p-2"
+                                                />
+
+                                                {/* Action Bar inside Input */}
+                                                <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 rounded-b-xl">
+                                                    <div className="flex items-center gap-2 text-xs text-slate-400">
+                                                        <span className="material-symbols-outlined text-sm">keyboard</span>
+                                                        <span>Math Mode Active</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={handleClear}
+                                                            className="flex items-center gap-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-4 py-2 rounded-lg font-medium transition-colors text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                                                        >
+                                                            <span className="material-symbols-outlined text-sm">backspace</span>
+                                                            Clear
+                                                        </button>
+                                                        <button
+                                                            onClick={handleSolve}
+                                                            disabled={isSolving || !query.trim()}
+                                                            className="flex items-center gap-2 bg-primary hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-bold transition-all shadow-lg shadow-primary/25 text-sm"
+                                                        >
+                                                            {isSolving ? 'Solving...' : 'Solve'}
+                                                            <span className="material-symbols-outlined text-sm">auto_awesome</span>
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                ))}
-
-                                {/* Final Answer */}
-                                <div className="bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-xl p-6">
-                                    <h4 className="text-sm font-bold uppercase tracking-wider text-green-700 dark:text-green-400 mb-2">Final Answer</h4>
-                                    <div className="text-xl font-bold text-green-800 dark:text-green-200">
-                                        {solution.final_answer}
+                                )}
+                                {activeTab === 'voice' && (
+                                    <div className="p-8 text-center text-slate-500">
+                                        Voice input mode...
                                     </div>
-                                </div>
-                            </>
-                        )}
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Math Preview Section (Mock) */}
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 transition-colors">
+                            <div className="flex items-center justify-between mb-4">
+                                <h4 className="font-bold flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                                    <span className="material-symbols-outlined text-primary">function</span>
+                                    Live Math Preview
+                                </h4>
+                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">LaTeX Engine v2.4</span>
+                            </div>
+                            <div className="w-full h-32 math-preview-bg dark:bg-slate-800/50 rounded-lg flex items-center justify-center border border-slate-100 dark:border-slate-800">
+                                <p className="text-slate-400 italic text-sm">Waiting for input...</p>
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Context Action Bar */}
-                    <div className="p-4 bg-white dark:bg-background-dark border-t border-slate-200 dark:border-border-dark flex justify-center gap-4">
-                        <button className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-surface-dark rounded-lg text-sm font-bold hover:bg-slate-200 dark:hover:bg-border-dark transition-colors">
-                            <span className="material-symbols-outlined text-lg">psychology_alt</span>
-                            Explain the logic
-                        </button>
-                        <button className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-surface-dark rounded-lg text-sm font-bold hover:bg-slate-200 dark:hover:bg-border-dark transition-colors">
-                            <span className="material-symbols-outlined text-lg">add_circle</span>
-                            Apply air resistance
-                        </button>
-                        <button className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-surface-dark rounded-lg text-sm font-bold hover:bg-slate-200 dark:hover:bg-border-dark transition-colors">
-                            <span className="material-symbols-outlined text-lg">science</span>
-                            Simulate Lab
-                        </button>
-                    </div>
-                </div>
+                    {/* Sidebar */}
+                    <div className="lg:col-span-4 space-y-6">
+                        {/* Tips Sidebar */}
+                        <div className="bg-primary/5 border border-primary/20 rounded-xl p-6">
+                            <h3 className="text-primary font-bold flex items-center gap-2 mb-4">
+                                <span className="material-symbols-outlined">lightbulb</span>
+                                Good Photo Tips
+                            </h3>
+                            <ul className="space-y-4">
+                                <li className="flex gap-3">
+                                    <span className="w-5 h-5 bg-primary text-white text-[10px] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+                                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed"><strong>Ensure good lighting.</strong> Avoid shadows covering the equations or variables.</p>
+                                </li>
+                                <li className="flex gap-3">
+                                    <span className="w-5 h-5 bg-primary text-white text-[10px] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
+                                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed"><strong>Focus on one problem.</strong> Crop the image to show only the relevant task.</p>
+                                </li>
+                                <li className="flex gap-3">
+                                    <span className="w-5 h-5 bg-primary text-white text-[10px] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
+                                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed"><strong>Include diagrams.</strong> If the problem references a graph, make sure it's in the shot.</p>
+                                </li>
+                            </ul>
+                        </div>
 
-                {/* Right Toolbelt (Collapsible) */}
-                <aside className="w-14 flex-shrink-0 border-l border-slate-200 dark:border-border-dark flex flex-col items-center py-6 gap-6 bg-white dark:bg-background-dark">
-                    <button className="group relative p-2 rounded-lg hover:bg-primary/10 transition-colors">
-                        <span className="material-symbols-outlined text-slate-500 group-hover:text-primary">draw</span>
-                        <span className="absolute left-[-80px] top-1 bg-slate-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">Canvas</span>
-                    </button>
-                    <button className="group relative p-2 rounded-lg hover:bg-primary/10 transition-colors">
-                        <span className="material-symbols-outlined text-slate-500 group-hover:text-primary">calculate</span>
-                        <span className="absolute left-[-90px] top-1 bg-slate-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">Calculator</span>
-                    </button>
-                    <button className="group relative p-2 rounded-lg hover:bg-primary/10 transition-colors">
-                        <span className="material-symbols-outlined text-slate-500 group-hover:text-primary">book</span>
-                        <span className="absolute left-[-95px] top-1 bg-slate-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">Reference</span>
-                    </button>
-                    <div className="flex-1"></div>
-                    <button className="p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white">
-                        <span className="material-symbols-outlined">help_outline</span>
-                    </button>
-                </aside>
-            </main>
-
-            {/* OVERLAYS */}
-
-            {/* STAGE: SELECTION */}
-            {workflowStage === 'selecting' && capturedImage && (
-                <div className="fixed inset-0 z-[100] bg-slate-900 flex flex-col">
-                    <ImageCropper
-                        imageSrc={capturedImage}
-                        onCancel={resetWorkflow}
-                        onConfirm={handleCropConfirm}
-                    />
-                </div>
-            )}
-
-            {/* STAGE: PROCESSING */}
-            {workflowStage === 'processing' && (
-                <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-700">
-                        <div className="text-center space-y-6">
-                            {/* Animated Icon */}
-                            <div className="relative size-20 mx-auto">
-                                <div className="absolute inset-0 border-4 border-slate-100 dark:border-slate-800 rounded-full"></div>
-                                <div className="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="material-symbols-outlined text-3xl text-primary font-bold">document_scanner</span>
-                                </div>
+                        {/* Recent Solutions */}
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 transition-colors">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-bold text-slate-900 dark:text-white">Recent History</h3>
+                                <a className="text-primary text-xs font-semibold hover:underline" href="#">View All</a>
                             </div>
-
-                            <div className="space-y-2">
-                                <h3 className="text-xl font-bold dark:text-white">
-                                    {PROGRESS_STEPS[progressStep]?.label || "Processing..."}
-                                </h3>
-                                <p className="text-sm text-slate-500">
-                                    Please wait while we analyze your image.
-                                </p>
+                            <div className="space-y-3">
+                                {history.length === 0 ? (
+                                    <p className="text-sm text-slate-500 italic">No history found.</p>
+                                ) : (
+                                    history.map((session) => (
+                                        <div
+                                            key={session.id}
+                                            onClick={() => router.push(`/chat/${session.id}`)}
+                                            className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:border-primary/30 transition-colors cursor-pointer group"
+                                        >
+                                            <p className="text-xs font-bold text-primary mb-1 uppercase tracking-tighter">Session #{session.id}</p>
+                                            <p className="text-sm font-medium line-clamp-1 mb-2 text-slate-900 dark:text-slate-200">{session.title}</p>
+                                            <div className="flex justify-between items-center text-[10px] text-slate-400 font-medium">
+                                                <span>{new Date(session.created_at).toLocaleDateString()}</span>
+                                                <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
                             </div>
+                        </div>
 
-                            {/* Progress Bar */}
-                            <div className="space-y-2">
-                                <div className="flex justify-between text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                    <span>Progress</span>
-                                    <span>{PROGRESS_STEPS[progressStep]?.percent || 0}%</span>
-                                </div>
-                                <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-primary transition-all duration-500 ease-out"
-                                        style={{ width: `${PROGRESS_STEPS[progressStep]?.percent || 0}%` }}
-                                    ></div>
-                                </div>
+                        {/* Pro Callout */}
+                        <div className="relative overflow-hidden bg-slate-900 rounded-xl p-6 text-white group">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-3xl -mr-16 -mt-16 group-hover:bg-primary/40 transition-colors"></div>
+                            <div className="relative z-10">
+                                <h4 className="text-lg font-bold mb-2">uask Pro</h4>
+                                <p className="text-slate-400 text-sm mb-4">Unlock unlimited step-by-step solutions and 1-on-1 expert tutor sessions.</p>
+                                <button className="w-full bg-white text-slate-900 font-bold py-2.5 rounded-lg text-sm hover:bg-slate-100 transition-colors">
+                                    Upgrade Now
+                                </button>
                             </div>
-
-                            {/* Long Loading Warning */}
-                            {(processingTime > 8) && (
-                                <div className="flex gap-3 items-start p-3 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 rounded-lg text-xs text-left">
-                                    <span className="material-symbols-outlined text-sm shrink-0">info</span>
-                                    <p>This is taking a bit longer than usual (likely initializing the math models). Thanks for your patience!</p>
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>
-            )}
+            </main>
 
+            <footer className="max-w-7xl mx-auto px-4 py-8 border-t border-slate-200 dark:border-slate-800 text-center">
+                <p className="text-slate-400 text-xs font-medium">© 2024 uask.ai - Intelligent Math & Physics Tutoring Platform</p>
+            </footer>
         </div>
     );
 }

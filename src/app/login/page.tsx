@@ -40,7 +40,7 @@ export default function LoginPage() {
             localStorage.setItem("user", JSON.stringify(data));
 
             // Redirect
-            router.push("/dashboard");
+            router.push("/solve");
 
         } catch (err: any) {
             setError(err.message);

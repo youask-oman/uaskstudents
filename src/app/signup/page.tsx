@@ -20,7 +20,8 @@ export default function SignupPage() {
         setError("");
 
         try {
-            const response = await fetch("http://localhost:8000/api/v1/signup", {
+            // Step 1: Create account
+            const signupResponse = await fetch("http://localhost:8000/api/v1/signup", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -31,13 +32,35 @@ export default function SignupPage() {
                 }),
             });
 
-            if (!response.ok) {
-                const data = await response.json();
+            if (!signupResponse.ok) {
+                const data = await signupResponse.json();
                 throw new Error(data.detail || "Signup failed");
             }
 
-            // Success - show verification message
-            setSuccess(true);
+            // Step 2: Auto-login after successful signup
+            const loginResponse = await fetch("http://localhost:8000/api/v1/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password }),
+            });
+
+            if (loginResponse.ok) {
+                const loginData = await loginResponse.json();
+
+                // Store Auth Data
+                localStorage.setItem("token", loginData.access_token);
+                localStorage.setItem("user_id", loginData.user_id.toString());
+                localStorage.setItem("user_name", loginData.full_name);
+                localStorage.setItem("user_role", loginData.role);
+                localStorage.setItem("user_avatar", loginData.avatar_url || "");
+                localStorage.setItem("user", JSON.stringify(loginData));
+
+                // Redirect to homepage
+                router.push("/");
+            } else {
+                // If auto-login fails, show success message and redirect to login
+                setSuccess(true);
+            }
 
         } catch (err: any) {
             setError(err.message);

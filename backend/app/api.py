@@ -6,7 +6,7 @@ import uuid
 import hashlib
 
 from app.database import get_session
-from app.models import User, ChatSession, ChatMessage, UsageLog
+from app.models import User, ChatSession, ChatMessage, UsageLog, OCRJob, Payment, PromoCode
 from app.services.vision import VisionService, vision_service
 from app.services.solver import solver_service
 from app.services.rag import rag_service
@@ -41,10 +41,40 @@ class LoginRequest(BaseModel):
     password: str
 
 class SignupRequest(BaseModel):
-    full_name: str
     email: str
     password: str
+    full_name: str
     academic_level: Optional[str] = None
+
+class ProfileUpdateRequest(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    academic_level: Optional[str] = None
+    timezone: Optional[str] = None
+
+class PreferenceUpdateRequest(BaseModel):
+    theme: Optional[str] = None
+    preferred_language: Optional[str] = None
+    solving_mode: Optional[str] = None
+
+class UserUsageStats(BaseModel):
+    questions_count: int
+    questions_total: int
+    scans_count: int
+    scans_total: int
+
+class UserProfileResponse(BaseModel):
+    id: int
+    full_name: str
+    email: str
+    academic_level: Optional[str]
+    timezone: str
+    theme: str
+    preferred_language: str
+    solving_mode: str
+    subscription_tier: str
+    subscription_status: str
+    usage: UserUsageStats
 
 @api_router.post("/signup")
 async def signup(form_data: SignupRequest, session: Session = Depends(get_session)):
@@ -131,11 +161,36 @@ async def solve_problem(
 ):
     """
     Main Orchestrator Endpoint:
-    1. OCR (if image)
-    2. RAG Retrieval
-    3. Solver (LLM)
-    4. DB Persistence
+    1. Check token limit
+    2. OCR (if image)
+    3. RAG Retrieval
+    4. Solver (LLM)
+    5. DB Persistence
+    6. Track tokens
     """
+    # Check token limit BEFORE processing
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Check and reset monthly tokens if needed
+    from datetime import datetime, timedelta
+    now = datetime.utcnow()
+    if (now - user.last_token_reset).days >= 30:
+        user.tokens_used_this_month = 0
+        user.last_token_reset = now
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+    
+    # Enforce 1M token limit
+    MONTHLY_LIMIT = 1_000_000
+    if user.tokens_used_this_month >= MONTHLY_LIMIT:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Monthly token limit of {MONTHLY_LIMIT:,} tokens exceeded. Resets on {(user.last_token_reset + timedelta(days=30)).strftime('%Y-%m-%d')}."
+        )
+    
     # 1. OCR Processing (Legacy/Vision fallback if needed, but mostly handled by frontend passing text now)
     # The frontend now calls /latex-from-image first, then passes the text here.
     # So we don't need to call ocr_service here anymore.
@@ -143,6 +198,134 @@ async def solve_problem(
 
     base_query = f"{request.text_query or ''}\n{extracted_text}".strip()
     
+    # ------------------------------------------------------------------
+# Billing & User Location Endpoints
+# ------------------------------------------------------------------
+
+class SubscribeRequest(BaseModel):
+    user_id: int
+    plan_id: str # pro, ultra
+    payment_method: str = "card"
+    card_last4: Optional[str] = None
+    ip_address: Optional[str] = None
+    country: Optional[str] = None
+
+class LocationUpdateRequest(BaseModel):
+    user_id: int
+    ip_address: Optional[str] = None
+    country: Optional[str] = None
+
+@api_router.post("/billing/subscribe")
+async def subscribe_user(request: SubscribeRequest, session: Session = Depends(get_session)):
+    user = session.get(User, request.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Simulate Payment Processing
+    transaction_id = f"tx_{datetime.utcnow().timestamp()}_{user.id}"
+    amount = 9.99 if request.plan_id == "pro" else 0.00
+    
+    # Create Payment Record
+    payment = Payment(
+        user_id=user.id,
+        amount=amount,
+        currency="USD",
+        status="completed",
+        transaction_id=transaction_id,
+        payment_method=request.payment_method,
+        ip_address=request.ip_address
+    )
+    session.add(payment)
+    
+    # Update User Location if provided
+    if request.ip_address:
+        user.ip_address = request.ip_address
+    if request.country:
+        user.country = request.country
+        
+    # Update Subscription
+    user.subscription_tier = request.plan_id
+    user.subscription_status = "active"
+    user.subscription_expiry = datetime.utcnow() + timedelta(days=30)
+    
+    session.add(user)
+    session.commit()
+    session.refresh(payment)
+    
+    return {"status": "success", "transaction_id": transaction_id, "plan": request.plan_id}
+
+@api_router.get("/billing/history")
+async def get_billing_history(user_id: int, session: Session = Depends(get_session)):
+    payments = session.exec(select(Payment).where(Payment.user_id == user_id).order_by(Payment.created_at.desc())).all()
+    return payments
+
+@api_router.post("/user/location")
+async def update_user_location(request: LocationUpdateRequest, session: Session = Depends(get_session)):
+    """Update user IP and country for security logging"""
+    user = session.get(User, request.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if request.ip_address:
+        user.ip_address = request.ip_address
+    if request.country:
+        user.country = request.country
+        
+    session.add(user)
+    session.commit()
+    return {"status": "updated", "ip": user.ip_address, "country": user.country}
+
+# ------------------------------------------------------------------
+# Promo Code Endpoints
+# ------------------------------------------------------------------
+
+class PromoValidateRequest(BaseModel):
+    code: str
+
+class PromoCreateRequest(BaseModel):
+    code: str
+    discount_percent: int
+    max_uses: Optional[int] = None
+
+@api_router.post("/billing/validate-promo")
+async def validate_promo(request: PromoValidateRequest, session: Session = Depends(get_session)):
+    code_upper = request.code.upper().strip()
+    promo = session.exec(select(PromoCode).where(PromoCode.code == code_upper)).first()
+    
+    if not promo:
+        return {"valid": False, "message": "Invalid code"}
+        
+    if not promo.is_active:
+        return {"valid": False, "message": "Code is inactive"}
+        
+    if promo.valid_until and promo.valid_until < datetime.utcnow():
+        return {"valid": False, "message": "Code expired"}
+        
+    if promo.max_uses and promo.current_uses >= promo.max_uses:
+        return {"valid": False, "message": "Code usage limit reached"}
+        
+    return {
+        "valid": True, 
+        "message": "Valid code", 
+        "discount_percent": promo.discount_percent,
+        "code": promo.code
+    }
+
+@api_router.post("/admin/promo-codes")
+async def create_promo_code(request: PromoCreateRequest, session: Session = Depends(get_session)):
+    # In prod, check admin role here
+    new_promo = PromoCode(
+        code=request.code.upper().strip(),
+        discount_percent=request.discount_percent,
+        max_uses=request.max_uses
+    )
+    session.add(new_promo)
+    try:
+        session.commit()
+        return {"status": "created", "code": new_promo.code}
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=400, detail="Code already exists or invalid")
     # Prepend Mode Context
     if request.mode and request.mode != "general":
         final_query = f"[MODE: {request.mode.upper()}] {base_query}"
@@ -159,11 +342,12 @@ async def solve_problem(
     solution_data = await solver_service.solve_problem(final_query)
 
     # 4. Persistence
-    # Create Session
+    # Create Session (NOT SAVED by default)
     new_chat = ChatSession(
         user_id=user_id,
         title=solution_data.get("problem", {}).get("goal", "New Problem")[:50],
-        subject=request.subject or "General"
+        subject=request.subject or "General",
+        is_saved=False  # Explicitly set to False
     )
     session.add(new_chat)
     session.commit()
@@ -187,8 +371,15 @@ async def solve_problem(
     )
     session.add(ai_msg)
     
+    # Estimate tokens used (rough estimate: ~500 tokens per solve)
+    estimated_tokens = 500
+    
+    # Update user's token count
+    user.tokens_used_this_month += estimated_tokens
+    session.add(user)
+    
     # Log Solve Usage
-    session.add(UsageLog(user_id=user_id, action_type="solve_request", tokens_used=100))
+    session.add(UsageLog(user_id=user_id, action_type="solve_request", tokens_used=estimated_tokens))
     
     session.commit()
 
@@ -199,15 +390,32 @@ async def solve_problem(
     )
 
 @api_router.get("/history", response_model=List[ChatHistoryItem])
-async def get_history(user_id: int, session: Session = Depends(get_session)):
-    stmt = select(ChatSession).where(ChatSession.user_id == user_id).order_by(ChatSession.created_at.desc())
+async def get_history(
+    user_id: int, 
+    saved_only: bool = True,
+    session: Session = Depends(get_session)
+):
+    # Filter based on saved_only flag
+    if saved_only:
+        stmt = select(ChatSession).where(
+            ChatSession.user_id == user_id,
+            ChatSession.is_saved == True
+        ).order_by(ChatSession.created_at.desc())
+    else:
+        # Return ALL sessions for this user
+        stmt = select(ChatSession).where(
+            ChatSession.user_id == user_id
+        ).order_by(ChatSession.created_at.desc())
+        
     results = session.exec(stmt).all()
     
     return [
         ChatHistoryItem(
             id=chat.id, 
             title=chat.title, 
-            created_at=chat.created_at.isoformat()
+            created_at=chat.created_at.isoformat(),
+            subject=chat.subject or "Math",
+            is_saved=chat.is_saved 
         ) 
         for chat in results
     ]
@@ -248,3 +456,335 @@ async def get_session_details(session_id: int, session: Session = Depends(get_se
             for msg in chat_session.messages
         ]
     )
+
+class QuestionRequest(BaseModel):
+    session_id: int
+    user_id: int
+    query: str
+
+@api_router.post("/ask-question")
+async def ask_question(request: QuestionRequest, db: Session = Depends(get_session)):
+    # 1. Fetch Context
+    chat_session = db.get(ChatSession, request.session_id)
+    if not chat_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    # Get the last assistant message structure for context
+    last_assistant_msg = db.exec(
+        select(ChatMessage)
+        .where(ChatMessage.session_id == request.session_id)
+        .where(ChatMessage.role == "assistant")
+        .order_by(ChatMessage.created_at.desc())
+    ).first()
+    
+    context = last_assistant_msg.structured_data if last_assistant_msg else {}
+    
+    # 2. Get Response from SolverService
+    result = await solver_service.get_chat_response(request.query, context)
+    
+    # 3. Save User Message
+    db.add(ChatMessage(
+        session_id=request.session_id,
+        role="user",
+        content=request.query
+    ))
+    
+    # 4. Save AI Response
+    ai_msg = ChatMessage(
+        session_id=request.session_id,
+        role="assistant",
+        content=result.get("content", "I am sorry, I could not process that.")
+    )
+    db.add(ai_msg)
+    db.commit()
+    db.refresh(ai_msg)
+    
+    return {
+        "relevant": result.get("relevant", True),
+        "content": ai_msg.content,
+        "created_at": ai_msg.created_at.isoformat()
+    }
+
+# --- Profile & Preferences ---
+
+@api_router.get("/user/profile", response_model=UserProfileResponse)
+async def get_user_profile(user_id: int = Query(...), db: Session = Depends(get_session)):
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Calculate usage (Conceptual/Simplified for now)
+    # Questions count: count solve_request in UsageLog in last 30 days
+    questions_count = db.exec(
+        select(UsageLog)
+        .where(UsageLog.user_id == user_id)
+        .where(UsageLog.action_type == "solve_request")
+    ).all() # Should ideally filter by date
+    
+    scans_count = db.exec(
+        select(OCRJob)
+        .where(OCRJob.user_id == user_id)
+    ).all()
+    
+    return UserProfileResponse(
+        id=user.id,
+        full_name=user.full_name,
+        email=user.email,
+        academic_level=user.academic_level,
+        timezone=user.timezone,
+        theme=user.theme,
+        preferred_language=user.preferred_language,
+        solving_mode=user.solving_mode,
+        subscription_tier=user.subscription_tier,
+        subscription_status=user.subscription_status,
+        usage=UserUsageStats(
+            questions_count=len(questions_count),
+            questions_total=user.quota_questions_total,
+            scans_count=len(scans_count),
+            scans_total=user.quota_scans_total
+        )
+    )
+
+@api_router.post("/user/profile")
+async def update_user_profile(request: ProfileUpdateRequest, user_id: int = Query(...), db: Session = Depends(get_session)):
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if request.full_name is not None:
+        user.full_name = request.full_name
+    if request.email is not None:
+        user.email = request.email
+    if request.academic_level is not None:
+        user.academic_level = request.academic_level
+    if request.timezone is not None:
+        user.timezone = request.timezone
+        
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return {"status": "ok", "message": "Profile updated"}
+
+@api_router.post("/user/preferences")
+async def update_user_preferences(request: PreferenceUpdateRequest, user_id: int = Query(...), db: Session = Depends(get_session)):
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if request.theme is not None:
+        user.theme = request.theme
+    if request.preferred_language is not None:
+        user.preferred_language = request.preferred_language
+    if request.solving_mode is not None:
+        user.solving_mode = request.solving_mode
+        
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return {"status": "ok", "message": "Preferences updated"}
+
+# --- Token Tracking & Save Functionality ---
+
+from datetime import datetime, timedelta
+
+def check_and_reset_monthly_tokens(user: User, db: Session) -> User:
+    """Check if we need to reset monthly token count"""
+    now = datetime.utcnow()
+    # Reset if it's been more than 30 days
+    if (now - user.last_token_reset).days >= 30:
+        user.tokens_used_this_month = 0
+        user.last_token_reset = now
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    return user
+
+def add_tokens_to_user(user_id: int, tokens: int, db: Session):
+    """Add tokens to user's monthly count"""
+    user = db.get(User, user_id)
+    if user:
+        user = check_and_reset_monthly_tokens(user, db)
+        user.tokens_used_this_month += tokens
+        db.add(user)
+        db.commit()
+
+class TokenUsageResponse(BaseModel):
+    tokens_used: int
+    tokens_limit: int
+    tokens_remaining: int
+    reset_date: str
+    is_over_limit: bool
+
+@api_router.get("/user/token-usage", response_model=TokenUsageResponse)
+async def get_token_usage(user_id: int = Query(...), db: Session = Depends(get_session)):
+    """Get current month's token usage for a user"""
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user = check_and_reset_monthly_tokens(user, db)
+    
+    MONTHLY_LIMIT = 1_000_000  # 1M tokens per month
+    tokens_remaining = max(0, MONTHLY_LIMIT - user.tokens_used_this_month)
+    reset_date = (user.last_token_reset + timedelta(days=30)).isoformat()
+    
+    return TokenUsageResponse(
+        tokens_used=user.tokens_used_this_month,
+        tokens_limit=MONTHLY_LIMIT,
+        tokens_remaining=tokens_remaining,
+        reset_date=reset_date,
+        is_over_limit=user.tokens_used_this_month >= MONTHLY_LIMIT
+    )
+
+@api_router.post("/sessions/{session_id}/save")
+async def save_session(session_id: int, db: Session = Depends(get_session)):
+    """Mark a session as saved so it appears in history"""
+    chat_session = db.get(ChatSession, session_id)
+    if not chat_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    chat_session.is_saved = True
+    db.add(chat_session)
+    db.commit()
+    
+    return {"status": "ok", "message": "Session saved successfully", "session_id": session_id}
+
+class SessionDetailResponse(BaseModel):
+    id: int
+    title: str
+    is_saved: bool
+    created_at: str
+
+@api_router.get("/sessions/{session_id}/details", response_model=SessionDetailResponse)
+async def get_session_save_status(session_id: int, db: Session = Depends(get_session)):
+    """Get session details including save status"""
+    chat_session = db.get(ChatSession, session_id)
+    if not chat_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    return SessionDetailResponse(
+        id=chat_session.id,
+        title=chat_session.title,
+        is_saved=chat_session.is_saved,
+        created_at=chat_session.created_at.isoformat()
+    )
+
+# ------------------------------------------------------------------
+# Billing & Payment
+# ------------------------------------------------------------------
+
+class SubscriptionRequest(BaseModel):
+    user_id: int
+    plan_id: str # pro, ultra
+    payment_method: str = "card"
+    ip_address: Optional[str] = None
+
+class LocationUpdateRequest(BaseModel):
+    user_id: int
+    ip_address: Optional[str] = None
+    country: Optional[str] = None
+
+@api_router.post("/billing/subscribe")
+async def subscribe_user(request: SubscriptionRequest, session: Session = Depends(get_session)):
+    user = session.get(User, request.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Simulate Payment
+    tx_id = f"tx_{uuid.uuid4().hex[:12]}"
+    amount = 9.99 if request.plan_id == "pro" else 19.99
+    
+    payment = Payment(
+        user_id=user.id,
+        amount=amount,
+        status="completed",
+        transaction_id=tx_id,
+        payment_method=request.payment_method,
+        ip_address=request.ip_address
+    )
+    session.add(payment)
+    
+    # Update User
+    user.subscription_tier = request.plan_id
+    user.subscription_status = "active"
+    user.subscription_expiry = datetime.utcnow() + timedelta(days=30)
+    if request.ip_address:
+        user.ip_address = request.ip_address
+    
+    session.add(user)
+    session.commit()
+    
+    return {"status": "success", "transaction_id": tx_id, "plan": request.plan_id}
+
+@api_router.get("/billing/history")
+async def get_billing_history(user_id: int = Query(...), session: Session = Depends(get_session)):
+    payments = session.exec(select(Payment).where(Payment.user_id == user_id).order_by(Payment.created_at.desc())).all()
+    return payments
+
+@api_router.post("/user/location")
+async def update_user_location(request: LocationUpdateRequest, session: Session = Depends(get_session)):
+    """Update user IP and country for security logging"""
+    user = session.get(User, request.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if request.ip_address:
+        user.ip_address = request.ip_address
+    if request.country:
+        user.country = request.country
+        
+    session.add(user)
+    session.commit()
+    return {"status": "updated", "ip": user.ip_address, "country": user.country}
+
+# ------------------------------------------------------------------
+# Promo Code Endpoints
+# ------------------------------------------------------------------
+
+class PromoValidateRequest(BaseModel):
+    code: str
+
+class PromoCreateRequest(BaseModel):
+    code: str
+    discount_percent: int
+    max_uses: Optional[int] = None
+
+@api_router.post("/billing/validate-promo")
+async def validate_promo(request: PromoValidateRequest, session: Session = Depends(get_session)):
+    code_upper = request.code.upper().strip()
+    promo = session.exec(select(PromoCode).where(PromoCode.code == code_upper)).first()
+    
+    if not promo:
+        return {"valid": False, "message": "Invalid code"}
+        
+    if not promo.is_active:
+        return {"valid": False, "message": "Code is inactive"}
+        
+    if promo.valid_until and promo.valid_until < datetime.utcnow():
+        return {"valid": False, "message": "Code expired"}
+        
+    if promo.max_uses and promo.current_uses >= promo.max_uses:
+        return {"valid": False, "message": "Code usage limit reached"}
+        
+    return {
+        "valid": True, 
+        "message": "Valid code", 
+        "discount_percent": promo.discount_percent,
+        "code": promo.code
+    }
+
+@api_router.post("/admin/promo-codes")
+async def create_promo_code(request: PromoCreateRequest, session: Session = Depends(get_session)):
+    # In prod, check admin role here
+    new_promo = PromoCode(
+        code=request.code.upper().strip(),
+        discount_percent=request.discount_percent,
+        max_uses=request.max_uses
+    )
+    session.add(new_promo)
+    try:
+        session.commit()
+        return {"status": "created", "code": new_promo.code}
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=400, detail="Code already exists or invalid")

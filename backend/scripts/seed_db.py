@@ -1,6 +1,7 @@
 from sqlmodel import Session, select, SQLModel
 from app.database import engine, create_db_and_tables
 from app.models import User, ChatSession, ChatMessage, UsageLog
+from app.auth import get_password_hash
 from datetime import datetime, timedelta
 
 def active_seed():
@@ -22,7 +23,7 @@ def active_seed():
         admin = User(
             email="admin@uask.ai",
             full_name="System Admin",
-            password_hash="hashed_secret",
+            password_hash=get_password_hash("admin123"),  # Default password: admin123
             role="admin",
             subscription_tier="enterprise",
             subscription_status="active",
@@ -52,7 +53,7 @@ def active_seed():
             s = User(
                 email=email,
                 full_name=name,
-                password_hash="hashed_secret",
+                password_hash=get_password_hash("student123"),  # Default password: student123
                 role="student",
                 academic_level="Undergraduate",
                 subscription_tier=tier,

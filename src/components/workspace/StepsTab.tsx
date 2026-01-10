@@ -15,6 +15,7 @@ interface Step {
 interface StepsTabProps {
     title: string;
     steps: Step[];
+    onViewConcepts?: () => void;
 }
 
 const Latex = ({ children, block = false }: { children: string; block?: boolean }) => {
@@ -29,7 +30,7 @@ const Latex = ({ children, block = false }: { children: string; block?: boolean 
     }
 };
 
-export default function StepsTab({ title, steps }: StepsTabProps) {
+export default function StepsTab({ title, steps, onViewConcepts }: StepsTabProps) {
     const handleExportPDF = () => {
         window.print();
     };
@@ -117,7 +118,10 @@ export default function StepsTab({ title, steps }: StepsTabProps) {
             </div>
 
             {/* AI Thought Bridge */}
-            <div className="flex items-center gap-4 p-5 border border-dashed border-slate-300 dark:border-border-dark rounded-xl bg-slate-50 dark:bg-surface-dark/20 hover:border-primary/50 dark:hover:border-accent/50 transition-colors cursor-pointer group">
+            <div
+                onClick={onViewConcepts}
+                className="flex items-center gap-4 p-5 border border-dashed border-slate-300 dark:border-border-dark rounded-xl bg-slate-50 dark:bg-surface-dark/20 hover:border-primary/50 dark:hover:border-accent/50 transition-colors cursor-pointer group"
+            >
                 <div className="size-12 rounded-lg bg-white dark:bg-card-dark flex items-center justify-center border border-slate-200 dark:border-border-dark shadow-sm group-hover:border-primary dark:group-hover:border-accent transition-colors">
                     <span className="material-symbols-outlined text-primary dark:text-accent text-2xl">lightbulb</span>
                 </div>
@@ -125,7 +129,10 @@ export default function StepsTab({ title, steps }: StepsTabProps) {
                     <h5 className="text-[10px] font-bold uppercase text-slate-500 mb-1 tracking-[0.1em]">Related Concept Retrieval</h5>
                     <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Kinematic Equations for Constant Acceleration</p>
                 </div>
-                <button className="px-3 py-1.5 bg-white dark:bg-surface-dark text-slate-700 dark:text-white rounded-lg text-xs font-bold border border-slate-200 dark:border-border-dark hover:border-primary dark:hover:border-accent transition-colors">
+                <button
+                    onClick={(e) => { e.stopPropagation(); onViewConcepts?.(); }}
+                    className="px-3 py-1.5 bg-white dark:bg-surface-dark text-slate-700 dark:text-white rounded-lg text-xs font-bold border border-slate-200 dark:border-border-dark hover:border-primary dark:hover:border-accent transition-colors"
+                >
                     View Card
                 </button>
             </div>

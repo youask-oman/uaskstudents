@@ -110,6 +110,49 @@
     display: none !important;
   }
 
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background-color: white !important;
+  }
+
+  /* Ensure full height and visibility for the workspace */
+  .flex.flex-col.h-screen {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  main.flex.flex-1.overflow-hidden {
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  .flex-1.flex.flex-col.overflow-hidden {
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  .flex-1.overflow-hidden.relative {
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  .flex-1.overflow-y-auto {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Cleanup backgrounds for better print clarity */
+  .bg-slate-50,
+  .dark .bg-slate-50,
+  .dark .bg-\[\#0d1117\] {
+    background-color: white !important;
+  }
+
   main {
     display: block !important;
     height: auto !important;
