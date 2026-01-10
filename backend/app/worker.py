@@ -1,9 +1,19 @@
 import os
+import time
+import logging
+import traceback
 from celery import Celery
+from sqlmodel import Session, create_engine
 from app.database import get_session
 from app.models import OCRJob
 from app.services.ocr import ocr_service
+from datetime import datetime
 import asyncio
+from app.services.ocr.block_parser import markdown_block_parser
+from app.services.ocr.refinement_service import figure_refinement_service
+from app.services.ocr.post_process_service import post_process_service
+
+logger = logging.getLogger(__name__)
 
 # Configure Celery
 # Use Redis as Broker and Backend
@@ -28,14 +38,9 @@ def run_ocr_job(job_id: str):
     """
     Celery task to run OCR processing asynchronously.
     """
-    # Since we are running in a sync worker, we need to bridge to async service if needed,
-    # or better yet, make the service agnostic.
-    # For now, we will perform a blocking call or run loop.
+    from app.models import OCRJob, OCRArtifact, Crop, User, OCRQuestion, OCRChoice, OCRFigure
     
-    # 1. Get Job/DB Session
-    from sqlmodel import Session, create_engine, select
-    
-    # We create a new engine/session for the worker
+    # Use the same database configuration as the main app
     DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://uask_user:uask_password@localhost:5432/uask_db")
     engine = create_engine(DATABASE_URL)
     
@@ -45,24 +50,149 @@ def run_ocr_job(job_id: str):
             return "Job not found"
         
         job.status = "processing"
+        job.started_at = datetime.utcnow()
         session.add(job)
         session.commit()
         
         try:
-            # 2. Run OCR (Synchronously or bridge)
-            # Since P2T is CPU/GPU intensive, it IS blocking.
-            # We call a synchronous version of the logic.
-            result_markdown = ocr_service.process_image_sync(job.file_path)
+            # 1. Get Crop and Engine info
+            crop = session.get(Crop, job.crop_id)
+            if not crop:
+                raise Exception("Crop not found")
             
-            job.result = {
-                "markdown": result_markdown,
-                "confidence": 0.95 # Mock or derive
-            }
+            assets_dir = f"storage/ocr_assets/{job_id}"
+            os.makedirs(assets_dir, exist_ok=True)
+
+            # --- STAGE 1: Page-Level Inventory (Pass 1) ---
+            # We use the VLM to get a high-level inventory of what is on the page
+            logger.info(f"Running Pass 1 (Inventory) for job {job_id}...")
+            inventory = post_process_service.process(None, crop.cropped_storage_url)
+            
+            # --- STAGE 2: OCR Extraction (Pass 2) ---
+            logger.info(f"Running Pass 2 (OCR) for job {job_id}...")
+            start_time = time.time()
+            ocr_result = ocr_service.process_job(
+                crop.cropped_storage_url, 
+                engine_name=job.requested_engine,
+                out_dir=assets_dir if job.requested_engine == "local" else None
+            )
+            latency_ms = int((time.time() - start_time) * 1000)
+            
+            raw_markdown = ocr_result.get("markdown", "")
+            blocks = markdown_block_parser.parse(raw_markdown)
+
+            # Update figure blocks with web URLs
+            for b in blocks:
+                if b["type"] == "figure" and "asset_id" in b:
+                    b["url"] = f"/storage/ocr_assets/{job_id}/{b['asset_id']}"
+            
+            # --- STAGE 3: Figure Refinement (Pass 3) ---
+            # Targeted VLM on detected figures
+            refined_blocks = figure_refinement_service.refine_blocks(blocks, crop.cropped_storage_url, base_dir=assets_dir)
+            
+            # --- STAGE 4: Entity Mapping & Storage ---
+            # We merge the Inventory (structural) with OCR (textual)
+            # Create the Artifact first
+            artifact = OCRArtifact(
+                crop_id=crop.id,
+                job_id=job.id,
+                engine_used=job.requested_engine,
+                doc_type=inventory.get("doc_type"),
+                page_metadata=inventory.get("page_metadata"),
+                instructions=inventory.get("instructions"),
+                raw_markdown=raw_markdown,
+                plain_text=ocr_result.get("plain_text", ""),
+                confidence_score=ocr_result.get("confidence", 0.0),
+                provider=ocr_result.get("provider"),
+                provider_model=ocr_result.get("provider_model"),
+                blocks=refined_blocks,
+                derived_json=inventory, # Use inventory as the source of truth for structure
+                coverage_checklist=inventory.get("coverage_checklist"),
+                timings=ocr_result.get("timings", {}),
+                warnings=inventory.get("coverage_checklist", {}).get("warnings", [])
+            )
+            session.add(artifact)
+            session.flush() # Get artifact.id
+
+            # Map Figures
+            figure_map = {} # Map external_id -> DB object
+            for fig_data in inventory.get("figures", []):
+                # Check for refined data in blocks if ids match
+                ext_id = fig_data.get("id")
+                # Look for matching block to get refined_content/data_json
+                description = fig_data.get("description")
+                data_json = fig_data.get("data", {})
+                
+                # Check blocks for refined figure with same ID or content
+                for b in refined_blocks:
+                    if b["type"] == "refined_figure" and b.get("asset_id") == ext_id:
+                        data_json = b.get("data_json", data_json)
+                        break
+
+                figure = OCRFigure(
+                    artifact_id=artifact.id,
+                    external_id=ext_id or "unknown",
+                    type=fig_data.get("type", "mixed"),
+                    description=description,
+                    data_json=data_json
+                )
+                session.add(figure)
+                figure_map[ext_id] = figure
+            
+            # Map Questions & Choices
+            for q_data in inventory.get("questions", []):
+                question = OCRQuestion(
+                    artifact_id=artifact.id,
+                    external_id=q_data.get("id") or "unknown",
+                    prompt=q_data.get("prompt", ""),
+                    has_figure=q_data.get("has_figure", False),
+                    math_expressions=q_data.get("math_expressions", []),
+                    notes=q_data.get("notes")
+                )
+                session.add(question)
+                session.flush()
+
+                for c_data in q_data.get("choices", []):
+                    choice = OCRChoice(
+                        question_id=question.id,
+                        label=c_data.get("label", "?"),
+                        text=c_data.get("text", "[ILLEGIBLE]")
+                    )
+                    session.add(choice)
+
+            # --- STAGE 5: Post-Extraction Audit ---
+            warnings = artifact.warnings or []
+            question_count = inventory.get("coverage_checklist", {}).get("question_count", 0)
+            if len(inventory.get("questions", [])) < question_count:
+                warnings.append(f"AUDIT_MISSING_QUESTIONS: Found {len(inventory['questions'])} but expected {question_count}")
+            
+            for q in inventory.get("questions", []):
+                # Check for missing choices (typical MCQ has 4)
+                if len(q.get("choices", [])) > 0 and len(q.get("choices", [])) < 3:
+                     warnings.append(f"AUDIT_MISSING_CHOICES: Question {q.get('id')} has only {len(q['choices'])} choices.")
+                
+                # Check for missing figure refinement
+                if q.get("has_figure") and not q.get("figure_refs"):
+                     warnings.append(f"AUDIT_MISSING_FIGURE_REF: Question {q.get('id')} mentions a figure but none linked.")
+
+            artifact.warnings = list(set(warnings))
+            session.commit()
+            session.refresh(artifact)
+            
+            # 5. Finalize Job
             job.status = "completed"
+            job.finished_at = datetime.utcnow()
             
+            # Update Audit Log latency
+            from app.services.ocr.audit_log_service import audit_log_service
+            audit_log_service.update_latency(session, job.id, latency_ms, artifact.id)
+
         except Exception as e:
+            session.rollback()
+            import traceback
+            logger.error(f"OCR Job {job_id} failed: {e}\n{traceback.format_exc()}")
             job.status = "failed"
-            job.error = str(e)
+            job.error_message = str(e)
             
         session.add(job)
         session.commit()

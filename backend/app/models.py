@@ -114,22 +114,177 @@ class Payment(SQLModel, table=True):
     
     user: User = Relationship(back_populates="payments")
 
+# --- OCR Subsystem Tables ---
+
+class Upload(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    storage_url: str
+    file_hash: str = Field(index=True)
+    content_type: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    user: User = Relationship()
+    crops: List["Crop"] = Relationship(back_populates="upload")
+
+class Crop(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    upload_id: int = Field(foreign_key="upload.id", index=True)
+    crop_rect: dict = Field(default_factory=dict, sa_column=Column(JSON)) # {x, y, w, h} normalized
+    rotation: int = Field(default=0) # 0, 90, 180, 270
+    margin_pct: int = Field(default=0)
+    crop_image_hash: str = Field(index=True, unique=True)
+    cropped_storage_url: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    upload: Upload = Relationship(back_populates="crops")
+    jobs: List["OCRJob"] = Relationship(back_populates="crop")
+    artifacts: List["OCRArtifact"] = Relationship(back_populates="crop")
+
 class OCRJob(SQLModel, table=True):
     id: Optional[str] = Field(default=None, primary_key=True) # UUID
     user_id: int = Field(foreign_key="user.id", index=True)
-    file_hash: str = Field(index=True)
-    file_path: str # Path to stored file (S3/Local)
-    
+    crop_id: int = Field(foreign_key="crop.id", index=True)
+    requested_engine: str = Field(default="auto") # auto, local, vlm
     status: str = Field(default="queued") # queued, processing, completed, failed
-    result: Optional[dict] = Field(default=None, sa_column=Column(JSON)) # markdown, confidence
-    error: Optional[str] = None
+    priority: str = Field(default="normal") # normal, high
+    attempts: int = Field(default=0)
+    error_code: Optional[str] = None
+    error_message: Optional[str] = None
     
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    completed_at: Optional[datetime] = None
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+
+    user: User = Relationship()
+    crop: "Crop" = Relationship(back_populates="jobs")
+    artifacts: List["OCRArtifact"] = Relationship(back_populates="job")
+
+class OCRArtifact(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    crop_id: int = Field(foreign_key="crop.id", index=True)
+    job_id: str = Field(foreign_key="ocrjob.id", index=True)
+    engine_used: str = Field(index=True) # local, vlm
+    doc_type: Optional[str] = None # quiz, worksheet, exam, mixed
+    page_metadata: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    instructions: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
     
-    completed_at: Optional[datetime] = None
+    raw_markdown: str
+    plain_text: str
+    latex_blocks: Optional[List[dict]] = Field(default=None, sa_column=Column(JSON))
+    confidence_score: float = 0.0
     
-    p2t_version: Optional[str] = None
+    pix2text_version: Optional[str] = None
+    provider: Optional[str] = None
+    provider_model: Optional[str] = None
+    
+    usage_metadata: Optional[dict] = Field(default=None, sa_column=Column(JSON)) # {input_tokens, output_tokens, cost}
+    blocks: Optional[List[dict]] = Field(default=None, sa_column=Column(JSON)) # [{type: 'text'|'math'|'figure', content: '...'}]
+    derived_json: Optional[dict] = Field(default=None, sa_column=Column(JSON)) # ProblemJSON structure
+    coverage_checklist: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    
+    timings: Optional[dict] = Field(default=None, sa_column=Column(JSON)) # preprocess_ms, ocr_ms, etc.
+    warnings: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    crop: Crop = Relationship(back_populates="artifacts")
+    job: OCRJob = Relationship(back_populates="artifacts")
+    questions: List["OCRQuestion"] = Relationship(back_populates="artifact")
+    figures: List["OCRFigure"] = Relationship(back_populates="artifact")
+
+class OCRQuestion(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    artifact_id: int = Field(foreign_key="ocrartifact.id", index=True)
+    external_id: str # e.g. "1" from LLM
+    prompt: str
+    has_figure: bool = Field(default=False)
+    math_expressions: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    artifact: OCRArtifact = Relationship(back_populates="questions")
+    choices: List["OCRChoice"] = Relationship(back_populates="question")
+
+class OCRChoice(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    question_id: int = Field(foreign_key="ocrquestion.id", index=True)
+    label: str # A, B, C
+    text: str
+    
+    question: OCRQuestion = Relationship(back_populates="choices")
+
+class OCRFigure(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    artifact_id: int = Field(foreign_key="ocrartifact.id", index=True)
+    external_id: str # e.g. "fig1"
+    type: str # graph, diagram, table, image
+    description: Optional[str] = None
+    data_json: Optional[dict] = Field(default=None, sa_column=Column(JSON)) # axes, points, etc.
+    
+    artifact: OCRArtifact = Relationship(back_populates="figures")
+
+class OCRConfirmation(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    artifact_id: int = Field(foreign_key="ocrartifact.id", index=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    
+    confirmed_markdown: str
+    confirmed_text: str
+    confirmed_latex_blocks: Optional[List[dict]] = Field(default=None, sa_column=Column(JSON))
+    
+    normalized_problem_hash: str = Field(index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class CanonicalProblem(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    normalized_problem_hash: str = Field(index=True, unique=True)
+    normalized_text: str
+    normalized_latex_blocks: Optional[List[dict]] = Field(default=None, sa_column=Column(JSON))
+    subject: Optional[str] = None
+    language: str = Field(default="en")
+    
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    last_seen_at: datetime = Field(default_factory=datetime.utcnow)
+    seen_count: int = Field(default=1)
+
+class CanonicalSolution(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    problem_id: int = Field(foreign_key="canonicalproblem.id", index=True)
+    solution_json: dict = Field(sa_column=Column(JSON))
+    verification_status: str = Field(default="pending") # pass, partial, fail
+    verification_report: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    last_served_at: datetime = Field(default_factory=datetime.utcnow)
+    served_count: int = Field(default=1)
+
+class UserSavedSolution(SQLModel, table=True):
+    user_id: int = Field(foreign_key="user.id", primary_key=True)
+    solution_id: int = Field(foreign_key="canonicalsolution.id", primary_key=True)
+    saved_at: datetime = Field(default_factory=datetime.utcnow)
+    tags: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
+    notes: Optional[str] = None
+
+class OCRAuditEvent(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: Optional[int] = Field(foreign_key="user.id", index=True)
+    upload_id: Optional[int] = Field(foreign_key="upload.id")
+    crop_id: Optional[int] = Field(foreign_key="crop.id")
+    job_id: Optional[str] = Field(foreign_key="ocrjob.id")
+    artifact_id: Optional[int] = Field(foreign_key="ocrartifact.id")
+    
+    routing_engine_chosen: str = Field(index=True) # local, vlm
+    vlm_type_chosen: Optional[str] = None
+    reasons: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
+    
+    confidence_score_before: Optional[float] = None
+    cost_estimate_usd: Optional[float] = None
+    latency_ms: Optional[int] = None
+    
+    provider: Optional[str] = None
+    provider_model: Optional[str] = None
+    
+    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
 
 class PromoCode(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

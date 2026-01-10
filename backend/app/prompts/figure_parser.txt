@@ -1,0 +1,21 @@
+You are parsing a math/physics figure (graph/diagram). Return VALID JSON only.
+
+Do not solve the problem. Do not describe the page outside this figure.
+
+Extract:
+- axes labels, units, tick marks if visible
+- curve/line type (piecewise, parabola, etc.)
+- labeled points (A,B,C, etc.) and their approximate coordinates if possible
+- intercepts, extrema, inflection points if visually indicated
+- any text annotations
+
+If something is not visible, set it to null and add a warning.
+
+JSON:
+{
+  "type":"graph|diagram",
+  "axes":{"x_label":null,"y_label":null,"x_ticks":null,"y_ticks":null},
+  "curves":[{"kind":"line|curve|piecewise","description":"..."}],
+  "points":[{"label":"A","x":null,"y":null,"notes":"..."}],
+  "warnings":[]
+}

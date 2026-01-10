@@ -4,9 +4,13 @@ import DashboardNavBar from "@/components/DashboardNavBar";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import katex from 'katex';
+import 'katex/dist/katex.min.css';
 import MathInput, { MathInputRef } from "@/components/MathInput";
 import { MODES, ModeId, Suggestion } from "@/lib/modes";
 import ImageCropper from "@/components/ImageCropper";
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 
 interface ChatSession {
     id: number;
@@ -38,7 +42,7 @@ export default function DashboardPage() {
 
         const fetchHistory = async () => {
             try {
-                const response = await fetch(`http://localhost:8000/api/v1/history?user_id=${userId}`);
+                const response = await fetch(`http://127.0.0.1:8000/api/v1/history?user_id=${userId}`);
                 if (response.ok) {
                     const data = await response.json();
                     setHistory(data);
@@ -50,13 +54,13 @@ export default function DashboardPage() {
 
         const fetchOnline = async () => {
             try {
-                const profileRes = await fetch(`http://localhost:8000/api/v1/user/profile?user_id=${userId}`);
+                const profileRes = await fetch(`http://127.0.0.1:8000/api/v1/user/profile?user_id=${userId}`);
                 if (profileRes.ok) {
                     const profile = await profileRes.json();
                     setIsPublic(profile.is_public);
 
                     if (profile.is_public) {
-                        const onlineRes = await fetch(`http://localhost:8000/api/v1/users/online`);
+                        const onlineRes = await fetch(`http://127.0.0.1:8000/api/v1/users/online`);
                         if (onlineRes.ok) {
                             setOnlineUsers(await onlineRes.json());
                         }
@@ -103,93 +107,208 @@ export default function DashboardPage() {
     const [ocrConfidence, setOcrConfidence] = useState<number>(0);
     const [progressStep, setProgressStep] = useState(0);
     const [processingTime, setProcessingTime] = useState(0);
+    const [uploadId, setUploadId] = useState<number | null>(null);
+    const [jobId, setJobId] = useState<string | null>(null);
+    const [artifactId, setArtifactId] = useState<number | null>(null);
+    const [engineTag, setEngineTag] = useState<string | null>(null);
+    const [tokenMetrics, setTokenMetrics] = useState<string | null>(null);
+    const [ocrBlocks, setOcrBlocks] = useState<any[]>([]);
+    const [ocrInventory, setOcrInventory] = useState<any>(null);
+    const [selectedQuestionId, setSelectedQuestionId] = useState<number | null>(null);
+    const [choices, setChoices] = useState<Record<string, string>>({});
 
     const PROGRESS_STEPS = [
-        { label: "Uploading crop...", percent: 20 },
-        { label: "Analyzing with YouAsk.ai Vision...", percent: 60 },
-        { label: "Extracting LaTeX...", percent: 90 },
-        { label: "Done!", percent: 100 }
+        { label: "Uploading Image...", percent: 10 },
+        { label: "Saving Crop...", percent: 30 },
+        { label: "OCR Job Queued...", percent: 50 },
+        { label: "Extracting LaTeX...", percent: 80 },
+        { label: "Finalizing...", percent: 100 }
     ];
 
-    const processFile = (file: File) => {
+    const processFile = async (file: File) => {
         if (!file) return;
         const objectUrl = URL.createObjectURL(file);
         setCapturedImage(objectUrl);
         setWorkflowStage('selecting');
-    };
 
-    const handleCropConfirm = async (blob: Blob) => {
-        const croppedUrl = URL.createObjectURL(blob);
-        setCroppedImage(croppedUrl);
-        setWorkflowStage('processing');
-        setProgressStep(0);
-        setProcessingTime(0);
-
-        // Timer for long running jobs warning
-        const timer = setInterval(() => setProcessingTime(p => p + 1), 1000);
-
+        // Start background upload of original
         try {
             const formData = new FormData();
-            formData.append('file', blob, 'crop.jpg');
-
+            formData.append('file', file);
             const userId = localStorage.getItem("user_id") || "1";
 
-            // Step 1: Uploading
-            setProgressStep(0);
-
-            // Step 2: Analyzing (simulated delay for UX if network is too fast, or just let it fly)
-            setTimeout(() => setProgressStep(1), 500);
-
-            const res = await fetch(`http://localhost:8000/api/v1/latex-from-image?user_id=${userId}`, {
+            console.log("Original upload starting...", { file: file.name, size: file.size });
+            const res = await fetch(`http://127.0.0.1:8000/api/v1/uploads?user_id=${userId}`, {
                 method: 'POST',
                 body: formData
             });
+            if (res.ok) {
+                const data = await res.json();
+                console.log("Original uploaded successfully:", data);
+                setUploadId(data.upload_id);
+            } else {
+                const errText = await res.text();
+                console.error("Upload failed with status:", res.status, errText);
+            }
+        } catch (e) {
+            console.error("Critical error during upload fetch:", e);
+        }
+    };
 
-            if (!res.ok) {
-                const errData = await res.json();
-                console.error("Vision API Error:", errData);
-                throw new Error(errData.detail || "Analysis failed");
+    const handleCropConfirm = async (blob: Blob, coords: { x: number, y: number, w: number, h: number }) => {
+        const croppedUrl = URL.createObjectURL(blob);
+        setCroppedImage(croppedUrl);
+        setWorkflowStage('processing');
+        setProgressStep(1); // Starting Step 2: Saving Crop
+        setProcessingTime(0);
+
+        const timer = setInterval(() => setProcessingTime(p => p + 1), 1000);
+
+        try {
+            const userId = localStorage.getItem("user_id") || "1";
+            console.log("Starting Crop Confirmation...", { coords, userId });
+
+            // 1. Ensure Upload ID exists (wait up to 10s if still uploading)
+            let currentUploadId = uploadId;
+            if (!currentUploadId) {
+                console.log("Upload ID not ready, waiting...");
+                for (let i = 0; i < 20; i++) {
+                    await new Promise(r => setTimeout(r, 500));
+                    if (uploadId) {
+                        currentUploadId = uploadId;
+                        console.log("Upload ID obtained after wait:", currentUploadId);
+                        break;
+                    }
+                }
             }
 
+            if (!currentUploadId) {
+                throw new Error("Initial upload failed or timed out. Please try again.");
+            }
+
+            // 2. Create Crop
+            console.log("Sending crop request to:", `http://127.0.0.1:8000/api/v1/uploads/${currentUploadId}/crops`);
+            const cropRes = await fetch(`http://127.0.0.1:8000/api/v1/uploads/${currentUploadId}/crops`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    crop_rect: coords,
+                    rotation: 0
+                })
+            });
+
+            if (!cropRes.ok) {
+                const errText = await cropRes.text();
+                console.error("Crop creation failed:", cropRes.status, errText);
+                throw new Error("Failed to save crop: " + errText);
+            }
+
+            const cropData = await cropRes.json();
+            console.log("Crop saved successfully:", cropData);
+            const cid = cropData.crop_id;
+
+            // 3. Create Job
+            setProgressStep(2); // Job Queued
+            console.log("Creating OCR Job...", { crop_id: cid, userId });
+            const jobRes = await fetch(`http://127.0.0.1:8000/api/v1/ocr/jobs?user_id=${userId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    crop_id: cid,
+                    preferred_engine: "auto"
+                })
+            });
+            if (!jobRes.ok) {
+                const errText = await jobRes.text();
+                console.error("Job creation failed:", jobRes.status, errText);
+                throw new Error("Failed to create OCR job: " + errText);
+            }
+            const jobData = await jobRes.json();
+            console.log("Job created successfully:", jobData);
+            const jid = jobData.job_id;
+            setJobId(jid);
+
+            // 4. Polling
+            await pollJobStatus(jid, timer);
+
+        } catch (e) {
+            console.error("Tiered OCR error", e);
+            alert("Analysis failed. Falling back to legacy...");
+            // TODO: Legacy fallback logic if needed
+            clearInterval(timer);
+            setWorkflowStage('input');
+        }
+    };
+
+    const pollJobStatus = async (jid: string, timer: any) => {
+        const poll = async () => {
+            try {
+                const res = await fetch(`http://127.0.0.1:8000/api/v1/ocr/jobs/${jid}`);
+                const data = await res.json();
+
+                if (data.status === 'completed') {
+                    setProgressStep(4);
+                    setArtifactId(data.artifact_id);
+                    await finalizeOcr(data.artifact_id, timer);
+                } else if (data.status === 'failed') {
+                    throw new Error(data.error_message || "OCR Job Failed");
+                } else {
+                    // Keep polling
+                    setTimeout(poll, 1000);
+                }
+            } catch (e) {
+                console.error("Polling error", e);
+                clearInterval(timer);
+                setWorkflowStage('input');
+            }
+        };
+        poll();
+    };
+
+    const finalizeOcr = async (aid: number, timer: any) => {
+        try {
+            const res = await fetch(`http://127.0.0.1:8000/api/v1/ocr/artifacts/${aid}`);
             const data = await res.json();
-            console.log("Raw Vision Response:", data);
 
-            // Client-side Cleanup (Failsafe)
-            let cleanLatex = (data.latex || "").trim();
-
-            // 1. Strip $$ wrappers
-            cleanLatex = cleanLatex.replace(/^\s*\$\$|\$\$\s*$/g, "");
-            cleanLatex = cleanLatex.replace(/^\s*\$|\$\s*$/g, "");
-            cleanLatex = cleanLatex.replace(/^\\\[|\\\]$/g, "");
-
-            // 2. Normalize whitespace (tabs -> spaces, multiple spaces -> single)
-            cleanLatex = cleanLatex
-                .replace(/\\t/g, " ")
-                .replace(/\t/g, " ")
-                .replace(/[ ]{2,}/g, " ")
-                .trim();
-
-            console.log("Cleaned LaTeX:", cleanLatex);
-
-            // Step 3: Success
-            setProgressStep(3); // Done
             clearInterval(timer);
 
+            const cleanLatex = (data.raw_markdown || "").trim();
             setQuery(cleanLatex);
             if (mathInputRef.current) {
                 mathInputRef.current.setValue(cleanLatex);
             }
-            setOcrConfidence(0.99);
+            setOcrConfidence(data.confidence_score || 0.95);
+            setEngineTag(data.engine_display_tag || "YouAsk AI multimodel");
+            setTokenMetrics(data.token_metrics || null);
+            setOcrBlocks(data.blocks || []);
 
-            // Small delay to show "Done" state
+            // Structured Inventory
+            setOcrInventory({
+                doc_type: data.doc_type,
+                questions: data.questions || [],
+                figures: data.figures || [],
+                coverage_checklist: data.coverage_checklist || {}
+            });
+
+            // Default to first question if available
+            if (data.questions && data.questions.length > 0) {
+                const q1 = data.questions[0];
+                setSelectedQuestionId(q1.id);
+                setQuery(q1.prompt || "");
+
+                const q1Choices: Record<string, string> = {};
+                (q1.choices || []).forEach((c: any) => {
+                    q1Choices[c.label] = c.text;
+                });
+                setChoices(q1Choices);
+            }
+
             setTimeout(() => {
                 setWorkflowStage('review');
-                setActiveTab('text'); // Switch to editor
+                setActiveTab('text');
             }, 800);
-
         } catch (e) {
-            console.error("Analysis error", e);
-            alert("Analysis failed. Please check your connection.");
+            console.error("Finalization error", e);
             clearInterval(timer);
             setWorkflowStage('input');
         }
@@ -235,7 +354,13 @@ export default function DashboardPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    text_query: query,
+                    confirmed_markdown: query,
+                    confirmed_text: query,
+                    confirmed_latex_blocks: [
+                        ...Object.entries(choices).map(([k, v]) => ({ type: 'choice', key: k, value: v }))
+                    ],
+                    artifact_id: artifactId,
+                    question_id: selectedQuestionId,
                     mode: 'general',
                     user_id: parseInt(userId)
                 })
@@ -436,6 +561,68 @@ export default function DashboardPage() {
                                                     </button>
                                                 </div>
 
+                                                {/* INVENTORY OVERVIEW (Selected/Multi-Question Support) */}
+                                                {ocrInventory && ocrInventory.questions.length > 0 && (
+                                                    <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl p-4 mb-2">
+                                                        <div className="flex items-center justify-between mb-3">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="material-symbols-outlined text-sm text-primary">inventory_2</span>
+                                                                <span className="text-xs font-black uppercase tracking-widest text-slate-500">Page Inventory</span>
+                                                            </div>
+                                                            <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">
+                                                                {ocrInventory.doc_type}
+                                                            </span>
+                                                        </div>
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                            {ocrInventory.questions.map((q: any, idx: number) => {
+                                                                const isSelected = query === q.prompt;
+                                                                return (
+                                                                    <button
+                                                                        key={idx}
+                                                                        onClick={() => {
+                                                                            setSelectedQuestionId(q.id);
+                                                                            setQuery(q.prompt);
+                                                                            const newChoices: Record<string, string> = {};
+                                                                            (q.choices || []).forEach((c: any) => { newChoices[c.label] = c.text; });
+                                                                            setChoices(newChoices);
+                                                                        }}
+                                                                        className={`text-left p-3 rounded-lg border transition-all flex gap-3 ${isSelected
+                                                                            ? 'bg-primary/5 border-primary shadow-sm'
+                                                                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-primary/50'
+                                                                            }`}
+                                                                    >
+                                                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${isSelected ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                                                                            }`}>
+                                                                            {q.external_id || (idx + 1)}
+                                                                        </div>
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <p className="text-xs line-clamp-2 text-slate-600 dark:text-slate-400">
+                                                                                {q.prompt}
+                                                                            </p>
+                                                                            {q.has_figure && (
+                                                                                <span className="inline-flex items-center gap-1 mt-1 text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase">
+                                                                                    <span className="material-symbols-outlined text-[10px]">image</span>
+                                                                                    Figure Linked
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                        {ocrInventory.coverage_checklist?.warnings?.length > 0 && (
+                                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                                {ocrInventory.coverage_checklist.warnings.map((w: string, i: number) => (
+                                                                    <div key={i} className="flex items-center gap-1 bg-amber-50 dark:bg-amber-900/10 text-amber-600 px-2 py-0.5 rounded text-[9px] font-bold">
+                                                                        <span className="material-symbols-outlined text-[10px]">warning</span>
+                                                                        {w}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                     {/* Left: Original Image */}
                                                     <div className="bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden relative group h-48 md:h-auto">
@@ -454,33 +641,95 @@ export default function DashboardPage() {
                                                         </div>
                                                     </div>
 
-                                                    {/* Right: Editable Math */}
-                                                    <div className="flex flex-col gap-2">
-                                                        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/30 rounded-lg p-3 flex justify-between items-center">
-                                                            <span className="text-xs font-bold text-green-700 dark:text-green-300 uppercase tracking-wider">
-                                                                AI Confidence
-                                                            </span>
-                                                            <span className="font-mono font-bold text-green-600 dark:text-green-400">
-                                                                {(ocrConfidence * 100).toFixed(0)}%
-                                                            </span>
+                                                    {/* Right: Editable Markdown & Choices */}
+                                                    <div className="flex flex-col gap-4">
+                                                        <div className="flex flex-wrap gap-2">
+                                                            <div className="flex-1 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/30 rounded-lg p-2.5 flex justify-between items-center min-w-[140px]">
+                                                                <span className="text-[10px] font-bold text-green-700 dark:text-green-300 uppercase tracking-widest">
+                                                                    Confidence
+                                                                </span>
+                                                                <span className="font-mono font-bold text-green-600 dark:text-green-400 text-sm">
+                                                                    {(ocrConfidence * 100).toFixed(0)}%
+                                                                </span>
+                                                            </div>
+                                                            {engineTag && (
+                                                                <div className="flex-1 bg-primary/5 border border-primary/20 rounded-lg p-2.5 flex justify-between items-center min-w-[140px]">
+                                                                    <span className="text-[10px] font-bold text-primary uppercase tracking-widest">
+                                                                        Processor
+                                                                    </span>
+                                                                    <span className="text-[10px] font-black text-primary">
+                                                                        {engineTag}
+                                                                    </span>
+                                                                </div>
+                                                            )}
                                                         </div>
 
-                                                        <div className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">
-                                                            Detected Math (Editable)
-                                                        </div>
-                                                        <div className="relative border border-primary ring-2 ring-primary/20 rounded-xl bg-white dark:bg-slate-900 overflow-hidden shadow-lg min-h-[120px] flex flex-col">
-                                                            <div className="flex-1 p-2">
-                                                                <MathInput
-                                                                    ref={mathInputRef}
-                                                                    value={query}
-                                                                    onChange={setQuery}
-                                                                    onEnter={handleSolve}
-                                                                />
+                                                        <div className="space-y-3">
+                                                            <div>
+                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block px-1">Problem Text (Markdown)</label>
+                                                                <div className="relative border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+                                                                    <textarea
+                                                                        className="w-full bg-transparent p-4 min-h-[120px] outline-none text-sm leading-relaxed custom-scrollbar"
+                                                                        value={query}
+                                                                        onChange={(e) => setQuery(e.target.value)}
+                                                                        placeholder="Enter problem text here..."
+                                                                    />
+                                                                </div>
+                                                            </div>
+
+                                                            <div>
+                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block px-1 flex justify-between">
+                                                                    <span>Multiple Choice Options</span>
+                                                                    <span className="text-primary tracking-normal font-bold">A-D Widget</span>
+                                                                </label>
+                                                                <div className="grid grid-cols-2 gap-2">
+                                                                    {["A", "B", "C", "D"].map(key => (
+                                                                        <div key={key} className="relative group">
+                                                                            <span className={`absolute left-3 top-1/2 -translate-y-1/2 font-black text-xs ${choices[key] ? 'text-primary' : 'text-slate-300'}`}>{key}</span>
+                                                                            <input
+                                                                                className={`w-full bg-slate-50 dark:bg-slate-800/50 border ${choices[key] ? 'border-primary/30' : 'border-slate-200'} dark:border-slate-750 rounded-lg py-2 pl-8 pr-3 text-xs outline-none focus:ring-2 focus:ring-primary/20 transition-all`}
+                                                                                value={choices[key] || ""}
+                                                                                onChange={(e) => setChoices(prev => ({ ...prev, [key]: e.target.value }))}
+                                                                                placeholder="..."
+                                                                            />
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800">
+                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Live Preview (Markdown + Math)</label>
+                                                                <div className="text-sm overflow-x-auto min-h-[60px]">
+                                                                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                                                                        <ReactMarkdown
+                                                                            remarkPlugins={[remarkMath]}
+                                                                            rehypePlugins={[rehypeKatex]}
+                                                                        >
+                                                                            {query || "*No content entered yet...*"}
+                                                                        </ReactMarkdown>
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
 
+                                                {ocrBlocks.some(b => b.type === 'figure' || b.type === 'refined_figure') && (
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block px-1">Detected Figures</label>
+                                                        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                                                            {ocrBlocks.filter(b => b.type === 'figure' || b.type === 'refined_figure').map((b, i) => (
+                                                                <div key={i} className="flex-none w-32 h-32 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden relative group cursor-pointer hover:border-primary/50 transition-all">
+                                                                    <img
+                                                                        src={b.url ? `http://127.0.0.1:8000${b.url}` : b.content}
+                                                                        className="w-full h-full object-cover"
+                                                                        alt="OCR Block"
+                                                                    />
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
                                                 <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/20 p-3 rounded-lg text-xs text-amber-800 dark:text-amber-200 flex gap-2">
                                                     <span className="material-symbols-outlined text-sm">info</span>
                                                     <span>Please verify symbols (exponents, minus signs) match your image before solving.</span>

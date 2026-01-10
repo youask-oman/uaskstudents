@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 interface ImageCropperProps {
     imageSrc: string;
     onCancel: () => void;
-    onConfirm: (blob: Blob) => void;
+    onConfirm: (blob: Blob, coords: { x: number, y: number, w: number, h: number }) => void;
 }
 
 export default function ImageCropper({ imageSrc, onCancel, onConfirm }: ImageCropperProps) {
@@ -168,7 +168,15 @@ export default function ImageCropper({ imageSrc, onCancel, onConfirm }: ImageCro
         );
 
         canvas.toBlob((blob) => {
-            if (blob) onConfirm(blob);
+            if (blob) {
+                // Return normalized coordinates (0-1)
+                onConfirm(blob, {
+                    x: selection.x / 100,
+                    y: selection.y / 100,
+                    w: selection.w / 100,
+                    h: selection.h / 100
+                });
+            }
         }, 'image/jpeg', 0.95);
     };
 

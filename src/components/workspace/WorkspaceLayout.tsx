@@ -31,7 +31,8 @@ export default function WorkspaceLayout({
     setTutorMode,
     onSendMessage,
     isSaved = false,
-    onSave
+    onSave,
+    isSaveLoading = false
 }: WorkspaceLayoutProps) {
 
     const [isDark, setIsDark] = useState(false);

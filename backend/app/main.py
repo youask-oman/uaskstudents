@@ -20,6 +20,14 @@ def on_startup():
 from app.api import api_router
 app.include_router(api_router, prefix="/api/v1")
 
+from fastapi.staticfiles import StaticFiles
+import os
+
+# Mount storage for uploads and OCR assets
+if not os.path.exists("storage"):
+    os.makedirs("storage")
+app.mount("/storage", StaticFiles(directory="storage"), name="storage")
+
 
 @app.get("/")
 def read_root():

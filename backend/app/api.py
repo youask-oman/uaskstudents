@@ -1,15 +1,27 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlmodel import Session, select
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 import uuid
 import hashlib
+import json
 
 from app.database import get_session
-from app.models import User, ChatSession, ChatMessage, UsageLog, OCRJob, Payment, PromoCode
+from app.services.solve.normalizer_service import problem_normalizer_service
+from app.models import (
+    User, ChatSession, ChatMessage, UsageLog, OCRJob,
+    Upload, Crop, OCRArtifact, OCRConfirmation,
+    CanonicalProblem, CanonicalSolution, UserSavedSolution, Payment, PromoCode,
+    OCRQuestion, OCRChoice, OCRFigure
+)
 from app.services.vision import VisionService, vision_service
 from app.services.solver import solver_service
 from app.services.rag import rag_service
+from app.services.ocr.upload_service import upload_service
+from app.services.ocr.crop_service import crop_service
+from app.services.ocr.ocr_router_service import ocr_router_service
+from app.services.ocr.audit_log_service import audit_log_service
+from app.services.ocr.ocr_service import ocr_service
 
 
 
@@ -23,6 +35,17 @@ api_router = APIRouter()
 class SolveRequest(BaseModel):
     image_url: Optional[str] = None
     text_query: Optional[str] = None
+    
+    # Post-OCR Review Fields
+    confirmed_markdown: Optional[str] = None
+    confirmed_text: Optional[str] = None
+    confirmed_latex_blocks: Optional[List[Dict[str, Any]]] = None
+    
+    # Entity-driven fields
+    artifact_id: Optional[int] = None
+    question_id: Optional[int] = None # DB internal ID
+    
+    problem_hash: Optional[str] = None
     subject: Optional[str] = None
     mode: Optional[str] = "general"
     user_id: Optional[int] = None
@@ -66,6 +89,36 @@ class UserUsageStats(BaseModel):
     scans_count: int
     scans_total: int
 
+# --- OCR Subsystem Schemas ---
+
+class CropRect(BaseModel):
+    x: float
+    y: float
+    w: float
+    h: float
+
+class CropRequest(BaseModel):
+    crop_rect: CropRect
+    rotation: int = 0
+    margin_pct: int = 0
+
+class OCRJobRequest(BaseModel):
+    crop_id: int
+    preferred_engine: str = "auto" # auto, local, vlm
+    user_intent: str = "normal" # normal, high_accuracy
+
+class OCRConfirmRequest(BaseModel):
+    confirmed_markdown: str
+    confirmed_text: str
+    confirmed_latex_blocks: Optional[List[dict]] = None
+
+class LibrarySaveRequest(BaseModel):
+    solve_session_id: Optional[int] = None
+    solution_id: Optional[int] = None
+    tags: List[str] = []
+    notes: Optional[str] = None
+
+# --- Existing User Profile Response ---
 class UserProfileResponse(BaseModel):
     id: int
     full_name: str
@@ -77,11 +130,11 @@ class UserProfileResponse(BaseModel):
     solving_mode: str
     subscription_tier: str
     subscription_status: str
-    
+
     # Advanced Profile
     is_public: bool
     learning_interests: Optional[List[str]]
-    
+
     usage: UserUsageStats
 
 @api_router.post("/signup")
@@ -93,7 +146,7 @@ async def signup(form_data: SignupRequest, session: Session = Depends(get_sessio
             status_code=400,
             detail="User with this email already exists"
         )
-    
+
     # Create new user
     new_user = User(
         email=form_data.email,
@@ -102,11 +155,11 @@ async def signup(form_data: SignupRequest, session: Session = Depends(get_sessio
         academic_level=form_data.academic_level,
         is_verified=False # Setting to false as frontend mentions a verification link
     )
-    
+
     session.add(new_user)
     session.commit()
     session.refresh(new_user)
-    
+
     return {"status": "ok", "message": "User created successfully. Please check your email for verification.", "user_id": new_user.id}
 
 @api_router.post("/login", response_model=Token)
@@ -118,20 +171,20 @@ async def login_for_access_token(form_data: LoginRequest, session: Session = Dep
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # Session & Security
     session_token = str(uuid.uuid4())
     user.session_token = session_token
     # In a real app, retrieve IP from request.client.host
     # Here we mock or pass it via header if critical
-    user.last_ip = "127.0.0.1" 
-    
+    user.last_ip = "127.0.0.1"
+
     session.add(user)
     session.commit()
     session.refresh(user)
 
     access_token = create_access_token(data={"sub": user.email})
-    
+
     return Token(
         access_token=access_token,
         token_type="bearer",
@@ -148,9 +201,278 @@ async def login_for_access_token(form_data: LoginRequest, session: Session = Dep
 class LatexResponse(BaseModel):
     latex: str
 
+# ------------------------------------------------------------------
+# OCR Subsystem Endpoints
+# ------------------------------------------------------------------
+
+@api_router.post("/uploads")
+async def upload_file(
+    file: UploadFile = File(...),
+    user_id: int = Query(1),
+    session: Session = Depends(get_session)
+):
+    try:
+        upload = await upload_service.save_upload(user_id, file, session)
+        return {
+            "upload_id": upload.id,
+            "storage_url": upload.storage_url,
+            "file_hash": upload.file_hash,
+            "created_at": upload.created_at
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/uploads/{upload_id}/crops")
+async def create_crop(
+    upload_id: int,
+    request: CropRequest,
+    session: Session = Depends(get_session)
+):
+    try:
+        upload = session.get(Upload, upload_id)
+        if not upload:
+            raise HTTPException(status_code=404, detail="Upload not found")
+
+        crop = await crop_service.create_crop(
+            upload, request.crop_rect.dict(), request.rotation, request.margin_pct, session
+        )
+        return {
+            "crop_id": crop.id,
+            "cropped_storage_url": crop.cropped_storage_url,
+            "status": "created"
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/ocr/jobs")
+async def create_ocr_job(
+    request: OCRJobRequest,
+    user_id: int = Query(1),
+    session: Session = Depends(get_session)
+):
+    try:
+        crop = session.get(Crop, request.crop_id)
+        if not crop:
+            raise HTTPException(status_code=404, detail="Crop not found")
+
+        user = session.get(User, user_id)
+        if not user:
+            import logging
+            logging.warning(f"User {user_id} not found for OCR job. Defaulting to local engine.")
+            engine, vlm_type, reasons = ("local", None, ["USER_NOT_FOUND"])
+        else:
+            # 1. Decide Engine
+            engine, vlm_type, reasons = ocr_router_service.decide_engine(
+                crop, user, request.preferred_engine, request.user_intent
+            )
+
+        # 2. Create Job
+        job_id = str(uuid.uuid4())
+        job = OCRJob(
+            id=job_id,
+            user_id=user_id,
+            crop_id=crop.id,
+            requested_engine=engine,
+            status="queued"
+        )
+        session.add(job)
+        session.flush() # Ensure job exists before logging dependencies (AuditLog)
+
+        # 3. Log Decision
+        audit_log_service.log_ocr_decision(
+            session, user_id, crop.upload_id, crop.id, job_id, engine, reasons, vlm_type
+        )
+
+        session.commit()
+
+        # 4. Trigger Worker
+        try:
+            from app.worker import run_ocr_job
+            run_ocr_job.delay(job_id)
+        except Exception as e:
+            import logging
+            logging.error(f"Failed to trigger Celery worker: {e}")
+
+        return {"job_id": job_id, "status": "queued"}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/ocr/jobs/{job_id}")
+async def get_ocr_job(job_id: str, session: Session = Depends(get_session)):
+    job = session.get(OCRJob, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    # Fetch artifact if done
+    artifact_id = None
+    if job.status == "completed":
+        stmt = select(OCRArtifact).where(OCRArtifact.job_id == job_id)
+        artifact = session.exec(stmt).first()
+        if artifact:
+            artifact_id = artifact.id
+
+    return {
+        "job_id": job.id,
+        "status": job.status,
+        "artifact_id": artifact_id,
+        "error_message": job.error_message
+    }
+
+@api_router.get("/ocr/artifacts/{artifact_id}")
+async def get_ocr_artifact(artifact_id: int, session: Session = Depends(get_session)):
+    artifact = session.get(OCRArtifact, artifact_id)
+    if not artifact:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+
+    # Load entities
+    from sqlmodel import select
+    questions = session.exec(select(OCRQuestion).where(OCRQuestion.artifact_id == artifact_id)).all()
+    figures = session.exec(select(OCRFigure).where(OCRFigure.artifact_id == artifact_id)).all()
+    
+    # Nested choices
+    questions_data = []
+    for q in questions:
+        q_dict = q.dict()
+        choices = session.exec(select(OCRChoice).where(OCRChoice.question_id == q.id)).all()
+        q_dict["choices"] = [c.dict() for c in choices]
+        questions_data.append(q_dict)
+
+    # User-requested Branding Logic
+    engine_name = artifact.engine_used
+    provider = (artifact.provider or "openai").lower()
+
+    if engine_name == "local":
+        display_tag = "YouAsk AI multimodel"
+    elif engine_name == "vlm":
+        if any(p in provider for p in ["openai", "gpt", "claude", "anthropic"]):
+            display_tag = "External GPT"
+        else:
+            display_tag = "YouAsk AI multimodel"
+    else:
+        display_tag = "YouAsk AI multimodel"
+
+    # Token Metrics
+    usage = artifact.usage_metadata or {}
+    tokens_in = usage.get("input_tokens") or usage.get("prompt_tokens", 0)
+    tokens_out = usage.get("output_tokens") or usage.get("completion_tokens", 0)
+
+    token_metrics = f"{tokens_in} in / {tokens_out} out" if (tokens_in or tokens_out) else None
+
+    # Merge into response
+    resp = artifact.dict()
+    resp["engine_display_tag"] = display_tag
+    resp["token_metrics"] = token_metrics
+    resp["questions"] = questions_data
+    resp["figures"] = [f.dict() for f in figures]
+
+    return resp
+
+@api_router.post("/ocr/artifacts/{artifact_id}/confirm")
+async def confirm_ocr(
+    artifact_id: int,
+    request: OCRConfirmRequest,
+    user_id: int = 1,
+    session: Session = Depends(get_session)
+):
+    artifact = session.get(OCRArtifact, artifact_id)
+    if not artifact:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+
+    # Create Confirmation record
+    conf = OCRConfirmation(
+        artifact_id=artifact_id,
+        user_id=user_id,
+        confirmed_markdown=request.confirmed_markdown,
+        confirmed_text=request.confirmed_text,
+        confirmed_latex_blocks=request.confirmed_latex_blocks,
+        normalized_problem_hash="" # Computed below
+    )
+
+    # 1. Normalize and Hash (Canonical Dedup)
+    # We treat the confirmed values as the ProblemJSON source
+    problem_data = {
+        "question": request.confirmed_text,
+        "choices": { block.get('key'): block.get('value') for block in (request.confirmed_latex_blocks or []) if block.get('type') == 'choice' }
+    }
+    prob_hash = problem_normalizer_service.get_hash(problem_data)
+    conf.normalized_problem_hash = prob_hash
+
+    session.add(conf)
+    session.flush()
+
+    # 2. Lookup Canonical Solution
+    from sqlmodel import select
+    stmt = select(CanonicalProblem).where(CanonicalProblem.normalized_problem_hash == prob_hash)
+    existing_prob = session.exec(stmt).first()
+
+    if existing_prob:
+        sol_stmt = select(CanonicalSolution).where(
+            CanonicalSolution.problem_id == existing_prob.id,
+            CanonicalSolution.verification_status == "pass"
+        )
+        existing_sol = session.exec(sol_stmt).first()
+        if existing_sol:
+            return {
+                "status": "dedup_hit",
+                "confirmation_id": conf.id,
+                "problem_id": existing_prob.id,
+                "solution_id": existing_sol.id,
+                "solution": existing_sol.solution_json
+            }
+
+    return {
+        "status": "pending_solve",
+        "confirmation_id": conf.id,
+    }
+
+@api_router.post("/library/save")
+async def save_to_library(
+    request: Dict[str, Any],
+    user_id: int = 1,
+    session: Session = Depends(get_session)
+):
+    solution_id = request.get("solution_id")
+    if not solution_id:
+        raise HTTPException(status_code=400, detail="solution_id required")
+    
+    # Check if exists
+    from app.models import UserSavedSolution # This import was missing in the new snippet, adding it here
+    existing = session.get(UserSavedSolution, {"user_id": user_id, "solution_id": solution_id})
+    if existing:
+        return {"status": "already_saved"}
+        
+    saved = UserSavedSolution(
+        user_id=user_id,
+        solution_id=request.solution_id,
+        tags=request.tags,
+        notes=request.notes
+    )
+    session.add(saved)
+    session.commit()
+    return {"status": "saved"}
+
+def get_canonical_solution(problem_hash: str, session: Session) -> Optional[dict]:
+    """Lookup verified solution by problem hash"""
+    from app.models import CanonicalSolution, CanonicalProblem
+    stmt = select(CanonicalSolution).join(CanonicalProblem).where(
+        CanonicalProblem.normalized_problem_hash == problem_hash,
+        CanonicalSolution.verification_status == "pass"
+    )
+    result = session.exec(stmt).first()
+    return result.solution_json if result else None
+
+# ------------------------------------------------------------------
+# Legacy Vision Extraction (Keep for compat or deprecate)
+# ------------------------------------------------------------------
 @api_router.post("/latex-from-image", response_model=LatexResponse)
 async def extract_latex_from_image(
-    file: UploadFile, 
+    file: UploadFile = File(...), 
     user_id: int = 1, 
     session: Session = Depends(get_session)
 ):
@@ -216,30 +538,106 @@ async def solve_problem(
         # 1. OCR Processing (Legacy/Vision fallback if needed, but mostly handled by frontend passing text now)
         # The frontend now calls /latex-from-image first, then passes the text here.
         # So we don't need to call ocr_service here anymore.
+        # 1. OCR Processing (Handled by frontend/separate endpoint)
         extracted_text = ""
     except Exception as e:
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
-    base_query = f"{request.text_query or ''}\n{extracted_text}".strip()
+    base_query = f"{request.text_query or ''}".strip()
     
-    # ... (rest of logic) ...
+    # --- STRUCTURED DATA ENHANCEMENT ---
+    context_info = ""
+    if request.confirmed_text:
+        base_query = request.confirmed_text
+    
+    if request.artifact_id and request.question_id:
+        # Fetch detailed entities to provide "Hallucination Protection"
+        from app.models import OCRQuestion, OCRFigure, OCRChoice
+        question_ent = session.get(OCRQuestion, request.question_id)
+        if question_ent:
+            # Reconstruct the problem from entities
+            choices_ent = session.exec(select(OCRChoice).where(OCRChoice.question_id == question_ent.id)).all()
+            choice_str = "\n".join([f"{c.label}: {c.text}" for c in choices_ent])
+            base_query = f"{question_ent.prompt}\n\nChoices:\n{choice_str}"
+            
+            # Fetch linked figures
+            figures_ent = session.exec(select(OCRFigure).where(OCRFigure.artifact_id == request.artifact_id)).all()
+            if figures_ent:
+                context_info += "\n[VISUAL CONTEXT DETECTED]\n"
+                for fig in figures_ent:
+                    fig_desc = f"Figure {fig.external_id} ({fig.type}): {fig.description}\n"
+                    if fig.data_json:
+                        fig_desc += f"Detailed Data: {json.dumps(fig.data_json)}\n"
+                    context_info += fig_desc
+    elif request.confirmed_latex_blocks:
+        # Fallback to provided blocks from review screen
+        choice_str = "\n".join([f"{b.get('key')}: {b.get('value')}" for b in request.confirmed_latex_blocks if b.get('type') == 'choice'])
+        if choice_str:
+            base_query += f"\n\nChoices:\n{choice_str}"
+    
+    final_prompt = base_query
+    if context_info:
+        final_prompt = f"{base_query}\n\n{context_info}"
+    
+    # 2. Deduplication (Canonical Solution Lookup)
+    problem_hash = request.problem_hash
+    if not problem_hash and base_query:
+        problem_hash = hashlib.sha256(base_query.strip().lower().encode()).hexdigest()
+    
+    cached_solution = None
+    if problem_hash:
+        cached_solution = get_canonical_solution(problem_hash, session)
 
-    # 2. Retrieval
+    if cached_solution:
+        # RETURN CACHED SOLUTION
+        # Create a new session for this user to track history, but avoid LLM cost
+        new_chat = ChatSession(
+            user_id=user_id,
+            title=cached_solution.get("problem", {}).get("goal", "Resolved Problem")[:50],
+            subject=request.subject or "General",
+            is_saved=False
+        )
+        session.add(new_chat)
+        session.commit()
+        session.refresh(new_chat)
+        
+        # Save Messages
+        session.add(ChatMessage(session_id=new_chat.id, role="user", content=base_query))
+        session.add(ChatMessage(
+            session_id=new_chat.id, 
+            role="assistant", 
+            content=cached_solution.get("solution", {}).get("final_answer", ""),
+            structured_data=cached_solution
+        ))
+        
+        # Still charge tokens (though less or standard) - as per policy
+        add_tokens_to_user(user_id, 100, session) # Discounted for cache
+        session.commit()
+
+        return SolveResponse(
+            session_id=new_chat.id,
+            solution=cached_solution,
+            concepts=cached_solution.get("concepts") or []
+        )
+
+    # 3. Retrieval
     # Prepend Mode Context
     if request.mode and request.mode != "general":
-        base_query = f"[MODE: {request.mode.upper()}] {base_query}"
+        base_query_for_retrieval = f"[MODE: {request.mode.upper()}] {base_query}"
+    else:
+        base_query_for_retrieval = base_query
     
     if not base_query.strip():
         raise HTTPException(status_code=400, detail="No input provided")
 
-    concepts = await rag_service.search_related_concepts(base_query)
+    concepts = await rag_service.search_related_concepts(base_query_for_retrieval)
 
-    # 3. Solve
-    solution_data = await solver_service.solve_problem(base_query)
+    # 4. Solve (Calling expensive LLM with context enhancement)
+    solution_data = await solver_service.solve_problem(final_prompt)
 
-    # 4. Persistence
+    # 5. Persistence
     # Create Session (NOT SAVED by default)
     new_chat = ChatSession(
         user_id=user_id,
@@ -269,12 +667,35 @@ async def solve_problem(
     )
     session.add(ai_msg)
     
+    # Store in Canonical (Simplified: In production we'd verify first)
+    if problem_hash:
+        try:
+            from app.models import CanonicalProblem, CanonicalSolution
+            # Check if problem exists
+            cp = session.exec(select(CanonicalProblem).where(CanonicalProblem.normalized_problem_hash == problem_hash)).first()
+            if not cp:
+                cp = CanonicalProblem(
+                    normalized_problem_hash=problem_hash,
+                    normalized_text=base_query,
+                    subject=request.subject or "General"
+                )
+                session.add(cp)
+                session.commit()
+                session.refresh(cp)
+            
+            # Save as potentially verified solution
+            cs = CanonicalSolution(
+                problem_id=cp.id,
+                solution_json=solution_data,
+                verification_status="pass" # Defaulting to pass for now
+            )
+            session.add(cs)
+        except Exception as e:
+            print(f"WARNING: Failed to save canonical record: {e}") # Using print as logger not defined in snippet
+
     # Estimate tokens used (rough estimate: ~500 tokens per solve)
     estimated_tokens = 500
-    
-    # Update user's token count
-    user.tokens_used_this_month += estimated_tokens
-    session.add(user)
+    add_tokens_to_user(user_id, estimated_tokens, session)
     
     # Log Solve Usage
     session.add(UsageLog(user_id=user_id, action_type="solve_request", tokens_used=estimated_tokens))
