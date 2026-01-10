@@ -20,6 +20,7 @@ class Token(BaseModel):
     full_name: str
     role: str
     avatar_url: Optional[str] = None
+    session_token: Optional[str] = None
 
 class TokenData(BaseModel):
     email: Optional[str] = None

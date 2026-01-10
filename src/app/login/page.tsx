@@ -18,7 +18,7 @@ export default function LoginPage() {
         setError("");
 
         try {
-            const response = await fetch("http://localhost:8000/api/v1/login", {
+            const response = await fetch("http://127.0.0.1:8000/api/v1/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, password }),
@@ -37,6 +37,7 @@ export default function LoginPage() {
             localStorage.setItem("user_name", data.full_name);
             localStorage.setItem("user_role", data.role);
             localStorage.setItem("user_avatar", data.avatar_url || "");
+            localStorage.setItem("session_token", data.session_token || "");
             localStorage.setItem("user", JSON.stringify(data));
 
             // Redirect

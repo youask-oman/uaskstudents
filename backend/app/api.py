@@ -25,6 +25,7 @@ class SolveRequest(BaseModel):
     text_query: Optional[str] = None
     subject: Optional[str] = None
     mode: Optional[str] = "general"
+    user_id: Optional[int] = None
 
 class SolveResponse(BaseModel):
     session_id: int
@@ -51,6 +52,8 @@ class ProfileUpdateRequest(BaseModel):
     email: Optional[str] = None
     academic_level: Optional[str] = None
     timezone: Optional[str] = None
+    is_public: Optional[bool] = None
+    learning_interests: Optional[List[str]] = None
 
 class PreferenceUpdateRequest(BaseModel):
     theme: Optional[str] = None
@@ -74,6 +77,11 @@ class UserProfileResponse(BaseModel):
     solving_mode: str
     subscription_tier: str
     subscription_status: str
+    
+    # Advanced Profile
+    is_public: bool
+    learning_interests: Optional[List[str]]
+    
     usage: UserUsageStats
 
 @api_router.post("/signup")
@@ -111,6 +119,17 @@ async def login_for_access_token(form_data: LoginRequest, session: Session = Dep
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    # Session & Security
+    session_token = str(uuid.uuid4())
+    user.session_token = session_token
+    # In a real app, retrieve IP from request.client.host
+    # Here we mock or pass it via header if critical
+    user.last_ip = "127.0.0.1" 
+    
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
     access_token = create_access_token(data={"sub": user.email})
     
     return Token(
@@ -119,7 +138,8 @@ async def login_for_access_token(form_data: LoginRequest, session: Session = Dep
         user_id=user.id,
         full_name=user.full_name,
         role=user.role,
-        avatar_url=user.avatar_url
+        avatar_url=user.avatar_url,
+        session_token=session_token # Return to client
     )
 
 
@@ -156,7 +176,6 @@ async def extract_latex_from_image(
 @api_router.post("/solve", response_model=SolveResponse)
 async def solve_problem(
     request: SolveRequest, 
-    user_id: int = 1, # Default to student for dev
     session: Session = Depends(get_session)
 ):
     """
@@ -168,35 +187,105 @@ async def solve_problem(
     5. DB Persistence
     6. Track tokens
     """
-    # Check token limit BEFORE processing
-    user = session.get(User, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    # Check and reset monthly tokens if needed
-    from datetime import datetime, timedelta
-    now = datetime.utcnow()
-    if (now - user.last_token_reset).days >= 30:
-        user.tokens_used_this_month = 0
-        user.last_token_reset = now
-        session.add(user)
-        session.commit()
-        session.refresh(user)
-    
-    # Enforce 1M token limit
-    MONTHLY_LIMIT = 1_000_000
-    if user.tokens_used_this_month >= MONTHLY_LIMIT:
-        raise HTTPException(
-            status_code=429,
-            detail=f"Monthly token limit of {MONTHLY_LIMIT:,} tokens exceeded. Resets on {(user.last_token_reset + timedelta(days=30)).strftime('%Y-%m-%d')}."
-        )
-    
-    # 1. OCR Processing (Legacy/Vision fallback if needed, but mostly handled by frontend passing text now)
-    # The frontend now calls /latex-from-image first, then passes the text here.
-    # So we don't need to call ocr_service here anymore.
-    extracted_text = ""
+    try:
+        # Check token limit BEFORE processing
+        # Use user_id from request body (pydantic), default to 1 if missing
+        user_id = request.user_id or 1
+        user = session.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Check and reset monthly tokens if needed
+        from datetime import datetime, timedelta
+        now = datetime.utcnow()
+        if (now - user.last_token_reset).days >= 30:
+            user.tokens_used_this_month = 0
+            user.last_token_reset = now
+            session.add(user)
+            session.commit()
+            session.refresh(user)
+        
+        # Enforce 1M token limit
+        MONTHLY_LIMIT = 1_000_000
+        if user.tokens_used_this_month >= MONTHLY_LIMIT:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Monthly token limit of {MONTHLY_LIMIT:,} tokens exceeded. Resets on {(user.last_token_reset + timedelta(days=30)).strftime('%Y-%m-%d')}."
+            )
+        
+        # 1. OCR Processing (Legacy/Vision fallback if needed, but mostly handled by frontend passing text now)
+        # The frontend now calls /latex-from-image first, then passes the text here.
+        # So we don't need to call ocr_service here anymore.
+        extracted_text = ""
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
     base_query = f"{request.text_query or ''}\n{extracted_text}".strip()
+    
+    # ... (rest of logic) ...
+
+    # 2. Retrieval
+    # Prepend Mode Context
+    if request.mode and request.mode != "general":
+        base_query = f"[MODE: {request.mode.upper()}] {base_query}"
+    
+    if not base_query.strip():
+        raise HTTPException(status_code=400, detail="No input provided")
+
+    concepts = await rag_service.search_related_concepts(base_query)
+
+    # 3. Solve
+    solution_data = await solver_service.solve_problem(base_query)
+
+    # 4. Persistence
+    # Create Session (NOT SAVED by default)
+    new_chat = ChatSession(
+        user_id=user_id,
+        title=solution_data.get("problem", {}).get("goal", "New Problem")[:50],
+        subject=request.subject or "General",
+        is_saved=False
+    )
+    session.add(new_chat)
+    session.commit()
+    session.refresh(new_chat)
+
+    # Save User Query
+    user_msg = ChatMessage(
+        session_id=new_chat.id,
+        role="user",
+        content=base_query,
+        media_url=request.image_url
+    )
+    session.add(user_msg)
+
+    # Save Assistant Response
+    ai_msg = ChatMessage(
+        session_id=new_chat.id,
+        role="assistant",
+        content=solution_data.get("solution", {}).get("final_answer", ""),
+        structured_data=solution_data
+    )
+    session.add(ai_msg)
+    
+    # Estimate tokens used (rough estimate: ~500 tokens per solve)
+    estimated_tokens = 500
+    
+    # Update user's token count
+    user.tokens_used_this_month += estimated_tokens
+    session.add(user)
+    
+    # Log Solve Usage
+    session.add(UsageLog(user_id=user_id, action_type="solve_request", tokens_used=estimated_tokens))
+    
+    session.commit()
+
+    return SolveResponse(
+        session_id=new_chat.id,
+        solution=solution_data,
+        concepts=solution_data.get("concepts") or []
+    )
     
     # ------------------------------------------------------------------
 # Billing & User Location Endpoints
@@ -326,68 +415,7 @@ async def create_promo_code(request: PromoCreateRequest, session: Session = Depe
     except Exception as e:
         session.rollback()
         raise HTTPException(status_code=400, detail="Code already exists or invalid")
-    # Prepend Mode Context
-    if request.mode and request.mode != "general":
-        final_query = f"[MODE: {request.mode.upper()}] {base_query}"
-    else:
-        final_query = base_query
-
-    if not final_query.strip():
-        raise HTTPException(status_code=400, detail="No input provided")
-
-    # 2. Retrieval
-    concepts = await rag_service.search_related_concepts(final_query)
-
-    # 3. Solve
-    solution_data = await solver_service.solve_problem(final_query)
-
-    # 4. Persistence
-    # Create Session (NOT SAVED by default)
-    new_chat = ChatSession(
-        user_id=user_id,
-        title=solution_data.get("problem", {}).get("goal", "New Problem")[:50],
-        subject=request.subject or "General",
-        is_saved=False  # Explicitly set to False
-    )
-    session.add(new_chat)
-    session.commit()
-    session.refresh(new_chat)
-
-    # Save User Query
-    user_msg = ChatMessage(
-        session_id=new_chat.id,
-        role="user",
-        content=final_query,
-        media_url=request.image_url
-    )
-    session.add(user_msg)
-
-    # Save Assistant Response
-    ai_msg = ChatMessage(
-        session_id=new_chat.id,
-        role="assistant",
-        content=solution_data.get("solution", {}).get("final_answer", ""),
-        structured_data=solution_data
-    )
-    session.add(ai_msg)
-    
-    # Estimate tokens used (rough estimate: ~500 tokens per solve)
-    estimated_tokens = 500
-    
-    # Update user's token count
-    user.tokens_used_this_month += estimated_tokens
-    session.add(user)
-    
-    # Log Solve Usage
-    session.add(UsageLog(user_id=user_id, action_type="solve_request", tokens_used=estimated_tokens))
-    
-    session.commit()
-
-    return SolveResponse(
-        session_id=new_chat.id,
-        solution=solution_data,
-        concepts=solution_data.get("concepts", [])
-    )
+    # (End of promo codes)
 
 @api_router.get("/history", response_model=List[ChatHistoryItem])
 async def get_history(
@@ -537,6 +565,10 @@ async def get_user_profile(user_id: int = Query(...), db: Session = Depends(get_
         solving_mode=user.solving_mode,
         subscription_tier=user.subscription_tier,
         subscription_status=user.subscription_status,
+        
+        is_public=user.is_public,
+        learning_interests=user.learning_interests or [],
+        
         usage=UserUsageStats(
             questions_count=len(questions_count),
             questions_total=user.quota_questions_total,
@@ -559,6 +591,10 @@ async def update_user_profile(request: ProfileUpdateRequest, user_id: int = Quer
         user.academic_level = request.academic_level
     if request.timezone is not None:
         user.timezone = request.timezone
+    if request.is_public is not None:
+        user.is_public = request.is_public
+    if request.learning_interests is not None:
+        user.learning_interests = request.learning_interests
         
     db.add(user)
     db.commit()
@@ -598,6 +634,44 @@ def check_and_reset_monthly_tokens(user: User, db: Session) -> User:
         db.commit()
         db.refresh(user)
     return user
+
+@api_router.post("/user/heartbeat")
+async def update_heartbeat(
+    user_id: int = Query(...), 
+    session_token: Optional[str] = Query(None),
+    db: Session = Depends(get_session)
+):
+    """Update user's last active timestamp and validate session"""
+    user = db.get(User, user_id)
+    if user:
+        # Enforce Single Session
+        if session_token and user.session_token:
+            if session_token != user.session_token:
+                raise HTTPException(status_code=401, detail="Session expired. New login detected.")
+        
+        user.last_active_at = datetime.utcnow()
+        db.add(user)
+        db.commit()
+    return {"status": "ok"}
+
+@api_router.get("/users/online")
+async def get_online_users(db: Session = Depends(get_session)):
+    """Get list of public users active in the last 15 minutes"""
+    cutoff = datetime.utcnow() - timedelta(minutes=15)
+    
+    # Select users who are public AND active recently
+    statement = select(User).where(User.is_public == True).where(User.last_active_at >= cutoff)
+    users = db.exec(statement).all()
+    
+    return [
+        {
+            "id": u.id,
+            "full_name": u.full_name,
+            "avatar_url": u.avatar_url,
+            "learning_interests": u.learning_interests
+        }
+        for u in users
+    ]
 
 def add_tokens_to_user(user_id: int, tokens: int, db: Session):
     """Add tokens to user's monthly count"""
@@ -669,122 +743,4 @@ async def get_session_save_status(session_id: int, db: Session = Depends(get_ses
         created_at=chat_session.created_at.isoformat()
     )
 
-# ------------------------------------------------------------------
-# Billing & Payment
-# ------------------------------------------------------------------
 
-class SubscriptionRequest(BaseModel):
-    user_id: int
-    plan_id: str # pro, ultra
-    payment_method: str = "card"
-    ip_address: Optional[str] = None
-
-class LocationUpdateRequest(BaseModel):
-    user_id: int
-    ip_address: Optional[str] = None
-    country: Optional[str] = None
-
-@api_router.post("/billing/subscribe")
-async def subscribe_user(request: SubscriptionRequest, session: Session = Depends(get_session)):
-    user = session.get(User, request.user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    # Simulate Payment
-    tx_id = f"tx_{uuid.uuid4().hex[:12]}"
-    amount = 9.99 if request.plan_id == "pro" else 19.99
-    
-    payment = Payment(
-        user_id=user.id,
-        amount=amount,
-        status="completed",
-        transaction_id=tx_id,
-        payment_method=request.payment_method,
-        ip_address=request.ip_address
-    )
-    session.add(payment)
-    
-    # Update User
-    user.subscription_tier = request.plan_id
-    user.subscription_status = "active"
-    user.subscription_expiry = datetime.utcnow() + timedelta(days=30)
-    if request.ip_address:
-        user.ip_address = request.ip_address
-    
-    session.add(user)
-    session.commit()
-    
-    return {"status": "success", "transaction_id": tx_id, "plan": request.plan_id}
-
-@api_router.get("/billing/history")
-async def get_billing_history(user_id: int = Query(...), session: Session = Depends(get_session)):
-    payments = session.exec(select(Payment).where(Payment.user_id == user_id).order_by(Payment.created_at.desc())).all()
-    return payments
-
-@api_router.post("/user/location")
-async def update_user_location(request: LocationUpdateRequest, session: Session = Depends(get_session)):
-    """Update user IP and country for security logging"""
-    user = session.get(User, request.user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    if request.ip_address:
-        user.ip_address = request.ip_address
-    if request.country:
-        user.country = request.country
-        
-    session.add(user)
-    session.commit()
-    return {"status": "updated", "ip": user.ip_address, "country": user.country}
-
-# ------------------------------------------------------------------
-# Promo Code Endpoints
-# ------------------------------------------------------------------
-
-class PromoValidateRequest(BaseModel):
-    code: str
-
-class PromoCreateRequest(BaseModel):
-    code: str
-    discount_percent: int
-    max_uses: Optional[int] = None
-
-@api_router.post("/billing/validate-promo")
-async def validate_promo(request: PromoValidateRequest, session: Session = Depends(get_session)):
-    code_upper = request.code.upper().strip()
-    promo = session.exec(select(PromoCode).where(PromoCode.code == code_upper)).first()
-    
-    if not promo:
-        return {"valid": False, "message": "Invalid code"}
-        
-    if not promo.is_active:
-        return {"valid": False, "message": "Code is inactive"}
-        
-    if promo.valid_until and promo.valid_until < datetime.utcnow():
-        return {"valid": False, "message": "Code expired"}
-        
-    if promo.max_uses and promo.current_uses >= promo.max_uses:
-        return {"valid": False, "message": "Code usage limit reached"}
-        
-    return {
-        "valid": True, 
-        "message": "Valid code", 
-        "discount_percent": promo.discount_percent,
-        "code": promo.code
-    }
-
-@api_router.post("/admin/promo-codes")
-async def create_promo_code(request: PromoCreateRequest, session: Session = Depends(get_session)):
-    # In prod, check admin role here
-    new_promo = PromoCode(
-        code=request.code.upper().strip(),
-        discount_percent=request.discount_percent,
-        max_uses=request.max_uses
-    )
-    session.add(new_promo)
-    try:
-        session.commit()
-        return {"status": "created", "code": new_promo.code}
-    except Exception as e:
-        session.rollback()
-        raise HTTPException(status_code=400, detail="Code already exists or invalid")

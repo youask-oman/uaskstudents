@@ -64,7 +64,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             }
 
             try {
-                const res = await fetch(`http://localhost:8000/api/v1/sessions/${id}`);
+                const res = await fetch(`http://127.0.0.1:8000/api/v1/sessions/${id}`);
                 if (res.ok) {
                     const data = await res.json();
                     setSession(data);
@@ -119,7 +119,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         try {
             console.log("Sending message to API...", { session_id: sessionIdInt, user_id: userId, query });
 
-            const res = await fetch('http://localhost:8000/api/v1/ask-question', {
+            const res = await fetch('http://127.0.0.1:8000/api/v1/ask-question', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

@@ -19,6 +19,8 @@ export default function DashboardPage() {
     const [history, setHistory] = useState<ChatSession[]>([]);
     const [query, setQuery] = useState("sqrt(x+5) = x - 1");
     const [isSolving, setIsSolving] = useState(false);
+    const [onlineUsers, setOnlineUsers] = useState<any[]>([]);
+    const [isPublic, setIsPublic] = useState(false);
 
     // Editor State
     const [activeMode, setActiveMode] = useState<ModeId | null>(null);
@@ -46,7 +48,27 @@ export default function DashboardPage() {
             }
         };
 
+        const fetchOnline = async () => {
+            try {
+                const profileRes = await fetch(`http://localhost:8000/api/v1/user/profile?user_id=${userId}`);
+                if (profileRes.ok) {
+                    const profile = await profileRes.json();
+                    setIsPublic(profile.is_public);
+
+                    if (profile.is_public) {
+                        const onlineRes = await fetch(`http://localhost:8000/api/v1/users/online`);
+                        if (onlineRes.ok) {
+                            setOnlineUsers(await onlineRes.json());
+                        }
+                    }
+                }
+            } catch (e) { console.error(e); }
+        };
+
         fetchHistory();
+        fetchOnline();
+        const interval = setInterval(fetchOnline, 30000);
+        return () => clearInterval(interval);
     }, [router]);
 
     const handleSuggestionClick = (suggestion: Suggestion) => {
@@ -209,7 +231,7 @@ export default function DashboardPage() {
         setIsSolving(true);
 
         try {
-            const res = await fetch('http://localhost:8000/api/v1/solve', {
+            const res = await fetch('http://127.0.0.1:8000/api/v1/solve', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -636,6 +658,55 @@ export default function DashboardPage() {
 
                     {/* Sidebar */}
                     <div className="lg:col-span-4 space-y-6">
+                        {/* Online Users Widget */}
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                    <span className="relative flex h-3 w-3">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                                    </span>
+                                    Online Students
+                                </h3>
+                                {isPublic && <span className="text-xs font-bold text-slate-500">{onlineUsers.length} Active</span>}
+                            </div>
+
+                            {!isPublic ? (
+                                <div className="text-center py-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                                    <p className="text-sm text-slate-500 mb-3 px-4">Turn on Public Profile to see and connect with peers.</p>
+                                    <button
+                                        onClick={() => router.push('/dashboard')}
+                                        className="text-primary text-xs font-bold hover:underline"
+                                    >
+                                        Go to Settings
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {onlineUsers.length === 0 ? (
+                                        <p className="text-sm text-slate-500 italic">No one else is public right now.</p>
+                                    ) : (
+                                        onlineUsers.slice(0, 5).map((u) => (
+                                            <div key={u.id} className="flex items-center gap-3">
+                                                <div
+                                                    className="w-8 h-8 rounded-full bg-cover bg-center border border-slate-200 dark:border-slate-700"
+                                                    style={{ backgroundImage: `url('${u.avatar_url || 'https://lh3.googleusercontent.com/aida-public/AB6AXuD_gpHP7vJM1mkTxszlDYSYslefzDpqT7kS3EUblVETFcyH2Sl2xHETdTN_AcqdawcLn0mOa7LR69Ol1T3hAFSvpJss7LzshfwXBbhjMZqOGSH9S1nVdhEO1aeexaHXJAn_VqN1tFoPVazJP1aq1rARcjsg7F4-pStNL1jl7KEpohReYVX52pfbq3YO6IKCX71lAo42c76k2H4WrKWI5r79xsjqMPNL1zZPzcajFKkIs40bZTGM732P1j_aCdcr67zOQ2bNSaRrATQz'}')` }}
+                                                />
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-semibold truncate text-slate-900 dark:text-slate-100">{u.full_name}</p>
+                                                    <p className="text-[10px] text-slate-500 truncate">
+                                                        {u.learning_interests && u.learning_interests.length > 0
+                                                            ? u.learning_interests.slice(0, 2).join(", ")
+                                                            : "Studying Math"}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
                         {/* Tips Sidebar */}
                         <div className="bg-primary/5 border border-primary/20 rounded-xl p-6">
                             <h3 className="text-primary font-bold flex items-center gap-2 mb-4">

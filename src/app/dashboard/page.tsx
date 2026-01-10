@@ -23,6 +23,44 @@ export default function DashboardPage() {
     const [user, setUser] = useState<any>(null);
     const [activeTab, setActiveTab] = useState("history"); // history, saved, concepts
     const router = useRouter();
+    const [isPublic, setIsPublic] = useState(false);
+    const [interests, setInterests] = useState<string[]>([]);
+    const [newInterest, setNewInterest] = useState("");
+
+    const updateProfile = async (updates: any) => {
+        const userId = localStorage.getItem("user_id");
+        if (!userId) return;
+        try {
+            await fetch(`http://127.0.0.1:8000/api/v1/user/profile?user_id=${userId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates)
+            });
+        } catch (e) {
+            console.error("Failed to update profile", e);
+        }
+    };
+
+    const togglePublic = () => {
+        const newVal = !isPublic;
+        setIsPublic(newVal);
+        updateProfile({ is_public: newVal });
+    };
+
+    const addInterest = () => {
+        if (!newInterest.trim()) return;
+        if (interests.includes(newInterest.trim())) return;
+        const updated = [...interests, newInterest.trim()];
+        setInterests(updated);
+        setNewInterest("");
+        updateProfile({ learning_interests: updated });
+    };
+
+    const removeInterest = (tag: string) => {
+        const updated = interests.filter(i => i !== tag);
+        setInterests(updated);
+        updateProfile({ learning_interests: updated });
+    };
 
     useEffect(() => {
         const userId = localStorage.getItem("user_id");
@@ -43,16 +81,18 @@ export default function DashboardPage() {
         const fetchData = async () => {
             try {
                 // Fetch History (ALL sessions)
-                const historyRes = await fetch(`http://localhost:8000/api/v1/history?user_id=${userId}&saved_only=false`);
+                const historyRes = await fetch(`http://127.0.0.1:8000/api/v1/history?user_id=${userId}&saved_only=false`);
                 if (historyRes.ok) {
                     const data = await historyRes.json();
                     setHistory(data);
                 }
 
                 // Fetch Profile Stats
-                const profileRes = await fetch(`http://localhost:8000/api/v1/user/profile?user_id=${userId}`);
+                const profileRes = await fetch(`http://127.0.0.1:8000/api/v1/user/profile?user_id=${userId}`);
                 if (profileRes.ok) {
                     const profile = await profileRes.json();
+                    setIsPublic(profile.is_public);
+                    setInterests(profile.learning_interests || []);
                     setStats([
                         {
                             label: "Problems Solved",
@@ -136,6 +176,77 @@ export default function DashboardPage() {
                                 <p className="text-2xl font-bold mt-1 tracking-tight">{stat.value}</p>
                             </div>
                         ))}
+                    </div>
+
+                    {/* Profile & Interests Section */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* Public Profile Card */}
+                        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+                            <div>
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isPublic ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-500'}`}>
+                                        <span className="material-symbols-outlined text-lg">public</span>
+                                    </div>
+                                    <h3 className="font-bold text-sm">Public Profile</h3>
+                                </div>
+                                <p className="text-xs text-slate-500 mb-4">
+                                    Allow other students to see you online and view your shared solutions relative to your university.
+                                </p>
+                            </div>
+                            <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl">
+                                <span className={`text-xs font-bold ${isPublic ? 'text-green-600' : 'text-slate-500'}`}>
+                                    {isPublic ? "Visible" : "Hidden"}
+                                </span>
+                                <button
+                                    onClick={togglePublic}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isPublic ? 'bg-green-500' : 'bg-slate-300'}`}
+                                >
+                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isPublic ? 'translate-x-6' : 'translate-x-1'}`} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Learning Interests Card */}
+                        <div className="md:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 flex items-center justify-center">
+                                    <span className="material-symbols-outlined text-lg">school</span>
+                                </div>
+                                <h3 className="font-bold text-sm">Learning Interests</h3>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 mb-4">
+                                {interests.map((tag, idx) => (
+                                    <div key={idx} className="flex items-center gap-1 pl-3 pr-1 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                        <span>{tag}</span>
+                                        <button onClick={() => removeInterest(tag)} className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-red-500 transition-colors">
+                                            <span className="material-symbols-outlined text-[14px]">close</span>
+                                        </button>
+                                    </div>
+                                ))}
+                                {interests.length === 0 && (
+                                    <span className="text-xs text-slate-400 italic py-1">No interests added yet.</span>
+                                )}
+                            </div>
+
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={newInterest}
+                                    onChange={(e) => setNewInterest(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && addInterest()}
+                                    placeholder="Add a topic (e.g. Calculus, Physics)..."
+                                    className="flex-1 bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm px-4 py-2 focus:ring-2 focus:ring-primary/50 outline-none"
+                                />
+                                <button
+                                    onClick={addInterest}
+                                    disabled={!newInterest.trim()}
+                                    className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                >
+                                    Add
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Recent Solutions Section */}

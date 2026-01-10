@@ -46,7 +46,7 @@ export default function WorkspaceLayout({
         const fetchTokens = async () => {
             try {
                 const userId = localStorage.getItem("user_id") || "1";
-                const res = await fetch(`http://localhost:8000/api/v1/user/token-usage?user_id=${userId}`);
+                const res = await fetch(`http://127.0.0.1:8000/api/v1/user/token-usage?user_id=${userId}`);
                 if (res.ok) {
                     const data = await res.json();
                     setTokenUsage({ used: data.tokens_used, limit: data.tokens_limit });

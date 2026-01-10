@@ -43,7 +43,7 @@ export default function ProfilePage() {
         const userId = localStorage.getItem("user_id");
         if (!userId) return;
 
-        fetch(`http://localhost:8000/api/v1/user/profile?user_id=${userId}`)
+        fetch(`http://127.0.0.1:8000/api/v1/user/profile?user_id=${userId}`)
             .then(res => res.json())
             .then(data => {
                 setProfile(data);
@@ -66,7 +66,7 @@ export default function ProfilePage() {
         const userId = localStorage.getItem("user_id");
         setSaving(true);
         try {
-            const res = await fetch(`http://localhost:8000/api/v1/user/profile?user_id=${userId}`, {
+            const res = await fetch(`http://127.0.0.1:8000/api/v1/user/profile?user_id=${userId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -92,7 +92,7 @@ export default function ProfilePage() {
         const userId = localStorage.getItem("user_id");
         setSaving(true);
         try {
-            const res = await fetch(`http://localhost:8000/api/v1/user/preferences?user_id=${userId}`, {
+            const res = await fetch(`http://127.0.0.1:8000/api/v1/user/preferences?user_id=${userId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

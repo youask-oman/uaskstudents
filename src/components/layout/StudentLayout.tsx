@@ -17,7 +17,26 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     const [user, setUser] = useState<any>(null);
     const [energy, setEnergy] = useState(128); // Mock for now
 
+    // Logout Refs & Timer
+    const logoutTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+    const handleLogout = () => {
+        localStorage.removeItem("user");
+        localStorage.removeItem("user_id");
+        localStorage.removeItem("token");
+        localStorage.removeItem("session_token");
+        router.push("/login");
+    };
+
+    const resetIdleTimer = () => {
+        if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
+        logoutTimerRef.current = setTimeout(() => {
+            handleLogout();
+        }, 10 * 60 * 1000); // 10 minutes
+    };
+
     useEffect(() => {
+        // 1. Restore User
         const storedUser = localStorage.getItem("user");
         if (storedUser) {
             try {
@@ -26,7 +45,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                 console.error("Error parsing user data");
             }
         } else {
-            // Failsafe for dev
+            // Mock data if missing
             setUser({
                 full_name: localStorage.getItem("user_name") || "Alex Johnson",
                 subscription_tier: "Pro",
@@ -37,6 +56,41 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
         if (document.documentElement.classList.contains("dark")) {
             setIsDark(true);
         }
+
+        // 2. Heartbeat (Every 2 mins)
+        const heartbeatInterval = setInterval(async () => {
+            const userId = localStorage.getItem("user_id");
+            const sessionToken = localStorage.getItem("session_token");
+
+            if (userId) {
+                try {
+                    let url = `http://127.0.0.1:8000/api/v1/user/heartbeat?user_id=${userId}`;
+                    if (sessionToken) {
+                        url += `&session_token=${sessionToken}`;
+                    }
+
+                    const res = await fetch(url, { method: 'POST' });
+                    if (res.status === 401) {
+                        // Session Invalid/Expired -> Force Logout
+                        handleLogout();
+                    }
+                } catch (e) {
+                    // console.error("Heartbeat failed", e); // Silently fail
+                }
+            }
+        }, 2 * 60 * 1000);
+
+        // 3. Idle Timer
+        const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+        const activityHandler = () => resetIdleTimer();
+        events.forEach(event => window.addEventListener(event, activityHandler));
+        resetIdleTimer();
+
+        return () => {
+            clearInterval(heartbeatInterval);
+            if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
+            events.forEach(event => window.removeEventListener(event, activityHandler));
+        };
     }, []);
 
     const navItems = [
@@ -119,6 +173,13 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                             <span className="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">settings</span>
                             <span className="text-sm font-medium">Settings</span>
                         </Link>
+                        <button
+                            onClick={handleLogout}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all duration-200 group"
+                        >
+                            <span className="material-symbols-outlined text-[20px] group-hover:text-red-400 transition-colors">logout</span>
+                            <span className="text-sm font-medium">Logout</span>
+                        </button>
                     </div>
 
                     {/* User Profile Snippet */}

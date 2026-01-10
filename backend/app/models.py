@@ -41,6 +41,15 @@ class User(SQLModel, table=True):
     # Location & Security
     ip_address: Optional[str] = None
     country: Optional[str] = None
+    
+    # Advanced Profile
+    is_public: bool = Field(default=False)
+    learning_interests: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
+    last_active_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    # Session Security
+    session_token: Optional[str] = None
+    last_ip: Optional[str] = None
 
     sessions: List["ChatSession"] = Relationship(back_populates="user")
     usage_logs: List["UsageLog"] = Relationship(back_populates="user")

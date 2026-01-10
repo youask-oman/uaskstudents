@@ -21,7 +21,7 @@ export default function SignupPage() {
 
         try {
             // Step 1: Create account
-            const signupResponse = await fetch("http://localhost:8000/api/v1/signup", {
+            const signupResponse = await fetch("http://127.0.0.1:8000/api/v1/signup", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -38,7 +38,7 @@ export default function SignupPage() {
             }
 
             // Step 2: Auto-login after successful signup
-            const loginResponse = await fetch("http://localhost:8000/api/v1/login", {
+            const loginResponse = await fetch("http://127.0.0.1:8000/api/v1/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, password }),
