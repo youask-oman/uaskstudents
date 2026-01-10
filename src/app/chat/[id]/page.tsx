@@ -15,6 +15,8 @@ interface ChatMessage {
     created_at: string;
     type?: 'text' | 'solution_json';
     structured_data?: any;
+    model_used?: string;
+    tokens_used?: number;
 }
 
 interface ChatSession {
@@ -99,9 +101,13 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         );
     }
 
+    const assistantMsg = session.messages.find(m => m.role === 'assistant' && (m.structured_data || m.model_used));
     const solutionData = id === 'demo-1'
         ? DEMO_SOLUTION
-        : (session.messages.find(m => m.role === 'assistant' && m.structured_data)?.structured_data || null);
+        : (assistantMsg?.structured_data || null);
+
+    const modelUsed = assistantMsg?.model_used || (id === 'demo-1' ? "YouAsk AI (Multimodal)" : "OpenAI GPT-4o Mini");
+    const tokensUsed = (assistantMsg && typeof assistantMsg.tokens_used === 'number') ? assistantMsg.tokens_used : (id === 'demo-1' ? 750 : 500);
 
     const handleSendMessage = async (query: string) => {
         const userId = localStorage.getItem("user_id") || "1";
@@ -143,7 +149,9 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             const aiMsg: ChatMessage = {
                 role: 'assistant',
                 content: data.relevant ? data.content : `⚠️ **Problem Focus Guard:** ${data.content}`,
-                created_at: data.created_at
+                created_at: data.created_at,
+                model_used: data.model_used || "OpenAI GPT-4o Mini",
+                tokens_used: data.tokens_used || 100
             };
 
             setSession(prev => prev ? { ...prev, messages: [...prev.messages, aiMsg] } : null);
@@ -240,12 +248,14 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             setActiveTab={setActiveTab}
             messages={session.messages}
             sessionTitle={session.title}
-            problemLatex={solutionData?.problem?.latex || session.title} // Pass formula
+            problemLatex={solutionData?.problem?.latex || session.title}
             tutorMode={tutorMode}
             setTutorMode={setTutorMode}
             onSendMessage={handleSendMessage}
-            isSaved={Boolean(session.is_saved)} // Pass save state
-            onSave={session.id !== 'demo-1' ? handleSave : undefined} // Pass save handler
+            isSaved={Boolean(session.is_saved)}
+            onSave={session.id !== 'demo-1' ? handleSave : undefined}
+            modelUsed={modelUsed}
+            tokensUsed={tokensUsed || 0}
         >
             {renderContent()}
         </WorkspaceLayout>

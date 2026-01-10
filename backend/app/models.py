@@ -84,6 +84,10 @@ class ChatMessage(SQLModel, table=True):
     # Structure for rich responses (steps, verification, etc) - stored as JSON
     structured_data: Optional[dict] = Field(default=None, sa_column=Column(JSON))
     
+    # Metadata for tracking
+    model_used: Optional[str] = None
+    tokens_used: int = Field(default=0)
+    
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     session: ChatSession = Relationship(back_populates="messages")

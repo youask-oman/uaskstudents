@@ -54,6 +54,9 @@ class SolveResponse(BaseModel):
     session_id: int
     solution: dict
     concepts: List[dict]
+    model_used: Optional[str] = "OpenAI GPT-4o Mini"
+    tokens_used: Optional[int] = 500
+    has_image: Optional[bool] = False
 
 class ChatHistoryItem(BaseModel):
     id: int
@@ -590,14 +593,36 @@ async def solve_problem(
     if problem_hash:
         cached_solution = get_canonical_solution(problem_hash, session)
 
+    # Determine metadata
+    model_name = "YouAsk AI (Multimodal)" if (request.image_url or request.artifact_id) else "OpenAI GPT-4o Mini"
+    is_image = bool(request.image_url or request.artifact_id)
+    extra_images = 0
+    if request.artifact_id:
+        from app.models import OCRFigure
+        extra_images = len(session.exec(select(OCRFigure).where(OCRFigure.artifact_id == request.artifact_id)).all())
+    
+    estimated_tokens = 500 + (6000 if is_image else 0) + (extra_images * 6000)
+
     if cached_solution:
+        # Check if already saved by this user
+        from app.models import UserSavedSolution
+        is_already_saved = False
+        # solution_id is cached_solution.id if it was a real model, but get_canonical_solution returns dict
+        # wait, get_canonical_solution should return the DB object or I need to find it
+        cp = session.exec(select(CanonicalProblem).where(CanonicalProblem.normalized_problem_hash == problem_hash)).first()
+        if cp:
+            cs = session.exec(select(CanonicalSolution).where(CanonicalSolution.problem_id == cp.id)).first()
+            if cs:
+                existing_save = session.exec(select(UserSavedSolution).where(UserSavedSolution.user_id == user_id, UserSavedSolution.solution_id == cs.id)).first()
+                if existing_save:
+                    is_already_saved = True
+
         # RETURN CACHED SOLUTION
-        # Create a new session for this user to track history, but avoid LLM cost
         new_chat = ChatSession(
             user_id=user_id,
             title=cached_solution.get("problem", {}).get("goal", "Resolved Problem")[:50],
             subject=request.subject or "General",
-            is_saved=False
+            is_saved=is_already_saved
         )
         session.add(new_chat)
         session.commit()
@@ -609,17 +634,21 @@ async def solve_problem(
             session_id=new_chat.id, 
             role="assistant", 
             content=cached_solution.get("solution", {}).get("final_answer", ""),
-            structured_data=cached_solution
+            structured_data=cached_solution,
+            model_used=model_name,
+            tokens_used=estimated_tokens # Respect image policy even for cache
         ))
         
-        # Still charge tokens (though less or standard) - as per policy
-        add_tokens_to_user(user_id, 100, session) # Discounted for cache
+        add_tokens_to_user(user_id, estimated_tokens, session)
         session.commit()
 
         return SolveResponse(
             session_id=new_chat.id,
             solution=cached_solution,
-            concepts=cached_solution.get("concepts") or []
+            concepts=cached_solution.get("concepts") or [],
+            model_used=model_name,
+            tokens_used=100,
+            has_image=is_image
         )
 
     # 3. Retrieval
@@ -663,7 +692,9 @@ async def solve_problem(
         session_id=new_chat.id,
         role="assistant",
         content=solution_data.get("solution", {}).get("final_answer", ""),
-        structured_data=solution_data
+        structured_data=solution_data,
+        model_used=model_name,
+        tokens_used=estimated_tokens
     )
     session.add(ai_msg)
     
@@ -693,8 +724,7 @@ async def solve_problem(
         except Exception as e:
             print(f"WARNING: Failed to save canonical record: {e}") # Using print as logger not defined in snippet
 
-    # Estimate tokens used (rough estimate: ~500 tokens per solve)
-    estimated_tokens = 500
+    # Estimate tokens used (already calculated at the top)
     add_tokens_to_user(user_id, estimated_tokens, session)
     
     # Log Solve Usage
@@ -705,7 +735,10 @@ async def solve_problem(
     return SolveResponse(
         session_id=new_chat.id,
         solution=solution_data,
-        concepts=solution_data.get("concepts") or []
+        concepts=solution_data.get("concepts") or [],
+        model_used=model_name,
+        tokens_used=estimated_tokens,
+        has_image=is_image
     )
     
     # ------------------------------------------------------------------
@@ -875,11 +908,14 @@ class ChatMessageSchema(BaseModel):
     media_url: Optional[str] = None
     structured_data: Optional[dict] = None
     created_at: str
+    model_used: Optional[str] = None
+    tokens_used: Optional[int] = None
 
 class ChatSessionResponse(BaseModel):
     id: int
     title: str
     subject: Optional[str] = None
+    is_saved: bool = False
     created_at: str
     messages: List[ChatMessageSchema]
 
@@ -893,6 +929,7 @@ async def get_session_details(session_id: int, session: Session = Depends(get_se
         id=chat_session.id,
         title=chat_session.title,
         subject=chat_session.subject,
+        is_saved=chat_session.is_saved,
         created_at=chat_session.created_at.isoformat(),
         messages=[
             ChatMessageSchema(
@@ -900,7 +937,9 @@ async def get_session_details(session_id: int, session: Session = Depends(get_se
                 content=msg.content,
                 media_url=msg.media_url,
                 structured_data=msg.structured_data,
-                created_at=msg.created_at.isoformat()
+                created_at=msg.created_at.isoformat(),
+                model_used=getattr(msg, "model_used", None),
+                tokens_used=getattr(msg, "tokens_used", None)
             )
             for msg in chat_session.messages
         ]
@@ -942,16 +981,24 @@ async def ask_question(request: QuestionRequest, db: Session = Depends(get_sessi
     ai_msg = ChatMessage(
         session_id=request.session_id,
         role="assistant",
-        content=result.get("content", "I am sorry, I could not process that.")
+        content=result.get("content", "I am sorry, I could not process that."),
+        model_used="OpenAI GPT-4o Mini",
+        tokens_used=100 # Standard flat rate for chat
     )
     db.add(ai_msg)
+    
+    # 5. Charge Tokens
+    add_tokens_to_user(request.user_id, 100, db)
+    
     db.commit()
     db.refresh(ai_msg)
     
     return {
         "relevant": result.get("relevant", True),
         "content": ai_msg.content,
-        "created_at": ai_msg.created_at.isoformat()
+        "created_at": ai_msg.created_at.isoformat(),
+        "model_used": ai_msg.model_used,
+        "tokens_used": ai_msg.tokens_used
     }
 
 # --- Profile & Preferences ---
@@ -1133,15 +1180,39 @@ async def get_token_usage(user_id: int = Query(...), db: Session = Depends(get_s
 
 @api_router.post("/sessions/{session_id}/save")
 async def save_session(session_id: int, db: Session = Depends(get_session)):
-    """Mark a session as saved so it appears in history"""
+    """Mark a session as saved so it appears in history and create a UserSavedSolution entry"""
     chat_session = db.get(ChatSession, session_id)
     if not chat_session:
         raise HTTPException(status_code=404, detail="Session not found")
     
     chat_session.is_saved = True
     db.add(chat_session)
-    db.commit()
     
+    # Link to UserSavedSolution to avoid duplications in history view
+    from app.models import ChatMessage, CanonicalProblem, CanonicalSolution, UserSavedSolution
+    import hashlib
+    
+    user_msg = db.exec(
+        select(ChatMessage)
+        .where(ChatMessage.session_id == session_id)
+        .where(ChatMessage.role == "user")
+    ).first()
+    
+    if user_msg:
+        p_hash = hashlib.sha256(user_msg.content.strip().lower().encode()).hexdigest()
+        cp = db.exec(select(CanonicalProblem).where(CanonicalProblem.normalized_problem_hash == p_hash)).first()
+        if cp:
+            cs = db.exec(select(CanonicalSolution).where(CanonicalSolution.problem_id == cp.id)).first()
+            if cs:
+                existing_save = db.exec(
+                    select(UserSavedSolution)
+                    .where(UserSavedSolution.user_id == chat_session.user_id)
+                    .where(UserSavedSolution.solution_id == cs.id)
+                ).first()
+                if not existing_save:
+                    db.add(UserSavedSolution(user_id=chat_session.user_id, solution_id=cs.id))
+    
+    db.commit()
     return {"status": "ok", "message": "Session saved successfully", "session_id": session_id}
 
 class SessionDetailResponse(BaseModel):

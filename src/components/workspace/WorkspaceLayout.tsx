@@ -17,6 +17,8 @@ interface WorkspaceLayoutProps {
     onSendMessage: (query: string) => Promise<void>;
     isSaved?: boolean; // New prop for save state
     onSave?: () => void; // New prop for save action
+    modelUsed?: string | null;
+    tokensUsed?: number | null;
 }
 
 export default function WorkspaceLayout({
@@ -32,7 +34,8 @@ export default function WorkspaceLayout({
     onSendMessage,
     isSaved = false,
     onSave,
-    isSaveLoading = false
+    modelUsed,
+    tokensUsed
 }: WorkspaceLayoutProps) {
 
     const [isDark, setIsDark] = useState(false);
@@ -197,8 +200,20 @@ export default function WorkspaceLayout({
                                 </span>
                                 <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Solution Ready</h3>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">by uask AI</span>
+                            <div className="flex items-center gap-3">
+                                {modelUsed && (
+                                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-surface-dark px-2 py-0.5 rounded border border-slate-200 dark:border-border-dark">
+                                        <span className="material-symbols-outlined text-[12px] text-primary dark:text-accent">smart_toy</span>
+                                        <span className="text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-tight">{modelUsed}</span>
+                                    </div>
+                                )}
+                                {tokensUsed !== null && tokensUsed !== undefined && (
+                                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-surface-dark px-2 py-0.5 rounded border border-slate-200 dark:border-border-dark">
+                                        <span className="material-symbols-outlined text-[12px] text-amber-500">toll</span>
+                                        <span className="text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-tight">{(tokensUsed ?? 0).toLocaleString()} Tokens</span>
+                                    </div>
+                                )}
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">by uask AI</span>
                             </div>
                         </div>
                         <div className="w-full h-1 bg-slate-100 dark:bg-surface-dark rounded-full overflow-hidden">
