@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
@@ -88,15 +88,19 @@ function SuccessContent() {
 }
 
 export default function SuccessPage() {
+    const [isDark, setIsDark] = useState(false);
+
+    useEffect(() => {
+        if (document.documentElement.classList.contains("dark")) {
+            setIsDark(true);
+        }
+    }, []);
+
     return (
         <div className="min-h-screen bg-[#f6f6f8] dark:bg-[#101622] text-white font-sans flex flex-col">
             <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-[#282e39] px-6 md:px-10 py-3 bg-[#f6f6f8] dark:bg-[#101622] z-50">
                 <div className="flex items-center gap-4 text-white">
-                    <div className="size-6 text-[#135bec]">
-                        <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M44 4H30.6666V17.3334H17.3334V30.6666H4V44H44V4Z" fill="currentColor"></path>
-                        </svg>
-                    </div>
+                    <img src={isDark ? "/logo-dark.png" : "/logo.png"} alt="uask.ai" className="h-6 w-auto" />
                     <h2 className="text-[#101622] dark:text-white text-xl font-bold leading-tight tracking-[-0.015em] font-sans">uask.ai</h2>
                 </div>
             </header>

@@ -34,9 +34,7 @@ export default function TopNavBar() {
         <header className="sticky top-0 z-50 w-full border-b border-[#f0f2f4] dark:border-slate-800 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md px-4 md:px-10 py-3 transition-colors duration-200">
             <div className="max-w-[1200px] mx-auto flex items-center justify-between">
                 <Link href="/" className="flex items-center gap-3 text-primary">
-                    <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
-                        <span className="material-symbols-outlined text-xl">functions</span>
-                    </div>
+                    <img src={isDark ? "/logo-dark.png" : "/logo.png"} alt="uask.ai" className="h-8 w-auto" />
                     <h2 className="text-[#111318] dark:text-white text-xl font-bold leading-tight tracking-tight font-display">
                         uask.ai
                     </h2>

@@ -109,11 +109,8 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
         <div className="flex h-screen overflow-hidden bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased">
             {/* Sidebar Navigation */}
             <aside className="w-64 flex flex-col bg-[#111827] h-full border-r border-slate-800/50 flex-shrink-0">
-                {/* Top Section: Logo */}
                 <div className="p-6 flex items-center gap-3">
-                    <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                        <span className="material-symbols-outlined text-white text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>functions</span>
-                    </div>
+                    <img src={isDark ? "/logo-dark.png" : "/logo.png"} alt="uask.ai" className="h-8 w-auto" />
                     <div className="flex flex-col">
                         <span className="text-white font-bold text-xl tracking-tight leading-none">uask<span className="text-primary">.ai</span></span>
                         <span className="text-slate-500 text-[10px] uppercase tracking-widest font-semibold">Student Portal</span>

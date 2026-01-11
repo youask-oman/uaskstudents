@@ -53,7 +53,8 @@ class User(SQLModel, table=True):
 
     sessions: List["ChatSession"] = Relationship(back_populates="user")
     usage_logs: List["UsageLog"] = Relationship(back_populates="user")
-    payments: List["Payment"] = Relationship(back_populates="user")    
+    payments: List["Payment"] = Relationship(back_populates="user")
+    voice_sessions: List["VoiceSession"] = Relationship(back_populates="user")
 
 class ChatSession(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -304,6 +305,73 @@ class PromoCode(SQLModel, table=True):
     
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-# Qdrant Concept Card Schema (Conceptual, not in Postgres)
-# Collection: "concepts"
-# Payload: { title, latex_def, subject, difficulty, common_misconceptions: [] }
+# --- Voice Mode Models ---
+
+class VoiceSession(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    language: str = Field(default="en")
+    preferred_stt: str = Field(default="openai")
+    status: str = Field(default="created", index=True) # created, uploaded, processing, done, failed
+    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+
+    user: User = Relationship(back_populates="voice_sessions")
+    audios: List["VoiceAudio"] = Relationship(back_populates="session")
+    jobs: List["VoiceJob"] = Relationship(back_populates="session")
+
+class VoiceAudio(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    voice_session_id: int = Field(foreign_key="voicesession.id")
+    storage_url: str
+    audio_hash: str = Field(index=True)
+    duration_ms: Optional[int] = None
+    codec: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+
+    session: VoiceSession = Relationship(back_populates="audios")
+    jobs: List["VoiceJob"] = Relationship(back_populates="audio")
+
+class VoiceJob(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    voice_session_id: int = Field(foreign_key="voicesession.id")
+    audio_id: int = Field(foreign_key="voiceaudio.id")
+    status: str = Field(default="queued") # queued, running, done, failed
+    attempts: int = Field(default=0)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+    error_code: Optional[str] = None
+    error_message: Optional[str] = None
+
+    session: VoiceSession = Relationship(back_populates="jobs")
+    audio: VoiceAudio = Relationship(back_populates="jobs")
+    artifacts: List["VoiceArtifact"] = Relationship(back_populates="job")
+
+class VoiceArtifact(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    job_id: int = Field(foreign_key="voicejob.id")
+    transcript_raw: str
+    transcript_confidence: Optional[float] = None
+    normalized_math_text: str
+    ambiguity_flags: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    clarifier_question: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    stt_provider: str
+    stt_model: str
+    timings_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+
+    job: VoiceJob = Relationship(back_populates="artifacts")
+    confirmations: List["VoiceConfirmation"] = Relationship(back_populates="artifact")
+
+class VoiceConfirmation(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    artifact_id: int = Field(foreign_key="voiceartifact.id")
+    user_id: int = Field(foreign_key="user.id")
+    confirmed_transcript_text: str
+    confirmed_normalized_text: str
+    problem_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    normalized_problem_hash: str = Field(index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+
+    artifact: VoiceArtifact = Relationship(back_populates="confirmations")
+    user: User = Relationship()

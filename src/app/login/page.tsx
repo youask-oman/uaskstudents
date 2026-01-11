@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
@@ -10,7 +10,14 @@ export default function LoginPage() {
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [isDark, setIsDark] = useState(false);
     const router = useRouter();
+
+    useEffect(() => {
+        if (document.documentElement.classList.contains("dark")) {
+            setIsDark(true);
+        }
+    }, []);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -63,9 +70,7 @@ export default function LoginPage() {
                 {/* Top Navigation */}
                 <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-black/5 dark:border-white/5 px-6 md:px-10 py-4 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md">
                     <Link href="/" className="flex items-center gap-3 text-[#111318] dark:text-white">
-                        <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
-                            <span className="material-symbols-outlined">functions</span>
-                        </div>
+                        <img src={isDark ? "/logo-dark.png" : "/logo.png"} alt="uask.ai" className="h-8 w-auto" />
                         <h2 className="text-[#111318] dark:text-white text-xl font-extrabold leading-tight tracking-[-0.015em]">uask.ai</h2>
                     </Link>
                     <div className="hidden md:block">

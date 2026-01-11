@@ -12,6 +12,7 @@ export default function PaymentPage() {
     const [promoCode, setPromoCode] = useState("");
     const [promoStatus, setPromoStatus] = useState<{ valid: boolean; message: string; discount_percent?: number } | null>(null);
     const [finalPrice, setFinalPrice] = useState(39.95); // Example annual price from screenshot, though user said monthly previously. Sticking to monthly $9.99 for now unless screenshot implies switch. Screenshot says "$39.95 USD charged every 12 months". 
+    const [isDark, setIsDark] = useState(false);
     // Wait, the screenshot shows $39.95 every 12 months. This implies an annual plan. 
     // I should probably stick to the previous $9.99 unless instructed to change pricing. 
     // The user didn't explicitly ask to change PRICE, just "update payment as attached". 
@@ -27,6 +28,9 @@ export default function PaymentPage() {
             .then(res => res.json())
             .then(data => setIpAddress(data.ip))
             .catch(err => console.error("Failed to get IP", err));
+        if (document.documentElement.classList.contains("dark")) {
+            setIsDark(true);
+        }
     }, []);
 
     const handlePayment = async () => {
@@ -70,11 +74,7 @@ export default function PaymentPage() {
         <div className="min-h-screen bg-white dark:bg-[#101622] flex flex-col font-sans text-slate-900 dark:text-white">
             <header className="flex items-center justify-between border-b border-solid border-slate-200 dark:border-[#282e39] px-6 md:px-10 py-4 bg-white dark:bg-[#101622] sticky top-0 z-50">
                 <div className="flex items-center gap-4 text-[#135bec] dark:text-white">
-                    <div className="size-6">
-                        <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M44 4H30.6666V17.3334H17.3334V30.6666H4V44H44V4Z" fill="currentColor"></path>
-                        </svg>
-                    </div>
+                    <img src={isDark ? "/logo-dark.png" : "/logo.png"} alt="uask.ai" className="h-6 w-auto" />
                     <h2 className="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">uask.ai</h2>
                 </div>
                 <div className="flex items-center gap-4">

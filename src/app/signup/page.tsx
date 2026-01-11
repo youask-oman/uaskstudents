@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -12,7 +12,14 @@ export default function SignupPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState(false);
+    const [isDark, setIsDark] = useState(false);
     const router = useRouter();
+
+    useEffect(() => {
+        if (document.documentElement.classList.contains("dark")) {
+            setIsDark(true);
+        }
+    }, []);
 
     const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -73,11 +80,7 @@ export default function SignupPage() {
             {/* Top Navigation Bar */}
             <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-gray-200 dark:border-gray-800 px-6 py-4 md:px-10 bg-white dark:bg-background-dark">
                 <Link href="/" className="flex items-center gap-3">
-                    <div className="size-8 text-primary">
-                        <svg fill="currentColor" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M44 4H30.6666V17.3334H17.3334V30.6666H4V44H44V4Z"></path>
-                        </svg>
-                    </div>
+                    <img src={isDark ? "/logo-dark.png" : "/logo.png"} alt="uask.ai" className="h-8 w-auto" />
                     <h2 className="text-[#111318] dark:text-white text-xl font-bold leading-tight tracking-tight">uask.ai</h2>
                 </Link>
                 <div className="flex items-center gap-4">

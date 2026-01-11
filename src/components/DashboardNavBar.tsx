@@ -76,11 +76,7 @@ export default function DashboardNavBar() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-16">
                     <Link href="/dashboard" className="flex items-center gap-3">
-                        <div className="bg-primary p-1.5 rounded-lg">
-                            <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M44 4H30.6666V17.3334H17.3334V30.6666H4V44H44V4Z" fill="currentColor"></path>
-                            </svg>
-                        </div>
+                        <img src={isDark ? "/logo-dark.png" : "/logo.png"} alt="uask.ai" className="h-8 w-auto" />
                         <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">uask.ai</span>
                     </Link>
                     <nav className="hidden md:flex space-x-8">

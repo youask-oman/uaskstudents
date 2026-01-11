@@ -86,9 +86,7 @@ export default function WorkspaceLayout({
             <header className="flex items-center justify-between border-b border-slate-200 dark:border-border-dark px-6 py-3 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md sticky top-0 z-50">
                 <div className="flex items-center gap-8">
                     <div className="flex items-center gap-3">
-                        <div className="size-8 bg-primary dark:bg-accent rounded-lg flex items-center justify-center text-white shadow-[0_4px_12px_rgba(19,91,236,0.3)] dark:shadow-[0_4px_12px_rgba(14,165,233,0.3)]">
-                            <span className="material-symbols-outlined font-bold">functions</span>
-                        </div>
+                        <img src={isDark ? "/logo-dark.png" : "/logo.png"} alt="uask.ai" className="h-8 w-auto" />
                         <h2 className="hidden md:block text-lg font-black leading-tight tracking-tight text-slate-900 dark:text-white uppercase text-shadow-glow">uask.ai</h2>
                     </div>
                     {/* Formula Display in Header */}

@@ -12,6 +12,7 @@ import asyncio
 from app.services.ocr.block_parser import markdown_block_parser
 from app.services.ocr.refinement_service import figure_refinement_service
 from app.services.ocr.post_process_service import post_process_service
+from app.services.voice.voice_service import voice_service
 
 logger = logging.getLogger(__name__)
 
@@ -196,5 +197,18 @@ def run_ocr_job(job_id: str):
             
         session.add(job)
         session.commit()
+        
+    return "OK"
+
+@celery_app.task(name="run_voice_job")
+def run_voice_job(job_id: int):
+    """
+    Celery task to run Voice processing asynchronously.
+    """
+    DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://uask_user:uask_password@localhost:5432/uask_db")
+    engine = create_engine(DATABASE_URL)
+    
+    with Session(engine) as session:
+        voice_service.run_voice_job(session, job_id)
         
     return "OK"

@@ -9,9 +9,7 @@ export default function AdminLayout({
             <aside className="w-64 flex-shrink-0 bg-[#0c1222] border-r border-slate-800 flex flex-col justify-between p-4">
                 <div className="flex flex-col gap-8">
                     <div className="flex items-center gap-3 px-2">
-                        <div className="bg-admin-primary rounded-lg p-1.5 flex items-center justify-center">
-                            <span className="material-symbols-outlined text-white text-2xl">query_stats</span>
-                        </div>
+                        <img src="/logo-dark.png" alt="uask.ai" className="h-8 w-auto" />
                         <div className="flex flex-col">
                             <h1 className="text-white text-base font-bold leading-none">uask.ai</h1>
                             <p className="text-slate-500 text-[10px] uppercase tracking-widest font-semibold mt-1">Admin Panel</p>

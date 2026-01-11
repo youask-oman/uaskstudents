@@ -5,6 +5,7 @@ from pydantic import BaseModel
 import uuid
 import hashlib
 import json
+import os
 
 from app.database import get_session
 from app.services.solve.normalizer_service import problem_normalizer_service
@@ -12,7 +13,8 @@ from app.models import (
     User, ChatSession, ChatMessage, UsageLog, OCRJob,
     Upload, Crop, OCRArtifact, OCRConfirmation,
     CanonicalProblem, CanonicalSolution, UserSavedSolution, Payment, PromoCode,
-    OCRQuestion, OCRChoice, OCRFigure
+    OCRQuestion, OCRChoice, OCRFigure,
+    VoiceSession, VoiceAudio, VoiceJob, VoiceArtifact, VoiceConfirmation
 )
 from app.services.vision import VisionService, vision_service
 from app.services.solver import solver_service
@@ -47,6 +49,7 @@ class SolveRequest(BaseModel):
     
     problem_hash: Optional[str] = None
     subject: Optional[str] = None
+    difficulty: Optional[str] = None
     mode: Optional[str] = "general"
     user_id: Optional[int] = None
 
@@ -120,6 +123,23 @@ class LibrarySaveRequest(BaseModel):
     solution_id: Optional[int] = None
     tags: List[str] = []
     notes: Optional[str] = None
+
+# --- Voice Mode Schemas ---
+
+class VoiceSessionCreate(BaseModel):
+    user_id: int
+    source: str = "web"
+    language: str = "en"
+    preferred_stt: str = "openai"
+
+class VoiceJobCreate(BaseModel):
+    priority: str = "normal"
+    mode: str = "normal"
+
+class VoiceConfirmationRequest(BaseModel):
+    confirmed_transcript_text: str
+    confirmed_normalized_math_text: Optional[str] = None
+    user_answers_to_clarifier: Optional[dict] = None
 
 # --- Existing User Profile Response ---
 class UserProfileResponse(BaseModel):
@@ -452,13 +472,177 @@ async def save_to_library(
         
     saved = UserSavedSolution(
         user_id=user_id,
-        solution_id=request.solution_id,
-        tags=request.tags,
-        notes=request.notes
+        solution_id=solution_id,
+        tags=request.get("tags"),
+        notes=request.get("notes")
     )
     session.add(saved)
     session.commit()
     return {"status": "saved"}
+
+# ------------------------------------------------------------------
+# Voice Mode Endpoints
+# ------------------------------------------------------------------
+
+@api_router.post("/voice/sessions")
+async def create_voice_session(request: VoiceSessionCreate, session: Session = Depends(get_session)):
+    voice_session = VoiceSession(
+        user_id=request.user_id,
+        language=request.language,
+        preferred_stt=request.preferred_stt
+    )
+    session.add(voice_session)
+    session.commit()
+    session.refresh(voice_session)
+    return {"voice_session_id": voice_session.id, "status": "created"}
+
+@api_router.post("/voice/sessions/{id}/audio")
+async def upload_voice_audio(
+    id: int, 
+    file: UploadFile = File(...), 
+    session: Session = Depends(get_session)
+):
+    voice_session = session.get(VoiceSession, id)
+    if not voice_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    # Save audio file
+    storage_dir = "storage/voice"
+    os.makedirs(storage_dir, exist_ok=True)
+    filename = f"voice_{id}_{uuid.uuid4().hex}_{file.filename}"
+    file_path = os.path.join(storage_dir, filename)
+    
+    with open(file_path, "wb") as buffer:
+        content = await file.read()
+        buffer.write(content)
+        
+    audio_hash = hashlib.sha256(content).hexdigest()
+    
+    audio = VoiceAudio(
+        voice_session_id=id,
+        storage_url=file_path,
+        audio_hash=audio_hash
+    )
+    session.add(audio)
+    
+    voice_session.status = "uploaded"
+    session.add(voice_session)
+    
+    session.commit()
+    session.refresh(audio)
+    return {"voice_session_id": id, "audio_id": audio.id, "status": "uploaded"}
+
+@api_router.post("/voice/sessions/{id}/jobs")
+async def create_voice_job(
+    id: int,
+    request: VoiceJobCreate,
+    session: Session = Depends(get_session)
+):
+    audio = session.exec(select(VoiceAudio).where(VoiceAudio.voice_session_id == id)).first()
+    if not audio:
+        raise HTTPException(status_code=400, detail="No audio found for this session")
+        
+    job = VoiceJob(
+        voice_session_id=id,
+        audio_id=audio.id,
+        status="queued"
+    )
+    session.add(job)
+    
+    voice_session = session.get(VoiceSession, id)
+    voice_session.status = "processing"
+    session.add(voice_session)
+    
+    session.commit()
+    session.refresh(job)
+    
+    # Trigger background task
+    try:
+        from app.worker import run_voice_job
+        run_voice_job.delay(job.id)
+    except Exception as e:
+        import logging
+        logging.error(f"Failed to trigger voice worker: {e}")
+        # Fallback to threading if celery fails to connect (for dev ease)
+        import threading
+        from app.services.voice.voice_service import voice_service
+        def run_transcription_sync():
+            from app.database import SessionLocal
+            with SessionLocal() as db:
+                voice_service.run_voice_job(db, job.id)
+        threading.Thread(target=run_transcription_sync, daemon=True).start()
+    
+    return {"job_id": job.id, "status": "queued"}
+
+@api_router.get("/voice/jobs/{job_id}")
+async def get_voice_job(job_id: int, session: Session = Depends(get_session)):
+    job = session.get(VoiceJob, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+        
+    artifact_id = None
+    if job.status == "done":
+        artifact = session.exec(select(VoiceArtifact).where(VoiceArtifact.job_id == job.id)).first()
+        if artifact:
+            artifact_id = artifact.id
+            
+    return {
+        "job_id": job.id,
+        "status": job.status,
+        "artifact_id": artifact_id,
+        "error_message": job.error_message
+    }
+
+@api_router.get("/voice/artifacts/{artifact_id}")
+async def get_voice_artifact(artifact_id: int, session: Session = Depends(get_session)):
+    artifact = session.get(VoiceArtifact, artifact_id)
+    if not artifact:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+        
+    return artifact
+
+@api_router.post("/voice/artifacts/{artifact_id}/confirm")
+async def confirm_voice_artifact(
+    artifact_id: int,
+    request: VoiceConfirmationRequest,
+    session: Session = Depends(get_session)
+):
+    artifact = session.get(VoiceArtifact, artifact_id)
+    if not artifact:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+    
+    confirmed_math = request.confirmed_normalized_math_text or artifact.normalized_math_text
+    
+    # Build ProblemJSON
+    problem_json = {
+        "question": request.confirmed_transcript_text,
+        "raw_math": confirmed_math,
+        "source": "voice"
+    }
+    
+    # Hash it for dedup
+    problem_hash = hashlib.sha256(confirmed_math.strip().lower().encode()).hexdigest()
+    
+    # Check for existing solution
+    cached_sol = get_canonical_solution(problem_hash, session)
+    
+    confirmation = VoiceConfirmation(
+        artifact_id=artifact_id,
+        user_id=1,
+        confirmed_transcript_text=request.confirmed_transcript_text,
+        confirmed_normalized_text=confirmed_math,
+        problem_json=problem_json,
+        normalized_problem_hash=problem_hash
+    )
+    session.add(confirmation)
+    session.commit()
+    
+    return {
+        "confirmation_id": confirmation.id,
+        "dedup_hit": cached_sol is not None,
+        "problem_hash": problem_hash,
+        "next_action": "solve" if not cached_sol else "show_cache"
+    }
 
 def get_canonical_solution(problem_hash: str, session: Session) -> Optional[dict]:
     """Lookup verified solution by problem hash"""

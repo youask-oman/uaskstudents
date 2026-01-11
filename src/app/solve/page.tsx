@@ -26,10 +26,20 @@ export default function DashboardPage() {
     const [onlineUsers, setOnlineUsers] = useState<any[]>([]);
     const [isPublic, setIsPublic] = useState(false);
 
-    // Editor State
     const [activeMode, setActiveMode] = useState<ModeId | null>(null);
     const [isSeeAllOpen, setIsSeeAllOpen] = useState(false);
     const mathInputRef = useRef<MathInputRef>(null);
+
+    // Voice State
+    const [voiceStage, setVoiceStage] = useState<'idle' | 'recording' | 'processing' | 'review' | 'error'>('idle');
+    const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+    const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+    const [voiceSessionId, setVoiceSessionId] = useState<number | null>(null);
+    const [voiceArtifact, setVoiceArtifact] = useState<any>(null);
+    const [recordingTime, setRecordingTime] = useState(0);
+    const [voiceSubject, setVoiceSubject] = useState("Mathematics");
+    const [voiceDifficulty, setVoiceDifficulty] = useState("High School / AP");
+    const [formattingEnabled, setFormattingEnabled] = useState(true);
 
     const router = useRouter();
 
@@ -97,6 +107,137 @@ export default function DashboardPage() {
         if (mathInputRef.current) {
             mathInputRef.current.setValue("");
             mathInputRef.current.focus();
+        }
+    };
+
+    useEffect(() => {
+        let timer: any;
+        if (voiceStage === 'recording') {
+            timer = setInterval(() => setRecordingTime(prev => prev + 1), 1000);
+        }
+        return () => clearInterval(timer);
+    }, [voiceStage]);
+
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const recorder = new MediaRecorder(stream);
+            const chunks: Blob[] = [];
+
+            recorder.ondataavailable = (e) => {
+                if (e.data.size > 0) chunks.push(e.data);
+            };
+
+            recorder.onstop = async () => {
+                const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+                await handleAudioUpload(audioBlob);
+            };
+
+            setAudioChunks(chunks);
+            setMediaRecorder(recorder);
+            recorder.start();
+            setVoiceStage('recording');
+            setRecordingTime(0);
+        } catch (err) {
+            console.error("Failed to start recording", err);
+            setVoiceStage('error');
+        }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+            mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            setVoiceStage('processing');
+        }
+    };
+
+    const handleAudioUpload = async (blob: Blob) => {
+        const userId = localStorage.getItem("user_id") || "1";
+        try {
+            // 1. Create Session
+            const sessionRes = await fetch('http://127.0.0.1:8000/api/v1/voice/sessions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: parseInt(userId) })
+            });
+            const sessData = await sessionRes.json();
+            const vsid = sessData.voice_session_id;
+            setVoiceSessionId(vsid);
+
+            // 2. Upload Audio
+            const formData = new FormData();
+            formData.append('file', blob, 'voice.webm');
+            await fetch(`http://127.0.0.1:8000/api/v1/voice/sessions/${vsid}/audio`, {
+                method: 'POST',
+                body: formData
+            });
+
+            // 3. Create Job
+            const jobRes = await fetch(`http://127.0.0.1:8000/api/v1/voice/sessions/${vsid}/jobs`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ priority: 'high' })
+            });
+            const { job_id } = await jobRes.json();
+
+            // 4. Poll
+            pollVoiceJob(job_id);
+
+        } catch (err) {
+            console.error(err);
+            setVoiceStage('error');
+        }
+    };
+
+    const pollVoiceJob = async (jobId: number) => {
+        const interval = setInterval(async () => {
+            try {
+                const res = await fetch(`http://127.0.0.1:8000/api/v1/voice/jobs/${jobId}`);
+                const data = await res.json();
+                if (data.status === 'done') {
+                    clearInterval(interval);
+                    fetchVoiceArtifact(data.artifact_id);
+                } else if (data.status === 'failed') {
+                    clearInterval(interval);
+                    setVoiceStage('error');
+                }
+            } catch (err) {
+                clearInterval(interval);
+                setVoiceStage('error');
+            }
+        }, 1000);
+    };
+
+    const fetchVoiceArtifact = async (artifactId: number) => {
+        try {
+            const res = await fetch(`http://127.0.0.1:8000/api/v1/voice/artifacts/${artifactId}`);
+            const data = await res.json();
+            setVoiceArtifact(data);
+            setQuery(data.normalized_math_text);
+            if (mathInputRef.current) mathInputRef.current.setValue(data.normalized_math_text);
+            setVoiceStage('review');
+        } catch (err) {
+            setVoiceStage('error');
+        }
+    };
+
+    const handleConfirmVoice = async () => {
+        if (!voiceArtifact || isSolving) return;
+        setIsSolving(true);
+        try {
+            await fetch(`http://127.0.0.1:8000/api/v1/voice/artifacts/${voiceArtifact.id}/confirm`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    confirmed_transcript_text: voiceArtifact.transcript_raw,
+                    confirmed_normalized_math_text: query
+                })
+            });
+            await handleSolve();
+        } catch (err) {
+            console.error(err);
+            setIsSolving(false);
         }
     };
 
@@ -339,12 +480,19 @@ export default function DashboardPage() {
         setCroppedImage(null);
         setQuery("");
         setProgressStep(0);
+        setArtifactId(null);
+        setSelectedQuestionId(null);
+        setVoiceArtifact(null);
+        setVoiceSessionId(null);
+        setJobId(null);
+        setChoices({});
         if (mathInputRef.current) mathInputRef.current.setValue("");
     };
 
     const handleSolve = async () => {
-        const userId = localStorage.getItem("user_id") || "1";
+        if (isSolving) return;
 
+        const userId = localStorage.getItem("user_id") || "1";
         if (!query.trim()) return;
 
         setIsSolving(true);
@@ -362,6 +510,8 @@ export default function DashboardPage() {
                     artifact_id: artifactId,
                     question_id: selectedQuestionId,
                     mode: 'general',
+                    subject: voiceSubject,
+                    difficulty: voiceDifficulty,
                     user_id: parseInt(userId)
                 })
             });
@@ -373,7 +523,7 @@ export default function DashboardPage() {
 
         } catch (err) {
             console.error(err);
-            alert("Failed to generate solution. Make sure the backend is running.");
+            alert("Failed to generate solution. Make sure the backend is running and you have a stable connection.");
         } finally {
             setIsSolving(false);
         }
@@ -737,10 +887,20 @@ export default function DashboardPage() {
 
                                                 <button
                                                     onClick={handleSolve}
-                                                    className="w-full bg-primary hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-lg shadow-xl shadow-primary/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
+                                                    disabled={isSolving}
+                                                    className={`w-full bg-primary hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-lg shadow-xl shadow-primary/20 flex items-center justify-center gap-2 transition-all ${isSolving ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.02]'}`}
                                                 >
-                                                    <span>Confirm & Solve</span>
-                                                    <span className="material-symbols-outlined">arrow_forward</span>
+                                                    {isSolving ? (
+                                                        <>
+                                                            <span className="animate-spin material-symbols-outlined">sync</span>
+                                                            <span>Solving...</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <span>Confirm & Solve</span>
+                                                            <span className="material-symbols-outlined">arrow_forward</span>
+                                                        </>
+                                                    )}
                                                 </button>
                                             </div>
                                         )}
@@ -883,8 +1043,211 @@ export default function DashboardPage() {
                                     </div>
                                 )}
                                 {activeTab === 'voice' && (
-                                    <div className="p-8 text-center text-slate-500">
-                                        Voice input mode...
+                                    <div className="flex flex-col gap-6 items-center justify-center min-h-[400px]">
+                                        {voiceStage === 'idle' && (
+                                            <div className="text-center space-y-6">
+                                                <div
+                                                    onClick={startRecording}
+                                                    className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center text-primary cursor-pointer hover:scale-110 transition-all hover:bg-primary/20 group"
+                                                >
+                                                    <span className="material-symbols-outlined text-4xl group-hover:animate-pulse">mic</span>
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-lg font-bold">Tap to Start</h3>
+                                                    <p className="text-sm text-slate-500">I'll transcribe your math speech into LaTeX.</p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {voiceStage === 'recording' && (
+                                            <div className="h-64 flex flex-col items-center justify-center space-y-8 animate-in fade-in duration-300">
+                                                <div className="flex gap-1.5 h-16 items-center">
+                                                    {[...Array(20)].map((_, i) => (
+                                                        <div
+                                                            key={i}
+                                                            className="w-1 bg-primary rounded-full animate-voice-bar"
+                                                            style={{
+                                                                height: `${20 + Math.random() * 80}%`,
+                                                                animationDelay: `${i * 0.05}s`
+                                                            }}
+                                                        />
+                                                    ))}
+                                                </div>
+                                                <div className="text-center space-y-4">
+                                                    <div className="text-4xl font-mono font-bold text-slate-800 dark:text-slate-100">
+                                                        00:{recordingTime.toString().padStart(2, '0')}
+                                                    </div>
+                                                    <button
+                                                        onClick={stopRecording}
+                                                        className="bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-full font-bold flex items-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-red-500/20"
+                                                    >
+                                                        <span className="material-symbols-outlined">stop_circle</span>
+                                                        Stop Recording
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {voiceStage === 'processing' && (
+                                            <div className="h-64 flex flex-col items-center justify-center space-y-6 animate-in fade-in duration-300">
+                                                <div className="relative size-20">
+                                                    <div className="absolute inset-0 border-4 border-primary/20 rounded-full"></div>
+                                                    <div className="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
+                                                    <div className="absolute inset-0 flex items-center justify-center">
+                                                        <span className="material-symbols-outlined text-primary text-3xl animate-pulse">auto_awesome</span>
+                                                    </div>
+                                                </div>
+                                                <div className="text-center">
+                                                    <h3 className="text-xl font-bold dark:text-white">AI Transcribing...</h3>
+                                                    <p className="text-sm text-slate-500">Normalizing your math for the tutor.</p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {voiceStage === 'review' && (
+                                            <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+                                                {/* Ambiguity Clarifier Integration */}
+                                                {voiceArtifact?.clarifier_question && (
+                                                    <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 rounded-2xl p-6 space-y-4 shadow-sm">
+                                                        <div className="flex items-start gap-4 text-amber-800 dark:text-amber-200">
+                                                            <div className="size-10 bg-amber-100 dark:bg-amber-900/50 rounded-full flex items-center justify-center shrink-0">
+                                                                <span className="material-symbols-outlined">help_center</span>
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <p className="text-[10px] font-black uppercase tracking-tight opacity-60">Help us clarify your intent</p>
+                                                                <p className="text-lg font-bold leading-tight">{voiceArtifact.clarifier_question.question}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 ml-14">
+                                                            {voiceArtifact.clarifier_question.options.map((opt: any, idx: number) => {
+                                                                const isSelected = query === opt.value;
+                                                                return (
+                                                                    <button
+                                                                        key={idx}
+                                                                        onClick={() => {
+                                                                            setQuery(opt.value);
+                                                                            if (mathInputRef.current) mathInputRef.current.setValue(opt.value);
+                                                                        }}
+                                                                        className={`px-6 py-4 rounded-xl border-2 font-bold text-sm transition-all flex flex-col items-center justify-center gap-2 ${isSelected
+                                                                            ? 'bg-amber-100 dark:bg-amber-900/30 border-amber-400 text-amber-950 dark:text-amber-50 shadow-inner'
+                                                                            : 'bg-white dark:bg-slate-900 border-amber-200 dark:border-amber-800/50 text-amber-700 dark:text-amber-300 hover:border-amber-400'
+                                                                            }`}
+                                                                    >
+                                                                        <span className="text-base" dangerouslySetInnerHTML={{
+                                                                            __html: katex.renderToString(opt.label, { throwOnError: false })
+                                                                        }} />
+                                                                        <span className="text-[9px] uppercase tracking-widest opacity-60">
+                                                                            {isSelected ? 'Selected' : 'Use this interpretation'}
+                                                                        </span>
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-4">
+                                                    {/* Editable Transcript Pane */}
+                                                    <div className="space-y-4">
+                                                        <div className="flex items-center justify-between px-1">
+                                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                                                <span className="material-symbols-outlined text-sm">notes</span>
+                                                                Editable Transcript
+                                                            </label>
+                                                            <span className="material-symbols-outlined text-slate-300 text-lg">edit</span>
+                                                        </div>
+                                                        <div className="relative min-h-[320px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 flex flex-col">
+                                                            <textarea
+                                                                value={query}
+                                                                onChange={(e) => setQuery(e.target.value)}
+                                                                className="flex-1 bg-transparent outline-none text-slate-700 dark:text-slate-200 text-lg leading-relaxed resize-none"
+                                                                placeholder="Transcribed text appears here..."
+                                                            />
+                                                            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 text-[9px] font-black text-slate-400 uppercase tracking-widest flex justify-between items-center">
+                                                                <span>Subject: {voiceSubject}</span>
+                                                                <span className="text-primary italic">Spoken Text</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Live Math Preview Pane */}
+                                                    <div className="space-y-4">
+                                                        <div className="flex items-center justify-between px-1">
+                                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                                                <span className="material-symbols-outlined text-sm">functions</span>
+                                                                Live Math Preview
+                                                            </label>
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Formatting</span>
+                                                                <button
+                                                                    onClick={() => setFormattingEnabled(!formattingEnabled)}
+                                                                    className={`relative w-10 h-5 rounded-full transition-colors ${formattingEnabled ? 'bg-primary' : 'bg-slate-300 dark:bg-slate-700'}`}
+                                                                >
+                                                                    <div className={`absolute top-1 left-1 size-3 bg-white rounded-full transition-transform ${formattingEnabled ? 'translate-x-5' : ''}`}></div>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <div className="relative min-h-[320px] bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden flex flex-col items-center justify-center p-8 text-white math-grid-bg">
+                                                            <div className="relative z-10 w-full text-center space-y-4">
+                                                                <div className="text-3xl font-bold p-8 flex items-center justify-center min-h-[160px]">
+                                                                    {formattingEnabled ? (
+                                                                        <span dangerouslySetInnerHTML={{
+                                                                            __html: katex.renderToString(query || '', { throwOnError: false, displayMode: true })
+                                                                        }} />
+                                                                    ) : (
+                                                                        <span className="font-mono text-xl opacity-80 break-all">{query}</span>
+                                                                    )}
+                                                                </div>
+                                                                <p className="text-[11px] font-mono text-slate-500 opacity-60 max-w-xs mx-auto truncate">
+                                                                    {query}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Bottom Action Bar */}
+                                                <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                                    <button
+                                                        onClick={() => setVoiceStage('idle')}
+                                                        className="flex-1 px-8 py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95"
+                                                    >
+                                                        <span className="material-symbols-outlined text-xl">refresh</span>
+                                                        Try Again
+                                                    </button>
+                                                    <button
+                                                        onClick={handleConfirmVoice}
+                                                        disabled={isSolving}
+                                                        className="flex-[2] px-8 py-5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-2xl font-black text-xl shadow-[0_10px_40px_-10px_rgba(37,99,235,0.4)] flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-50"
+                                                    >
+                                                        {isSolving ? (
+                                                            <>
+                                                                <div className="size-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                                                                <span>SOLVING...</span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <span>CONFIRM & SOLVE</span>
+                                                                <span className="material-symbols-outlined animate-pulse">auto_awesome</span>
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {voiceStage === 'error' && (
+                                            <div className="text-center space-y-6">
+                                                <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-full flex items-center justify-center mx-auto">
+                                                    <span className="material-symbols-outlined text-3xl">error</span>
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-lg font-bold">Something went wrong</h3>
+                                                    <p className="text-sm text-slate-500">I couldn't process your audio right now.</p>
+                                                </div>
+                                                <button onClick={() => setVoiceStage('idle')} className="text-primary font-bold hover:underline">Try Again</button>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
