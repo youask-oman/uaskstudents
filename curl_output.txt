@@ -1,0 +1,6 @@
+* URL rejected: Port number was not a decimal number between 0 and 65535
+* closing connection #-1
+curl: (3) URL rejected: Port number was not a decimal number between 0 and 65535
+* URL rejected: Malformed input to a URL function
+* closing connection #-1
+curl: (3) URL rejected: Malformed input to a URL function

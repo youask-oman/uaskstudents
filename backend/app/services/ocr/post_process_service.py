@@ -2,8 +2,15 @@ import os
 import json
 import logging
 from typing import Dict, Any, Optional
-import litellm
+
+# Lazy import - only load litellm when actually needed (worker only)
+try:
+    import litellm
+except ImportError:
+    litellm = None
+
 import base64
+from sqlmodel import Session
 from sqlmodel import Session
 
 logger = logging.getLogger(__name__)
@@ -56,7 +63,8 @@ class PostProcessService:
             response = litellm.completion(
                 model=self.model,
                 messages=messages,
-                response_format={"type": "json_object"}
+                response_format={"type": "json_object"},
+                request_timeout=30 # P1 Remediation
             )
             
             content = response.choices[0].message.content

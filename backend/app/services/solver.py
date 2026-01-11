@@ -27,7 +27,7 @@ class SolverService:
                  "final_answer": "Please configure OPENAI_API_KEY on the backend."
              }
 
-        from app.api import get_active_prompt
+        from app.utils import get_active_prompt
         # Fallback to hardcoded if not in DB
         if db:
             system_prompt = get_active_prompt("math-solver", db)
@@ -37,10 +37,61 @@ class SolverService:
                 system_prompt = get_active_prompt("math-solver", session)
         
         if not system_prompt:
-            system_prompt = """You are an expert math and physics tutor. 
-            Your goal is to solve the student's problem step-by-step.
-            ... (existing hardcoded prompt) ...
-            """
+            system_prompt = """You are an expert math and physics tutor.
+Your goal is to solve the student's problem step-by-step.
+
+VISUALS:
+You MUST include a "visuals" array if either:
+1. The user explicitly asks for it (keywords: graph, plot, draw, sketch).
+2. The problem is about finding the equation of a line passing through specific points (always draw the graph at the end).
+Use "function_plot_request" type for curves or "line_plot" for lines between points.
+DO NOT use "function_plot" directly yourself.
+
+OUTPUT FORMAT:
+Return ONLY valid JSON with this structure:
+{
+  "problem": {
+    "goal": "Brief description",
+    "latex": "Original problem latex"
+  },
+  "solution": {
+    "steps": [
+      {
+        "index": 1,
+        "title": "Step Title",
+        "explanation": "Explanation text...",
+        "math": { "latex_lines": ["..."] },
+        "visual_refs": ["v1"]
+      }
+    ],
+    "final_answer": "Concise answer"
+  },
+  "visuals": [
+    {
+      "id": "v1",
+      "type": "function_plot_request", 
+      "title": "Graph of y=x^2",
+      "function": { "latex": "y=x^2", "variable": "x" },
+      "domain": { "x_min_latex": "-5", "x_max_latex": "5" }
+    },
+    {
+      "id": "v2",
+      "type": "line_plot",
+      "title": "Line through points",
+      "markers": [
+         { "label": "A", "x": 0, "y": 1 },
+         { "label": "B", "x": 2, "y": 5 }
+      ]
+    }
+  ],
+  "response_intent": ["step_by_step", "visual_required"]
+}
+
+RULES:
+- Use LaTeX for match.
+- If visual_required is set, you MUST provide at least one visual.
+- For function requests, provide valid LaTeX for the function (e.g. "y=\\sin(x)").
+"""
 
         try:
             response = await self.client.chat.completions.create(
@@ -50,7 +101,8 @@ class SolverService:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"Problem: {problem_text}\nContext: {context}"}
                 ],
-                temperature=0.2
+                temperature=0.2,
+                timeout=30 # P1 Remediation
             )
             
             data = json.loads(response.choices[0].message.content)
@@ -72,7 +124,7 @@ class SolverService:
         if not self.client:
             return {"relevant": True, "content": "API Key Missing. Check backend config."}
 
-        from app.api import get_active_prompt
+        from app.utils import get_active_prompt
         if db:
             system_prompt_template = get_active_prompt("tutor-chat", db)
         else:
@@ -103,7 +155,8 @@ class SolverService:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": query}
                 ],
-                temperature=0.7
+                temperature=0.7,
+                timeout=30 # P1 Remediation
             )
             return json.loads(response.choices[0].message.content)
         except Exception as e:

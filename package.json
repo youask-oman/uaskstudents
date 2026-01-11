@@ -9,13 +9,16 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@types/react-plotly.js": "^2.6.4",
     "clsx": "^2.1.1",
     "katex": "^0.16.27",
     "mathlive": "^0.108.2",
     "next": "16.1.1",
+    "plotly.js": "^3.3.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-markdown": "^10.1.0",
+    "react-plotly.js": "^2.6.0",
     "rehype-katex": "^7.0.1",
     "remark-math": "^6.0.0",
     "tailwind-merge": "^3.4.0"

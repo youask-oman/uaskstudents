@@ -29,7 +29,7 @@ def seed_admin():
         else:
             # Update role and password just in case
             admin.role = "admin"
-            admin.hashed_password = get_password_hash("ssLr1980")
+            admin.password_hash = get_password_hash("ssLr1980")
             session.add(admin)
             session.commit()
             print("Admin user updated: loai@uask.ai")

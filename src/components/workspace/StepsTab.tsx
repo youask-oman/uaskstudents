@@ -3,6 +3,8 @@
 import React from 'react';
 import katex from 'katex';
 
+import VisualRenderer, { Visual } from './VisualRenderer';
+
 interface Step {
     index: number;
     title: string;
@@ -10,12 +12,14 @@ interface Step {
     math: {
         latex_lines: string[];
     };
+    visual_refs?: string[];
 }
 
 interface StepsTabProps {
     title: string;
     steps: Step[];
     onViewConcepts?: () => void;
+    visuals?: Visual[];
 }
 
 const Latex = ({ children, block = false }: { children: string; block?: boolean }) => {
@@ -30,7 +34,7 @@ const Latex = ({ children, block = false }: { children: string; block?: boolean 
     }
 };
 
-export default function StepsTab({ title, steps, onViewConcepts }: StepsTabProps) {
+export default function StepsTab({ title, steps, onViewConcepts, visuals }: StepsTabProps) {
     const handleExportPDF = () => {
         window.print();
     };
@@ -101,7 +105,7 @@ export default function StepsTab({ title, steps, onViewConcepts }: StepsTabProps
                             <p className="text-sm text-slate-600 dark:text-slate-300 mb-4 leading-relaxed">
                                 {step.explanation}
                             </p>
-                            {step.math.latex_lines.length > 0 && (
+                            {step.math?.latex_lines && step.math.latex_lines.length > 0 && (
                                 <div className="bg-slate-50 dark:bg-surface-dark/40 p-6 rounded-lg flex flex-col items-center gap-4 border border-slate-100 dark:border-border-dark">
                                     <div className="text-lg md:text-xl text-primary dark:text-latex-cyan overflow-x-auto w-full text-center py-2">
                                         {step.math.latex_lines.map((line, lIdx) => (
@@ -110,6 +114,16 @@ export default function StepsTab({ title, steps, onViewConcepts }: StepsTabProps
                                             </div>
                                         ))}
                                     </div>
+                                </div>
+                            )}
+
+                            {step.visual_refs && step.visual_refs.length > 0 && visuals && (
+                                <div className="mt-4">
+                                    {step.visual_refs.map(refId => {
+                                        const vis = visuals.find(v => v.id === refId);
+                                        if (vis) return <VisualRenderer key={refId} visual={vis} />;
+                                        return null;
+                                    })}
                                 </div>
                             )}
                         </div>

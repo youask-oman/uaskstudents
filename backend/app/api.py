@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Request
 from sqlmodel import Session, select
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
@@ -19,6 +19,8 @@ from app.models import (
 )
 from app.services.vision import VisionService, vision_service
 from app.services.solver import solver_service
+from app.services.intent import should_require_visual
+from app.services.plot_sampling import process_visuals
 from app.services.rag import rag_service
 from app.services.ocr.upload_service import upload_service
 from app.services.ocr.crop_service import crop_service
@@ -29,7 +31,11 @@ from app.services.ocr.ocr_service import ocr_service
 
 
 from app.auth import verify_password, create_access_token, Token, get_password_hash
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
+limiter = Limiter(key_func=get_remote_address)
 api_router = APIRouter()
 
 
@@ -56,8 +62,10 @@ class SolveRequest(BaseModel):
 
 class SolveResponse(BaseModel):
     session_id: int
-    solution: dict
-    concepts: List[dict]
+    solution: Dict[str, Any]
+    concepts: Optional[List[Any]] = []
+    visuals: Optional[List[Any]] = []
+    verification: Optional[Dict[str, Any]] = None
     model_used: Optional[str] = "OpenAI GPT-4o Mini"
     tokens_used: Optional[int] = 500
     has_image: Optional[bool] = False
@@ -285,6 +293,10 @@ class UserProfileResponse(BaseModel):
 
 @api_router.post("/signup")
 async def signup(form_data: SignupRequest, session: Session = Depends(get_session)):
+    # P2: Password Complexity Check
+    if len(form_data.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters long.")
+    
     # Check if user already exists
     existing_user = session.exec(select(User).where(User.email == form_data.email)).first()
     if existing_user:
@@ -352,7 +364,9 @@ class LatexResponse(BaseModel):
 # ------------------------------------------------------------------
 
 @api_router.post("/uploads")
+@limiter.limit("5/minute")
 async def upload_file(
+    request: Request,
     file: UploadFile = File(...),
     user_id: int = Query(1),
     session: Session = Depends(get_session)
@@ -481,12 +495,20 @@ async def get_ocr_artifact(artifact_id: int, session: Session = Depends(get_sess
     questions = session.exec(select(OCRQuestion).where(OCRQuestion.artifact_id == artifact_id)).all()
     figures = session.exec(select(OCRFigure).where(OCRFigure.artifact_id == artifact_id)).all()
     
-    # Nested choices
+    # Nested choices (Optimized: single query for all choices)
+    q_ids = [q.id for q in questions]
+    all_choices = session.exec(select(OCRChoice).where(OCRChoice.question_id.in_(q_ids))).all() if q_ids else []
+    
+    # Group choices by question_id
+    from collections import defaultdict
+    choices_by_q = defaultdict(list)
+    for c in all_choices:
+        choices_by_q[c.question_id].append(c.dict())
+
     questions_data = []
     for q in questions:
         q_dict = q.dict()
-        choices = session.exec(select(OCRChoice).where(OCRChoice.question_id == q.id)).all()
-        q_dict["choices"] = [c.dict() for c in choices]
+        q_dict["choices"] = choices_by_q[q.id]
         questions_data.append(q_dict)
 
     # User-requested Branding Logic
@@ -806,8 +828,10 @@ async def extract_latex_from_image(
 
 
 @api_router.post("/solve", response_model=SolveResponse)
+@limiter.limit("10/minute")
 async def solve_problem(
-    request: SolveRequest, 
+    request: Request,
+    body: SolveRequest, 
     session: Session = Depends(get_session)
 ):
     """
@@ -822,7 +846,7 @@ async def solve_problem(
     try:
         # Check token limit BEFORE processing
         # Use user_id from request body (pydantic), default to 1 if missing
-        user_id = request.user_id or 1
+        user_id = body.user_id or 1
         user = session.get(User, user_id)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
@@ -852,20 +876,26 @@ async def solve_problem(
         extracted_text = ""
     except Exception as e:
         import traceback
+        try:
+            with open("/app/storage/solve_debug.log", "w") as f:
+                f.write(f"Error: {str(e)}\n")
+                traceback.print_exc(file=f)
+        except:
+            print("Failed to write to debug log")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
-    base_query = f"{request.text_query or ''}".strip()
+    base_query = f"{body.text_query or ''}".strip()
     
     # --- STRUCTURED DATA ENHANCEMENT ---
     context_info = ""
-    if request.confirmed_text:
-        base_query = request.confirmed_text
+    if body.confirmed_text:
+        base_query = body.confirmed_text
     
-    if request.artifact_id and request.question_id:
+    if body.artifact_id and body.question_id:
         # Fetch detailed entities to provide "Hallucination Protection"
         from app.models import OCRQuestion, OCRFigure, OCRChoice
-        question_ent = session.get(OCRQuestion, request.question_id)
+        question_ent = session.get(OCRQuestion, body.question_id)
         if question_ent:
             # Reconstruct the problem from entities
             choices_ent = session.exec(select(OCRChoice).where(OCRChoice.question_id == question_ent.id)).all()
@@ -873,7 +903,7 @@ async def solve_problem(
             base_query = f"{question_ent.prompt}\n\nChoices:\n{choice_str}"
             
             # Fetch linked figures
-            figures_ent = session.exec(select(OCRFigure).where(OCRFigure.artifact_id == request.artifact_id)).all()
+            figures_ent = session.exec(select(OCRFigure).where(OCRFigure.artifact_id == body.artifact_id)).all()
             if figures_ent:
                 context_info += "\n[VISUAL CONTEXT DETECTED]\n"
                 for fig in figures_ent:
@@ -881,18 +911,23 @@ async def solve_problem(
                     if fig.data_json:
                         fig_desc += f"Detailed Data: {json.dumps(fig.data_json)}\n"
                     context_info += fig_desc
-    elif request.confirmed_latex_blocks:
+    elif body.confirmed_latex_blocks:
         # Fallback to provided blocks from review screen
-        choice_str = "\n".join([f"{b.get('key')}: {b.get('value')}" for b in request.confirmed_latex_blocks if b.get('type') == 'choice'])
+        choice_str = "\n".join([f"{b.get('key')}: {b.get('value')}" for b in body.confirmed_latex_blocks if b.get('type') == 'choice'])
         if choice_str:
             base_query += f"\n\nChoices:\n{choice_str}"
     
+    # --- VISUAL INTENT DETECTION ---
+    visual_required, visual_reason = should_require_visual(base_query)
+    if visual_required:
+        context_info += f"\n[SYSTEM REQUIREMENT]: A visual graph/plot is REQUIRED for this problem. {visual_reason}"
+
     final_prompt = base_query
     if context_info:
         final_prompt = f"{base_query}\n\n{context_info}"
     
     # 2. Deduplication (Canonical Solution Lookup)
-    problem_hash = request.problem_hash
+    problem_hash = body.problem_hash
     if not problem_hash and base_query:
         problem_hash = hashlib.sha256(base_query.strip().lower().encode()).hexdigest()
     
@@ -901,12 +936,12 @@ async def solve_problem(
         cached_solution = get_canonical_solution(problem_hash, session)
 
     # Determine metadata
-    model_name = "YouAsk AI (Multimodal)" if (request.image_url or request.artifact_id) else "OpenAI GPT-4o Mini"
-    is_image = bool(request.image_url or request.artifact_id)
+    model_name = "YouAsk AI (Multimodal)" if (body.image_url or body.artifact_id) else "OpenAI GPT-4o Mini"
+    is_image = bool(body.image_url or body.artifact_id)
     extra_images = 0
-    if request.artifact_id:
+    if body.artifact_id:
         from app.models import OCRFigure
-        extra_images = len(session.exec(select(OCRFigure).where(OCRFigure.artifact_id == request.artifact_id)).all())
+        extra_images = len(session.exec(select(OCRFigure).where(OCRFigure.artifact_id == body.artifact_id)).all())
     
     estimated_tokens = 500 + (6000 if is_image else 0) + (extra_images * 6000)
 
@@ -928,7 +963,7 @@ async def solve_problem(
         new_chat = ChatSession(
             user_id=user_id,
             title=cached_solution.get("problem", {}).get("goal", "Resolved Problem")[:50],
-            subject=request.subject or "General",
+            subject=body.subject or "General",
             is_saved=is_already_saved
         )
         session.add(new_chat)
@@ -949,6 +984,10 @@ async def solve_problem(
         add_tokens_to_user(user_id, estimated_tokens, session)
         session.commit()
 
+        # --- PROCESS VISUALS (CACHE) ---
+        if "visuals" in cached_solution:
+            cached_solution["visuals"] = process_visuals(cached_solution["visuals"])
+
         return SolveResponse(
             session_id=new_chat.id,
             solution=cached_solution,
@@ -960,8 +999,8 @@ async def solve_problem(
 
     # 3. Retrieval
     # Prepend Mode Context
-    if request.mode and request.mode != "general":
-        base_query_for_retrieval = f"[MODE: {request.mode.upper()}] {base_query}"
+    if body.mode and body.mode != "general":
+        base_query_for_retrieval = f"[MODE: {body.mode.upper()}] {base_query}"
     else:
         base_query_for_retrieval = base_query
     
@@ -971,14 +1010,22 @@ async def solve_problem(
     concepts = await rag_service.search_related_concepts(base_query_for_retrieval)
 
     # 4. Solve (Calling expensive LLM with context enhancement)
+    # 4. Solve (Calling expensive LLM with context enhancement)
     solution_data = await solver_service.solve_problem(final_prompt)
+    
+    # DEBUG LOGGING
+    print(f"DEBUG: LLM Response Visuals: {json.dumps(solution_data.get('visuals', []), indent=2)}")
+    
+    # --- PROCESS VISUALS ---
+    if "visuals" in solution_data:
+        solution_data["visuals"] = process_visuals(solution_data["visuals"])
 
     # 5. Persistence
     # Create Session (NOT SAVED by default)
     new_chat = ChatSession(
         user_id=user_id,
         title=solution_data.get("problem", {}).get("goal", "New Problem")[:50],
-        subject=request.subject or "General",
+        subject=body.subject or "General",
         is_saved=False
     )
     session.add(new_chat)
@@ -990,7 +1037,7 @@ async def solve_problem(
         session_id=new_chat.id,
         role="user",
         content=base_query,
-        media_url=request.image_url
+        media_url=body.image_url
     )
     session.add(user_msg)
 
@@ -1015,7 +1062,7 @@ async def solve_problem(
                 cp = CanonicalProblem(
                     normalized_problem_hash=problem_hash,
                     normalized_text=base_query,
-                    subject=request.subject or "General"
+                    subject=body.subject or "General"
                 )
                 session.add(cp)
                 session.commit()
@@ -1041,8 +1088,10 @@ async def solve_problem(
 
     return SolveResponse(
         session_id=new_chat.id,
-        solution=solution_data,
+        solution=solution_data.get("solution", solution_data),
         concepts=solution_data.get("concepts") or [],
+        visuals=solution_data.get("visuals") or [],
+        verification=solution_data.get("verification"),
         model_used=model_name,
         tokens_used=estimated_tokens,
         has_image=is_image
@@ -1410,6 +1459,15 @@ def check_and_reset_monthly_tokens(user: User, db: Session) -> User:
         db.refresh(user)
     return user
 
+def add_tokens_to_user(user_id: int, tokens: int, db: Session):
+    """Adds tokens to user's monthly usage"""
+    user = db.get(User, user_id)
+    if user:
+        user = check_and_reset_monthly_tokens(user, db)
+        user.tokens_used_this_month += tokens
+        db.add(user)
+        # We don't commit here, caller should commit
+
 @api_router.post("/user/heartbeat")
 async def update_heartbeat(
     user_id: int = Query(...), 
@@ -1561,6 +1619,9 @@ async def admin_add_note(user_id: int, req: AdminNoteCreateRequest, db: Session 
 async def admin_invite_user(req: SignupRequest, db: Session = Depends(get_session)):
     """Admin only: Invite/Create a new user with a temporary password"""
     from app.auth import get_password_hash
+    # P2: Password Complexity Check
+    if len(req.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters long.")
     
     # Check if user exists
     existing = db.exec(select(User).where(User.email == req.email)).first()
@@ -1590,7 +1651,7 @@ async def admin_reset_password(user_id: int, db: Session = Depends(get_session))
     user.password_hash = get_password_hash("ChangeMe123!")
     db.add(user)
     db.commit()
-    return {"status": "ok", "temporary_password": "ChangeMe123!"}
+    return {"status": "ok", "message": "Password reset to default successfully."}
 
 @api_router.post("/admin/users/{user_id}/resend-email")
 async def admin_resend_email(user_id: int, db: Session = Depends(get_session)):

@@ -1,0 +1,25 @@
+# Development override - use with: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+services:
+  orchestrator:
+    image: uask-orchestrator:dev
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: orchestrator
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    read_only: false
+    user: "0:0" # Run as root in dev for convenience
+
+  worker:
+    image: uask-worker:dev
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: worker
+    volumes:
+      - ./backend:/app
+      - storage_data:/app/storage
+    read_only: false
+    user: "0:0" # Run as root in dev for convenience

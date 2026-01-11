@@ -3,14 +3,22 @@ import time
 import logging
 from typing import Optional, Dict, List, Any
 import json
-from pix2text import Pix2Text
+
+# Lazy import - only load pix2text when actually needed (worker only)
 try:
+    from pix2text import Pix2Text
     from pix2text.vlm import VlmTextFormulaOCR, VlmTableOCR
 except ImportError:
+    Pix2Text = None
     VlmTextFormulaOCR = None
     VlmTableOCR = None
 
-import litellm
+# Lazy import for litellm
+try:
+    import litellm
+except ImportError:
+    litellm = None
+
 import base64
 
 logger = logging.getLogger(__name__)
@@ -26,6 +34,8 @@ class LocalEngine(OCREngine):
     @property
     def p2t(self):
         if self._p2t is None:
+            if Pix2Text is None:
+                raise ImportError("Pix2Text is not installed. This engine requires worker dependencies.")
             logger.info("Initializing Local Pix2Text...")
             self._p2t = Pix2Text.from_config()
         return self._p2t
@@ -100,6 +110,7 @@ class VlmEngine(OCREngine):
         response = litellm.completion(
             model=self.model,
             messages=messages,
+            request_timeout=30, # P1: Prevent hanging
             **kwargs
         )
         

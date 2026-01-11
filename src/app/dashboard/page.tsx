@@ -31,7 +31,7 @@ export default function DashboardPage() {
         const userId = localStorage.getItem("user_id");
         if (!userId) return;
         try {
-            await fetch(`http://127.0.0.1:8000/api/v1/user/profile?user_id=${userId}`, {
+            await fetch(`/api/v1/user/profile?user_id=${userId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updates)
@@ -81,14 +81,14 @@ export default function DashboardPage() {
         const fetchData = async () => {
             try {
                 // Fetch History (ALL sessions)
-                const historyRes = await fetch(`http://127.0.0.1:8000/api/v1/history?user_id=${userId}&saved_only=false`);
+                const historyRes = await fetch(`/api/v1/history?user_id=${userId}&saved_only=false`);
                 if (historyRes.ok) {
                     const data = await historyRes.json();
                     setHistory(data);
                 }
 
                 // Fetch Profile Stats
-                const profileRes = await fetch(`http://127.0.0.1:8000/api/v1/user/profile?user_id=${userId}`);
+                const profileRes = await fetch(`/api/v1/user/profile?user_id=${userId}`);
                 if (profileRes.ok) {
                     const profile = await profileRes.json();
                     setIsPublic(profile.is_public);

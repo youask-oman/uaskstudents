@@ -4,10 +4,11 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
 
+import os
 # Configuration (In production, load from env)
-SECRET_KEY = "supersecretkey_dev_only"
+SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "supersecretkey_dev_only_change_in_prod")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 3000
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", 43200)) # Default 30 days
 
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")

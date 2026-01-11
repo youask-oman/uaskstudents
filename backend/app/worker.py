@@ -16,6 +16,22 @@ from app.services.voice.voice_service import voice_service
 
 logger = logging.getLogger(__name__)
 
+def redact_pii(text: str) -> str:
+    """Simple regex to mask emails and potential PII in logs"""
+    import re
+    # Mask emails
+    text = re.sub(r"[\w\.-]+@[\w\.-]+\.\w+", "[EMAIL_REDACTED]", text)
+    # Mask potential auth tokens (UUIDs)
+    text = re.sub(r"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}", "[UUID_REDACTED]", text, flags=re.I)
+    return text
+
+# P2: Graceful Shutdown handling
+import signal
+def handle_exit(sig, frame):
+    logger.info(f"Worker received signal {sig}. Closing connections...")
+    # SQLModel engine cleanup would go here if we had a global one
+    # Celery usually handles this, but explicit logging helps audit
+
 # Configure Celery
 # Use Redis as Broker and Backend
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
@@ -34,8 +50,20 @@ celery_app.conf.update(
     enable_utc=True,
 )
 
-@celery_app.task(name="run_ocr_job")
-def run_ocr_job(job_id: str):
+# Register signals
+signal.signal(signal.SIGTERM, handle_exit)
+signal.signal(signal.SIGINT, handle_exit)
+
+@celery_app.task(
+    name="run_ocr_job",
+    bind=True,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    max_retries=3,
+    soft_time_limit=120, # 2 minutes
+    hard_time_limit=150  # 2.5 minutes
+)
+def run_ocr_job(self, job_id: str):
     """
     Celery task to run OCR processing asynchronously.
     """
@@ -191,7 +219,8 @@ def run_ocr_job(job_id: str):
         except Exception as e:
             session.rollback()
             import traceback
-            logger.error(f"OCR Job {job_id} failed: {e}\n{traceback.format_exc()}")
+            error_msg = redact_pii(f"OCR Job {job_id} failed: {e}\n{traceback.format_exc()}")
+            logger.error(error_msg)
             job.status = "failed"
             job.error_message = str(e)
             
@@ -200,8 +229,16 @@ def run_ocr_job(job_id: str):
         
     return "OK"
 
-@celery_app.task(name="run_voice_job")
-def run_voice_job(job_id: int):
+@celery_app.task(
+    name="run_voice_job",
+    bind=True,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    max_retries=3,
+    soft_time_limit=60,
+    hard_time_limit=90
+)
+def run_voice_job(self, job_id: int):
     """
     Celery task to run Voice processing asynchronously.
     """

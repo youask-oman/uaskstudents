@@ -52,7 +52,7 @@ export default function DashboardPage() {
 
         const fetchHistory = async () => {
             try {
-                const response = await fetch(`http://127.0.0.1:8000/api/v1/history?user_id=${userId}`);
+                const response = await fetch(`/api/v1/history?user_id=${userId}`);
                 if (response.ok) {
                     const data = await response.json();
                     setHistory(data);
@@ -64,13 +64,13 @@ export default function DashboardPage() {
 
         const fetchOnline = async () => {
             try {
-                const profileRes = await fetch(`http://127.0.0.1:8000/api/v1/user/profile?user_id=${userId}`);
+                const profileRes = await fetch(`/api/v1/user/profile?user_id=${userId}`);
                 if (profileRes.ok) {
                     const profile = await profileRes.json();
                     setIsPublic(profile.is_public);
 
                     if (profile.is_public) {
-                        const onlineRes = await fetch(`http://127.0.0.1:8000/api/v1/users/online`);
+                        const onlineRes = await fetch(`/api/v1/users/online`);
                         if (onlineRes.ok) {
                             setOnlineUsers(await onlineRes.json());
                         }
@@ -156,7 +156,7 @@ export default function DashboardPage() {
         const userId = localStorage.getItem("user_id") || "1";
         try {
             // 1. Create Session
-            const sessionRes = await fetch('http://127.0.0.1:8000/api/v1/voice/sessions', {
+            const sessionRes = await fetch('/api/v1/voice/sessions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ user_id: parseInt(userId) })
@@ -168,13 +168,13 @@ export default function DashboardPage() {
             // 2. Upload Audio
             const formData = new FormData();
             formData.append('file', blob, 'voice.webm');
-            await fetch(`http://127.0.0.1:8000/api/v1/voice/sessions/${vsid}/audio`, {
+            await fetch(`/api/v1/voice/sessions/${vsid}/audio`, {
                 method: 'POST',
                 body: formData
             });
 
             // 3. Create Job
-            const jobRes = await fetch(`http://127.0.0.1:8000/api/v1/voice/sessions/${vsid}/jobs`, {
+            const jobRes = await fetch(`/api/v1/voice/sessions/${vsid}/jobs`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ priority: 'high' })
@@ -193,7 +193,7 @@ export default function DashboardPage() {
     const pollVoiceJob = async (jobId: number) => {
         const interval = setInterval(async () => {
             try {
-                const res = await fetch(`http://127.0.0.1:8000/api/v1/voice/jobs/${jobId}`);
+                const res = await fetch(`/api/v1/voice/jobs/${jobId}`);
                 const data = await res.json();
                 if (data.status === 'done') {
                     clearInterval(interval);
@@ -211,7 +211,7 @@ export default function DashboardPage() {
 
     const fetchVoiceArtifact = async (artifactId: number) => {
         try {
-            const res = await fetch(`http://127.0.0.1:8000/api/v1/voice/artifacts/${artifactId}`);
+            const res = await fetch(`/api/v1/voice/artifacts/${artifactId}`);
             const data = await res.json();
             setVoiceArtifact(data);
             setQuery(data.normalized_math_text);
@@ -226,7 +226,7 @@ export default function DashboardPage() {
         if (!voiceArtifact || isSolving) return;
         setIsSolving(true);
         try {
-            await fetch(`http://127.0.0.1:8000/api/v1/voice/artifacts/${voiceArtifact.id}/confirm`, {
+            await fetch(`/api/v1/voice/artifacts/${voiceArtifact.id}/confirm`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -279,7 +279,7 @@ export default function DashboardPage() {
             const userId = localStorage.getItem("user_id") || "1";
 
             console.log("Original upload starting...", { file: file.name, size: file.size });
-            const res = await fetch(`http://127.0.0.1:8000/api/v1/uploads?user_id=${userId}`, {
+            const res = await fetch(`/api/v1/uploads?user_id=${userId}`, {
                 method: 'POST',
                 body: formData
             });
@@ -328,8 +328,8 @@ export default function DashboardPage() {
             }
 
             // 2. Create Crop
-            console.log("Sending crop request to:", `http://127.0.0.1:8000/api/v1/uploads/${currentUploadId}/crops`);
-            const cropRes = await fetch(`http://127.0.0.1:8000/api/v1/uploads/${currentUploadId}/crops`, {
+            console.log("Sending crop request to:", `/api/v1/uploads/${currentUploadId}/crops`);
+            const cropRes = await fetch(`/api/v1/uploads/${currentUploadId}/crops`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -351,7 +351,7 @@ export default function DashboardPage() {
             // 3. Create Job
             setProgressStep(2); // Job Queued
             console.log("Creating OCR Job...", { crop_id: cid, userId });
-            const jobRes = await fetch(`http://127.0.0.1:8000/api/v1/ocr/jobs?user_id=${userId}`, {
+            const jobRes = await fetch(`/api/v1/ocr/jobs?user_id=${userId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -382,9 +382,12 @@ export default function DashboardPage() {
     };
 
     const pollJobStatus = async (jid: string, timer: any) => {
+        let backoff = 1000;
+        const maxBackoff = 15000;
+
         const poll = async () => {
             try {
-                const res = await fetch(`http://127.0.0.1:8000/api/v1/ocr/jobs/${jid}`);
+                const res = await fetch(`/api/v1/ocr/jobs/${jid}`);
                 const data = await res.json();
 
                 if (data.status === 'completed') {
@@ -394,8 +397,9 @@ export default function DashboardPage() {
                 } else if (data.status === 'failed') {
                     throw new Error(data.error_message || "OCR Job Failed");
                 } else {
-                    // Keep polling
-                    setTimeout(poll, 1000);
+                    // Keep polling with exponential backoff
+                    setTimeout(poll, backoff);
+                    backoff = Math.min(backoff * 1.5, maxBackoff);
                 }
             } catch (e) {
                 console.error("Polling error", e);
@@ -408,7 +412,7 @@ export default function DashboardPage() {
 
     const finalizeOcr = async (aid: number, timer: any) => {
         try {
-            const res = await fetch(`http://127.0.0.1:8000/api/v1/ocr/artifacts/${aid}`);
+            const res = await fetch(`/api/v1/ocr/artifacts/${aid}`);
             const data = await res.json();
 
             clearInterval(timer);
@@ -498,7 +502,7 @@ export default function DashboardPage() {
         setIsSolving(true);
 
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/v1/solve', {
+            const res = await fetch('/api/v1/solve', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -871,7 +875,7 @@ export default function DashboardPage() {
                                                             {ocrBlocks.filter(b => b.type === 'figure' || b.type === 'refined_figure').map((b, i) => (
                                                                 <div key={i} className="flex-none w-32 h-32 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden relative group cursor-pointer hover:border-primary/50 transition-all">
                                                                     <img
-                                                                        src={b.url ? `http://127.0.0.1:8000${b.url}` : b.content}
+                                                                        src={b.url ? `${b.url}` : b.content}
                                                                         className="w-full h-full object-cover"
                                                                         alt="OCR Block"
                                                                     />

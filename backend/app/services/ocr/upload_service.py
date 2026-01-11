@@ -14,8 +14,21 @@ class UploadService:
         os.makedirs(self.storage_dir, exist_ok=True)
 
     async def save_upload(self, user_id: int, file: UploadFile, session: Session) -> Upload:
-        # Read file content for hashing
+        # 1. Validate File Size (10MB limit)
+        MAX_SIZE = 10 * 1024 * 1024 # 10MB
         content = await file.read()
+        if len(content) > MAX_SIZE:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=413, detail="File too large. Maximum size is 10MB.")
+        
+        # 2. Validate Extension
+        ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.pdf', '.webp'}
+        ext = os.path.splitext(file.filename)[1].lower() if file.filename else ".png"
+        if ext not in ALLOWED_EXTENSIONS:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}. Allowed: {list(ALLOWED_EXTENSIONS)}")
+
+        # Read file content for hashing
         file_hash = hashlib.sha256(content).hexdigest()
         
         # Check for existing upload with same hash
