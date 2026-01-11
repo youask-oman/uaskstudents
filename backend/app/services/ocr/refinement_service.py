@@ -20,7 +20,7 @@ class FigureRefinementService:
         return self._fetch_dynamic_prompt()
 
     def _fetch_dynamic_prompt(self, db=None) -> str:
-        from app.api import get_active_prompt
+        from app.utils import get_active_prompt
         try:
             if db:
                 p = get_active_prompt("figure-parser", db)

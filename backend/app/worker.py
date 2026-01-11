@@ -4,15 +4,8 @@ import logging
 import traceback
 from celery import Celery
 from sqlmodel import Session, create_engine
-from app.database import get_session
-from app.models import OCRJob
-from app.services.ocr import ocr_service
 from datetime import datetime
 import asyncio
-from app.services.ocr.block_parser import markdown_block_parser
-from app.services.ocr.refinement_service import figure_refinement_service
-from app.services.ocr.post_process_service import post_process_service
-from app.services.voice.voice_service import voice_service
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +75,12 @@ def run_ocr_job(self, job_id: str):
         job.started_at = datetime.utcnow()
         session.add(job)
         session.commit()
+        
+        # Lazy imports for worker-only services
+        from app.services.ocr import ocr_service
+        from app.services.ocr.block_parser import markdown_block_parser
+        from app.services.ocr.refinement_service import figure_refinement_service
+        from app.services.ocr.post_process_service import post_process_service
         
         try:
             # 1. Get Crop and Engine info
@@ -173,7 +172,7 @@ def run_ocr_job(self, job_id: str):
                 question = OCRQuestion(
                     artifact_id=artifact.id,
                     external_id=q_data.get("id") or "unknown",
-                    prompt=q_data.get("prompt", ""),
+                    prompt=q_data.get("prompt") or "",
                     has_figure=q_data.get("has_figure", False),
                     math_expressions=q_data.get("math_expressions", []),
                     notes=q_data.get("notes")
@@ -246,6 +245,7 @@ def run_voice_job(self, job_id: int):
     engine = create_engine(DATABASE_URL)
     
     with Session(engine) as session:
+        from app.services.voice.voice_service import voice_service
         voice_service.run_voice_job(session, job_id)
         
     return "OK"

@@ -14,6 +14,7 @@ services:
 
   worker:
     image: uask-worker:dev
+    container_name: uask_worker
     build:
       context: ./backend
       dockerfile: Dockerfile

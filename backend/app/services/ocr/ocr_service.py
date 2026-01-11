@@ -7,11 +7,19 @@ import json
 # Lazy import - only load pix2text when actually needed (worker only)
 try:
     from pix2text import Pix2Text
-    from pix2text.vlm import VlmTextFormulaOCR, VlmTableOCR
+    # Distinguish base from VLM
+    PIX2TEXT_INSTALLED = True
 except ImportError:
     Pix2Text = None
+    PIX2TEXT_INSTALLED = False
+
+try:
+    from pix2text.vlm import VlmTextFormulaOCR, VlmTableOCR
+    VLM_INSTALLED = True
+except ImportError:
     VlmTextFormulaOCR = None
     VlmTableOCR = None
+    VLM_INSTALLED = False
 
 # Lazy import for litellm
 try:
@@ -34,8 +42,10 @@ class LocalEngine(OCREngine):
     @property
     def p2t(self):
         if self._p2t is None:
-            if Pix2Text is None:
-                raise ImportError("Pix2Text is not installed. This engine requires worker dependencies.")
+            if not PIX2TEXT_INSTALLED:
+                err = "OCREngine (local) requires 'pix2text' but it is not installed. This engine should only run on worker nodes."
+                logger.error(err)
+                raise ImportError(err)
             logger.info("Initializing Local Pix2Text...")
             self._p2t = Pix2Text.from_config()
         return self._p2t

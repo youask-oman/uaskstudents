@@ -21,13 +21,16 @@ class PostProcessService:
     Uses the strict system prompt from app/prompts/ocr_post_processor.txt.
     """
     
+    def __init__(self):
+        self.model = os.getenv("VLM_MODEL_POST_PROCESS", "openai/gpt-4o")
+    
     def process(self, raw_markdown: str, image_path: Optional[str] = None, db: Optional[Session] = None) -> Dict[str, Any]:
         """
         Calls LiteLLM to structure the OCR output using the Full-page inventory prompt.
         If image_path is provided, it does a Vision-based inventory pass.
         """
         try:
-            from app.api import get_active_prompt
+            from app.utils import get_active_prompt
             
             # If no DB session provided, we need one to fetch the prompt
             if db:

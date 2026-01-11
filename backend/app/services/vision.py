@@ -230,7 +230,7 @@ class VisionService:
         max_attempts = 2 if retry_once else 1
         last_raw: Optional[str] = None
 
-        from app.api import get_active_prompt
+        from app.utils import get_active_prompt
         from app.database import engine, Session
         
         while attempt < max_attempts:
