@@ -16,6 +16,23 @@ class FigureRefinementService:
 
     @property
     def figure_prompt(self):
+        # We'll use a wrapper that tries dynamic DB first
+        return self._fetch_dynamic_prompt()
+
+    def _fetch_dynamic_prompt(self, db=None) -> str:
+        from app.api import get_active_prompt
+        try:
+            if db:
+                p = get_active_prompt("figure-parser", db)
+            else:
+                from app.database import engine, Session
+                with Session(engine) as session:
+                    p = get_active_prompt("figure-parser", session)
+            if p:
+                return p
+        except:
+            pass
+            
         if self._figure_prompt is None:
             if os.path.exists(self.figure_prompt_path):
                 with open(self.figure_prompt_path, "r", encoding="utf-8") as f:
@@ -25,7 +42,7 @@ class FigureRefinementService:
                 self._figure_prompt = "Extract graph details as JSON."
         return self._figure_prompt
 
-    def refine_blocks(self, blocks: List[Dict[str, Any]], image_path: str, base_dir: Optional[str] = None) -> List[Dict[str, Any]]:
+    def refine_blocks(self, blocks: List[Dict[str, Any]], image_path: str, base_dir: Optional[str] = None, db=None) -> List[Dict[str, Any]]:
         refined_blocks = []
         
         for block in blocks:
@@ -43,7 +60,7 @@ class FigureRefinementService:
                     refinement_result = ocr_service.process_job(
                         image_path=target_path, # Path to the figure asset
                         engine_name="vlm",
-                        custom_prompt=self.figure_prompt,
+                        custom_prompt=self._fetch_dynamic_prompt(db),
                         response_format="json_object"
                     )
                     

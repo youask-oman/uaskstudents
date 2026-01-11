@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Admin User Detail View - uask.ai</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0d59f2",
+                        "background-light": "#f5f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="flex flex-col min-h-screen">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 dark:border-slate-800 bg-white dark:bg-background-dark px-10 py-3 sticky top-0 z-50">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-4 text-primary">
+<div class="size-6">
+<svg fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path clip-rule="evenodd" d="M24 18.4228L42 11.475V34.3663C42 34.7796 41.7457 35.1504 41.3601 35.2992L24 42V18.4228Z" fill="currentColor" fill-rule="evenodd"></path>
+<path clip-rule="evenodd" d="M24 8.18819L33.4123 11.574L24 15.2071L14.5877 11.574L24 8.18819ZM9 15.8487L21 20.4805V37.6263L9 32.9945V15.8487ZM27 37.6263V20.4805L39 15.8487V32.9945L27 37.6263ZM25.354 2.29885C24.4788 1.98402 23.5212 1.98402 22.646 2.29885L4.98454 8.65208C3.7939 9.08038 3 10.2097 3 11.475V34.3663C3 36.0196 4.01719 37.5026 5.55962 38.098L22.9197 44.7987C23.6149 45.0671 24.3851 45.0671 25.0803 44.7987L42.4404 38.098C43.9828 37.5026 45 36.0196 45 34.3663V11.475C45 10.2097 44.2061 9.08038 43.0155 8.65208L25.354 2.29885Z" fill="currentColor" fill-rule="evenodd"></path>
+</svg>
+</div>
+<h2 class="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-tight">uask.ai Admin</h2>
+</div>
+<nav class="flex items-center gap-6">
+<a class="text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white text-sm font-medium transition-colors" href="#">Dashboard</a>
+<a class="text-primary dark:text-white text-sm font-medium border-b-2 border-primary pb-1" href="#">Users</a>
+<a class="text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white text-sm font-medium transition-colors" href="#">Content</a>
+<a class="text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white text-sm font-medium transition-colors" href="#">System</a>
+</nav>
+</div>
+<div class="flex flex-1 justify-end gap-6 items-center">
+<label class="flex flex-col min-w-40 h-9 max-w-64">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full overflow-hidden border border-slate-200 dark:border-slate-800">
+<div class="text-slate-400 bg-white dark:bg-slate-900 flex items-center justify-center px-3">
+<span class="material-symbols-outlined text-[20px]">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 border-none bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-0 text-sm font-normal placeholder:text-slate-500" placeholder="Search students..." value=""/>
+</div>
+</label>
+<div class="flex gap-2">
+<button class="flex items-center justify-center rounded-lg h-9 w-9 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+</button>
+<button class="flex items-center justify-center rounded-lg h-9 w-9 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+</button>
+</div>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-9 w-9 border-2 border-primary/20" data-alt="Admin user avatar" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBBuiRij_VGuRq9R8fdU7XLsGeAmX181ceLScOT65-shJfuT0tdHmt4f95ke0wa8a1CGh6Wg92blpfGT4cH64AmiHqgS3EE1c1CO6Jsy_XVw4_7l3Q61qBBbpCGTtO8AuaYLm-v8es52gOw0e4so_EDhWH_uWM22-lGiJaEaanBBYRL-l-cPe_5Gp5NO2UP861pvOdh9-K7fTAOqcrOuga3pBULu7p38VRMNh7-J68jS7Jqk7XOP-sHycY5GJWrtxw_S7fPp7b5H5fH");'></div>
+</div>
+</header>
+<main class="flex-1 flex max-w-[1440px] mx-auto w-full p-6 gap-6">
+<!-- Left Sidebar Navigation -->
+<aside class="w-64 shrink-0 flex flex-col gap-6">
+<div class="flex flex-col gap-1">
+<h3 class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2 px-3">User Menu</h3>
+<div class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary text-white shadow-lg shadow-primary/20 cursor-pointer">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<p class="text-sm font-medium">Profile Detail</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<p class="text-sm font-medium">Session Logs</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer">
+<span class="material-symbols-outlined" data-icon="credit_card">credit_card</span>
+<p class="text-sm font-medium">Billing &amp; Plan</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer">
+<span class="material-symbols-outlined" data-icon="shield">shield</span>
+<p class="text-sm font-medium">Security &amp; Privacy</p>
+</div>
+</div>
+<!-- Support Notes Sidebar -->
+<div class="flex flex-col gap-4 flex-1">
+<h3 class="text-slate-500 text-xs font-bold uppercase tracking-wider px-3">Support Notes</h3>
+<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 flex flex-col gap-4">
+<div class="flex flex-col gap-3">
+<div class="flex flex-col gap-1 border-b border-slate-100 dark:border-slate-800 pb-3">
+<div class="flex justify-between items-center">
+<span class="text-[10px] font-bold text-primary">ADMIN: SARAH</span>
+<span class="text-[10px] text-slate-500">2h ago</span>
+</div>
+<p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">Reported issues with OCR scans in Physics formulas. Suggested cache clear.</p>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex justify-between items-center">
+<span class="text-[10px] font-bold text-slate-500">ADMIN: MARCUS</span>
+<span class="text-[10px] text-slate-500">Oct 12</span>
+</div>
+<p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">Upgrade request processed manually.</p>
+</div>
+</div>
+<div class="flex flex-col gap-2 mt-2">
+<textarea class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-xs p-2 focus:ring-primary focus:border-primary" placeholder="Add internal note..." rows="3"></textarea>
+<button class="bg-primary hover:bg-primary/90 text-white text-[11px] font-bold py-1.5 rounded-lg transition-colors">Save Note</button>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col gap-6">
+<!-- Profile Header -->
+<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+<div class="flex flex-col @[520px]:flex-row @[520px]:justify-between @[520px]:items-center gap-6">
+<div class="flex gap-6 items-center">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-24 w-24 border-4 border-primary/10 shadow-xl" data-alt="Student profile photo" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA7imS7mDDKLklJmHeVAH06M_4ku-BiaHvGTEVhS44dDN7IsFczv7zGosfJwdSjmZ_kby1-sSOntSK1Zj9ohz6srOZrFN18jVibG_p_xp6r3uCsb2Xh5UeSgGnJXoyG51Gmb69Ah2Zn2zNKxIUs1tq26Mw9kWmchdhit2VUQV8XNwkaL_AaZ7l57qke-BY8OIBeM565W_xodbaDgjA9LweEQuy2E2eBKPPHPxx8qznmz7jLAr_0T0FgOvi6CFmojb6pC_Q8FQmnR_MA");'></div>
+<div class="flex flex-col justify-center">
+<div class="flex items-center gap-3">
+<h1 class="text-slate-900 dark:text-white text-3xl font-bold tracking-tight">Alex Johnson</h1>
+<span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold uppercase tracking-wider border border-emerald-500/20">Active</span>
+</div>
+<p class="text-slate-500 dark:text-slate-400 text-sm font-medium mt-1">UID-9921 • Joined Oct 2023</p>
+<div class="flex items-center gap-2 mt-2">
+<span class="material-symbols-outlined text-primary text-[18px]">verified</span>
+<p class="text-slate-600 dark:text-slate-300 text-sm font-semibold">Pro Plan Tier</p>
+</div>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center justify-center rounded-lg h-10 px-5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-bold border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+<span class="truncate">Message User</span>
+</button>
+<button class="flex items-center justify-center rounded-lg h-10 px-5 bg-primary text-white text-sm font-bold shadow-lg shadow-primary/30 hover:bg-primary/90 transition-all">
+<span class="truncate">Generate Report</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Usage Overview Stats -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="flex flex-col gap-3 rounded-xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex justify-between items-start">
+<p class="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">Total Questions</p>
+<span class="material-symbols-outlined text-primary" data-icon="quiz">quiz</span>
+</div>
+<p class="text-slate-900 dark:text-white text-3xl font-bold">1,240</p>
+<p class="text-emerald-500 text-xs font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">trending_up</span> +12.5% this month
+                        </p>
+</div>
+<div class="flex flex-col gap-3 rounded-xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex justify-between items-start">
+<p class="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">OCR Scans</p>
+<span class="material-symbols-outlined text-primary" data-icon="document_scanner">document_scanner</span>
+</div>
+<p class="text-slate-900 dark:text-white text-3xl font-bold">450</p>
+<p class="text-emerald-500 text-xs font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">trending_up</span> +5.2% this month
+                        </p>
+</div>
+<div class="flex flex-col gap-3 rounded-xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex justify-between items-center">
+<p class="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">Monthly Quota</p>
+<span class="text-slate-900 dark:text-white text-lg font-bold">85%</span>
+</div>
+<div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 mt-2">
+<div class="bg-primary h-2.5 rounded-full" style="width: 85%"></div>
+</div>
+<div class="flex justify-between mt-1">
+<p class="text-slate-500 text-[10px]">850 / 1000 units</p>
+<p class="text-amber-500 text-[10px] font-bold">Approaching Limit</p>
+</div>
+</div>
+</section>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Recent Activity Section -->
+<div class="lg:col-span-2 flex flex-col gap-4">
+<div class="flex justify-between items-center">
+<h2 class="text-slate-900 dark:text-white text-lg font-bold flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">history</span>
+                                Recent Activity
+                            </h2>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
+<input class="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-4 py-1.5 text-xs w-48 focus:ring-primary" placeholder="Filter activity..." type="text"/>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+<th class="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Time</th>
+<th class="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Subject</th>
+<th class="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Method</th>
+<th class="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Status</th>
+<th class="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+<td class="px-4 py-3 text-xs text-slate-500">Today, 10:45 AM</td>
+<td class="px-4 py-3 text-xs font-medium text-slate-900 dark:text-slate-200">Advanced Calculus</td>
+<td class="px-4 py-3">
+<span class="flex items-center gap-1.5 text-[11px] text-slate-500">
+<span class="material-symbols-outlined text-[14px]">photo_camera</span> OCR
+                                            </span>
+</td>
+<td class="px-4 py-3"><span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[10px] font-bold">Solved</span></td>
+<td class="px-4 py-3 text-right">
+<button class="text-primary hover:underline text-[11px] font-bold">View Thread</button>
+</td>
+</tr>
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+<td class="px-4 py-3 text-xs text-slate-500">Today, 09:12 AM</td>
+<td class="px-4 py-3 text-xs font-medium text-slate-900 dark:text-slate-200">Organic Chemistry</td>
+<td class="px-4 py-3">
+<span class="flex items-center gap-1.5 text-[11px] text-slate-500">
+<span class="material-symbols-outlined text-[14px]">keyboard</span> Text
+                                            </span>
+</td>
+<td class="px-4 py-3"><span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[10px] font-bold">Solved</span></td>
+<td class="px-4 py-3 text-right">
+<button class="text-primary hover:underline text-[11px] font-bold">View Thread</button>
+</td>
+</tr>
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+<td class="px-4 py-3 text-xs text-slate-500">Oct 24, 08:20 PM</td>
+<td class="px-4 py-3 text-xs font-medium text-slate-900 dark:text-slate-200">Linear Algebra</td>
+<td class="px-4 py-3">
+<span class="flex items-center gap-1.5 text-[11px] text-slate-500">
+<span class="material-symbols-outlined text-[14px]">photo_camera</span> OCR
+                                            </span>
+</td>
+<td class="px-4 py-3"><span class="px-2 py-0.5 rounded bg-slate-500/10 text-slate-500 text-[10px] font-bold">Archived</span></td>
+<td class="px-4 py-3 text-right">
+<button class="text-primary hover:underline text-[11px] font-bold">View Thread</button>
+</td>
+</tr>
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+<td class="px-4 py-3 text-xs text-slate-500">Oct 23, 11:30 AM</td>
+<td class="px-4 py-3 text-xs font-medium text-slate-900 dark:text-slate-200">Newtonian Mechanics</td>
+<td class="px-4 py-3">
+<span class="flex items-center gap-1.5 text-[11px] text-slate-500">
+<span class="material-symbols-outlined text-[14px]">photo_camera</span> OCR
+                                            </span>
+</td>
+<td class="px-4 py-3"><span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[10px] font-bold">Solved</span></td>
+<td class="px-4 py-3 text-right">
+<button class="text-primary hover:underline text-[11px] font-bold">View Thread</button>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="p-3 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-200 dark:border-slate-800 flex justify-center">
+<button class="text-[11px] font-bold text-slate-500 hover:text-primary transition-colors uppercase tracking-wider">Load More History</button>
+</div>
+</div>
+</div>
+<!-- Account Management Section -->
+<div class="flex flex-col gap-4">
+<h2 class="text-slate-900 dark:text-white text-lg font-bold flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">admin_panel_settings</span>
+                            Account Management
+                        </h2>
+<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 flex flex-col gap-6 shadow-sm">
+<!-- Quota Adjustment -->
+<div class="flex flex-col gap-3">
+<p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Quota Adjustment</p>
+<div class="flex gap-2">
+<input class="flex-1 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm px-3 focus:ring-primary focus:border-primary" type="number" value="1000"/>
+<button class="bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-lg text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Update</button>
+</div>
+<p class="text-[10px] text-slate-400 italic">Increments monthly quota limit for current cycle.</p>
+</div>
+<!-- Plan Management -->
+<div class="flex flex-col gap-3">
+<p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Subscription Plan</p>
+<select class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm px-3 focus:ring-primary focus:border-primary">
+<option value="free">Free Tier</option>
+<option selected="" value="pro">Pro Tier ($19.99/mo)</option>
+<option value="enterprise">Enterprise</option>
+</select>
+</div>
+<!-- Quick Actions -->
+<div class="flex flex-col gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+<button class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border border-slate-200 dark:border-slate-700">
+<span class="material-symbols-outlined text-[20px]">lock_reset</span>
+<span class="text-xs font-bold">Force Password Reset</span>
+</button>
+<button class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border border-slate-200 dark:border-slate-700">
+<span class="material-symbols-outlined text-[20px]">mail</span>
+<span class="text-xs font-bold">Resend Verification Email</span>
+</button>
+</div>
+<!-- Destructive Actions -->
+<div class="flex flex-col gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+<button class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-500 bg-red-500/10 hover:bg-red-500/20 transition-colors border border-red-500/20">
+<span class="material-symbols-outlined text-[20px]">block</span>
+<span class="text-xs font-bold">Ban Account</span>
+</button>
+<button class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-red-600 transition-colors text-[11px] font-medium self-center mt-2">
+                                    Permanently Delete User Data
+                                </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<footer class="mt-auto py-6 px-10 border-t border-slate-200 dark:border-slate-800 text-center">
+<p class="text-[11px] text-slate-500 font-medium uppercase tracking-widest">uask.ai Administrative Engine • v2.4.0-stable</p>
+</footer>
+</div>
+</body></html>

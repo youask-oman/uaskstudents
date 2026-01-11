@@ -4,6 +4,7 @@ import logging
 from typing import Dict, Any, Optional
 import litellm
 import base64
+from sqlmodel import Session
 
 logger = logging.getLogger(__name__)
 
@@ -13,25 +14,29 @@ class PostProcessService:
     Uses the strict system prompt from app/prompts/ocr_post_processor.txt.
     """
     
-    def __init__(self):
-        self.prompt_path = os.path.join(os.path.dirname(__file__), "..", "..", "prompts", "ocr_post_processor.txt")
-        self.model = os.getenv("POST_PROCESS_MODEL", "openai/gpt-4o-mini")
-        self._system_prompt = None
-
-    @property
-    def system_prompt(self):
-        if self._system_prompt is None:
-            with open(self.prompt_path, "r", encoding="utf-8") as f:
-                self._system_prompt = f.read()
-        return self._system_prompt
-
-    def process(self, raw_markdown: str, image_path: Optional[str] = None) -> Dict[str, Any]:
+    def process(self, raw_markdown: str, image_path: Optional[str] = None, db: Optional[Session] = None) -> Dict[str, Any]:
         """
         Calls LiteLLM to structure the OCR output using the Full-page inventory prompt.
         If image_path is provided, it does a Vision-based inventory pass.
         """
         try:
-            messages = [{"role": "system", "content": self.system_prompt}]
+            from app.api import get_active_prompt
+            
+            # If no DB session provided, we need one to fetch the prompt
+            if db:
+                sys_prompt = get_active_prompt("ocr-post-processor", db)
+            else:
+                from app.database import engine, Session as DBSession
+                with DBSession(engine) as session:
+                    sys_prompt = get_active_prompt("ocr-post-processor", session)
+            
+            # Use file as fallback if not in DB
+            if not sys_prompt:
+                prompt_path = os.path.join(os.path.dirname(__file__), "..", "..", "prompts", "ocr_post_processor.txt")
+                with open(prompt_path, "r", encoding="utf-8") as f:
+                    sys_prompt = f.read()
+
+            messages = [{"role": "system", "content": sys_prompt}]
             
             if image_path:
                 # Vision-based pass

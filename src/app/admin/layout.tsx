@@ -1,10 +1,48 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+
 export default function AdminLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
+    const pathname = usePathname();
+    const router = useRouter();
+    const [adminName, setAdminName] = useState("Admin User");
+    const [adminRole, setAdminRole] = useState("Super Admin");
+    const [adminAvatar, setAdminAvatar] = useState("");
+    const [isAuthorized, setIsAuthorized] = useState(false);
+
+    useEffect(() => {
+        const role = localStorage.getItem("user_role");
+        const name = localStorage.getItem("user_name");
+        const avatar = localStorage.getItem("user_avatar");
+
+        if (role !== "admin") {
+            router.push("/login");
+        } else {
+            setIsAuthorized(true);
+            if (name) setAdminName(name);
+            setAdminRole("Platform Administrator");
+            if (avatar) setAdminAvatar(avatar);
+        }
+    }, [router]);
+
+    if (!isAuthorized) return null;
+
+    const navItems = [
+        { label: "Overview", href: "/admin/dashboard", icon: "dashboard" },
+        { label: "Users", href: "/admin/users", icon: "group" },
+        { label: "Quotas", href: "/admin/quotas", icon: "speed" },
+        { label: "Prompts", href: "/admin/prompts", icon: "terminal" },
+        { label: "Performance", href: "/admin/performance", icon: "monitoring" },
+    ];
+
     return (
-        <div className="font-admin bg-admin-bg-dark text-slate-200 min-h-screen flex overflow-hidden">
+        <div className="font-admin bg-[#0F172A] text-slate-200 min-h-screen flex overflow-hidden">
             {/* Sidebar */}
             <aside className="w-64 flex-shrink-0 bg-[#0c1222] border-r border-slate-800 flex flex-col justify-between p-4">
                 <div className="flex flex-col gap-8">
@@ -16,22 +54,21 @@ export default function AdminLayout({
                         </div>
                     </div>
                     <nav className="flex flex-col gap-1">
-                        <a className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors" href="#">
-                            <span className="material-symbols-outlined">analytics</span>
-                            <p className="text-sm font-medium">Usage</p>
-                        </a>
-                        <a className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors" href="#">
-                            <span className="material-symbols-outlined">description</span>
-                            <p className="text-sm font-medium">Content</p>
-                        </a>
-                        <a className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors" href="#">
-                            <span className="material-symbols-outlined">memory</span>
-                            <p className="text-sm font-medium">Models</p>
-                        </a>
-                        <a className="flex items-center gap-3 px-3 py-2.5 rounded-lg active-nav text-white" href="#">
-                            <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>speed</span>
-                            <p className="text-sm font-medium">Performance</p>
-                        </a>
+                        {navItems.map((item) => (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${pathname === item.href
+                                    ? "bg-admin-primary text-white shadow-lg shadow-admin-primary/20"
+                                    : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                                    }`}
+                            >
+                                <span className={`material-symbols-outlined ${pathname === item.href ? "fill-current" : ""}`}>
+                                    {item.icon}
+                                </span>
+                                <p className="text-sm font-medium">{item.label}</p>
+                            </Link>
+                        ))}
                     </nav>
                 </div>
                 <div className="flex flex-col gap-4">
@@ -40,10 +77,16 @@ export default function AdminLayout({
                         New Report
                     </button>
                     <div className="flex items-center gap-3 px-2 py-2 border-t border-slate-800 pt-4">
-                        <div className="size-8 rounded-full bg-slate-700 bg-cover bg-center" style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBwECVGTs6iH9XO-B4jESf2X0FNVdKTGxwWZcFQOSAdWfZSA_2zsDdWGWDczmedXdsF4R_nsqP0M38kytuwB9Bqhr1JA6QRd_-rkVvrs2-wAnUiRPq26a19CckAKrbrpSYe2GpBL1n0kz7QMzmoOABhjrZrbqx2-P-vGovPVlZjZzBpZwVtKGSA2wdXZyWy0T3ISVJHq-Fmy4ySsRXMQXDivdERw_8fVe_9x8QL1hDSSXgvBn2iFAv1Hy3O0r_fA8Uiw_AmFMmCxnwq")' }}></div>
+                        <div className="size-8 rounded-full bg-slate-700 bg-cover bg-center overflow-hidden flex items-center justify-center border border-slate-700 shadow-sm">
+                            {adminAvatar ? (
+                                <img src={adminAvatar} alt={adminName} className="w-full h-full object-cover" />
+                            ) : (
+                                <span className="text-[10px] font-bold text-admin-primary">{adminName.split(' ').map(n => n[0]).join('')}</span>
+                            )}
+                        </div>
                         <div className="flex flex-col">
-                            <p className="text-white text-xs font-bold">Alex Rivera</p>
-                            <p className="text-slate-500 text-[10px]">Super Admin</p>
+                            <p className="text-white text-xs font-bold truncate max-w-[120px]">{adminName}</p>
+                            <p className="text-slate-500 text-[10px]">{adminRole}</p>
                         </div>
                     </div>
                 </div>

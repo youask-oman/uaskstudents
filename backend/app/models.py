@@ -55,6 +55,7 @@ class User(SQLModel, table=True):
     usage_logs: List["UsageLog"] = Relationship(back_populates="user")
     payments: List["Payment"] = Relationship(back_populates="user")
     voice_sessions: List["VoiceSession"] = Relationship(back_populates="user")
+    admin_notes: List["AdminNote"] = Relationship(back_populates="user")
 
 class ChatSession(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -375,3 +376,55 @@ class VoiceConfirmation(SQLModel, table=True):
 
     artifact: VoiceArtifact = Relationship(back_populates="confirmations")
     user: User = Relationship()
+
+class AdminNote(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    admin_name: str
+    content: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    user: User = Relationship(back_populates="admin_notes")
+
+class SystemConfig(SQLModel, table=True):
+    key: str = Field(primary_key=True)
+    value: str
+    description: Optional[str] = None
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class PromptTemplate(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(unique=True, index=True) # e.g. "Math Solver"
+    slug: str = Field(unique=True, index=True) # e.g. "math-solver"
+    description: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    versions: List["PromptVersion"] = Relationship(back_populates="template")
+
+class PromptVersion(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    template_id: int = Field(foreign_key="prompttemplate.id")
+    version: str # e.g. "v1.0.1" (previously version_string)
+    content: str
+    author: str
+    is_production: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    template: PromptTemplate = Relationship(back_populates="versions")
+
+class UserQuotaOverride(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    token_limit: Optional[int] = None
+    ocr_concurrency: Optional[int] = None
+    expires_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class SystemErrorEntry(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    level: str = "ERROR" # INFO, WARNING, ERROR, CRITICAL
+    component: str # e.g. "OCR-ENGINE", "API-ROUTER"
+    message: str
+    stack_trace: Optional[str] = None
+    is_resolved: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow)

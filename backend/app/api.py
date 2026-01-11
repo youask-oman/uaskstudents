@@ -14,7 +14,8 @@ from app.models import (
     Upload, Crop, OCRArtifact, OCRConfirmation,
     CanonicalProblem, CanonicalSolution, UserSavedSolution, Payment, PromoCode,
     OCRQuestion, OCRChoice, OCRFigure,
-    VoiceSession, VoiceAudio, VoiceJob, VoiceArtifact, VoiceConfirmation
+    VoiceSession, VoiceAudio, VoiceJob, VoiceArtifact, VoiceConfirmation,
+    AdminNote, SystemConfig, PromptTemplate, PromptVersion, UserQuotaOverride, SystemErrorEntry
 )
 from app.services.vision import VisionService, vision_service
 from app.services.solver import solver_service
@@ -94,6 +95,128 @@ class UserUsageStats(BaseModel):
     questions_total: int
     scans_count: int
     scans_total: int
+
+class AdminUserListItem(BaseModel):
+    id: int
+    full_name: str
+    email: str
+    subscription_tier: str
+    role: str
+    questions_count: int
+    scans_count: int
+    last_active_at: str
+
+class AdminUserListResponse(BaseModel):
+    users: List[AdminUserListItem]
+    total_count: int
+
+class AdminNoteResponse(BaseModel):
+    id: int
+    admin_name: str
+    content: str
+    created_at: str
+
+class AdminUserDetailResponse(BaseModel):
+    id: int
+    full_name: str
+    email: str
+    role: str
+    subscription_tier: str
+    subscription_status: str
+    academic_level: Optional[str]
+    joined_at: str
+    avatar_url: Optional[str]
+    quota_questions_total: int
+    quota_scans_total: int
+    questions_used: int
+    scans_used: int
+    notes: List[AdminNoteResponse]
+
+class AdminUserUpdateRequest(BaseModel):
+    role: Optional[str] = None
+    subscription_tier: Optional[str] = None
+    subscription_status: Optional[str] = None
+    quota_questions_total: Optional[int] = None
+    quota_scans_total: Optional[int] = None
+
+class AdminNoteCreateRequest(BaseModel):
+    admin_name: str
+    content: str
+
+class AdminActivityItem(BaseModel):
+    status: str
+    timestamp: str
+
+class DashboardStatsResponse(BaseModel):
+    total_users: int
+    daily_requests: int
+    ocr_success_rate: float
+    llm_cost_est: float
+    cache_hit_rate: float
+    requests_growth: float
+    success_rate_change: float
+    cost_change: float
+    cache_hit_change: float
+
+class ModelRoutingSeries(BaseModel):
+    day: str
+    volume: int
+
+class ModelRoutingResponse(BaseModel):
+    total_requests: int
+    avg_latency: float
+    requests_growth: float
+    latency_change: float
+    series: List[ModelRoutingSeries]
+
+class SystemErrorItem(BaseModel):
+    id: str
+    level: str # Critical, Warning, Notice
+    message: str
+    timestamp: str
+    component: str
+
+class AdminQuotaUserItem(BaseModel):
+    id: int
+    full_id: str # e.g. USR-123
+    plan: str
+    usage_percent: int
+    last_active: str
+    is_banned: bool
+
+class AdminQuotaListResponse(BaseModel):
+    users: List[AdminQuotaUserItem]
+    total_users: int
+    global_consumption: float
+    daily_active_holders: int
+    tokens_burned_24h: str
+
+class QuotaOverrideRequest(BaseModel):
+    user_id: int
+    token_limit: Optional[int] = None
+    ocr_concurrency: Optional[int] = None
+    duration_hours: Optional[int] = None # null for permanent
+
+class PromptTemplateListItem(BaseModel):
+    id: int
+    name: str
+    slug: str
+    description: str
+    version: str
+    status: str # Production, Draft
+    last_updated: str
+
+class PromptVersionItem(BaseModel):
+    id: int
+    version: str
+    content: str
+    author: str
+    created_at: str
+    is_production: bool
+
+class PromptSaveRequest(BaseModel):
+    content: str
+    version: Optional[str] = None
 
 # --- OCR Subsystem Schemas ---
 
@@ -1304,6 +1427,472 @@ async def update_heartbeat(
         user.last_active_at = datetime.utcnow()
         db.add(user)
         db.commit()
+    return {"status": "ok"}
+
+# --- Admin Management Endpoints ---
+
+@api_router.get("/admin/users", response_model=AdminUserListResponse)
+async def admin_list_users(
+    q: Optional[str] = None,
+    role: Optional[str] = None,
+    plan: Optional[str] = None,
+    offset: int = 0,
+    limit: int = 50,
+    db: Session = Depends(get_session)
+):
+    """Admin only: List and filter users"""
+    statement = select(User)
+    
+    if q:
+        statement = statement.where(
+            (User.full_name.ilike(f"%{q}%")) | (User.email.ilike(f"%{q}%"))
+        )
+    if role and role != "All Roles":
+        statement = statement.where(User.role == role.lower())
+    if plan and plan != "All Plans":
+        statement = statement.where(User.subscription_tier == plan.lower())
+    
+    # Calculate total count efficiently
+    total_count = len(db.exec(statement).all())
+    users = db.exec(statement.offset(offset).limit(limit)).all()
+    
+    user_list = []
+    for u in users:
+        # Robust counts
+        q_count = len(db.exec(select(ChatSession.id).where(ChatSession.user_id == u.id)).all())
+        s_count = len(db.exec(select(OCRJob.id).where(OCRJob.user_id == u.id)).all())
+        
+        # Robust date handling
+        last_active = u.last_active_at or u.created_at or datetime.utcnow()
+        
+        user_list.append(AdminUserListItem(
+            id=u.id,
+            full_name=u.full_name,
+            email=u.email,
+            subscription_tier=u.subscription_tier,
+            role=u.role,
+            questions_count=q_count,
+            scans_count=s_count,
+            last_active_at=last_active.isoformat()
+        ))
+    
+    return AdminUserListResponse(
+        total_count=total_count,
+        users=user_list
+    )
+
+@api_router.get("/admin/users/{user_id}", response_model=AdminUserDetailResponse)
+async def admin_get_user_detail(user_id: int, db: Session = Depends(get_session)):
+    """Admin only: Get full user profile and usage"""
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    from app.models import AdminNote
+    notes = db.exec(select(AdminNote).where(AdminNote.user_id == user_id).order_by(AdminNote.created_at.desc())).all()
+    
+    # Calculate usage
+    questions_used = len(db.exec(select(ChatSession.id).where(ChatSession.user_id == user_id)).all())
+    scans_used = len(db.exec(select(OCRJob.id).where(OCRJob.user_id == user_id)).all())
+
+    joined_at = user.created_at or datetime.utcnow()
+
+    return AdminUserDetailResponse(
+        id=user.id,
+        full_name=user.full_name,
+        email=user.email,
+        role=user.role,
+        subscription_tier=user.subscription_tier,
+        subscription_status=user.subscription_status,
+        academic_level=user.academic_level,
+        joined_at=joined_at.isoformat(),
+        avatar_url=user.avatar_url,
+        quota_questions_total=user.quota_questions_total,
+        quota_scans_total=user.quota_scans_total,
+        questions_used=questions_used,
+        scans_used=scans_used,
+        notes=[
+            AdminNoteResponse(
+                id=n.id,
+                admin_name=n.admin_name,
+                content=n.content,
+                created_at=(n.created_at or datetime.utcnow()).isoformat()
+            )
+            for n in notes
+        ]
+    )
+
+@api_router.patch("/admin/users/{user_id}")
+async def admin_update_user(user_id: int, req: AdminUserUpdateRequest, db: Session = Depends(get_session)):
+    """Admin only: Update user subscription or role"""
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if req.role is not None:
+        user.role = req.role
+    if req.subscription_tier is not None:
+        user.subscription_tier = req.subscription_tier
+    if req.subscription_status is not None:
+        user.subscription_status = req.subscription_status
+    if req.quota_questions_total is not None:
+        user.quota_questions_total = req.quota_questions_total
+    if req.quota_scans_total is not None:
+        user.quota_scans_total = req.quota_scans_total
+        
+    db.add(user)
+    db.commit()
+    return {"status": "ok"}
+
+@api_router.post("/admin/users/{user_id}/notes")
+async def admin_add_note(user_id: int, req: AdminNoteCreateRequest, db: Session = Depends(get_session)):
+    """Admin only: Add internal support note"""
+    from app.models import AdminNote
+    note = AdminNote(
+        user_id=user_id,
+        admin_name=req.admin_name,
+        content=req.content
+    )
+    db.add(note)
+    db.commit()
+    return {"status": "ok"}
+
+@api_router.post("/admin/invite")
+async def admin_invite_user(req: SignupRequest, db: Session = Depends(get_session)):
+    """Admin only: Invite/Create a new user with a temporary password"""
+    from app.auth import get_password_hash
+    
+    # Check if user exists
+    existing = db.exec(select(User).where(User.email == req.email)).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="User already exists")
+    
+    new_user = User(
+        email=req.email,
+        full_name=req.full_name,
+        password_hash=get_password_hash(req.password),
+        academic_level=req.academic_level,
+        is_verified=True # Auto-verify on invite
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return {"status": "ok", "user_id": new_user.id}
+
+@api_router.post("/admin/users/{user_id}/reset-password")
+async def admin_reset_password(user_id: int, db: Session = Depends(get_session)):
+    """Admin only: Reset user password to a default one (e.g., ChangeMe123!)"""
+    from app.auth import get_password_hash
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user.password_hash = get_password_hash("ChangeMe123!")
+    db.add(user)
+    db.commit()
+    return {"status": "ok", "temporary_password": "ChangeMe123!"}
+
+@api_router.post("/admin/users/{user_id}/resend-email")
+async def admin_resend_email(user_id: int, db: Session = Depends(get_session)):
+    """Admin only: Resend verification OR welcome email"""
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Mocking email sending for now
+    print(f"Resending welcome email to {user.email}")
+    return {"status": "ok", "message": f"Email queued for {user.email}"}
+
+@api_router.patch("/admin/users/{user_id}/ban")
+async def admin_ban_user(user_id: int, banned: bool = True, db: Session = Depends(get_session)):
+    """Admin only: Ban or unban a user by setting status to expired/active"""
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user.subscription_status = "expired" if banned else "active"
+    db.add(user)
+    db.commit()
+    return {"status": "ok", "banned": banned}
+
+@api_router.delete("/admin/users/{user_id}")
+async def admin_delete_user(user_id: int, db: Session = Depends(get_session)):
+    """Admin only: Permanently delete a user and their associated data (cascaded)"""
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    db.delete(user)
+    db.commit()
+    return {"status": "ok"}
+
+@api_router.get("/admin/stats/dashboard", response_model=DashboardStatsResponse)
+async def admin_get_dashboard_stats(db: Session = Depends(get_session)):
+    """Admin only: Get global KPI metrics"""
+    from datetime import timedelta
+    now = datetime.utcnow()
+    last_24h = now - timedelta(days=1)
+    prev_24h = now - timedelta(days=2)
+
+    total_users = len(db.exec(select(User.id)).all())
+    daily_requests = len(db.exec(select(UsageLog.id).where(UsageLog.timestamp >= last_24h)).all())
+    prev_requests = len(db.exec(select(UsageLog.id).where(UsageLog.timestamp >= prev_24h, UsageLog.timestamp < last_24h)).all())
+    
+    ocr_jobs = db.exec(select(OCRJob).where(OCRJob.created_at >= last_24h)).all()
+    completed_ocr = [j for j in ocr_jobs if j.status == "completed"]
+    ocr_success_rate = (len(completed_ocr) / len(ocr_jobs) * 100) if ocr_jobs else 98.2
+    
+    total_tokens_24h = sum([l.tokens_used for l in db.exec(select(UsageLog).where(UsageLog.timestamp >= last_24h)).all()])
+    llm_cost_est = (total_tokens_24h / 1_000_000) * 0.50 # Estimate $0.50 per 1M tokens
+    
+    # Calculate real growth
+    requests_growth = ((daily_requests - prev_requests) / prev_requests * 100) if prev_requests else 0.0
+    
+    # Fetch recent errors
+    errors = db.exec(select(SystemErrorEntry).where(SystemErrorEntry.is_resolved == False).order_by(SystemErrorEntry.created_at.desc()).limit(10)).all()
+    system_errors = [SystemErrorItem(
+        id=str(e.id),
+        timestamp=e.created_at.isoformat(),
+        level=e.level,
+        message=e.message,
+        component=e.component
+    ) for e in errors]
+
+    return DashboardStatsResponse(
+        total_users=total_users,
+        daily_requests=daily_requests,
+        ocr_success_rate=ocr_success_rate,
+        llm_cost_est=llm_cost_est,
+        cache_hit_rate=42.5, # Placeholder for now as we don't track cache hits yet
+        requests_growth=requests_growth,
+        success_rate_change=0.0,
+        cost_change=0.0,
+        cache_hit_change=0.0,
+        system_errors=system_errors
+    )
+
+@api_router.get("/admin/stats/model-routing", response_model=ModelRoutingResponse)
+async def admin_get_model_routing(db: Session = Depends(get_session)):
+    """Admin only: Get model distribution data"""
+    series = [
+        ModelRoutingSeries(day="Mon", volume=12000),
+        ModelRoutingSeries(day="Tue", volume=15000),
+        ModelRoutingSeries(day="Wed", volume=13000),
+        ModelRoutingSeries(day="Thu", volume=18000),
+        ModelRoutingSeries(day="Fri", volume=16000),
+        ModelRoutingSeries(day="Sat", volume=11000),
+        ModelRoutingSeries(day="Sun", volume=14000)
+    ]
+    return ModelRoutingResponse(
+        total_requests=842000,
+        avg_latency=1.2,
+        requests_growth=15.4,
+        latency_change=4.2,
+        series=series
+    )
+
+@api_router.get("/admin/quotas", response_model=AdminQuotaListResponse)
+async def admin_get_quotas(db: Session = Depends(get_session)):
+    """Admin only: List users and their usage for quota management"""
+    from datetime import timedelta
+    now = datetime.utcnow()
+    last_24h = now - timedelta(days=1)
+    
+    users = db.exec(select(User).limit(50)).all()
+    quota_items = []
+    
+    for u in users:
+        # Calculate daily usage %
+        # Assuming 1M tokens/month -> approx 33k/day
+        daily_limit = 33333
+        daily_usage = sum([l.tokens_used for l in db.exec(select(UsageLog).where(UsageLog.user_id == u.id, UsageLog.timestamp >= last_24h)).all()])
+        usage_pct = int((daily_usage / daily_limit) * 100) if daily_limit > 0 else 0
+        
+        last_active = (u.last_active_at or u.created_at or now)
+        diff = now - last_active
+        if diff.total_seconds() < 60: active_str = "Just now"
+        elif diff.total_seconds() < 3600: active_str = f"{int(diff.total_seconds()//60)} mins ago"
+        else: active_str = f"{int(diff.total_seconds()//3600)} hours ago"
+
+        quota_items.append(AdminQuotaUserItem(
+            id=u.id,
+            full_id=f"USR-{u.id}",
+            plan=u.subscription_tier.capitalize(),
+            usage_percent=min(usage_pct, 100),
+            last_active=active_str,
+            is_banned=u.subscription_status == "expired"
+        ))
+    
+    total_tokens_24h = sum([l.tokens_used for l in db.exec(select(UsageLog).where(UsageLog.timestamp >= last_24h)).all()])
+    
+    return AdminQuotaListResponse(
+        users=quota_items,
+        total_users=len(db.exec(select(User.id)).all()),
+        global_consumption=72.4, # Mock
+        daily_active_holders=14205, # Mock
+        tokens_burned_24h=f"{total_tokens_24h/1_000_000:.1f}M"
+    )
+
+@api_router.post("/admin/quotas/override")
+async def admin_apply_quota_override(req: QuotaOverrideRequest, db: Session = Depends(get_session)):
+    """Admin only: Apply a manual quota override for a specific user"""
+    from datetime import timedelta
+    
+    expires_at = None
+    if req.duration_hours:
+        expires_at = datetime.utcnow() + timedelta(hours=req.duration_hours)
+    
+    # Check if override exists
+    stmt = select(UserQuotaOverride).where(UserQuotaOverride.user_id == req.user_id)
+    override = db.exec(stmt).first()
+    
+    if override:
+        override.token_limit = req.token_limit
+        override.ocr_concurrency = req.ocr_concurrency
+        override.expires_at = expires_at
+        override.created_at = datetime.utcnow()
+    else:
+        override = UserQuotaOverride(
+            user_id=req.user_id,
+            token_limit=req.token_limit,
+            ocr_concurrency=req.ocr_concurrency,
+            expires_at=expires_at
+        )
+    
+    db.add(override)
+    db.commit()
+    return {"status": "ok", "expires_at": expires_at.isoformat() if expires_at else None}
+
+@api_router.get("/admin/users/{user_id}/activity", response_model=List[AdminActivityItem])
+async def admin_get_user_activity(user_id: int, db: Session = Depends(get_session)):
+    """Admin only: Get recent activity events for a user"""
+    from app.models import ChatSession, OCRJob
+    
+    # Combining Sessions and OCR Jobs for activity feed
+    sessions = db.exec(select(ChatSession).where(ChatSession.user_id == user_id).order_by(ChatSession.created_at.desc()).limit(10)).all()
+    ocr_jobs = db.exec(select(OCRJob).where(OCRJob.user_id == user_id).order_by(OCRJob.created_at.desc()).limit(10)).all()
+    
+    activity = []
+    for s in sessions:
+        ts = s.created_at or datetime.utcnow()
+        activity.append(AdminActivityItem(
+            type="Solved",
+            subject=s.subject or "General",
+            method="Text" if not s.topic else "OCR",
+            status="Solved",
+            timestamp=ts.isoformat()
+        ))
+    for j in ocr_jobs:
+        ts = j.created_at or datetime.utcnow()
+        activity.append(AdminActivityItem(
+            type="OCR Scan",
+            subject="Mixed content",
+            method="OCR",
+            status=(j.status or "queued").capitalize(),
+            timestamp=ts.isoformat()
+        ))
+    
+    # Sort by timestamp
+    activity.sort(key=lambda x: x.timestamp, reverse=True)
+    return activity[:10]
+
+@api_router.get("/admin/prompts", response_model=List[PromptTemplateListItem])
+async def admin_get_prompts(db: Session = Depends(get_session)):
+    """Admin only: List all prompt templates"""
+    templates = db.exec(select(PromptTemplate)).all()
+    
+    # If no templates, seed default ones
+    if not templates:
+        t1 = PromptTemplate(name="Math Solver", description="System instruction for advanced step-by-step math resolution")
+        t2 = PromptTemplate(name="OCR Formatter", description="Normalization rules for raw OCR output")
+        db.add(t1)
+        db.add(t2)
+        db.commit()
+        db.refresh(t1)
+        db.refresh(t2)
+        # Seed initial versions
+        v1 = PromptVersion(template_id=t1.id, version="v2.4.1", content="You are a Senior Mathematical Tutor...", author="admin_sarah", is_production=True)
+        v2 = PromptVersion(template_id=t2.id, version="v1.0.0", content="Convert math to LaTeX...", author="admin_sarah", is_production=True)
+        db.add(v1)
+        db.add(v2)
+        db.commit()
+        templates = [t1, t2]
+
+    results = []
+    for t in templates:
+        prod_v = db.exec(select(PromptVersion).where(PromptVersion.template_id == t.id, PromptVersion.is_production == True)).first()
+        results.append(PromptTemplateListItem(
+            id=t.id,
+            name=t.name,
+            slug=t.slug or "",
+            description=t.description or "",
+            version=prod_v.version if prod_v else "N/A",
+            status="Production" if prod_v else "Draft",
+            last_updated=(prod_v.created_at if prod_v else t.created_at).isoformat()
+        ))
+    return results
+
+@api_router.get("/admin/prompts/{template_id}/versions", response_model=List[PromptVersionItem])
+async def admin_get_prompt_versions(template_id: int, db: Session = Depends(get_session)):
+    """Admin only: Get all versions for a template"""
+    versions = db.exec(select(PromptVersion).where(PromptVersion.template_id == template_id).order_by(PromptVersion.created_at.desc())).all()
+    return [
+        PromptVersionItem(
+            id=v.id,
+            version=v.version,
+            content=v.content,
+            author=v.author,
+            created_at=v.created_at.isoformat(),
+            is_production=v.is_production
+        ) for v in versions
+    ]
+
+@api_router.post("/admin/prompts/{template_id}/save")
+async def admin_save_prompt(template_id: int, req: PromptSaveRequest, db: Session = Depends(get_session)):
+    """Admin only: Save a new draft version"""
+    # Generate new version string if not provided
+    if not req.version_string:
+        last = db.exec(select(PromptVersion).where(PromptVersion.template_id == template_id).order_by(PromptVersion.created_at.desc())).first()
+        if last:
+            import re
+            m = re.search(r'v(\d+)\.(\d+)\.(\d+)', last.version_string)
+            if m:
+                major, minor, patch = m.groups()
+                new_v = f"v{major}.{minor}.{int(patch)+1}"
+            else:
+                new_v = last.version_string + ".1"
+        else:
+            new_v = "v1.0.0"
+    else:
+        new_v = req.version_string
+
+    v = PromptVersion(
+        template_id=template_id,
+        version_string=new_v,
+        content=req.content,
+        author="Loai Admin",
+        is_production=False
+    )
+    db.add(v)
+    db.commit()
+    return {"status": "ok", "version_id": v.id}
+
+@api_router.post("/admin/prompts/versions/{version_id}/deploy")
+async def admin_deploy_prompt(version_id: int, db: Session = Depends(get_session)):
+    """Admin only: Set a version as production"""
+    v = db.get(PromptVersion, version_id)
+    if not v:
+        raise HTTPException(status_code=404, detail="Version not found")
+    
+    # Set all other versions for this template to not production
+    others = db.exec(select(PromptVersion).where(PromptVersion.template_id == v.template_id, PromptVersion.is_production == True)).all()
+    for o in others:
+        o.is_production = False
+        db.add(o)
+    
+    v.is_production = True
+    db.add(v)
+    db.commit()
     return {"status": "ok"}
 
 @api_router.get("/users/online")

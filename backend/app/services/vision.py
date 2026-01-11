@@ -230,9 +230,18 @@ class VisionService:
         max_attempts = 2 if retry_once else 1
         last_raw: Optional[str] = None
 
+        from app.api import get_active_prompt
+        from app.database import engine, Session
+        
         while attempt < max_attempts:
             attempt += 1
-            system_prompt = SYSTEM_PROMPT
+            
+            with Session(engine) as session:
+                system_prompt = get_active_prompt("vision-transcription", session)
+            
+            if not system_prompt:
+                system_prompt = SYSTEM_PROMPT # Fallback
+                
             if attempt > 1:
                 system_prompt += "\n\nCRITICAL: You failed. Transcribe ONLY. Preserve spacing + line breaks. JSON only."
 

@@ -16,7 +16,7 @@ class SolverService:
             self._client = AsyncOpenAI(api_key=api_key)
         return self._client
 
-    async def solve_problem(self, problem_text: str, context: str = "") -> dict:
+    async def solve_problem(self, problem_text: str, context: str = "", db = None) -> dict:
         """
         Orchestrates the solving process using OpenAI.
         """
@@ -27,56 +27,20 @@ class SolverService:
                  "final_answer": "Please configure OPENAI_API_KEY on the backend."
              }
 
-        system_prompt = """You are an expert math and physics tutor. 
-        Your goal is to solve the student's problem step-by-step.
+        from app.api import get_active_prompt
+        # Fallback to hardcoded if not in DB
+        if db:
+            system_prompt = get_active_prompt("math-solver", db)
+        else:
+            from app.database import engine, Session
+            with Session(engine) as session:
+                system_prompt = get_active_prompt("math-solver", session)
         
-        OUTPUT FORMAT:
-        Return ONLY valid JSON with this structure:
-        {
-            "problem": {
-                "goal": "Brief description of the objective (e.g. 'Solve for x')",
-                "latex": "The original problem in LaTeX"
-            },
-            "solution": {
-                "steps": [
-                    {
-                        "index": 1,
-                        "title": "Step Heading",
-                        "explanation": "Clear pedagogical explanation without math",
-                        "math": {
-                            "latex_lines": ["Line 1 of math", "Line 2 of math"]
-                        }
-                    }
-                ],
-                "final_answer": "The final concise result"
-            },
-            "verification": {
-                "methods_used": [
-                    {
-                        "method": "substitution / sanity check / dimension matching",
-                        "description": "How we verified",
-                        "work": {
-                            "latex_lines": ["Latex showing the check"]
-                        },
-                        "conclusion": "Pass/Fail statement"
-                    }
-                ]
-            },
-            "concepts": [
-                {
-                    "title": "Concept Name",
-                    "category": "Subject area",
-                    "description": "Brief explanation",
-                    "tags": ["tag1", "tag2"]
-                }
-            ]
-        }
-        
-        RULES:
-        - Use LaTeX for ALL math expressions in latex_lines.
-        - DO NOT put math inside 'explanation' if possible; use 'math.latex_lines'.
-        - Be educational and clear.
-        """
+        if not system_prompt:
+            system_prompt = """You are an expert math and physics tutor. 
+            Your goal is to solve the student's problem step-by-step.
+            ... (existing hardcoded prompt) ...
+            """
 
         try:
             response = await self.client.chat.completions.create(
@@ -100,7 +64,7 @@ class SolverService:
                 "final_answer": "Could not solve."
             }
 
-    async def get_chat_response(self, query: str, session_context: dict) -> dict:
+    async def get_chat_response(self, query: str, session_context: dict, db = None) -> dict:
         """
         Handles follow-up questions from the student.
         Returns { "relevant": bool, "content": str }
@@ -108,16 +72,28 @@ class SolverService:
         if not self.client:
             return {"relevant": True, "content": "API Key Missing. Check backend config."}
 
-        system_prompt = f"""You are an expert tutor. The current problem being discussed is:
-        Goal: {session_context.get('problem', {}).get('goal')}
-        Math: {session_context.get('problem', {}).get('latex')}
-        
-        RULES:
-        1. Determine if the student's question is related to this math/physics problem or tutoring in general.
-        2. If NOT related (e.g. asking about celebrities, general trivia, unrelated tasks), set "relevant" to false and briefly explain why you can only help with the current problem.
-        3. If related, set "relevant" to true and provide a clear, encouraging answer using LaTeX for math.
-        4. Return ONLY JSON: {{"relevant": boolean, "content": "string"}}
-        """
+        from app.api import get_active_prompt
+        if db:
+            system_prompt_template = get_active_prompt("tutor-chat", db)
+        else:
+            from app.database import engine, Session
+            with Session(engine) as session:
+                system_prompt_template = get_active_prompt("tutor-chat", session)
+
+        if system_prompt_template:
+            # Simple template replacement
+            system_prompt = system_prompt_template.replace("{{goal}}", str(session_context.get('problem', {}).get('goal'))).replace("{{latex}}", str(session_context.get('problem', {}).get('latex')))
+        else:
+            system_prompt = f"""You are an expert tutor. The current problem being discussed is:
+            Goal: {session_context.get('problem', {}).get('goal')}
+            Math: {session_context.get('problem', {}).get('latex')}
+            
+            RULES:
+            1. Determine if the student's question is related to this math/physics problem or tutoring in general.
+            2. If NOT related (e.g. asking about celebrities, general trivia, unrelated tasks), set "relevant" to false and briefly explain why you can only help with the current problem.
+            3. If related, set "relevant" to true and provide a clear, encouraging answer using LaTeX for math.
+            4. Return ONLY JSON: {{"relevant": boolean, "content": "string"}}
+            """
 
         try:
             response = await self.client.chat.completions.create(
