@@ -502,7 +502,7 @@ export default function DashboardPage() {
         setIsSolving(true);
 
         try {
-            const res = await fetch('/api/v1/solve_v3', {
+            const res = await fetch(`/api/v1/solve_v3?user_id=${encodeURIComponent(userId)}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -515,8 +515,7 @@ export default function DashboardPage() {
                     question_id: selectedQuestionId,
                     mode: 'general',
                     subject: voiceSubject,
-                    difficulty: voiceDifficulty,
-                    user_id: parseInt(userId)
+                    difficulty: voiceDifficulty
                 })
             });
 
