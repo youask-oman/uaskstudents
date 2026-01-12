@@ -2,6 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.com/na-math-solver.schema.json",
   "title": "NorthAmericaMathSolverOutput",
+  "description": "All properties must be present; do not use nulls. Use empty arrays/strings or minimal objects with required keys when data is unavailable.",
   "type": "object",
   "additionalProperties": false,
   "required": ["problem", "analysis", "solution", "verification", "plot", "similar_examples", "meta"],

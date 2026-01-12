@@ -362,6 +362,7 @@ Context: {context if context else "No additional context provided."}
 - At least 2 similar_examples for practice
 - meta.localization.region = "north_america"
 - Each step must include: concept, rules_used, work, result, checkpoint
+- Avoid nulls; when a field is required by the schema, supply a minimal valid value (empty list/string/object with required keys) instead of null
 """
         
         tokens = {"input": 0, "output": 0}

@@ -1,5 +1,10 @@
 OUTPUT FORMAT: Return ONLY strict JSON that validates against the schema.
 
+SCHEMA COMPLIANCE (STRICT):
+- Include every property defined in the schema (even if empty).
+- Never use null; use empty arrays/strings or minimal objects with required keys.
+- Always include plot.plan; if no meaningful plot exists, set should_plot=false, plot_type="other", use safe placeholder values in plan, and include visualization_alternative with clear instructions.
+
 GRAPHING REQUIREMENT (NON-NEGOTIABLE):
 1) Always compute whether a meaningful visualization exists.
 2) If yes, set plot.should_plot = true and provide plot.plan with:
@@ -21,3 +26,13 @@ VERIFICATION REQUIREMENT:
 ROBUSTNESS:
 - Handle: equations, inequalities, systems, word problems, functions, calculus, vectors, complex numbers, statistics.
 - For word problems: define variables, translate to equations, solve, interpret units and meaning.
+
+STRICT JSON COMPLIANCE:
+- The schema enforces "additionalProperties: false" and ALL fields are required.
+- Do NOT output null for any field.
+- If a field is optional but required by schema, provide a minimal valid value:
+  - Empty string "" for text
+  - Empty list [] for arrays
+  - Minimal valid object for nested objects (e.g. {"x":0, "y":0} if point required but irrelevant)
+- Do NOT omit any keys defined in the schema.
+- Avoid nulls; when a field is required by the schema, supply a minimal valid value (empty list/string/object with required keys) instead of null

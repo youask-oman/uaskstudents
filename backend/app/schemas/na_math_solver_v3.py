@@ -326,6 +326,7 @@ def get_json_schema_for_openai_v3() -> dict:
     """
     Generate JSON schema strictly compatible with OpenAI Structured Outputs.
     Recursively ensures additionalProperties: False and all fields are required.
+    Removes nullable unions to discourage null outputs.
     """
     schema = SolveResponseV3.model_json_schema()
     
@@ -343,16 +344,13 @@ def get_json_schema_for_openai_v3() -> dict:
             node["type"] = "object"
             node["additionalProperties"] = False
             
-            # Ensure all properties are required
+             # OpenAI strict schema requires required to include every property key.
             props = node.get("properties", {})
-            if props:
-                node["required"] = list(props.keys())
-                
-                # Recursively process properties
-                for prop_name, prop_schema in props.items():
-                    enforce_strict(prop_schema)
-            else:
-                node["required"] = []
+            node["required"] = list(props.keys()) if props else []
+
+            # Recursively process properties
+            for prop_name, prop_schema in props.items():
+                enforce_strict(prop_schema)
                 
         # Handle Arrays
         if node.get("type") == "array":
@@ -364,11 +362,26 @@ def get_json_schema_for_openai_v3() -> dict:
             for def_name, def_schema in node["$defs"].items():
                 enforce_strict(def_schema)
                 
-        # Handle anyOf / allOf (though Pydantic usually resolves these well)
+        # Strip nullable unions to avoid null outputs in strict schemas.
+        if isinstance(node.get("type"), list):
+            node["type"] = [t for t in node["type"] if t != "null"]
+            if len(node["type"]) == 1:
+                node["type"] = node["type"][0]
+
+        # Handle anyOf / allOf
         for key in ["anyOf", "allOf", "oneOf"]:
             if key in node:
+                non_null_nodes = []
                 for sub_node in node[key]:
+                    if isinstance(sub_node, dict) and sub_node.get("type") == "null":
+                        continue
                     enforce_strict(sub_node)
+                    non_null_nodes.append(sub_node)
+                if key in ["anyOf", "oneOf"] and len(non_null_nodes) == 1:
+                    node.pop(key, None)
+                    node.update(non_null_nodes[0])
+                else:
+                    node[key] = non_null_nodes
                     
         return node
 
