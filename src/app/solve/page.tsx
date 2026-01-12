@@ -502,7 +502,7 @@ export default function DashboardPage() {
         setIsSolving(true);
 
         try {
-            const res = await fetch('/api/v1/solve', {
+            const res = await fetch('/api/v1/solve_v3', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -523,6 +523,9 @@ export default function DashboardPage() {
             if (!res.ok) throw new Error("Solve request failed");
 
             const data = await res.json();
+            if (data?.error) {
+                throw new Error(data.message || "Solve request failed");
+            }
             router.push(`/chat/${data.session_id}`);
 
         } catch (err) {

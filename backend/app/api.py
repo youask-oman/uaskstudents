@@ -1081,8 +1081,14 @@ async def solve_problem(
     # 4. Solve (Calling expensive LLM with context enhancement)
     # Check if Solver V2 is enabled
     use_solver_v2 = os.environ.get("SOLVER_V2_ENABLED", "false").lower() == "true"
-    
-    if use_solver_v2:
+    use_stub = os.environ.get("SOLVER_STUB_ENABLED", "false").lower() == "true"
+
+    if use_stub:
+        from app.services.solver_stub import get_stub_solution_v1
+        print("[API] Using solver stub (V1 format)")
+        solution_data = get_stub_solution_v1(final_prompt)
+        use_solver_v2 = False
+    elif use_solver_v2:
         # Use Solver V2 - Responses API with structured outputs
         from app.services.solver_v2 import solver_service_v2
         
