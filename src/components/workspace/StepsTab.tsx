@@ -48,6 +48,13 @@ export default function StepsTab({ title, steps, onViewConcepts, visuals, proble
     const handleExportPDF = () => {
         window.print();
     };
+    const referencedVisualIds = new Set(
+        steps.flatMap(step => step.visual_refs ?? [])
+    );
+
+    const unreferencedVisuals = (visuals ?? []).filter(
+        visual => !referencedVisualIds.has(visual.id)
+    );
 
     const handleShare = async () => {
         const shareData = {
@@ -206,7 +213,24 @@ export default function StepsTab({ title, steps, onViewConcepts, visuals, proble
                         );
                     })}
                 </div>
-
+                {unreferencedVisuals.length > 0 && (
+                    <div className="mt-12 space-y-6 border-t border-slate-200 pt-12">
+                        <div className="flex items-center gap-3">
+                            <div className="size-10 rounded-full bg-electric-blue/10 text-electric-blue flex items-center justify-center">
+                                <span className="material-symbols-outlined text-lg">insights</span>
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-navy">Visual Summary</h3>
+                                <p className="text-sm text-navy/50">Rendered after the steps to match schema requirements.</p>
+                            </div>
+                        </div>
+                        <div className="space-y-6">
+                            {unreferencedVisuals.map(visual => (
+                                <VisualRenderer key={visual.id} visual={visual} />
+                            ))}
+                        </div>
+                    </div>
+                )}
                 {/* Footer Feedback */}
                 <div className="flex flex-col md:flex-row items-center justify-center gap-8 py-12 border-t border-slate-200 mt-12 pb-24">
                     <span className="text-sm font-semibold text-navy/40 italic">Was this solution helpful?</span>
