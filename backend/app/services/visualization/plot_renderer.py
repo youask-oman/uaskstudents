@@ -49,6 +49,36 @@ class PlotRenderer:
         """
         self.dpi = dpi
         self.figsize = figsize
+
+    def generate_data(self, plan: PlotPlanV3) -> List[Dict[str, Any]]:
+        """
+        Generate raw plot data (series) for frontend rendering (e.g. Plotly).
+        
+        Returns:
+            List of series objects: [{"label": str, "points": [{"x": float, "y": float}, ...]}]
+        """
+        series = []
+        
+        # Only support function generation for now
+        window = plan.recommended_window
+        # Use np.linspace to generate x values
+        x = np.linspace(window.x_min, window.x_max, plan.sampling.resolution)
+        
+        for obj in plan.objects:
+            # Handle standard functions/lines
+            if obj.kind in ["curve", "line", "function"]:
+                try:
+                    y = self._evaluate_expression(obj.expression, x)
+                    points = [{"x": float(xi), "y": float(yi)} for xi, yi in zip(x, y) if not np.isnan(yi) and not np.isinf(yi)]
+                    series.append({
+                        "label": obj.label,
+                        "points": points
+                    })
+                except Exception as e:
+                    print(f"[PlotRenderer] Failed to generate data for {obj.expression}: {e}")
+                    
+        return series
+
     
     def render(self, plan: PlotPlanV3, plot_type: str) -> PlotResult:
         """

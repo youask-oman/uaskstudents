@@ -280,6 +280,47 @@ class SolverV3:
                         response_data["_plot_width"] = plot_result.width
                         response_data["_plot_height"] = plot_result.height
                         
+                        # --- GENERATE FRONTEND VISUALS ---
+                        try:
+                            plot_series = self.plot_renderer.generate_data(plot_plan)
+                            if plot_series:
+                                visual_id = f"vis_gen_{int(time.time())}"
+                                visual_obj = {
+                                    "id": visual_id,
+                                    "type": "function_plot",
+                                    "title": plot_plan.title,
+                                    "series": plot_series,
+                                    "axes": {
+                                        "x_label": plot_plan.axes.x_label,
+                                        "y_label": plot_plan.axes.y_label
+                                    },
+                                    "domain": {
+                                        "x_min_latex": str(plot_plan.recommended_window.x_min),
+                                        "x_max_latex": str(plot_plan.recommended_window.x_max)
+                                    }
+                                }
+                                
+                                # Inject visuals array
+                                if "visuals" not in response_data:
+                                    response_data["visuals"] = []
+                                response_data["visuals"].append(visual_obj)
+                                
+                                # Link to the LAST step (Verification/Conclusion)
+                                steps = response_data.get("solution", {}).get("steps", [])
+                                if steps:
+                                    last_step = steps[-1]
+                                    # We inject visual_refs (not in schema, but safe for frontend)
+                                    if "visual_refs" not in last_step:
+                                        last_step["visual_refs"] = []
+                                    last_step["visual_refs"].append(visual_id)
+                                    
+                                    if trace:
+                                        print(f"[SOLVER_V3] ✅ Linked visual {visual_id} to step {last_step.get('index')}")
+
+                        except Exception as e:
+                            if trace:
+                                print(f"[SOLVER_V3] ⚠️ Failed to generate frontend visual data: {e}")
+                        
                         if trace:
                             print(f"[SOLVER_V3] ✅ Generated plot: {plot_type} ({telemetry['latency_ms_plot']}ms)")
                             print(f"[SOLVER_V3]    Confidence: {plot_confidence:.2f}")
@@ -295,9 +336,10 @@ class SolverV3:
                             problem_text,
                             f"Plot rendering failed: {str(e)}"
                         )
-                        response_data["plot"]["visualization_alternative"] = alt.dict()
-                        response_data["plot"]["should_plot"] = False
-            
+                        if "plot" in response_data:
+                            response_data["plot"]["visualization_alternative"] = alt.dict()
+                            response_data["plot"]["should_plot"] = False
+                            
             # Step 6: Add metadata and telemetry
             telemetry["latency_ms_total"] = int((time.time() - start_time) * 1000)
             

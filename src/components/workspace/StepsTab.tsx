@@ -36,21 +36,15 @@ interface StepsTabProps {
     steps: Step[];
     onViewConcepts?: () => void;
     visuals?: Visual[];
+    problemLatex?: string;
 }
 
-const Latex = ({ children, block = false }: { children: string; block?: boolean }) => {
-    try {
-        const html = katex.renderToString(children, {
-            throwOnError: false,
-            displayMode: block
-        });
-        return <span dangerouslySetInnerHTML={{ __html: html }} />;
-    } catch (e) {
-        return <span>{children}</span>;
-    }
-};
+// Math Font Component for specific styling if needed
+const MathFont = ({ children }: { children: React.ReactNode }) => (
+    <span className="font-serif italic">{children}</span>
+);
 
-export default function StepsTab({ title, steps, onViewConcepts, visuals }: StepsTabProps) {
+export default function StepsTab({ title, steps, onViewConcepts, visuals, problemLatex }: StepsTabProps) {
     const handleExportPDF = () => {
         window.print();
     };
@@ -75,159 +69,179 @@ export default function StepsTab({ title, steps, onViewConcepts, visuals }: Step
     };
 
     return (
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 max-w-4xl mx-auto w-full space-y-8 h-full custom-scrollbar print:p-0">
-            <div className="flex items-center justify-between print:hidden">
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{title}</h1>
-                <div className="flex gap-2">
+        <div className="flex-1 overflow-y-auto p-4 lg:p-12 bg-off-white h-full custom-scrollbar">
+            <div className="max-w-6xl mx-auto relative">
+                {/* Header Section from Stitch Design */}
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-12 lg:mb-16 gap-4">
+                    <div>
+                        <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-navy">{title}</h1>
+                        {problemLatex && (
+                            <p className="text-navy/50 mt-3 font-serif italic text-xl md:text-2xl">
+                                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                    {`$${problemLatex}$`}
+                                </ReactMarkdown>
+                            </p>
+                        )}
+                    </div>
                     <button
                         onClick={handleExportPDF}
-                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold border border-slate-200 dark:border-border-dark rounded-lg hover:bg-slate-50 dark:hover:bg-surface-dark transition-colors text-slate-600 dark:text-slate-300"
+                        className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-navy bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all shadow-sm group"
                     >
-                        <span className="material-symbols-outlined text-sm">download</span>
-                        Export PDF
-                    </button>
-                    <button
-                        onClick={handleShare}
-                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold bg-primary dark:bg-accent text-white rounded-lg hover:opacity-90 transition-colors shadow-lg shadow-primary/20 dark:shadow-accent/20"
-                    >
-                        <span className="material-symbols-outlined text-sm">share</span>
-                        Share
+                        <span className="material-symbols-outlined text-sm group-hover:text-electric-blue transition-colors">download</span>
+                        EXPORT PDF
                     </button>
                 </div>
-            </div>
 
-            <div className="hidden print:block mb-8 border-b-2 border-slate-900 pb-4">
-                <h1 className="text-2xl font-bold mb-2">uask.ai Solution</h1>
-                <h2 className="text-lg text-slate-600">{title}</h2>
-            </div>
+                <div className="relative space-y-16 lg:space-y-24 pb-32">
+                    {/* Timeline Line */}
+                    <div className="absolute left-6 top-0 bottom-0 w-px bg-slate-200 -z-10 hidden md:block" />
 
-            <div className="space-y-6">
-                {steps.map((step, idx) => {
-                    const isV3 = Boolean(step.work || step.concept);
+                    {steps.map((step, idx) => {
+                        const isV3 = Boolean(step.work || step.concept);
+                        const hasSidebar = step.concept || (step.rules_used && step.rules_used.length > 0);
 
-                    return (
-                        <div key={idx} className="bg-white dark:bg-card-dark rounded-xl shadow-sm border border-slate-200 dark:border-border-dark overflow-hidden transition-all hover:border-primary/30 dark:hover:border-accent/30">
-                            <div className="bg-slate-50/50 dark:bg-white/5 px-6 py-3 border-b border-slate-200 dark:border-border-dark flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <span className="flex items-center justify-center size-6 bg-primary dark:bg-accent text-white text-xs font-bold rounded shadow-sm shadow-primary/30 dark:shadow-accent/30">
+                        return (
+                            <div key={idx} className="relative flex flex-col md:flex-row gap-8 lg:gap-12 group">
+                                {/* Timeline Bubble */}
+                                <div className="flex-shrink-0 relative z-10 hidden md:block">
+                                    <div className="size-12 bg-electric-blue text-white rounded-full flex items-center justify-center font-bold text-xl shadow-lg ring-4 ring-off-white">
                                         {step.index}
-                                    </span>
-                                    <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{step.title}</h4>
-                                </div>
-                                <button className="text-primary dark:text-accent hover:opacity-80 transition-colors">
-                                    <span className="material-symbols-outlined text-lg">info</span>
-                                </button>
-                            </div>
-
-                            <div className="p-6">
-                                {isV3 ? (
-                                    <div className="space-y-5">
-                                        {/* V3 Content */}
-                                        {step.concept && (
-                                            <div className="bg-blue-50 dark:bg-blue-900/10 border-l-2 border-blue-400 pl-3 py-2">
-                                                <p className="text-xs font-bold text-blue-500 uppercase mb-1">Concept</p>
-                                                <p className="text-sm text-slate-700 dark:text-slate-300">{step.concept}</p>
-                                            </div>
-                                        )}
-
-                                        {step.rules_used && step.rules_used.length > 0 && (
-                                            <div className="flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                                                {step.rules_used.map((r, i) => (
-                                                    <span key={i} className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">{r}</span>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        {step.work && step.work.length > 0 && (
-                                            <div className="space-y-3">
-                                                {step.work.map((line, i) => (
-                                                    <div key={i} className="prose dark:prose-invert max-w-none text-sm leading-relaxed text-slate-700 dark:text-slate-200">
-                                                        <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                                                            {line}
-                                                        </ReactMarkdown>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        {step.checkpoint && (
-                                            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-border-dark">
-                                                <div className="flex gap-3">
-                                                    <span className="material-symbols-outlined text-green-500">help</span>
-                                                    <div>
-                                                        <p className="text-xs font-bold uppercase text-slate-500 mb-1">Quick Check</p>
-                                                        <p className="text-sm font-medium text-slate-800 dark:text-slate-200 italic">"{step.checkpoint.question}"</p>
-                                                        <p className="text-xs text-slate-500 mt-1">Ans: {step.checkpoint.expected_answer}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
                                     </div>
-                                ) : (
-                                    /* Legacy V2 Content */
-                                    <>
-                                        <p className="text-sm text-slate-600 dark:text-slate-300 mb-4 leading-relaxed">
-                                            {step.explanation || (step as any).content || "No detailed explanation provided."}
-                                        </p>
-                                        {step.math?.latex_lines && step.math.latex_lines.length > 0 && (
-                                            <div className="bg-slate-50 dark:bg-surface-dark/40 p-6 rounded-lg flex flex-col items-center gap-4 border border-slate-100 dark:border-border-dark">
-                                                <div className="text-lg md:text-xl text-primary dark:text-latex-cyan overflow-x-auto w-full text-center py-2">
-                                                    {step.math.latex_lines.map((line, lIdx) => (
-                                                        <div key={lIdx} className="mb-2 last:mb-0">
-                                                            <Latex block>{line}</Latex>
+                                </div>
+                                {/* Mobile Index */}
+                                <div className="md:hidden flex items-center gap-3">
+                                    <div className="size-8 bg-electric-blue text-white rounded-full flex items-center justify-center font-bold text-sm shadow-sm">
+                                        {step.index}
+                                    </div>
+                                    <span className="text-sm font-bold text-navy uppercase tracking-widest">Step {step.index}</span>
+                                </div>
+
+                                <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                                    {/* Main Content Area */}
+                                    <div className={`${hasSidebar ? 'lg:col-span-8' : 'lg:col-span-12'} space-y-4`}>
+                                        <h4 className="text-sm font-bold text-navy/40 uppercase tracking-[0.2em] flex items-center gap-3">
+                                            <span className="w-8 h-[1px] bg-navy/10 hidden md:inline-block"></span> {step.title}
+                                        </h4>
+
+                                        {/* Content Box */}
+                                        <div className="bg-white rounded-2xl border border-slate-100 py-8 px-6 md:px-8 shadow-sm text-navy/80 leading-relaxed font-display">
+                                            {isV3 ? (
+                                                <div className="space-y-4">
+                                                    {(step.work || []).map((line, i) => (
+                                                        <div key={i} className="prose prose-slate max-w-none prose-p:my-2 prose-p:leading-relaxed question-content">
+                                                            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                                                {line}
+                                                            </ReactMarkdown>
                                                         </div>
                                                     ))}
                                                 </div>
-                                            </div>
-                                        )}
-                                    </>
-                                )}
+                                            ) : (
+                                                <div className="prose prose-slate max-w-none">
+                                                    <p>{step.explanation || "No explanation provided."}</p>
+                                                    {step.math?.latex_lines?.map((line, lIdx) => (
+                                                        <div key={lIdx} className="my-4 text-center text-lg lg:text-xl text-navy font-serif">
+                                                            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{`$$${line}$$`}</ReactMarkdown>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
 
-                                {step.visual_refs && step.visual_refs.length > 0 && visuals && (
-                                    <div className="mt-4">
-                                        {step.visual_refs.map(refId => {
-                                            const vis = visuals.find(v => v.id === refId);
-                                            if (vis) return <VisualRenderer key={refId} visual={vis} />;
-                                            return null;
-                                        })}
+                                            {/* Visuals */}
+                                            {step.visual_refs && step.visual_refs.length > 0 && visuals && (
+                                                <div className="mt-8 pt-8 border-t border-slate-50">
+                                                    {step.visual_refs.map(refId => {
+                                                        const vis = visuals.find(v => v.id === refId);
+                                                        if (vis) return <VisualRenderer key={refId} visual={vis} />;
+                                                        return null;
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                )}
+
+                                    {/* Logic Sidebar (Desktop) */}
+                                    {hasSidebar && (
+                                        <div className="lg:col-span-4 mt-4 lg:mt-10">
+                                            <div className="bg-navy rounded-2xl p-6 text-white shadow-xl">
+                                                <div className="flex items-center gap-2 text-electric-blue mb-4">
+                                                    <span className="material-symbols-outlined text-lg">science</span>
+                                                    <span className="text-[10px] font-bold uppercase tracking-widest">Logic Sidebar</span>
+                                                </div>
+                                                {step.concept && (
+                                                    <div className="mb-4">
+                                                        <h5 className="font-bold text-sm mb-2 text-white/90">Concept Applied</h5>
+                                                        <p className="text-xs text-white/60 leading-relaxed">
+                                                            {step.concept}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                                {step.rules_used && step.rules_used.length > 0 && (
+                                                    <div>
+                                                        <h5 className="font-bold text-sm mb-2 text-white/90">Rules Used</h5>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {step.rules_used.map((rule, ri) => (
+                                                                <span key={ri} className="px-2 py-1 rounded bg-white/10 text-[10px] text-white/80 font-medium">
+                                                                    {rule}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {step.checkpoint && (
+                                                    <div className="mt-6 pt-4 border-t border-white/10">
+                                                        <h5 className="font-bold text-sm mb-2 text-white/90">Concept Check</h5>
+                                                        <p className="text-xs text-white/60 leading-relaxed italic mb-1">"{step.checkpoint.question}"</p>
+                                                        <div className="flex items-center gap-2 mt-2">
+                                                            <span className="material-symbols-outlined text-green-400 text-sm">check_circle</span>
+                                                            <span className="text-xs font-bold text-green-400">{step.checkpoint.expected_answer}</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    );
-                })}
-            </div>
-
-            {/* AI Thought Bridge */}
-            <div
-                onClick={onViewConcepts}
-                className="flex items-center gap-4 p-5 border border-dashed border-slate-300 dark:border-border-dark rounded-xl bg-slate-50 dark:bg-surface-dark/20 hover:border-primary/50 dark:hover:border-accent/50 transition-colors cursor-pointer group"
-            >
-                <div className="size-12 rounded-lg bg-white dark:bg-card-dark flex items-center justify-center border border-slate-200 dark:border-border-dark shadow-sm group-hover:border-primary dark:group-hover:border-accent transition-colors">
-                    <span className="material-symbols-outlined text-primary dark:text-accent text-2xl">lightbulb</span>
+                        );
+                    })}
                 </div>
-                <div className="flex-1">
-                    <h5 className="text-[10px] font-bold uppercase text-slate-500 mb-1 tracking-[0.1em]">Related Concept Retrieval</h5>
-                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Concept Map Available</p>
-                </div>
-                <button
-                    onClick={(e) => { e.stopPropagation(); onViewConcepts?.(); }}
-                    className="px-3 py-1.5 bg-white dark:bg-surface-dark text-slate-700 dark:text-white rounded-lg text-xs font-bold border border-slate-200 dark:border-border-dark hover:border-primary dark:hover:border-accent transition-colors"
-                >
-                    View Card
-                </button>
-            </div>
 
-            {/* Developer Debug View */}
-            <div className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-800">
-                <details>
-                    <summary className="text-[10px] font-bold uppercase text-slate-400 cursor-pointer hover:text-primary transition-colors">Developer JSON View</summary>
-                    <div className="mt-4 p-4 bg-slate-900 text-slate-300 rounded-xl overflow-x-auto text-[10px] font-mono leading-relaxed border border-slate-700">
-                        <div className="mb-2 text-primary font-bold">RESPONSE DATA (V3):</div>
-                        <pre>{JSON.stringify({ steps, visuals }, null, 2)}</pre>
+                {/* Footer Feedback */}
+                <div className="flex flex-col md:flex-row items-center justify-center gap-8 py-12 border-t border-slate-200 mt-12 pb-24">
+                    <span className="text-sm font-semibold text-navy/40 italic">Was this solution helpful?</span>
+                    <div className="flex gap-4">
+                        <button className="flex items-center gap-2 px-6 py-2.5 border border-slate-200 rounded-xl text-xs font-bold uppercase text-navy hover:bg-white hover:border-green-500/30 transition-all bg-white shadow-sm">
+                            <span className="material-symbols-outlined text-green-500 text-lg">thumb_up</span> Helpful
+                        </button>
+                        <button className="flex items-center gap-2 px-6 py-2.5 border border-slate-200 rounded-xl text-xs font-bold uppercase text-navy hover:bg-white hover:border-red-500/30 transition-all bg-white shadow-sm">
+                            <span className="material-symbols-outlined text-red-400 text-lg">thumb_down</span> Not quite
+                        </button>
                     </div>
-                </details>
+                </div>
+
+                {/* Developer Debug View */}
+                <div className="mt-12 pt-8 border-t border-slate-200">
+                    <details>
+                        <summary className="text-[10px] font-bold uppercase text-slate-400 cursor-pointer hover:text-primary transition-colors">Developer JSON View</summary>
+                        <div className="mt-4 p-4 bg-slate-900 text-slate-300 rounded-xl overflow-x-auto text-[10px] font-mono leading-relaxed border border-slate-700">
+                            <div className="mb-2 text-primary font-bold">RESPONSE DATA (V3):</div>
+                            <pre>{JSON.stringify({ steps, visuals }, null, 2)}</pre>
+                        </div>
+                    </details>
+                </div>
             </div>
+
+            {/* Styles for Tailwind arbitrary overrides if config not loaded yet */}
+            <style jsx global>{`
+                .text-off-white { color: #FAFAFA; }
+                .bg-off-white { background-color: #FAFAFA; }
+                .text-navy { color: #1E293B; }
+                .bg-navy { background-color: #1E293B; }
+                .text-electric-blue { color: #2563EB; }
+                .bg-electric-blue { background-color: #2563EB; }
+                .ring-off-white { --tw-ring-color: #FAFAFA; }
+            `}</style>
         </div>
     );
 }

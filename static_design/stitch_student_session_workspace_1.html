@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>uask.ai | Solution Workspace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2563EB",
+                        "electric-blue": "#2563EB",
+                        "navy": "#1E293B",
+                        "off-white": "#FAFAFA",
+                        "light-gray": "#F8FAFC",
+                        "math-blue": "#1E293B"
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"],
+                        "math": ["Times New Roman", "Times", "serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "3xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        body { font-family: 'Lexend', sans-serif; background-color: #FAFAFA; color: #1E293B; }
+        .math-font { font-family: "Times New Roman", Times, serif; }
+        .timeline-line {
+            @apply absolute left-6 top-0 bottom-0 w-px bg-slate-200 -z-10;
+        }
+        .math-container-hero {
+            @apply bg-white rounded-2xl border border-slate-100 py-12 px-8 flex flex-col items-center justify-center shadow-sm;
+        }
+        .math-text-prominent {
+            @apply text-3xl md:text-5xl font-medium tracking-normal text-navy leading-relaxed text-center;
+        }
+        .math-text-sub {
+            @apply text-xl md:text-2xl mt-6 text-navy/70;
+        }
+        .mesh-grid-light {
+            background-image: linear-gradient(#f1f5f9 1px, transparent 1px), linear-gradient(90deg, #f1f5f9 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-tab {
+            @apply border-b-2 border-electric-blue text-electric-blue;
+        }
+    </style>
+</head>
+<body class="bg-off-white text-navy min-h-screen flex flex-col">
+<header class="flex items-center justify-between border-b border-slate-100 px-6 py-3 bg-white sticky top-0 z-50">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3">
+<div class="size-8 bg-electric-blue rounded flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-lg">functions</span>
+</div>
+<h2 class="text-lg font-bold leading-tight tracking-tight text-navy">uask.ai</h2>
+</div>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-sm font-medium text-navy/60 hover:text-electric-blue transition-colors" href="#">Dashboard</a>
+<a class="text-sm font-medium text-electric-blue" href="#">Workspace</a>
+<a class="text-sm font-medium text-navy/60 hover:text-electric-blue transition-colors" href="#">Library</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<button class="p-2 rounded-lg hover:bg-slate-50 transition-colors">
+<span class="material-symbols-outlined text-xl text-navy/40">notifications</span>
+</button>
+<button class="p-2 rounded-lg hover:bg-slate-50 transition-colors">
+<span class="material-symbols-outlined text-xl text-navy/40">settings</span>
+</button>
+</div>
+<div class="h-8 w-[1px] bg-slate-100 mx-1"></div>
+<div class="flex items-center gap-3">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8 border border-slate-100" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuALyFYcWJWJ9E6SFgauPLtHoocipCzYCktmydmKS1Qiq7qUOZsYZY52x3VCCzuCKAS-DZKc03quZT5M2JfeiBB1mkzjfkz682x92Qn9docnBRHZs3euOXYDidCZmsVXWEvuNfjMxr_-QS-XOJ1Jnx6ces1VCp6Flo81m-8bDpHtGeXoS2P6YnkJ7zp5Sf_hWCBIk5_iCwlmL64e8i5RG0MVmv1_SbUX0qYavSBQAQpE85FDYFtSYlFBKEPsdC3eCYak__KwzjlQSVo7")'></div>
+<span class="text-sm font-semibold hidden sm:inline text-navy">Alex Chen</span>
+</div>
+</div>
+</header>
+<main class="flex flex-1 overflow-hidden h-[calc(100vh-65px)]">
+<aside class="w-80 flex-shrink-0 border-r border-slate-100 flex flex-col bg-light-gray">
+<div class="p-4 border-b border-slate-100 flex justify-between items-center bg-white">
+<div class="flex items-center gap-2 text-navy font-semibold">
+<span class="material-symbols-outlined text-lg">chat_bubble</span>
+<span class="text-sm">Assistant</span>
+</div>
+<button class="text-[10px] uppercase font-bold text-navy/40 hover:text-navy transition-colors">History</button>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-4">
+<div class="flex flex-col gap-1 items-end">
+<div class="bg-electric-blue text-white p-3 rounded-2xl rounded-tr-none text-sm max-w-[90%] shadow-sm font-medium">
+                    Find and classify the local extrema of $f(x,y) = x^3 + y^3 - 3x - 3y$.
+                </div>
+<span class="text-[10px] text-navy/30 font-bold uppercase mt-1">12:42 PM</span>
+</div>
+<div class="flex flex-col gap-1 items-start">
+<div class="flex items-center gap-2 mb-1">
+<div class="size-5 bg-electric-blue/10 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-[12px] text-electric-blue">robot_2</span>
+</div>
+<span class="text-[10px] font-bold text-navy/40 uppercase">uask AI</span>
+</div>
+<div class="bg-white border border-slate-100 p-3 rounded-2xl rounded-tl-none text-sm max-w-[90%] leading-relaxed text-navy/80 shadow-sm">
+                    This is a multivariable optimization problem. I've broken down the solution into 7 steps, followed by a 3D visualization.
+                </div>
+</div>
+</div>
+<div class="p-4 border-t border-slate-100 bg-white">
+<div class="relative">
+<textarea class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-electric-blue/20 resize-none pr-12 placeholder-navy/30" placeholder="Ask a follow-up question..." rows="2"></textarea>
+<div class="absolute right-2 bottom-3 flex gap-1">
+<button class="p-2 text-navy/30 hover:text-electric-blue transition-colors">
+<span class="material-symbols-outlined">photo_camera</span>
+</button>
+<button class="p-2 bg-electric-blue text-white rounded-lg hover:bg-navy transition-colors">
+<span class="material-symbols-outlined text-sm">send</span>
+</button>
+</div>
+</div>
+</div>
+</aside>
+<div class="flex-1 flex flex-col bg-off-white overflow-hidden">
+<div class="px-6 bg-white border-b border-slate-100 flex items-center justify-between">
+<div class="flex items-center gap-10">
+<button class="flex items-center gap-2.5 py-4 active-tab">
+<span class="material-symbols-outlined text-xl">format_list_numbered</span>
+<span class="text-sm font-semibold">Steps</span>
+</button>
+<button class="flex items-center gap-2.5 py-4 text-navy/40 hover:text-navy transition-colors">
+<span class="material-symbols-outlined text-xl">verified</span>
+<span class="text-sm font-semibold">Verification</span>
+</button>
+<button class="flex items-center gap-2.5 py-4 text-navy/40 hover:text-navy transition-colors">
+<span class="material-symbols-outlined text-xl">menu_book</span>
+<span class="text-sm font-semibold">Concepts</span>
+</button>
+<button class="flex items-center gap-2.5 py-4 text-navy/40 hover:text-navy transition-colors">
+<span class="material-symbols-outlined text-xl">quiz</span>
+<span class="text-sm font-semibold">Practice</span>
+</button>
+</div>
+<div class="hidden lg:flex items-center gap-4">
+<div class="flex items-center gap-2">
+<span class="text-[10px] font-bold text-navy/40 uppercase tracking-widest">Progress</span>
+<div class="w-32 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+<div class="bg-electric-blue h-full" style="width: 100%"></div>
+</div>
+</div>
+<span class="text-[10px] font-black text-electric-blue tracking-tighter">7/7 STEPS</span>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto p-8 lg:p-12">
+<div class="max-w-5xl mx-auto relative">
+<div class="flex items-center justify-between mb-16">
+<div>
+<h1 class="text-4xl font-bold tracking-tight text-navy">Classification of Local Extrema</h1>
+<p class="text-navy/50 mt-3 font-math italic text-2xl">$f(x,y) = x^3 + y^3 - 3x - 3y$</p>
+</div>
+<button class="flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-navy bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all shadow-sm">
+<span class="material-symbols-outlined text-sm">share</span> EXPORT PDF
+                    </button>
+</div>
+<div class="relative space-y-24 pb-32">
+<div class="timeline-line"></div>
+<div class="step-focus relative flex gap-12">
+<div class="flex-shrink-0 relative z-10">
+<div class="size-12 bg-electric-blue text-white rounded-full flex items-center justify-center font-bold text-xl shadow-lg ring-4 ring-off-white">1</div>
+</div>
+<div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<div class="lg:col-span-8 space-y-4">
+<h4 class="text-sm font-bold text-navy/40 uppercase tracking-[0.2em] flex items-center gap-3">
+<span class="w-8 h-[1px] bg-navy/10"></span> Partial Derivative w.r.t. x
+                                </h4>
+<div class="math-container-hero">
+<div class="math-font math-text-prominent">
+                                        f_x(x,y) = \frac{\partial}{\partial x}(x^3 + y^3 - 3x - 3y)
+                                    </div>
+<div class="math-font math-text-sub">= 3x^2 - 3</div>
+</div>
+</div>
+<div class="lg:col-span-4 mt-10">
+<div class="bg-navy rounded-2xl p-6 text-white shadow-xl">
+<div class="flex items-center gap-2 text-electric-blue mb-4">
+<span class="material-symbols-outlined text-lg">science</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Logic Sidebar</span>
+</div>
+<h5 class="font-bold text-sm mb-2 text-white/90">Power Rule Application</h5>
+<p class="text-xs text-white/60 leading-relaxed">
+                                        Differentiating each term. $y$ is constant relative to $x$, so $\frac{\partial}{\partial x}(y^n) = 0$.
+                                    </p>
+</div>
+</div>
+</div>
+</div>
+<div class="step-focus relative flex gap-12">
+<div class="flex-shrink-0 relative z-10">
+<div class="size-12 bg-electric-blue text-white rounded-full flex items-center justify-center font-bold text-xl shadow-lg ring-4 ring-off-white">2</div>
+</div>
+<div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<div class="lg:col-span-8 space-y-4">
+<h4 class="text-sm font-bold text-navy/40 uppercase tracking-[0.2em] flex items-center gap-3">
+<span class="w-8 h-[1px] bg-navy/10"></span> Partial Derivative w.r.t. y
+                                </h4>
+<div class="math-container-hero">
+<div class="math-font math-text-prominent">
+                                        f_y(x,y) = \frac{\partial}{\partial y}(x^3 + y^3 - 3x - 3y)
+                                    </div>
+<div class="math-font math-text-sub">= 3y^2 - 3</div>
+</div>
+</div>
+<div class="lg:col-span-4 mt-10">
+<div class="bg-navy rounded-2xl p-6 text-white shadow-xl">
+<div class="flex items-center gap-2 text-electric-blue mb-4">
+<span class="material-symbols-outlined text-lg">layers</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Logic Sidebar</span>
+</div>
+<h5 class="font-bold text-sm mb-2 text-white/90">Symmetric Structure</h5>
+<p class="text-xs text-white/60 leading-relaxed">
+                                        The function $f(x,y)$ is symmetric. This yields a twin derivative structure for $y$.
+                                    </p>
+</div>
+</div>
+</div>
+</div>
+<div class="step-focus relative flex gap-12">
+<div class="flex-shrink-0 relative z-10">
+<div class="size-12 bg-electric-blue text-white rounded-full flex items-center justify-center font-bold text-xl shadow-lg ring-4 ring-off-white">3</div>
+</div>
+<div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<div class="lg:col-span-8 space-y-4">
+<h4 class="text-sm font-bold text-navy/40 uppercase tracking-[0.2em] flex items-center gap-3">
+<span class="w-8 h-[1px] bg-navy/10"></span> Setting equations to zero
+                                </h4>
+<div class="math-container-hero">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-12 w-full max-w-2xl">
+<div class="flex flex-col items-center">
+<span class="text-[10px] font-black text-navy/20 mb-4 uppercase">Eq 1</span>
+<div class="math-font text-3xl text-navy">3x^2 - 3 = 0</div>
+</div>
+<div class="flex flex-col items-center">
+<span class="text-[10px] font-black text-navy/20 mb-4 uppercase">Eq 2</span>
+<div class="math-font text-3xl text-navy">3y^2 - 3 = 0</div>
+</div>
+</div>
+</div>
+</div>
+<div class="lg:col-span-4 mt-10">
+<div class="bg-navy rounded-2xl p-6 text-white shadow-xl">
+<h5 class="font-bold text-sm mb-2 text-white/90">Stationary Condition</h5>
+<p class="text-xs text-white/60 leading-relaxed">Where the tangent plane is horizontal: $\nabla f = 0$.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="step-focus relative flex gap-12">
+<div class="flex-shrink-0 relative z-10">
+<div class="size-12 bg-electric-blue text-white rounded-full flex items-center justify-center font-bold text-xl shadow-lg ring-4 ring-off-white">4</div>
+</div>
+<div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<div class="lg:col-span-8 space-y-6">
+<h4 class="text-sm font-bold text-navy/40 uppercase tracking-[0.2em] flex items-center gap-3">
+<span class="w-8 h-[1px] bg-navy/10"></span> Critical Points
+                                </h4>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+<div class="p-6 bg-white border border-slate-100 rounded-2xl text-center shadow-sm">
+<span class="text-[10px] font-black text-electric-blue uppercase">P1</span>
+<div class="math-font font-bold text-xl mt-2 text-navy">(1, 1)</div>
+</div>
+<div class="p-6 bg-white border border-slate-100 rounded-2xl text-center shadow-sm">
+<span class="text-[10px] font-black text-electric-blue uppercase">P2</span>
+<div class="math-font font-bold text-xl mt-2 text-navy">(1, -1)</div>
+</div>
+<div class="p-6 bg-white border border-slate-100 rounded-2xl text-center shadow-sm">
+<span class="text-[10px] font-black text-electric-blue uppercase">P3</span>
+<div class="math-font font-bold text-xl mt-2 text-navy">(-1, 1)</div>
+</div>
+<div class="p-6 bg-white border border-slate-100 rounded-2xl text-center shadow-sm">
+<span class="text-[10px] font-black text-electric-blue uppercase">P4</span>
+<div class="math-font font-bold text-xl mt-2 text-navy">(-1, -1)</div>
+</div>
+</div>
+</div>
+<div class="lg:col-span-4 mt-10">
+<div class="bg-navy rounded-2xl p-6 text-white shadow-xl">
+<h5 class="font-bold text-sm mb-2 text-white/90">Resultant Coordinates</h5>
+<p class="text-xs text-white/60 leading-relaxed">Combinations of $x = \pm 1$ and $y = \pm 1$.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="step-focus relative flex gap-12">
+<div class="flex-shrink-0 relative z-10">
+<div class="size-12 bg-electric-blue text-white rounded-full flex items-center justify-center font-bold text-xl shadow-lg ring-4 ring-off-white">5</div>
+</div>
+<div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<div class="lg:col-span-8 space-y-4">
+<h4 class="text-sm font-bold text-navy/40 uppercase tracking-[0.2em] flex items-center gap-3">
+<span class="w-8 h-[1px] bg-navy/10"></span> Second-Order Partials
+                                </h4>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center">
+<span class="text-xs font-bold text-navy/40 mb-4 italic">f_{xx}</span>
+<span class="math-font text-4xl text-navy font-bold">6x</span>
+</div>
+<div class="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center">
+<span class="text-xs font-bold text-navy/40 mb-4 italic">f_{yy}</span>
+<span class="math-font text-4xl text-navy font-bold">6y</span>
+</div>
+<div class="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center">
+<span class="text-xs font-bold text-navy/40 mb-4 italic">f_{xy}</span>
+<span class="math-font text-4xl text-navy font-bold">0</span>
+</div>
+</div>
+</div>
+<div class="lg:col-span-4 mt-10">
+<div class="bg-navy rounded-2xl p-6 text-white shadow-xl">
+<h5 class="font-bold text-sm mb-2 text-white/90">Curvature Matrix</h5>
+<p class="text-xs text-white/60 leading-relaxed">Required for the Hessian Determinant test.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="step-focus relative flex gap-12">
+<div class="flex-shrink-0 relative z-10">
+<div class="size-12 bg-electric-blue text-white rounded-full flex items-center justify-center font-bold text-xl shadow-lg ring-4 ring-off-white">6</div>
+</div>
+<div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<div class="lg:col-span-8 space-y-4">
+<h4 class="text-sm font-bold text-navy/40 uppercase tracking-[0.2em] flex items-center gap-3">
+<span class="w-8 h-[1px] bg-navy/10"></span> Hessian Determinant
+                                </h4>
+<div class="math-container-hero">
+<div class="math-font text-2xl mb-8 text-navy/30 italic">D(x,y) = f_{xx}f_{yy} - (f_{xy})^2</div>
+<div class="math-font text-4xl text-navy font-bold tracking-wider">D = (6x)(6y) - (0)^2 = 36xy</div>
+</div>
+</div>
+<div class="lg:col-span-4 mt-10">
+<div class="bg-navy rounded-2xl p-6 text-white shadow-xl">
+<h5 class="font-bold text-sm mb-2 text-white/90">Classification Key</h5>
+<p class="text-xs text-white/60 leading-relaxed">If $D &gt; 0$, extremum. If $D &lt; 0$, saddle point.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="step-focus relative flex gap-12">
+<div class="flex-shrink-0 relative z-10">
+<div class="size-12 bg-electric-blue text-white rounded-full flex items-center justify-center font-bold text-xl shadow-lg ring-4 ring-off-white">7</div>
+</div>
+<div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<div class="lg:col-span-8 space-y-6">
+<h4 class="text-sm font-bold text-navy/40 uppercase tracking-[0.2em] flex items-center gap-3">
+<span class="w-8 h-[1px] bg-navy/10"></span> Final Classification
+                                </h4>
+<div class="space-y-3">
+<div class="flex items-center gap-6 p-6 rounded-2xl border border-slate-100 bg-white shadow-sm">
+<div class="size-10 rounded-full bg-green-500 flex items-center justify-center text-white font-bold">L</div>
+<div class="flex-1">
+<div class="text-sm font-bold text-navy">(1, 1): Local Minimum</div>
+<div class="text-[10px] font-math italic text-navy/40 mt-1">$D = 36 &gt; 0, f_{xx} = 6 &gt; 0$</div>
+</div>
+</div>
+<div class="flex items-center gap-6 p-6 rounded-2xl border border-slate-100 bg-white shadow-sm">
+<div class="size-10 rounded-full bg-red-500 flex items-center justify-center text-white font-bold">H</div>
+<div class="flex-1">
+<div class="text-sm font-bold text-navy">(-1, -1): Local Maximum</div>
+<div class="text-[10px] font-math italic text-navy/40 mt-1">$D = 36 &gt; 0, f_{xx} = -6 &lt; 0$</div>
+</div>
+</div>
+<div class="flex items-center gap-6 p-6 rounded-2xl border border-slate-100 bg-white shadow-sm">
+<div class="size-10 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold">S</div>
+<div class="flex-1">
+<div class="text-sm font-bold text-navy">(1, -1) &amp; (-1, 1): Saddle Points</div>
+<div class="text-[10px] font-math italic text-navy/40 mt-1">$D = -36 &lt; 0$</div>
+</div>
+</div>
+</div>
+</div>
+<div class="lg:col-span-4 mt-10">
+<div class="bg-navy rounded-2xl p-6 text-white shadow-xl">
+<div class="flex items-center gap-2 text-electric-blue mb-4">
+<span class="material-symbols-outlined text-lg">verified</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Logic Sidebar</span>
+</div>
+<h5 class="font-bold text-sm mb-2 text-white/90">Second Derivative Test</h5>
+<p class="text-xs text-white/60 leading-relaxed">Solution complete. Validating results against surface topology.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="pt-16">
+<div class="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-xl">
+<div class="p-8 border-b border-slate-50 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="size-10 bg-electric-blue/5 text-electric-blue rounded-xl flex items-center justify-center">
+<span class="material-symbols-outlined">view_in_ar</span>
+</div>
+<div>
+<h4 class="font-bold text-lg text-navy">3D Surface Visualization</h4>
+<p class="text-[10px] font-bold text-navy/40 uppercase tracking-widest mt-0.5">Academic Projection Mode</p>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="p-2.5 rounded-xl border border-slate-100 text-navy/40 hover:text-navy transition-all">
+<span class="material-symbols-outlined text-xl">fullscreen</span>
+</button>
+<button class="p-2.5 rounded-xl border border-slate-100 text-navy/40 hover:text-navy transition-all">
+<span class="material-symbols-outlined text-xl">restart_alt</span>
+</button>
+</div>
+</div>
+<div class="h-[550px] relative overflow-hidden flex items-center justify-center mesh-grid-light bg-off-white">
+<div class="absolute inset-0 flex items-center justify-center opacity-60">
+<svg class="text-navy/10 stroke-current fill-none" height="90%" viewBox="0 0 400 300" width="90%">
+<path d="M50,150 Q100,50 200,150 T350,150" stroke="#EF4444" stroke-width="2"></path>
+<path d="M50,180 Q100,80 200,180 T350,180" stroke="#22C55E" stroke-width="2"></path>
+<path d="M50,210 Q100,110 200,210 T350,210" stroke="#F59E0B" stroke-width="2"></path>
+<path d="M100,50 Q200,150 100,250" opacity="0.2" stroke="#2563EB" stroke-width="1.5"></path>
+<path d="M200,50 Q300,150 200,250" opacity="0.2" stroke="#2563EB" stroke-width="1.5"></path>
+</svg>
+</div>
+<div class="absolute top-[30%] left-[40%] group cursor-pointer">
+<div class="size-6 bg-red-500 rounded-full shadow-lg border-4 border-white"></div>
+<div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-navy text-white px-3 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all">Local Max (-1,-1)</div>
+</div>
+<div class="absolute bottom-[35%] right-[35%] group cursor-pointer">
+<div class="size-6 bg-green-500 rounded-full shadow-lg border-4 border-white"></div>
+<div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-navy text-white px-3 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all">Local Min (1,1)</div>
+</div>
+<div class="absolute top-[50%] right-[45%] group cursor-pointer">
+<div class="size-6 bg-yellow-500 rounded-full shadow-lg border-4 border-white"></div>
+<div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-navy text-white px-3 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all">Saddle Point</div>
+</div>
+<div class="absolute bottom-10 left-10 text-navy text-[10px] font-bold bg-white/90 backdrop-blur-sm p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+<div class="flex items-center gap-3"><span class="size-3 rounded-full bg-red-500"></span> MAXIMA (RED)</div>
+<div class="flex items-center gap-3"><span class="size-3 rounded-full bg-green-500"></span> MINIMA (GREEN)</div>
+<div class="flex items-center gap-3"><span class="size-3 rounded-full bg-yellow-500"></span> SADDLE (ORANGE)</div>
+</div>
+<div class="absolute right-10 bottom-10 flex flex-col gap-2">
+<button class="size-10 bg-white rounded-xl flex items-center justify-center border border-slate-100 shadow-md text-navy/40 hover:text-electric-blue transition-colors"><span class="material-symbols-outlined">add</span></button>
+<button class="size-10 bg-white rounded-xl flex items-center justify-center border border-slate-100 shadow-md text-navy/40 hover:text-electric-blue transition-colors"><span class="material-symbols-outlined">remove</span></button>
+</div>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-center gap-8 py-12 border-t border-slate-100 mt-12">
+<span class="text-sm font-semibold text-navy/40 italic">Was this solution accurate?</span>
+<div class="flex gap-4">
+<button class="flex items-center gap-2 px-6 py-2.5 border border-slate-100 rounded-xl text-xs font-bold uppercase text-navy hover:bg-white hover:border-green-500/30 transition-all">
+<span class="material-symbols-outlined text-green-500 text-lg">thumb_up</span> Correct
+                            </button>
+<button class="flex items-center gap-2 px-6 py-2.5 border border-slate-100 rounded-xl text-xs font-bold uppercase text-navy hover:bg-white hover:border-red-500/30 transition-all">
+<span class="material-symbols-outlined text-red-400 text-lg">thumb_down</span> Incorrect
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<aside class="w-16 flex-shrink-0 border-l border-slate-100 flex flex-col items-center py-6 gap-6 bg-white">
+<button class="p-2 rounded-lg hover:bg-slate-50 transition-colors">
+<span class="material-symbols-outlined text-navy/30 hover:text-navy">draw</span>
+</button>
+<button class="p-2 rounded-lg hover:bg-slate-50 transition-colors">
+<span class="material-symbols-outlined text-navy/30 hover:text-navy">calculate</span>
+</button>
+<button class="p-2 rounded-lg hover:bg-slate-50 transition-colors">
+<span class="material-symbols-outlined text-navy/30 hover:text-navy">3d_rotation</span>
+</button>
+<div class="flex-1"></div>
+<button class="p-2 rounded-lg text-navy/20 hover:text-navy">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+</aside>
+</main>
+
+</body></html>

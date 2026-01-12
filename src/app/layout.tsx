@@ -38,7 +38,14 @@ export default function RootLayout({
                 theme: {
                     extend: {
                         colors: {
-                            "primary": "#135bec", // Student Primary
+                            // Stitch Design System
+                            "primary": "#2563EB", // Updated to Electric Blue
+                            "electric-blue": "#2563EB",
+                            "navy": "#1E293B",
+                            "off-white": "#FAFAFA",
+                            "light-gray": "#F8FAFC",
+                            "math-blue": "#1E293B",
+                            
                             "accent": "#0ea5e9", // Workspace accent
                             "background-light": "#f6f6f8",
                             "background-dark": "#0f1115", // Updated for Workspace deep dark
