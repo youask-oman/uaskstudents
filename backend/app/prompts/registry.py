@@ -49,8 +49,33 @@ class PromptRegistry:
         if base_path is None:
             # Default to static_design directory
             project_root = Path(__file__).parent.parent.parent.parent
-            base_path = project_root / "static_design"
-        
+            project_default = project_root / "static_design"
+
+            # Allow environment override for base prompt path
+            env_base_path = os.environ.get("PROMPT_BASE_PATH")
+            if env_base_path:
+                candidate = Path(env_base_path)
+                if candidate.exists():
+                    base_path = candidate
+                else:
+                    print(f"[PromptRegistry] WARNING: PROMPT_BASE_PATH not found: {candidate}")
+
+            if base_path is None:
+                # Fallback for containers mounting /static_design
+                container_path = Path("/static_design")
+                if container_path.exists():
+                    base_path = container_path
+                else:
+                    base_path = project_default
+          # Allow environment override for base prompt path
+            env_base_path = os.environ.get("PROMPT_BASE_PATH")
+            if env_base_path:
+                base_path = Path(env_base_path)
+            elif not base_path.exists():
+                # Fallback for containers mounting /static_design
+                container_path = Path("/static_design")
+                if container_path.exists():
+                    base_path = container_path
         self.base_path = Path(base_path)
         self.prompts: Dict[str, PromptTemplate] = {}
         self._schema_cache: Dict[str, Dict[str, Any]] = {}

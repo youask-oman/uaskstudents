@@ -43,7 +43,7 @@ class SolverV3:
         """Initialize solver with OpenAI client."""
         self._client = None
         self._model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini")
-        self._fallback_model = "gpt-4o-mini"
+        self._fallback_model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-4o-mini")
         self.viz_engine = get_visualization_engine()
         self.plot_renderer = get_plot_renderer()
     
@@ -163,7 +163,11 @@ class SolverV3:
                 return error_resp
             
             # Step 3: Validate response
+            # Temporarily remove metadata for strict validation
+            _model_temp = response_data.pop("_model", None)
             validation = validate_response(response_data, strict=True)
+            if _model_temp:
+                response_data["_model"] = _model_temp
             
             if not validation.valid:
                 telemetry["validation_failures_count"] += 1
@@ -186,7 +190,10 @@ class SolverV3:
                 telemetry["repaired"] = response_data.get("_repaired", False)
                 
                 # Validate repaired response
+                _model_temp_repair = response_data.pop("_model", None)
                 validation = validate_response(response_data, strict=True)
+                if _model_temp_repair:
+                    response_data["_model"] = _model_temp_repair
                 
                 if not validation.valid:
                     telemetry["validation_failures_count"] += 1
@@ -382,12 +389,44 @@ Context: {context if context else "No additional context provided."}
                         "schema": get_json_schema_for_openai_v3()
                     }
                 },
-                "reasoning": {"effort": "none"},
-                "max_output_tokens": 3000
+                "reasoning": {"effort": "low"},
+                "max_output_tokens": 5000
             }
             
             response = await self.client.responses.create(**params)
-            content = response.output[0].content[0].text
+            
+            # DEBUG: Inspect response structure
+            if trace or True:  # Force log for debugging
+                print(f"[SOLVER_V3_DEBUG] Response object type: {type(response)}")
+                # print(f"[SOLVER_V3_DEBUG] Response attributes: {dir(response)}") 
+                if hasattr(response, 'output'):
+                    print(f"[SOLVER_V3_DEBUG] Response.output status: {[o.status for o in response.output]}")
+            
+            if not response.output:
+                raise ValueError(f"OpenAI returned no output. Response: {response}")
+
+            # Check for incomplete
+            for item in response.output:
+                if hasattr(item, 'status') and item.status == 'incomplete':
+                    print(f"[SOLVER_V3_WARNING] A response item is incomplete.")
+
+            # Find the item with content
+            content = None
+            for item in response.output:
+                # Skip reasoning items or empty items
+                if hasattr(item, 'content') and item.content:
+                    try:
+                         # item.content is a list of OutputContent
+                         content = item.content[0].text
+                         break
+                    except (IndexError, AttributeError):
+                        continue
+            
+            if not content:
+                 # Debug dump if still failing
+                 print(f"[SOLVER_V3_CRITICAL] No content found. Output items: {[type(o) for o in response.output]}")
+                 raise ValueError("No valid content found in response outputs")
+
             model_used = response.model
             
             # Extract tokens if available
@@ -396,7 +435,7 @@ Context: {context if context else "No additional context provided."}
                 tokens["output"] = getattr(response.usage, 'output_tokens', 0)
         
         else:
-            # Fallback to Chat Completions (gpt-4o-mini)
+            # Fallback to Chat Completions (using default model)
             params = {
                 "model": self._fallback_model,
                 "messages": [

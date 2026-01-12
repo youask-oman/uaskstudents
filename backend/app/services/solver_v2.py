@@ -27,7 +27,7 @@ class SolverServiceV2:
         """Initialize solver with OpenAI client."""
         self._client = None
         self._default_model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini")
-        self._fallback_model = "gpt-4o-mini"
+        self._fallback_model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-4o-mini")
     
     @property
     def client(self) -> AsyncOpenAI:

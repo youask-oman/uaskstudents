@@ -1236,7 +1236,7 @@ async def solve_problem(
 # Solver V3 Endpoint - Production-Grade with Schema Validation
 # ------------------------------------------------------------------
 
-@api_router.post("/api/v1/solve_v3")
+@api_router.post("/solve_v3")
 @limiter.limit("10/minute")
 async def solve_v3_endpoint(
     request: Request,

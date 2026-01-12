@@ -324,25 +324,55 @@ class ErrorResponseV3(BaseModel):
 
 def get_json_schema_for_openai_v3() -> dict:
     """
-    Generate JSON schema compatible with OpenAI Structured Outputs.
-    
-    Returns:
-        dict: JSON schema for OpenAI API
+    Generate JSON schema strictly compatible with OpenAI Structured Outputs.
+    Recursively ensures additionalProperties: False and all fields are required.
     """
     schema = SolveResponseV3.model_json_schema()
     
-    # Clean up for OpenAI compatibility
-    schema.pop('title', None)
-    schema.pop('description', None)
-    
-    # Ensure strict mode compatibility
-    return {
-        "type": "object",
-        "properties": schema.get("properties", {}),
-        "required": schema.get("required", []),
-        "additionalProperties": False,
-        "$defs": schema.get("$defs", {})
-    }
+    def enforce_strict(node: dict):
+        if not isinstance(node, dict):
+            return node
+            
+        # Clean metadata
+        node.pop('title', None)
+        node.pop('description', None)
+        node.pop('default', None) # OpenAI strict schema dislikes default values usually
+        
+        # Handle Object Type
+        if node.get("type") == "object" or "properties" in node:
+            node["type"] = "object"
+            node["additionalProperties"] = False
+            
+            # Ensure all properties are required
+            props = node.get("properties", {})
+            if props:
+                node["required"] = list(props.keys())
+                
+                # Recursively process properties
+                for prop_name, prop_schema in props.items():
+                    enforce_strict(prop_schema)
+            else:
+                node["required"] = []
+                
+        # Handle Arrays
+        if node.get("type") == "array":
+            if "items" in node:
+                enforce_strict(node["items"])
+                
+        # Handle Definitions ($defs)
+        if "$defs" in node:
+            for def_name, def_schema in node["$defs"].items():
+                enforce_strict(def_schema)
+                
+        # Handle anyOf / allOf (though Pydantic usually resolves these well)
+        for key in ["anyOf", "allOf", "oneOf"]:
+            if key in node:
+                for sub_node in node[key]:
+                    enforce_strict(sub_node)
+                    
+        return node
+
+    return enforce_strict(schema)
 
 
 if __name__ == "__main__":
