@@ -1,5 +1,6 @@
-import os
+﻿import os
 import json
+from app.utils import get_active_prompt
 from openai import AsyncOpenAI
 
 class SolverService:
@@ -39,13 +40,11 @@ class SolverService:
         Orchestrates the solving process using OpenAI.
         """
         if not self.client:
-             return {
-                 "summary": "Error: API Key Missing",
-                 "steps": [],
-                 "final_answer": "Please configure OPENAI_API_KEY on the backend."
-             }
-
-       from app.utils import get_active_prompt
+            return {
+                "summary": "Error: API Key Missing",
+                "steps": [],
+                "final_answer": "Please configure OPENAI_API_KEY on the backend."
+            }
 
 
         # Fallback to hardcoded if not in DB
@@ -142,8 +141,6 @@ RULES:
         """
         if not self.client:
             return {"relevant": True, "content": "API Key Missing. Check backend config."}
-
-        from app.utils import get_active_prompt
         if db:
             system_prompt_template = get_active_prompt("tutor-chat", db)
         else:
@@ -180,3 +177,4 @@ RULES:
             return {"relevant": True, "content": "I'm having trouble thinking right now. Could you ask again?"}
 
 solver_service = SolverService()
+
