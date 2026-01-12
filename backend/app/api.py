@@ -39,6 +39,72 @@ limiter = Limiter(key_func=get_remote_address)
 api_router = APIRouter()
 
 
+# --- Helper Functions ---
+def _transform_v2_to_v1_format(v2_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Transform Solver V2 response format to V1 format for frontend compatibility.
+    
+    V2 Format:
+    - verification.methods_used[]: {name, steps[], result}
+    - concepts[]: {name, description, applies_here}
+    
+    V1 Format:
+    - verification.methods[]: {name, math: {latex_lines: []}, result, steps}
+    - concepts[] (same structure)
+    """
+    try:
+        print(f"[TRANSFORM] Starting V2 to V1 transformation")
+        transformed = v2_data.copy()
+        
+        # Transform verification.methods_used -> verification.methods
+        if "verification" in transformed and "methods_used" in transformed["verification"]:
+            methods_v2 = transformed["verification"]["methods_used"]
+            methods_v1 = []
+            
+            for method in methods_v2:
+                # Convert steps array to latex_lines format
+                steps_text = method.get("steps", [])
+                latex_lines = steps_text if isinstance(steps_text, list) else [steps_text]
+                
+                method_v1 = {
+                    "name": method.get("name", ""),
+                    "math": {
+                        "latex_lines": latex_lines
+                    },
+                    "result": method.get("result", ""),
+                    "steps": steps_text  # Keep original for compatibility
+                }
+                methods_v1.append(method_v1)
+            
+            # Replace methods_used with methods
+            transformed["verification"]["methods"] = methods_v1
+            if "methods_used" in transformed["verification"]:
+                del transformed["verification"]["methods_used"]
+            
+            print(f"[TRANSFORM] Converted {len(methods_v1)} verification methods")
+        
+        # Ensure concepts array exists
+        if "concepts" not in transformed or not transformed["concepts"]:
+            print(f"[TRANSFORM] WARNING: No concepts found, adding default")
+            transformed["concepts"] = [
+                {
+                    "name": "Problem Solving",
+                    "description": "Breaking down problems into manageable steps",
+                    "applies_here": "Applied systematic approach to solve this problem"
+                }
+            ]
+        
+        print(f"[TRANSFORM] Success! Transformed keys: {list(transformed.keys())}")
+        return transformed
+        
+    except Exception as e:
+        print(f"[TRANSFORM_ERROR] Failed to transform V2 to V1: {e}")
+        import traceback
+        traceback.print_exc()
+        # Return original if transformation fails
+        return v2_data
+
+
 
 # --- Schemas ---
 class SolveRequest(BaseModel):
@@ -889,7 +955,10 @@ async def solve_problem(
     
     # --- STRUCTURED DATA ENHANCEMENT ---
     context_info = ""
-    if body.confirmed_text:
+    # Frontend can send confirmed_text (old) or confirmed_markdown (new)
+    if body.confirmed_markdown:
+        base_query = body.confirmed_markdown
+    elif body.confirmed_text:
         base_query = body.confirmed_text
     
     if body.artifact_id and body.question_id:
@@ -1010,8 +1079,59 @@ async def solve_problem(
     concepts = await rag_service.search_related_concepts(base_query_for_retrieval)
 
     # 4. Solve (Calling expensive LLM with context enhancement)
-    # 4. Solve (Calling expensive LLM with context enhancement)
-    solution_data = await solver_service.solve_problem(final_prompt)
+    # Check if Solver V2 is enabled
+    use_solver_v2 = os.environ.get("SOLVER_V2_ENABLED", "false").lower() == "true"
+    
+    if use_solver_v2:
+        # Use Solver V2 - Responses API with structured outputs
+        from app.services.solver_v2 import solver_service_v2
+        
+        try:
+            print(f"[API] Using Solver V2 for: {final_prompt[:50]}...")
+            solution_data = await solver_service_v2.solve_problem_v2(
+                problem_text=final_prompt,
+                context=None,
+                user_id=user_id,
+                trace=False
+            )
+            
+            # V2 response includes _content (student-friendly markdown)
+            # and _model (actual model used)
+            print(f"[API] Solver V2 returned successfully")
+            print(f"[API] Response keys: {list(solution_data.keys())}")
+            
+        except Exception as e:
+            print(f"[API_ERROR] Solver V2 failed: {type(e).__name__}: {e}")
+            import traceback
+            traceback.print_exc()
+            print(f"[API] Falling back to Solver V1...")
+            # Fallback to V1 on error
+            try:
+                solution_data = await solver_service.solve_problem(final_prompt)
+                print(f"[API] Solver V1 fallback successful")
+            except Exception as v1_error:
+                print(f"[API_FATAL] Solver V1 also failed: {type(v1_error).__name__}: {v1_error}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"All solvers failed. V2: {str(e)}, V1: {str(v1_error)}"
+                )
+    else:
+        # Use legacy Solver V1
+        print(f"[API] Using Solver V1 (V2 disabled)")
+        try:
+            solution_data = await solver_service.solve_problem(final_prompt)
+            print(f"[API] Solver V1 successful")
+        except Exception as e:
+            print(f"[API_ERROR] Solver V1 failed: {type(e).__name__}: {e}")
+            import traceback
+            traceback.print_exc()
+            raise HTTPException(status_code=500, detail=f"Solver failed: {str(e)}")
+    
+    # Transform V2 format to V1 format for frontend compatibility
+    if use_solver_v2 and solution_data:
+        print(f"[API] Transforming V2 response to V1 format...")
+        solution_data = _transform_v2_to_v1_format(solution_data)
+        print(f"[API] Transformation complete")
     
     # DEBUG LOGGING
     print(f"DEBUG: LLM Response Visuals: {json.dumps(solution_data.get('visuals', []), indent=2)}")
@@ -1020,8 +1140,12 @@ async def solve_problem(
     model_name = solution_data.get("_model", model_name_fallback)
     
     # --- PROCESS VISUALS ---
+    # V2 has both visuals and visuals_suggested
     if "visuals" in solution_data:
         solution_data["visuals"] = process_visuals(solution_data["visuals"])
+    
+    if "visuals_suggested" in solution_data:
+        solution_data["visuals_suggested"] = process_visuals(solution_data["visuals_suggested"])
 
     # 5. Persistence
     # Create Session (NOT SAVED by default)
@@ -1045,10 +1169,13 @@ async def solve_problem(
     session.add(user_msg)
 
     # Save Assistant Response
+    # V2 provides _content (markdown), V1 uses final_answer
+    assistant_content = solution_data.get("_content") or solution_data.get("solution", {}).get("final_answer", "")
+    
     ai_msg = ChatMessage(
         session_id=new_chat.id,
         role="assistant",
-        content=solution_data.get("solution", {}).get("final_answer", ""),
+        content=assistant_content,
         structured_data=solution_data,
         model_used=model_name,
         tokens_used=estimated_tokens

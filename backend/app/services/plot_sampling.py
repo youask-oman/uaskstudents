@@ -115,6 +115,12 @@ def parse_domain(domain_str: str | None) -> float | None:
 def process_visuals(visuals: list[dict]) -> list[dict]:
     """
     Hydrates visual requests or incomplete visuals with actual plot data.
+    
+    Supports:
+    - function_plot_request/function_plot: Single function plots
+    - line_plot: Line through two points
+    - multi_plot_request: Multiple functions (for systems)
+    - number_line: For inequalities (V2)
     """
     processed = []
     
@@ -127,8 +133,7 @@ def process_visuals(visuals: list[dict]) -> list[dict]:
             processed.append(v)
             continue
             
-        # 2. Try to hydrate missing function data
-        # We handle both "function_plot_request" and "function_plot" if it's missing series
+        # 2. Handle function_plot_request/function_plot
         func_data = v.get("function") or {}
         latex = func_data.get("latex")
         
@@ -159,8 +164,70 @@ def process_visuals(visuals: list[dict]) -> list[dict]:
             else:
                 print(f"DEBUG: Failed to generate points for latex: {latex}")
 
-        # 3. Handle line_plot without series
+        # 3. Handle multi_plot_request (V2) - Systems of equations
+        if v_type == "multi_plot_request" and not has_series:
+            functions = v.get("functions", [])
+            domain = v.get("domain_multi", {})
+            x_min = parse_domain(str(domain.get("x_min_latex") or "")) or -10.0
+            x_max = parse_domain(str(domain.get("x_max_latex") or "")) or 10.0
+            
+            series_list = []
+            for func in functions:
+                latex_expr = func.get("latex")
+                label = func.get("label", latex_expr)
+                if latex_expr:
+                    pts = generate_points(latex_expr, x_min, x_max)
+                    if pts:
+                        series_list.append({
+                            "label": label,
+                            "points": pts
+                        })
+            
+            if series_list:
+                new_visual = {
+                    "id": v.get("id"),
+                    "type": "function_plot",  # Convert to function_plot with multiple series
+                    "title": v.get("title", "System of Equations"),
+                    "axes": {"x_label": "x", "y_label": "y"},
+                    "series": series_list,
+                    "markers": v.get("markers", [])
+                }
+                processed.append(new_visual)
+                continue
+
+        # 4. Handle line_plot without series
         if v_type == "line_plot" and not has_series:
+            # V2: Check for points array
+            points_array = v.get("points", [])
+            if len(points_array) >= 2:
+                try:
+                    p1 = {"x": float(points_array[0].get("x", 0)), "y": float(points_array[0].get("y", 0))}
+                    p2 = {"x": float(points_array[1].get("x", 0)), "y": float(points_array[1].get("y", 0))}
+                    
+                    dx = p2["x"] - p1["x"]
+                    x_min = min(p1["x"], p2["x"]) - 5
+                    x_max = max(p1["x"], p2["x"]) + 5
+                    
+                    if abs(dx) < 1e-9:  # Vertical
+                        line_pts = [
+                            {"x": p1["x"], "y": min(p1["y"], p2["y"]) - 5},
+                            {"x": p1["x"], "y": max(p1["y"], p2["y"]) + 5}
+                        ]
+                    else:
+                        slope = (p2["y"] - p1["y"]) / dx
+                        y_start = p1["y"] + slope * (x_min - p1["x"])
+                        y_end = p1["y"] + slope * (x_max - p1["x"])
+                        line_pts = [{"x": x_min, "y": y_start}, {"x": x_max, "y": y_end}]
+                    
+                    v["series"] = [{"label": "Line", "points": line_pts}]
+                    v["type"] = "line_plot"
+                    v["markers"] = [p1, p2]  # Keep original points as markers
+                    processed.append(v)
+                    continue
+                except Exception as e:
+                    print(f"DEBUG: Line plot (points array) generation failed: {e}")
+            
+            # Fallback: try markers array (old format)
             markers = v.get("markers", [])
             if len(markers) >= 2:
                 try:
@@ -170,7 +237,7 @@ def process_visuals(visuals: list[dict]) -> list[dict]:
                     x_min = min(p1["x"], p2["x"]) - 5
                     x_max = max(p1["x"], p2["x"]) + 5
                     
-                    if abs(dx) < 1e-9: # Vertical
+                    if abs(dx) < 1e-9:  # Vertical
                         line_pts = [
                             {"x": p1["x"], "y": min(p1["y"], p2["y"]) - 5},
                             {"x": p1["x"], "y": max(p1["y"], p2["y"]) + 5}
@@ -187,6 +254,13 @@ def process_visuals(visuals: list[dict]) -> list[dict]:
                     continue
                 except Exception as e:
                     print(f"DEBUG: Line plot generation failed: {e}")
+
+        # 5. Handle number_line (V2) - For inequalities
+        if v_type == "number_line":
+            # Number line doesn't need point generation - pass through as-is
+            # Frontend will render based on intervals
+            processed.append(v)
+            continue
 
         # Fallback: keep as is if we can't do anything better
         processed.append(v)

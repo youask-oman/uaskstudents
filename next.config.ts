@@ -15,6 +15,10 @@ const nextConfig: NextConfig = {
       },
     ]
   },
+  // Increase experimental proxy timeout for long-running AI requests
+  experimental: {
+    proxyTimeout: 120000, // 120 seconds for AI processing
+  },
 };
 
 export default nextConfig;
