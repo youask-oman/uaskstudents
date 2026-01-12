@@ -16,3 +16,7 @@ celery>=5.3.0
 slowapi>=0.1.9
 pytest>=8.0.0
 pytest-asyncio>=0.23.0
+jsonschema>=4.20.0
+matplotlib>=3.8.0
+numpy>=1.26.0
+sympy>=1.12

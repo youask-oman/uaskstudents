@@ -1,0 +1,23 @@
+OUTPUT FORMAT: Return ONLY strict JSON that validates against the schema.
+
+GRAPHING REQUIREMENT (NON-NEGOTIABLE):
+1) Always compute whether a meaningful visualization exists.
+2) If yes, set plot.should_plot = true and provide plot.plan with:
+   - plot_type: function | implicit | parametric | inequality_region | system | scatter | histogram | boxplot | number_line | geometry | complex_plane | other
+   - recommended_window (x/y bounds)
+   - domain restrictions and discontinuities (if any)
+   - key features to annotate (intercepts, vertex, asymptotes, turning points, intersections, endpoints)
+   - sampling strategy (step size / resolution)
+3) If no, set plot.should_plot = false, and provide plot.visualization_alternative with a clear diagram/number-line plan.
+
+PEDAGOGY REQUIREMENT:
+- Each major section must include: concept, rule/formula, and why it works.
+- Include common mistakes and a quick checkpoint question after critical steps.
+
+VERIFICATION REQUIREMENT:
+- Provide at least 2 verification methods (e.g., substitution, expansion, inverse operation check, derivative check, numerical check, graph intersection check).
+- If only one verification is possible, explain why and include at least one numeric sanity check.
+
+ROBUSTNESS:
+- Handle: equations, inequalities, systems, word problems, functions, calculus, vectors, complex numbers, statistics.
+- For word problems: define variables, translate to equations, solve, interpret units and meaning.

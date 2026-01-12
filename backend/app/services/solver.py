@@ -45,7 +45,9 @@ class SolverService:
                  "final_answer": "Please configure OPENAI_API_KEY on the backend."
              }
 
-        from app.utils import get_active_prompt
+       from app.utils import get_active_prompt
+
+
         # Fallback to hardcoded if not in DB
         if db:
             system_prompt = get_active_prompt("math-solver", db)

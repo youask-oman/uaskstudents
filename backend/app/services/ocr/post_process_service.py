@@ -27,7 +27,8 @@ class PostProcessService:
         If image_path is provided, it does a Vision-based inventory pass.
         """
         try:
-            from app.api import get_active_prompt
+            from app.utils import get_active_prompt
+
             
             # If no DB session provided, we need one to fetch the prompt
             if db:

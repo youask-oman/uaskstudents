@@ -1227,6 +1227,178 @@ async def solve_problem(
     )
     
     # ------------------------------------------------------------------
+# Solver V3 Endpoint - Production-Grade with Schema Validation
+# ------------------------------------------------------------------
+
+@api_router.post("/api/v1/solve_v3")
+@limiter.limit("10/minute")
+async def solve_v3_endpoint(
+    request: Request,
+    body: SolveRequest,
+    user_id: int = Query(...),
+    session: Session = Depends(get_session)
+):
+    """
+    Math Solver V3 - Production-grade endpoint.
+    
+    Features:
+    - Strict JSON Schema Draft 2020-12 validation
+    - Automatic repair loop (max 1 retry)
+    - Always-visualize policy (plots generated when applicable)
+    - 2+ verification methods
+    - Tutor-grade explanations with concepts, rules, and checkpoints
+    
+    Returns:
+        SolveResponseV3 with complete solution, plots, and verification
+    """
+    from app.services.solver_v3 import get_solver_v3
+    import base64
+    
+    # Extract problem text
+    problem_text = (
+        body.confirmed_text or
+        body.confirmed_markdown or
+        body.text_query or
+        "No problem provided"
+    ).strip()
+    
+    if not problem_text:
+        raise HTTPException(status_code=400, detail="No input provided")
+    
+    # Context assembly
+    context = f"Subject: {body.subject or 'General'}"
+    if body.difficulty:
+        context += f", Difficulty: {body.difficulty}"
+    if body.mode:
+        context += f", Mode: {body.mode}"
+    
+    # Enable trace mode for debugging
+    trace = body.mode == "debug"
+    
+    try:
+        # Call Solver V3
+        solver = get_solver_v3()
+        result = await solver.solve(
+            problem_text=problem_text,
+            context=context,
+            trace=trace
+        )
+        
+        # Check if it's an error response
+        if result.get("error", False):
+            print(f"[API_V3] Solver returned error: {result.get('error_type')}")
+            # Return error but still create a session for logging
+            new_chat = ChatSession(
+                user_id=user_id,
+                title="Error: " + problem_text[:40],
+                subject=body.subject or "General",
+                is_saved=False
+            )
+            session.add(new_chat)
+            session.commit()
+            session.refresh(new_chat)
+            
+            return {
+                "session_id": new_chat.id,
+                "error": True,
+                "error_type": result.get("error_type"),
+                "message": result.get("message"),
+                "validation_errors": result.get("validation_errors", [])
+            }
+        
+        # Success - process plot if available
+        plot_url = None
+        if "_plot_image" in result:
+            # Save plot image to storage
+            try:
+                plot_image_b64 = result["_plot_image"]
+                plot_bytes = base64.b64decode(plot_image_b64)
+                
+                # Save to backend/storage/plots/
+                import os
+                from pathlib import Path
+                plots_dir = Path(__file__).parent.parent / "storage" / "plots"
+                plots_dir.mkdir(parents=True, exist_ok=True)
+                
+                # Generate unique filename
+                from datetime import datetime
+                filename = f"plot_{user_id}_{datetime.utcnow().timestamp()}.png"
+                filepath = plots_dir / filename
+                
+                with open(filepath, "wb") as f:
+                    f.write(plot_bytes)
+                
+                plot_url = f"/storage/plots/{filename}"
+                print(f"[API_V3] Saved plot: {plot_url}")
+            
+            except Exception as e:
+                print(f"[API_V3] Failed to save plot: {e}")
+                # Continue without plot - non-critical
+        
+        # Create chat session
+        new_chat = ChatSession(
+            user_id=user_id,
+            title=result.get("problem", {}).get("goal", problem_text[:50]),
+            subject=result.get("problem", {}).get("input", body.subject or "General")[:50],
+            is_saved=False
+        )
+        session.add(new_chat)
+        session.commit()
+        session.refresh(new_chat)
+        
+        # Save messages
+        session.add(ChatMessage(
+            session_id=new_chat.id,
+            role="user",
+            content=problem_text,
+            media_url=body.image_url
+        ))
+        
+        # Generate summary for chat display
+        final_answer = result.get("solution", {}).get("final_answer", "See full solution")
+        
+        session.add(ChatMessage(
+            session_id=new_chat.id,
+            role="assistant",
+            content=final_answer,
+            structured_data=result,
+            model_used=result.get("_model", "gpt-5-mini"),
+            tokens_used=3000  # V3 uses more tokens due to depth
+        ))
+        
+        # Token tracking
+        add_tokens_to_user(user_id, 3000, session)
+        session.add(UsageLog(user_id=user_id, action_type="solve_v3_request", tokens_used=3000))
+        
+        session.commit()
+        
+        # Return V3 response
+        return {
+            "session_id": new_chat.id,
+            "problem": result.get("problem"),
+            "analysis": result.get("analysis"),
+            "solution": result.get("solution"),
+            "verification": result.get("verification"),
+            "plot": result.get("plot"),
+            "plot_url": plot_url,
+            "similar_examples": result.get("similar_examples"),
+            "meta": result.get("meta"),
+            "model_used": result.get("_model"),
+            "tokens_used": 3000,
+            "validated": result.get("_validated", False),
+            "repaired": result.get("_repaired", False)
+        }
+    
+    except Exception as e:
+        print(f"[API_V3_ERROR] Solver V3 failed: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Solver V3 failed: {str(e)}"
+        )
+    
+    # ------------------------------------------------------------------
 # Billing & User Location Endpoints
 # ------------------------------------------------------------------
 
