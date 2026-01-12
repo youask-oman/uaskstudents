@@ -1,4 +1,4 @@
 # Heavy ML/OCR dependencies for worker only
 pix2text[vlm]>=1.1.0
 litellm>=1.0.0
-boto3>=1.34.0
+

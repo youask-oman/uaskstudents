@@ -935,8 +935,8 @@ async def solve_problem(
     if problem_hash:
         cached_solution = get_canonical_solution(problem_hash, session)
 
-    # Determine metadata
-    model_name = "YouAsk AI (Multimodal)" if (body.image_url or body.artifact_id) else "OpenAI GPT-4o Mini"
+    # Determine metadata (will be overridden by actual model from OpenAI response)
+    model_name_fallback = "YouAsk AI (Multimodal)" if (body.image_url or body.artifact_id) else "gpt-5-mini"
     is_image = bool(body.image_url or body.artifact_id)
     extra_images = 0
     if body.artifact_id:
@@ -992,7 +992,7 @@ async def solve_problem(
             session_id=new_chat.id,
             solution=cached_solution,
             concepts=cached_solution.get("concepts") or [],
-            model_used=model_name,
+            model_used=cached_solution.get("_model", model_name_fallback),
             tokens_used=100,
             has_image=is_image
         )
@@ -1015,6 +1015,9 @@ async def solve_problem(
     
     # DEBUG LOGGING
     print(f"DEBUG: LLM Response Visuals: {json.dumps(solution_data.get('visuals', []), indent=2)}")
+    
+    # Extract actual model name from OpenAI response
+    model_name = solution_data.get("_model", model_name_fallback)
     
     # --- PROCESS VISUALS ---
     if "visuals" in solution_data:
@@ -1055,7 +1058,6 @@ async def solve_problem(
     # Store in Canonical (Simplified: In production we'd verify first)
     if problem_hash:
         try:
-            from app.models import CanonicalProblem, CanonicalSolution
             # Check if problem exists
             cp = session.exec(select(CanonicalProblem).where(CanonicalProblem.normalized_problem_hash == problem_hash)).first()
             if not cp:

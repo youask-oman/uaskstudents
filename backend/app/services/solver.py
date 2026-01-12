@@ -15,6 +15,24 @@ class SolverService:
                 return None
             self._client = AsyncOpenAI(api_key=api_key)
         return self._client
+    
+    def _build_completion_params(self, model: str, messages: list, temperature: float = None) -> dict:
+        """
+        Build completion parameters based on model type.
+        GPT-5 models don't support temperature parameter.
+        """
+        params = {
+            "model": model,
+            "response_format": {"type": "json_object"},
+            "messages": messages,
+            "timeout": 30
+        }
+        
+        # Only add temperature for non-GPT-5 models
+        if temperature is not None and "gpt-5" not in model.lower():
+            params["temperature"] = temperature
+        
+        return params
 
     async def solve_problem(self, problem_text: str, context: str = "", db = None) -> dict:
         """
@@ -94,18 +112,17 @@ RULES:
 """
 
         try:
-            response = await self.client.chat.completions.create(
-                model="gpt-4o-mini",
-                response_format={"type": "json_object"},
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Problem: {problem_text}\nContext: {context}"}
-                ],
-                temperature=0.2,
-                timeout=30 # P1 Remediation
-            )
+            model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini")
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Problem: {problem_text}\nContext: {context}"}
+            ]
+            params = self._build_completion_params(model, messages, temperature=0.2)
+            response = await self.client.chat.completions.create(**params)
             
             data = json.loads(response.choices[0].message.content)
+            # Include actual model name from OpenAI response
+            data["_model"] = response.model
             return data
             
         except Exception as e:
@@ -148,16 +165,13 @@ RULES:
             """
 
         try:
-            response = await self.client.chat.completions.create(
-                model="gpt-4o-mini",
-                response_format={"type": "json_object"},
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": query}
-                ],
-                temperature=0.7,
-                timeout=30 # P1 Remediation
-            )
+            model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini")
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": query}
+            ]
+            params = self._build_completion_params(model, messages, temperature=0.7)
+            response = await self.client.chat.completions.create(**params)
             return json.loads(response.choices[0].message.content)
         except Exception as e:
             print(f"Chat Response Error: {e}")

@@ -1,42 +1,52 @@
 # syntax=docker/dockerfile:1.7
-FROM python:3.11-slim AS base
+
+# ----------------------------
+# Base deps layer (no source code)
+# ----------------------------
+FROM python:3.11-slim AS deps
 
 WORKDIR /app
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PIP_NO_INPUT=1
+    PIP_NO_INPUT=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
-# Install system dependencies
+# System deps needed for Python packages (psycopg2 etc.)
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install base Python dependencies with cache mount
+# Install base Python deps
 COPY requirements.base.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install -r requirements.base.txt
 
-# Copy application code
-COPY . .
+# ----------------------------
+# App source layer (shared)
+# ----------------------------
+FROM deps AS app
 
 # Create non-root user
-RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app
+RUN useradd -m -u 1000 appuser
 
-# =====================================
-# Lean API/Orchestrator Image
-# =====================================
-FROM base AS orchestrator
+# Copy source code last (better cache)
+COPY --chown=appuser:appuser . .
 
 USER appuser
+
+# ----------------------------
+# API / Orchestrator
+# ----------------------------
+FROM app AS orchestrator
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
-# =====================================
-# Heavy Worker Image (with ML deps)
-# =====================================
-FROM base AS worker
+# ----------------------------
+# Worker deps (extends base deps + ML system libs + worker pip deps)
+# ----------------------------
+FROM deps AS worker_deps
 
 # Additional system dependencies for ML/OCR
 RUN apt-get update && apt-get install -y \
@@ -47,13 +57,21 @@ RUN apt-get update && apt-get install -y \
     libxrender1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install worker-specific dependencies with cache mount
 COPY requirements.worker.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install -r requirements.worker.txt
 
-RUN mkdir -p /app/storage && \
-    chown -R appuser:appuser /app/storage
+# ----------------------------
+# Worker runtime
+# ----------------------------
+FROM worker_deps AS worker
+
+RUN useradd -m -u 1000 appuser
+
+WORKDIR /app
+COPY --chown=appuser:appuser . .
+
+RUN mkdir -p /app/storage && chown -R appuser:appuser /app/storage
 
 USER appuser
 CMD ["celery", "-A", "app.worker.celery_app", "worker", "--loglevel=info", "--concurrency=4"]

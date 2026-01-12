@@ -103,7 +103,7 @@ export default function StepsTab({ title, steps, onViewConcepts, visuals }: Step
                         </div>
                         <div className="p-6">
                             <p className="text-sm text-slate-600 dark:text-slate-300 mb-4 leading-relaxed">
-                                {step.explanation}
+                                {step.explanation || (step as any).content || "No detailed explanation provided."}
                             </p>
                             {step.math?.latex_lines && step.math.latex_lines.length > 0 && (
                                 <div className="bg-slate-50 dark:bg-surface-dark/40 p-6 rounded-lg flex flex-col items-center gap-4 border border-slate-100 dark:border-border-dark">

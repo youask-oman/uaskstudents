@@ -37,6 +37,25 @@ Return ONLY valid JSON with this structure:
     ],
     "final_answer": "Concise answer"
   },
+  "verification": {
+    "methods_used": [
+      {
+        "name": "Substitution Check",
+        "description": "Verify by substituting the solution back into the original equation",
+        "steps": ["2(6)+7 = 12+7 = 19 ✓"]
+      }
+    ]
+  },
+  "concepts": [
+    {
+      "name": "Linear Equations",
+      "description": "Equations where the variable has an exponent of 1"
+    },
+    {
+      "name": "Inverse Operations",
+      "description": "Using opposite operations (subtraction/division) to isolate variables"
+    }
+  ],
   "visuals": [
     {
       "id": "v1",
@@ -44,22 +63,15 @@ Return ONLY valid JSON with this structure:
       "title": "Graph of y=x^2",
       "function": { "latex": "y=x^2", "variable": "x" },
       "domain": { "x_min_latex": "-5", "x_max_latex": "5" }
-    },
-    {
-      "id": "v2",
-      "type": "line_plot",
-      "title": "Line through points",
-      "markers": [
-         { "label": "A", "x": 0, "y": 1 },
-         { "label": "B", "x": 2, "y": 5 }
-      ]
     }
   ],
-  "response_intent": ["step_by_step", "visual_required"]
+  "response_intent": ["step_by_step"]
 }
 
 RULES:
-- Use LaTeX for match.
+- Use LaTeX for math.
+- ALWAYS include "verification" with at least one method (substitution, graphical check, etc.)
+- ALWAYS include "concepts" array with 2-4 relevant mathematical concepts
 - If visual_required is set, you MUST provide at least one visual.
 - For function requests, provide valid LaTeX for the function (e.g. "y=\\sin(x)").
 """
