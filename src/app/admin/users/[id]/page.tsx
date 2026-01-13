@@ -45,6 +45,16 @@ export default function UserDetailPage() {
     const [loading, setLoading] = useState(true);
     const [noteContent, setNoteContent] = useState("");
     const [isSavingNote, setIsSavingNote] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+    const getAuthHeaders = (includeJson = false) => {
+        const token = localStorage.getItem("token");
+        const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+        if (includeJson) {
+            (headers as Record<string, string>)["Content-Type"] = "application/json";
+        }
+        return headers;
+    };
 
     // Form states for updates
     const [newQuotaQuestions, setNewQuotaQuestions] = useState(0);
@@ -52,86 +62,110 @@ export default function UserDetailPage() {
     const [newTier, setNewTier] = useState("");
 
     useEffect(() => {
-        if (id) {
-            fetchUserDetail();
-            fetchActivity();
-            fetchSessions();
-            fetchPayments();
-        }
+        if (!id) return;
+        const controller = new AbortController();
+        fetchUserDetail(controller.signal);
+        fetchActivity(controller.signal);
+        fetchSessions(controller.signal);
+        fetchPayments(controller.signal);
+        return () => controller.abort();
     }, [id]);
 
-    const fetchUserDetail = async () => {
+    const fetchUserDetail = async (signal?: AbortSignal) => {
         try {
-            const res = await fetch(`http://127.0.0.1:8000/api/v1/admin/users/${id}`);
+            setErrorMessage(null);
+            const res = await fetch(`${baseUrl}/api/v1/admin/users/${id}`, { headers: getAuthHeaders(), signal });
             if (res.ok) {
                 const data = await res.json();
                 setUser(data);
                 setNewQuotaQuestions(data.quota_questions_total);
                 setNewQuotaScans(data.quota_scans_total);
                 setNewTier(data.subscription_tier);
+            } else {
+                throw new Error("Failed to load user profile.");
             }
         } catch (error) {
+            if ((error as Error).name === "AbortError") {
+                return;
+            }
             console.error("Failed to fetch user detail:", error);
+            setErrorMessage("Unable to load user profile. Please refresh.");
         } finally {
             setLoading(false);
         }
     };
 
-    const fetchActivity = async () => {
+    const fetchActivity = async (signal?: AbortSignal) => {
         try {
-            const res = await fetch(`http://127.0.0.1:8000/api/v1/admin/users/${id}/activity`);
+            const res = await fetch(`${baseUrl}/api/v1/admin/users/${id}/activity`, { headers: getAuthHeaders(), signal });
             if (res.ok) {
                 const data = await res.json();
                 setActivity(data);
             }
         } catch (error) {
+            if ((error as Error).name === "AbortError") {
+                return;
+            }
             console.error("Failed to fetch activity:", error);
+            setErrorMessage("Unable to load activity logs.");
         }
     };
 
-    const fetchSessions = async () => {
+    const fetchSessions = async (signal?: AbortSignal) => {
         try {
-            const res = await fetch(`http://127.0.0.1:8000/api/v1/admin/users/${id}/activity`); // Reusing activity for now as it's a good summary
+            const res = await fetch(`${baseUrl}/api/v1/admin/users/${id}/activity`, { headers: getAuthHeaders(), signal }); // Reusing activity for now as it's a good summary
             if (res.ok) {
                 const data = await res.json();
                 setSessions(data);
             }
         } catch (error) {
+            if ((error as Error).name === "AbortError") {
+                return;
+            }
             console.error("Failed to fetch sessions:", error);
+            setErrorMessage("Unable to load session history.");
         }
     };
 
-    const fetchPayments = async () => {
+    const fetchPayments = async (signal?: AbortSignal) => {
         try {
-            const res = await fetch(`http://127.0.0.1:8000/api/v1/user/token-usage?user_id=${id}`); // Example, should be a payment endpoint
+            await fetch(`${baseUrl}/api/v1/user/token-usage?user_id=${id}`, { headers: getAuthHeaders(), signal }); // Example, should be a payment endpoint
             // Actually, let's just mock the list for now but wire it to a real check
             setPayments([
                 { id: 1, date: "2024-10-05", amount: 19.99, status: "completed" },
                 { id: 2, date: "2024-09-05", amount: 19.99, status: "completed" }
             ]);
         } catch (error) {
+            if ((error as Error).name === "AbortError") {
+                return;
+            }
             console.error("Failed to fetch payments:", error);
+            setErrorMessage("Unable to load billing history.");
         }
     };
 
     const handleQuickAction = async (action: string) => {
         try {
             let res;
-            if (action === "reset") res = await fetch(`http://127.0.0.1:8000/api/v1/admin/users/${id}/reset-password`, { method: "POST" });
-            if (action === "resend") res = await fetch(`http://127.0.0.1:8000/api/v1/admin/users/${id}/resend-email`, { method: "POST" });
-            if (action === "ban") res = await fetch(`http://127.0.0.1:8000/api/v1/admin/users/${id}/ban`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ banned: user?.subscription_status !== "expired" }) });
+            setErrorMessage(null);
+            if (action === "reset") res = await fetch(`${baseUrl}/api/v1/admin/users/${id}/reset-password`, { method: "POST", headers: getAuthHeaders() });
+            if (action === "resend") res = await fetch(`${baseUrl}/api/v1/admin/users/${id}/resend-email`, { method: "POST", headers: getAuthHeaders() });
+            if (action === "ban") res = await fetch(`${baseUrl}/api/v1/admin/users/${id}/ban`, { method: "PATCH", headers: getAuthHeaders(true), body: JSON.stringify({ banned: user?.subscription_status !== "expired" }) });
             if (action === "delete") {
                 if (!confirm("Are you sure?")) return;
-                res = await fetch(`http://127.0.0.1:8000/api/v1/admin/users/${id}`, { method: "DELETE" });
+                res = await fetch(`${baseUrl}/api/v1/admin/users/${id}`, { method: "DELETE", headers: getAuthHeaders() });
                 if (res.ok) window.location.href = "/admin/users";
                 return;
             }
             if (res?.ok) {
                 alert(`${action} successful!`);
                 fetchUserDetail();
+            } else if (res) {
+                throw new Error("Action failed.");
             }
         } catch (error) {
             console.error("Action failed:", error);
+            setErrorMessage("Unable to complete admin action.");
         }
     };
 
@@ -142,9 +176,10 @@ export default function UserDetailPage() {
         setIsSavingNote(true);
         try {
             const adminName = localStorage.getItem("user_name") || "Admin";
-            const res = await fetch(`http://127.0.0.1:8000/api/v1/admin/users/${id}/notes`, {
+            setErrorMessage(null);
+            const res = await fetch(`${baseUrl}/api/v1/admin/users/${id}/notes`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: getAuthHeaders(true),
                 body: JSON.stringify({
                     admin_name: adminName,
                     content: noteContent
@@ -153,9 +188,12 @@ export default function UserDetailPage() {
             if (res.ok) {
                 setNoteContent("");
                 fetchUserDetail();
+            } else {
+                throw new Error("Failed to add note.");
             }
         } catch (error) {
             console.error("Failed to add note:", error);
+            setErrorMessage("Unable to add support note.");
         } finally {
             setIsSavingNote(false);
         }
@@ -163,9 +201,10 @@ export default function UserDetailPage() {
 
     const handleUpdateUser = async () => {
         try {
-            const res = await fetch(`http://127.0.0.1:8000/api/v1/admin/users/${id}`, {
+            setErrorMessage(null);
+            const res = await fetch(`${baseUrl}/api/v1/admin/users/${id}`, {
                 method: "PATCH",
-                headers: { "Content-Type": "application/json" },
+                headers: getAuthHeaders(true),
                 body: JSON.stringify({
                     quota_questions_total: newQuotaQuestions,
                     quota_scans_total: newQuotaScans,
@@ -175,9 +214,12 @@ export default function UserDetailPage() {
             if (res.ok) {
                 alert("User updated successfully!");
                 fetchUserDetail();
+            } else {
+                throw new Error("Update failed.");
             }
         } catch (error) {
             console.error("Failed to update user:", error);
+            setErrorMessage("Unable to update user settings.");
         }
     };
 
@@ -197,6 +239,11 @@ export default function UserDetailPage() {
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col overflow-y-auto w-full">
                 <header className="sticky top-0 z-10 bg-[#0F172A]/80 backdrop-blur-md border-b border-slate-800 p-8 flex flex-col gap-6">
+                    {errorMessage && (
+                        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs font-bold uppercase tracking-widest text-rose-300">
+                            {errorMessage}
+                        </div>
+                    )}
                     <div className="flex justify-between items-start">
                         <div className="flex items-center gap-6">
                             <div className="relative group">

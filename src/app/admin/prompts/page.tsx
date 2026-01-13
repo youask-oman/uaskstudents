@@ -10,6 +10,7 @@ export default function AdminPromptsPage() {
     const [editedContent, setEditedContent] = useState("");
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const [testVariables, setTestVariables] = useState<Record<string, string>>({
         "problem_text": "Find the derivative of f(x) = x^2",
@@ -19,61 +20,98 @@ export default function AdminPromptsPage() {
     const [testResponse, setTestResponse] = useState<string | null>(null);
     const [isTesting, setIsTesting] = useState(false);
     const [activeTab, setActiveTab] = useState<"editor" | "test">("editor");
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+    const getAuthHeaders = (includeJson = false) => {
+        const token = localStorage.getItem("token");
+        const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+        if (includeJson) {
+            (headers as Record<string, string>)["Content-Type"] = "application/json";
+        }
+        return headers;
+    };
 
     useEffect(() => {
+        const controller = new AbortController();
         const fetchTemplates = async () => {
             try {
-                const res = await fetch("http://127.0.0.1:8000/api/v1/admin/prompts");
+                setErrorMessage(null);
+                const res = await fetch(`${baseUrl}/api/v1/admin/prompts`, { headers: getAuthHeaders(), signal: controller.signal });
+                if (!res.ok) {
+                    throw new Error("Unable to load prompt templates.");
+                }
                 const data = await res.json();
                 setTemplates(data);
                 if (data.length > 0) {
                     setSelectedTemplate(data[0]);
                 }
             } catch (err) {
+                if ((err as Error).name === "AbortError") {
+                    return;
+                }
                 console.error("Failed to fetch templates:", err);
+                setErrorMessage("Unable to load prompt templates. Please refresh.");
             } finally {
                 setIsLoading(false);
             }
         };
         fetchTemplates();
+        return () => controller.abort();
     }, []);
 
     useEffect(() => {
         if (!selectedTemplate) return;
+        const controller = new AbortController();
         const fetchVersions = async () => {
             try {
-                const res = await fetch(`http://127.0.0.1:8000/api/v1/admin/prompts/${selectedTemplate.id}/versions`);
+                setErrorMessage(null);
+                const res = await fetch(`${baseUrl}/api/v1/admin/prompts/${selectedTemplate.id}/versions`, { headers: getAuthHeaders(), signal: controller.signal });
+                if (!res.ok) {
+                    throw new Error("Unable to load prompt versions.");
+                }
                 const data = await res.json();
                 setVersions(data);
                 const prod = data.find((v: any) => v.is_production);
                 setSelectedVersion(prod || data[0]);
                 setEditedContent(prod ? prod.content : (data[0] ? data[0].content : ""));
             } catch (err) {
+                if ((err as Error).name === "AbortError") {
+                    return;
+                }
                 console.error("Failed to fetch versions:", err);
+                setErrorMessage("Unable to load prompt versions. Please refresh.");
             }
         };
         fetchVersions();
         setTestResponse(null);
         setActiveTab("editor");
+        return () => controller.abort();
     }, [selectedTemplate]);
 
     const handleSaveVersion = async () => {
         if (!selectedTemplate) return;
         setIsSaving(true);
         try {
-            const res = await fetch(`http://127.0.0.1:8000/api/v1/admin/prompts/${selectedTemplate.id}/save`, {
+            setErrorMessage(null);
+            const res = await fetch(`${baseUrl}/api/v1/admin/prompts/${selectedTemplate.id}/save`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: getAuthHeaders(true),
                 body: JSON.stringify({ content: editedContent })
             });
             if (res.ok) {
-                const vData = await (await fetch(`http://127.0.0.1:8000/api/v1/admin/prompts/${selectedTemplate.id}/versions`)).json();
+                const vRes = await fetch(`${baseUrl}/api/v1/admin/prompts/${selectedTemplate.id}/versions`, { headers: getAuthHeaders() });
+                if (!vRes.ok) {
+                    throw new Error("Unable to refresh versions.");
+                }
+                const vData = await vRes.json();
                 setVersions(vData);
                 setSelectedVersion(vData[0]);
                 alert("Version saved as draft");
+            } else {
+                throw new Error("Failed to save prompt version.");
             }
         } catch (err) {
             console.error(err);
+            setErrorMessage("Failed to save prompt version. Please try again.");
         } finally {
             setIsSaving(false);
         }
@@ -82,16 +120,26 @@ export default function AdminPromptsPage() {
     const handleDeploy = async () => {
         if (!selectedVersion) return;
         try {
-            const res = await fetch(`http://127.0.0.1:8000/api/v1/admin/prompts/versions/${selectedVersion.id}/deploy`, {
-                method: "POST"
+            setErrorMessage(null);
+            const res = await fetch(`${baseUrl}/api/v1/admin/prompts/versions/${selectedVersion.id}/deploy`, {
+                method: "POST",
+                headers: getAuthHeaders()
             });
             if (res.ok) {
-                setTemplates(await (await fetch("http://127.0.0.1:8000/api/v1/admin/prompts")).json());
-                setVersions(await (await fetch(`http://127.0.0.1:8000/api/v1/admin/prompts/${selectedTemplate.id}/versions`)).json());
+                const templatesRes = await fetch(`${baseUrl}/api/v1/admin/prompts`, { headers: getAuthHeaders() });
+                const versionsRes = await fetch(`${baseUrl}/api/v1/admin/prompts/${selectedTemplate.id}/versions`, { headers: getAuthHeaders() });
+                if (!templatesRes.ok || !versionsRes.ok) {
+                    throw new Error("Unable to refresh prompt data.");
+                }
+                setTemplates(await templatesRes.json());
+                setVersions(await versionsRes.json());
                 alert("Version deployed to production!");
+            } else {
+                throw new Error("Failed to deploy prompt version.");
             }
         } catch (err) {
             console.error(err);
+            setErrorMessage("Failed to deploy prompt version. Please try again.");
         }
     };
 
@@ -164,6 +212,11 @@ export default function AdminPromptsPage() {
             {/* Main Editor */}
             <main className="flex-1 flex flex-col bg-[#1a1f29]">
                 <div className="px-6 pt-4">
+                    {errorMessage && (
+                        <div className="mb-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-rose-400">
+                            {errorMessage}
+                        </div>
+                    )}
                     <div className="flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">
                         <span>Admin</span> <span className="text-slate-700">/</span> <span>Prompts</span> <span className="text-slate-700">/</span> <span className="text-slate-300">{selectedTemplate?.name}</span>
                     </div>

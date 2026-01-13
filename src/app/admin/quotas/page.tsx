@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState } from "react";
 
 export default function AdminQuotasPage() {
@@ -10,31 +9,50 @@ export default function AdminQuotasPage() {
     const [overrideConcurrency, setOverrideConcurrency] = useState(10);
     const [overrideDuration, setOverrideDuration] = useState<number | null>(24);
     const [isSaving, setIsSaving] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-    const fetchData = async () => {
+    const fetchData = async (signal?: AbortSignal) => {
         setIsLoading(true);
+        const token = localStorage.getItem("token");
+        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+        const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
         try {
-            const res = await fetch("http://127.0.0.1:8000/api/v1/admin/quotas");
+            const res = await fetch(`${baseUrl}/api/v1/admin/quotas`, { headers, signal });
+            if (!res.ok) {
+                throw new Error("Failed to load quotas.");
+            }
             const json = await res.json();
             setData(json);
         } catch (err) {
+            if ((err as Error).name === "AbortError") {
+                return;
+            }
             console.error(err);
+            setErrorMessage("Unable to load quotas. Please refresh.");
         } finally {
             setIsLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchData();
+        const controller = new AbortController();
+        fetchData(controller.signal);
+        return () => controller.abort();
     }, []);
 
     const handleApplyOverride = async () => {
         if (!selectedUser) return;
         setIsSaving(true);
+        const token = localStorage.getItem("token");
+        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+        const headers: HeadersInit = {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+        };
         try {
-            const res = await fetch("http://127.0.0.1:8000/api/v1/admin/quotas/override", {
+            const res = await fetch(`${baseUrl}/api/v1/admin/quotas/override`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers,
                 body: JSON.stringify({
                     user_id: selectedUser.id,
                     token_limit: overrideTokens,
@@ -46,9 +64,12 @@ export default function AdminQuotasPage() {
                 alert("Override applied successfully");
                 fetchData();
                 setSelectedUser(null);
+            } else {
+                throw new Error("Failed to apply override.");
             }
         } catch (err) {
             console.error(err);
+            setErrorMessage("Failed to apply override.");
         } finally {
             setIsSaving(false);
         }
@@ -56,6 +77,10 @@ export default function AdminQuotasPage() {
 
     if (isLoading && !data) {
         return <div className="p-8 text-slate-400">Loading quota details...</div>;
+    }
+
+    if (errorMessage && !data) {
+        return <div className="p-8 text-rose-400">{errorMessage}</div>;
     }
 
     return (
@@ -74,6 +99,11 @@ export default function AdminQuotasPage() {
                     </button>
                 </div>
             </header>
+            {errorMessage && (
+                <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs font-bold uppercase tracking-widest text-rose-300">
+                    {errorMessage}
+                </div>
+            )}
 
             {/* Global Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -4,6 +4,7 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 import uuid
 import re
+import requests
 import hashlib
 import json
 import os
@@ -322,6 +323,16 @@ class DashboardStatsResponse(BaseModel):
     daily_requests: int
     ocr_success_rate: float
     llm_cost_est: float
+    llm_cost_est_daily: float
+    llm_cost_est_monthly: float
+    llm_total_requests_daily: int
+    llm_total_requests_monthly: int
+    llm_total_spend_daily: float
+    llm_total_spend_monthly: float
+    llm_tokens_in_daily: int
+    llm_tokens_out_daily: int
+    llm_tokens_in_monthly: int
+    llm_tokens_out_monthly: int
     cache_hit_rate: float
     requests_growth: float
     success_rate_change: float
@@ -2118,7 +2129,70 @@ async def admin_get_dashboard_stats(db: Session = Depends(get_session)):
     ocr_success_rate = (len(completed_ocr) / len(ocr_jobs) * 100) if ocr_jobs else 98.2
     
     total_tokens_24h = sum([l.tokens_used for l in db.exec(select(UsageLog).where(UsageLog.timestamp >= last_24h)).all()])
-    llm_cost_est = (total_tokens_24h / 1_000_000) * 0.50 # Estimate $0.50 per 1M tokens
+    fallback_cost_per_million = float(os.getenv("OPENAI_COST_PER_1M_TOKENS", "0.50"))
+    llm_cost_est_fallback = (total_tokens_24h / 1_000_000) * fallback_cost_per_million
+
+    openai_key = os.getenv("OPENAI_API_KEY")
+    def fetch_openai_usage(start_date: str, end_date: str):
+        if not openai_key:
+            return None
+        try:
+            resp = requests.get(
+                "https://api.openai.com/v1/usage",
+                headers={"Authorization": f"Bearer {openai_key}"},
+                params={"start_date": start_date, "end_date": end_date},
+                timeout=15
+            )
+            resp.raise_for_status()
+            payload = resp.json()
+            tokens_in = 0
+            tokens_out = 0
+            total_requests = 0
+            total_spend = 0.0
+            for item in payload.get("data", []):
+                tokens_in += item.get("n_context_tokens_total") or item.get("prompt_tokens") or item.get("input_tokens") or 0
+                tokens_out += item.get("n_generated_tokens_total") or item.get("completion_tokens") or item.get("output_tokens") or 0
+                total_requests += item.get("n_requests") or item.get("requests") or 0
+                total_spend += item.get("total_cost") or item.get("amount") or 0.0
+            return {
+                "input": tokens_in,
+                "output": tokens_out,
+                "requests": total_requests,
+                "spend": total_spend
+            }
+        except Exception as e:
+            logging.error(f"OpenAI usage fetch failed: {e}")
+            return None
+
+    today = now.date()
+    daily_usage = fetch_openai_usage(today.isoformat(), today.isoformat())
+    month_start = now.replace(day=1).date().isoformat()
+    monthly_usage = fetch_openai_usage(month_start, today.isoformat())
+
+    if daily_usage and monthly_usage:
+        daily_total = daily_usage["input"] + daily_usage["output"]
+        monthly_total = monthly_usage["input"] + monthly_usage["output"]
+        llm_cost_est_daily = (daily_total / 1_000_000) * fallback_cost_per_million
+        llm_cost_est_monthly = (monthly_total / 1_000_000) * fallback_cost_per_million
+        llm_tokens_in_daily = daily_usage["input"]
+        llm_tokens_out_daily = daily_usage["output"]
+        llm_tokens_in_monthly = monthly_usage["input"]
+        llm_tokens_out_monthly = monthly_usage["output"]
+        llm_total_requests_daily = daily_usage.get("requests", 0)
+        llm_total_requests_monthly = monthly_usage.get("requests", 0)
+        llm_total_spend_daily = float(daily_usage.get("spend", 0.0))
+        llm_total_spend_monthly = float(monthly_usage.get("spend", 0.0))
+    else:
+        llm_cost_est_daily = llm_cost_est_fallback
+        llm_cost_est_monthly = llm_cost_est_fallback
+        llm_tokens_in_daily = total_tokens_24h
+        llm_tokens_out_daily = 0
+        llm_tokens_in_monthly = total_tokens_24h
+        llm_tokens_out_monthly = 0
+        llm_total_requests_daily = daily_requests
+        llm_total_requests_monthly = daily_requests
+        llm_total_spend_daily = llm_cost_est_fallback
+        llm_total_spend_monthly = llm_cost_est_fallback
     
     # Calculate real growth
     requests_growth = ((daily_requests - prev_requests) / prev_requests * 100) if prev_requests else 0.0
@@ -2137,7 +2211,17 @@ async def admin_get_dashboard_stats(db: Session = Depends(get_session)):
         total_users=total_users,
         daily_requests=daily_requests,
         ocr_success_rate=ocr_success_rate,
-        llm_cost_est=llm_cost_est,
+        llm_cost_est=llm_cost_est_monthly,
+        llm_cost_est_daily=llm_cost_est_daily,
+        llm_cost_est_monthly=llm_cost_est_monthly,
+        llm_total_requests_daily=llm_total_requests_daily,
+        llm_total_requests_monthly=llm_total_requests_monthly,
+        llm_total_spend_daily=llm_total_spend_daily,
+        llm_total_spend_monthly=llm_total_spend_monthly,
+        llm_tokens_in_daily=llm_tokens_in_daily,
+        llm_tokens_out_daily=llm_tokens_out_daily,
+        llm_tokens_in_monthly=llm_tokens_in_monthly,
+        llm_tokens_out_monthly=llm_tokens_out_monthly,
         cache_hit_rate=42.5, # Placeholder for now as we don't track cache hits yet
         requests_growth=requests_growth,
         success_rate_change=0.0,

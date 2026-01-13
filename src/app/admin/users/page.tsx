@@ -26,14 +26,27 @@ export default function AdminUsersPage() {
     const [showInviteModal, setShowInviteModal] = useState(false);
     const [inviteForm, setInviteForm] = useState({ full_name: "", email: "", password: "TempPassword123!", academic_level: "High School" });
     const [activeRowMenu, setActiveRowMenu] = useState<number | null>(null);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+    const getAuthHeaders = (includeJson = false) => {
+        const token = localStorage.getItem("token");
+        const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+        if (includeJson) {
+            (headers as Record<string, string>)["Content-Type"] = "application/json";
+        }
+        return headers;
+    };
 
     useEffect(() => {
-        fetchUsers();
+        const controller = new AbortController();
+        fetchUsers(controller.signal);
+        return () => controller.abort();
     }, [search, roleFilter, planFilter, page]);
 
-    const fetchUsers = async () => {
+    const fetchUsers = async (signal?: AbortSignal) => {
         setLoading(true);
         try {
+            setErrorMessage(null);
             const params = new URLSearchParams();
             if (search) params.append("q", search);
             if (roleFilter !== "All Roles") params.append("role", roleFilter.toLowerCase());
@@ -41,14 +54,22 @@ export default function AdminUsersPage() {
             params.append("offset", ((page - 1) * limit).toString());
             params.append("limit", limit.toString());
 
-            const res = await fetch(`http://127.0.0.1:8000/api/v1/admin/users?${params.toString()}`);
-            if (res.ok) {
-                const data = await res.json();
-                setUsers(data.users);
-                setTotalCount(data.total_count);
+            const res = await fetch(`${baseUrl}/api/v1/admin/users?${params.toString()}`, {
+                headers: getAuthHeaders(),
+                signal
+            });
+            if (!res.ok) {
+                throw new Error("Failed to load user list.");
             }
+            const data = await res.json();
+            setUsers(data.users);
+            setTotalCount(data.total_count);
         } catch (error) {
+            if ((error as Error).name === "AbortError") {
+                return;
+            }
             console.error("Failed to fetch users:", error);
+            setErrorMessage("Unable to load users. Please refresh.");
         } finally {
             setLoading(false);
         }
@@ -57,17 +78,21 @@ export default function AdminUsersPage() {
     const handleInvite = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const res = await fetch("http://127.0.0.1:8000/api/v1/admin/invite", {
+            setErrorMessage(null);
+            const res = await fetch(`${baseUrl}/api/v1/admin/invite`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: getAuthHeaders(true),
                 body: JSON.stringify(inviteForm),
             });
             if (res.ok) {
                 setShowInviteModal(false);
                 fetchUsers();
+            } else {
+                throw new Error("Invite failed.");
             }
         } catch (error) {
             console.error("Invite failed:", error);
+            setErrorMessage("Unable to send invite. Please retry.");
         }
     };
 
@@ -85,14 +110,17 @@ export default function AdminUsersPage() {
 
     const updateRole = async (userId: number, newRole: string) => {
         try {
-            const res = await fetch(`http://127.0.0.1:8000/api/v1/admin/users/${userId}`, {
+            setErrorMessage(null);
+            const res = await fetch(`${baseUrl}/api/v1/admin/users/${userId}`, {
                 method: "PATCH",
-                headers: { "Content-Type": "application/json" },
+                headers: getAuthHeaders(true),
                 body: JSON.stringify({ role: newRole.toLowerCase() }),
             });
             if (res.ok) fetchUsers();
+            else throw new Error("Role update failed.");
         } catch (error) {
             console.error("Role update failed:", error);
+            setErrorMessage("Unable to update role.");
         }
     };
 
@@ -100,15 +128,18 @@ export default function AdminUsersPage() {
         setActiveRowMenu(null);
         try {
             let res;
-            if (action === "reset") res = await fetch(`http://127.0.0.1:8000/api/v1/admin/users/${userId}/reset-password`, { method: "POST" });
-            if (action === "ban") res = await fetch(`http://127.0.0.1:8000/api/v1/admin/users/${userId}/ban`, { method: "PATCH" });
+            setErrorMessage(null);
+            if (action === "reset") res = await fetch(`${baseUrl}/api/v1/admin/users/${userId}/reset-password`, { method: "POST", headers: getAuthHeaders() });
+            if (action === "ban") res = await fetch(`${baseUrl}/api/v1/admin/users/${userId}/ban`, { method: "PATCH", headers: getAuthHeaders() });
             if (action === "delete") {
                 if (!confirm("Are you sure you want to delete this user?")) return;
-                res = await fetch(`http://127.0.0.1:8000/api/v1/admin/users/${userId}`, { method: "DELETE" });
+                res = await fetch(`${baseUrl}/api/v1/admin/users/${userId}`, { method: "DELETE", headers: getAuthHeaders() });
             }
             if (res?.ok) fetchUsers();
+            else if (res) throw new Error("Action failed.");
         } catch (error) {
             console.error("Action failed:", error);
+            setErrorMessage("Unable to complete admin action.");
         }
     };
 
@@ -135,6 +166,11 @@ export default function AdminUsersPage() {
                         </button>
                     </div>
                 </div>
+                {errorMessage && (
+                    <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs font-bold uppercase tracking-widest text-rose-300">
+                        {errorMessage}
+                    </div>
+                )}
 
                 <div className="bg-[#111827] border border-slate-800 p-4 rounded-xl flex items-center justify-between gap-4">
                     <div className="flex-1 flex items-center gap-4">
