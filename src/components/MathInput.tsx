@@ -23,16 +23,7 @@ const MathInput = forwardRef<MathInputRef, MathInputProps>(({ value, onChange, p
     const containerRef = useRef<HTMLDivElement>(null);
     const isInternalChange = useRef(false);
 
-    // Background Color Customization
-    const [kbBg, setKbBg] = React.useState('#ffffff');
-    const COLORS = [
-        { name: 'Light', value: 'rgba(255, 255, 255, 0.95)', border: '#e2e8f0' },
-        { name: 'Dark', value: '#1e293b', border: '#334155' },
-        { name: 'Blue', value: '#3b82f6', border: '#2563eb' },
-        { name: 'Green', value: '#10b981', border: '#059669' },
-        { name: 'Purple', value: '#8b5cf6', border: '#7c3aed' },
-        { name: 'Rose', value: '#f43f5e', border: '#e11d48' }
-    ];
+    const kbBg = '#ffffff';
 
     useEffect(() => {
         // Dynamically import mathlive to avoid SSR issues
@@ -217,22 +208,6 @@ const MathInput = forwardRef<MathInputRef, MathInputProps>(({ value, onChange, p
                     display: none !important;
                 }
             `}</style>
-
-            {/* Theme Picker Row */}
-            <div className="flex items-center gap-3 mb-2 px-2 py-1 bg-slate-100/50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 w-fit">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Theme</span>
-                <div className="flex gap-2">
-                    {COLORS.map(color => (
-                        <button
-                            key={color.name}
-                            onClick={() => setKbBg(color.value)}
-                            className={`w-4 h-4 rounded-full border-2 transition-transform hover:scale-125 ${kbBg === color.value ? 'ring-2 ring-primary ring-offset-1 ring-offset-white dark:ring-offset-slate-900 border-white' : 'border-transparent'}`}
-                            style={{ backgroundColor: color.value, borderColor: color.value === 'rgba(255, 255, 255, 0.95)' ? '#e2e8f0' : color.value }}
-                            title={color.name}
-                        />
-                    ))}
-                </div>
-            </div>
 
             {/* @ts-ignore - math-field is a custom element */}
             <math-field

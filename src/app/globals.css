@@ -75,19 +75,16 @@
 }
 
 /* Equation styling */
-.math-font,
-.katex {
+.katex,
+.katex-display,
+.math-inline {
   color: #2563eb;
 }
 
-.katex-display {
-  color: #2563eb;
-}
-
-.dark .math-font,
 .dark .katex,
-.dark .katex-display {
-  color: #ffffff;
+.dark .katex-display,
+.dark .math-inline {
+  color: #2563eb;
 }
 
 

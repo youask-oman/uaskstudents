@@ -54,6 +54,33 @@ const MathFont = ({ children }: { children: React.ReactNode }) => (
     <span className="font-serif italic">{children}</span>
 );
 
+const renderInlineMath = (line: string) => {
+    const regex = /[A-Za-z0-9=+\-*/^()]+/g;
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+
+    for (const match of line.matchAll(regex)) {
+        const index = match.index ?? 0;
+        if (index > lastIndex) {
+            parts.push(line.slice(lastIndex, index));
+        }
+        const token = match[0];
+        const isMath = /[0-9=+\-*/^()]/.test(token);
+        parts.push(
+            <span key={`${index}-${token}`} className={isMath ? "math-inline" : undefined}>
+                {token}
+            </span>
+        );
+        lastIndex = index + token.length;
+    }
+
+    if (lastIndex < line.length) {
+        parts.push(line.slice(lastIndex));
+    }
+
+    return <p className="text-sm leading-relaxed text-gray-700 dark:text-slate-200">{parts}</p>;
+};
+
 export default function StepsTab({
     title,
     steps,
@@ -65,6 +92,18 @@ export default function StepsTab({
     activeTab,
     onSelectTab
 }: StepsTabProps) {
+    const [visualHeight, setVisualHeight] = React.useState(360);
+    const [isFullscreen, setIsFullscreen] = React.useState(false);
+
+    React.useEffect(() => {
+        if (!isFullscreen) return;
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        return () => {
+            document.body.style.overflow = previousOverflow;
+        };
+    }, [isFullscreen]);
+
     const referencedVisualIds = new Set(
         steps.flatMap(step => step.visual_refs ?? [])
     );
@@ -72,6 +111,9 @@ export default function StepsTab({
     const unreferencedVisuals = (visuals ?? []).filter(
         visual => !referencedVisualIds.has(visual.id)
     );
+
+    const clampedHeight = Math.min(Math.max(visualHeight, 240), 900);
+    const renderHeight = isFullscreen ? Math.max(clampedHeight, 520) : clampedHeight;
 
     return (
         <div className="max-w-[800px] mx-auto flex flex-col gap-8">
@@ -84,7 +126,7 @@ export default function StepsTab({
                     </div>
                     <h1 className="text-2xl font-bold mb-1">{problem?.goal || title}</h1>
                     {(problemLatex || problem?.input) && (
-                        <p className="text-xl math-font text-primary dark:text-white">
+                        <p className="text-xl math-font text-primary">
                             <MathFont>
                                 {problemLatex || problem?.input}
                             </MathFont>
@@ -93,33 +135,28 @@ export default function StepsTab({
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 divide-x divide-gray-100 dark:divide-border-dark">
                     <div className="p-4">
-                        <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase mb-1">Given</p>
+                        <p className="text-xs font-bold text-green-600 dark:text-green-400 uppercase mb-1">Given</p>
                         <p className="text-sm font-medium math-font">{(problem?.given_data || []).join(", ") || "N/A"}</p>
                     </div>
                     <div className="p-4">
-                        <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase mb-1">Find</p>
+                        <p className="text-xs font-bold text-green-600 dark:text-green-400 uppercase mb-1">Find</p>
                         <p className="text-sm font-medium">{(problem?.unknowns || []).join(", ") || "N/A"}</p>
                     </div>
                     <div className="p-4">
-                        <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase mb-1">Assumptions</p>
+                        <p className="text-xs font-bold text-green-600 dark:text-green-400 uppercase mb-1">Assumptions</p>
                         <p className="text-sm font-medium italic">{(problem?.assumptions || []).join(", ") || "N/A"}</p>
                     </div>
                 </div>
                 <div className="px-6 py-4 bg-gray-50 dark:bg-slate-900/40">
-                    <details className="group">
-                        <summary className="flex cursor-pointer items-center justify-between">
-                            <span className="text-sm font-bold flex items-center gap-2">
-                                <span className="material-symbols-outlined text-primary dark:text-accent">lightbulb</span>
-                                Solution Plan
-                            </span>
-                            <span className="material-symbols-outlined text-gray-400 dark:text-slate-500 group-open:rotate-180 transition-transform">expand_more</span>
-                        </summary>
-                        <div className="pt-3 text-sm text-gray-600 dark:text-slate-300 leading-relaxed">
-                            {(analysisPlan.length > 0 ? analysisPlan : ["Identify key information", "Solve step-by-step", "Verify results"]).map((line, idx) => (
-                                <div key={idx}>{idx + 1}. {line}</div>
-                            ))}
-                        </div>
-                    </details>
+                    <div className="flex items-center gap-2 text-sm font-bold">
+                        <span className="material-symbols-outlined text-primary dark:text-accent">lightbulb</span>
+                        Solution Plan
+                    </div>
+                    <div className="pt-3 text-sm text-gray-600 dark:text-slate-300 leading-relaxed">
+                        {(analysisPlan.length > 0 ? analysisPlan : ["Identify key information", "Solve step-by-step", "Verify results"]).map((line, idx) => (
+                            <div key={idx}>{idx + 1}. {line}</div>
+                        ))}
+                    </div>
                 </div>
             </section>
 
@@ -140,12 +177,16 @@ export default function StepsTab({
                                 <h4 className="text-sm font-bold">{step.title}</h4>
                             </div>
                             {step.work && step.work.length > 0 ? (
-                                <div className="space-y-3 text-sm text-gray-600 dark:text-slate-300 leading-relaxed">
+                                <div className="space-y-3">
                                     {step.work.map((line, idx) => (
                                         <div key={idx} className="prose max-w-none">
-                                            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                                                {line}
-                                            </ReactMarkdown>
+                                            {line.includes("$") ? (
+                                                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                                    {line}
+                                                </ReactMarkdown>
+                                            ) : (
+                                                renderInlineMath(line)
+                                            )}
                                         </div>
                                     ))}
                                 </div>
@@ -156,17 +197,16 @@ export default function StepsTab({
                             )}
 
                             {step.rules_used && step.rules_used.length > 0 && (
-                                <details className="group mt-4">
-                                    <summary className="flex items-center gap-2 text-xs font-bold text-primary dark:text-accent cursor-pointer uppercase tracking-wide">
+                                <div className="mt-4">
+                                    <div className="flex items-center gap-2 text-xs font-bold text-primary dark:text-accent uppercase tracking-wide">
                                         Rules Used
-                                        <span className="material-symbols-outlined text-sm group-open:rotate-180">expand_more</span>
-                                    </summary>
+                                    </div>
                                     <ul className="mt-2 text-xs text-gray-500 dark:text-slate-400 list-disc list-inside space-y-1">
                                         {step.rules_used.map((rule, idx) => (
                                             <li key={idx}>{rule}</li>
                                         ))}
                                     </ul>
-                                </details>
+                                </div>
                             )}
 
                             {step.result && (
@@ -186,9 +226,6 @@ export default function StepsTab({
                                         <button className="text-left p-2 text-xs border border-gray-200 dark:border-border-dark bg-white dark:bg-surface-dark rounded-lg hover:border-primary transition-colors">
                                             {step.checkpoint.expected_answer}
                                         </button>
-                                        <button className="text-left p-2 text-xs border border-gray-200 dark:border-border-dark bg-white dark:bg-surface-dark rounded-lg hover:border-primary transition-colors">
-                                            Review the rule used
-                                        </button>
                                     </div>
                                 </div>
                             )}
@@ -205,38 +242,86 @@ export default function StepsTab({
                             Function Visualization
                         </h4>
                         <div className="flex items-center gap-2">
-                            <button className="p-1 rounded bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300"><span className="material-symbols-outlined text-sm">zoom_in</span></button>
-                            <button className="p-1 rounded bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300"><span className="material-symbols-outlined text-sm">zoom_out</span></button>
-                            <button className="p-1 rounded bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300"><span className="material-symbols-outlined text-sm">fullscreen</span></button>
+                            <button
+                                type="button"
+                                onClick={() => setVisualHeight(height => Math.min(height + 80, 900))}
+                                className="p-1 rounded bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300"
+                            >
+                                <span className="material-symbols-outlined text-sm">zoom_in</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setVisualHeight(height => Math.max(height - 80, 240))}
+                                className="p-1 rounded bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300"
+                            >
+                                <span className="material-symbols-outlined text-sm">zoom_out</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setIsFullscreen(value => !value)}
+                                className="p-1 rounded bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300"
+                            >
+                                <span className="material-symbols-outlined text-sm">fullscreen</span>
+                            </button>
                         </div>
                     </div>
                     <div className="p-4 bg-gray-50 dark:bg-slate-900/40">
                         {unreferencedVisuals.map(visual => (
-                            <VisualRenderer key={visual.id} visual={visual} />
+                            <VisualRenderer key={visual.id} visual={visual} height={renderHeight} />
                         ))}
                     </div>
                 </section>
             )}
+            {isFullscreen && unreferencedVisuals.length > 0 && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6">
+                    <div className="w-full max-w-5xl bg-white dark:bg-surface-dark rounded-2xl shadow-xl border border-gray-100 dark:border-border-dark overflow-hidden">
+                        <div className="px-6 py-4 border-b border-gray-50 dark:border-border-dark flex items-center justify-between">
+                            <h4 className="text-sm font-bold flex items-center gap-2">
+                                <span className="material-symbols-outlined text-primary dark:text-accent">monitoring</span>
+                                Function Visualization
+                            </h4>
+                            <button
+                                type="button"
+                                onClick={() => setIsFullscreen(false)}
+                                className="p-2 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300"
+                            >
+                                <span className="material-symbols-outlined text-sm">close</span>
+                            </button>
+                        </div>
+                        <div className="p-4 bg-gray-50 dark:bg-slate-900/40 max-h-[80vh] overflow-auto">
+                            {unreferencedVisuals.map(visual => (
+                                <VisualRenderer key={visual.id} visual={visual} height={renderHeight} />
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
 
-            <section className="bg-primary dark:bg-accent p-6 rounded-2xl text-white shadow-lg">
+            <section className="bg-primary dark:bg-accent p-5 rounded-2xl text-white shadow-lg">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                         <span className="material-symbols-outlined bg-white/20 p-1 rounded">verified</span>
-                        <span className="text-sm font-bold uppercase tracking-widest opacity-80">Final Answer</span>
+                        <span className="text-xs font-bold uppercase tracking-widest opacity-80">Final Answer</span>
                     </div>
                     <div className="flex items-center gap-2 bg-white/10 px-3 py-1 rounded-full border border-white/20">
                         <div className="size-2 rounded-full bg-green-400"></div>
                         <span className="text-[10px] font-bold">99% Confidence</span>
                     </div>
                 </div>
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-[1.2fr_1fr] gap-4">
                     <div>
-                        <p className="text-4xl font-bold math-font">{finalAnswer || "Result ready"}</p>
-                        <p className="text-sm opacity-80 mt-1">Use the final form to verify.</p>
+                        <p className="text-xl md:text-2xl font-semibold math-font">{finalAnswer || "Result ready"}</p>
+                        <p className="text-xs opacity-80 mt-2">Use the final form to verify.</p>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                        <span className="bg-white/10 px-3 py-1.5 rounded-lg text-xs font-bold border border-white/20">Standard: {finalAnswer || "N/A"}</span>
-                        <span className="bg-white/10 px-3 py-1.5 rounded-lg text-xs font-bold border border-white/20">Set: {finalAnswer || "N/A"}</span>
+                    <div className="space-y-2">
+                        <div className="bg-white/10 px-3 py-2 rounded-lg text-xs border border-white/20">
+                            <span className="font-bold uppercase text-[10px] tracking-wide opacity-80">Standard</span>
+                            <div className="mt-1 math-font">{finalAnswer || "N/A"}</div>
+                        </div>
+                        <div className="bg-white/10 px-3 py-2 rounded-lg text-xs border border-white/20">
+                            <span className="font-bold uppercase text-[10px] tracking-wide opacity-80">Set</span>
+                            <div className="mt-1 math-font">{finalAnswer || "N/A"}</div>
+                        </div>
                     </div>
                 </div>
             </section>

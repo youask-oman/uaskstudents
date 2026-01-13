@@ -95,33 +95,28 @@ export default function VerificationTab({
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 divide-x divide-gray-100 dark:divide-border-dark">
                     <div className="p-4">
-                        <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase mb-1">Given</p>
+                        <p className="text-xs font-bold text-green-600 dark:text-green-400 uppercase mb-1">Given</p>
                         <p className="text-sm font-medium">{(problem?.given_data || []).join(", ") || "N/A"}</p>
                     </div>
                     <div className="p-4">
-                        <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase mb-1">Find</p>
+                        <p className="text-xs font-bold text-green-600 dark:text-green-400 uppercase mb-1">Find</p>
                         <p className="text-sm font-medium">{(problem?.unknowns || []).join(", ") || "N/A"}</p>
                     </div>
                     <div className="p-4">
-                        <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase mb-1">Assumptions</p>
+                        <p className="text-xs font-bold text-green-600 dark:text-green-400 uppercase mb-1">Assumptions</p>
                         <p className="text-sm font-medium italic">{(problem?.assumptions || []).join(", ") || "N/A"}</p>
                     </div>
                 </div>
                 <div className="px-6 py-4 bg-gray-50 dark:bg-slate-900/40">
-                    <details className="group">
-                        <summary className="flex cursor-pointer items-center justify-between">
-                            <span className="text-sm font-bold flex items-center gap-2">
-                                <span className="material-symbols-outlined text-primary dark:text-accent">lightbulb</span>
-                                Solution Plan
-                            </span>
-                            <span className="material-symbols-outlined text-gray-400 dark:text-slate-500 group-open:rotate-180 transition-transform">expand_more</span>
-                        </summary>
-                        <div className="pt-3 text-sm text-gray-600 dark:text-slate-300 leading-relaxed">
-                            {(analysisPlan.length > 0 ? analysisPlan : ["Verify the result step-by-step"]).map((line, idx) => (
-                                <div key={idx}>{idx + 1}. {line}</div>
-                            ))}
-                        </div>
-                    </details>
+                    <div className="flex items-center gap-2 text-sm font-bold">
+                        <span className="material-symbols-outlined text-primary dark:text-accent">lightbulb</span>
+                        Solution Plan
+                    </div>
+                    <div className="pt-3 text-sm text-gray-600 dark:text-slate-300 leading-relaxed">
+                        {(analysisPlan.length > 0 ? analysisPlan : ["Verify the result step-by-step"]).map((line, idx) => (
+                            <div key={idx}>{idx + 1}. {line}</div>
+                        ))}
+                    </div>
                 </div>
             </section>
 

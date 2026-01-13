@@ -28,7 +28,9 @@ export default function DashboardPage() {
 
     const [activeMode, setActiveMode] = useState<ModeId | null>(null);
     const [isSeeAllOpen, setIsSeeAllOpen] = useState(false);
+    const [mathModeEnabled, setMathModeEnabled] = useState(true);
     const mathInputRef = useRef<MathInputRef>(null);
+    const [inputError, setInputError] = useState<string | null>(null);
 
     // Voice State
     const [voiceStage, setVoiceStage] = useState<'idle' | 'recording' | 'processing' | 'review' | 'error'>('idle');
@@ -483,6 +485,7 @@ export default function DashboardPage() {
         setCapturedImage(null);
         setCroppedImage(null);
         setQuery("");
+        setInputError(null);
         setProgressStep(0);
         setArtifactId(null);
         setSelectedQuestionId(null);
@@ -493,11 +496,69 @@ export default function DashboardPage() {
         if (mathInputRef.current) mathInputRef.current.setValue("");
     };
 
+    const validateMathQuery = (value: string) => {
+        const normalized = value.trim().toLowerCase();
+        if (!normalized) return "Please enter a math question.";
+        if (normalized.length < 3) return "Please enter at least 3 characters.";
+
+        const forbiddenPatterns = [
+            /<script/i,
+            /<\/\w/i,
+            /\bimport\s+\w+/i,
+            /\bfrom\s+[\w\.]+\s+import\b/i,
+            /require\(/i,
+            /eval\(/i,
+            /exec\(/i,
+            /subprocess/i,
+            /system\(/i,
+            /\bcat\s/i,
+            /\bls\s/i,
+            /\bdir\s/i,
+            /\bchmod\s/i,
+            /\bchown\s/i,
+            /curl\s/i,
+            /wget\s/i,
+            /powershell/i,
+            /cmd\.exe/i,
+            /rm\s/i,
+            /del\s/i,
+            /drop\s+table/i,
+            /insert\s+into/i,
+            /update\s+\w+/i,
+            /delete\s+from/i,
+            /\bselect\s+.*\bfrom\b/i,
+            /union\s+select/i,
+            /https?:\/\//i,
+            /\$\{/i,
+            /\{\{/i,
+            /\{[^}]*[0-9=+\-*/^][^}]*\}/i
+        ];
+        if (forbiddenPatterns.some(pattern => pattern.test(normalized))) {
+            return "Input blocked. Please enter a valid math question.";
+        }
+
+        const mathHints = [
+            /\d/,
+            /[=<>+\-*/^]/,
+            /\\(frac|sqrt|int|sum|lim|log|sin|cos|tan|theta|pi|alpha|beta|gamma|cdot|times)/i,
+            /\b(solve|simplify|factor|expand|evaluate|derivative|integral|integrate|limit|graph|plot|domain|range|root|roots|intercept|slope|equation|function|probability|matrix|vector|geometry|algebra|calculus)\b/i
+        ];
+        if (!mathHints.some(pattern => pattern.test(normalized))) {
+            return "Input must be a math question.";
+        }
+
+        return null;
+    };
+
     const handleSolve = async () => {
         if (isSolving) return;
 
         const userId = localStorage.getItem("user_id") || "1";
-        if (!query.trim()) return;
+        const validationError = validateMathQuery(query);
+        if (validationError) {
+            setInputError(validationError);
+            return;
+        }
 
         setIsSolving(true);
 
@@ -519,7 +580,10 @@ export default function DashboardPage() {
                 })
             });
 
-            if (!res.ok) throw new Error("Solve request failed");
+            if (!res.ok) {
+                const message = await res.text();
+                throw new Error(message || "Solve request failed");
+            }
 
             const data = await res.json();
             if (data?.error) {
@@ -529,7 +593,7 @@ export default function DashboardPage() {
 
         } catch (err) {
             console.error(err);
-            alert("Failed to generate solution. Make sure the backend is running and you have a stable connection.");
+            alert((err as Error).message || "Failed to generate solution. Make sure the backend is running and you have a stable connection.");
         } finally {
             setIsSolving(false);
         }
@@ -1012,20 +1076,44 @@ export default function DashboardPage() {
                                                     </div>
                                                 )}
 
-                                                <MathInput
-                                                    ref={mathInputRef}
-                                                    value={query}
-                                                    onChange={setQuery}
-                                                    onEnter={handleSolve}
-                                                    className="flex-1 p-2"
-                                                />
+                                                {mathModeEnabled ? (
+                                                    <MathInput
+                                                        ref={mathInputRef}
+                                                        value={query}
+                                                        onChange={(value) => {
+                                                            setQuery(value);
+                                                            if (inputError) setInputError(null);
+                                                        }}
+                                                        className="flex-1 p-2"
+                                                    />
+                                                ) : (
+                                                    <textarea
+                                                        value={query}
+                                                        onChange={(event) => {
+                                                            setQuery(event.target.value);
+                                                            if (inputError) setInputError(null);
+                                                        }}
+                                                        className="flex-1 p-4 bg-transparent outline-none text-slate-700 dark:text-slate-200 text-lg leading-relaxed resize-none"
+                                                        placeholder="Type your question..."
+                                                    />
+                                                )}
 
                                                 {/* Action Bar inside Input */}
                                                 <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 rounded-b-xl">
-                                                    <div className="flex items-center gap-2 text-xs text-slate-400">
+                                                    <div className="flex items-center gap-3 text-xs text-slate-400">
                                                         <span className="material-symbols-outlined text-sm">keyboard</span>
-                                                        <span>Math Mode Active</span>
+                                                        <span>{mathModeEnabled ? "Math Mode Active" : "Free Type Mode"}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setMathModeEnabled(enabled => !enabled)}
+                                                            className={`relative w-10 h-5 rounded-full transition-colors ${mathModeEnabled ? "bg-primary" : "bg-slate-300 dark:bg-slate-700"}`}
+                                                        >
+                                                            <div className={`absolute top-1 left-1 size-3 bg-white rounded-full transition-transform ${mathModeEnabled ? "translate-x-5" : ""}`}></div>
+                                                        </button>
                                                     </div>
+                                                    {inputError && (
+                                                        <span className="text-xs text-red-500 font-medium">{inputError}</span>
+                                                    )}
                                                     <div className="flex items-center gap-2">
                                                         <button
                                                             onClick={handleClear}
@@ -1036,7 +1124,7 @@ export default function DashboardPage() {
                                                         </button>
                                                         <button
                                                             onClick={handleSolve}
-                                                            disabled={isSolving || !query.trim()}
+                                                            disabled={isSolving || query.trim().length < 3}
                                                             className="flex items-center gap-2 bg-primary hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-bold transition-all shadow-lg shadow-primary/25 text-sm"
                                                         >
                                                             {isSolving ? 'Solving...' : 'Solve'}
@@ -1357,7 +1445,7 @@ export default function DashboardPage() {
                                 {history.length === 0 ? (
                                     <p className="text-sm text-slate-500 italic">No history found.</p>
                                 ) : (
-                                    history.map((session) => (
+                                    history.slice(0, 5).map((session) => (
                                         <div
                                             key={session.id}
                                             onClick={() => router.push(`/chat/${session.id}`)}

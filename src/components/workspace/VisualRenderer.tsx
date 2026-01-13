@@ -39,9 +39,10 @@ export interface Visual {
 
 interface VisualRendererProps {
     visual: Visual;
+    height?: number;
 }
 
-export default function VisualRenderer({ visual }: VisualRendererProps) {
+export default function VisualRenderer({ visual, height = 350 }: VisualRendererProps) {
     if (visual.type !== 'function_plot' && visual.type !== 'line_plot' && visual.type !== 'graph') return null;
 
     // Prepare Plotly traces
@@ -102,7 +103,7 @@ export default function VisualRenderer({ visual }: VisualRendererProps) {
                     layout={{
                         autosize: true,
                         width: undefined, // Responsive
-                        height: 350,
+                        height,
                         margin: { l: 40, r: 20, t: 30, b: 40 },
                         paper_bgcolor: 'rgba(0,0,0,0)',
                         plot_bgcolor: 'rgba(0,0,0,0)',

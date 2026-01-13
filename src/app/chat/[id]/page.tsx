@@ -32,6 +32,8 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     const [session, setSession] = useState<ChatSession | null>(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('steps');
+    const [monthlyTokensUsed, setMonthlyTokensUsed] = useState<number | null>(null);
+    const [totalProblemsSolved, setTotalProblemsSolved] = useState<number | null>(null);
 
     useEffect(() => {
         const fetchSession = async () => {
@@ -82,6 +84,44 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         }
     }, [id]);
 
+    useEffect(() => {
+        const fetchTokenUsage = async () => {
+            const userId = localStorage.getItem("user_id");
+            if (!userId) return;
+            try {
+                const res = await fetch(`/api/v1/user/token-usage?user_id=${userId}`);
+                if (!res.ok) return;
+                const data = await res.json();
+                if (typeof data.tokens_used === "number") {
+                    setMonthlyTokensUsed(data.tokens_used);
+                }
+            } catch (error) {
+                console.error("Failed to fetch token usage:", error);
+            }
+        };
+
+        fetchTokenUsage();
+    }, []);
+
+    useEffect(() => {
+        const fetchProfileUsage = async () => {
+            const userId = localStorage.getItem("user_id");
+            if (!userId) return;
+            try {
+                const res = await fetch(`/api/v1/user/profile?user_id=${userId}`);
+                if (!res.ok) return;
+                const data = await res.json();
+                if (typeof data?.usage?.questions_count === "number") {
+                    setTotalProblemsSolved(data.usage.questions_count);
+                }
+            } catch (error) {
+                console.error("Failed to fetch profile usage:", error);
+            }
+        };
+
+        fetchProfileUsage();
+    }, []);
+
     if (loading) {
         return (
             <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center">
@@ -102,6 +142,8 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     const solutionData = id === 'demo-1'
         ? DEMO_SOLUTION
         : (assistantMsg?.structured_data || null);
+    const sessionTokensUsed = session.messages.reduce((sum, message) => sum + (message.tokens_used ?? 0), 0);
+    const totalTokensUsed = (monthlyTokensUsed ?? sessionTokensUsed) + 6000;
 
 
 
@@ -178,6 +220,12 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             analysisPlan={solutionData?.analysis?.plan || []}
             keyConcepts={solutionData?.solution?.key_concepts || []}
             stepsCount={(solutionData?.solution?.steps || []).length}
+            onSelectConcepts={() => setActiveTab("concepts")}
+            llmUsed="YouAsk AI"
+            totalTokensUsed={totalTokensUsed}
+            questionTokensUsed={sessionTokensUsed}
+            totalProblemsSolved={totalProblemsSolved ?? 0}
+            tokenUsage={totalTokensUsed}
         >
             {renderContent()}
         </WorkspaceLayout>

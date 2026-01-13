@@ -1,6 +1,9 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
+import logoLight from "@/app/logo/logo-01.png";
+import logoDark from "@/app/logo/logo-13.png";
 
 interface WorkspaceProblem {
     input?: string;
@@ -23,6 +26,12 @@ interface WorkspaceLayoutProps {
     analysisPlan?: string[];
     keyConcepts?: string[];
     stepsCount?: number;
+    onSelectConcepts?: () => void;
+    llmUsed?: string;
+    totalTokensUsed?: number;
+    questionTokensUsed?: number;
+    totalProblemsSolved?: number;
+    tokenUsage?: number;
 }
 
 export default function WorkspaceLayout({
@@ -31,7 +40,13 @@ export default function WorkspaceLayout({
     problem,
     analysisPlan = [],
     keyConcepts = [],
-    stepsCount = 0
+    stepsCount = 0,
+    onSelectConcepts,
+    llmUsed,
+    totalTokensUsed,
+    questionTokensUsed,
+    totalProblemsSolved,
+    tokenUsage
 }: WorkspaceLayoutProps) {
     const userMessage = messages.find(msg => msg.role === "user" && typeof msg.content === "string")?.content;
     const summaryLine = analysisPlan[0] ? `We'll start by ${analysisPlan[0].toLowerCase()}.` : "We'll work through the key steps together.";
@@ -44,26 +59,33 @@ export default function WorkspaceLayout({
     return (
         <div className="min-h-screen bg-background-light dark:bg-background-dark text-[#111318] dark:text-slate-100 font-display antialiased">
             <header className="sticky top-0 z-50 flex items-center justify-between border-b border-[#dbdfe6] dark:border-border-dark bg-white/80 dark:bg-background-dark/80 backdrop-blur-md px-6 py-3">
-                <div className="flex items-center gap-4">
-                    <div className="size-8 text-primary">
-                        <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M44 4H30.6666V17.3334H17.3334V30.6666H4V44H44V4Z" fill="currentColor"></path>
-                        </svg>
-                    </div>
-                    <h2 className="text-xl font-bold tracking-tight">uask.ai</h2>
+                <div className="flex items-center gap-3">
+                    <Image src={logoLight} alt="uask.ai" className="h-8 w-auto dark:hidden" />
+                    <Image src={logoDark} alt="uask.ai" className="h-8 w-auto hidden dark:block" />
                 </div>
-                <div className="flex items-center gap-8">
-                    <nav className="hidden md:flex items-center gap-8">
+                <div className="hidden md:flex flex-1 items-center justify-center">
+                    <nav className="flex items-center gap-8">
                         <a className="text-sm font-medium hover:text-primary dark:hover:text-accent transition-colors" href="/dashboard">Dashboard</a>
                         <a className="text-sm font-bold text-primary dark:text-accent border-b-2 border-primary dark:border-accent pb-1" href="#">Workspace</a>
                         <a className="text-sm font-medium hover:text-primary dark:hover:text-accent transition-colors" href="/library">Library</a>
                     </nav>
-                    <div className="flex items-center gap-3">
-                        <button className="p-2 rounded-xl bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300">
-                            <span className="material-symbols-outlined">settings</span>
-                        </button>
-                        <div className="bg-center bg-cover rounded-full size-9 border border-gray-200 dark:border-border-dark" style={{ backgroundImage: "url('/avatar.png')" }}></div>
+                </div>
+                <div className="flex items-center gap-3">
+                    <div className="hidden sm:flex items-center gap-2">
+                        <div className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-slate-800 text-[10px] font-bold uppercase tracking-wide text-gray-600 dark:text-slate-300">
+                            Total Problems
+                            <span className="ml-2 text-gray-900 dark:text-white text-xs font-semibold">
+                                {(totalProblemsSolved ?? 0).toLocaleString()}
+                            </span>
+                        </div>
+                        <div className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-slate-800 text-[10px] font-bold uppercase tracking-wide text-gray-600 dark:text-slate-300">
+                            Token Usage
+                            <span className="ml-2 text-gray-900 dark:text-white text-xs font-semibold">
+                                {(tokenUsage ?? 0).toLocaleString()}
+                            </span>
+                        </div>
                     </div>
+                    <div className="bg-center bg-cover rounded-full size-9 border border-gray-200 dark:border-border-dark" style={{ backgroundImage: "url('/avatar.png')" }}></div>
                 </div>
             </header>
 
@@ -89,6 +111,24 @@ export default function WorkspaceLayout({
                                 {summaryText}
                             </p>
                         </div>
+                        <div className="flex flex-col gap-1 text-xs text-gray-700 dark:text-slate-300">
+                            <div className="flex items-center justify-between">
+                                <span className="font-semibold">LLM Used</span>
+                                <span className="font-medium">{llmUsed || "Youask AI"}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="font-semibold">Tokens this question</span>
+                                <span className="font-medium">
+                                    {(questionTokensUsed ?? 0).toLocaleString()}
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="font-semibold">Total tokens used</span>
+                                <span className="font-medium">
+                                    {(totalTokensUsed ?? 0).toLocaleString()}
+                                </span>
+                            </div>
+                        </div>
                     </div>
                     <div className="mt-auto pt-4 border-t border-gray-100 dark:border-border-dark">
                         <button className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors">
@@ -112,7 +152,11 @@ export default function WorkspaceLayout({
                         <p className="text-xs text-gray-600 dark:text-slate-300 leading-relaxed">
                             {rightBody}
                         </p>
-                        <button className="mt-4 text-xs font-bold text-primary dark:text-accent flex items-center gap-1">
+                        <button
+                            type="button"
+                            onClick={onSelectConcepts}
+                            className="mt-4 text-xs font-bold text-primary dark:text-accent flex items-center gap-1"
+                        >
                             Deep dive into concepts
                             <span className="material-symbols-outlined text-sm">arrow_forward</span>
                         </button>

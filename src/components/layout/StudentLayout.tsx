@@ -1,6 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Image from "next/image";
+import logoLight from "@/app/logo/logo-01.png";
+import logoDark from "@/app/logo/logo-13.png";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -110,7 +113,8 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
             {/* Sidebar Navigation */}
             <aside className="w-64 flex flex-col bg-[#111827] h-full border-r border-slate-800/50 flex-shrink-0">
                 <div className="p-6 flex items-center gap-3">
-                    <img src={isDark ? "/logo-dark.png" : "/logo.png"} alt="uask.ai" className="h-8 w-auto" />
+                    <Image src={logoLight} alt="uask.ai" className="h-8 w-auto dark:hidden" />
+                    <Image src={logoDark} alt="uask.ai" className="h-8 w-auto hidden dark:block" />
                     <div className="flex flex-col">
                         <span className="text-white font-bold text-xl tracking-tight leading-none">uask<span className="text-primary">.ai</span></span>
                         <span className="text-slate-500 text-[10px] uppercase tracking-widest font-semibold">Student Portal</span>

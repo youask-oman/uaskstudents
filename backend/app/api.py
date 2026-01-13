@@ -3,6 +3,7 @@ from sqlmodel import Session, select
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 import uuid
+import re
 import hashlib
 import json
 import os
@@ -136,10 +137,64 @@ class SolveResponse(BaseModel):
     tokens_used: Optional[int] = 500
     has_image: Optional[bool] = False
 
+def validate_math_query(text: str) -> None:
+    normalized = (text or "").strip().lower()
+    if not normalized:
+        raise HTTPException(status_code=400, detail="Please enter a math question.")
+
+    forbidden_patterns = [
+        r"<script",
+        r"</",
+        r"\bimport\s+\w+",
+        r"\bfrom\s+[\w\.]+\s+import\b",
+        r"require\(",
+        r"eval\(",
+        r"exec\(",
+        r"subprocess",
+        r"system\(",
+        r"\bcat\s",
+        r"\bls\s",
+        r"\bdir\s",
+        r"\bchmod\s",
+        r"\bchown\s",
+        r"curl\s",
+        r"wget\s",
+        r"powershell",
+        r"cmd\.exe",
+        r"rm\s",
+        r"del\s",
+        r"drop\s+table",
+        r"insert\s+into",
+        r"update\s+\w+",
+        r"delete\s+from",
+        r"\bselect\s+.*\bfrom\b",
+        r"union\s+select",
+        r"http://",
+        r"https://",
+        r"\$\{",
+        r"\{\{",
+        r"\{[^}]*[0-9=+\-*/^][^}]*\}",
+    ]
+    if any(re.search(pattern, normalized) for pattern in forbidden_patterns):
+        raise HTTPException(status_code=400, detail="Input blocked. Please enter a valid math question.")
+
+    math_hints = [
+        r"\d",
+        r"[=<>+\-*/^]",
+        r"\\(frac|sqrt|int|sum|lim|log|sin|cos|tan|theta|pi|alpha|beta|gamma|cdot|times)",
+        r"\b(solve|simplify|factor|expand|evaluate|derivative|integral|integrate|limit|graph|plot|domain|range|root|roots|intercept|slope|equation|function|probability|matrix|vector|geometry|algebra|calculus)\b",
+    ]
+    if not any(re.search(pattern, normalized) for pattern in math_hints):
+        raise HTTPException(status_code=400, detail="Input must be a math question.")
+
 class ChatHistoryItem(BaseModel):
     id: int
     title: str
     created_at: str
+    subject: Optional[str] = None
+    topic: Optional[str] = None
+    input: Optional[str] = None
+    is_saved: Optional[bool] = None
 
 class LoginRequest(BaseModel):
     email: str
@@ -960,6 +1015,8 @@ async def solve_problem(
         base_query = body.confirmed_markdown
     elif body.confirmed_text:
         base_query = body.confirmed_text
+
+    validate_math_query(base_query)
     
     if body.artifact_id and body.question_id:
         # Fetch detailed entities to provide "Hallucination Protection"
@@ -1270,6 +1327,8 @@ async def solve_v3_endpoint(
     
     if not problem_text:
         raise HTTPException(status_code=400, detail="No input provided")
+
+    validate_math_query(problem_text)
     
     # Context assembly
     context = f"Subject: {body.subject or 'General'}"
@@ -1560,7 +1619,9 @@ async def get_history(
             title=chat.title, 
             created_at=chat.created_at.isoformat(),
             subject=chat.subject or "Math",
-            is_saved=chat.is_saved 
+            topic=chat.topic,
+            input=next((msg.content for msg in chat.messages if msg.role == "user"), None),
+            is_saved=chat.is_saved
         ) 
         for chat in results
     ]

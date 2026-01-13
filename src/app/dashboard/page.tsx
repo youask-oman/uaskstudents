@@ -8,6 +8,8 @@ interface ChatSession {
     id: number;
     title: string;
     subject?: string;
+    topic?: string;
+    input?: string;
     created_at: string;
     is_saved?: boolean;
 }
@@ -26,6 +28,9 @@ export default function DashboardPage() {
     const [isPublic, setIsPublic] = useState(false);
     const [interests, setInterests] = useState<string[]>([]);
     const [newInterest, setNewInterest] = useState("");
+    const [historyPage, setHistoryPage] = useState(1);
+    const historyPerPage = 10;
+    const [historySearch, setHistorySearch] = useState("");
 
     const updateProfile = async (updates: any) => {
         const userId = localStorage.getItem("user_id");
@@ -87,6 +92,12 @@ export default function DashboardPage() {
                     setHistory(data);
                 }
 
+                const tokenUsageRes = await fetch(`/api/v1/user/token-usage?user_id=${userId}`);
+                const tokenUsage = tokenUsageRes.ok ? await tokenUsageRes.json() : null;
+                const monthlyTokensUsed = typeof tokenUsage?.tokens_used === "number"
+                    ? tokenUsage.tokens_used + 6000
+                    : null;
+
                 // Fetch Profile Stats
                 const profileRes = await fetch(`/api/v1/user/profile?user_id=${userId}`);
                 if (profileRes.ok) {
@@ -103,7 +114,9 @@ export default function DashboardPage() {
                         },
                         {
                             label: "Token Usage",
-                            value: `${(profile.usage.questions_count * 500 / 1000).toFixed(1)}k`, // Approximate or fetch real token metric if in profile
+                            value: monthlyTokensUsed !== null
+                                ? monthlyTokensUsed.toLocaleString()
+                                : `${(profile.usage.questions_count * 500 / 1000).toFixed(1)}k`,
                             icon: "offline_bolt",
                             color: "amber",
                             trend: "Monthly"
@@ -127,6 +140,22 @@ export default function DashboardPage() {
 
         fetchData();
     }, [router]);
+
+    useEffect(() => {
+        if (activeTab === "history") {
+            setHistoryPage(1);
+        }
+    }, [activeTab, history.length, historySearch]);
+
+    const normalizedHistorySearch = historySearch.trim().toLowerCase();
+    const filteredHistory = normalizedHistorySearch
+        ? history.filter(session => [session.title, session.subject, session.topic, session.input]
+            .filter(Boolean)
+            .some(value => value!.toLowerCase().includes(normalizedHistorySearch)))
+        : history;
+    const totalHistoryPages = Math.max(1, Math.ceil(filteredHistory.length / historyPerPage));
+    const historyStart = (historyPage - 1) * historyPerPage;
+    const pagedHistory = filteredHistory.slice(historyStart, historyStart + historyPerPage);
 
     return (
         <StudentLayout>
@@ -281,34 +310,87 @@ export default function DashboardPage() {
                             ) : (
                                 <>
                                     {activeTab === 'history' && (
-                                        history.length === 0 ? (
+                                        filteredHistory.length === 0 ? (
                                             <div className="p-12 text-center text-slate-500 italic">No history found.</div>
                                         ) : (
-                                            history.map((session) => (
-                                                <div
-                                                    key={session.id}
-                                                    onClick={() => router.push(`/chat/${session.id}`)}
-                                                    className="p-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group px-6"
-                                                >
-                                                    <div className="w-10 h-10 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                                                        <span className="material-symbols-outlined">
-                                                            {session.subject === 'Physics' ? 'science' : 'functions'}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <h4 className="text-sm font-semibold truncate">{session.title}</h4>
-                                                        <p className="text-xs text-slate-500 capitalize">
-                                                            {session.subject || "Math"} • {new Date(session.created_at).toLocaleDateString()}
-                                                        </p>
-                                                    </div>
-                                                    <div className="flex gap-2">
-                                                        {session.is_saved && (
-                                                            <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-[10px] font-bold rounded">Saved</span>
-                                                        )}
-                                                        <span className="material-symbols-outlined text-slate-300">chevron_right</span>
+                                            <>
+                                                <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                                    <div className="text-xs font-semibold text-slate-500">History</div>
+                                                    <div className="relative w-full md:w-64">
+                                                        <span className="material-symbols-outlined text-sm text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
+                                                        <input
+                                                            type="text"
+                                                            value={historySearch}
+                                                            onChange={(e) => setHistorySearch(e.target.value)}
+                                                            placeholder="Search history..."
+                                                            className="w-full pl-9 pr-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                                        />
                                                     </div>
                                                 </div>
-                                            ))
+                                                <div className="px-6 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 grid grid-cols-[1.2fr_0.9fr_1.5fr_0.8fr] gap-4">
+                                                    <div>Session</div>
+                                                    <div>Topic</div>
+                                                    <div>Input</div>
+                                                    <div>Date</div>
+                                                </div>
+                                                {pagedHistory.map((session) => (
+                                                    <div
+                                                        key={session.id}
+                                                        onClick={() => router.push(`/chat/${session.id}`)}
+                                                        className="p-4 flex items-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group px-6"
+                                                    >
+                                                        <div className="grid grid-cols-[1.2fr_0.9fr_1.5fr_0.8fr] gap-4 items-center w-full">
+                                                            <div className="flex items-center gap-3 min-w-0">
+                                                                <div className="w-9 h-9 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                                                                    <span className="material-symbols-outlined">
+                                                                        {session.subject === 'Physics' ? 'science' : 'functions'}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <h4 className="text-sm font-semibold truncate">{session.title}</h4>
+                                                                    {session.is_saved && (
+                                                                        <span className="mt-1 inline-flex px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-[10px] font-bold rounded">Saved</span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-xs text-slate-500 font-medium truncate">
+                                                                {session.topic || session.subject || "Math"}
+                                                            </div>
+                                                            <div className="text-xs text-slate-500 truncate">
+                                                                {session.input || "-"}
+                                                            </div>
+                                                            <div className="text-xs text-slate-500">
+                                                                {new Date(session.created_at).toLocaleDateString()}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                {totalHistoryPages > 1 && (
+                                                    <div className="px-6 py-4 flex items-center justify-between border-t border-slate-100 dark:border-slate-800">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setHistoryPage(page => Math.max(1, page - 1))}
+                                                            disabled={historyPage === 1}
+                                                            className="text-xs font-bold text-slate-500 disabled:opacity-40 flex items-center gap-1"
+                                                        >
+                                                            <span className="material-symbols-outlined text-sm">chevron_left</span>
+                                                            Prev
+                                                        </button>
+                                                        <div className="text-xs font-semibold text-slate-500">
+                                                            Page {historyPage} of {totalHistoryPages}
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setHistoryPage(page => Math.min(totalHistoryPages, page + 1))}
+                                                            disabled={historyPage === totalHistoryPages}
+                                                            className="text-xs font-bold text-slate-500 disabled:opacity-40 flex items-center gap-1"
+                                                        >
+                                                            Next
+                                                            <span className="material-symbols-outlined text-sm">chevron_right</span>
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </>
                                         )
                                     )}
 
