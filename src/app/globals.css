@@ -74,6 +74,22 @@
   font-family: "Times New Roman", Times, serif;
 }
 
+/* Equation styling */
+.math-font,
+.katex {
+  color: #2563eb;
+}
+
+.katex-display {
+  color: #2563eb;
+}
+
+.dark .math-font,
+.dark .katex,
+.dark .katex-display {
+  color: #ffffff;
+}
+
 
 /* Custom Math Keyboard Styles */
 .key-cap {

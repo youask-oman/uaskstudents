@@ -1,164 +1,162 @@
 "use client";
 
-import React from 'react';
+import React from "react";
+import WorkspaceTabs from "./WorkspaceTabs";
+import VisualRenderer, { Visual } from "./VisualRenderer";
 
-interface Concept {
-    title: string;
-    category: string;
-    description: string;
-    imageUrl?: string;
-    tags: string[];
+interface InterceptPoint {
+    x: number;
+    y: number;
+}
+
+interface Features {
+    intercepts?: {
+        x?: InterceptPoint[];
+        y?: InterceptPoint;
+    };
+    domain?: string;
+    range?: string;
 }
 
 interface ConceptsTabProps {
-    concepts: Concept[];
+    keyConcepts: string[];
+    commonMistakes: string[];
+    features?: Features;
+    visuals?: Visual[];
+    activeTab: "steps" | "verification" | "concepts" | "practice";
+    onSelectTab: (tab: ConceptsTabProps["activeTab"]) => void;
+    stepsCount?: number;
 }
 
-export default function ConceptsTab({ concepts }: ConceptsTabProps) {
-    const [isHintRevealed, setIsHintRevealed] = React.useState(false);
-    const [isSocratic, setIsSocratic] = React.useState(true);
+function formatPoint(point?: InterceptPoint | null): string {
+    if (!point) return "N/A";
+    return `(${point.x}, ${point.y})`;
+}
 
-    const toggleSocratic = () => setIsSocratic(!isSocratic);
-    const handleReveal = () => setIsHintRevealed(true);
+function formatPoints(points?: InterceptPoint[]): string {
+    if (!points || points.length === 0) return "N/A";
+    return points.map(point => `(${point.x}, ${point.y})`).join(", ");
+}
+
+export default function ConceptsTab({
+    keyConcepts,
+    commonMistakes,
+    features,
+    visuals,
+    activeTab,
+    onSelectTab,
+    stepsCount = 0
+}: ConceptsTabProps) {
+    const conceptCards = (keyConcepts.length > 0 ? keyConcepts : ["Core Concept"]).slice(0, 3);
+    const mistakes = commonMistakes.length > 0 ? commonMistakes : ["Double-check signs and arithmetic."];
+    const graphVisual = (visuals || [])[0];
 
     return (
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 max-w-5xl mx-auto w-full space-y-10 h-full custom-scrollbar">
-            <div className="flex items-end justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-2">Retrieved Concepts</h1>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm">Fundamental principles being applied in this problem.</p>
+        <div className="max-w-[900px] mx-auto flex flex-col gap-8">
+            <div>
+                <div className="text-xs text-slate-400 dark:text-slate-500 font-semibold uppercase tracking-wider">
+                    Workspace / Concepts
                 </div>
-                <div
-                    onClick={toggleSocratic}
-                    className="flex items-center gap-3 bg-slate-100 dark:bg-surface-dark/50 border border-slate-200 dark:border-border-dark p-1.5 rounded-lg cursor-pointer transition-colors hover:bg-slate-200 dark:hover:bg-surface-dark"
-                >
-                    <span className="text-[10px] font-bold uppercase px-2 text-slate-400 dark:text-slate-500">Socratic Mode</span>
-                    <div className={`w-10 h-5 border rounded-full relative transition-colors duration-300 ${isSocratic ? 'bg-primary/20 dark:bg-accent/20 border-primary/40 dark:border-accent/40' : 'bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700'}`}>
-                        <div className={`absolute top-0.5 size-3.5 rounded-full shadow-sm transition-all duration-300 ${isSocratic ? 'right-0.5 bg-primary dark:bg-accent shadow-primary/50' : 'left-0.5 bg-slate-400 dark:bg-slate-600'}`}></div>
-                    </div>
+                <div className="mt-2">
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Concept Workspace</h1>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                        Master the underlying principles behind the solution so you can solve similar problems with ease.
+                    </p>
                 </div>
             </div>
 
-            {/* ... concepts grid ... */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {concepts.map((concept, idx) => (
-                    <div key={idx} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-xl overflow-hidden flex flex-col group hover:border-primary/50 dark:hover:border-accent/50 transition-all duration-300">
-                        <div className="h-40 bg-slate-100 dark:bg-slate-900 relative overflow-hidden">
-                            {concept.imageUrl ? (
-                                <img src={concept.imageUrl} alt={concept.title} className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity" />
+            <WorkspaceTabs activeTab={activeTab} onSelectTab={onSelectTab} stepsCount={stepsCount} />
+
+            <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 space-y-4">
+                    <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white">
+                        <span className="material-symbols-outlined text-primary dark:text-accent text-sm">menu_book</span>
+                        Key Concepts
+                    </div>
+
+                    <div className="space-y-4">
+                        {conceptCards.map((concept) => (
+                            <div key={concept} className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-2xl p-5 shadow-sm">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-primary dark:text-accent bg-primary/10 px-2 py-1 rounded-full">
+                                        Algebra Foundation
+                                    </span>
+                                    <button className="text-xs font-bold text-primary dark:text-accent flex items-center gap-1">
+                                        Open Card
+                                        <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                                    </button>
+                                </div>
+                                <h3 className="text-base font-bold text-slate-900 dark:text-white mt-3">{concept}</h3>
+                                <p className="text-sm text-slate-600 dark:text-slate-300 mt-2">
+                                    Focus on why this concept applies and how it shapes the final result.
+                                </p>
+                                <div className="mt-4 bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-border-dark rounded-lg px-4 py-3 text-xs text-slate-600 dark:text-slate-300">
+                                    <span className="text-primary dark:text-accent font-bold">Rule:</span> Check the relationship between slope, intercepts, and the equation form.
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    <div className="bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 rounded-2xl p-4">
+                        <div className="flex items-center gap-2 text-sm font-bold text-red-600 dark:text-red-300">
+                            <span className="material-symbols-outlined text-sm">error</span>
+                            Common Mistakes
+                        </div>
+                        <div className="mt-3 space-y-3">
+                            {mistakes.slice(0, 2).map((mistake) => (
+                                <div key={mistake} className="border border-red-100 dark:border-red-900/50 bg-white/70 dark:bg-red-950/40 rounded-lg p-3">
+                                    <p className="text-sm font-semibold text-red-600 dark:text-red-200">{mistake.split(":")[0]}</p>
+                                    <p className="text-xs text-red-700 dark:text-red-300 mt-1">{mistake}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-2xl p-4 shadow-sm">
+                        <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white">
+                            <span className="material-symbols-outlined text-primary dark:text-accent text-sm">calculate</span>
+                            Math Facts
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 mt-4">
+                            <div className="border border-slate-200 dark:border-border-dark rounded-lg p-3 text-center">
+                                <p className="text-[10px] uppercase text-slate-400 dark:text-slate-500">X-Intercept</p>
+                                <p className="text-sm font-semibold math-font text-primary dark:text-white">{formatPoints(features?.intercepts?.x)}</p>
+                            </div>
+                            <div className="border border-slate-200 dark:border-border-dark rounded-lg p-3 text-center">
+                                <p className="text-[10px] uppercase text-slate-400 dark:text-slate-500">Y-Intercept</p>
+                                <p className="text-sm font-semibold math-font text-primary dark:text-white">{formatPoint(features?.intercepts?.y)}</p>
+                            </div>
+                            <div className="border border-slate-200 dark:border-border-dark rounded-lg p-3 text-center">
+                                <p className="text-[10px] uppercase text-slate-400 dark:text-slate-500">Domain</p>
+                                <p className="text-sm font-semibold math-font text-primary dark:text-white">{features?.domain || "N/A"}</p>
+                            </div>
+                            <div className="border border-slate-200 dark:border-border-dark rounded-lg p-3 text-center">
+                                <p className="text-[10px] uppercase text-slate-400 dark:text-slate-500">Range</p>
+                                <p className="text-sm font-semibold math-font text-primary dark:text-white">{features?.range || "N/A"}</p>
+                            </div>
+                        </div>
+                        <div className="mt-4 border border-slate-200 dark:border-border-dark rounded-xl overflow-hidden">
+                            {graphVisual ? (
+                                <div className="bg-slate-50 dark:bg-slate-900/40 p-3">
+                                    <VisualRenderer visual={graphVisual} />
+                                </div>
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center text-slate-300 dark:text-slate-800">
-                                    <span className="material-symbols-outlined text-6xl">menu_book</span>
+                                <div className="bg-slate-100 dark:bg-slate-900/40 h-32 flex items-center justify-center text-xs text-slate-500">
+                                    Graph preview
                                 </div>
                             )}
-                            <div className="absolute inset-0 bg-gradient-to-t from-white dark:from-card-dark to-transparent"></div>
-                            <div className="absolute bottom-4 left-4">
-                                <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded border backdrop-blur-sm ${idx % 2 === 0
-                                    ? 'bg-primary/20 text-primary dark:text-accent border-primary/30 dark:border-accent/30'
-                                    : 'bg-purple-500/20 text-purple-600 dark:text-purple-400 border-purple-500/30'
-                                    }`}>
-                                    {concept.category}
-                                </span>
-                                <h3 className="text-lg font-bold text-slate-900 dark:text-white mt-1">{concept.title}</h3>
-                            </div>
-                        </div>
-                        <div className="p-5 flex-1 flex flex-col">
-                            <div className="mb-4">
-                                <h4 className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider mb-2 uppercase tracking-widest">Core Insight</h4>
-                                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                                    {concept.description}
-                                </p>
-                            </div>
-                            <div className="mt-auto flex items-center justify-between pt-4 border-t border-slate-100 dark:border-border-dark">
-                                <div className="flex -space-x-2">
-                                    {concept.tags.map((tag, tIdx) => (
-                                        <div key={tIdx} className="size-6 rounded-full border border-white dark:border-card-dark bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-[10px] text-slate-600 dark:text-slate-300 leading-none">
-                                            {tag}
-                                        </div>
-                                    ))}
-                                </div>
-                                <button className="text-xs font-bold text-primary dark:text-accent hover:underline flex items-center gap-1">
-                                    Open Full Card <span className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
+                            <div className="bg-white dark:bg-surface-dark border-t border-slate-200 dark:border-border-dark p-3 flex items-center justify-end">
+                                <button className="text-xs font-bold text-primary dark:text-accent flex items-center gap-1">
+                                    Expand Graph
+                                    <span className="material-symbols-outlined text-sm">open_in_full</span>
                                 </button>
                             </div>
                         </div>
                     </div>
-                ))}
-            </div>
-
-            {/* Hint Ladder Section */}
-            <div className={`space-y-4 pt-4 transition-all duration-500 ${isSocratic ? 'opacity-100 translate-y-0' : 'opacity-40 pointer-events-none filter grayscale'}`}>
-                <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-primary dark:text-accent font-bold">stairs</span>
-                    <h2 className="text-lg font-bold text-slate-800 dark:text-white">Hint Ladder</h2>
-                    <span className="text-[10px] bg-slate-100 dark:bg-surface-dark px-2 py-0.5 rounded border border-slate-200 dark:border-border-dark text-slate-500 dark:text-slate-400 uppercase font-bold tracking-tighter">Socratic Path</span>
                 </div>
-                <div className="space-y-3">
-                    <div className="bg-slate-50/50 dark:bg-surface-dark/30 border border-slate-200 dark:border-border-dark p-4 rounded-xl flex gap-4">
-                        <div className="flex flex-col items-center">
-                            <div className="size-8 rounded-full bg-primary/20 dark:bg-primary text-primary dark:text-white flex items-center justify-center font-bold text-xs">1</div>
-                            <div className="w-[2px] flex-1 bg-slate-200 dark:bg-border-dark mt-2"></div>
-                        </div>
-                        <div className="pb-2">
-                            <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-1">Independence of Components</h4>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">Remember that horizontal and vertical motions are independent. How does gravity affect horizontal movement?</p>
-                        </div>
-                    </div>
-
-                    <div className="bg-white dark:bg-card-dark border border-primary/50 dark:border-accent/50 p-4 rounded-xl flex gap-4 shadow-[0_0_15px_rgba(59,130,246,0.05)]">
-                        <div className="flex flex-col items-center">
-                            <div className="size-8 rounded-full border-2 border-primary dark:border-accent text-primary dark:text-accent flex items-center justify-center font-bold text-xs">2</div>
-                            <div className="w-[2px] flex-1 bg-slate-200 dark:bg-border-dark mt-2"></div>
-                        </div>
-                        <div className="flex-1 pb-2">
-                            <div className="flex justify-between items-start mb-2">
-                                <h4 className="text-sm font-bold text-slate-900 dark:text-white">Vertical Peak Condition</h4>
-                                <span className="text-[10px] font-bold text-primary dark:text-accent animate-pulse uppercase">Revealed</span>
-                            </div>
-                            <p className="text-sm text-slate-600 dark:text-slate-300">At the high point of a trajectory, the vertical velocity component $v_y$ must stop increasing and briefly become exactly zero before reversing.</p>
-                        </div>
-                    </div>
-
-                    <div className={`p-4 rounded-xl flex gap-4 border transition-all duration-500 ${isHintRevealed ? 'bg-white dark:bg-card-dark border-primary/50 dark:border-accent/50 shadow-lg' : 'border-dashed border-slate-300 dark:border-border-dark bg-slate-50 dark:bg-transparent'}`}>
-                        <div className="flex flex-col items-center">
-                            <div className={`size-8 rounded-full flex items-center justify-center font-bold text-xs transition-colors duration-500 ${isHintRevealed ? 'border-2 border-primary dark:border-accent text-primary dark:text-accent' : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500'}`}>
-                                <span className="material-symbols-outlined text-sm font-bold">{isHintRevealed ? 'lightbulb' : 'lock'}</span>
-                            </div>
-                        </div>
-                        <div className="flex-1 flex items-center justify-between">
-                            <div>
-                                <h4 className={`text-sm font-bold transition-colors ${isHintRevealed ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}>Solve for Time</h4>
-                                <p className={`text-[11px] transition-colors ${isHintRevealed ? 'text-slate-600 dark:text-slate-300' : 'text-slate-400 dark:text-slate-600'}`}>
-                                    {isHintRevealed ? 'Use the kinematic equation $v_y = v_0\\sin(\\theta) - gt$ at the peak.' : 'Locked until previous step is understood.'}
-                                </p>
-                            </div>
-                            {!isHintRevealed && (
-                                <button
-                                    onClick={handleReveal}
-                                    className="px-3 py-1.5 bg-white dark:bg-surface-dark text-xs font-bold text-slate-400 border border-slate-200 dark:border-border-dark rounded-lg hover:text-primary dark:hover:text-accent hover:border-primary/50 dark:hover:border-accent/50 transition-colors"
-                                >
-                                    Reveal Hint
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div className="pt-8 pb-4 flex justify-center gap-4">
-                <button className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-white transition-all">
-                    <span className="material-symbols-outlined text-lg text-primary dark:text-accent">psychology_alt</span>
-                    Explain the logic
-                </button>
-                <button className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-white transition-all">
-                    <span className="material-symbols-outlined text-lg text-primary dark:text-accent">local_library</span>
-                    Full Library
-                </button>
-                <button className="flex items-center gap-2 px-5 py-2.5 bg-primary dark:bg-accent text-white rounded-lg text-sm font-bold hover:opacity-90 transition-all shadow-lg shadow-primary/20 dark:shadow-accent/20">
-                    <span className="material-symbols-outlined text-lg">edit_note</span>
-                    Take Notes
-                </button>
-            </div>
+            </section>
         </div>
     );
 }

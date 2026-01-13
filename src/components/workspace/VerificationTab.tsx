@@ -1,157 +1,258 @@
 "use client";
 
-import React from 'react';
-import katex from 'katex';
+import React from "react";
+import WorkspaceTabs from "./WorkspaceTabs";
 
-interface VerificationMethod {
-    description: string;
-    work: {
-        latex_lines: string[];
-    };
+interface VerificationItem {
+    method: string;
+    why_it_works: string;
+    steps: string[];
     conclusion: string;
 }
 
-interface VerificationTabProps {
-    methods: VerificationMethod[];
+interface InterceptPoint {
+    x: number;
+    y: number;
 }
 
-const Latex = ({ children, block = false }: { children: string; block?: boolean }) => {
-    try {
-        const html = katex.renderToString(children, {
-            throwOnError: false,
-            displayMode: block
-        });
-        return <span dangerouslySetInnerHTML={{ __html: html }} />;
-    } catch (e) {
-        return <span>{children}</span>;
-    }
-};
-
-export default function VerificationTab({ methods }: VerificationTabProps) {
-    const [isRechecking, setIsRechecking] = React.useState(false);
-    const [isConfirming, setIsConfirming] = React.useState(false);
-    const [status, setStatus] = React.useState<'idle' | 'success' | 'error'>('idle');
-
-    const handleRecheck = () => {
-        setIsRechecking(true);
-        setStatus('idle');
-        // Simulate re-running checks
-        setTimeout(() => {
-            setIsRechecking(false);
-            setStatus('success');
-            setTimeout(() => setStatus('idle'), 3000);
-        }, 2000);
+interface Features {
+    intercepts?: {
+        x?: InterceptPoint[];
+        y?: InterceptPoint;
     };
+    domain?: string;
+    range?: string;
+}
 
-    const handleConfirm = () => {
-        setIsConfirming(true);
-        // Simulate confirmation
-        setTimeout(() => {
-            setIsConfirming(false);
-            alert("Solution confirmed and saved to your library!");
-        }, 1500);
+interface SimilarExample {
+    problem: string;
+    key_idea: string;
+    short_solution: string;
+}
+
+interface VerificationTabProps {
+    methods: VerificationItem[];
+    activeTab: "steps" | "verification" | "concepts" | "practice";
+    onSelectTab: (tab: VerificationTabProps["activeTab"]) => void;
+    stepsCount?: number;
+    problem?: {
+        input?: string;
+        topic?: string;
+        goal?: string;
+        assumptions?: string[];
+        given_data?: string[];
+        unknowns?: string[];
     };
+    analysisPlan?: string[];
+    finalAnswer?: string;
+    confidence?: number;
+    keyConcepts?: string[];
+    features?: Features;
+    commonMistakes?: string[];
+    similarExamples?: SimilarExample[];
+}
+
+function formatPoint(point?: InterceptPoint | null): string {
+    if (!point) return "N/A";
+    return `(${point.x}, ${point.y})`;
+}
+
+function formatPoints(points?: InterceptPoint[]): string {
+    if (!points || points.length === 0) return "N/A";
+    return points.map(point => `(${point.x}, ${point.y})`).join(", ");
+}
+
+export default function VerificationTab({
+    methods,
+    activeTab,
+    onSelectTab,
+    stepsCount = 0,
+    problem,
+    analysisPlan = [],
+    finalAnswer,
+    confidence,
+    keyConcepts = [],
+    features,
+    commonMistakes = [],
+    similarExamples = []
+}: VerificationTabProps) {
+    const confidencePct = Math.round((confidence ?? 0) * 100);
 
     return (
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 max-w-4xl mx-auto w-full space-y-6 h-full custom-scrollbar">
-            <div className="flex items-center justify-between mb-4">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Automated Verification</h1>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Cross-referencing solution logic with physical laws and mathematical consistency.</p>
-                </div>
-                {status === 'success' && (
-                    <div className="flex items-center gap-2 bg-green-500/10 text-green-600 dark:text-green-400 px-3 py-1.5 rounded-lg border border-green-500/20 text-xs font-bold animate-in fade-in slide-in-from-top-2 duration-300">
-                        <span className="material-symbols-outlined text-sm">check_circle</span>
-                        All checks verified!
+        <div className="max-w-[800px] mx-auto flex flex-col gap-8">
+            <section className="bg-white dark:bg-surface-dark rounded-2xl shadow-sm border border-gray-100 dark:border-border-dark overflow-hidden">
+                <div className="p-6 border-b border-gray-50 dark:border-border-dark">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h1 className="text-xl font-bold">Solution Workspace</h1>
+                            <p className="text-xs text-gray-500 dark:text-slate-400">Mathematical Analysis & Verification</p>
+                        </div>
+                        <button className="px-3 py-2 text-xs font-bold border border-gray-200 dark:border-border-dark rounded-lg flex items-center gap-2">
+                            <span className="material-symbols-outlined text-sm">share</span>
+                            Share Workspace
+                        </button>
                     </div>
-                )}
-            </div>
-
-            <div className="space-y-6">
-                {methods.map((method, idx) => (
-                    <div key={idx} className={`bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-border-dark overflow-hidden transition-all ${isRechecking ? 'opacity-50 scale-[0.99]' : 'hover:border-green-500/30'}`}>
-                        <div className="bg-slate-50/50 dark:bg-white/5 px-6 py-4 border-b border-slate-200 dark:border-border-dark flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className={`size-6 rounded-full flex items-center justify-center ${isRechecking ? 'bg-slate-200 dark:bg-slate-800' : 'bg-green-500/20'}`}>
-                                    <span className={`material-symbols-outlined text-sm font-bold ${isRechecking ? 'text-slate-400 animate-spin' : 'text-green-600 dark:text-green-400'}`}>
-                                        {isRechecking ? 'sync' : 'check'}
-                                    </span>
-                                </div>
-                                <h4 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">Consistency Check #{idx + 1}</h4>
-                            </div>
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${isRechecking
-                                ? 'text-slate-400 bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-border-dark'
-                                : 'text-green-600 dark:text-green-400 bg-green-500/10 border-green-500/20'}`}>
-                                {isRechecking ? 'Verifying...' : 'Passed'}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 divide-x divide-gray-100 dark:divide-border-dark">
+                    <div className="p-4">
+                        <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase mb-1">Given</p>
+                        <p className="text-sm font-medium">{(problem?.given_data || []).join(", ") || "N/A"}</p>
+                    </div>
+                    <div className="p-4">
+                        <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase mb-1">Find</p>
+                        <p className="text-sm font-medium">{(problem?.unknowns || []).join(", ") || "N/A"}</p>
+                    </div>
+                    <div className="p-4">
+                        <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase mb-1">Assumptions</p>
+                        <p className="text-sm font-medium italic">{(problem?.assumptions || []).join(", ") || "N/A"}</p>
+                    </div>
+                </div>
+                <div className="px-6 py-4 bg-gray-50 dark:bg-slate-900/40">
+                    <details className="group">
+                        <summary className="flex cursor-pointer items-center justify-between">
+                            <span className="text-sm font-bold flex items-center gap-2">
+                                <span className="material-symbols-outlined text-primary dark:text-accent">lightbulb</span>
+                                Solution Plan
                             </span>
+                            <span className="material-symbols-outlined text-gray-400 dark:text-slate-500 group-open:rotate-180 transition-transform">expand_more</span>
+                        </summary>
+                        <div className="pt-3 text-sm text-gray-600 dark:text-slate-300 leading-relaxed">
+                            {(analysisPlan.length > 0 ? analysisPlan : ["Verify the result step-by-step"]).map((line, idx) => (
+                                <div key={idx}>{idx + 1}. {line}</div>
+                            ))}
                         </div>
-                        <div className="p-6">
-                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
-                                {method.description}
-                            </p>
-                            <div className="bg-slate-50 dark:bg-surface-dark/40 p-4 rounded-lg border border-slate-100 dark:border-border-dark flex flex-col gap-3">
-                                {method.work.latex_lines.map((line, lIdx) => (
-                                    <div key={lIdx} className="text-primary dark:text-latex-cyan text-lg overflow-x-auto w-full">
-                                        <Latex>{line}</Latex>
-                                    </div>
-                                ))}
-                            </div>
-                            <p className="text-green-700 dark:text-green-400 text-sm font-bold flex items-center gap-1 mt-4">
-                                <span className="material-symbols-outlined text-sm">check_circle</span>
-                                {method.conclusion}
-                            </p>
-                        </div>
-                    </div>
-                ))}
+                    </details>
+                </div>
+            </section>
 
-                {/* Sanity Check Warning (as seen in workspace 2) */}
-                <div className={`bg-white dark:bg-card-dark rounded-xl border overflow-hidden transition-all ${isRechecking ? 'opacity-50 scale-[0.99]' : 'border-orange-200 dark:border-orange-500/20'}`}>
-                    <div className="bg-orange-50/50 dark:bg-orange-500/5 px-6 py-4 border-b border-orange-100 dark:border-orange-500/10 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="size-6 rounded-full bg-orange-500/20 flex items-center justify-center">
-                                <span className="material-symbols-outlined text-orange-600 dark:text-orange-400 text-sm">info</span>
-                            </div>
-                            <h4 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">Sanity Check</h4>
-                        </div>
-                        <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded border border-orange-500/20">WARNING (TOLERANCE)</span>
+            <section className="bg-white dark:bg-surface-dark rounded-2xl shadow-sm border border-gray-100 dark:border-border-dark p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-primary dark:text-accent">Final Result</span>
+                    <p className="text-lg font-semibold mt-2 math-font text-primary dark:text-white">{finalAnswer || "Result ready"}</p>
+                </div>
+                <div className="flex items-center gap-3 bg-gray-50 dark:bg-slate-900/40 border border-gray-100 dark:border-border-dark rounded-xl px-4 py-3">
+                    <div className="size-12 rounded-full border-4 border-primary/20 flex items-center justify-center text-primary dark:text-accent font-bold">
+                        {confidencePct}%
                     </div>
-                    <div className="p-6">
-                        <ul className="space-y-3">
-                            <li className="flex gap-3 text-sm">
-                                <span className="material-symbols-outlined text-green-500 text-lg font-bold">check_circle</span>
-                                <span className="text-slate-600 dark:text-slate-300"><strong>Positivity:</strong> Values calculated are within expected physical bounds (e.g., $t &gt; 0$).</span>
-                            </li>
-                            <li className="flex gap-3 text-sm">
-                                <span className="material-symbols-outlined text-orange-500 text-lg">warning</span>
-                                <span className="text-slate-500 dark:text-slate-400 italic"><strong>Note:</strong> Ideal conditions assumed. Real-world friction or resistance neglected.</span>
-                            </li>
-                        </ul>
+                    <div>
+                        <p className="text-xs font-bold">Confidence</p>
+                        <p className="text-[10px] text-gray-500 dark:text-slate-400">Very High Accuracy</p>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <div className="pt-8 pb-4 flex justify-center gap-4">
-                <button
-                    onClick={handleRecheck}
-                    disabled={isRechecking}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-white transition-all disabled:opacity-50"
-                >
-                    <span className={`material-symbols-outlined text-lg text-primary dark:text-accent ${isRechecking ? 'animate-spin' : ''}`}>
-                        {isRechecking ? 'sync' : 'replay'}
-                    </span>
-                    {isRechecking ? 'Re-running...' : 'Re-run Checks'}
-                </button>
-                <button
-                    onClick={handleConfirm}
-                    disabled={isConfirming}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-primary dark:bg-accent text-white rounded-lg text-sm font-bold hover:opacity-90 transition-all shadow-lg shadow-primary/20 dark:shadow-accent/20 disabled:opacity-50"
-                >
-                    <span className={`material-symbols-outlined text-lg ${isConfirming ? 'animate-bounce' : ''}`}>
-                        {isConfirming ? 'pending' : 'check_circle'}
-                    </span>
-                    {isConfirming ? 'Confirming...' : 'Confirm Solution'}
-                </button>
-            </div>
+            <WorkspaceTabs activeTab={activeTab} onSelectTab={onSelectTab} stepsCount={stepsCount} />
+
+            <section className="bg-white dark:bg-surface-dark rounded-2xl shadow-sm border border-gray-100 dark:border-border-dark p-6">
+                <div className="flex items-center gap-2 text-sm font-bold text-primary dark:text-accent mb-4">
+                    <span className="material-symbols-outlined text-sm">verified</span>
+                    Verification Methods
+                </div>
+                <div className="space-y-4">
+                    {methods.map((method, idx) => (
+                        <div key={idx} className="border border-gray-100 dark:border-border-dark rounded-xl p-4">
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="material-symbols-outlined text-primary dark:text-accent text-sm">check_circle</span>
+                                <p className="text-sm font-bold">Method: {method.method}</p>
+                            </div>
+                            <p className="text-xs text-gray-500 dark:text-slate-400 mb-3">{method.why_it_works}</p>
+                            <ul className="space-y-2">
+                                {method.steps.map((step, sIdx) => (
+                                    <li key={sIdx} className="text-sm text-gray-700 dark:text-slate-200 flex items-start gap-2">
+                                        <span className="material-symbols-outlined text-green-500 text-sm">check</span>
+                                        <span>{step}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                            <div className="mt-4 bg-gray-50 dark:bg-slate-900/40 border border-gray-100 dark:border-border-dark rounded-lg p-3">
+                                <p className="text-[10px] uppercase text-gray-400 dark:text-slate-500 font-bold mb-1">Conclusion</p>
+                                <p className="text-sm text-gray-700 dark:text-slate-200">{method.conclusion}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </section>
+
+            <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white dark:bg-surface-dark rounded-2xl shadow-sm border border-gray-100 dark:border-border-dark p-4">
+                    <div className="flex items-center gap-2 text-sm font-bold mb-3">
+                        <span className="material-symbols-outlined text-primary dark:text-accent text-sm">insights</span>
+                        Key Concepts
+                    </div>
+                    <div className="space-y-3">
+                        {(keyConcepts.length > 0 ? keyConcepts : ["Core concept"])
+                            .slice(0, 3)
+                            .map((concept) => (
+                                <div key={concept} className="border border-gray-100 dark:border-border-dark rounded-lg p-3">
+                                    <p className="text-sm font-semibold">{concept}</p>
+                                    <p className="text-xs text-gray-500 dark:text-slate-400">Applies directly in verification.</p>
+                                </div>
+                            ))}
+                    </div>
+                </div>
+                <div className="bg-white dark:bg-surface-dark rounded-2xl shadow-sm border border-gray-100 dark:border-border-dark p-4">
+                    <div className="flex items-center gap-2 text-sm font-bold mb-3">
+                        <span className="material-symbols-outlined text-primary dark:text-accent text-sm">calculate</span>
+                        Math Facts
+                    </div>
+                    <div className="space-y-2 text-sm text-gray-700 dark:text-slate-200">
+                        <div className="flex items-center justify-between">
+                            <span className="text-gray-500 dark:text-slate-400">Domain</span>
+                            <span className="math-font text-primary dark:text-white">{features?.domain || "N/A"}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-gray-500 dark:text-slate-400">Range</span>
+                            <span className="math-font text-primary dark:text-white">{features?.range || "N/A"}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-gray-500 dark:text-slate-400">X-Intercepts</span>
+                            <span className="math-font text-primary dark:text-white">{formatPoints(features?.intercepts?.x)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-gray-500 dark:text-slate-400">Y-Intercept</span>
+                            <span className="math-font text-primary dark:text-white">{formatPoint(features?.intercepts?.y)}</span>
+                        </div>
+                    </div>
+                    <p className="text-[10px] text-gray-400 dark:text-slate-500 mt-3">Intercepts are computed from the verified equation.</p>
+                </div>
+            </section>
+
+            <section className="bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 rounded-2xl p-4">
+                <div className="flex items-center gap-2 text-sm font-bold text-red-600 dark:text-red-300 mb-2">
+                    <span className="material-symbols-outlined text-sm">warning</span>
+                    Common Mistakes
+                </div>
+                <ul className="text-sm text-red-700 dark:text-red-200 space-y-2">
+                    {(commonMistakes.length > 0 ? commonMistakes : ["Double-check signs when subtracting negatives."]).map((mistake, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                            <span className="material-symbols-outlined text-sm">error</span>
+                            <span>{mistake}</span>
+                        </li>
+                    ))}
+                </ul>
+            </section>
+
+            <section className="space-y-3">
+                <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold">Similar Practice Problems</h3>
+                    <button className="text-xs font-bold text-primary dark:text-accent flex items-center gap-1">
+                        Generate More
+                        <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                    </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {similarExamples.slice(0, 2).map((example, idx) => (
+                        <div key={idx} className="bg-white dark:bg-surface-dark rounded-xl border border-gray-100 dark:border-border-dark p-4">
+                            <p className="text-sm font-semibold mb-2">{example.problem}</p>
+                            <p className="text-xs text-gray-500 dark:text-slate-400 mb-2">{example.key_idea}</p>
+                            <button className="text-xs font-bold text-primary dark:text-accent flex items-center gap-1">
+                                Show Solution
+                                <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            </section>
         </div>
     );
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Lexend } from "next/font/google"; // For Student & Admin
 import "./globals.css";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: '--font-space-grotesk' });
 const lexend = Lexend({ subsets: ["latin"], variable: '--font-lexend' });
@@ -95,6 +96,7 @@ export default function RootLayout({
       </head>
       <body className="bg-background-light dark:bg-background-dark text-[#111318] dark:text-white transition-colors duration-200">
         {children}
+        <ThemeToggle />
       </body>
     </html>
   );

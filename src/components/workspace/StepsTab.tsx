@@ -1,13 +1,13 @@
 "use client";
 
 import React from 'react';
-import katex from 'katex';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 
 import VisualRenderer, { Visual } from './VisualRenderer';
+import WorkspaceTabs from './WorkspaceTabs';
 
 interface V3Checkpoint {
     question: string;
@@ -34,20 +34,37 @@ interface Step {
 interface StepsTabProps {
     title: string;
     steps: Step[];
-    onViewConcepts?: () => void;
     visuals?: Visual[];
     problemLatex?: string;
+    problem?: {
+        input?: string;
+        topic?: string;
+        goal?: string;
+        assumptions?: string[];
+        given_data?: string[];
+        unknowns?: string[];
+    };
+    analysisPlan?: string[];
+    finalAnswer?: string;
+    activeTab: "steps" | "verification" | "concepts" | "practice";
+    onSelectTab: (tab: StepsTabProps["activeTab"]) => void;
 }
 
-// Math Font Component for specific styling if needed
 const MathFont = ({ children }: { children: React.ReactNode }) => (
     <span className="font-serif italic">{children}</span>
 );
 
-export default function StepsTab({ title, steps, onViewConcepts, visuals, problemLatex }: StepsTabProps) {
-    const handleExportPDF = () => {
-        window.print();
-    };
+export default function StepsTab({
+    title,
+    steps,
+    visuals,
+    problemLatex,
+    problem,
+    analysisPlan = [],
+    finalAnswer,
+    activeTab,
+    onSelectTab
+}: StepsTabProps) {
     const referencedVisualIds = new Set(
         steps.flatMap(step => step.visual_refs ?? [])
     );
@@ -56,216 +73,173 @@ export default function StepsTab({ title, steps, onViewConcepts, visuals, proble
         visual => !referencedVisualIds.has(visual.id)
     );
 
-    const handleShare = async () => {
-        const shareData = {
-            title: `uask.ai Solution: ${title}`,
-            text: `Check out this step-by-step solution for: ${title}`,
-            url: window.location.href,
-        };
-
-        if (navigator.share) {
-            try {
-                await navigator.share(shareData);
-            } catch (err) {
-                console.error("Error sharing:", err);
-            }
-        } else {
-            const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareData.text + " " + shareData.url)}`;
-            window.open(whatsappUrl, '_blank');
-        }
-    };
-
     return (
-        <div className="flex-1 overflow-y-auto p-4 lg:p-12 bg-off-white h-full custom-scrollbar">
-            <div className="max-w-6xl mx-auto relative">
-                {/* Header Section from Stitch Design */}
-                <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-12 lg:mb-16 gap-4">
-                    <div>
-                        <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-navy">{title}</h1>
-                        {problemLatex && (
-                            <p className="text-navy/50 mt-3 font-serif italic text-xl md:text-2xl">
-                                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                                    {`$${problemLatex}$`}
-                                </ReactMarkdown>
-                            </p>
-                        )}
+        <div className="max-w-[800px] mx-auto flex flex-col gap-8">
+            <section className="bg-white dark:bg-surface-dark rounded-2xl shadow-sm border border-gray-100 dark:border-border-dark overflow-hidden">
+                <div className="p-6 border-b border-gray-50 dark:border-border-dark">
+                    <div className="flex items-center gap-2 mb-2">
+                        <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary dark:text-accent text-[10px] font-bold uppercase tracking-wide">
+                            {problem?.topic || "Topic"}
+                        </span>
                     </div>
-                    <button
-                        onClick={handleExportPDF}
-                        className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-navy bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all shadow-sm group"
-                    >
-                        <span className="material-symbols-outlined text-sm group-hover:text-electric-blue transition-colors">download</span>
-                        EXPORT PDF
-                    </button>
+                    <h1 className="text-2xl font-bold mb-1">{problem?.goal || title}</h1>
+                    {(problemLatex || problem?.input) && (
+                        <p className="text-xl math-font text-primary dark:text-white">
+                            <MathFont>
+                                {problemLatex || problem?.input}
+                            </MathFont>
+                        </p>
+                    )}
                 </div>
-
-                <div className="relative space-y-16 lg:space-y-24 pb-32">
-                    {/* Timeline Line */}
-                    <div className="absolute left-6 top-0 bottom-0 w-px bg-slate-200 -z-10 hidden md:block" />
-
-                    {steps.map((step, idx) => {
-                        const isV3 = Boolean(step.work || step.concept);
-                        const hasSidebar = step.concept || (step.rules_used && step.rules_used.length > 0);
-
-                        return (
-                            <div key={idx} className="relative flex flex-col md:flex-row gap-8 lg:gap-12 group">
-                                {/* Timeline Bubble */}
-                                <div className="flex-shrink-0 relative z-10 hidden md:block">
-                                    <div className="size-12 bg-electric-blue text-white rounded-full flex items-center justify-center font-bold text-xl shadow-lg ring-4 ring-off-white">
-                                        {step.index}
-                                    </div>
-                                </div>
-                                {/* Mobile Index */}
-                                <div className="md:hidden flex items-center gap-3">
-                                    <div className="size-8 bg-electric-blue text-white rounded-full flex items-center justify-center font-bold text-sm shadow-sm">
-                                        {step.index}
-                                    </div>
-                                    <span className="text-sm font-bold text-navy uppercase tracking-widest">Step {step.index}</span>
-                                </div>
-
-                                <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                                    {/* Main Content Area */}
-                                    <div className={`${hasSidebar ? 'lg:col-span-8' : 'lg:col-span-12'} space-y-4`}>
-                                        <h4 className="text-sm font-bold text-navy/40 uppercase tracking-[0.2em] flex items-center gap-3">
-                                            <span className="w-8 h-[1px] bg-navy/10 hidden md:inline-block"></span> {step.title}
-                                        </h4>
-
-                                        {/* Content Box */}
-                                        <div className="bg-white rounded-2xl border border-slate-100 py-8 px-6 md:px-8 shadow-sm text-navy/80 leading-relaxed font-display">
-                                            {isV3 ? (
-                                                <div className="space-y-4">
-                                                    {(step.work || []).map((line, i) => (
-                                                        <div key={i} className="prose prose-slate max-w-none prose-p:my-2 prose-p:leading-relaxed question-content">
-                                                            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                                                                {line}
-                                                            </ReactMarkdown>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                <div className="prose prose-slate max-w-none">
-                                                    <p>{step.explanation || "No explanation provided."}</p>
-                                                    {step.math?.latex_lines?.map((line, lIdx) => (
-                                                        <div key={lIdx} className="my-4 text-center text-lg lg:text-xl text-navy font-serif">
-                                                            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{`$$${line}$$`}</ReactMarkdown>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-
-                                            {/* Visuals */}
-                                            {step.visual_refs && step.visual_refs.length > 0 && visuals && (
-                                                <div className="mt-8 pt-8 border-t border-slate-50">
-                                                    {step.visual_refs.map(refId => {
-                                                        const vis = visuals.find(v => v.id === refId);
-                                                        if (vis) return <VisualRenderer key={refId} visual={vis} />;
-                                                        return null;
-                                                    })}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Logic Sidebar (Desktop) */}
-                                    {hasSidebar && (
-                                        <div className="lg:col-span-4 mt-4 lg:mt-10">
-                                            <div className="bg-navy rounded-2xl p-6 text-white shadow-xl">
-                                                <div className="flex items-center gap-2 text-electric-blue mb-4">
-                                                    <span className="material-symbols-outlined text-lg">science</span>
-                                                    <span className="text-[10px] font-bold uppercase tracking-widest">Logic Sidebar</span>
-                                                </div>
-                                                {step.concept && (
-                                                    <div className="mb-4">
-                                                        <h5 className="font-bold text-sm mb-2 text-white/90">Concept Applied</h5>
-                                                        <p className="text-xs text-white/60 leading-relaxed">
-                                                            {step.concept}
-                                                        </p>
-                                                    </div>
-                                                )}
-                                                {step.rules_used && step.rules_used.length > 0 && (
-                                                    <div>
-                                                        <h5 className="font-bold text-sm mb-2 text-white/90">Rules Used</h5>
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {step.rules_used.map((rule, ri) => (
-                                                                <span key={ri} className="px-2 py-1 rounded bg-white/10 text-[10px] text-white/80 font-medium">
-                                                                    {rule}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {step.checkpoint && (
-                                                    <div className="mt-6 pt-4 border-t border-white/10">
-                                                        <h5 className="font-bold text-sm mb-2 text-white/90">Concept Check</h5>
-                                                        <p className="text-xs text-white/60 leading-relaxed italic mb-1">"{step.checkpoint.question}"</p>
-                                                        <div className="flex items-center gap-2 mt-2">
-                                                            <span className="material-symbols-outlined text-green-400 text-sm">check_circle</span>
-                                                            <span className="text-xs font-bold text-green-400">{step.checkpoint.expected_answer}</span>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        );
-                    })}
+                <div className="grid grid-cols-1 md:grid-cols-3 divide-x divide-gray-100 dark:divide-border-dark">
+                    <div className="p-4">
+                        <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase mb-1">Given</p>
+                        <p className="text-sm font-medium math-font">{(problem?.given_data || []).join(", ") || "N/A"}</p>
+                    </div>
+                    <div className="p-4">
+                        <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase mb-1">Find</p>
+                        <p className="text-sm font-medium">{(problem?.unknowns || []).join(", ") || "N/A"}</p>
+                    </div>
+                    <div className="p-4">
+                        <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase mb-1">Assumptions</p>
+                        <p className="text-sm font-medium italic">{(problem?.assumptions || []).join(", ") || "N/A"}</p>
+                    </div>
                 </div>
-                {unreferencedVisuals.length > 0 && (
-                    <div className="mt-12 space-y-6 border-t border-slate-200 pt-12">
-                        <div className="flex items-center gap-3">
-                            <div className="size-10 rounded-full bg-electric-blue/10 text-electric-blue flex items-center justify-center">
-                                <span className="material-symbols-outlined text-lg">insights</span>
-                            </div>
-                            <div>
-                                <h3 className="text-lg font-bold text-navy">Visual Summary</h3>
-                                <p className="text-sm text-navy/50">Rendered after the steps to match schema requirements.</p>
-                            </div>
-                        </div>
-                        <div className="space-y-6">
-                            {unreferencedVisuals.map(visual => (
-                                <VisualRenderer key={visual.id} visual={visual} />
+                <div className="px-6 py-4 bg-gray-50 dark:bg-slate-900/40">
+                    <details className="group">
+                        <summary className="flex cursor-pointer items-center justify-between">
+                            <span className="text-sm font-bold flex items-center gap-2">
+                                <span className="material-symbols-outlined text-primary dark:text-accent">lightbulb</span>
+                                Solution Plan
+                            </span>
+                            <span className="material-symbols-outlined text-gray-400 dark:text-slate-500 group-open:rotate-180 transition-transform">expand_more</span>
+                        </summary>
+                        <div className="pt-3 text-sm text-gray-600 dark:text-slate-300 leading-relaxed">
+                            {(analysisPlan.length > 0 ? analysisPlan : ["Identify key information", "Solve step-by-step", "Verify results"]).map((line, idx) => (
+                                <div key={idx}>{idx + 1}. {line}</div>
                             ))}
-                        </div>
-                    </div>
-                )}
-                {/* Footer Feedback */}
-                <div className="flex flex-col md:flex-row items-center justify-center gap-8 py-12 border-t border-slate-200 mt-12 pb-24">
-                    <span className="text-sm font-semibold text-navy/40 italic">Was this solution helpful?</span>
-                    <div className="flex gap-4">
-                        <button className="flex items-center gap-2 px-6 py-2.5 border border-slate-200 rounded-xl text-xs font-bold uppercase text-navy hover:bg-white hover:border-green-500/30 transition-all bg-white shadow-sm">
-                            <span className="material-symbols-outlined text-green-500 text-lg">thumb_up</span> Helpful
-                        </button>
-                        <button className="flex items-center gap-2 px-6 py-2.5 border border-slate-200 rounded-xl text-xs font-bold uppercase text-navy hover:bg-white hover:border-red-500/30 transition-all bg-white shadow-sm">
-                            <span className="material-symbols-outlined text-red-400 text-lg">thumb_down</span> Not quite
-                        </button>
-                    </div>
-                </div>
-
-                {/* Developer Debug View */}
-                <div className="mt-12 pt-8 border-t border-slate-200">
-                    <details>
-                        <summary className="text-[10px] font-bold uppercase text-slate-400 cursor-pointer hover:text-primary transition-colors">Developer JSON View</summary>
-                        <div className="mt-4 p-4 bg-slate-900 text-slate-300 rounded-xl overflow-x-auto text-[10px] font-mono leading-relaxed border border-slate-700">
-                            <div className="mb-2 text-primary font-bold">RESPONSE DATA (V3):</div>
-                            <pre>{JSON.stringify({ steps, visuals }, null, 2)}</pre>
                         </div>
                     </details>
                 </div>
-            </div>
+            </section>
 
-            {/* Styles for Tailwind arbitrary overrides if config not loaded yet */}
-            <style jsx global>{`
-                .text-off-white { color: #FAFAFA; }
-                .bg-off-white { background-color: #FAFAFA; }
-                .text-navy { color: #1E293B; }
-                .bg-navy { background-color: #1E293B; }
-                .text-electric-blue { color: #2563EB; }
-                .bg-electric-blue { background-color: #2563EB; }
-                .ring-off-white { --tw-ring-color: #FAFAFA; }
-            `}</style>
+            <WorkspaceTabs activeTab={activeTab} onSelectTab={onSelectTab} stepsCount={steps.length} />
+
+            <section className="flex flex-col">
+                {steps.map((step) => (
+                    <div key={step.index} className="relative pl-12 pb-12">
+                        <div className="absolute left-0 top-0 size-10 rounded-full bg-primary text-white flex items-center justify-center font-bold z-10">
+                            {step.index}
+                        </div>
+                        <div className="absolute left-5 top-10 bottom-0 w-px bg-gray-200 dark:bg-slate-700"></div>
+                        <div className="bg-white dark:bg-surface-dark p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-border-dark">
+                            <div className="flex flex-wrap items-center gap-2 mb-4">
+                                <span className="px-2 py-0.5 rounded-lg bg-gray-100 dark:bg-slate-800 text-[10px] font-bold text-gray-600 dark:text-slate-300 uppercase">
+                                    {step.concept || "Step"}
+                                </span>
+                                <h4 className="text-sm font-bold">{step.title}</h4>
+                            </div>
+                            {step.work && step.work.length > 0 ? (
+                                <div className="space-y-3 text-sm text-gray-600 dark:text-slate-300 leading-relaxed">
+                                    {step.work.map((line, idx) => (
+                                        <div key={idx} className="prose max-w-none">
+                                            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                                {line}
+                                            </ReactMarkdown>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-sm text-gray-600 dark:text-slate-300 leading-relaxed">
+                                    {step.explanation || "No explanation provided."}
+                                </div>
+                            )}
+
+                            {step.rules_used && step.rules_used.length > 0 && (
+                                <details className="group mt-4">
+                                    <summary className="flex items-center gap-2 text-xs font-bold text-primary dark:text-accent cursor-pointer uppercase tracking-wide">
+                                        Rules Used
+                                        <span className="material-symbols-outlined text-sm group-open:rotate-180">expand_more</span>
+                                    </summary>
+                                    <ul className="mt-2 text-xs text-gray-500 dark:text-slate-400 list-disc list-inside space-y-1">
+                                        {step.rules_used.map((rule, idx) => (
+                                            <li key={idx}>{rule}</li>
+                                        ))}
+                                    </ul>
+                                </details>
+                            )}
+
+                            {step.result && (
+                                <div className="inline-flex items-center px-3 py-1.5 rounded-full bg-green-50 text-green-700 border border-green-100 dark:bg-green-900/30 dark:text-green-200 dark:border-green-900/40 text-xs font-bold mt-4">
+                                    Result: {step.result}
+                                </div>
+                            )}
+
+                            {step.checkpoint && (
+                                <div className="p-4 bg-primary/5 border border-primary/20 dark:border-primary/30 rounded-xl mt-4">
+                                    <div className="flex items-center gap-2 mb-2 text-primary dark:text-accent">
+                                        <span className="material-symbols-outlined text-sm">quiz</span>
+                                        <span className="text-xs font-bold uppercase">Checkpoint</span>
+                                    </div>
+                                    <p className="text-sm font-medium mb-3">{step.checkpoint.question}</p>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        <button className="text-left p-2 text-xs border border-gray-200 dark:border-border-dark bg-white dark:bg-surface-dark rounded-lg hover:border-primary transition-colors">
+                                            {step.checkpoint.expected_answer}
+                                        </button>
+                                        <button className="text-left p-2 text-xs border border-gray-200 dark:border-border-dark bg-white dark:bg-surface-dark rounded-lg hover:border-primary transition-colors">
+                                            Review the rule used
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ))}
+            </section>
+
+            {unreferencedVisuals.length > 0 && (
+                <section className="bg-white dark:bg-surface-dark rounded-2xl shadow-sm border border-gray-100 dark:border-border-dark overflow-hidden">
+                    <div className="px-6 py-4 border-b border-gray-50 dark:border-border-dark flex items-center justify-between">
+                        <h4 className="text-sm font-bold flex items-center gap-2">
+                            <span className="material-symbols-outlined text-primary dark:text-accent">monitoring</span>
+                            Function Visualization
+                        </h4>
+                        <div className="flex items-center gap-2">
+                            <button className="p-1 rounded bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300"><span className="material-symbols-outlined text-sm">zoom_in</span></button>
+                            <button className="p-1 rounded bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300"><span className="material-symbols-outlined text-sm">zoom_out</span></button>
+                            <button className="p-1 rounded bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300"><span className="material-symbols-outlined text-sm">fullscreen</span></button>
+                        </div>
+                    </div>
+                    <div className="p-4 bg-gray-50 dark:bg-slate-900/40">
+                        {unreferencedVisuals.map(visual => (
+                            <VisualRenderer key={visual.id} visual={visual} />
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            <section className="bg-primary dark:bg-accent p-6 rounded-2xl text-white shadow-lg">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined bg-white/20 p-1 rounded">verified</span>
+                        <span className="text-sm font-bold uppercase tracking-widest opacity-80">Final Answer</span>
+                    </div>
+                    <div className="flex items-center gap-2 bg-white/10 px-3 py-1 rounded-full border border-white/20">
+                        <div className="size-2 rounded-full bg-green-400"></div>
+                        <span className="text-[10px] font-bold">99% Confidence</span>
+                    </div>
+                </div>
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                    <div>
+                        <p className="text-4xl font-bold math-font">{finalAnswer || "Result ready"}</p>
+                        <p className="text-sm opacity-80 mt-1">Use the final form to verify.</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <span className="bg-white/10 px-3 py-1.5 rounded-lg text-xs font-bold border border-white/20">Standard: {finalAnswer || "N/A"}</span>
+                        <span className="bg-white/10 px-3 py-1.5 rounded-lg text-xs font-bold border border-white/20">Set: {finalAnswer || "N/A"}</span>
+                    </div>
+                </div>
+            </section>
         </div>
     );
 }
