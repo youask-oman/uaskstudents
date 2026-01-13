@@ -43,11 +43,15 @@ class FigureRefinementService:
                 self._figure_prompt = "Extract graph details as JSON."
         return self._figure_prompt
 
-    def refine_blocks(self, blocks: List[Dict[str, Any]], image_path: str, base_dir: Optional[str] = None, db=None) -> List[Dict[str, Any]]:
+    def refine_blocks(self, blocks: List[Dict[str, Any]], image_path: str, base_dir: Optional[str] = None, db=None, max_refinements: Optional[int] = None) -> List[Dict[str, Any]]:
         refined_blocks = []
+        refined_count = 0
         
         for block in blocks:
             if block["type"] == "figure":
+                if max_refinements is not None and refined_count >= max_refinements:
+                    refined_blocks.append(block)
+                    continue
                 try:
                     # Determine strategy: if it looks like a table or choices
                     # For now, we use VlmEngine for best accuracy on refinement
@@ -68,6 +72,7 @@ class FigureRefinementService:
                     block["data_json"] = refinement_result.get("json", {})
                     block["refined_content"] = refinement_result.get("markdown", "")
                     block["type"] = "refined_figure" # Mark as refined
+                    refined_count += 1
                     
                 except Exception as e:
                     logger.error(f"Failed to refine figure {block.get('asset_id')}: {e}")

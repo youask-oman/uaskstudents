@@ -142,6 +142,47 @@ def validate_math_query(text: str) -> None:
     if not normalized:
         raise HTTPException(status_code=400, detail="Please enter a math question.")
 
+    bad_words = [
+        "fuck",
+        "fucking",
+        "shit",
+        "shitty",
+        "bitch",
+        "asshole",
+        "bastard",
+        "dick",
+        "cock",
+        "pussy",
+        "cunt",
+        "nigger",
+        "faggot",
+        "slut",
+        "whore",
+        "motherfucker",
+        "sex",
+        "sexual",
+        "porn",
+        "porno",
+        "pornography",
+        "rape",
+        "rapist",
+        "cum",
+        "ejaculate",
+        "orgasm",
+        "blowjob",
+        "handjob",
+        "anal",
+        "penis",
+        "vagina",
+        "boobs",
+        "tits",
+        "nude",
+        "nudes",
+        "naked"
+    ]
+    if any(re.search(rf"\\b{re.escape(word)}\\b", normalized) for word in bad_words):
+        raise HTTPException(status_code=400, detail="Inappropriate language detected. Please rephrase.")
+
     forbidden_patterns = [
         r"<script",
         r"</",
@@ -673,6 +714,9 @@ async def confirm_ocr(
     if not artifact:
         raise HTTPException(status_code=404, detail="Artifact not found")
 
+    validate_math_query(request.confirmed_text)
+    validate_math_query(request.confirmed_markdown)
+
     # Create Confirmation record
     conf = OCRConfirmation(
         artifact_id=artifact_id,
@@ -878,6 +922,8 @@ async def confirm_voice_artifact(
         raise HTTPException(status_code=404, detail="Artifact not found")
     
     confirmed_math = request.confirmed_normalized_math_text or artifact.normalized_math_text
+    validate_math_query(request.confirmed_transcript_text)
+    validate_math_query(confirmed_math)
     
     # Build ProblemJSON
     problem_json = {

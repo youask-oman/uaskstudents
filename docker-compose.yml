@@ -58,6 +58,8 @@ services:
       REDIS_URL: redis://redis:6379/0
 
       LOCAL_STORAGE_PATH: /app/storage
+      OCR_FAST_MODE: "1"
+      OCR_MAX_FIGURE_REFINEMENTS: "1"
     depends_on:
       postgres:
         condition: service_healthy

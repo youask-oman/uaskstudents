@@ -92,13 +92,13 @@ def run_ocr_job(self, job_id: str):
             assets_dir = f"storage/ocr_assets/{job_id}"
             os.makedirs(assets_dir, exist_ok=True)
 
-            # --- STAGE 1: Page-Level Inventory (Pass 1) ---
-            # We use the VLM to get a high-level inventory of what is on the page
-            logger.info(f"Running Pass 1 (Inventory) for job {job_id}...")
-            inventory = post_process_service.process(None, crop.cropped_storage_url)
-            
-            # --- STAGE 2: OCR Extraction (Pass 2) ---
-            logger.info(f"Running Pass 2 (OCR) for job {job_id}...")
+            fast_mode = os.getenv("OCR_FAST_MODE", "0") == "1"
+            skip_inventory = fast_mode or os.getenv("OCR_SKIP_INVENTORY", "0") == "1"
+            skip_refinement = fast_mode or os.getenv("OCR_SKIP_REFINEMENT", "0") == "1"
+            max_refinements = int(os.getenv("OCR_MAX_FIGURE_REFINEMENTS", "3"))
+
+            # --- STAGE 1: OCR Extraction (Pass 1) ---
+            logger.info(f"Running Pass 1 (OCR) for job {job_id}...")
             start_time = time.time()
             ocr_result = ocr_service.process_job(
                 crop.cropped_storage_url, 
@@ -114,10 +114,30 @@ def run_ocr_job(self, job_id: str):
             for b in blocks:
                 if b["type"] == "figure" and "asset_id" in b:
                     b["url"] = f"/storage/ocr_assets/{job_id}/{b['asset_id']}"
-            
+
+            # --- STAGE 2: Page-Level Inventory (Pass 2) ---
+            if skip_inventory:
+                inventory = {
+                    "doc_type": "mixed",
+                    "questions": [
+                        {"id": "1", "prompt": raw_markdown, "choices": [], "has_figure": False}
+                    ],
+                    "figures": [],
+                    "coverage_checklist": {"warnings": ["INVENTORY_SKIPPED"]}
+                }
+            else:
+                logger.info(f"Running Pass 2 (Inventory) for job {job_id}...")
+                inventory = post_process_service.process(raw_markdown, None)
+
             # --- STAGE 3: Figure Refinement (Pass 3) ---
-            # Targeted VLM on detected figures
-            refined_blocks = figure_refinement_service.refine_blocks(blocks, crop.cropped_storage_url, base_dir=assets_dir)
+            refined_blocks = blocks
+            if not skip_refinement:
+                refined_blocks = figure_refinement_service.refine_blocks(
+                    blocks,
+                    crop.cropped_storage_url,
+                    base_dir=assets_dir,
+                    max_refinements=max_refinements if max_refinements > 0 else None
+                )
             
             # --- STAGE 4: Entity Mapping & Storage ---
             # We merge the Inventory (structural) with OCR (textual)

@@ -7,9 +7,13 @@ import json
 # Lazy import - only load pix2text when actually needed (worker only)
 try:
     from pix2text import Pix2Text
-    from pix2text.vlm import VlmTextFormulaOCR, VlmTableOCR
 except ImportError:
     Pix2Text = None
+
+# Optional VLM helpers (not required for local Pix2Text)
+try:
+    from pix2text.vlm import VlmTextFormulaOCR, VlmTableOCR
+except ImportError:
     VlmTextFormulaOCR = None
     VlmTableOCR = None
 

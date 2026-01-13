@@ -42,6 +42,7 @@ export default function DashboardPage() {
     const [voiceSubject, setVoiceSubject] = useState("Mathematics");
     const [voiceDifficulty, setVoiceDifficulty] = useState("High School / AP");
     const [formattingEnabled, setFormattingEnabled] = useState(true);
+    const [ocrFastMode, setOcrFastMode] = useState(true);
 
     const router = useRouter();
 
@@ -226,6 +227,12 @@ export default function DashboardPage() {
 
     const handleConfirmVoice = async () => {
         if (!voiceArtifact || isSolving) return;
+        const transcriptError = validateMathQuery(voiceArtifact.transcript_raw || "");
+        const normalizedError = validateMathQuery(query || "");
+        if (transcriptError || normalizedError) {
+            setInputError(transcriptError || normalizedError);
+            return;
+        }
         setIsSolving(true);
         try {
             await fetch(`/api/v1/voice/artifacts/${voiceArtifact.id}/confirm`, {
@@ -358,7 +365,8 @@ export default function DashboardPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     crop_id: cid,
-                    preferred_engine: "auto"
+                    preferred_engine: "auto",
+                    user_intent: ocrFastMode ? "normal" : "high_accuracy"
                 })
             });
             if (!jobRes.ok) {
@@ -501,6 +509,48 @@ export default function DashboardPage() {
         if (!normalized) return "Please enter a math question.";
         if (normalized.length < 3) return "Please enter at least 3 characters.";
 
+        const badWords = [
+            "fuck",
+            "fucking",
+            "shit",
+            "shitty",
+            "bitch",
+            "asshole",
+            "bastard",
+            "dick",
+            "cock",
+            "pussy",
+            "cunt",
+            "nigger",
+            "faggot",
+            "slut",
+            "whore",
+            "motherfucker",
+            "sex",
+            "sexual",
+            "porn",
+            "porno",
+            "pornography",
+            "rape",
+            "rapist",
+            "cum",
+            "ejaculate",
+            "orgasm",
+            "blowjob",
+            "handjob",
+            "anal",
+            "penis",
+            "vagina",
+            "boobs",
+            "tits",
+            "nude",
+            "nudes",
+            "naked"
+        ];
+        if (badWords.some(word => new RegExp(`\\b${word}\\b`, "i").test(normalized))) {
+            return "Inappropriate language detected. Please rephrase.";
+        }
+
         const forbiddenPatterns = [
             /<script/i,
             /<\/\w/i,
@@ -599,6 +649,41 @@ export default function DashboardPage() {
         }
     };
 
+    const handleConfirmOcr = async () => {
+        if (!artifactId || isSolving) return;
+        const validationError = validateMathQuery(query);
+        if (validationError) {
+            setInputError(validationError);
+            return;
+        }
+
+        setIsSolving(true);
+        try {
+            const res = await fetch(`/api/v1/ocr/artifacts/${artifactId}/confirm`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    confirmed_markdown: query,
+                    confirmed_text: query,
+                    confirmed_latex_blocks: [
+                        ...Object.entries(choices).map(([k, v]) => ({ type: 'choice', key: k, value: v }))
+                    ]
+                })
+            });
+
+            if (!res.ok) {
+                const message = await res.text();
+                throw new Error(message || "Confirm request failed");
+            }
+            await handleSolve();
+        } catch (err) {
+            console.error(err);
+            alert((err as Error).message || "Failed to confirm and solve.");
+        } finally {
+            setIsSolving(false);
+        }
+    };
+
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen text-slate-900 dark:text-slate-100 font-display transition-colors duration-200">
             <DashboardNavBar />
@@ -669,6 +754,21 @@ export default function DashboardPage() {
                                                         </div>
                                                     </div>
                                                 </div>
+                                                <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3">
+                                                    <div>
+                                                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Fast OCR</p>
+                                                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                                                            Faster results with lighter analysis.
+                                                        </p>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setOcrFastMode(value => !value)}
+                                                        className={`relative w-12 h-6 rounded-full transition-colors ${ocrFastMode ? "bg-primary" : "bg-slate-300 dark:bg-slate-700"}`}
+                                                    >
+                                                        <div className={`absolute top-1 left-1 size-4 bg-white rounded-full transition-transform ${ocrFastMode ? "translate-x-6" : ""}`}></div>
+                                                    </button>
+                                                </div>
 
                                                 <label
                                                     onDrop={handleDrop}
@@ -694,7 +794,7 @@ export default function DashboardPage() {
                                                     </div>
                                                 </label>
 
-                                                <div className="flex items-center justify-center">
+                                                <div className="flex flex-col items-center gap-2">
                                                     <label className="flex items-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-90 px-8 py-3 rounded-lg font-bold transition-all shadow-lg cursor-pointer">
                                                         <input
                                                             type="file"
@@ -706,6 +806,9 @@ export default function DashboardPage() {
                                                         <span className="material-symbols-outlined">photo_camera</span>
                                                         <span>Snap Photo</span>
                                                     </label>
+                                                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                                                        Using YouAsk vision AI
+                                                    </span>
                                                 </div>
                                             </>
                                         )}
@@ -891,7 +994,10 @@ export default function DashboardPage() {
                                                                     <textarea
                                                                         className="w-full bg-transparent p-4 min-h-[120px] outline-none text-sm leading-relaxed custom-scrollbar"
                                                                         value={query}
-                                                                        onChange={(e) => setQuery(e.target.value)}
+                                                                        onChange={(e) => {
+                                                                            setQuery(e.target.value);
+                                                                            if (inputError) setInputError(null);
+                                                                        }}
                                                                         placeholder="Enter problem text here..."
                                                                     />
                                                                 </div>
@@ -954,9 +1060,14 @@ export default function DashboardPage() {
                                                     <span className="material-symbols-outlined text-sm">info</span>
                                                     <span>Please verify symbols (exponents, minus signs) match your image before solving.</span>
                                                 </div>
+                                                {inputError && (
+                                                    <div className="text-xs text-red-500 font-medium px-2">
+                                                        {inputError}
+                                                    </div>
+                                                )}
 
                                                 <button
-                                                    onClick={handleSolve}
+                                                    onClick={handleConfirmOcr}
                                                     disabled={isSolving}
                                                     className={`w-full bg-primary hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-lg shadow-xl shadow-primary/20 flex items-center justify-center gap-2 transition-all ${isSolving ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.02]'}`}
                                                 >
@@ -1111,6 +1222,16 @@ export default function DashboardPage() {
                                                             <div className={`absolute top-1 left-1 size-3 bg-white rounded-full transition-transform ${mathModeEnabled ? "translate-x-5" : ""}`}></div>
                                                         </button>
                                                     </div>
+                                                    <div className="flex flex-1 flex-col items-center">
+                                                        <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                                                            Using YouAsk AI
+                                                        </span>
+                                                        {isSolving && (
+                                                            <div className="mt-1 h-1 w-24 rounded-full bg-emerald-100 dark:bg-emerald-900/40 overflow-hidden">
+                                                                <div className="h-full w-full bg-emerald-500 animate-pulse"></div>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                     {inputError && (
                                                         <span className="text-xs text-red-500 font-medium">{inputError}</span>
                                                     )}
@@ -1149,6 +1270,9 @@ export default function DashboardPage() {
                                                 <div>
                                                     <h3 className="text-lg font-bold">Tap to Start</h3>
                                                     <p className="text-sm text-slate-500">I'll transcribe your math speech into LaTeX.</p>
+                                                    <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mt-2">
+                                                        Using YouAsk voice AI to script
+                                                    </p>
                                                 </div>
                                             </div>
                                         )}
@@ -1243,6 +1367,9 @@ export default function DashboardPage() {
                                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-4">
                                                     {/* Editable Transcript Pane */}
                                                     <div className="space-y-4">
+                                                        <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                                                            Using YouAsk voice AI to script
+                                                        </p>
                                                         <div className="flex items-center justify-between px-1">
                                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                                                 <span className="material-symbols-outlined text-sm">notes</span>
@@ -1326,6 +1453,11 @@ export default function DashboardPage() {
                                                             </>
                                                         )}
                                                     </button>
+                                                    {inputError && (
+                                                        <div className="text-xs text-red-500 font-medium">
+                                                            {inputError}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         )}
