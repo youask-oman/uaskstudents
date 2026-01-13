@@ -43,6 +43,7 @@ export default function DashboardPage() {
     const [voiceDifficulty, setVoiceDifficulty] = useState("High School / AP");
     const [formattingEnabled, setFormattingEnabled] = useState(true);
     const [ocrFastMode, setOcrFastMode] = useState(true);
+    const [solveProgress, setSolveProgress] = useState(0);
 
     const router = useRouter();
 
@@ -639,6 +640,7 @@ export default function DashboardPage() {
             if (data?.error) {
                 throw new Error(data.message || "Solve request failed");
             }
+            setSolveProgress(100);
             router.push(`/chat/${data.session_id}`);
 
         } catch (err) {
@@ -648,6 +650,21 @@ export default function DashboardPage() {
             setIsSolving(false);
         }
     };
+
+    useEffect(() => {
+        if (!isSolving) {
+            setSolveProgress(0);
+            return;
+        }
+        setSolveProgress(5);
+        const start = Date.now();
+        const timer = setInterval(() => {
+            const elapsed = Date.now() - start;
+            const target = Math.min(90, 5 + Math.floor(elapsed / 300) * 3);
+            setSolveProgress(prev => (target > prev ? target : prev));
+        }, 300);
+        return () => clearInterval(timer);
+    }, [isSolving]);
 
     const handleConfirmOcr = async () => {
         if (!artifactId || isSolving) return;
@@ -1068,13 +1085,18 @@ export default function DashboardPage() {
 
                                                 <button
                                                     onClick={handleConfirmOcr}
-                                                    disabled={isSolving}
-                                                    className={`w-full bg-primary hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-lg shadow-xl shadow-primary/20 flex items-center justify-center gap-2 transition-all ${isSolving ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.02]'}`}
+                                                    disabled={isSolving || inputError === "Inappropriate language detected. Please rephrase."}
+                                                    className={`relative w-full bg-primary hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-lg shadow-xl shadow-primary/20 flex items-center justify-center gap-2 transition-all overflow-hidden ${isSolving ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.02]'}`}
                                                 >
+                                                    {isSolving && (
+                                                        <div className="absolute inset-0">
+                                                            <div className="h-full bg-white/20 transition-all" style={{ width: `${solveProgress}%` }}></div>
+                                                        </div>
+                                                    )}
                                                     {isSolving ? (
                                                         <>
                                                             <span className="animate-spin material-symbols-outlined">sync</span>
-                                                            <span>Solving...</span>
+                                                            <span>Solving... {solveProgress}%</span>
                                                         </>
                                                     ) : (
                                                         <>
@@ -1245,10 +1267,15 @@ export default function DashboardPage() {
                                                         </button>
                                                         <button
                                                             onClick={handleSolve}
-                                                            disabled={isSolving || query.trim().length < 3}
-                                                            className="flex items-center gap-2 bg-primary hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-bold transition-all shadow-lg shadow-primary/25 text-sm"
+                                                            disabled={isSolving || query.trim().length < 3 || inputError === "Inappropriate language detected. Please rephrase."}
+                                                            className="relative flex items-center gap-2 bg-primary hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-bold transition-all shadow-lg shadow-primary/25 text-sm overflow-hidden"
                                                         >
-                                                            {isSolving ? 'Solving...' : 'Solve'}
+                                                            {isSolving && (
+                                                                <div className="absolute inset-0">
+                                                                    <div className="h-full bg-white/20 transition-all" style={{ width: `${solveProgress}%` }}></div>
+                                                                </div>
+                                                            )}
+                                                            {isSolving ? `Solving... ${solveProgress}%` : 'Solve'}
                                                             <span className="material-symbols-outlined text-sm">auto_awesome</span>
                                                         </button>
                                                     </div>
@@ -1438,13 +1465,18 @@ export default function DashboardPage() {
                                                     </button>
                                                     <button
                                                         onClick={handleConfirmVoice}
-                                                        disabled={isSolving}
-                                                        className="flex-[2] px-8 py-5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-2xl font-black text-xl shadow-[0_10px_40px_-10px_rgba(37,99,235,0.4)] flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-50"
+                                                        disabled={isSolving || inputError === "Inappropriate language detected. Please rephrase."}
+                                                        className="relative flex-[2] px-8 py-5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-2xl font-black text-xl shadow-[0_10px_40px_-10px_rgba(37,99,235,0.4)] flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-50 overflow-hidden"
                                                     >
+                                                        {isSolving && (
+                                                            <div className="absolute inset-0">
+                                                                <div className="h-full bg-white/20 transition-all" style={{ width: `${solveProgress}%` }}></div>
+                                                            </div>
+                                                        )}
                                                         {isSolving ? (
                                                             <>
                                                                 <div className="size-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-                                                                <span>SOLVING...</span>
+                                                                <span>SOLVING... {solveProgress}%</span>
                                                             </>
                                                         ) : (
                                                             <>

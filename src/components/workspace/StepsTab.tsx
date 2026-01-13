@@ -56,29 +56,41 @@ const MathFont = ({ children }: { children: React.ReactNode }) => (
 
 const renderInlineMath = (line: string) => {
     const regex = /[A-Za-z0-9=+\-*/^()]+/g;
-    const parts: React.ReactNode[] = [];
-    let lastIndex = 0;
+    const segments = line.split("\n").filter(segment => segment.trim().length > 0);
 
-    for (const match of line.matchAll(regex)) {
-        const index = match.index ?? 0;
-        if (index > lastIndex) {
-            parts.push(line.slice(lastIndex, index));
-        }
-        const token = match[0];
-        const isMath = /[0-9=+\-*/^()]/.test(token);
-        parts.push(
-            <span key={`${index}-${token}`} className={isMath ? "math-inline" : undefined}>
-                {token}
-            </span>
-        );
-        lastIndex = index + token.length;
-    }
+    return (
+        <div className="space-y-2">
+            {segments.map((segment, segmentIndex) => {
+                const parts: React.ReactNode[] = [];
+                let lastIndex = 0;
 
-    if (lastIndex < line.length) {
-        parts.push(line.slice(lastIndex));
-    }
+                for (const match of segment.matchAll(regex)) {
+                    const index = match.index ?? 0;
+                    if (index > lastIndex) {
+                        parts.push(segment.slice(lastIndex, index));
+                    }
+                    const token = match[0];
+                    const isMath = /[0-9=+\-*/^()]/.test(token);
+                    parts.push(
+                        <span key={`${segmentIndex}-${index}-${token}`} className={isMath ? "math-inline" : undefined}>
+                            {token}
+                        </span>
+                    );
+                    lastIndex = index + token.length;
+                }
 
-    return <p className="text-sm leading-relaxed text-gray-700 dark:text-slate-200">{parts}</p>;
+                if (lastIndex < segment.length) {
+                    parts.push(segment.slice(lastIndex));
+                }
+
+                return (
+                    <p key={segmentIndex} className="text-sm leading-relaxed text-gray-700 dark:text-slate-200">
+                        {parts}
+                    </p>
+                );
+            })}
+        </div>
+    );
 };
 
 export default function StepsTab({
@@ -112,6 +124,23 @@ export default function StepsTab({
         visual => !referencedVisualIds.has(visual.id)
     );
 
+    const formatMatrixInput = (value?: string) => {
+        if (!value) return value;
+        const match = value.match(/\\begin\{pmatrix\}([\s\S]*?)\\end\{pmatrix\}/);
+        if (!match) return value;
+        const rows = match[1]
+            .split("\\\\")
+            .map(row => row.trim())
+            .filter(Boolean)
+            .map(row => row.split("&").map(cell => cell.trim()).filter(Boolean));
+        if (rows.length === 0) return value;
+        const formattedRows = rows.map(row => `[${row.join(",")}]`).join(",");
+        return `Matrix A = [${formattedRows}]`;
+    };
+
+    const problemLine = problemLatex || problem?.input;
+    const displayProblemLine = formatMatrixInput(problemLine);
+
     const clampedHeight = Math.min(Math.max(visualHeight, 240), 900);
     const renderHeight = isFullscreen ? Math.max(clampedHeight, 520) : clampedHeight;
 
@@ -125,10 +154,10 @@ export default function StepsTab({
                         </span>
                     </div>
                     <h1 className="text-2xl font-bold mb-1">{problem?.goal || title}</h1>
-                    {(problemLatex || problem?.input) && (
+                    {displayProblemLine && (
                         <p className="text-xl math-font text-primary">
                             <MathFont>
-                                {problemLatex || problem?.input}
+                                {displayProblemLine}
                             </MathFont>
                         </p>
                     )}
@@ -174,7 +203,7 @@ export default function StepsTab({
                                 <span className="px-2 py-0.5 rounded-lg bg-gray-100 dark:bg-slate-800 text-[10px] font-bold text-gray-600 dark:text-slate-300 uppercase">
                                     {step.concept || "Step"}
                                 </span>
-                                <h4 className="text-sm font-bold">{step.title}</h4>
+                                <h4 className="text-base font-bold">{step.title}</h4>
                             </div>
                             {step.work && step.work.length > 0 ? (
                                 <div className="space-y-3">

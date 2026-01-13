@@ -60,6 +60,14 @@ services:
       LOCAL_STORAGE_PATH: /app/storage
       OCR_FAST_MODE: "1"
       OCR_MAX_FIGURE_REFINEMENTS: "1"
+      HOME: /tmp
+      XDG_CACHE_HOME: /tmp
+      MPLCONFIGDIR: /tmp/matplotlib
+      PIX2TEXT_HOME: /tmp/pix2text
+      YOLO_CONFIG_DIR: /tmp/Ultralytics
+      ULTRALYTICS_CONFIG_DIR: /tmp/Ultralytics
+      YOLO_RUNS_DIR: /tmp/Ultralytics/runs
+      RUNS_DIR: /tmp/Ultralytics/runs
     depends_on:
       postgres:
         condition: service_healthy
