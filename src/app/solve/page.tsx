@@ -1,7 +1,7 @@
 "use client";
 
 import DashboardNavBar from "@/components/DashboardNavBar";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
@@ -11,6 +11,13 @@ import ImageCropper from "@/components/ImageCropper";
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+
+// Token validation imports
+import { estimateTokens, TokenEstimate } from "@/lib/tokenEstimator";
+import { detectMultiQuestion, MultiQuestionResult, autoSplitQuestions } from "@/lib/multiQuestionDetector";
+import { MAX_INPUT_CHARS, MAX_INPUT_TOKENS, willRequestFit } from "@/lib/tokenBudget";
+import InputStatus from "@/components/InputStatus";
+import SplitModal from "@/components/SplitModal";
 
 interface ChatSession {
     id: number;
@@ -44,6 +51,27 @@ export default function DashboardPage() {
     const [formattingEnabled, setFormattingEnabled] = useState(true);
     const [ocrFastMode, setOcrFastMode] = useState(true);
     const [solveProgress, setSolveProgress] = useState(0);
+
+    // Token validation state
+    const [showSplitModal, setShowSplitModal] = useState(false);
+    const [suggestedSplits, setSuggestedSplits] = useState<string[]>([]);
+
+    // Compute token estimate and multi-question detection
+    const tokenEstimate = useMemo(() => estimateTokens(query), [query]);
+    const multiQuestionResult = useMemo(() => detectMultiQuestion(query), [query]);
+    const requestFit = useMemo(() => willRequestFit(tokenEstimate.tokens), [tokenEstimate.tokens]);
+
+    // Determine if solve should be blocked
+    const isInputTooLong = tokenEstimate.tokens > MAX_INPUT_TOKENS || query.length > MAX_INPUT_CHARS;
+    const isRequestTooLarge = !requestFit.fits;
+    const hasMultipleQuestions = multiQuestionResult.isMultiple && multiQuestionResult.confidence !== 'low';
+    const tokenBlockReason = isInputTooLong
+        ? "Input too long. Please split into smaller parts."
+        : isRequestTooLarge
+            ? "Request too large for AI context. Please shorten."
+            : hasMultipleQuestions
+                ? "Multiple questions detected. One at a time please."
+                : null;
 
     const router = useRouter();
 
@@ -1223,13 +1251,52 @@ export default function DashboardPage() {
                                                     <textarea
                                                         value={query}
                                                         onChange={(event) => {
-                                                            setQuery(event.target.value);
-                                                            if (inputError) setInputError(null);
+                                                            const value = event.target.value;
+                                                            // Enforce character limit
+                                                            if (value.length <= MAX_INPUT_CHARS) {
+                                                                setQuery(value);
+                                                                if (inputError) setInputError(null);
+                                                            }
                                                         }}
+                                                        onPaste={(event) => {
+                                                            const pastedText = event.clipboardData.getData('text');
+                                                            if (pastedText.length > MAX_INPUT_CHARS) {
+                                                                event.preventDefault();
+                                                                const truncated = pastedText.slice(0, MAX_INPUT_CHARS);
+                                                                setQuery(truncated);
+                                                                setInputError(`Pasted text was truncated to ${MAX_INPUT_CHARS} characters.`);
+                                                            }
+                                                            // Check for multi-question on paste
+                                                            const checkResult = detectMultiQuestion(pastedText);
+                                                            if (checkResult.isMultiple && checkResult.confidence !== 'low') {
+                                                                setSuggestedSplits(autoSplitQuestions(pastedText));
+                                                                setTimeout(() => setShowSplitModal(true), 500);
+                                                            }
+                                                        }}
+                                                        maxLength={MAX_INPUT_CHARS}
                                                         className="flex-1 p-4 bg-transparent outline-none text-slate-700 dark:text-slate-200 text-lg leading-relaxed resize-none"
+                                                        style={{
+                                                            whiteSpace: 'pre-wrap',
+                                                            overflowWrap: 'break-word',
+                                                            wordBreak: 'normal',
+                                                            hyphens: 'auto',
+                                                        }}
                                                         placeholder="Type your question..."
                                                     />
                                                 )}
+
+                                                {/* Token/Character Status */}
+                                                <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-800">
+                                                    <InputStatus
+                                                        text={query}
+                                                        tokenEstimate={tokenEstimate}
+                                                        multiQuestionResult={multiQuestionResult}
+                                                        onSplitClick={() => {
+                                                            setSuggestedSplits(autoSplitQuestions(query));
+                                                            setShowSplitModal(true);
+                                                        }}
+                                                    />
+                                                </div>
 
                                                 {/* Action Bar inside Input */}
                                                 <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 rounded-b-xl">
@@ -1267,7 +1334,8 @@ export default function DashboardPage() {
                                                         </button>
                                                         <button
                                                             onClick={handleSolve}
-                                                            disabled={isSolving || query.trim().length < 3 || inputError === "Inappropriate language detected. Please rephrase."}
+                                                            disabled={isSolving || query.trim().length < 3 || !!tokenBlockReason || inputError === "Inappropriate language detected. Please rephrase."}
+                                                            title={tokenBlockReason || undefined}
                                                             className="relative flex items-center gap-2 bg-primary hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-bold transition-all shadow-lg shadow-primary/25 text-sm overflow-hidden"
                                                         >
                                                             {isSolving && (
@@ -1645,6 +1713,18 @@ export default function DashboardPage() {
             <footer className="max-w-7xl mx-auto px-4 py-8 border-t border-slate-200 dark:border-slate-800 text-center">
                 <p className="text-slate-400 text-xs font-medium">© 2024 uask.ai - Intelligent Math & Physics Tutoring Platform</p>
             </footer>
+
+            {/* Split Modal for multiple questions */}
+            <SplitModal
+                isOpen={showSplitModal}
+                onClose={() => setShowSplitModal(false)}
+                originalText={query}
+                splits={suggestedSplits}
+                onSelectQuestion={(question, _index) => {
+                    setQuery(question);
+                    setShowSplitModal(false);
+                }}
+            />
         </div>
     );
 }
