@@ -155,8 +155,8 @@ export default function StepsTab({
                                 {/* Middle Content: Math Work Box (30% width) */}
                                 <div className="lg:col-span-3">
                                     {cardLines.length > 0 && (
-                                        <div className="w-full h-full bg-white dark:bg-[#1e2634] p-6 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c] flex flex-col items-center justify-center shadow-sm">
-                                            <div className="text-center space-y-2 w-full">
+                                        <div className="w-full h-full bg-white dark:bg-[#1e2634] p-4 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c] flex flex-col items-center justify-center shadow-sm overflow-hidden">
+                                            <div className="text-center space-y-2 w-full overflow-x-auto">
                                                 {cardLines.map((line, idx) => {
                                                     const isLastLine = idx === cardLines.length - 1;
 
@@ -170,12 +170,12 @@ export default function StepsTab({
 
                                                     // Style logic: Last line is Primary Blue Bold ONLY if it's not a text sentence
                                                     const textClass = (isLastLine && !isText)
-                                                        ? "text-lg font-bold text-primary" // Reduced from text-xl
-                                                        : "text-xs text-[#111318] dark:text-white font-medium"; // Reduced from text-sm
+                                                        ? "text-base font-bold text-primary" // Reduced from text-lg
+                                                        : "text-[10px] text-[#111318] dark:text-white font-medium"; // Reduced from text-xs
 
                                                     return (
                                                         <div key={idx} className="flex flex-col items-center w-full">
-                                                            <div className={`break-all px-2 ${textClass}`}>
+                                                            <div className={`break-words whitespace-normal max-w-full px-1 ${textClass}`}>
                                                                 <MathRenderer content={line} forceMath={!isText} inline />
                                                             </div>
                                                             {idx < cardLines.length - 1 && (

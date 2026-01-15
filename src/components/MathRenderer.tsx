@@ -39,19 +39,21 @@ function sanitizeLatex(input: string): string {
     // We look for "text{" preceded by start-of-line or non-backslash char.
     clean = clean.replace(/(^|[^\\])text\{/g, "$1\\text{");
 
-    // 6. Fix specific "textWord" artifacts from model (e.g. textLine, textThus, textPlot)
-    // These often appear without braces or spaces.
-    clean = clean.replace(/(^|[^\\])textLine\s*:/g, "$1\\text{Line: }");
-    // Specific artifact fixes for "connected words" seen in reports:
-    clean = clean.replace(/(^|[^\\])textPlotdomainsuggestion\s*/g, "$1\\text{Plot domain suggestion: }");
-    clean = clean.replace(/(^|[^\\])textThusintersectionsare\s*/g, "$1\\text{Thus intersections are }");
-    clean = clean.replace(/(^|[^\\])textThus\s*/g, "$1\\text{Thus }");
-    clean = clean.replace(/(^|[^\\])textPlot\s*/g, "$1\\text{Plot }");
-    clean = clean.replace(/(^|[^\\])textParabola\s*:/g, "$1\\text{Parabola: }");
+    // 6. GENERAL FIX: Catch ANY "text" followed by a capital letter (CamelCase artifacts)
+    // Examples: textOtherpoints, textLine, textThus, textPlotdomainsuggestion
+    // This regex finds "text" followed by uppercase, captures the rest, and converts to "\text{...}"
+    // We also insert spaces between CamelCase words for readability.
+    clean = clean.replace(/(^|[^\\])text([A-Z][a-z]+(?:[A-Z][a-z]*)*)/g, (match, prefix, camelText) => {
+        // Split CamelCase into words: "Otherpoints" -> "Other points", "Plotdomainsuggestion" -> "Plot domain suggestion"
+        const spaced = camelText
+            .replace(/([A-Z])/g, ' $1')  // Add space before each capital
+            .trim()                        // Remove leading space
+            .replace(/\s+/g, ' ');         // Normalize multiple spaces
+        return `${prefix}\\text{${spaced} }`;
+    });
 
-    // 7. Handle "x = ...; y = ..." pattern by converting semi-colon to newline if it looks like a separator
-    // Note: Be careful not to break CSS or text. We assume this is strictly math content or we are in forceMath mode.
-    // clean = clean.replace(/;\s+/g, " \\\\ "); // Too risky globally.
+    // Also catch patterns like "textOther points :" where there's already some spacing
+    clean = clean.replace(/(^|[^\\])text([A-Z][a-z]+)\s*:/g, "$1\\text{$2: }");
 
     return clean;
 }
