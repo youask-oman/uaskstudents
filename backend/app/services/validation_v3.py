@@ -128,20 +128,21 @@ class SchemaValidator:
 {json.dumps(original_data, indent=2)[:2000]}...
 
 **CRITICAL INSTRUCTIONS FOR REPAIR**:
-1. **DO NOT change the final_answer** unless it is mathematically incorrect
-2. **Fix ALL validation errors** listed above
-3. **Common fixes needed**:
-   - If `verification` has < 2 methods, add another verification method (e.g., "Numeric sanity check", "Inverse operation check", "Graph intersection check")
-   - If `similar_examples` has < 2, add more practice problems
-   - If `plot.plan` is missing required fields, add: title, axes, recommended_window, objects, annotations, sampling
-   - If steps are missing required fields (concept, rules_used, checkpoint), add them
-   - If `meta.localization.region` is not "north_america", set it to "north_america"
+1. **Fix ALL validation errors** listed above.
+2. **Schema Compliance**: You must match the v1.0 schema exactly. 
+   - Ensure all top-level keys exist: problem, classification, refusal, assumptions, steps, final_answer, verification, visuals, quality.
+3. **Visuals Logic**:
+   - If `visuals.should_visualize` is true, you MUST provide `plots` array.
+   - If `visuals.should_visualize` is false, provide `alternative_visual` (or empty object if strictly allowed, but prefer providing data).
+4. **Verification**: 
+   - This is an OBJECT, not an array. 
+   - Required fields: `method`, `work_latex`, `conclusion`, `alternative_method`.
+5. **Refusal**:
+   - Must be an object with `is_refusal` boolean.
+   
+6. **Return the complete corrected JSON** matching the schema exactly.
 
-4. **Return the complete corrected JSON** matching the schema exactly
-5. **All steps must include**: concept, rules_used (array), work (array), result, checkpoint (object with question and expected_answer)
-6. **Verification methods must include**: method name, why_it_works, steps (array), conclusion
-
-**OUTPUT**: Return ONLY the corrected JSON. No explanations, no apologies.
+**OUTPUT**: Return ONLY the corrected JSON. No explanations.
 """
         
         return repair_prompt

@@ -27,6 +27,41 @@ interface ChatSession {
     is_saved?: boolean; // Added is_saved
 }
 
+interface SolveResponseV3 {
+    problem: {
+        original_text: string;
+        normalized_text: string;
+    };
+    classification: {
+        topic: string;
+        difficulty: string;
+    };
+    steps: {
+        index: number;
+        title: string;
+        explanation: string;
+        math_latex: string;
+        rules_used: string[];
+    }[];
+    final_answer: {
+        answer_text: string;
+    };
+    verification: {
+        method: string;
+        work_latex: string;
+        conclusion: string;
+    };
+    visuals: {
+        plots: any[];
+    };
+    quality: {
+        confidence: number;
+        common_mistakes: string[];
+        next_practice: string[];
+    };
+    assumptions: string[];
+}
+
 export default function ChatPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const [session, setSession] = useState<ChatSession | null>(null);
@@ -139,87 +174,151 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     }
 
     const assistantMsg = session.messages.find(m => m.role === 'assistant' && (m.structured_data || m.model_used));
-    const solutionData = id === 'demo-1'
-        ? DEMO_SOLUTION
-        : (assistantMsg?.structured_data || null);
+    const rawData = id === 'demo-1' ? DEMO_SOLUTION : (assistantMsg?.structured_data || null);
+
+    // Type-safe(ish) casting for V3 Schema
+    const solutionData = rawData as any;
+
     const sessionTokensUsed = session.messages.reduce((sum, message) => sum + (message.tokens_used ?? 0), 0);
     const totalTokensUsed = (monthlyTokensUsed ?? sessionTokensUsed) + 6000;
 
+    // Helper to map V3 Visuals to Visual Component Props
+    const mapVisuals = (plots: any[]) => {
+        if (!plots) return [];
+        return plots.map(p => ({
+            id: p.plot_id || "plot_0",
+            type: "function_plot", // Force compatible type for now, or map p.plot_type
+            title: p.title,
+            axes: { x_label: p.x_label, y_label: p.y_label },
+            domain: { x_min_latex: String(p.x_min), x_max_latex: String(p.x_max) },
+            series: p.series?.map((s: any) => ({
+                label: s.name,
+                points: s.points?.map((pt: any) => ({ x: pt.x, y: pt.y })) || []
+            })) || [],
+            markers: p.key_points?.map((kp: any) => ({
+                label: kp.label,
+                x: kp.x,
+                y: kp.y
+            }))
+        }));
+    };
 
+    const visuals = solutionData?.visuals?.plots ? mapVisuals(solutionData.visuals.plots) : [];
 
     const renderContent = () => {
         if (!solutionData) return <div className="p-8 text-center text-slate-500">No solution details found in this session.</div>;
 
+        if (solutionData.error) {
+            return (
+                <div className="max-w-2xl mx-auto mt-10 p-6 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 rounded-2xl text-center">
+                    <span className="material-symbols-outlined text-4xl text-red-500 mb-4">error_outline</span>
+                    <h3 className="text-lg font-bold text-red-700 dark:text-red-300 mb-2">Solver Error</h3>
+                    <p className="text-sm text-red-600 dark:text-red-200">{solutionData.message || "An unexpected error occurred."}</p>
+                    {solutionData.validation_errors && solutionData.validation_errors.length > 0 && (
+                        <div className="mt-4 text-left bg-white/50 dark:bg-black/20 p-4 rounded-xl text-xs font-mono text-red-800 dark:text-red-200 overflow-auto max-h-40">
+                            {solutionData.validation_errors.map((e: string, i: number) => <div key={i}>{e}</div>)}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Extract Common Props
+        const steps = solutionData.steps || [];
+        // Map steps to match StepsTab expectation (work array)
+        const mappedSteps = steps.map((s: any) => ({
+            ...s,
+            work: s.math_latex ? [s.explanation, s.math_latex] : [s.explanation], // Combine exp + math
+            rules_used: s.rules_used || [],
+            checkpoint: s.checkpoint ? {
+                question: s.checkpoint.question,
+                expected_answer: s.checkpoint.answer
+            } : undefined
+        }));
+
+        const problem = solutionData.problem || {};
+        const problemLatex = problem.normalized_text || problem.original_text;
+
         switch (activeTab) {
             case 'steps':
                 return <StepsTab
-                    title={solutionData.problem?.goal || "Solution"}
-                    steps={solutionData.solution?.steps || []}
-                    visuals={solutionData.visuals || []}
-                    problemLatex={solutionData.problem?.input || solutionData.problem?.latex}
-                    problem={solutionData.problem}
-                    analysisPlan={solutionData.analysis?.plan || []}
-                    finalAnswer={solutionData.solution?.final_answer}
+                    title={solutionData.classification?.topic || "Solution"}
+                    steps={mappedSteps}
+                    visuals={visuals}
+                    problemLatex={problemLatex}
+                    problem={{
+                        goal: problem.original_text, // Fallback
+                        given_data: solutionData.assumptions, // Mapping assumptions to given/assumptions
+                        assumptions: solutionData.assumptions
+                    }}
+                    analysisPlan={[]} // No longer in V3 schema explicit plan
+                    finalAnswer={solutionData.final_answer?.answer_text}
                     activeTab={activeTab as "steps" | "verification" | "concepts" | "practice"}
                     onSelectTab={setActiveTab}
                 />;
             case 'verification':
+                // Map single verification object to list
+                const verifObj = solutionData.verification;
+                const methods = verifObj ? [{
+                    method: verifObj.method,
+                    why_it_works: "Standard verification procedure",
+                    steps: [verifObj.work_latex],
+                    conclusion: verifObj.conclusion
+                }] : [];
+
                 return <VerificationTab
-                    methods={solutionData.verification || []}
+                    methods={methods}
                     activeTab={activeTab as "steps" | "verification" | "concepts" | "practice"}
                     onSelectTab={setActiveTab}
-                    stepsCount={(solutionData.solution?.steps || []).length}
-                    problem={solutionData.problem}
-                    analysisPlan={solutionData.analysis?.plan || []}
-                    finalAnswer={solutionData.solution?.final_answer}
-                    confidence={solutionData.meta?.confidence}
-                    keyConcepts={solutionData.solution?.key_concepts || []}
-                    features={solutionData.solution?.features}
-                    commonMistakes={solutionData.solution?.common_mistakes || []}
-                    similarExamples={solutionData.similar_examples || []}
+                    stepsCount={steps.length}
+                    problem={{
+                        goal: problem.original_text,
+                        assumptions: solutionData.assumptions
+                    }}
+                    finalAnswer={solutionData.final_answer?.answer_text}
+                    confidence={solutionData.quality?.confidence}
+                    keyConcepts={steps.flatMap((s: any) => s.rules_used || []).slice(0, 5)} // Derive key concepts
+                    commonMistakes={solutionData.quality?.common_mistakes || []}
+                    similarExamples={[]} // Not in verification obj
                 />;
             case 'concepts':
                 return <ConceptsTab
-                    keyConcepts={solutionData.solution?.key_concepts || []}
-                    commonMistakes={solutionData.solution?.common_mistakes || []}
-                    features={solutionData.solution?.features}
-                    visuals={solutionData.visuals || []}
+                    keyConcepts={steps.flatMap((s: any) => s.rules_used || []).filter((v: string, i: number, a: string[]) => a.indexOf(v) === i)} // Unique rules
+                    commonMistakes={solutionData.quality?.common_mistakes || []}
+                    visuals={visuals}
                     activeTab={activeTab as "steps" | "verification" | "concepts" | "practice"}
                     onSelectTab={setActiveTab}
-                    stepsCount={(solutionData.solution?.steps || []).length}
+                    stepsCount={steps.length}
                 />;
             case 'practice':
+                const practiceItems = (solutionData.quality?.next_practice || []).map((p: string) => ({
+                    problem: p,
+                    key_idea: "Practice matches current topic",
+                    short_solution: "Tap to solve"
+                }));
+
                 return <PracticeTab
-                    similarExamples={solutionData.similar_examples || []}
-                    progress={45}
-                    level="Intermediate"
-                    topic={solutionData.problem?.topic}
+                    similarExamples={practiceItems}
+                    progress={65} // Mock
+                    level={solutionData.classification?.difficulty || "Standard"}
+                    topic={solutionData.classification?.topic}
                     activeTab={activeTab as "steps" | "verification" | "concepts" | "practice"}
                     onSelectTab={setActiveTab}
-                    stepsCount={(solutionData.solution?.steps || []).length}
+                    stepsCount={steps.length}
                 />;
             default:
-                return <StepsTab
-                    title={solutionData.problem?.goal || "Solution"}
-                    steps={solutionData.solution?.steps || []}
-                    visuals={solutionData.visuals || []}
-                    problemLatex={solutionData.problem?.input || solutionData.problem?.latex}
-                    problem={solutionData.problem}
-                    analysisPlan={solutionData.analysis?.plan || []}
-                    finalAnswer={solutionData.solution?.final_answer}
-                    activeTab={activeTab as "steps" | "verification" | "concepts" | "practice"}
-                    onSelectTab={setActiveTab}
-                />;
+                return null;
         }
     };
+
 
     return (
         <WorkspaceLayout
             messages={session.messages}
             problem={solutionData?.problem}
-            analysisPlan={solutionData?.analysis?.plan || []}
-            keyConcepts={solutionData?.solution?.key_concepts || []}
-            stepsCount={(solutionData?.solution?.steps || []).length}
+            analysisPlan={[]}
+            keyConcepts={(solutionData?.steps || []).flatMap((s: any) => s.rules_used || []).slice(0, 3)}
+            stepsCount={(solutionData?.steps || []).length}
             onSelectConcepts={() => setActiveTab("concepts")}
             llmUsed="YouAsk AI"
             totalTokensUsed={totalTokensUsed}

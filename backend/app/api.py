@@ -1588,7 +1588,13 @@ async def solve_v3_endpoint(
         ))
         
         # Generate summary for chat display
-        final_answer = result.get("solution", {}).get("final_answer", "See full solution")
+        # Generate summary for chat display
+        # V3.1 Schema: final_answer is a top-level object
+        final_ans_obj = result.get("final_answer", {})
+        if isinstance(final_ans_obj, dict):
+             final_answer = final_ans_obj.get("answer_text", "See full solution")
+        else:
+             final_answer = str(final_ans_obj)
         
         session.add(ChatMessage(
             session_id=new_chat.id,
@@ -1606,21 +1612,13 @@ async def solve_v3_endpoint(
         session.commit()
         
         # Return V3 response
-        return {
-            "session_id": new_chat.id,
-            "problem": result.get("problem"),
-            "analysis": result.get("analysis"),
-            "solution": result.get("solution"),
-            "verification": result.get("verification"),
-            "plot": result.get("plot"),
-            "plot_url": plot_url,
-            "similar_examples": result.get("similar_examples"),
-            "meta": result.get("meta"),
-            "model_used": result.get("_model"),
-            "tokens_used": 3000,
-            "validated": result.get("_validated", False),
-            "repaired": result.get("_repaired", False)
-        }
+        # Return V3 response
+        # Merge session info into the result
+        result["session_id"] = new_chat.id
+        result["plot_url"] = plot_url
+        result["tokens_used"] = 3000
+        
+        return result
     
     except Exception as e:
         print(f"[API_V3_ERROR] Solver V3 failed: {type(e).__name__}: {e}")
