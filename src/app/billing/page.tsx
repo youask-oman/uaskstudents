@@ -40,8 +40,9 @@ export default function BillingPage() {
                 }
                 const userData = JSON.parse(storedUser);
                 const userId = userData.id || 1;
+                const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
-                const profileRes = await fetch(`http://127.0.0.1:8000/api/v1/user/profile?user_id=${userId}`);
+                const profileRes = await fetch(`${apiBaseUrl}/api/v1/user/profile?user_id=${userId}`);
 
                 if (profileRes.ok) {
                     const profileData = await profileRes.json();
@@ -51,7 +52,7 @@ export default function BillingPage() {
                 }
 
                 // Fetch Billing History
-                const historyRes = await fetch(`http://127.0.0.1:8000/api/v1/billing/history?user_id=${userId}`);
+                const historyRes = await fetch(`${apiBaseUrl}/api/v1/billing/history?user_id=${userId}`);
                 if (historyRes.ok) {
                     const historyData = await historyRes.json();
                     setHistory(historyData);

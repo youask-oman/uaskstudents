@@ -45,7 +45,8 @@ export default function PaymentPage() {
                 // specific logic or just proceed
             }
 
-            const res = await fetch('http://127.0.0.1:8000/api/v1/billing/subscribe', {
+            const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+            const res = await fetch(`${apiBaseUrl}/api/v1/billing/subscribe`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -123,8 +124,8 @@ export default function PaymentPage() {
                                     <button
                                         type="button"
                                         onClick={async () => {
-                                            if (!promoCode) return;
-                                            const res = await fetch('http://localhost:8000/api/v1/billing/validate-promo', {
+                                            const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+                                            const res = await fetch(`${apiBaseUrl}/api/v1/billing/validate-promo`, {
                                                 method: 'POST',
                                                 headers: { 'Content-Type': 'application/json' },
                                                 body: JSON.stringify({ code: promoCode })

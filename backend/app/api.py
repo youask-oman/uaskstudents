@@ -1351,7 +1351,7 @@ async def solve_problem(
 # ------------------------------------------------------------------
 
 @api_router.post("/solve_v3")
-@limiter.limit("10/minute")
+# @limiter.limit("10/minute")
 async def solve_v3_endpoint(
     request: Request,
     body: SolveRequest,

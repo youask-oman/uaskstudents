@@ -67,7 +67,8 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
 
             if (userId) {
                 try {
-                    let url = `http://127.0.0.1:8000/api/v1/user/heartbeat?user_id=${userId}`;
+                    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+                    let url = `${apiBaseUrl}/api/v1/user/heartbeat?user_id=${userId}`;
                     if (sessionToken) {
                         url += `&session_token=${sessionToken}`;
                     }

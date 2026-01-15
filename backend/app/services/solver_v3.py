@@ -42,7 +42,8 @@ class SolverV3:
     def __init__(self):
         """Initialize solver with OpenAI client."""
         self._client = None
-        self._model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini")
+        self._model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-4o-mini")
+        print(f"[SOLVER_V3_INIT] Initialized with model: {self._model} (fallback: {self._fallback_model})")
         self._fallback_model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-4o-mini")
         self.viz_engine = get_visualization_engine()
         self.plot_renderer = get_plot_renderer()

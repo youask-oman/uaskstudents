@@ -1,0 +1,1474 @@
+﻿uask_orchestrator  | INFO:     Started server process [1]
+uask_orchestrator  | INFO:     Waiting for application startup.
+uask_orchestrator  | INFO:app.database:Attempting to connect to database (Attempt 1/10)...
+uask_orchestrator  | 2026-01-15 06:38:18,607 INFO sqlalchemy.engine.Engine select pg_catalog.version()
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:select pg_catalog.version()
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[raw sql] {}
+uask_orchestrator  | 2026-01-15 06:38:18,607 INFO sqlalchemy.engine.Engine [raw sql] {}
+uask_orchestrator  | 2026-01-15 06:38:18,608 INFO sqlalchemy.engine.Engine select current_schema()
+uask_orchestrator  | 2026-01-15 06:38:18,608 INFO sqlalchemy.engine.Engine [raw sql] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:select current_schema()
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[raw sql] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:show standard_conforming_strings
+uask_orchestrator  | 2026-01-15 06:38:18,609 INFO sqlalchemy.engine.Engine show standard_conforming_strings
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[raw sql] {}
+uask_orchestrator  | 2026-01-15 06:38:18,609 INFO sqlalchemy.engine.Engine [raw sql] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+uask_orchestrator  | 2026-01-15 06:38:18,609 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+uask_orchestrator  | 2026-01-15 06:38:18,611 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,611 INFO sqlalchemy.engine.Engine [generated in 0.00013s] {'table_name': 'user', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[generated in 0.00013s] {'table_name': 'user', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | 2026-01-15 06:38:18,613 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,613 INFO sqlalchemy.engine.Engine [cached since 0.002075s ago] {'table_name': 'chatsession', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.002075s ago] {'table_name': 'chatsession', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,614 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.002593s ago] {'table_name': 'chatmessage', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | 2026-01-15 06:38:18,614 INFO sqlalchemy.engine.Engine [cached since 0.002593s ago] {'table_name': 'chatmessage', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,614 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,614 INFO sqlalchemy.engine.Engine [cached since 0.003049s ago] {'table_name': 'usagelog', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.003049s ago] {'table_name': 'usagelog', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | 2026-01-15 06:38:18,615 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.003472s ago] {'table_name': 'payment', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,615 INFO sqlalchemy.engine.Engine [cached since 0.003472s ago] {'table_name': 'payment', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | 2026-01-15 06:38:18,615 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,615 INFO sqlalchemy.engine.Engine [cached since 0.003962s ago] {'table_name': 'upload', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.003962s ago] {'table_name': 'upload', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.004422s ago] {'table_name': 'crop', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | 2026-01-15 06:38:18,616 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,616 INFO sqlalchemy.engine.Engine [cached since 0.004422s ago] {'table_name': 'crop', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.004885s ago] {'table_name': 'ocrjob', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | 2026-01-15 06:38:18,616 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,616 INFO sqlalchemy.engine.Engine [cached since 0.004885s ago] {'table_name': 'ocrjob', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | 2026-01-15 06:38:18,617 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,617 INFO sqlalchemy.engine.Engine [cached since 0.005356s ago] {'table_name': 'ocrartifact', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.005356s ago] {'table_name': 'ocrartifact', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | 2026-01-15 06:38:18,617 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,617 INFO sqlalchemy.engine.Engine [cached since 0.005763s ago] {'table_name': 'ocrquestion', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.005763s ago] {'table_name': 'ocrquestion', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | 2026-01-15 06:38:18,617 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,617 INFO sqlalchemy.engine.Engine [cached since 0.006165s ago] {'table_name': 'ocrchoice', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.006165s ago] {'table_name': 'ocrchoice', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,618 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,618 INFO sqlalchemy.engine.Engine [cached since 0.006578s ago] {'table_name': 'ocrfigure', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.006578s ago] {'table_name': 'ocrfigure', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | 2026-01-15 06:38:18,618 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.007023s ago] {'table_name': 'ocrconfirmation', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | 2026-01-15 06:38:18,618 INFO sqlalchemy.engine.Engine [cached since 0.007023s ago] {'table_name': 'ocrconfirmation', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | 2026-01-15 06:38:18,619 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,619 INFO sqlalchemy.engine.Engine [cached since 0.007432s ago] {'table_name': 'canonicalproblem', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.007432s ago] {'table_name': 'canonicalproblem', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | 2026-01-15 06:38:18,619 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,619 INFO sqlalchemy.engine.Engine [cached since 0.00788s ago] {'table_name': 'canonicalsolution', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.00788s ago] {'table_name': 'canonicalsolution', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.0083s ago] {'table_name': 'usersavedsolution', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | 2026-01-15 06:38:18,619 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,620 INFO sqlalchemy.engine.Engine [cached since 0.0083s ago] {'table_name': 'usersavedsolution', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | 2026-01-15 06:38:18,620 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,620 INFO sqlalchemy.engine.Engine [cached since 0.008703s ago] {'table_name': 'ocrauditevent', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.008703s ago] {'table_name': 'ocrauditevent', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | 2026-01-15 06:38:18,621 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,621 INFO sqlalchemy.engine.Engine [cached since 0.009336s ago] {'table_name': 'promocode', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.009336s ago] {'table_name': 'promocode', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | 2026-01-15 06:38:18,621 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,621 INFO sqlalchemy.engine.Engine [cached since 0.009778s ago] {'table_name': 'voicesession', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.009778s ago] {'table_name': 'voicesession', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.01034s ago] {'table_name': 'voiceaudio', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | 2026-01-15 06:38:18,622 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,622 INFO sqlalchemy.engine.Engine [cached since 0.01034s ago] {'table_name': 'voiceaudio', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | 2026-01-15 06:38:18,622 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.0108s ago] {'table_name': 'voicejob', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | 2026-01-15 06:38:18,622 INFO sqlalchemy.engine.Engine [cached since 0.0108s ago] {'table_name': 'voicejob', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.01138s ago] {'table_name': 'voiceartifact', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | 2026-01-15 06:38:18,623 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,623 INFO sqlalchemy.engine.Engine [cached since 0.01138s ago] {'table_name': 'voiceartifact', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,623 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.01173s ago] {'table_name': 'voiceconfirmation', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,623 INFO sqlalchemy.engine.Engine [cached since 0.01173s ago] {'table_name': 'voiceconfirmation', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | 2026-01-15 06:38:18,623 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,623 INFO sqlalchemy.engine.Engine [cached since 0.01212s ago] {'table_name': 'adminnote', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.01212s ago] {'table_name': 'adminnote', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.01255s ago] {'table_name': 'systemconfig', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | 2026-01-15 06:38:18,624 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,624 INFO sqlalchemy.engine.Engine [cached since 0.01255s ago] {'table_name': 'systemconfig', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | 2026-01-15 06:38:18,624 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.01296s ago] {'table_name': 'prompttemplate', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | 2026-01-15 06:38:18,624 INFO sqlalchemy.engine.Engine [cached since 0.01296s ago] {'table_name': 'prompttemplate', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.01336s ago] {'table_name': 'promptversion', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | 2026-01-15 06:38:18,625 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,625 INFO sqlalchemy.engine.Engine [cached since 0.01336s ago] {'table_name': 'promptversion', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | 2026-01-15 06:38:18,625 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,625 INFO sqlalchemy.engine.Engine [cached since 0.01373s ago] {'table_name': 'userquotaoverride', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.01373s ago] {'table_name': 'userquotaoverride', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,625 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+uask_orchestrator  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+uask_orchestrator  | WHERE pg_catalog.pg_class.relname = %(table_name)s AND pg_catalog.pg_class.relkind = ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, %(param_4)s, %(param_5)s]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != %(nspname_1)s
+uask_orchestrator  | 2026-01-15 06:38:18,625 INFO sqlalchemy.engine.Engine [cached since 0.01414s ago] {'table_name': 'systemerrorentry', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[cached since 0.01414s ago] {'table_name': 'systemerrorentry', 'param_1': 'r', 'param_2': 'p', 'param_3': 'f', 'param_4': 'v', 'param_5': 'm', 'nspname_1': 'pg_catalog'}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | 2026-01-15 06:38:18,627 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | CREATE TABLE "user" (
+uask_orchestrator  | CREATE TABLE "user" (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	email VARCHAR NOT NULL, 
+uask_orchestrator  | 	full_name VARCHAR NOT NULL, 
+uask_orchestrator  | 	password_hash VARCHAR NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	role VARCHAR NOT NULL, 
+uask_orchestrator  | 	academic_level VARCHAR, 
+uask_orchestrator  | 	preferred_language VARCHAR NOT NULL, 
+uask_orchestrator  | 	timezone VARCHAR NOT NULL, 
+uask_orchestrator  | 	theme VARCHAR NOT NULL, 
+uask_orchestrator  | 	solving_mode VARCHAR NOT NULL, 
+uask_orchestrator  | 	subscription_tier VARCHAR NOT NULL, 
+uask_orchestrator  | 	subscription_status VARCHAR NOT NULL, 
+uask_orchestrator  | 	subscription_expiry TIMESTAMP WITHOUT TIME ZONE, 
+uask_orchestrator  | 	quota_questions_total INTEGER NOT NULL, 
+uask_orchestrator  | 	quota_scans_total INTEGER NOT NULL, 
+uask_orchestrator  | 	tokens_used_this_month INTEGER NOT NULL, 
+uask_orchestrator  | 	last_token_reset TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	avatar_url VARCHAR, 
+uask_orchestrator  | 	bio VARCHAR, 
+uask_orchestrator  | 	is_verified BOOLEAN NOT NULL, 
+uask_orchestrator  | 	verification_token VARCHAR, 
+uask_orchestrator  | 	ip_address VARCHAR, 
+uask_orchestrator  | 	country VARCHAR, 
+uask_orchestrator  | 	is_public BOOLEAN NOT NULL, 
+uask_orchestrator  | 	learning_interests JSON, 
+uask_orchestrator  | 	last_active_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	session_token VARCHAR, 
+uask_orchestrator  | 	last_ip VARCHAR, 
+uask_orchestrator  | 	PRIMARY KEY (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00008s] {}
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	email VARCHAR NOT NULL, 
+uask_orchestrator  | 	full_name VARCHAR NOT NULL, 
+uask_orchestrator  | 	password_hash VARCHAR NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	role VARCHAR NOT NULL, 
+uask_orchestrator  | 	academic_level VARCHAR, 
+uask_orchestrator  | 	preferred_language VARCHAR NOT NULL, 
+uask_orchestrator  | 	timezone VARCHAR NOT NULL, 
+uask_orchestrator  | 	theme VARCHAR NOT NULL, 
+uask_orchestrator  | 	solving_mode VARCHAR NOT NULL, 
+uask_orchestrator  | 	subscription_tier VARCHAR NOT NULL, 
+uask_orchestrator  | 	subscription_status VARCHAR NOT NULL, 
+uask_orchestrator  | 	subscription_expiry TIMESTAMP WITHOUT TIME ZONE, 
+uask_orchestrator  | 	quota_questions_total INTEGER NOT NULL, 
+uask_orchestrator  | 	quota_scans_total INTEGER NOT NULL, 
+uask_orchestrator  | 	tokens_used_this_month INTEGER NOT NULL, 
+uask_orchestrator  | 	last_token_reset TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	avatar_url VARCHAR, 
+uask_orchestrator  | 	bio VARCHAR, 
+uask_orchestrator  | 	is_verified BOOLEAN NOT NULL, 
+uask_orchestrator  | 	verification_token VARCHAR, 
+uask_orchestrator  | 	ip_address VARCHAR, 
+uask_orchestrator  | 	country VARCHAR, 
+uask_orchestrator  | 	is_public BOOLEAN NOT NULL, 
+uask_orchestrator  | 	learning_interests JSON, 
+uask_orchestrator  | 	last_active_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	session_token VARCHAR, 
+uask_orchestrator  | 	last_ip VARCHAR, 
+uask_orchestrator  | 	PRIMARY KEY (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,627 INFO sqlalchemy.engine.Engine [no key 0.00008s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,634 INFO sqlalchemy.engine.Engine CREATE UNIQUE INDEX ix_user_email ON "user" (email)
+uask_orchestrator  | 2026-01-15 06:38:18,634 INFO sqlalchemy.engine.Engine [no key 0.00010s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE UNIQUE INDEX ix_user_email ON "user" (email)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00010s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | CREATE TABLE canonicalproblem (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	normalized_problem_hash VARCHAR NOT NULL, 
+uask_orchestrator  | 	normalized_text VARCHAR NOT NULL, 
+uask_orchestrator  | 	normalized_latex_blocks JSON, 
+uask_orchestrator  | 	subject VARCHAR, 
+uask_orchestrator  | 	language VARCHAR NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	last_seen_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	seen_count INTEGER NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00010s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,637 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | CREATE TABLE canonicalproblem (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	normalized_problem_hash VARCHAR NOT NULL, 
+uask_orchestrator  | 	normalized_text VARCHAR NOT NULL, 
+uask_orchestrator  | 	normalized_latex_blocks JSON, 
+uask_orchestrator  | 	subject VARCHAR, 
+uask_orchestrator  | 	language VARCHAR NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	last_seen_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	seen_count INTEGER NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,637 INFO sqlalchemy.engine.Engine [no key 0.00010s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,640 INFO sqlalchemy.engine.Engine CREATE UNIQUE INDEX ix_canonicalproblem_normalized_problem_hash ON canonicalproblem (normalized_problem_hash)
+uask_orchestrator  | 2026-01-15 06:38:18,640 INFO sqlalchemy.engine.Engine [no key 0.00009s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE UNIQUE INDEX ix_canonicalproblem_normalized_problem_hash ON canonicalproblem (normalized_problem_hash)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00009s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,642 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | CREATE TABLE promocode (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	code VARCHAR NOT NULL, 
+uask_orchestrator  | 	discount_percent INTEGER NOT NULL, 
+uask_orchestrator  | 	valid_from TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	valid_until TIMESTAMP WITHOUT TIME ZONE, 
+uask_orchestrator  | 	is_active BOOLEAN NOT NULL, 
+uask_orchestrator  | 	max_uses INTEGER, 
+uask_orchestrator  | 	current_uses INTEGER NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,642 INFO sqlalchemy.engine.Engine [no key 0.00009s] {}
+uask_orchestrator  | CREATE TABLE promocode (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	code VARCHAR NOT NULL, 
+uask_orchestrator  | 	discount_percent INTEGER NOT NULL, 
+uask_orchestrator  | 	valid_from TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	valid_until TIMESTAMP WITHOUT TIME ZONE, 
+uask_orchestrator  | 	is_active BOOLEAN NOT NULL, 
+uask_orchestrator  | 	max_uses INTEGER, 
+uask_orchestrator  | 	current_uses INTEGER NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00009s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE UNIQUE INDEX ix_promocode_code ON promocode (code)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00008s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,646 INFO sqlalchemy.engine.Engine CREATE UNIQUE INDEX ix_promocode_code ON promocode (code)
+uask_orchestrator  | 2026-01-15 06:38:18,646 INFO sqlalchemy.engine.Engine [no key 0.00008s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,648 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | CREATE TABLE systemconfig (
+uask_orchestrator  | 	key VARCHAR NOT NULL, 
+uask_orchestrator  | 	value VARCHAR NOT NULL, 
+uask_orchestrator  | 	description VARCHAR, 
+uask_orchestrator  | 	updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (key)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,648 INFO sqlalchemy.engine.Engine [no key 0.00008s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | CREATE TABLE systemconfig (
+uask_orchestrator  | 	key VARCHAR NOT NULL, 
+uask_orchestrator  | 	value VARCHAR NOT NULL, 
+uask_orchestrator  | 	description VARCHAR, 
+uask_orchestrator  | 	updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (key)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00008s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,651 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | CREATE TABLE prompttemplate (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	name VARCHAR NOT NULL, 
+uask_orchestrator  | 	slug VARCHAR NOT NULL, 
+uask_orchestrator  | 	description VARCHAR, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,651 INFO sqlalchemy.engine.Engine [no key 0.00009s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | CREATE TABLE prompttemplate (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	name VARCHAR NOT NULL, 
+uask_orchestrator  | 	slug VARCHAR NOT NULL, 
+uask_orchestrator  | 	description VARCHAR, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00009s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,655 INFO sqlalchemy.engine.Engine CREATE UNIQUE INDEX ix_prompttemplate_name ON prompttemplate (name)
+uask_orchestrator  | 2026-01-15 06:38:18,655 INFO sqlalchemy.engine.Engine [no key 0.00008s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE UNIQUE INDEX ix_prompttemplate_name ON prompttemplate (name)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00008s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,656 INFO sqlalchemy.engine.Engine CREATE UNIQUE INDEX ix_prompttemplate_slug ON prompttemplate (slug)
+uask_orchestrator  | 2026-01-15 06:38:18,656 INFO sqlalchemy.engine.Engine [no key 0.00008s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE UNIQUE INDEX ix_prompttemplate_slug ON prompttemplate (slug)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00008s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | 2026-01-15 06:38:18,659 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | CREATE TABLE systemerrorentry (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	level VARCHAR NOT NULL, 
+uask_orchestrator  | 	component VARCHAR NOT NULL, 
+uask_orchestrator  | 	message VARCHAR NOT NULL, 
+uask_orchestrator  | 	stack_trace VARCHAR, 
+uask_orchestrator  | 	is_resolved BOOLEAN NOT NULL, 
+uask_orchestrator  | CREATE TABLE systemerrorentry (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	level VARCHAR NOT NULL, 
+uask_orchestrator  | 	component VARCHAR NOT NULL, 
+uask_orchestrator  | 	message VARCHAR NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	stack_trace VARCHAR, 
+uask_orchestrator  | 	PRIMARY KEY (id)
+uask_orchestrator  | 	is_resolved BOOLEAN NOT NULL, 
+uask_orchestrator  | )
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 
+uask_orchestrator  | 	PRIMARY KEY (id)
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,659 INFO sqlalchemy.engine.Engine [no key 0.00007s] {}
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00007s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | CREATE TABLE chatsession (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	user_id INTEGER, 
+uask_orchestrator  | 	title VARCHAR NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	subject VARCHAR, 
+uask_orchestrator  | 	topic VARCHAR, 
+uask_orchestrator  | 	is_saved BOOLEAN NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(user_id) REFERENCES "user" (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00008s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,663 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | CREATE TABLE chatsession (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	user_id INTEGER, 
+uask_orchestrator  | 	title VARCHAR NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	subject VARCHAR, 
+uask_orchestrator  | 	topic VARCHAR, 
+uask_orchestrator  | 	is_saved BOOLEAN NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(user_id) REFERENCES "user" (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,663 INFO sqlalchemy.engine.Engine [no key 0.00008s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_chatsession_is_saved ON chatsession (is_saved)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00008s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,667 INFO sqlalchemy.engine.Engine CREATE INDEX ix_chatsession_is_saved ON chatsession (is_saved)
+uask_orchestrator  | 2026-01-15 06:38:18,667 INFO sqlalchemy.engine.Engine [no key 0.00008s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | CREATE TABLE usagelog (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	user_id INTEGER NOT NULL, 
+uask_orchestrator  | 	action_type VARCHAR NOT NULL, 
+uask_orchestrator  | 	tokens_used INTEGER NOT NULL, 
+uask_orchestrator  | 	timestamp TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(user_id) REFERENCES "user" (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00007s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,668 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | CREATE TABLE usagelog (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	user_id INTEGER NOT NULL, 
+uask_orchestrator  | 	action_type VARCHAR NOT NULL, 
+uask_orchestrator  | 	tokens_used INTEGER NOT NULL, 
+uask_orchestrator  | 	timestamp TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(user_id) REFERENCES "user" (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,668 INFO sqlalchemy.engine.Engine [no key 0.00007s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | CREATE TABLE payment (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	user_id INTEGER NOT NULL, 
+uask_orchestrator  | 	amount FLOAT NOT NULL, 
+uask_orchestrator  | 	currency VARCHAR NOT NULL, 
+uask_orchestrator  | 	status VARCHAR NOT NULL, 
+uask_orchestrator  | 	transaction_id VARCHAR NOT NULL, 
+uask_orchestrator  | 	payment_method VARCHAR NOT NULL, 
+uask_orchestrator  | 	ip_address VARCHAR, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(user_id) REFERENCES "user" (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00008s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,673 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | CREATE TABLE payment (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	user_id INTEGER NOT NULL, 
+uask_orchestrator  | 	amount FLOAT NOT NULL, 
+uask_orchestrator  | 	currency VARCHAR NOT NULL, 
+uask_orchestrator  | 	status VARCHAR NOT NULL, 
+uask_orchestrator  | 	transaction_id VARCHAR NOT NULL, 
+uask_orchestrator  | 	payment_method VARCHAR NOT NULL, 
+uask_orchestrator  | 	ip_address VARCHAR, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(user_id) REFERENCES "user" (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,673 INFO sqlalchemy.engine.Engine [no key 0.00008s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_payment_transaction_id ON payment (transaction_id)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00008s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,677 INFO sqlalchemy.engine.Engine CREATE INDEX ix_payment_transaction_id ON payment (transaction_id)
+uask_orchestrator  | 2026-01-15 06:38:18,677 INFO sqlalchemy.engine.Engine [no key 0.00008s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | CREATE TABLE upload (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	user_id INTEGER NOT NULL, 
+uask_orchestrator  | 	storage_url VARCHAR NOT NULL, 
+uask_orchestrator  | 	file_hash VARCHAR NOT NULL, 
+uask_orchestrator  | 	content_type VARCHAR NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(user_id) REFERENCES "user" (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00008s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,679 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | CREATE TABLE upload (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	user_id INTEGER NOT NULL, 
+uask_orchestrator  | 	storage_url VARCHAR NOT NULL, 
+uask_orchestrator  | 	file_hash VARCHAR NOT NULL, 
+uask_orchestrator  | 	content_type VARCHAR NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(user_id) REFERENCES "user" (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,679 INFO sqlalchemy.engine.Engine [no key 0.00008s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_upload_file_hash ON upload (file_hash)
+uask_orchestrator  | 2026-01-15 06:38:18,683 INFO sqlalchemy.engine.Engine CREATE INDEX ix_upload_file_hash ON upload (file_hash)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00011s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,683 INFO sqlalchemy.engine.Engine [no key 0.00011s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_upload_user_id ON upload (user_id)
+uask_orchestrator  | 2026-01-15 06:38:18,685 INFO sqlalchemy.engine.Engine CREATE INDEX ix_upload_user_id ON upload (user_id)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00008s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,685 INFO sqlalchemy.engine.Engine [no key 0.00008s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | CREATE TABLE canonicalsolution (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	problem_id INTEGER NOT NULL, 
+uask_orchestrator  | 	solution_json JSON, 
+uask_orchestrator  | 	verification_status VARCHAR NOT NULL, 
+uask_orchestrator  | 	verification_report JSON, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 2026-01-15 06:38:18,687 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | CREATE TABLE canonicalsolution (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	problem_id INTEGER NOT NULL, 
+uask_orchestrator  | 	solution_json JSON, 
+uask_orchestrator  | 	verification_status VARCHAR NOT NULL, 
+uask_orchestrator  | 	verification_report JSON, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	last_served_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	served_count INTEGER NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(problem_id) REFERENCES canonicalproblem (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,687 INFO sqlalchemy.engine.Engine [no key 0.00009s] {}
+uask_orchestrator  | 	last_served_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	served_count INTEGER NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(problem_id) REFERENCES canonicalproblem (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00009s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,691 INFO sqlalchemy.engine.Engine CREATE INDEX ix_canonicalsolution_problem_id ON canonicalsolution (problem_id)
+uask_orchestrator  | 2026-01-15 06:38:18,691 INFO sqlalchemy.engine.Engine [no key 0.00009s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_canonicalsolution_problem_id ON canonicalsolution (problem_id)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00009s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | CREATE TABLE voicesession (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	user_id INTEGER NOT NULL, 
+uask_orchestrator  | 	language VARCHAR NOT NULL, 
+uask_orchestrator  | 	preferred_stt VARCHAR NOT NULL, 
+uask_orchestrator  | 	status VARCHAR NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(user_id) REFERENCES "user" (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00007s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,693 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | CREATE TABLE voicesession (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	user_id INTEGER NOT NULL, 
+uask_orchestrator  | 	language VARCHAR NOT NULL, 
+uask_orchestrator  | 	preferred_stt VARCHAR NOT NULL, 
+uask_orchestrator  | 	status VARCHAR NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(user_id) REFERENCES "user" (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,693 INFO sqlalchemy.engine.Engine [no key 0.00007s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,697 INFO sqlalchemy.engine.Engine CREATE INDEX ix_voicesession_status ON voicesession (status)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_voicesession_status ON voicesession (status)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00009s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,697 INFO sqlalchemy.engine.Engine [no key 0.00009s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_voicesession_created_at ON voicesession (created_at)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00010s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,699 INFO sqlalchemy.engine.Engine CREATE INDEX ix_voicesession_created_at ON voicesession (created_at)
+uask_orchestrator  | 2026-01-15 06:38:18,699 INFO sqlalchemy.engine.Engine [no key 0.00010s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,701 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | CREATE TABLE adminnote (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	user_id INTEGER NOT NULL, 
+uask_orchestrator  | 	admin_name VARCHAR NOT NULL, 
+uask_orchestrator  | 	content VARCHAR NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(user_id) REFERENCES "user" (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,701 INFO sqlalchemy.engine.Engine [no key 0.00008s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | CREATE TABLE adminnote (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	user_id INTEGER NOT NULL, 
+uask_orchestrator  | 	admin_name VARCHAR NOT NULL, 
+uask_orchestrator  | 	content VARCHAR NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(user_id) REFERENCES "user" (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00008s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,706 INFO sqlalchemy.engine.Engine CREATE INDEX ix_adminnote_user_id ON adminnote (user_id)
+uask_orchestrator  | 2026-01-15 06:38:18,706 INFO sqlalchemy.engine.Engine [no key 0.00009s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_adminnote_user_id ON adminnote (user_id)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00009s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | CREATE TABLE promptversion (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	template_id INTEGER NOT NULL, 
+uask_orchestrator  | 	version VARCHAR NOT NULL, 
+uask_orchestrator  | 	content VARCHAR NOT NULL, 
+uask_orchestrator  | 2026-01-15 06:38:18,708 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | CREATE TABLE promptversion (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	template_id INTEGER NOT NULL, 
+uask_orchestrator  | 	version VARCHAR NOT NULL, 
+uask_orchestrator  | 	content VARCHAR NOT NULL, 
+uask_orchestrator  | 	author VARCHAR NOT NULL, 
+uask_orchestrator  | 	is_production BOOLEAN NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(template_id) REFERENCES prompttemplate (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,708 INFO sqlalchemy.engine.Engine [no key 0.00008s] {}
+uask_orchestrator  | 	author VARCHAR NOT NULL, 
+uask_orchestrator  | 	is_production BOOLEAN NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(template_id) REFERENCES prompttemplate (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00008s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,712 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | CREATE TABLE userquotaoverride (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	user_id INTEGER NOT NULL, 
+uask_orchestrator  | 	token_limit INTEGER, 
+uask_orchestrator  | 	ocr_concurrency INTEGER, 
+uask_orchestrator  | 	expires_at TIMESTAMP WITHOUT TIME ZONE, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(user_id) REFERENCES "user" (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | CREATE TABLE userquotaoverride (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	user_id INTEGER NOT NULL, 
+uask_orchestrator  | 	token_limit INTEGER, 
+uask_orchestrator  | 	ocr_concurrency INTEGER, 
+uask_orchestrator  | 	expires_at TIMESTAMP WITHOUT TIME ZONE, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(user_id) REFERENCES "user" (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,712 INFO sqlalchemy.engine.Engine [no key 0.00009s] {}
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00009s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,714 INFO sqlalchemy.engine.Engine CREATE INDEX ix_userquotaoverride_user_id ON userquotaoverride (user_id)
+uask_orchestrator  | 2026-01-15 06:38:18,714 INFO sqlalchemy.engine.Engine [no key 0.00008s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_userquotaoverride_user_id ON userquotaoverride (user_id)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00008s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,716 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | CREATE TABLE chatmessage (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	session_id INTEGER NOT NULL, 
+uask_orchestrator  | 	role VARCHAR NOT NULL, 
+uask_orchestrator  | 	content VARCHAR NOT NULL, 
+uask_orchestrator  | 	media_url VARCHAR, 
+uask_orchestrator  | 	structured_data JSON, 
+uask_orchestrator  | 	model_used VARCHAR, 
+uask_orchestrator  | 	tokens_used INTEGER NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(session_id) REFERENCES chatsession (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00008s] {}
+uask_orchestrator  | CREATE TABLE chatmessage (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	session_id INTEGER NOT NULL, 
+uask_orchestrator  | 	role VARCHAR NOT NULL, 
+uask_orchestrator  | 	content VARCHAR NOT NULL, 
+uask_orchestrator  | 	media_url VARCHAR, 
+uask_orchestrator  | 	structured_data JSON, 
+uask_orchestrator  | 	model_used VARCHAR, 
+uask_orchestrator  | 	tokens_used INTEGER NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(session_id) REFERENCES chatsession (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,716 INFO sqlalchemy.engine.Engine [no key 0.00008s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | CREATE TABLE crop (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	upload_id INTEGER NOT NULL, 
+uask_orchestrator  | 	crop_rect JSON, 
+uask_orchestrator  | 	rotation INTEGER NOT NULL, 
+uask_orchestrator  | 2026-01-15 06:38:18,721 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | CREATE TABLE crop (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	upload_id INTEGER NOT NULL, 
+uask_orchestrator  | 	crop_rect JSON, 
+uask_orchestrator  | 	rotation INTEGER NOT NULL, 
+uask_orchestrator  | 	margin_pct INTEGER NOT NULL, 
+uask_orchestrator  | 	crop_image_hash VARCHAR NOT NULL, 
+uask_orchestrator  | 	cropped_storage_url VARCHAR NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(upload_id) REFERENCES upload (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,721 INFO sqlalchemy.engine.Engine [no key 0.00009s] {}
+uask_orchestrator  | 	margin_pct INTEGER NOT NULL, 
+uask_orchestrator  | 	crop_image_hash VARCHAR NOT NULL, 
+uask_orchestrator  | 	cropped_storage_url VARCHAR NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(upload_id) REFERENCES upload (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00009s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE UNIQUE INDEX ix_crop_crop_image_hash ON crop (crop_image_hash)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00009s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,725 INFO sqlalchemy.engine.Engine CREATE UNIQUE INDEX ix_crop_crop_image_hash ON crop (crop_image_hash)
+uask_orchestrator  | 2026-01-15 06:38:18,725 INFO sqlalchemy.engine.Engine [no key 0.00009s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_crop_upload_id ON crop (upload_id)
+uask_orchestrator  | 2026-01-15 06:38:18,727 INFO sqlalchemy.engine.Engine CREATE INDEX ix_crop_upload_id ON crop (upload_id)
+uask_orchestrator  | 2026-01-15 06:38:18,727 INFO sqlalchemy.engine.Engine [no key 0.00008s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00008s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,729 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | CREATE TABLE usersavedsolution (
+uask_orchestrator  | 	user_id INTEGER NOT NULL, 
+uask_orchestrator  | 	solution_id INTEGER NOT NULL, 
+uask_orchestrator  | 	saved_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	tags JSON, 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | CREATE TABLE usersavedsolution (
+uask_orchestrator  | 	user_id INTEGER NOT NULL, 
+uask_orchestrator  | 	solution_id INTEGER NOT NULL, 
+uask_orchestrator  | 	saved_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	tags JSON, 
+uask_orchestrator  | 	notes VARCHAR, 
+uask_orchestrator  | 	PRIMARY KEY (user_id, solution_id), 
+uask_orchestrator  | 	FOREIGN KEY(user_id) REFERENCES "user" (id), 
+uask_orchestrator  | 	FOREIGN KEY(solution_id) REFERENCES canonicalsolution (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00009s] {}
+uask_orchestrator  | 	notes VARCHAR, 
+uask_orchestrator  | 	PRIMARY KEY (user_id, solution_id), 
+uask_orchestrator  | 	FOREIGN KEY(user_id) REFERENCES "user" (id), 
+uask_orchestrator  | 	FOREIGN KEY(solution_id) REFERENCES canonicalsolution (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,729 INFO sqlalchemy.engine.Engine [no key 0.00009s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | CREATE TABLE voiceaudio (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	voice_session_id INTEGER NOT NULL, 
+uask_orchestrator  | 	storage_url VARCHAR NOT NULL, 
+uask_orchestrator  | 	audio_hash VARCHAR NOT NULL, 
+uask_orchestrator  | 	duration_ms INTEGER, 
+uask_orchestrator  | 	codec VARCHAR, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(voice_session_id) REFERENCES voicesession (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00010s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,734 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | CREATE TABLE voiceaudio (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	voice_session_id INTEGER NOT NULL, 
+uask_orchestrator  | 	storage_url VARCHAR NOT NULL, 
+uask_orchestrator  | 	audio_hash VARCHAR NOT NULL, 
+uask_orchestrator  | 	duration_ms INTEGER, 
+uask_orchestrator  | 	codec VARCHAR, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(voice_session_id) REFERENCES voicesession (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,734 INFO sqlalchemy.engine.Engine [no key 0.00010s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_voiceaudio_audio_hash ON voiceaudio (audio_hash)
+uask_orchestrator  | 2026-01-15 06:38:18,738 INFO sqlalchemy.engine.Engine CREATE INDEX ix_voiceaudio_audio_hash ON voiceaudio (audio_hash)
+uask_orchestrator  | 2026-01-15 06:38:18,738 INFO sqlalchemy.engine.Engine [no key 0.00010s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00010s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_voiceaudio_created_at ON voiceaudio (created_at)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00008s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,740 INFO sqlalchemy.engine.Engine CREATE INDEX ix_voiceaudio_created_at ON voiceaudio (created_at)
+uask_orchestrator  | 2026-01-15 06:38:18,740 INFO sqlalchemy.engine.Engine [no key 0.00008s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | CREATE TABLE ocrjob (
+uask_orchestrator  | 	id VARCHAR NOT NULL, 
+uask_orchestrator  | 	user_id INTEGER NOT NULL, 
+uask_orchestrator  | 	crop_id INTEGER NOT NULL, 
+uask_orchestrator  | 	requested_engine VARCHAR NOT NULL, 
+uask_orchestrator  | 	status VARCHAR NOT NULL, 
+uask_orchestrator  | 	priority VARCHAR NOT NULL, 
+uask_orchestrator  | 	attempts INTEGER NOT NULL, 
+uask_orchestrator  | 	error_code VARCHAR, 
+uask_orchestrator  | 	error_message VARCHAR, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	started_at TIMESTAMP WITHOUT TIME ZONE, 
+uask_orchestrator  | 	finished_at TIMESTAMP WITHOUT TIME ZONE, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(user_id) REFERENCES "user" (id), 
+uask_orchestrator  | 	FOREIGN KEY(crop_id) REFERENCES crop (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00008s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,742 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | CREATE TABLE ocrjob (
+uask_orchestrator  | 	id VARCHAR NOT NULL, 
+uask_orchestrator  | 	user_id INTEGER NOT NULL, 
+uask_orchestrator  | 	crop_id INTEGER NOT NULL, 
+uask_orchestrator  | 	requested_engine VARCHAR NOT NULL, 
+uask_orchestrator  | 	status VARCHAR NOT NULL, 
+uask_orchestrator  | 	priority VARCHAR NOT NULL, 
+uask_orchestrator  | 	attempts INTEGER NOT NULL, 
+uask_orchestrator  | 	error_code VARCHAR, 
+uask_orchestrator  | 	error_message VARCHAR, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	started_at TIMESTAMP WITHOUT TIME ZONE, 
+uask_orchestrator  | 	finished_at TIMESTAMP WITHOUT TIME ZONE, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(user_id) REFERENCES "user" (id), 
+uask_orchestrator  | 	FOREIGN KEY(crop_id) REFERENCES crop (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,742 INFO sqlalchemy.engine.Engine [no key 0.00008s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,746 INFO sqlalchemy.engine.Engine CREATE INDEX ix_ocrjob_crop_id ON ocrjob (crop_id)
+uask_orchestrator  | 2026-01-15 06:38:18,746 INFO sqlalchemy.engine.Engine [no key 0.00009s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_ocrjob_crop_id ON ocrjob (crop_id)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00009s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_ocrjob_user_id ON ocrjob (user_id)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00008s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,749 INFO sqlalchemy.engine.Engine CREATE INDEX ix_ocrjob_user_id ON ocrjob (user_id)
+uask_orchestrator  | 2026-01-15 06:38:18,749 INFO sqlalchemy.engine.Engine [no key 0.00008s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,751 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | CREATE TABLE voicejob (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	voice_session_id INTEGER NOT NULL, 
+uask_orchestrator  | 	audio_id INTEGER NOT NULL, 
+uask_orchestrator  | 	status VARCHAR NOT NULL, 
+uask_orchestrator  | 	attempts INTEGER NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	started_at TIMESTAMP WITHOUT TIME ZONE, 
+uask_orchestrator  | 	finished_at TIMESTAMP WITHOUT TIME ZONE, 
+uask_orchestrator  | 	error_code VARCHAR, 
+uask_orchestrator  | 	error_message VARCHAR, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(voice_session_id) REFERENCES voicesession (id), 
+uask_orchestrator  | 	FOREIGN KEY(audio_id) REFERENCES voiceaudio (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00007s] {}
+uask_orchestrator  | CREATE TABLE voicejob (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	voice_session_id INTEGER NOT NULL, 
+uask_orchestrator  | 	audio_id INTEGER NOT NULL, 
+uask_orchestrator  | 	status VARCHAR NOT NULL, 
+uask_orchestrator  | 	attempts INTEGER NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	started_at TIMESTAMP WITHOUT TIME ZONE, 
+uask_orchestrator  | 	finished_at TIMESTAMP WITHOUT TIME ZONE, 
+uask_orchestrator  | 	error_code VARCHAR, 
+uask_orchestrator  | 	error_message VARCHAR, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(voice_session_id) REFERENCES voicesession (id), 
+uask_orchestrator  | 	FOREIGN KEY(audio_id) REFERENCES voiceaudio (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,751 INFO sqlalchemy.engine.Engine [no key 0.00007s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | CREATE TABLE ocrartifact (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	crop_id INTEGER NOT NULL, 
+uask_orchestrator  | 	job_id VARCHAR NOT NULL, 
+uask_orchestrator  | 	engine_used VARCHAR NOT NULL, 
+uask_orchestrator  | 	doc_type VARCHAR, 
+uask_orchestrator  | 	page_metadata JSON, 
+uask_orchestrator  | 	instructions JSON, 
+uask_orchestrator  | 	raw_markdown VARCHAR NOT NULL, 
+uask_orchestrator  | 	plain_text VARCHAR NOT NULL, 
+uask_orchestrator  | 	latex_blocks JSON, 
+uask_orchestrator  | 	confidence_score FLOAT NOT NULL, 
+uask_orchestrator  | 	pix2text_version VARCHAR, 
+uask_orchestrator  | 	provider VARCHAR, 
+uask_orchestrator  | 	provider_model VARCHAR, 
+uask_orchestrator  | 	usage_metadata JSON, 
+uask_orchestrator  | 	blocks JSON, 
+uask_orchestrator  | 	derived_json JSON, 
+uask_orchestrator  | 	coverage_checklist JSON, 
+uask_orchestrator  | 	timings JSON, 
+uask_orchestrator  | 	warnings JSON, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(crop_id) REFERENCES crop (id), 
+uask_orchestrator  | 	FOREIGN KEY(job_id) REFERENCES ocrjob (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00010s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,756 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | CREATE TABLE ocrartifact (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	crop_id INTEGER NOT NULL, 
+uask_orchestrator  | 	job_id VARCHAR NOT NULL, 
+uask_orchestrator  | 	engine_used VARCHAR NOT NULL, 
+uask_orchestrator  | 	doc_type VARCHAR, 
+uask_orchestrator  | 	page_metadata JSON, 
+uask_orchestrator  | 	instructions JSON, 
+uask_orchestrator  | 	raw_markdown VARCHAR NOT NULL, 
+uask_orchestrator  | 	plain_text VARCHAR NOT NULL, 
+uask_orchestrator  | 	latex_blocks JSON, 
+uask_orchestrator  | 	confidence_score FLOAT NOT NULL, 
+uask_orchestrator  | 	pix2text_version VARCHAR, 
+uask_orchestrator  | 	provider VARCHAR, 
+uask_orchestrator  | 	provider_model VARCHAR, 
+uask_orchestrator  | 	usage_metadata JSON, 
+uask_orchestrator  | 	blocks JSON, 
+uask_orchestrator  | 	derived_json JSON, 
+uask_orchestrator  | 	coverage_checklist JSON, 
+uask_orchestrator  | 	timings JSON, 
+uask_orchestrator  | 	warnings JSON, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(crop_id) REFERENCES crop (id), 
+uask_orchestrator  | 	FOREIGN KEY(job_id) REFERENCES ocrjob (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,756 INFO sqlalchemy.engine.Engine [no key 0.00010s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,761 INFO sqlalchemy.engine.Engine CREATE INDEX ix_ocrartifact_engine_used ON ocrartifact (engine_used)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_ocrartifact_engine_used ON ocrartifact (engine_used)
+uask_orchestrator  | 2026-01-15 06:38:18,761 INFO sqlalchemy.engine.Engine [no key 0.00011s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00011s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_ocrartifact_crop_id ON ocrartifact (crop_id)
+uask_orchestrator  | 2026-01-15 06:38:18,763 INFO sqlalchemy.engine.Engine CREATE INDEX ix_ocrartifact_crop_id ON ocrartifact (crop_id)
+uask_orchestrator  | 2026-01-15 06:38:18,763 INFO sqlalchemy.engine.Engine [no key 0.00010s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00010s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_ocrartifact_job_id ON ocrartifact (job_id)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00010s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,766 INFO sqlalchemy.engine.Engine CREATE INDEX ix_ocrartifact_job_id ON ocrartifact (job_id)
+uask_orchestrator  | 2026-01-15 06:38:18,766 INFO sqlalchemy.engine.Engine [no key 0.00010s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,768 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | CREATE TABLE voiceartifact (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	job_id INTEGER NOT NULL, 
+uask_orchestrator  | 	transcript_raw VARCHAR NOT NULL, 
+uask_orchestrator  | 	transcript_confidence FLOAT, 
+uask_orchestrator  | 	normalized_math_text VARCHAR NOT NULL, 
+uask_orchestrator  | 	ambiguity_flags JSON, 
+uask_orchestrator  | 	clarifier_question JSON, 
+uask_orchestrator  | 	stt_provider VARCHAR NOT NULL, 
+uask_orchestrator  | 	stt_model VARCHAR NOT NULL, 
+uask_orchestrator  | 	timings_json JSON, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(job_id) REFERENCES voicejob (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,769 INFO sqlalchemy.engine.Engine [no key 0.00008s] {}
+uask_orchestrator  | CREATE TABLE voiceartifact (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	job_id INTEGER NOT NULL, 
+uask_orchestrator  | 	transcript_raw VARCHAR NOT NULL, 
+uask_orchestrator  | 	transcript_confidence FLOAT, 
+uask_orchestrator  | 	normalized_math_text VARCHAR NOT NULL, 
+uask_orchestrator  | 	ambiguity_flags JSON, 
+uask_orchestrator  | 	clarifier_question JSON, 
+uask_orchestrator  | 	stt_provider VARCHAR NOT NULL, 
+uask_orchestrator  | 	stt_model VARCHAR NOT NULL, 
+uask_orchestrator  | 	timings_json JSON, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(job_id) REFERENCES voicejob (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00008s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,773 INFO sqlalchemy.engine.Engine CREATE INDEX ix_voiceartifact_created_at ON voiceartifact (created_at)
+uask_orchestrator  | 2026-01-15 06:38:18,773 INFO sqlalchemy.engine.Engine [no key 0.00010s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_voiceartifact_created_at ON voiceartifact (created_at)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00010s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,775 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | CREATE TABLE ocrquestion (
+uask_orchestrator  | CREATE TABLE ocrquestion (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	artifact_id INTEGER NOT NULL, 
+uask_orchestrator  | 	external_id VARCHAR NOT NULL, 
+uask_orchestrator  | 	prompt VARCHAR NOT NULL, 
+uask_orchestrator  | 	has_figure BOOLEAN NOT NULL, 
+uask_orchestrator  | 	math_expressions JSON, 
+uask_orchestrator  | 	notes VARCHAR, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(artifact_id) REFERENCES ocrartifact (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,776 INFO sqlalchemy.engine.Engine [no key 0.00010s] {}
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	artifact_id INTEGER NOT NULL, 
+uask_orchestrator  | 	external_id VARCHAR NOT NULL, 
+uask_orchestrator  | 	prompt VARCHAR NOT NULL, 
+uask_orchestrator  | 	has_figure BOOLEAN NOT NULL, 
+uask_orchestrator  | 	math_expressions JSON, 
+uask_orchestrator  | 	notes VARCHAR, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(artifact_id) REFERENCES ocrartifact (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00010s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,780 INFO sqlalchemy.engine.Engine CREATE INDEX ix_ocrquestion_artifact_id ON ocrquestion (artifact_id)
+uask_orchestrator  | 2026-01-15 06:38:18,781 INFO sqlalchemy.engine.Engine [no key 0.00011s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_ocrquestion_artifact_id ON ocrquestion (artifact_id)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00011s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,783 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | CREATE TABLE ocrfigure (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	artifact_id INTEGER NOT NULL, 
+uask_orchestrator  | 	external_id VARCHAR NOT NULL, 
+uask_orchestrator  | 	type VARCHAR NOT NULL, 
+uask_orchestrator  | 	description VARCHAR, 
+uask_orchestrator  | 	data_json JSON, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(artifact_id) REFERENCES ocrartifact (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00010s] {}
+uask_orchestrator  | CREATE TABLE ocrfigure (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	artifact_id INTEGER NOT NULL, 
+uask_orchestrator  | 	external_id VARCHAR NOT NULL, 
+uask_orchestrator  | 	type VARCHAR NOT NULL, 
+uask_orchestrator  | 	description VARCHAR, 
+uask_orchestrator  | 	data_json JSON, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(artifact_id) REFERENCES ocrartifact (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,783 INFO sqlalchemy.engine.Engine [no key 0.00010s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,787 INFO sqlalchemy.engine.Engine CREATE INDEX ix_ocrfigure_artifact_id ON ocrfigure (artifact_id)
+uask_orchestrator  | 2026-01-15 06:38:18,787 INFO sqlalchemy.engine.Engine [no key 0.00010s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_ocrfigure_artifact_id ON ocrfigure (artifact_id)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00010s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,789 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | CREATE TABLE ocrconfirmation (
+uask_orchestrator  | CREATE TABLE ocrconfirmation (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	artifact_id INTEGER NOT NULL, 
+uask_orchestrator  | 	artifact_id INTEGER NOT NULL, 
+uask_orchestrator  | 	user_id INTEGER NOT NULL, 
+uask_orchestrator  | 	confirmed_markdown VARCHAR NOT NULL, 
+uask_orchestrator  | 	confirmed_text VARCHAR NOT NULL, 
+uask_orchestrator  | 	confirmed_latex_blocks JSON, 
+uask_orchestrator  | 	normalized_problem_hash VARCHAR NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(artifact_id) REFERENCES ocrartifact (id), 
+uask_orchestrator  | 	FOREIGN KEY(user_id) REFERENCES "user" (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00010s] {}
+uask_orchestrator  | 	user_id INTEGER NOT NULL, 
+uask_orchestrator  | 	confirmed_markdown VARCHAR NOT NULL, 
+uask_orchestrator  | 	confirmed_text VARCHAR NOT NULL, 
+uask_orchestrator  | 	confirmed_latex_blocks JSON, 
+uask_orchestrator  | 	normalized_problem_hash VARCHAR NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(artifact_id) REFERENCES ocrartifact (id), 
+uask_orchestrator  | 	FOREIGN KEY(user_id) REFERENCES "user" (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,790 INFO sqlalchemy.engine.Engine [no key 0.00010s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_ocrconfirmation_normalized_problem_hash ON ocrconfirmation (normalized_problem_hash)
+uask_orchestrator  | 2026-01-15 06:38:18,795 INFO sqlalchemy.engine.Engine CREATE INDEX ix_ocrconfirmation_normalized_problem_hash ON ocrconfirmation (normalized_problem_hash)
+uask_orchestrator  | 2026-01-15 06:38:18,795 INFO sqlalchemy.engine.Engine [no key 0.00011s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00011s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_ocrconfirmation_user_id ON ocrconfirmation (user_id)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00011s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,797 INFO sqlalchemy.engine.Engine CREATE INDEX ix_ocrconfirmation_user_id ON ocrconfirmation (user_id)
+uask_orchestrator  | 2026-01-15 06:38:18,797 INFO sqlalchemy.engine.Engine [no key 0.00011s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,799 INFO sqlalchemy.engine.Engine CREATE INDEX ix_ocrconfirmation_artifact_id ON ocrconfirmation (artifact_id)
+uask_orchestrator  | 2026-01-15 06:38:18,799 INFO sqlalchemy.engine.Engine [no key 0.00008s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_ocrconfirmation_artifact_id ON ocrconfirmation (artifact_id)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00008s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,801 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | CREATE TABLE ocrauditevent (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	user_id INTEGER, 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | CREATE TABLE ocrauditevent (
+uask_orchestrator  | 	upload_id INTEGER, 
+uask_orchestrator  | 	crop_id INTEGER, 
+uask_orchestrator  | 	job_id VARCHAR, 
+uask_orchestrator  | 	artifact_id INTEGER, 
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	user_id INTEGER, 
+uask_orchestrator  | 	upload_id INTEGER, 
+uask_orchestrator  | 	crop_id INTEGER, 
+uask_orchestrator  | 	job_id VARCHAR, 
+uask_orchestrator  | 	artifact_id INTEGER, 
+uask_orchestrator  | 	routing_engine_chosen VARCHAR NOT NULL, 
+uask_orchestrator  | 	vlm_type_chosen VARCHAR, 
+uask_orchestrator  | 	reasons JSON, 
+uask_orchestrator  | 	confidence_score_before FLOAT, 
+uask_orchestrator  | 	cost_estimate_usd FLOAT, 
+uask_orchestrator  | 	latency_ms INTEGER, 
+uask_orchestrator  | 	provider VARCHAR, 
+uask_orchestrator  | 	provider_model VARCHAR, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(user_id) REFERENCES "user" (id), 
+uask_orchestrator  | 	FOREIGN KEY(upload_id) REFERENCES upload (id), 
+uask_orchestrator  | 	FOREIGN KEY(crop_id) REFERENCES crop (id), 
+uask_orchestrator  | 	FOREIGN KEY(job_id) REFERENCES ocrjob (id), 
+uask_orchestrator  | 	FOREIGN KEY(artifact_id) REFERENCES ocrartifact (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00009s] {}
+uask_orchestrator  | 	routing_engine_chosen VARCHAR NOT NULL, 
+uask_orchestrator  | 	vlm_type_chosen VARCHAR, 
+uask_orchestrator  | 	reasons JSON, 
+uask_orchestrator  | 	confidence_score_before FLOAT, 
+uask_orchestrator  | 	cost_estimate_usd FLOAT, 
+uask_orchestrator  | 	latency_ms INTEGER, 
+uask_orchestrator  | 	provider VARCHAR, 
+uask_orchestrator  | 	provider_model VARCHAR, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(user_id) REFERENCES "user" (id), 
+uask_orchestrator  | 	FOREIGN KEY(upload_id) REFERENCES upload (id), 
+uask_orchestrator  | 	FOREIGN KEY(crop_id) REFERENCES crop (id), 
+uask_orchestrator  | 	FOREIGN KEY(job_id) REFERENCES ocrjob (id), 
+uask_orchestrator  | 	FOREIGN KEY(artifact_id) REFERENCES ocrartifact (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,801 INFO sqlalchemy.engine.Engine [no key 0.00009s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_ocrauditevent_routing_engine_chosen ON ocrauditevent (routing_engine_chosen)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00010s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,806 INFO sqlalchemy.engine.Engine CREATE INDEX ix_ocrauditevent_routing_engine_chosen ON ocrauditevent (routing_engine_chosen)
+uask_orchestrator  | 2026-01-15 06:38:18,806 INFO sqlalchemy.engine.Engine [no key 0.00010s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_ocrauditevent_created_at ON ocrauditevent (created_at)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00009s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,808 INFO sqlalchemy.engine.Engine CREATE INDEX ix_ocrauditevent_created_at ON ocrauditevent (created_at)
+uask_orchestrator  | 2026-01-15 06:38:18,808 INFO sqlalchemy.engine.Engine [no key 0.00009s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_ocrauditevent_user_id ON ocrauditevent (user_id)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00009s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,810 INFO sqlalchemy.engine.Engine CREATE INDEX ix_ocrauditevent_user_id ON ocrauditevent (user_id)
+uask_orchestrator  | 2026-01-15 06:38:18,810 INFO sqlalchemy.engine.Engine [no key 0.00009s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,812 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | CREATE TABLE voiceconfirmation (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	artifact_id INTEGER NOT NULL, 
+uask_orchestrator  | 	user_id INTEGER NOT NULL, 
+uask_orchestrator  | CREATE TABLE voiceconfirmation (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	artifact_id INTEGER NOT NULL, 
+uask_orchestrator  | 	user_id INTEGER NOT NULL, 
+uask_orchestrator  | 	confirmed_transcript_text VARCHAR NOT NULL, 
+uask_orchestrator  | 	confirmed_normalized_text VARCHAR NOT NULL, 
+uask_orchestrator  | 	problem_json JSON, 
+uask_orchestrator  | 	normalized_problem_hash VARCHAR NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(artifact_id) REFERENCES voiceartifact (id), 
+uask_orchestrator  | 	FOREIGN KEY(user_id) REFERENCES "user" (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 2026-01-15 06:38:18,812 INFO sqlalchemy.engine.Engine [no key 0.00007s] {}
+uask_orchestrator  | 	confirmed_transcript_text VARCHAR NOT NULL, 
+uask_orchestrator  | 	confirmed_normalized_text VARCHAR NOT NULL, 
+uask_orchestrator  | 	problem_json JSON, 
+uask_orchestrator  | 	normalized_problem_hash VARCHAR NOT NULL, 
+uask_orchestrator  | 	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(artifact_id) REFERENCES voiceartifact (id), 
+uask_orchestrator  | 	FOREIGN KEY(user_id) REFERENCES "user" (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00007s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_voiceconfirmation_created_at ON voiceconfirmation (created_at)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00007s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,816 INFO sqlalchemy.engine.Engine CREATE INDEX ix_voiceconfirmation_created_at ON voiceconfirmation (created_at)
+uask_orchestrator  | 2026-01-15 06:38:18,816 INFO sqlalchemy.engine.Engine [no key 0.00007s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_voiceconfirmation_normalized_problem_hash ON voiceconfirmation (normalized_problem_hash)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00007s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,818 INFO sqlalchemy.engine.Engine CREATE INDEX ix_voiceconfirmation_normalized_problem_hash ON voiceconfirmation (normalized_problem_hash)
+uask_orchestrator  | 2026-01-15 06:38:18,818 INFO sqlalchemy.engine.Engine [no key 0.00007s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,820 INFO sqlalchemy.engine.Engine 
+uask_orchestrator  | CREATE TABLE ocrchoice (
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | 	question_id INTEGER NOT NULL, 
+uask_orchestrator  | 	label VARCHAR NOT NULL, 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:
+uask_orchestrator  | 	text VARCHAR NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | CREATE TABLE ocrchoice (
+uask_orchestrator  | 	FOREIGN KEY(question_id) REFERENCES ocrquestion (id)
+uask_orchestrator  | 	id SERIAL NOT NULL, 
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | 	question_id INTEGER NOT NULL, 
+uask_orchestrator  | 2026-01-15 06:38:18,820 INFO sqlalchemy.engine.Engine [no key 0.00007s] {}
+uask_orchestrator  | 	label VARCHAR NOT NULL, 
+uask_orchestrator  | 	text VARCHAR NOT NULL, 
+uask_orchestrator  | 	PRIMARY KEY (id), 
+uask_orchestrator  | 	FOREIGN KEY(question_id) REFERENCES ocrquestion (id)
+uask_orchestrator  | )
+uask_orchestrator  | 
+uask_orchestrator  | 
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00007s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:CREATE INDEX ix_ocrchoice_question_id ON ocrchoice (question_id)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[no key 0.00007s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,824 INFO sqlalchemy.engine.Engine CREATE INDEX ix_ocrchoice_question_id ON ocrchoice (question_id)
+uask_orchestrator  | 2026-01-15 06:38:18,824 INFO sqlalchemy.engine.Engine [no key 0.00007s] {}
+uask_orchestrator  | 2026-01-15 06:38:18,825 INFO sqlalchemy.engine.Engine COMMIT
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:COMMIT
+uask_orchestrator  | INFO:app.database:Database connection successful and tables created.
+uask_orchestrator  | INFO:     Application startup complete.
+uask_orchestrator  | INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     127.0.0.1:37000 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     127.0.0.1:46740 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     127.0.0.1:36660 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     127.0.0.1:46928 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     127.0.0.1:41728 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     127.0.0.1:58806 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     127.0.0.1:44564 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     127.0.0.1:41128 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     127.0.0.1:44414 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     127.0.0.1:45612 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     127.0.0.1:44682 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     127.0.0.1:35424 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     127.0.0.1:46092 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     127.0.0.1:56600 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     127.0.0.1:49114 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     127.0.0.1:43758 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     127.0.0.1:49254 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     127.0.0.1:54380 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     127.0.0.1:53166 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     127.0.0.1:58610 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Incoming request: GET http://localhost:8000/health
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     172.18.0.1:36604 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     127.0.0.1:56330 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Incoming request: GET http://localhost:8000/health
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     172.18.0.1:48536 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     127.0.0.1:46630 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Incoming request: GET http://localhost:8000/ready
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+uask_orchestrator  | 2026-01-15 06:44:00,411 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:SELECT 1
+uask_orchestrator  | 2026-01-15 06:44:00,411 INFO sqlalchemy.engine.Engine SELECT 1
+uask_orchestrator  | 2026-01-15 06:44:00,411 INFO sqlalchemy.engine.Engine [generated in 0.00012s] {}
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:[generated in 0.00012s] {}
+uask_orchestrator  | 2026-01-15 06:44:00,412 INFO sqlalchemy.engine.Engine ROLLBACK
+uask_orchestrator  | INFO:sqlalchemy.engine.Engine:ROLLBACK
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     172.18.0.1:60250 - "GET /ready HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     127.0.0.1:53598 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     127.0.0.1:43636 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     127.0.0.1:40728 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     127.0.0.1:49840 - "GET /health HTTP/1.1" 200 OK
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     Incoming request: GET http://127.0.0.1:8000/health
+uask_orchestrator  | INFO:     Response status: 200
+uask_orchestrator  | INFO:     127.0.0.1:45690 - "GET /health HTTP/1.1" 200 OK
