@@ -63,8 +63,8 @@ export default function SignupPage() {
                 localStorage.setItem("user_avatar", loginData.avatar_url || "");
                 localStorage.setItem("user", JSON.stringify(loginData));
 
-                // Redirect to homepage
-                router.push("/");
+                // Redirect new users to onboarding to set their location
+                router.push("/onboarding");
             } else {
                 // If auto-login fails, show success message and redirect to login
                 setSuccess(true);

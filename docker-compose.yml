@@ -43,6 +43,7 @@ services:
     volumes:
       - storage_data:/app/storage
       - ./static_design:/static_design:ro
+      - ./backend/data:/app/data:ro
 
   worker:
     image: uask-worker:prod

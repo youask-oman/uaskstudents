@@ -17,7 +17,8 @@ from app.models import (
     CanonicalProblem, CanonicalSolution, UserSavedSolution, Payment, PromoCode,
     OCRQuestion, OCRChoice, OCRFigure,
     VoiceSession, VoiceAudio, VoiceJob, VoiceArtifact, VoiceConfirmation,
-    AdminNote, SystemConfig, PromptTemplate, PromptVersion, UserQuotaOverride, SystemErrorEntry
+    AdminNote, SystemConfig, PromptTemplate, PromptVersion, UserQuotaOverride, SystemErrorEntry,
+    School
 )
 from app.services.vision import VisionService, vision_service
 from app.services.solver import solver_service
@@ -255,6 +256,11 @@ class ProfileUpdateRequest(BaseModel):
     timezone: Optional[str] = None
     is_public: Optional[bool] = None
     learning_interests: Optional[List[str]] = None
+    # Location Profile (for curriculum context)
+    profile_country: Optional[str] = None  # 'USA' or 'Canada'
+    profile_province_state: Optional[str] = None  # State or Province abbreviation
+    grade_level: Optional[str] = None  # 'Grade 1' to 'Grade 12'
+    school_id: Optional[int] = None  # Optional FK to School
 
 class PreferenceUpdateRequest(BaseModel):
     theme: Optional[str] = None
@@ -1394,8 +1400,107 @@ async def solve_v3_endpoint(
     if body.mode:
         context += f", Mode: {body.mode}"
     
+    # --- STUDENT LOCATION CONTEXT INJECTION ---
+    # Fetch user to get profile location for curriculum adaptation
+    user = session.get(User, user_id)
+    if user:
+        student_context_parts = []
+        
+        # Country
+        country = user.profile_country or 'Canada'  # Default to Canada
+        student_context_parts.append(f"Country: {country}")
+        
+        # Province/State (default to Ontario if not set)
+        province = user.profile_province_state or 'ON'
+        student_context_parts.append(f"Province/State: {province}")
+        
+        # Grade Level
+        if user.grade_level:
+            student_context_parts.append(f"Grade Level: {user.grade_level}")
+        
+        # Comprehensive curriculum hint mapping
+        curriculum_map = {
+            # Canada - All Provinces and Territories
+            ('Canada', 'ON'): 'Ontario curriculum (Ontario Ministry of Education)',
+            ('Canada', 'BC'): 'BC curriculum (British Columbia Ministry of Education)',
+            ('Canada', 'AB'): 'Alberta curriculum (Alberta Education)',
+            ('Canada', 'QC'): 'Quebec Education Program (Ministère de l\'Éducation du Québec)',
+            ('Canada', 'SK'): 'Saskatchewan curriculum (Saskatchewan Ministry of Education)',
+            ('Canada', 'MB'): 'Manitoba curriculum (Manitoba Education)',
+            ('Canada', 'NB'): 'New Brunswick curriculum',
+            ('Canada', 'NS'): 'Nova Scotia curriculum (Nova Scotia EECD)',
+            ('Canada', 'PE'): 'Prince Edward Island curriculum',
+            ('Canada', 'NL'): 'Newfoundland and Labrador curriculum',
+            ('Canada', 'YT'): 'Yukon curriculum (based on BC curriculum)',
+            ('Canada', 'NT'): 'Northwest Territories curriculum (based on Alberta curriculum)',
+            ('Canada', 'NU'): 'Nunavut curriculum (based on Alberta curriculum)',
+            
+            # USA - All States with specific standards
+            ('USA', 'AL'): 'Alabama Course of Study',
+            ('USA', 'AK'): 'Alaska Content Standards',
+            ('USA', 'AZ'): 'Arizona Academic Standards',
+            ('USA', 'AR'): 'Arkansas Academic Standards',
+            ('USA', 'CA'): 'California Common Core State Standards',
+            ('USA', 'CO'): 'Colorado Academic Standards',
+            ('USA', 'CT'): 'Connecticut Core Standards',
+            ('USA', 'DE'): 'Delaware Content Standards',
+            ('USA', 'FL'): 'Florida B.E.S.T. Standards',
+            ('USA', 'GA'): 'Georgia Standards of Excellence',
+            ('USA', 'HI'): 'Hawaii Common Core Standards',
+            ('USA', 'ID'): 'Idaho Content Standards',
+            ('USA', 'IL'): 'Illinois Learning Standards',
+            ('USA', 'IN'): 'Indiana Academic Standards',
+            ('USA', 'IA'): 'Iowa Core Standards',
+            ('USA', 'KS'): 'Kansas College and Career Ready Standards',
+            ('USA', 'KY'): 'Kentucky Academic Standards',
+            ('USA', 'LA'): 'Louisiana Student Standards',
+            ('USA', 'ME'): 'Maine Learning Results',
+            ('USA', 'MD'): 'Maryland College and Career-Ready Standards',
+            ('USA', 'MA'): 'Massachusetts Curriculum Frameworks',
+            ('USA', 'MI'): 'Michigan Academic Standards',
+            ('USA', 'MN'): 'Minnesota Academic Standards',
+            ('USA', 'MS'): 'Mississippi College and Career Readiness Standards',
+            ('USA', 'MO'): 'Missouri Learning Standards',
+            ('USA', 'MT'): 'Montana Content Standards',
+            ('USA', 'NE'): 'Nebraska College and Career Ready Standards',
+            ('USA', 'NV'): 'Nevada Academic Content Standards',
+            ('USA', 'NH'): 'New Hampshire College and Career Ready Standards',
+            ('USA', 'NJ'): 'New Jersey Student Learning Standards',
+            ('USA', 'NM'): 'New Mexico Common Core State Standards',
+            ('USA', 'NY'): 'New York State Next Generation Learning Standards',
+            ('USA', 'NC'): 'North Carolina Standard Course of Study',
+            ('USA', 'ND'): 'North Dakota Content Standards',
+            ('USA', 'OH'): 'Ohio Learning Standards',
+            ('USA', 'OK'): 'Oklahoma Academic Standards',
+            ('USA', 'OR'): 'Oregon Academic Content Standards',
+            ('USA', 'PA'): 'Pennsylvania Academic Standards',
+            ('USA', 'RI'): 'Rhode Island Common Core State Standards',
+            ('USA', 'SC'): 'South Carolina College and Career Ready Standards',
+            ('USA', 'SD'): 'South Dakota Content Standards',
+            ('USA', 'TN'): 'Tennessee Academic Standards',
+            ('USA', 'TX'): 'Texas Essential Knowledge and Skills (TEKS)',
+            ('USA', 'UT'): 'Utah Core Standards',
+            ('USA', 'VT'): 'Vermont Common Core State Standards',
+            ('USA', 'VA'): 'Virginia Standards of Learning',
+            ('USA', 'WA'): 'Washington State Learning Standards',
+            ('USA', 'WV'): 'West Virginia College and Career Readiness Standards',
+            ('USA', 'WI'): 'Wisconsin Academic Standards',
+            ('USA', 'WY'): 'Wyoming Content and Performance Standards',
+            ('USA', 'DC'): 'District of Columbia Common Core State Standards',
+        }
+        
+        curriculum_hint = curriculum_map.get((country, province), f"{country} curriculum standards")
+        student_context_parts.append(f"Curriculum: {curriculum_hint}")
+
+        
+        # Build student context block
+        context += f"\n\n[STUDENT CONTEXT - Trusted metadata, adapt to local conventions]\n"
+        context += "\n".join(student_context_parts)
+        context += "\n\nNOTE: Use appropriate units (metric for Canada, customary for USA), spelling conventions, and grade-appropriate terminology."
+    
     # Enable trace mode for debugging
     trace = body.mode == "debug"
+
     
     try:
         # Call Solver V3
@@ -1596,6 +1701,182 @@ async def update_user_location(request: LocationUpdateRequest, session: Session 
     session.add(user)
     session.commit()
     return {"status": "updated", "ip": user.ip_address, "country": user.country}
+
+# ------------------------------------------------------------------
+# Location & School Directory Endpoints
+# ------------------------------------------------------------------
+
+# Valid countries and provinces/states
+VALID_COUNTRIES = ['USA', 'Canada']
+
+US_STATES = [
+    'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+    'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+    'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+    'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+    'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC'
+]
+
+CA_PROVINCES = [
+    'AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT'
+]
+
+VALID_GRADE_LEVELS = [f"Grade {i}" for i in range(1, 13)]
+
+
+@api_router.get("/locations/countries")
+async def get_countries():
+    """Get list of supported countries for student profiles."""
+    return {"countries": VALID_COUNTRIES}
+
+
+@api_router.get("/locations/provinces")
+async def get_provinces(country: str = Query(..., description="Country code (USA or Canada)")):
+    """Get list of provinces/states for a country."""
+    if country not in VALID_COUNTRIES:
+        raise HTTPException(status_code=400, detail=f"Invalid country. Must be one of: {VALID_COUNTRIES}")
+    
+    if country == 'USA':
+        return {"provinces": US_STATES, "label": "State"}
+    else:
+        return {"provinces": CA_PROVINCES, "label": "Province/Territory"}
+
+
+@api_router.get("/locations/grades")
+async def get_grade_levels():
+    """Get list of valid grade levels."""
+    return {"grades": VALID_GRADE_LEVELS}
+
+
+class SchoolSearchResult(BaseModel):
+    id: int
+    school_name: str
+    city: Optional[str]
+    district: Optional[str]
+
+
+@api_router.get("/schools/search", response_model=List[SchoolSearchResult])
+async def search_schools(
+    country: str = Query(..., description="Country (USA or Canada)"),
+    province_state: str = Query(..., description="State or Province abbreviation"),
+    q: str = Query("", description="Search query for school name"),
+    limit: int = Query(20, ge=1, le=100, description="Max results"),
+    session: Session = Depends(get_session)
+):
+    """
+    Search schools by country, province/state, and optional name query.
+    Returns minimal fields for dropdown display.
+    """
+    if country not in VALID_COUNTRIES:
+        raise HTTPException(status_code=400, detail=f"Invalid country. Must be one of: {VALID_COUNTRIES}")
+    
+    # Validate province_state
+    valid_provinces = US_STATES if country == 'USA' else CA_PROVINCES
+    if province_state not in valid_provinces:
+        raise HTTPException(status_code=400, detail=f"Invalid province/state for {country}")
+    
+    # Build query
+    stmt = select(School).where(
+        School.country == country,
+        School.province_state == province_state
+    )
+    
+    # Add name filter if query provided
+    if q and len(q) >= 2:
+        # Use ILIKE for case-insensitive search
+        stmt = stmt.where(School.school_name.ilike(f"%{q}%"))
+    
+    # Order by name and limit
+    stmt = stmt.order_by(School.school_name).limit(limit)
+    
+    schools = session.exec(stmt).all()
+    
+    return [
+        SchoolSearchResult(
+            id=s.id,
+            school_name=s.school_name,
+            city=s.city,
+            district=s.district
+        )
+        for s in schools
+    ]
+
+
+class ProfileLocationUpdateRequest(BaseModel):
+    """Request body for updating profile location fields."""
+    profile_country: str  # Required: 'USA' or 'Canada'
+    profile_province_state: str  # Required: State or Province abbreviation
+    grade_level: str  # Required: 'Grade 1' to 'Grade 12'
+    school_id: Optional[int] = None  # Optional FK to School
+
+
+@api_router.patch("/user/profile-location")
+async def update_profile_location(
+    user_id: int = Query(...),
+    body: ProfileLocationUpdateRequest = ...,
+    session: Session = Depends(get_session)
+):
+    """
+    Update user's location profile for curriculum context.
+    Validates all fields and checks school_id consistency.
+    """
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Validate country
+    if body.profile_country not in VALID_COUNTRIES:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid country. Must be one of: {VALID_COUNTRIES}"
+        )
+    
+    # Validate province/state for country
+    valid_provinces = US_STATES if body.profile_country == 'USA' else CA_PROVINCES
+    if body.profile_province_state not in valid_provinces:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid province/state for {body.profile_country}"
+        )
+    
+    # Validate grade level
+    if body.grade_level not in VALID_GRADE_LEVELS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid grade level. Must be one of: {VALID_GRADE_LEVELS}"
+        )
+    
+    # Validate school_id if provided
+    if body.school_id is not None:
+        school = session.get(School, body.school_id)
+        if not school:
+            raise HTTPException(status_code=400, detail="School not found")
+        
+        # Ensure school matches the country and province
+        if school.country != body.profile_country or school.province_state != body.profile_province_state:
+            raise HTTPException(
+                status_code=400,
+                detail="School must be in the same country and province/state as user profile"
+            )
+    
+    # Update user profile
+    user.profile_country = body.profile_country
+    user.profile_province_state = body.profile_province_state
+    user.grade_level = body.grade_level
+    user.school_id = body.school_id
+    
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    
+    return {
+        "status": "updated",
+        "profile_country": user.profile_country,
+        "profile_province_state": user.profile_province_state,
+        "grade_level": user.grade_level,
+        "school_id": user.school_id
+    }
+
 
 # ------------------------------------------------------------------
 # Promo Code Endpoints

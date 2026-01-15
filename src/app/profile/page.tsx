@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import StudentLayout from "@/components/layout/StudentLayout";
 
-type TabId = 'profile' | 'preferences' | 'billing' | 'security';
+type TabId = 'profile' | 'location' | 'preferences' | 'billing' | 'security';
 
 interface ProfileData {
     id: number;
@@ -16,12 +16,24 @@ interface ProfileData {
     solving_mode: string;
     subscription_tier: string;
     subscription_status: string;
+    // Location profile
+    profile_country?: string;
+    profile_province_state?: string;
+    grade_level?: string;
+    school_id?: number;
     usage: {
         questions_count: number;
         questions_total: number;
         scans_count: number;
         scans_total: number;
     };
+}
+
+interface SchoolSearchResult {
+    id: number;
+    school_name: string;
+    city: string | null;
+    district: string | null;
 }
 
 export default function ProfilePage() {
@@ -39,11 +51,31 @@ export default function ProfilePage() {
     const [language, setLanguage] = useState("");
     const [solvingMode, setSolvingMode] = useState("");
 
+    // Location profile states
+    const [profileCountry, setProfileCountry] = useState("");
+    const [profileProvinceState, setProfileProvinceState] = useState("");
+    const [gradeLevel, setGradeLevel] = useState("");
+    const [schoolId, setSchoolId] = useState<number | null>(null);
+    const [selectedSchoolName, setSelectedSchoolName] = useState("");
+
+    // Dropdown options
+    const [provinces, setProvinces] = useState<string[]>([]);
+    const [provinceLabel, setProvinceLabel] = useState("Province/State");
+    const [grades, setGrades] = useState<string[]>([]);
+
+    // School search
+    const [schoolQuery, setSchoolQuery] = useState("");
+    const [schoolResults, setSchoolResults] = useState<SchoolSearchResult[]>([]);
+    const [schoolSearching, setSchoolSearching] = useState(false);
+    const [showSchoolDropdown, setShowSchoolDropdown] = useState(false);
+
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+
     useEffect(() => {
         const userId = localStorage.getItem("user_id");
         if (!userId) return;
 
-        fetch(`http://127.0.0.1:8000/api/v1/user/profile?user_id=${userId}`)
+        fetch(`${apiBaseUrl}/api/v1/user/profile?user_id=${userId}`)
             .then(res => res.json())
             .then(data => {
                 setProfile(data);
@@ -54,13 +86,71 @@ export default function ProfilePage() {
                 setTheme(data.theme || "light");
                 setLanguage(data.preferred_language || "English (US)");
                 setSolvingMode(data.solving_mode || "Full Solution");
+                // Location profile
+                setProfileCountry(data.profile_country || "");
+                setProfileProvinceState(data.profile_province_state || "");
+                setGradeLevel(data.grade_level || "");
+                setSchoolId(data.school_id || null);
                 setLoading(false);
             })
             .catch(err => {
                 console.error("Error fetching profile:", err);
                 setLoading(false);
             });
-    }, []);
+
+        // Fetch grade levels
+        fetch(`${apiBaseUrl}/api/v1/locations/grades`)
+            .then(res => res.json())
+            .then(data => setGrades(data.grades || []))
+            .catch(console.error);
+    }, [apiBaseUrl]);
+
+    // Fetch provinces when country changes
+    useEffect(() => {
+        if (!profileCountry) {
+            setProvinces([]);
+            setProvinceLabel("Province/State");
+            return;
+        }
+
+        fetch(`${apiBaseUrl}/api/v1/locations/provinces?country=${profileCountry}`)
+            .then(res => res.json())
+            .then(data => {
+                setProvinces(data.provinces || []);
+                setProvinceLabel(data.label || "Province/State");
+                // Reset province selection if not in new list
+                if (data.provinces && !data.provinces.includes(profileProvinceState)) {
+                    setProfileProvinceState("");
+                    setSchoolId(null);
+                    setSelectedSchoolName("");
+                }
+            })
+            .catch(console.error);
+    }, [profileCountry, apiBaseUrl]);
+
+    // School search with debounce
+    useEffect(() => {
+        if (!profileCountry || !profileProvinceState || schoolQuery.length < 2) {
+            setSchoolResults([]);
+            return;
+        }
+
+        const timer = setTimeout(() => {
+            setSchoolSearching(true);
+            fetch(`${apiBaseUrl}/api/v1/schools/search?country=${profileCountry}&province_state=${profileProvinceState}&q=${encodeURIComponent(schoolQuery)}&limit=10`)
+                .then(res => res.json())
+                .then(data => {
+                    setSchoolResults(Array.isArray(data) ? data : []);
+                    setSchoolSearching(false);
+                })
+                .catch(err => {
+                    console.error(err);
+                    setSchoolSearching(false);
+                });
+        }, 300); // 300ms debounce
+
+        return () => clearTimeout(timer);
+    }, [schoolQuery, profileCountry, profileProvinceState, apiBaseUrl]);
 
     const handleSaveProfile = async () => {
         const userId = localStorage.getItem("user_id");
@@ -118,6 +208,66 @@ export default function ProfilePage() {
         }
     };
 
+    const handleSaveLocation = async () => {
+        const userId = localStorage.getItem("user_id");
+
+        // Validate required fields
+        if (!profileCountry || !profileProvinceState || !gradeLevel) {
+            alert("Please select your Country, Province/State, and Grade Level.");
+            return;
+        }
+
+        setSaving(true);
+        try {
+            const res = await fetch(`${apiBaseUrl}/api/v1/user/profile-location?user_id=${userId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    profile_country: profileCountry,
+                    profile_province_state: profileProvinceState,
+                    grade_level: gradeLevel,
+                    school_id: schoolId
+                })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                alert("Location profile saved! Your tutor will now adapt to your curriculum.");
+                // Update local profile
+                if (profile) {
+                    setProfile({
+                        ...profile,
+                        profile_country: data.profile_country,
+                        profile_province_state: data.profile_province_state,
+                        grade_level: data.grade_level,
+                        school_id: data.school_id
+                    });
+                }
+            } else {
+                const error = await res.json();
+                alert(`Error: ${error.detail || "Failed to update location"}`);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Failed to save location profile. Please try again.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleSelectSchool = (school: SchoolSearchResult) => {
+        setSchoolId(school.id);
+        setSelectedSchoolName(school.school_name);
+        setSchoolQuery(school.school_name);
+        setShowSchoolDropdown(false);
+    };
+
+    const handleClearSchool = () => {
+        setSchoolId(null);
+        setSelectedSchoolName("");
+        setSchoolQuery("");
+    };
+
     if (loading) {
         return (
             <StudentLayout>
@@ -128,8 +278,31 @@ export default function ProfilePage() {
         );
     }
 
+    // Calculate profile completeness
+    const calculateProfileCompleteness = () => {
+        const fields = [
+            { name: 'Full Name', filled: !!fullName },
+            { name: 'Email', filled: !!email },
+            { name: 'Country', filled: !!profileCountry },
+            { name: 'Province/State', filled: !!profileProvinceState },
+            { name: 'Grade Level', filled: !!gradeLevel },
+            { name: 'Academic Level', filled: !!academicLevel },
+            { name: 'Timezone', filled: !!timezone },
+        ];
+
+        const filledCount = fields.filter(f => f.filled).length;
+        const percentage = Math.round((filledCount / fields.length) * 100);
+        const missingFields = fields.filter(f => !f.filled).map(f => f.name);
+
+        return { percentage, filledCount, total: fields.length, missingFields };
+    };
+
+    const profileCompleteness = calculateProfileCompleteness();
+    const isLocationComplete = !!profileCountry && !!profileProvinceState && !!gradeLevel;
+
     const tabs: { id: TabId; label: string; icon: string }[] = [
         { id: 'profile', label: 'Profile', icon: 'person' },
+        { id: 'location', label: 'Location & School', icon: 'school' },
         { id: 'preferences', label: 'Preferences', icon: 'settings' },
         { id: 'billing', label: 'Plan & Billing', icon: 'credit_card' },
         { id: 'security', label: 'Security', icon: 'shield' },
@@ -139,10 +312,69 @@ export default function ProfilePage() {
         <StudentLayout>
             <div className="max-w-4xl mx-auto py-10 px-8">
                 {/* Header */}
-                <div className="mb-10">
+                <div className="mb-6">
                     <h1 className="text-4xl font-black tracking-tight mb-2">Settings & Preferences</h1>
                     <p className="text-slate-500 dark:text-slate-400 text-lg">Personalize your learning experience and manage account details.</p>
                 </div>
+
+                {/* Profile Completeness Indicator */}
+                {profileCompleteness.percentage < 100 && (
+                    <div className="mb-8 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-5 animate-in fade-in slide-in-from-top-4 duration-300">
+                        <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="relative">
+                                        <div className="size-12 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
+                                            <span className="text-lg font-black text-amber-600 dark:text-amber-400">{profileCompleteness.percentage}%</span>
+                                        </div>
+                                        <svg className="absolute inset-0 -rotate-90" viewBox="0 0 48 48">
+                                            <circle cx="24" cy="24" r="20" fill="none" stroke="currentColor" strokeWidth="4" className="text-amber-200 dark:text-amber-800" />
+                                            <circle cx="24" cy="24" r="20" fill="none" stroke="currentColor" strokeWidth="4"
+                                                strokeDasharray={`${profileCompleteness.percentage * 1.26} 126`}
+                                                className="text-amber-500" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-amber-900 dark:text-amber-100">Complete Your Profile</h3>
+                                        <p className="text-sm text-amber-700 dark:text-amber-300">
+                                            {profileCompleteness.filledCount} of {profileCompleteness.total} fields complete
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {profileCompleteness.missingFields.length > 0 && (
+                                    <div className="text-sm text-amber-700 dark:text-amber-300">
+                                        <span className="font-medium">Missing: </span>
+                                        {profileCompleteness.missingFields.join(', ')}
+                                    </div>
+                                )}
+                            </div>
+
+                            {!isLocationComplete && (
+                                <button
+                                    onClick={() => setActiveTab('location')}
+                                    className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-xl transition-all flex items-center gap-2 shrink-0"
+                                >
+                                    <span className="material-symbols-outlined text-sm">school</span>
+                                    Set Location
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Success state when complete */}
+                {profileCompleteness.percentage === 100 && (
+                    <div className="mb-8 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-2xl p-4 flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
+                        <div className="size-10 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
+                            <span className="material-symbols-outlined text-green-600">check_circle</span>
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-green-900 dark:text-green-100">Profile Complete!</h3>
+                            <p className="text-sm text-green-700 dark:text-green-300">Your AI tutor is fully personalized to your curriculum.</p>
+                        </div>
+                    </div>
+                )}
 
                 {/* Tab Navigation (Custom implementation for settings) */}
                 <div className="flex gap-4 mb-8">
@@ -236,6 +468,192 @@ export default function ProfilePage() {
                                         className="px-8 py-3 bg-primary text-white text-sm font-bold rounded-xl hover:shadow-lg hover:bg-blue-700 transition-all disabled:opacity-50"
                                     >
                                         {saving ? "Saving..." : "Save Profile"}
+                                    </button>
+                                </div>
+                            </div>
+                        </section>
+                    )}
+
+                    {activeTab === 'location' && (
+                        <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-300">
+                            <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <span className="material-symbols-outlined text-primary text-2xl">school</span>
+                                    <h2 className="text-xl font-bold">Location & School</h2>
+                                </div>
+                                <p className="text-slate-500 text-sm">
+                                    Tell us where you study so your AI tutor can adapt to your local curriculum,
+                                    use familiar units (metric/imperial), and match your grade level.
+                                </p>
+                            </div>
+
+                            <div className="p-6 space-y-6">
+                                {/* Info Banner */}
+                                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-4 flex gap-3">
+                                    <span className="material-symbols-outlined text-blue-600 dark:text-blue-400">info</span>
+                                    <div>
+                                        <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">
+                                            Why does this matter?
+                                        </p>
+                                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                                            Different regions teach math differently. A Grade 10 student in Ontario learns different topics
+                                            than one in California. Your tutor will use terminology and methods appropriate for your curriculum.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Country */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold flex items-center gap-1">
+                                            Country
+                                            <span className="text-red-500">*</span>
+                                        </label>
+                                        <select
+                                            value={profileCountry}
+                                            onChange={(e) => {
+                                                setProfileCountry(e.target.value);
+                                                setProfileProvinceState("");
+                                                setSchoolId(null);
+                                                setSelectedSchoolName("");
+                                                setSchoolQuery("");
+                                            }}
+                                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl h-12 px-4 text-sm focus:ring-2 focus:ring-primary outline-none appearance-none cursor-pointer"
+                                        >
+                                            <option value="">Select your country...</option>
+                                            <option value="USA">🇺🇸 United States</option>
+                                            <option value="Canada">🇨🇦 Canada</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Province/State */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold flex items-center gap-1">
+                                            {provinceLabel}
+                                            <span className="text-red-500">*</span>
+                                        </label>
+                                        <select
+                                            value={profileProvinceState}
+                                            onChange={(e) => {
+                                                setProfileProvinceState(e.target.value);
+                                                setSchoolId(null);
+                                                setSelectedSchoolName("");
+                                                setSchoolQuery("");
+                                            }}
+                                            disabled={!profileCountry || provinces.length === 0}
+                                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl h-12 px-4 text-sm focus:ring-2 focus:ring-primary outline-none appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            <option value="">Select {provinceLabel.toLowerCase()}...</option>
+                                            {provinces.map(p => (
+                                                <option key={p} value={p}>{p}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Grade Level */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold flex items-center gap-1">
+                                            Grade Level
+                                            <span className="text-red-500">*</span>
+                                        </label>
+                                        <select
+                                            value={gradeLevel}
+                                            onChange={(e) => setGradeLevel(e.target.value)}
+                                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl h-12 px-4 text-sm focus:ring-2 focus:ring-primary outline-none appearance-none cursor-pointer"
+                                        >
+                                            <option value="">Select your grade...</option>
+                                            {grades.map(g => (
+                                                <option key={g} value={g}>{g}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* School Search (Optional) */}
+                                    <div className="space-y-2 relative">
+                                        <label className="text-sm font-bold flex items-center gap-1">
+                                            School
+                                            <span className="text-slate-400 text-xs font-normal">(optional)</span>
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                value={schoolQuery}
+                                                onChange={(e) => {
+                                                    setSchoolQuery(e.target.value);
+                                                    setShowSchoolDropdown(true);
+                                                    if (schoolId && e.target.value !== selectedSchoolName) {
+                                                        setSchoolId(null);
+                                                        setSelectedSchoolName("");
+                                                    }
+                                                }}
+                                                onFocus={() => setShowSchoolDropdown(true)}
+                                                placeholder={profileCountry && profileProvinceState ? "Type to search schools..." : "Select country and province first"}
+                                                disabled={!profileCountry || !profileProvinceState}
+                                                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl h-12 px-4 pr-10 text-sm focus:ring-2 focus:ring-primary outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                                            />
+                                            {schoolId ? (
+                                                <button
+                                                    onClick={handleClearSchool}
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                                >
+                                                    <span className="material-symbols-outlined text-sm">close</span>
+                                                </button>
+                                            ) : schoolSearching ? (
+                                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                                                </div>
+                                            ) : (
+                                                <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+                                            )}
+                                        </div>
+
+                                        {/* School Dropdown */}
+                                        {showSchoolDropdown && schoolResults.length > 0 && (
+                                            <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                                                {schoolResults.map(school => (
+                                                    <button
+                                                        key={school.id}
+                                                        onClick={() => handleSelectSchool(school)}
+                                                        className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700 border-b border-slate-100 dark:border-slate-700 last:border-0 transition-colors"
+                                                    >
+                                                        <p className="text-sm font-medium truncate">{school.school_name}</p>
+                                                        {school.city && (
+                                                            <p className="text-xs text-slate-500">{school.city}{school.district ? `, ${school.district}` : ''}</p>
+                                                        )}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Selected School Badge */}
+                                {schoolId && selectedSchoolName && (
+                                    <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
+                                        <span className="material-symbols-outlined text-green-600">check_circle</span>
+                                        <span className="text-sm text-green-700 dark:text-green-300">
+                                            Selected: <strong>{selectedSchoolName}</strong>
+                                        </span>
+                                    </div>
+                                )}
+
+                                {/* Save Button */}
+                                <div className="flex justify-end pt-4">
+                                    <button
+                                        onClick={handleSaveLocation}
+                                        disabled={saving || !profileCountry || !profileProvinceState || !gradeLevel}
+                                        className="px-8 py-3 bg-primary text-white text-sm font-bold rounded-xl hover:shadow-lg hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                    >
+                                        {saving ? (
+                                            <>
+                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                                Saving...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span className="material-symbols-outlined text-sm">save</span>
+                                                Save Location
+                                            </>
+                                        )}
                                     </button>
                                 </div>
                             </div>

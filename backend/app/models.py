@@ -38,9 +38,15 @@ class User(SQLModel, table=True):
     is_verified: bool = Field(default=False)
     verification_token: Optional[str] = Field(default=None)
 
-    # Location & Security
+    # Location & Security (IP-detected, not profile)
     ip_address: Optional[str] = None
-    country: Optional[str] = None
+    country: Optional[str] = None  # IP-detected country (for security/analytics)
+    
+    # Student Location Profile (user-selected, required for curriculum context)
+    profile_country: Optional[str] = None  # 'USA' or 'Canada' - required after onboarding
+    profile_province_state: Optional[str] = None  # State (USA) or Province/Territory (Canada)
+    grade_level: Optional[str] = None  # 'Grade 1' to 'Grade 12'
+    school_id: Optional[int] = Field(default=None, foreign_key="school.id", index=True)  # Optional school
     
     # Advanced Profile
     is_public: bool = Field(default=False)
@@ -51,6 +57,8 @@ class User(SQLModel, table=True):
     session_token: Optional[str] = None
     last_ip: Optional[str] = None
 
+    # Relationships
+    school: Optional["School"] = Relationship(back_populates="students")
     sessions: List["ChatSession"] = Relationship(back_populates="user")
     usage_logs: List["UsageLog"] = Relationship(back_populates="user")
     payments: List["Payment"] = Relationship(back_populates="user")
@@ -386,11 +394,80 @@ class AdminNote(SQLModel, table=True):
     
     user: User = Relationship(back_populates="admin_notes")
 
+# --- School Directory Models ---
+
+class School(SQLModel, table=True):
+    """
+    Unified schools table for USA and Canada schools.
+    Uses SHA256-based school_key for deduplication across reimports.
+    """
+    id: Optional[int] = Field(default=None, primary_key=True)
+    
+    # Location (required)
+    country: str = Field(index=True)  # 'USA' or 'Canada'
+    province_state: str = Field(index=True)  # State for USA, Province/Territory for Canada
+    
+    # Location (optional)
+    district: Optional[str] = None
+    city: Optional[str] = None
+    
+    # School Info (required)
+    school_name: str = Field(index=True)
+    
+    # School Info (optional)
+    school_type: Optional[str] = None  # public, private, charter, etc.
+    grade_range: Optional[str] = None  # e.g., "K-12", "9-12"
+    
+    # Source tracking
+    external_id: Optional[str] = None  # NCES ID for US, Source_ID for Canada
+    source: str = Field(index=True)  # 'US_CSV' or 'CA_CSV'
+    
+    # Deduplication key: SHA256(lower(country)|lower(province_state)|lower(city or '')|lower(school_name))
+    school_key: str = Field(unique=True, index=True)
+    
+    # Timestamps
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    # Relationships
+    students: List["User"] = Relationship(back_populates="school")
+
+
+class SchoolImportRun(SQLModel, table=True):
+    """
+    Audit table for school CSV import runs.
+    Tracks each import operation for debugging and monitoring.
+    """
+    id: Optional[int] = Field(default=None, primary_key=True)
+    
+    # Timing
+    started_at: datetime = Field(default_factory=datetime.utcnow)
+    finished_at: Optional[datetime] = None
+    
+    # Status
+    status: str = Field(default="running", index=True)  # running, completed, failed
+    
+    # Totals
+    us_rows_processed: int = Field(default=0)
+    ca_rows_processed: int = Field(default=0)
+    inserted_count: int = Field(default=0)
+    updated_count: int = Field(default=0)
+    skipped_count: int = Field(default=0)
+    error_count: int = Field(default=0)
+    
+    # Error details (stored as JSON)
+    errors_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    
+    # Options used
+    reset_before_import: bool = Field(default=False)
+
+
 class SystemConfig(SQLModel, table=True):
     key: str = Field(primary_key=True)
     value: str
     description: Optional[str] = None
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
 
 class PromptTemplate(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
