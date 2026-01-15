@@ -1,13 +1,10 @@
 "use client";
 
 import React from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 
 import VisualRenderer, { Visual } from './VisualRenderer';
-import WorkspaceTabs from './WorkspaceTabs';
+import MathRenderer from '../MathRenderer';
 
 interface V3Checkpoint {
     question: string;
@@ -17,18 +14,12 @@ interface V3Checkpoint {
 interface Step {
     index: number;
     title: string;
-    // V2 (Legacy)
-    explanation?: string;
-    math?: {
-        latex_lines: string[];
-    };
-    visual_refs?: string[];
-    // V3 (New)
-    concept?: string;
+    explanation?: string; // V2 or V3 fallback
     work?: string[];
     rules_used?: string[];
     result?: string;
     checkpoint?: V3Checkpoint;
+    visual_refs?: string[];
 }
 
 interface StepsTabProps {
@@ -36,324 +27,190 @@ interface StepsTabProps {
     steps: Step[];
     visuals?: Visual[];
     problemLatex?: string;
-    problem?: {
-        input?: string;
-        topic?: string;
-        goal?: string;
-        assumptions?: string[];
-        given_data?: string[];
-        unknowns?: string[];
-    };
+    problem?: any;
+    // Props passed by parent but handled in WorkspaceLayout now, 
+    // keeping them optional or ignored to avoid errors if passed
     analysisPlan?: string[];
     finalAnswer?: string;
-    activeTab: "steps" | "verification" | "concepts" | "practice";
-    onSelectTab: (tab: StepsTabProps["activeTab"]) => void;
+    activeTab?: string;
+    onSelectTab?: any;
 }
 
-const MathFont = ({ children }: { children: React.ReactNode }) => (
-    <span className="font-serif italic">{children}</span>
-);
+// Helper to process and split math work lines for the 'Card' format
+const processWorkLines = (work: string[]): string[] => {
+    if (!work || work.length === 0) return [];
 
-const renderInlineMath = (line: string) => {
-    const regex = /[A-Za-z0-9=+\-*/^()]+/g;
-    const segments = line.split("\n").filter(segment => segment.trim().length > 0);
+    const splitLines: string[] = [];
 
-    return (
-        <div className="space-y-2">
-            {segments.map((segment, segmentIndex) => {
-                const parts: React.ReactNode[] = [];
-                let lastIndex = 0;
+    work.forEach(rawLine => {
+        let content = rawLine.trim();
+        // Split by standard separators used in the solver output: \Rightarrow, \rightarrow, ->, or \quad enclosed variations
+        // Also handle explicit newlines if any
+        const parts = content.split(/\\quad\\Rightarrow\\quad|\\Rightarrow|\\rightarrow|->/g);
 
-                for (const match of segment.matchAll(regex)) {
-                    const index = match.index ?? 0;
-                    if (index > lastIndex) {
-                        parts.push(segment.slice(lastIndex, index));
-                    }
-                    const token = match[0];
-                    const isMath = /[0-9=+\-*/^()]/.test(token);
-                    parts.push(
-                        <span key={`${segmentIndex}-${index}-${token}`} className={isMath ? "math-inline" : undefined}>
-                            {token}
-                        </span>
-                    );
-                    lastIndex = index + token.length;
-                }
+        parts.forEach(part => {
+            const cleanPart = part.trim();
+            if (cleanPart) {
+                splitLines.push(cleanPart);
+            }
+        });
+    });
 
-                if (lastIndex < segment.length) {
-                    parts.push(segment.slice(lastIndex));
-                }
+    return splitLines;
+};
 
-                return (
-                    <p key={segmentIndex} className="text-sm leading-relaxed text-gray-700 dark:text-slate-200">
-                        {parts}
-                    </p>
-                );
-            })}
-        </div>
-    );
+// Helper to cleaning outer math delimiters if present (fixes connected words issue)
+const cleanExplanation = (text?: string): string => {
+    if (!text) return "Follow the procedure on the right.";
+    // Remove wrapping $$ or $
+    let cleaned = text.trim();
+    if (cleaned.startsWith('$$') && cleaned.endsWith('$$')) {
+        cleaned = cleaned.slice(2, -2);
+    } else if (cleaned.startsWith('$') && cleaned.endsWith('$')) {
+        cleaned = cleaned.slice(1, -1);
+    }
+    return cleaned;
 };
 
 export default function StepsTab({
-    title,
     steps,
     visuals,
-    problemLatex,
-    problem,
-    analysisPlan = [],
-    finalAnswer,
-    activeTab,
-    onSelectTab
 }: StepsTabProps) {
-    const [visualHeight, setVisualHeight] = React.useState(360);
-    const [isFullscreen, setIsFullscreen] = React.useState(false);
-
-    React.useEffect(() => {
-        if (!isFullscreen) return;
-        const previousOverflow = document.body.style.overflow;
-        document.body.style.overflow = "hidden";
-        return () => {
-            document.body.style.overflow = previousOverflow;
-        };
-    }, [isFullscreen]);
-
-    const referencedVisualIds = new Set(
-        steps.flatMap(step => step.visual_refs ?? [])
-    );
-
-    const unreferencedVisuals = (visuals ?? []).filter(
-        visual => !referencedVisualIds.has(visual.id)
-    );
-
-    const formatMatrixInput = (value?: string) => {
-        if (!value) return value;
-        const match = value.match(/\\begin\{pmatrix\}([\s\S]*?)\\end\{pmatrix\}/);
-        if (!match) return value;
-        const rows = match[1]
-            .split("\\\\")
-            .map(row => row.trim())
-            .filter(Boolean)
-            .map(row => row.split("&").map(cell => cell.trim()).filter(Boolean));
-        if (rows.length === 0) return value;
-        const formattedRows = rows.map(row => `[${row.join(",")}]`).join(",");
-        return `Matrix A = [${formattedRows}]`;
-    };
-
-    const problemLine = problemLatex || problem?.input;
-    const displayProblemLine = formatMatrixInput(problemLine);
-
-    const clampedHeight = Math.min(Math.max(visualHeight, 240), 900);
-    const renderHeight = isFullscreen ? Math.max(clampedHeight, 520) : clampedHeight;
 
     return (
-        <div className="max-w-[800px] mx-auto flex flex-col gap-8">
-            <section className="bg-white dark:bg-surface-dark rounded-2xl shadow-sm border border-gray-100 dark:border-border-dark overflow-hidden">
-                <div className="p-6 border-b border-gray-50 dark:border-border-dark">
-                    <div className="flex items-center gap-2 mb-2">
-                        <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary dark:text-accent text-[10px] font-bold uppercase tracking-wide">
-                            {problem?.topic || "Topic"}
-                        </span>
-                    </div>
-                    <h1 className="text-2xl font-bold mb-1">{problem?.goal || title}</h1>
-                    {displayProblemLine && (
-                        <p className="text-xl math-font text-primary">
-                            <MathFont>
-                                {displayProblemLine}
-                            </MathFont>
-                        </p>
-                    )}
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 divide-x divide-gray-100 dark:divide-border-dark">
-                    <div className="p-4">
-                        <p className="text-xs font-bold text-green-600 dark:text-green-400 uppercase mb-1">Given</p>
-                        <p className="text-sm font-medium math-font">{(problem?.given_data || []).join(", ") || "N/A"}</p>
-                    </div>
-                    <div className="p-4">
-                        <p className="text-xs font-bold text-green-600 dark:text-green-400 uppercase mb-1">Find</p>
-                        <p className="text-sm font-medium">{(problem?.unknowns || []).join(", ") || "N/A"}</p>
-                    </div>
-                    <div className="p-4">
-                        <p className="text-xs font-bold text-green-600 dark:text-green-400 uppercase mb-1">Assumptions</p>
-                        <p className="text-sm font-medium italic">{(problem?.assumptions || []).join(", ") || "N/A"}</p>
-                    </div>
-                </div>
-                <div className="px-6 py-4 bg-gray-50 dark:bg-slate-900/40">
-                    <div className="flex items-center gap-2 text-sm font-bold">
-                        <span className="material-symbols-outlined text-primary dark:text-accent">lightbulb</span>
-                        Solution Plan
-                    </div>
-                    <div className="pt-3 text-sm text-gray-600 dark:text-slate-300 leading-relaxed">
-                        {(analysisPlan.length > 0 ? analysisPlan : ["Identify key information", "Solve step-by-step", "Verify results"]).map((line, idx) => (
-                            <div key={idx}>{idx + 1}. {line}</div>
-                        ))}
-                    </div>
-                </div>
-            </section>
+        <div className="flex flex-col gap-8">
 
-            <WorkspaceTabs activeTab={activeTab} onSelectTab={onSelectTab} stepsCount={steps.length} />
+            {/* Global Tips (Once, at the top) */}
+            <div className="bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-200 dark:border-amber-900/50 p-4 flex flex-col md:flex-row items-start md:items-center gap-4 text-xs">
+                <div className="flex items-center gap-2 text-amber-700 dark:text-amber-500 font-bold uppercase tracking-wider shrink-0">
+                    <span className="material-symbols-outlined text-[18px]">warning</span>
+                    <span>Common Tips</span>
+                </div>
+                <div className="h-px w-full md:w-px md:h-8 bg-amber-200 dark:bg-amber-900/50"></div>
+                <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <span className="font-bold text-amber-900 dark:text-amber-100">Verify Step-by-Step: </span>
+                        <span className="text-amber-800/80 dark:text-amber-400/80">Always check your arithmetic at each stage to avoid errors.</span>
+                    </div>
+                    <div>
+                        <span className="font-bold text-amber-900 dark:text-amber-100">Units: </span>
+                        <span className="text-amber-800/80 dark:text-amber-400/80">Ensure consistency throughout the problem.</span>
+                    </div>
+                </div>
+            </div>
 
-            <section className="flex flex-col">
-                {steps.map((step) => (
-                    <div key={step.index} className="relative pl-12 pb-12">
-                        <div className="absolute left-0 top-0 size-10 rounded-full bg-primary text-white flex items-center justify-center font-bold z-10">
-                            {step.index}
-                        </div>
-                        <div className="absolute left-5 top-10 bottom-0 w-px bg-gray-200 dark:bg-slate-700"></div>
-                        <div className="bg-white dark:bg-surface-dark p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-border-dark">
-                            <div className="flex flex-wrap items-center gap-2 mb-4">
-                                <span className="px-2 py-0.5 rounded-lg bg-gray-100 dark:bg-slate-800 text-[10px] font-bold text-gray-600 dark:text-slate-300 uppercase">
-                                    {step.concept || "Step"}
-                                </span>
-                                <h4 className="text-base font-bold">{step.title}</h4>
-                            </div>
-                            {step.work && step.work.length > 0 ? (
-                                <div className="space-y-3">
-                                    {step.work.map((line, idx) => (
-                                        <div key={idx} className="prose max-w-none">
-                                            {line.includes("$") ? (
-                                                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                                                    {line}
-                                                </ReactMarkdown>
-                                            ) : (
-                                                renderInlineMath(line)
+            {/* Steps Content */}
+            <div className="space-y-8">
+                {steps.map((step, index) => {
+                    const cardLines = processWorkLines(step.work || []);
+                    const explanationText = cleanExplanation(step.explanation);
+
+                    return (
+                        <div key={index} className="relative pl-8 border-l-2 border-primary/20">
+                            {/* Step Dot */}
+                            <div className="absolute -left-[9px] top-0 size-4 rounded-full bg-primary border-4 border-white dark:border-[#101622]"></div>
+
+                            {/* Step Container */}
+                            <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
+                                {/* Left Content: Steps (70% width) */}
+                                <div className="lg:col-span-7 space-y-4">
+                                    <div>
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <h4 className="text-xl font-bold text-[#111318] dark:text-white">
+                                                Step {index + 1}:
+                                            </h4>
+                                        </div>
+                                        <div className="text-lg font-bold text-[#111318] dark:text-white mb-2 leading-snug">
+                                            <MathRenderer content={step.title} />
+                                        </div>
+                                        <div className="text-sm text-[#616f89] dark:text-slate-400 mb-4 leading-relaxed">
+                                            <MathRenderer content={explanationText} />
+                                            {step.rules_used && step.rules_used.length > 0 && (
+                                                <span className="block mt-2 italic text-xs">
+                                                    Using: {step.rules_used.join(", ")}
+                                                </span>
                                             )}
                                         </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-sm text-gray-600 dark:text-slate-300 leading-relaxed">
-                                    {step.explanation || "No explanation provided."}
-                                </div>
-                            )}
 
-                            {step.rules_used && step.rules_used.length > 0 && (
-                                <div className="mt-4">
-                                    <div className="flex items-center gap-2 text-xs font-bold text-primary dark:text-accent uppercase tracking-wide">
-                                        Rules Used
-                                    </div>
-                                    <ul className="mt-2 text-xs text-gray-500 dark:text-slate-400 list-disc list-inside space-y-1">
-                                        {step.rules_used.map((rule, idx) => (
-                                            <li key={idx}>{rule}</li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            )}
-
-                            {step.result && (
-                                <div className="inline-flex items-center px-3 py-1.5 rounded-full bg-green-50 text-green-700 border border-green-100 dark:bg-green-900/30 dark:text-green-200 dark:border-green-900/40 text-xs font-bold mt-4">
-                                    Result: {step.result}
-                                </div>
-                            )}
-
-                            {step.checkpoint && (
-                                <div className="p-4 bg-primary/5 border border-primary/20 dark:border-primary/30 rounded-xl mt-4">
-                                    <div className="flex items-center gap-2 mb-2 text-primary dark:text-accent">
-                                        <span className="material-symbols-outlined text-sm">quiz</span>
-                                        <span className="text-xs font-bold uppercase">Checkpoint</span>
-                                    </div>
-                                    <p className="text-sm font-medium mb-3">{step.checkpoint.question}</p>
-                                    <div className="grid grid-cols-1 gap-2">
-                                        <button className="text-left p-2 text-xs border border-gray-200 dark:border-border-dark bg-white dark:bg-surface-dark rounded-lg hover:border-primary transition-colors">
-                                            {step.checkpoint.expected_answer}
-                                        </button>
+                                        {/* Checkpoint Quiz */}
+                                        {step.checkpoint && (
+                                            <div className="bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-xl p-4">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className="material-symbols-outlined text-primary text-[16px]">quiz</span>
+                                                    <span className="text-xs font-bold text-primary uppercase">Checkpoint</span>
+                                                </div>
+                                                <div className="text-xs font-medium mb-3 text-[#111318] dark:text-white">
+                                                    <MathRenderer content={step.checkpoint.question} />
+                                                </div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    <button className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-primary/20 rounded-lg text-[11px] hover:bg-primary hover:text-white transition-all text-[#616f89] dark:text-slate-300">
+                                                        <MathRenderer content={step.checkpoint.expected_answer} inline />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                            )}
-                        </div>
-                    </div>
-                ))}
-            </section>
 
-            {unreferencedVisuals.length > 0 && (
-                <section className="bg-white dark:bg-surface-dark rounded-2xl shadow-sm border border-gray-100 dark:border-border-dark overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-50 dark:border-border-dark flex items-center justify-between">
-                        <h4 className="text-sm font-bold flex items-center gap-2">
-                            <span className="material-symbols-outlined text-primary dark:text-accent">monitoring</span>
-                            Function Visualization
-                        </h4>
-                        <div className="flex items-center gap-2">
-                            <button
-                                type="button"
-                                onClick={() => setVisualHeight(height => Math.min(height + 80, 900))}
-                                className="p-1 rounded bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300"
-                            >
-                                <span className="material-symbols-outlined text-sm">zoom_in</span>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setVisualHeight(height => Math.max(height - 80, 240))}
-                                className="p-1 rounded bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300"
-                            >
-                                <span className="material-symbols-outlined text-sm">zoom_out</span>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setIsFullscreen(value => !value)}
-                                className="p-1 rounded bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300"
-                            >
-                                <span className="material-symbols-outlined text-sm">fullscreen</span>
-                            </button>
+                                {/* Middle Content: Math Work Box (30% width) */}
+                                <div className="lg:col-span-3">
+                                    {cardLines.length > 0 && (
+                                        <div className="w-full h-full bg-white dark:bg-[#1e2634] p-6 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c] flex flex-col items-center justify-center shadow-sm">
+                                            <div className="text-center space-y-2 w-full">
+                                                {cardLines.map((line, idx) => {
+                                                    const isLastLine = idx === cardLines.length - 1;
+
+                                                    const hasExplicitLatex = line.includes('\\');
+                                                    const hasMathSymbols = line.includes('=') || line.includes('^') || line.includes('{');
+                                                    // Aggressive check: If it's long (>30 chars) and NO backslash, assume Text/Mixed, even if it has math symbols.
+                                                    const isLongMixed = line.length > 30 && !hasExplicitLatex;
+
+                                                    // It is 'Text' if: (No Explicit LaTeX) AND (Is Long Mixed OR Is Long with Spaces OR No distinct math symbols)
+                                                    const isText = !hasExplicitLatex && (isLongMixed || (line.includes(' ') && line.split(' ').length > 4) || !hasMathSymbols);
+
+                                                    // Style logic: Last line is Primary Blue Bold ONLY if it's not a text sentence
+                                                    const textClass = (isLastLine && !isText)
+                                                        ? "text-lg font-bold text-primary" // Reduced from text-xl
+                                                        : "text-xs text-[#111318] dark:text-white font-medium"; // Reduced from text-sm
+
+                                                    return (
+                                                        <div key={idx} className="flex flex-col items-center w-full">
+                                                            <div className={`break-all px-2 ${textClass}`}>
+                                                                <MathRenderer content={line} forceMath={!isText} inline />
+                                                            </div>
+                                                            {idx < cardLines.length - 1 && (
+                                                                <div className="h-px w-full bg-slate-300 dark:bg-slate-700 my-2"></div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div className="p-4 bg-gray-50 dark:bg-slate-900/40">
-                        {unreferencedVisuals.map(visual => (
-                            <VisualRenderer key={visual.id} visual={visual} height={renderHeight} />
-                        ))}
-                    </div>
-                </section>
-            )}
-            {isFullscreen && unreferencedVisuals.length > 0 && (
-                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6">
-                    <div className="w-full max-w-5xl bg-white dark:bg-surface-dark rounded-2xl shadow-xl border border-gray-100 dark:border-border-dark overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-50 dark:border-border-dark flex items-center justify-between">
-                            <h4 className="text-sm font-bold flex items-center gap-2">
-                                <span className="material-symbols-outlined text-primary dark:text-accent">monitoring</span>
-                                Function Visualization
-                            </h4>
-                            <button
-                                type="button"
-                                onClick={() => setIsFullscreen(false)}
-                                className="p-2 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300"
-                            >
-                                <span className="material-symbols-outlined text-sm">close</span>
-                            </button>
+                    );
+                })}
+            </div>
+
+            {/* Visualizations Section (At the end) */}
+            {visuals && visuals.length > 0 && (
+                <div className="mt-8 space-y-8 border-t border-[#e5e7eb] dark:border-[#2a303c] pt-8">
+                    <h3 className="font-bold text-xl text-[#111318] dark:text-white">Visualizations</h3>
+                    {visuals.map(visual => (
+                        <div key={visual.id} className="bg-white dark:bg-[#1e2634] rounded-xl border border-[#e5e7eb] dark:border-[#2a303c] overflow-hidden p-4 shadow-sm">
+                            <div className="flex items-center justify-between mb-4">
+                                <h4 className="font-bold text-sm text-[#111318] dark:text-white">{visual.title || "Graph"}</h4>
+                                <span className="material-symbols-outlined text-primary text-[24px]">monitoring</span>
+                            </div>
+                            <div className="w-full h-[400px]">
+                                <VisualRenderer visual={visual} height={400} />
+                            </div>
                         </div>
-                        <div className="p-4 bg-gray-50 dark:bg-slate-900/40 max-h-[80vh] overflow-auto">
-                            {unreferencedVisuals.map(visual => (
-                                <VisualRenderer key={visual.id} visual={visual} height={renderHeight} />
-                            ))}
-                        </div>
-                    </div>
+                    ))}
                 </div>
             )}
-
-            <section className="bg-primary dark:bg-accent p-5 rounded-2xl text-white shadow-lg">
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined bg-white/20 p-1 rounded">verified</span>
-                        <span className="text-xs font-bold uppercase tracking-widest opacity-80">Final Answer</span>
-                    </div>
-                    <div className="flex items-center gap-2 bg-white/10 px-3 py-1 rounded-full border border-white/20">
-                        <div className="size-2 rounded-full bg-green-400"></div>
-                        <span className="text-[10px] font-bold">99% Confidence</span>
-                    </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-[1.2fr_1fr] gap-4">
-                    <div>
-                        <p className="text-xl md:text-2xl font-semibold math-font">{finalAnswer || "Result ready"}</p>
-                        <p className="text-xs opacity-80 mt-2">Use the final form to verify.</p>
-                    </div>
-                    <div className="space-y-2">
-                        <div className="bg-white/10 px-3 py-2 rounded-lg text-xs border border-white/20">
-                            <span className="font-bold uppercase text-[10px] tracking-wide opacity-80">Standard</span>
-                            <div className="mt-1 math-font">{finalAnswer || "N/A"}</div>
-                        </div>
-                        <div className="bg-white/10 px-3 py-2 rounded-lg text-xs border border-white/20">
-                            <span className="font-bold uppercase text-[10px] tracking-wide opacity-80">Set</span>
-                            <div className="mt-1 math-font">{finalAnswer || "N/A"}</div>
-                        </div>
-                    </div>
-                </div>
-            </section>
         </div>
     );
 }

@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Solution Workspace - Verification, Concepts &amp; Practice - uask.ai</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;family=Noto+Sans:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"],
+                        "math": ["Times New Roman", "serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "2xl": "1rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        .math-font { font-family: 'Times New Roman', serif; font-style: italic; }
+        .equation-block { font-family: 'Times New Roman', serif; font-size: 1.25rem; }
+        details > summary { list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-[#111318] dark:text-white transition-colors duration-200">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
+<header class="sticky top-0 z-50 flex items-center justify-between whitespace-nowrap border-b border-solid border-[#e5e7eb] dark:border-[#2a303c] bg-white/80 dark:bg-background-dark/80 backdrop-blur-md px-10 py-3">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3">
+<div class="size-6 text-primary">
+<svg fill="currentColor" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M44 4H30.6666V17.3334H17.3334V30.6666H4V44H44V4Z"></path>
+</svg>
+</div>
+<h2 class="text-lg font-bold tracking-tight">uask.ai</h2>
+</div>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Dashboard</a>
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Courses</a>
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Library</a>
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Settings</a>
+</nav>
+</div>
+<div class="flex flex-1 justify-end gap-4 items-center">
+<div class="hidden sm:flex items-center bg-[#f0f2f4] dark:bg-[#1e2634] rounded-xl px-3 h-10 w-64 border border-transparent focus-within:border-primary/50 transition-all">
+<span class="material-symbols-outlined text-[#616f89] text-[20px]">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-full placeholder:text-[#616f89]" placeholder="Search problem sets..." type="text"/>
+</div>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 border border-[#e5e7eb] dark:border-[#2a303c]" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBT8Vr3uT5sB9YqSpfa1iQvokQxs6dCmTPslq4xIF0j5j8EvvuHnpbvGhj1-XQuiM0tPzWzIrFy-rQFuAqTwD-bOYYuGDjPv0e4Dmzh-qLYWGkiHoephNflXAyQZ4a2Z1bit4kT3bkxgu8ygJ-U2k8rOe5j_2TmqMW8160inxraHyJkr6nXNw4sIJ4KA2i2_FWzdN-W7s_mc4LHtlL0l-eexFHvpspMGDbpxnuX0tpVZBHfY8bqVMtLWZIZAGZvCdFAasKpvhuqbPv1");'></div>
+</div>
+</header>
+<main class="flex-1 max-w-[1200px] mx-auto w-full px-6 py-8">
+<nav class="flex items-center gap-2 mb-6 text-sm text-[#616f89] dark:text-slate-400">
+<a class="hover:text-primary" href="#">Home</a>
+<span class="material-symbols-outlined text-xs">chevron_right</span>
+<a class="hover:text-primary" href="#">Algebra</a>
+<span class="material-symbols-outlined text-xs">chevron_right</span>
+<span class="text-[#111318] dark:text-white font-medium">Verification &amp; Practice</span>
+</nav>
+<section class="bg-white dark:bg-[#1e2634] rounded-2xl p-8 mb-8 shadow-sm border border-[#e5e7eb] dark:border-[#2a303c] relative overflow-hidden">
+<div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+<div class="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+<div>
+<div class="flex items-center gap-2 mb-2">
+<span class="bg-primary/10 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Algebra</span>
+<span class="text-xs text-[#616f89] dark:text-slate-400">Workspace #64</span>
+</div>
+<h1 class="text-3xl font-black tracking-tight mb-2">Solve for x: Linear Equation</h1>
+<p class="text-2xl math-font text-primary font-medium tracking-wide">3(x - 2) = 15</p>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-sm font-medium text-slate-500">Result:</span>
+<span class="bg-primary text-white px-4 py-1.5 rounded-full font-bold math-font shadow-lg shadow-primary/20">x = 7</span>
+</div>
+</div>
+</section>
+<div class="flex border-b border-[#e5e7eb] dark:border-[#2a303c] gap-8 mb-8">
+<button class="pb-3 border-b-2 border-transparent text-[#616f89] dark:text-slate-400 font-medium text-sm hover:text-primary transition-colors">Steps</button>
+<button class="pb-3 border-b-2 border-primary text-primary font-bold text-sm">Verification</button>
+<button class="pb-3 border-b-2 border-transparent text-[#616f89] dark:text-slate-400 font-medium text-sm hover:text-primary transition-colors">Concepts</button>
+<button class="pb-3 border-b-2 border-transparent text-[#616f89] dark:text-slate-400 font-medium text-sm hover:text-primary transition-colors">Practice</button>
+</div>
+<div class="mb-12">
+<div class="flex items-center justify-between mb-6">
+<h3 class="text-xl font-bold">Solution Verification</h3>
+<span class="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold border border-emerald-100">
+<span class="material-symbols-outlined text-[16px]">verified</span>
+                    Fully Validated
+                </span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="bg-white dark:bg-[#1e2634] p-6 rounded-2xl border border-[#e5e7eb] dark:border-[#2a303c] shadow-sm">
+<div class="flex items-start justify-between mb-4">
+<div class="size-10 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 rounded-xl flex items-center justify-center">
+<span class="material-symbols-outlined">check_circle</span>
+</div>
+<span class="text-[10px] font-black uppercase text-slate-400">Method 01</span>
+</div>
+<h4 class="font-bold text-base mb-3">Substitution Check</h4>
+<div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl space-y-3">
+<div class="flex justify-between items-center text-sm">
+<span class="text-[#616f89]">Replace <span class="math-font">x</span> with <span class="math-font">7</span></span>
+<span class="math-font font-medium">3(7 - 2) = 15</span>
+</div>
+<div class="flex justify-between items-center text-sm">
+<span class="text-[#616f89]">Subtract inside</span>
+<span class="math-font font-medium">3(5) = 15</span>
+</div>
+<div class="pt-2 mt-2 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
+<span class="text-xs font-bold uppercase text-emerald-600">Conclusion</span>
+<span class="math-font font-bold text-emerald-600">15 = 15 (true)</span>
+</div>
+</div>
+</div>
+<div class="bg-white dark:bg-[#1e2634] p-6 rounded-2xl border border-[#e5e7eb] dark:border-[#2a303c] shadow-sm">
+<div class="flex items-start justify-between mb-4">
+<div class="size-10 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 rounded-xl flex items-center justify-center">
+<span class="material-symbols-outlined">account_tree</span>
+</div>
+<span class="text-[10px] font-black uppercase text-slate-400">Method 02</span>
+</div>
+<h4 class="font-bold text-base mb-3">Equivalent-form Check</h4>
+<p class="text-sm text-[#616f89] dark:text-slate-400 leading-relaxed">
+                        Each transformation step used equality-preserving operations (division by a non-zero constant and addition of a constant). These reversible operations ensure the <span class="font-semibold italic">solution set</span> is preserved from the original equation.
+                    </p>
+<div class="mt-4 flex items-center gap-2 text-[11px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-2 rounded-lg">
+<span class="material-symbols-outlined text-[14px]">shield</span>
+                        Logical Integrity Confirmed
+                    </div>
+</div>
+</div>
+</div>
+<div class="mb-12">
+<h3 class="text-xl font-bold mb-6">Foundational Concepts</h3>
+<div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+<div class="lg:col-span-2 space-y-4">
+<div class="flex items-center gap-2 mb-4 px-1">
+<span class="material-symbols-outlined text-primary text-[20px]">menu_book</span>
+<h4 class="font-bold text-sm uppercase tracking-wider text-slate-500">Key Concepts</h4>
+</div>
+<div class="bg-white dark:bg-[#1e2634] p-4 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c] flex items-center gap-4 hover:border-primary/30 transition-colors group">
+<div class="size-10 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
+<span class="material-symbols-outlined">swap_horiz</span>
+</div>
+<div>
+<p class="font-bold text-sm">Inverse Operations</p>
+<p class="text-[11px] text-[#616f89]">Operations that undo each other (e.g., + and -)</p>
+</div>
+</div>
+<div class="bg-white dark:bg-[#1e2634] p-4 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c] flex items-center gap-4 hover:border-primary/30 transition-colors group">
+<div class="size-10 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
+<span class="material-symbols-outlined">straighten</span>
+</div>
+<div>
+<p class="font-bold text-sm">Solving Linear Equations</p>
+<p class="text-[11px] text-[#616f89]">Finding the value that makes the statement true</p>
+</div>
+</div>
+<div class="bg-white dark:bg-[#1e2634] p-4 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c] flex items-center gap-4 hover:border-primary/30 transition-colors group">
+<div class="size-10 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
+<span class="material-symbols-outlined">view_cozy</span>
+</div>
+<div>
+<p class="font-bold text-sm">Distributive Property</p>
+<p class="text-[11px] text-[#616f89]">a(b + c) = ab + ac</p>
+</div>
+</div>
+</div>
+<div class="lg:col-span-3 space-y-6">
+<div class="flex items-center gap-2 mb-4 px-1">
+<span class="material-symbols-outlined text-amber-500 text-[20px]">lightbulb</span>
+<h4 class="font-bold text-sm uppercase tracking-wider text-slate-500">Learning Insights</h4>
+</div>
+<div class="bg-amber-50 dark:bg-amber-900/10 rounded-2xl border border-amber-200 dark:border-amber-900/50 p-6">
+<div class="flex items-center gap-2 mb-4 text-amber-700 dark:text-amber-500">
+<span class="material-symbols-outlined text-[20px]">warning</span>
+<h4 class="font-bold text-sm uppercase tracking-tight">Avoid these Common Mistakes</h4>
+</div>
+<div class="bg-white/60 dark:bg-black/20 p-4 rounded-xl border border-amber-200/50">
+<p class="text-sm font-bold mb-1">Dividing only one side</p>
+<p class="text-xs leading-relaxed text-[#616f89] dark:text-slate-400">
+                                Students often divide the left side to "cancel" the coefficient but forget to divide the constant on the right. 
+                                <span class="block mt-1 font-medium text-amber-800 dark:text-amber-400 italic">Correct: 3(x-2)/3 = 15/3</span>
+</p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-white dark:bg-[#1e2634] p-4 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c]">
+<p class="text-[10px] font-black uppercase text-slate-400 mb-1">y-intercept</p>
+<p class="text-lg font-bold text-primary">(0, 0)</p>
+</div>
+<div class="bg-white dark:bg-[#1e2634] p-4 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c]">
+<p class="text-[10px] font-black uppercase text-slate-400 mb-1">Domain</p>
+<p class="text-sm font-bold text-slate-700 dark:text-slate-200">All Real Numbers (ℝ)</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="mb-12">
+<h3 class="text-xl font-bold mb-6">Improve Your Mastery</h3>
+<div class="bg-white dark:bg-[#1e2634] p-6 rounded-2xl border border-[#e5e7eb] dark:border-[#2a303c] mb-8">
+<div class="flex items-center justify-between mb-3">
+<span class="text-sm font-bold">Algebra: Linear Equations</span>
+<span class="text-sm font-black text-primary">99%</span>
+</div>
+<div class="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 99%"></div>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+<div class="bg-white dark:bg-[#1e2634] rounded-2xl border border-[#e5e7eb] dark:border-[#2a303c] overflow-hidden flex flex-col">
+<div class="p-6 flex-1">
+<div class="flex justify-between items-start mb-4">
+<span class="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded text-[10px] font-bold uppercase">Example A</span>
+<span class="material-symbols-outlined text-slate-300">fitness_center</span>
+</div>
+<p class="math-font text-2xl font-medium mb-6">4(x - 1) = 20</p>
+<div class="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl mb-4 border border-blue-100 dark:border-blue-900/30">
+<span class="material-symbols-outlined text-primary text-[18px]">info</span>
+<div>
+<p class="text-[10px] font-black uppercase text-primary mb-0.5">Key Idea</p>
+<p class="text-[11px] text-[#616f89] dark:text-slate-400 leading-tight">Start by dividing both sides by 4 to simplify the left side immediately.</p>
+</div>
+</div>
+</div>
+<details class="group border-t border-[#e5e7eb] dark:border-[#2a303c]">
+<summary class="flex items-center justify-center p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+<span class="text-xs font-bold text-primary flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] group-open:rotate-180 transition-transform">expand_more</span>
+<span class="group-open:hidden">Show Solution</span>
+<span class="hidden group-open:inline">Hide Solution</span>
+</span>
+</summary>
+<div class="p-6 bg-slate-50 dark:bg-slate-800/30 text-center border-t border-[#e5e7eb] dark:border-[#2a303c]">
+<p class="math-font text-xl font-bold text-emerald-600">x = 6</p>
+<p class="text-[10px] text-slate-400 mt-1 uppercase tracking-widest font-black">Final Answer</p>
+</div>
+</details>
+</div>
+<div class="bg-white dark:bg-[#1e2634] rounded-2xl border border-[#e5e7eb] dark:border-[#2a303c] overflow-hidden flex flex-col">
+<div class="p-6 flex-1">
+<div class="flex justify-between items-start mb-4">
+<span class="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded text-[10px] font-bold uppercase">Example B</span>
+<span class="material-symbols-outlined text-slate-300">fitness_center</span>
+</div>
+<p class="math-font text-2xl font-medium mb-6">2(x + 3) = 14</p>
+<div class="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl mb-4 border border-blue-100 dark:border-blue-900/30">
+<span class="material-symbols-outlined text-primary text-[18px]">info</span>
+<div>
+<p class="text-[10px] font-black uppercase text-primary mb-0.5">Key Idea</p>
+<p class="text-[11px] text-[#616f89] dark:text-slate-400 leading-tight">Divide by 2, then subtract 3. Think about what is "undoing" the operations on x.</p>
+</div>
+</div>
+</div>
+<details class="group border-t border-[#e5e7eb] dark:border-[#2a303c]">
+<summary class="flex items-center justify-center p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+<span class="text-xs font-bold text-primary flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] group-open:rotate-180 transition-transform">expand_more</span>
+<span class="group-open:hidden">Show Solution</span>
+<span class="hidden group-open:inline">Hide Solution</span>
+</span>
+</summary>
+<div class="p-6 bg-slate-50 dark:bg-slate-800/30 text-center border-t border-[#e5e7eb] dark:border-[#2a303c]">
+<p class="math-font text-xl font-bold text-emerald-600">x = 4</p>
+<p class="text-[10px] text-slate-400 mt-1 uppercase tracking-widest font-black">Final Answer</p>
+</div>
+</details>
+</div>
+</div>
+<button class="w-full py-5 bg-primary text-white rounded-2xl font-bold flex items-center justify-center gap-3 shadow-xl shadow-primary/30 hover:bg-blue-700 transition-all hover:scale-[1.01] active:scale-[0.99]">
+<span class="material-symbols-outlined fill-1">auto_awesome</span>
+                Generate More Practice Problems
+            </button>
+</div>
+</main>
+<footer class="bg-white dark:bg-[#1e2634] border-t border-[#e5e7eb] dark:border-[#2a303c] py-12 mt-12">
+<div class="max-w-[1200px] mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-8">
+<div class="flex items-center gap-3">
+<div class="size-5 text-primary">
+<svg fill="currentColor" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M44 4H30.6666V17.3334H17.3334V30.6666H4V44H44V4Z"></path>
+</svg>
+</div>
+<h2 class="text-md font-bold">uask.ai</h2>
+<p class="text-xs text-[#616f89] ml-4">© 2024 Math Solver Labs. All rights reserved.</p>
+</div>
+<div class="flex gap-6">
+<a class="text-xs text-[#616f89] hover:text-primary" href="#">Terms</a>
+<a class="text-xs text-[#616f89] hover:text-primary" href="#">Privacy</a>
+<a class="text-xs text-[#616f89] hover:text-primary" href="#">Help Center</a>
+</div>
+</div>
+</footer>
+</div>
+
+</body></html>

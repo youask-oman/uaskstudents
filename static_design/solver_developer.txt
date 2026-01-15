@@ -1,314 +1,215 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.com/na-math-solver.schema.json",
-  "title": "NorthAmericaMathSolverOutput",
-  "description": "All properties must be present; do not use nulls. Use empty arrays/strings or minimal objects with required keys when data is unavailable.",
+  "$id": "https://uask.ai/schemas/math_tutor_response.schema.json",
+  "title": "MathTutorResponse",
   "type": "object",
   "additionalProperties": false,
-  "required": ["problem", "analysis", "solution", "verification", "plot", "similar_examples", "meta"],
-
+  "required": [
+    "schema_version",
+    "problem",
+    "classification",
+    "refusal",
+    "assumptions",
+    "steps",
+    "final_answer",
+    "verification",
+    "visuals",
+    "quality"
+  ],
   "properties": {
+    "schema_version": { "type": "string", "const": "v1.0" },
+
     "problem": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["input", "topic", "goal"],
+      "required": ["original_text", "normalized_text", "detected_tasks"],
       "properties": {
-        "input": { "type": "string", "minLength": 1 },
-        "topic": {
-          "type": "string",
-          "enum": [
-            "algebra",
-            "functions",
-            "graphing",
-            "geometry",
-            "trigonometry",
-            "calculus",
-            "linear_algebra",
-            "complex_numbers",
-            "statistics_probability",
-            "discrete",
-            "word_problem",
-            "other"
-          ]
-        },
-        "goal": { "type": "string", "minLength": 1 },
-        "assumptions": { "type": "array", "items": { "type": "string" } },
-        "given_data": { "type": "array", "items": { "type": "string" } },
-        "unknowns": { "type": "array", "items": { "type": "string" } }
-      }
-    },
-
-    "analysis": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["plan", "detected_entities"],
-      "properties": {
-        "plan": { "type": "array", "minItems": 1, "items": { "type": "string" } },
-        "detected_entities": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["expressions", "equations", "functions", "constraints"],
-          "properties": {
-            "expressions": { "type": "array", "items": { "type": "string" } },
-            "equations": { "type": "array", "items": { "type": "string" } },
-            "functions": { "type": "array", "items": { "type": "string" } },
-            "constraints": { "type": "array", "items": { "type": "string" } }
+        "original_text": { "type": "string" },
+        "normalized_text": { "type": "string" },
+        "detected_tasks": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "solve_equation",
+              "solve_inequality",
+              "simplify",
+              "factor",
+              "expand",
+              "evaluate",
+              "graph",
+              "find_intercepts",
+              "find_vertex",
+              "find_extrema",
+              "find_roots",
+              "system_solve",
+              "word_problem",
+              "geometry",
+              "trigonometry",
+              "calculus_derivative",
+              "calculus_integral",
+              "statistics",
+              "probability",
+              "sequence_series",
+              "other"
+            ]
           }
         }
       }
     },
 
-    "solution": {
+    "classification": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["final_answer", "final_forms", "steps", "key_concepts", "common_mistakes"],
+      "required": ["grade_band", "domain", "topic", "difficulty"],
       "properties": {
-        "final_answer": { "type": "string", "minLength": 1 },
-
-        "final_forms": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "simplified": { "type": "string" },
-            "factored": { "type": "string" },
-            "vertex_form": { "type": "string" },
-            "standard_form": { "type": "string" },
-            "general_solution_set": { "type": "string" }
-          }
+        "grade_band": {
+          "type": "string",
+          "enum": ["K-2", "3-5", "6-8", "9-10", "11-12", "college_intro", "unknown"]
         },
+        "domain": {
+          "type": "string",
+          "enum": ["arithmetic", "algebra", "geometry", "trigonometry", "calculus", "statistics", "probability", "discrete", "mixed", "unknown"]
+        },
+        "topic": { "type": "string" },
+        "difficulty": { "type": "string", "enum": ["easy", "standard", "challenging", "unknown"] }
+      }
+    },
 
-        "steps": {
+    "refusal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["is_refusal", "reason", "safe_alternative"],
+      "properties": {
+        "is_refusal": { "type": "boolean" },
+        "reason": { "type": ["string", "null"] },
+        "safe_alternative": { "type": ["string", "null"] }
+      }
+    },
+
+    "assumptions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["index", "title", "explanation", "math_latex", "rules_used", "checkpoint"],
+        "properties": {
+          "index": { "type": "integer", "minimum": 1 },
+          "title": { "type": "string" },
+          "explanation": { "type": "string" },
+          "math_latex": { "type": "string" },
+          "rules_used": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "checkpoint": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["question", "answer"],
+            "properties": {
+              "question": { "type": "string" },
+              "answer": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+
+    "final_answer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["answer_text", "answer_latex", "values", "units"],
+      "properties": {
+        "answer_text": { "type": "string" },
+        "answer_latex": { "type": "string" },
+        "values": {
           "type": "array",
-          "minItems": 1,
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["index", "title", "concept", "rules_used", "work", "result", "checkpoint"],
+            "required": ["label", "value", "value_latex"],
             "properties": {
-              "index": { "type": "integer", "minimum": 1 },
-              "title": { "type": "string" },
-              "concept": { "type": "string", "minLength": 1 },
-              "rules_used": {
-                "type": "array",
-                "minItems": 1,
-                "items": { "type": "string" }
-              },
-              "work": {
-                "type": "array",
-                "minItems": 1,
-                "items": { "type": "string" }
-              },
-              "result": { "type": "string", "minLength": 1 },
-              "checkpoint": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": ["question", "expected_answer"],
-                "properties": {
-                  "question": { "type": "string" },
-                  "expected_answer": { "type": "string" }
-                }
-              }
+              "label": { "type": "string" },
+              "value": { "type": ["number", "string", "null"] },
+              "value_latex": { "type": "string" }
             }
           }
         },
-
-        "key_concepts": { "type": "array", "items": { "type": "string" } },
-        "common_mistakes": { "type": "array", "items": { "type": "string" } },
-
-        "features": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "intercepts": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "x": { "type": "array", "items": { "$ref": "#/$defs/point" } },
-                "y": { "$ref": "#/$defs/point" }
-              }
-            },
-            "vertex": { "$ref": "#/$defs/point" },
-            "axis_of_symmetry": { "type": "string" },
-            "asymptotes": { "type": "array", "items": { "type": "string" } },
-            "turning_points": { "type": "array", "items": { "$ref": "#/$defs/point" } },
-            "domain": { "type": "string" },
-            "range": { "type": "string" },
-            "units": { "type": "string" }
-          }
-        }
+        "units": { "type": ["string", "null"] }
       }
     },
 
     "verification": {
-      "type": "array",
-      "minItems": 2,
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["method", "why_it_works", "steps", "conclusion"],
-        "properties": {
-          "method": { "type": "string" },
-          "why_it_works": { "type": "string" },
-          "steps": { "type": "array", "minItems": 1, "items": { "type": "string" } },
-          "conclusion": { "type": "string" }
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "work_latex", "conclusion", "alternative_method"],
+      "properties": {
+        "method": { "type": "string" },
+        "work_latex": { "type": "string" },
+        "conclusion": { "type": "string" },
+        "alternative_method": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "summary"],
+          "properties": {
+            "name": { "type": "string" },
+            "summary": { "type": "string" }
+          }
         }
       }
     },
 
-    "plot": {
+    "visuals": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["should_plot", "plot_type", "plan"],
+      "required": ["should_visualize", "decision_reason", "plots", "alternative_visual"],
       "properties": {
-        "should_plot": { "type": "boolean" },
+        "should_visualize": { "type": "boolean" },
+        "decision_reason": { "type": "string" },
 
-        "plot_type": {
-          "type": "string",
-          "enum": [
-            "function",
-            "implicit",
-            "parametric",
-            "system",
-            "inequality_region",
-            "number_line",
-            "geometry",
-            "complex_plane",
-            "scatter",
-            "histogram",
-            "boxplot",
-            "other"
-          ]
+        "plots": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/plot_spec" }
         },
 
-        "plan": {
+        "alternative_visual": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["title", "axes", "recommended_window", "objects", "annotations", "sampling"],
+          "required": ["kind", "description", "data"],
           "properties": {
-            "title": { "type": "string" },
-
-            "axes": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": ["x_label", "y_label"],
-              "properties": {
-                "x_label": { "type": "string" },
-                "y_label": { "type": "string" }
-              }
-            },
-
-            "recommended_window": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": ["x_min", "x_max", "y_min", "y_max"],
-              "properties": {
-                "x_min": { "type": "number" },
-                "x_max": { "type": "number" },
-                "y_min": { "type": "number" },
-                "y_max": { "type": "number" }
-              }
-            },
-
-            "objects": {
+            "kind": { "type": "string", "enum": ["none", "number_line", "table", "diagram"] },
+            "description": { "type": "string" },
+            "data": {
               "type": "array",
-              "minItems": 1,
               "items": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["kind", "expression", "label"],
+                "required": ["label", "x", "y"],
                 "properties": {
-                  "kind": {
-                    "type": "string",
-                    "enum": ["curve", "region", "points", "line", "vector", "shape"]
-                  },
-                  "expression": { "type": "string" },
                   "label": { "type": "string" },
-                  "style_hints": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "properties": {
-                      "dashed": { "type": "boolean" },
-                      "shade": { "type": "boolean" }
-                    }
-                  }
+                  "x": { "type": ["number", "null"] },
+                  "y": { "type": ["number", "null"] }
                 }
-              }
-            },
-
-            "annotations": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": ["name", "detail"],
-                "properties": {
-                  "name": { "type": "string" },
-                  "detail": { "type": "string" },
-                  "point": { "$ref": "#/$defs/point" }
-                }
-              }
-            },
-
-            "sampling": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": ["strategy", "resolution"],
-              "properties": {
-                "strategy": {
-                  "type": "string",
-                  "enum": ["uniform", "adaptive", "piecewise", "grid"]
-                },
-                "resolution": { "type": "integer", "minimum": 50 },
-                "domain_restrictions": { "type": "array", "items": { "type": "string" } },
-                "discontinuities": { "type": "array", "items": { "type": "string" } }
               }
             }
           }
-        },
-
-        "visualization_alternative": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "type": { "type": "string" },
-            "reason_no_standard_plot": { "type": "string" },
-            "instructions": { "type": "array", "items": { "type": "string" } }
-          }
         }
       }
     },
 
-    "similar_examples": {
-      "type": "array",
-      "minItems": 2,
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["problem", "key_idea", "short_solution"],
-        "properties": {
-          "problem": { "type": "string" },
-          "key_idea": { "type": "string" },
-          "short_solution": { "type": "string" }
-        }
-      }
-    },
-
-    "meta": {
+    "quality": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["confidence", "localization", "rounding_policy"],
+      "required": ["confidence", "common_mistakes", "next_practice"],
       "properties": {
         "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
-        "localization": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["region", "notation"],
-          "properties": {
-            "region": { "type": "string", "enum": ["north_america"] },
-            "notation": { "type": "string", "enum": ["standard"] }
-          }
-        },
-        "rounding_policy": { "type": "string" }
+        "common_mistakes": { "type": "array", "items": { "type": "string" } },
+        "next_practice": { "type": "array", "items": { "type": "string" } }
       }
     }
   },
@@ -317,10 +218,81 @@
     "point": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["x", "y"],
+      "required": ["x", "y", "label"],
       "properties": {
         "x": { "type": "number" },
-        "y": { "type": "number" }
+        "y": { "type": "number" },
+        "label": { "type": "string" }
+      }
+    },
+
+    "series": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "expression_latex", "points", "style_hint"],
+      "properties": {
+        "name": { "type": "string" },
+        "kind": { "type": "string", "enum": ["function_y_of_x", "implicit", "parametric", "scatter", "line_segments", "histogram", "bar"] },
+        "expression_latex": { "type": "string" },
+        "points": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/point" }
+        },
+        "style_hint": { "type": "string" }
+      }
+    },
+
+    "plot_spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "plot_id",
+        "plot_type",
+        "title",
+        "x_label",
+        "y_label",
+        "x_min",
+        "x_max",
+        "y_min",
+        "y_max",
+        "series",
+        "key_points",
+        "annotations"
+      ],
+      "properties": {
+        "plot_id": { "type": "string" },
+        "plot_type": { "type": "string", "enum": ["cartesian_2d", "number_line_1d", "coordinate_geometry_2d", "statistics_chart"] },
+        "title": { "type": "string" },
+        "x_label": { "type": "string" },
+        "y_label": { "type": "string" },
+        "x_min": { "type": "number" },
+        "x_max": { "type": "number" },
+        "y_min": { "type": "number" },
+        "y_max": { "type": "number" },
+
+        "series": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/series" }
+        },
+
+        "key_points": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/point" }
+        },
+
+        "annotations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["text", "x", "y"],
+            "properties": {
+              "text": { "type": "string" },
+              "x": { "type": "number" },
+              "y": { "type": "number" }
+            }
+          }
+        }
       }
     }
   }

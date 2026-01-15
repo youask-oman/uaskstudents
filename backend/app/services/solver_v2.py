@@ -3,7 +3,7 @@ Solver V2: Enhanced tutoring-quality solver using OpenAI Responses API.
 
 This module implements the complete solver pipeline with:
 - OpenAI Responses API (gpt-5-mini) as primary
-- Chat Completions (gpt-4o-mini) as fallback  
+- Chat Completions (gpt-5-mini) as fallback  
 - Validation and refinement logic
 - Visual policy enforcement
 - Student-friendly content generation
@@ -27,7 +27,7 @@ class SolverServiceV2:
         """Initialize solver with OpenAI client."""
         self._client = None
         self._default_model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini")
-        self._fallback_model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-4o-mini")
+        self._fallback_model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini")
     
     @property
     def client(self) -> AsyncOpenAI:
@@ -256,7 +256,7 @@ class SolverServiceV2:
         Fallback to Chat Completions API with same schema validation.
         
         Uses:
-        - model: gpt-4o-mini
+        - model: gpt-5-mini
         - max_completion_tokens: 2000
         - temperature: 0.2
         - response_format: json_object (not strict schema)

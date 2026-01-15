@@ -268,18 +268,8 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
 
                 return <VerificationTab
                     methods={methods}
-                    activeTab={activeTab as "steps" | "verification" | "concepts" | "practice"}
-                    onSelectTab={setActiveTab}
-                    stepsCount={steps.length}
-                    problem={{
-                        goal: problem.original_text,
-                        assumptions: solutionData.assumptions
-                    }}
-                    finalAnswer={solutionData.final_answer?.answer_text}
+                    finalAnswer={solutionData.final_answer?.answer_latex || solutionData.final_answer?.answer_text}
                     confidence={solutionData.quality?.confidence}
-                    keyConcepts={steps.flatMap((s: any) => s.rules_used || []).slice(0, 5)} // Derive key concepts
-                    commonMistakes={solutionData.quality?.common_mistakes || []}
-                    similarExamples={[]} // Not in verification obj
                 />;
             case 'concepts':
                 return <ConceptsTab
@@ -315,11 +305,23 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     return (
         <WorkspaceLayout
             messages={session.messages}
-            problem={solutionData?.problem}
-            analysisPlan={[]}
-            keyConcepts={(solutionData?.steps || []).flatMap((s: any) => s.rules_used || []).slice(0, 3)}
+            activeTab={activeTab as "steps" | "verification" | "concepts" | "practice"}
+            onSelectTab={setActiveTab}
+            problem={{
+                ...solutionData?.problem,
+                // Map V3 fields to WorkspaceProblem interface
+                topic: solutionData?.classification?.topic,
+                goal: solutionData?.classification?.detected_tasks?.[0] || "Solve",
+                input: solutionData?.problem?.normalized_text || solutionData?.problem?.original_text,
+                given_data: [solutionData?.problem?.original_text], // Use original text as Given context
+                unknowns: solutionData?.classification?.detected_tasks,
+                assumptions: solutionData?.assumptions
+            }}
             stepsCount={(solutionData?.steps || []).length}
-            onSelectConcepts={() => setActiveTab("concepts")}
+            // Map steps titles to the Analysis Plan for the timeline view
+            analysisPlan={(solutionData?.steps || []).map((s: any) => s.title)}
+            finalAnswer={typeof solutionData?.final_answer === 'object' ? solutionData?.final_answer?.answer_latex : solutionData?.final_answer}
+            confidence={solutionData?.quality?.confidence ? Math.round(solutionData.quality.confidence * 100) : 99}
             llmUsed="YouAsk AI"
             totalTokensUsed={totalTokensUsed}
             questionTokensUsed={sessionTokensUsed}

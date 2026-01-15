@@ -34,7 +34,7 @@ from openai import AsyncOpenAI
 # Configuration
 # -----------------------------
 
-MODEL_NAME = "gpt-4o-mini"  # keep consistent with your current stack
+MODEL_NAME = "gpt-5-mini"  # keep consistent with your current stack
 MAX_TOKENS = 800
 TEMPERATURE = 0
 

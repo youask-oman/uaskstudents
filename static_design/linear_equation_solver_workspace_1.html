@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Linear Equation Solver Workspace #64 - uask.ai</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;family=Noto+Sans:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"],
+                        "math": ["Times New Roman", "serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .math-font { font-family: 'Times New Roman', serif; font-style: italic; }
+        .equation-block { font-family: 'Times New Roman', serif; font-size: 1.25rem; }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-[#111318] dark:text-white transition-colors duration-200">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
+<!-- Top Header -->
+<header class="sticky top-0 z-50 flex items-center justify-between whitespace-nowrap border-b border-solid border-[#e5e7eb] dark:border-[#2a303c] bg-white/80 dark:bg-background-dark/80 backdrop-blur-md px-10 py-3">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3">
+<div class="size-6 text-primary">
+<svg fill="currentColor" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M44 4H30.6666V17.3334H17.3334V30.6666H4V44H44V4Z"></path>
+</svg>
+</div>
+<h2 class="text-lg font-bold tracking-tight">uask.ai</h2>
+</div>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Dashboard</a>
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Courses</a>
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Library</a>
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Settings</a>
+</nav>
+</div>
+<div class="flex flex-1 justify-end gap-4 items-center">
+<div class="hidden sm:flex items-center bg-[#f0f2f4] dark:bg-[#1e2634] rounded-xl px-3 h-10 w-64 border border-transparent focus-within:border-primary/50 transition-all">
+<span class="material-symbols-outlined text-[#616f89] text-[20px]">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-full placeholder:text-[#616f89]" placeholder="Search problem sets..." type="text"/>
+</div>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 border border-[#e5e7eb] dark:border-[#2a303c]" data-alt="User profile avatar placeholder" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBT8Vr3uT5sB9YqSpfa1iQvokQxs6dCmTPslq4xIF0j5j8EvvuHnpbvGhj1-XQuiM0tPzWzIrFy-rQFuAqTwD-bOYYuGDjPv0e4Dmzh-qLYWGkiHoephNflXAyQZ4a2Z1bit4kT3bkxgu8ygJ-U2k8rOe5j_2TmqMW8160inxraHyJkr6nXNw4sIJ4KA2i2_FWzdN-W7s_mc4LHtlL0l-eexFHvpspMGDbpxnuX0tpVZBHfY8bqVMtLWZIZAGZvCdFAasKpvhuqbPv1");'></div>
+</div>
+</header>
+<main class="flex-1 max-w-[1200px] mx-auto w-full px-6 py-8">
+<!-- Breadcrumbs -->
+<nav class="flex items-center gap-2 mb-6 text-sm text-[#616f89] dark:text-slate-400">
+<a class="hover:text-primary" href="#">Home</a>
+<span class="material-symbols-outlined text-xs">chevron_right</span>
+<a class="hover:text-primary" href="#">Algebra</a>
+<span class="material-symbols-outlined text-xs">chevron_right</span>
+<span class="text-[#111318] dark:text-white font-medium">Linear Equations #64</span>
+</nav>
+<!-- Problem Summary Hero -->
+<section class="bg-white dark:bg-[#1e2634] rounded-2xl p-8 mb-8 shadow-sm border border-[#e5e7eb] dark:border-[#2a303c] relative overflow-hidden">
+<div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+<div class="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+<div>
+<div class="flex items-center gap-2 mb-2">
+<span class="bg-primary/10 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Algebra</span>
+<span class="text-xs text-[#616f89] dark:text-slate-400">Workspace #64</span>
+</div>
+<h1 class="text-3xl font-black tracking-tight mb-2">Solve for x: Linear Equation</h1>
+<p class="text-2xl math-font text-primary font-medium tracking-wide">3(x - 2) = 15</p>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md hover:bg-blue-700 transition-all">
+<span class="material-symbols-outlined text-[18px]">bookmark</span>
+                            Save to Library
+                        </button>
+<button class="p-2.5 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c] hover:bg-[#f0f2f4] dark:hover:bg-slate-700 transition-all">
+<span class="material-symbols-outlined text-[20px]">share</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Quick Data Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+<div class="bg-white dark:bg-[#1e2634] p-5 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c] flex items-center gap-4">
+<div class="size-10 rounded-lg bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 flex items-center justify-center">
+<span class="material-symbols-outlined">description</span>
+</div>
+<div>
+<p class="text-xs font-bold text-[#616f89] dark:text-slate-400 uppercase">Given</p>
+<p class="math-font text-lg">3(x - 2) = 15</p>
+</div>
+</div>
+<div class="bg-white dark:bg-[#1e2634] p-5 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c] flex items-center gap-4">
+<div class="size-10 rounded-lg bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400 flex items-center justify-center">
+<span class="material-symbols-outlined">target</span>
+</div>
+<div>
+<p class="text-xs font-bold text-[#616f89] dark:text-slate-400 uppercase">Find</p>
+<p class="math-font text-lg">x</p>
+</div>
+</div>
+<div class="bg-white dark:bg-[#1e2634] p-5 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c] flex items-center gap-4">
+<div class="size-10 rounded-lg bg-blue-100 dark:bg-blue-500/20 text-primary flex items-center justify-center">
+<span class="material-symbols-outlined">info</span>
+</div>
+<div>
+<p class="text-xs font-bold text-[#616f89] dark:text-slate-400 uppercase">Assumptions</p>
+<p class="text-sm font-medium">Real numbers, Single variable</p>
+</div>
+</div>
+</div>
+<!-- Refined Final Answer Banner -->
+<div class="bg-primary text-white rounded-2xl p-6 mb-8 shadow-xl shadow-primary/20 flex flex-col md:flex-row items-center justify-between gap-6">
+<div class="flex items-center gap-4">
+<div class="bg-white/20 p-3 rounded-full backdrop-blur-sm">
+<span class="material-symbols-outlined text-[32px]">check_circle</span>
+</div>
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="bg-white text-primary text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Refined Solution</span>
+<span class="flex items-center gap-1 text-[11px] font-medium text-blue-100">
+<span class="material-symbols-outlined text-[12px] fill-current">verified</span>
+                                99% Confidence
+                            </span>
+</div>
+<h2 class="text-4xl font-black tracking-tight math-font">x = 7</h2>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-sm font-medium text-blue-100">Solution Set:</span>
+<span class="bg-white/20 px-4 py-1.5 rounded-full font-bold math-font">{7}</span>
+</div>
+</div>
+<!-- Plan Accordion -->
+<div class="mb-8">
+<details class="group bg-slate-100 dark:bg-[#1e2634] rounded-xl overflow-hidden" open="">
+<summary class="flex cursor-pointer items-center justify-between p-4 bg-slate-200 dark:bg-slate-800 list-none">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">strategy</span>
+<span class="font-bold text-sm uppercase tracking-wide">Solution Plan (4 Steps)</span>
+</div>
+<span class="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+<div class="flex gap-2">
+<span class="font-black text-primary">01.</span>
+<p class="text-[#616f89] dark:text-slate-300">Divide both sides by 3</p>
+</div>
+<div class="flex gap-2">
+<span class="font-black text-primary">02.</span>
+<p class="text-[#616f89] dark:text-slate-300">Simplify the expression</p>
+</div>
+<div class="flex gap-2">
+<span class="font-black text-primary">03.</span>
+<p class="text-[#616f89] dark:text-slate-300">Add 2 to isolate x</p>
+</div>
+<div class="flex gap-2">
+<span class="font-black text-primary">04.</span>
+<p class="text-[#616f89] dark:text-slate-300">Verify result via substitution</p>
+</div>
+</div>
+</details>
+</div>
+<!-- Tabbed Interface -->
+<div class="flex flex-col gap-6">
+<!-- Tab Headers -->
+<div class="flex border-b border-[#e5e7eb] dark:border-[#2a303c] gap-8">
+<button class="pb-3 border-b-2 border-primary text-primary font-bold text-sm">Steps</button>
+<button class="pb-3 border-b-2 border-transparent text-[#616f89] dark:text-slate-400 font-medium text-sm hover:text-primary transition-colors">Verification</button>
+<button class="pb-3 border-b-2 border-transparent text-[#616f89] dark:text-slate-400 font-medium text-sm hover:text-primary transition-colors">Concepts</button>
+<button class="pb-3 border-b-2 border-transparent text-[#616f89] dark:text-slate-400 font-medium text-sm hover:text-primary transition-colors">Practice</button>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Steps Tab Content (Active) -->
+<div class="lg:col-span-2 space-y-8">
+<!-- Step 1 -->
+<div class="relative pl-8 border-l-2 border-primary/20">
+<div class="absolute -left-[9px] top-0 size-4 rounded-full bg-primary border-4 border-white dark:border-[#101622]"></div>
+<div class="flex flex-col md:flex-row gap-6">
+<div class="flex-1">
+<h3 class="font-bold text-lg mb-2">Step 1: Undo multiplication by 3</h3>
+<p class="text-sm text-[#616f89] dark:text-slate-400 mb-4">The entire expression (x - 2) is being multiplied by 3. To isolate the parenthesis, divide both sides of the equation by 3.</p>
+<!-- Checkpoint Quiz -->
+<div class="bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-xl p-4">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-primary text-[16px]">quiz</span>
+<span class="text-xs font-bold text-primary uppercase">Checkpoint</span>
+</div>
+<p class="text-xs font-medium mb-3">Why is division the correct first step here?</p>
+<div class="flex flex-wrap gap-2">
+<button class="px-3 py-1.5 bg-white dark:bg-slate-800 border border-primary/20 rounded-lg text-[11px] hover:bg-primary hover:text-white transition-all">It's the inverse of multiplication</button>
+<button class="px-3 py-1.5 bg-white dark:bg-slate-800 border border-primary/20 rounded-lg text-[11px] hover:bg-primary hover:text-white transition-all">To follow PEMDAS</button>
+</div>
+</div>
+</div>
+<div class="w-full md:w-64 bg-white dark:bg-[#1e2634] p-6 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c] flex flex-col items-center justify-center">
+<div class="text-center space-y-2">
+<div class="flex flex-col items-center">
+<span class="math-font text-lg">3(x - 2) / 3 = 15 / 3</span>
+<div class="h-px w-full bg-slate-300 dark:bg-slate-700 my-1"></div>
+<span class="math-font text-xl font-bold text-primary">x - 2 = 5</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Step 2 -->
+<div class="relative pl-8 border-l-2 border-primary/20">
+<div class="absolute -left-[9px] top-0 size-4 rounded-full bg-primary border-4 border-white dark:border-[#101622]"></div>
+<div class="flex flex-col md:flex-row gap-6">
+<div class="flex-1">
+<h3 class="font-bold text-lg mb-2">Step 2: Undo subtraction of 2</h3>
+<p class="text-sm text-[#616f89] dark:text-slate-400 mb-4">Now that (x - 2) is isolated, add 2 to both sides of the equation to find the value of x.</p>
+<!-- Checkpoint Quiz -->
+<div class="bg-green-500/5 dark:bg-green-500/10 border border-green-500/20 rounded-xl p-4">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-green-600 text-[16px]">task_alt</span>
+<span class="text-xs font-bold text-green-600 uppercase">Verification Quiz</span>
+</div>
+<p class="text-xs font-medium mb-3">What happens if we subtract 2 instead of adding?</p>
+<div class="flex flex-wrap gap-2">
+<button class="px-3 py-1.5 bg-white dark:bg-slate-800 border border-green-500/20 rounded-lg text-[11px]">x - 4 = 3</button>
+<button class="px-3 py-1.5 bg-white dark:bg-slate-800 border border-green-500/20 rounded-lg text-[11px]">Equation stays balanced</button>
+</div>
+</div>
+</div>
+<div class="w-full md:w-64 bg-white dark:bg-[#1e2634] p-6 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c] flex flex-col items-center justify-center">
+<div class="text-center space-y-2">
+<div class="flex flex-col items-center">
+<span class="math-font text-lg">x - 2 + 2 = 5 + 2</span>
+<div class="h-px w-full bg-slate-300 dark:bg-slate-700 my-1"></div>
+<span class="math-font text-xl font-bold text-green-600">x = 7</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Sidebar: Visualization & Context -->
+<div class="space-y-6">
+<!-- Visualization Alternative -->
+<div class="bg-white dark:bg-[#1e2634] rounded-xl border border-[#e5e7eb] dark:border-[#2a303c] overflow-hidden">
+<div class="p-4 bg-slate-50 dark:bg-slate-800 border-b border-[#e5e7eb] dark:border-[#2a303c] flex items-center justify-between">
+<h4 class="font-bold text-sm">Balance Model Approach</h4>
+<span class="material-symbols-outlined text-primary text-[20px]">balance</span>
+</div>
+<div class="p-6">
+<div class="flex justify-center mb-6">
+<div class="relative w-48 h-24 border-b-2 border-slate-400 dark:border-slate-600 flex justify-between items-end pb-2">
+<div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-4 bg-slate-400 dark:bg-slate-600 rounded-t-full"></div>
+<div class="text-center">
+<div class="bg-primary/20 p-2 rounded text-[10px] font-bold">3(x-2)</div>
+<div class="mt-1 text-xs">Left Pan</div>
+</div>
+<div class="text-center">
+<div class="bg-green-500/20 p-2 rounded text-[10px] font-bold">15</div>
+<div class="mt-1 text-xs">Right Pan</div>
+</div>
+</div>
+</div>
+<ul class="text-xs space-y-3 text-[#616f89] dark:text-slate-400">
+<li class="flex gap-2">
+<span class="material-symbols-outlined text-[14px] text-primary">circle</span>
+<span>Imagine 15 units on the right scale.</span>
+</li>
+<li class="flex gap-2">
+<span class="material-symbols-outlined text-[14px] text-primary">circle</span>
+<span>On the left, 3 identical groups of (x-2).</span>
+</li>
+<li class="flex gap-2">
+<span class="material-symbols-outlined text-[14px] text-primary">circle</span>
+<span>Dividing by 3 removes 2 groups and leaves 5 units on the right.</span>
+</li>
+</ul>
+</div>
+</div>
+<!-- Common Mistakes -->
+<div class="bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-200 dark:border-amber-900/50 p-5">
+<div class="flex items-center gap-2 mb-3 text-amber-700 dark:text-amber-500">
+<span class="material-symbols-outlined text-[20px]">warning</span>
+<h4 class="font-bold text-sm uppercase">Common Mistakes</h4>
+</div>
+<div class="space-y-3">
+<div>
+<p class="text-xs font-bold mb-1">Dividing only one side</p>
+<p class="text-[11px] leading-relaxed">Forgetting to divide the right side (15) by 3 while dividing the left side. Remember: What you do to one side, you must do to the other.</p>
+</div>
+<div class="h-px bg-amber-200 dark:bg-amber-900/50"></div>
+<div>
+<p class="text-xs font-bold mb-1">Incorrect Distribution</p>
+<p class="text-[11px] leading-relaxed">If distributing, students often forget to multiply 3 by -2, leading to 3x - 2 = 15 instead of 3x - 6 = 15.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Verification Tab Content (Example of hidden/secondary view structure) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+<div class="bg-white dark:bg-[#1e2634] p-6 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c]">
+<h4 class="font-bold mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-green-600">published_with_changes</span>
+                            Substitution Check
+                        </h4>
+<div class="space-y-3 text-sm">
+<div class="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+<span class="text-[#616f89]">Initial LHS</span>
+<span class="math-font">3(7 - 2)</span>
+</div>
+<div class="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+<span class="text-[#616f89]">Simplify inner</span>
+<span class="math-font">3(5)</span>
+</div>
+<div class="flex justify-between font-bold text-green-600">
+<span>Result</span>
+<span class="math-font">15 = 15 ✓</span>
+</div>
+</div>
+</div>
+<div class="bg-white dark:bg-[#1e2634] p-6 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c]">
+<h4 class="font-bold mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">schema</span>
+                            Equivalent-form check
+                        </h4>
+<p class="text-xs text-[#616f89] dark:text-slate-400 mb-4">Re-solving using distribution method (Alternate strategy):</p>
+<div class="space-y-2 text-sm italic">
+<p class="math-font">3x - 6 = 15</p>
+<p class="math-font">3x = 15 + 6 = 21</p>
+<p class="math-font">x = 21 / 3 = 7</p>
+</div>
+</div>
+</div>
+<!-- Practice Tab Content Preview -->
+<div class="mt-8 border-t border-[#e5e7eb] dark:border-[#2a303c] pt-8">
+<h3 class="font-bold text-xl mb-6">Similar Problems for Practice</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="bg-white dark:bg-[#1e2634] p-6 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c] relative">
+<div class="flex justify-between items-start mb-4">
+<div>
+<span class="text-[10px] font-bold text-primary uppercase">Example A</span>
+<p class="math-font text-xl mt-1">4(x - 1) = 20</p>
+</div>
+<button class="text-primary text-xs font-bold hover:underline">Show Solution</button>
+</div>
+<div class="flex items-center gap-1 text-[11px] text-[#616f89]">
+<span class="material-symbols-outlined text-[14px]">history</span>
+<span>Solved by 14k users</span>
+</div>
+</div>
+<div class="bg-white dark:bg-[#1e2634] p-6 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c]">
+<div class="flex justify-between items-start mb-4">
+<div>
+<span class="text-[10px] font-bold text-primary uppercase">Example B</span>
+<p class="math-font text-xl mt-1">2(x + 3) = 14</p>
+</div>
+<button class="text-primary text-xs font-bold hover:underline">Show Solution</button>
+</div>
+<div class="flex items-center gap-1 text-[11px] text-[#616f89]">
+<span class="material-symbols-outlined text-[14px]">history</span>
+<span>Solved by 8k users</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<footer class="bg-white dark:bg-[#1e2634] border-t border-[#e5e7eb] dark:border-[#2a303c] py-12 mt-12">
+<div class="max-w-[1200px] mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-8">
+<div class="flex items-center gap-3">
+<div class="size-5 text-primary">
+<svg fill="currentColor" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M44 4H30.6666V17.3334H17.3334V30.6666H4V44H44V4Z"></path>
+</svg>
+</div>
+<h2 class="text-md font-bold">uask.ai</h2>
+<p class="text-xs text-[#616f89] ml-4">© 2024 Math Solver Labs. All rights reserved.</p>
+</div>
+<div class="flex gap-6">
+<a class="text-xs text-[#616f89] hover:text-primary" href="#">Terms</a>
+<a class="text-xs text-[#616f89] hover:text-primary" href="#">Privacy</a>
+<a class="text-xs text-[#616f89] hover:text-primary" href="#">Help Center</a>
+</div>
+</div>
+</footer>
+</div>
+</body></html>
