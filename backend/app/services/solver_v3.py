@@ -43,8 +43,8 @@ class SolverV3:
         """Initialize solver with OpenAI client."""
         self._client = None
         self._model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-4o-mini")
-        print(f"[SOLVER_V3_INIT] Initialized with model: {self._model} (fallback: {self._fallback_model})")
         self._fallback_model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-4o-mini")
+        print(f"[SOLVER_V3_INIT] Initialized with model: {self._model} (fallback: {self._fallback_model})")
         self.viz_engine = get_visualization_engine()
         self.plot_renderer = get_plot_renderer()
     
@@ -172,11 +172,10 @@ class SolverV3:
             
             if not validation.valid:
                 telemetry["validation_failures_count"] += 1
-                if trace:
-                    print(f"[SOLVER_V3] ⚠️ Validation failed ({len(validation.errors)} errors)")
-                    for err in validation.errors[:3]:
-                        print(f"[SOLVER_V3]    - {err}")
-                
+                print(f"[SOLVER_V3] ⚠️ Validation failed ({len(validation.errors)} errors)")
+                for err in validation.errors[:5]:
+                    print(f"[SOLVER_V3]    - {err}")
+            
                 # Step 4: Repair loop (max 1 retry)
                 telemetry["repair_reason"] = f"{len(validation.errors)} validation errors"
                 response_data = await self._repair_response(

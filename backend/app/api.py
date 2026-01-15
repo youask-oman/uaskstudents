@@ -468,6 +468,12 @@ class UserProfileResponse(BaseModel):
     is_public: bool
     learning_interests: Optional[List[str]]
 
+    # Location Profile
+    profile_country: Optional[str] = None
+    profile_province_state: Optional[str] = None
+    grade_level: Optional[str] = None
+    school_id: Optional[int] = None
+
     usage: UserUsageStats
 
 @api_router.post("/signup")
@@ -2098,6 +2104,12 @@ async def get_user_profile(user_id: int = Query(...), db: Session = Depends(get_
         
         is_public=user.is_public,
         learning_interests=user.learning_interests or [],
+
+        # Location Profile
+        profile_country=user.profile_country,
+        profile_province_state=user.profile_province_state,
+        grade_level=user.grade_level,
+        school_id=user.school_id,
         
         usage=UserUsageStats(
             questions_count=len(questions_count),
