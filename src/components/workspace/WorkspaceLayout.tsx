@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import MathRenderer from '../MathRenderer';
+import MathRenderer, { sanitizeLatex } from '../MathRenderer';
 
 interface WorkspaceMessage {
     role: string;
@@ -60,29 +60,71 @@ export default function WorkspaceLayout({
     return (
         <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background-light dark:bg-background-dark font-display text-[#111318] dark:text-white transition-colors duration-200">
             {/* Top Header */}
-            <header className="sticky top-0 z-50 flex items-center justify-between whitespace-nowrap border-b border-solid border-[#e5e7eb] dark:border-[#2a303c] bg-white/80 dark:bg-background-dark/80 backdrop-blur-md px-10 py-3">
+            <header className="sticky top-0 z-50 flex items-center justify-between whitespace-nowrap border-b border-solid border-[#e5e7eb] dark:border-[#2a303c] bg-white dark:bg-[#0d1117] px-6 lg:px-10 py-3">
+                {/* Left: Logo + Nav */}
                 <div className="flex items-center gap-8">
-                    <div className="flex items-center gap-3">
-                        <div className="size-6 text-primary">
-                            <svg fill="currentColor" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M44 4H30.6666V17.3334H17.3334V30.6666H4V44H44V4Z"></path>
-                            </svg>
-                        </div>
-                        <h2 className="text-lg font-bold tracking-tight">uask.ai</h2>
-                    </div>
-                    <nav className="hidden md:flex items-center gap-6">
-                        <a className="text-sm font-medium hover:text-primary transition-colors" href="#">Dashboard</a>
-                        <a className="text-sm font-medium hover:text-primary transition-colors" href="#">Courses</a>
-                        <a className="text-sm font-medium hover:text-primary transition-colors" href="#">Library</a>
-                        <a className="text-sm font-medium hover:text-primary transition-colors" href="#">Settings</a>
+                    {/* Logo */}
+                    <Link href="/dashboard" className="flex items-center gap-2">
+                        <img src="/logo.png" alt="uask.ai" className="h-8 w-auto" />
+                        <span className="text-lg font-bold tracking-tight text-[#111318] dark:text-white">uask.ai</span>
+                    </Link>
+
+                    {/* Navigation */}
+                    <nav className="hidden md:flex items-center gap-1">
+                        <Link
+                            href="/dashboard"
+                            className="px-4 py-2 text-sm font-medium text-[#616f89] dark:text-slate-400 hover:text-primary dark:hover:text-primary transition-colors rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                        >
+                            Dashboard
+                        </Link>
+                        <Link
+                            href="/solve"
+                            className="px-4 py-2 text-sm font-bold text-primary bg-primary/5 rounded-lg"
+                        >
+                            New Solve
+                        </Link>
+                        <Link
+                            href="/dashboard"
+                            className="px-4 py-2 text-sm font-medium text-[#616f89] dark:text-slate-400 hover:text-primary dark:hover:text-primary transition-colors rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                        >
+                            History
+                        </Link>
                     </nav>
                 </div>
-                <div className="flex flex-1 justify-end gap-4 items-center">
-                    <div className="hidden sm:flex items-center bg-[#f0f2f4] dark:bg-[#1e2634] rounded-xl px-3 h-10 w-64 border border-transparent focus-within:border-primary/50 transition-all">
-                        <span className="material-symbols-outlined text-[#616f89] text-[20px]">search</span>
-                        <input className="bg-transparent border-none focus:ring-0 text-sm w-full placeholder:text-[#616f89] outline-none" placeholder="Search problem sets..." type="text" />
-                    </div>
-                    <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 border border-[#e5e7eb] dark:border-[#2a303c] bg-slate-200" style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBT8Vr3uT5sB9YqSpfa1iQvokQxs6dCmTPslq4xIF0j5j8EvvuHnpbvGhj1-XQuiM0tPzWzIrFy-rQFuAqTwD-bOYYuGDjPv0e4Dmzh-qLYWGkiHoephNflXAyQZ4a2Z1bit4kT3bkxgu8ygJ-U2k8rOe5j_2TmqMW8160inxraHyJkr6nXNw4sIJ4KA2i2_FWzdN-W7s_mc4LHtlL0l-eexFHvpspMGDbpxnuX0tpVZBHfY8bqVMtLWZIZAGZvCdFAasKpvhuqbPv1")' }}></div>
+
+                {/* Right: Theme Toggle, Notifications, Profile */}
+                <div className="flex items-center gap-3">
+                    {/* Dark/Light Mode Toggle */}
+                    <button
+                        onClick={() => {
+                            const html = document.documentElement;
+                            html.classList.toggle('dark');
+                            localStorage.setItem('theme', html.classList.contains('dark') ? 'dark' : 'light');
+                        }}
+                        className="p-2 rounded-lg text-[#616f89] dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                        title="Toggle dark/light mode"
+                    >
+                        <span className="material-symbols-outlined text-[20px] dark:hidden">dark_mode</span>
+                        <span className="material-symbols-outlined text-[20px] hidden dark:block">light_mode</span>
+                    </button>
+
+                    {/* Notifications (Placeholder) */}
+                    <button
+                        className="p-2 rounded-lg text-[#616f89] dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all relative"
+                        title="Notifications (coming soon)"
+                    >
+                        <span className="material-symbols-outlined text-[20px]">notifications</span>
+                        {/* Notification dot */}
+                        <span className="absolute top-1.5 right-1.5 size-2 bg-red-500 rounded-full"></span>
+                    </button>
+
+                    {/* User Profile */}
+                    <Link href="/profile" className="flex items-center gap-3 pl-3 border-l border-[#e5e7eb] dark:border-[#2a303c] hover:opacity-80 transition-opacity">
+                        <div className="size-9 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md">
+                            NR
+                        </div>
+                        <span className="hidden lg:block text-sm font-medium text-[#111318] dark:text-white">Nathan Rivera</span>
+                    </Link>
                 </div>
             </header>
 
@@ -97,62 +139,116 @@ export default function WorkspaceLayout({
                 </nav>
 
                 {/* Problem Summary Hero */}
-                <section className="bg-white dark:bg-[#1e2634] rounded-2xl p-8 mb-8 shadow-sm border border-[#e5e7eb] dark:border-[#2a303c] relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
-                    <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                        <div>
+                <section className="bg-emerald-50 dark:bg-emerald-900/10 rounded-2xl p-6 mb-8 shadow-sm border border-emerald-200 dark:border-emerald-900/30 relative">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-100 dark:bg-emerald-800/20 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-2">
-                                <span className="bg-primary/10 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">{problem?.topic || "Topic"}</span>
+                                <span className="bg-emerald-600/10 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">{problem?.topic || "Topic"}</span>
                                 <span className="text-xs text-[#616f89] dark:text-slate-400">Workspace #{problem?.id?.slice(0, 4) || "64"}</span>
                             </div>
-                            <h1 className="text-3xl font-black tracking-tight mb-2">{problem?.goal || "Problem Goal"}</h1>
-                            <div className="text-2xl text-primary font-medium tracking-wide">
+                            <h1 className="text-xl font-bold tracking-tight mb-2 text-[#111318] dark:text-white">{problem?.goal || "Solve"}</h1>
+                            <div className="text-sm text-emerald-800 dark:text-emerald-300 font-medium leading-relaxed max-w-2xl">
                                 <MathRenderer content={problem?.input || "Expression"} inline />
                             </div>
                         </div>
-                        <div className="flex gap-3">
-                            <button className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md hover:bg-blue-700 transition-all">
-                                <span className="material-symbols-outlined text-[18px]">bookmark</span>
-                                Save to Library
+
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                            {/* Save to Library */}
+                            <button
+                                onClick={() => alert('Solution saved to your library!')}
+                                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-bold text-xs shadow-md transition-all"
+                            >
+                                <span className="material-symbols-outlined text-[16px]">bookmark</span>
+                                Save
                             </button>
-                            <button className="p-2.5 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c] hover:bg-[#f0f2f4] dark:hover:bg-slate-700 transition-all text-[#616f89]">
-                                <span className="material-symbols-outlined text-[20px]">share</span>
+
+                            {/* Bookmark Toggle */}
+                            <button
+                                onClick={() => alert('Bookmarked! Find this in your dashboard.')}
+                                className="p-2 rounded-lg border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-800/30 transition-all text-emerald-700 dark:text-emerald-400"
+                                title="Bookmark for later"
+                            >
+                                <span className="material-symbols-outlined text-[18px]">star</span>
+                            </button>
+
+                            {/* Share Dropdown */}
+                            <div className="relative group">
+                                <button
+                                    className="p-2 rounded-lg border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-800/30 transition-all text-emerald-700 dark:text-emerald-400"
+                                    title="Share solution"
+                                >
+                                    <span className="material-symbols-outlined text-[18px]">share</span>
+                                </button>
+                                {/* Dropdown Menu */}
+                                <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-[#1e2634] rounded-lg shadow-xl border border-[#e5e7eb] dark:border-[#2a303c] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                                    <div className="p-2 space-y-1">
+                                        <button onClick={() => window.open(`https://twitter.com/intent/tweet?text=Check out this math solution!&url=${encodeURIComponent(window.location.href)}`, '_blank')} className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-all text-left">
+                                            <span className="text-[#1DA1F2]">𝕏</span> Share on X/Twitter
+                                        </button>
+                                        <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent('Check out this math solution: ' + window.location.href)}`, '_blank')} className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-all text-left">
+                                            <span className="text-[#25D366]">📱</span> Share on WhatsApp
+                                        </button>
+                                        <button onClick={() => window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`, '_blank')} className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-all text-left">
+                                            <span className="text-[#0A66C2]">in</span> Share on LinkedIn
+                                        </button>
+                                        <div className="h-px bg-slate-200 dark:bg-slate-600 my-1"></div>
+                                        <button onClick={() => { navigator.clipboard.writeText(window.location.href); alert('Link copied!'); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-all text-left">
+                                            <span className="material-symbols-outlined text-[14px]">link</span> Copy Link
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Print/PDF */}
+                            <button
+                                onClick={() => window.print()}
+                                className="p-2 rounded-lg border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-800/30 transition-all text-emerald-700 dark:text-emerald-400"
+                                title="Print or Save as PDF"
+                            >
+                                <span className="material-symbols-outlined text-[18px]">print</span>
                             </button>
                         </div>
                     </div>
                 </section>
 
-                {/* Quick Data Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                    <div className="bg-white dark:bg-[#1e2634] p-5 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c] flex items-center gap-4">
-                        <div className="size-10 rounded-lg bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 flex items-center justify-center">
+                {/* Quick Data Grid - 40/20/40 Layout */}
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+                    {/* GIVEN Card - 40% (col-span-2) - Warm tint */}
+                    <div className="md:col-span-2 lg:col-span-2 bg-orange-50 dark:bg-orange-950/20 p-5 rounded-xl border border-orange-200 dark:border-orange-900/30 flex items-start gap-4">
+                        <div className="size-10 rounded-lg bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0">
                             <span className="material-symbols-outlined">description</span>
                         </div>
-                        <div className="overflow-hidden">
-                            <p className="text-xs font-bold text-[#616f89] dark:text-slate-400 uppercase">Given</p>
-                            <div className="text-lg truncate text-[#111318] dark:text-white">
+                        <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-orange-700 dark:text-orange-400 uppercase mb-1">Given</p>
+                            <div className="text-sm font-medium text-[#111318] dark:text-white whitespace-normal break-words" style={{ overflowWrap: 'break-word', wordBreak: 'normal', hyphens: 'auto' }}>
                                 <MathRenderer content={problem?.given_data?.join(", ") || problem?.input || "N/A"} inline />
                             </div>
                         </div>
                     </div>
-                    <div className="bg-white dark:bg-[#1e2634] p-5 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c] flex items-center gap-4">
-                        <div className="size-10 rounded-lg bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400 flex items-center justify-center">
+
+                    {/* FIND Card - 20% (col-span-1) - Green tint */}
+                    <div className="md:col-span-1 lg:col-span-1 bg-emerald-50 dark:bg-emerald-950/20 p-5 rounded-xl border border-emerald-200 dark:border-emerald-900/30 flex items-start gap-4">
+                        <div className="size-10 rounded-lg bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                             <span className="material-symbols-outlined">target</span>
                         </div>
-                        <div>
-                            <p className="text-xs font-bold text-[#616f89] dark:text-slate-400 uppercase">Find</p>
-                            <div className="text-lg text-[#111318] dark:text-white">
+                        <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase mb-1">Find</p>
+                            <div className="text-base font-bold text-[#111318] dark:text-white whitespace-normal break-words">
                                 <MathRenderer content={problem?.unknowns?.join(", ") || problem?.goal || "x"} inline />
                             </div>
                         </div>
                     </div>
-                    <div className="bg-white dark:bg-[#1e2634] p-5 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c] flex items-center gap-4">
-                        <div className="size-10 rounded-lg bg-blue-100 dark:bg-blue-500/20 text-primary flex items-center justify-center">
+
+                    {/* ASSUMPTIONS Card - 40% (col-span-2) - Blue tint */}
+                    <div className="md:col-span-3 lg:col-span-2 bg-blue-50 dark:bg-blue-950/20 p-5 rounded-xl border border-blue-200 dark:border-blue-900/30 flex items-start gap-4">
+                        <div className="size-10 rounded-lg bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
                             <span className="material-symbols-outlined">info</span>
                         </div>
-                        <div>
-                            <p className="text-xs font-bold text-[#616f89] dark:text-slate-400 uppercase">Assumptions</p>
-                            <div className="text-sm font-medium text-[#111318] dark:text-white">
+                        <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase mb-1">Assumptions</p>
+                            <div className="text-sm font-medium text-[#111318] dark:text-white whitespace-normal break-words" style={{ overflowWrap: 'break-word', wordBreak: 'normal', hyphens: 'auto' }}>
                                 <MathRenderer content={problem?.assumptions?.join(", ") || "Standard"} />
                             </div>
                         </div>
@@ -161,30 +257,40 @@ export default function WorkspaceLayout({
 
                 {/* Final Answer Banner */}
                 {finalAnswer && (
-                    <div className="bg-primary text-white rounded-2xl p-6 mb-8 shadow-xl shadow-primary/20 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden">
-                        <div className="flex items-center gap-4 overflow-hidden w-full">
-                            <div className="bg-white/20 p-3 rounded-full backdrop-blur-sm shrink-0">
-                                <span className="material-symbols-outlined text-[32px]">check_circle</span>
-                            </div>
-                            <div className="overflow-hidden w-full">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className="bg-white text-primary text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Refined Solution</span>
-                                    <span className="flex items-center gap-1 text-[11px] font-medium text-blue-100">
-                                        <span className="material-symbols-outlined text-[12px] fill-current">verified</span>
-                                        {confidence}% Confidence
-                                    </span>
+                    <div className="bg-primary text-white rounded-2xl p-6 mb-8 shadow-xl shadow-primary/20">
+                        {/* Vertical Stack Layout */}
+                        <div className="flex flex-col gap-4">
+
+                            {/* Top Row - Refined Solution + Answer */}
+                            <div className="flex items-start gap-4">
+                                <div className="bg-white/20 p-3 rounded-full backdrop-blur-sm shrink-0">
+                                    <span className="material-symbols-outlined text-[28px]">check_circle</span>
                                 </div>
-                                <div className="text-2xl md:text-3xl font-black tracking-tight break-all">
-                                    {/* Force white color using LaTeX since backend might send blue */}
-                                    <MathRenderer content={`\\color{white} {${finalAnswer}}`} forceMath inline />
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                                        <span className="bg-white text-primary text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide">Refined Solution</span>
+                                        <span className="flex items-center gap-1 text-[11px] font-medium text-blue-100">
+                                            <span className="material-symbols-outlined text-[14px]">verified</span>
+                                            YouAsk AI Confidence {confidence}%
+                                        </span>
+                                    </div>
+                                    {/* Proper wrapping for Refined Solution text */}
+                                    <div className="text-sm md:text-base font-bold tracking-tight whitespace-normal" style={{ overflowWrap: 'break-word', wordBreak: 'normal' }}>
+                                        <MathRenderer content={`\\color{white} {${sanitizeLatex(finalAnswer)}}`} forceMath inline />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-sm font-medium text-blue-100">Solution Set:</span>
-                            <span className="bg-white/20 px-4 py-1.5 rounded-full font-bold">
-                                <MathRenderer content={`\\color{#86efac} \\{${finalAnswer}\\}`} forceMath inline />
-                            </span>
+
+                            {/* Bottom Row - Solution Set */}
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 pl-0 sm:pl-16">
+                                <span className="text-xs font-bold text-blue-200 uppercase tracking-wider shrink-0">Solution Set:</span>
+                                <div className="bg-white/15 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/20 max-w-full">
+                                    <div className="text-sm font-bold text-emerald-300 whitespace-normal break-words">
+                                        <MathRenderer content={`\\color{#86efac} \\{${sanitizeLatex(finalAnswer)}\\}`} forceMath inline />
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
                 )}

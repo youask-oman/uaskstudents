@@ -14,49 +14,76 @@ interface MathRendererProps {
     forceMath?: boolean; // If true, wraps content in delimiters if missing
 }
 
-// Helper to clean and normalize LaTeX from the model
-function sanitizeLatex(input: string): string {
+// Export for unit testing
+export function sanitizeLatex(input: string): string {
     let clean = input;
+
+    // 0. MOST AGGRESSIVE: Direct string replacement for known artifacts
+    // These are the EXACT patterns seen in screenshots
+    clean = clean.replace(/\.textLine\s*:\s*/gi, '. \\text{Line: }');
+    clean = clean.replace(/\)\.textLine\s*:\s*/gi, '). \\text{Line: }');
+    clean = clean.replace(/\)textLine\s*:\s*/gi, ') \\text{Line: }');
+    clean = clean.replace(/\.textParabola\s*:\s*/gi, '. \\text{Parabola: }');
+    clean = clean.replace(/\)\.textParabola\s*:\s*/gi, '). \\text{Parabola: }');
+    clean = clean.replace(/\.textPlot\s*:\s*/gi, '. \\text{Plot: }');
 
     // 1. Fix common model artifacts like ":;" -> ":"
     clean = clean.replace(/:;/g, ":");
 
     // 2. Fix double escaped \text if it appears as "\\text" (literal backslash + text)
-    // This happens if the model output escapes the backslash for JSON string.
     clean = clean.replace(/\\\\text/g, "\\text");
     clean = clean.replace(/\\\\quad/g, "\\quad");
 
-    // 3. Improve readability: convert specific "and" separators to new lines
-    // Pattern: \quad\text{and}\quad -> \\ (newline)
-    clean = clean.replace(/\\quad\\text\{and\}\\quad/g, " \\\\ ");
+    // 3. Fix standalone textLine:, textParabola:, textPlot: at start or after non-letter
+    clean = clean.replace(/(^|[^a-zA-Z\\])textLine\s*:\s*/gi, "$1\\text{Line: }");
+    clean = clean.replace(/(^|[^a-zA-Z\\])textParabola\s*:\s*/gi, "$1\\text{Parabola: }");
+    clean = clean.replace(/(^|[^a-zA-Z\\])textPlot\s*:\s*/gi, "$1\\text{Plot: }");
+    clean = clean.replace(/(^|[^a-zA-Z\\])textThus\s*/gi, "$1\\text{Thus }");
+    clean = clean.replace(/(^|[^a-zA-Z\\])textWindow\s*/gi, "$1\\text{Window }");
+    clean = clean.replace(/(^|[^a-zA-Z\\])textLabel\s*/gi, "$1\\text{Label }");
+    clean = clean.replace(/(^|[^a-zA-Z\\])textOther\s*/gi, "$1\\text{Other }");
 
-    // 4. Split comma-separated equations like "x = 3, y = 9" into new lines
-    // Look for "Something = Something, Something =" pattern
-    clean = clean.replace(/(\w+\s*=[^,]+),\s+(?=\w+\s*=)/g, "$1 \\\\ ");
-
-    // 5. CRITICAL FIX: Repair "text{...}" patterns where backslash is missing.
-    // This fixes "connected words" issues because KaTeX eats spaces in "text{...}" but preserves them in "\text{...}"
-    // We look for "text{" preceded by start-of-line or non-backslash char.
+    // 4. Fix "text{...}" patterns where backslash is missing
     clean = clean.replace(/(^|[^\\])text\{/g, "$1\\text{");
 
-    // 6. GENERAL FIX: Catch ANY "text" followed by a capital letter (CamelCase artifacts)
-    // Examples: textOtherpoints, textLine, textThus, textPlotdomainsuggestion
-    // This regex finds "text" followed by uppercase, captures the rest, and converts to "\text{...}"
-    // We also insert spaces between CamelCase words for readability.
-    clean = clean.replace(/(^|[^\\])text([A-Z][a-z]+(?:[A-Z][a-z]*)*)/g, (match, prefix, camelText) => {
-        // Split CamelCase into words: "Otherpoints" -> "Other points", "Plotdomainsuggestion" -> "Plot domain suggestion"
+    // 5. GENERAL FIX: Catch ANY "text" followed by a capital letter (CamelCase artifacts)
+    // Examples: textOtherpoints, textPlotdomainsuggestion
+    clean = clean.replace(/(^|[^a-zA-Z\\])text([A-Z][a-z]+(?:[A-Z][a-z]*)*)/g, (match, prefix, camelText) => {
+        // Split CamelCase into words
         const spaced = camelText
-            .replace(/([A-Z])/g, ' $1')  // Add space before each capital
-            .trim()                        // Remove leading space
-            .replace(/\s+/g, ' ');         // Normalize multiple spaces
+            .replace(/([A-Z])/g, ' $1')
+            .trim()
+            .replace(/\s+/g, ' ');
         return `${prefix}\\text{${spaced} }`;
     });
 
-    // Also catch patterns like "textOther points :" where there's already some spacing
-    clean = clean.replace(/(^|[^\\])text([A-Z][a-z]+)\s*:/g, "$1\\text{$2: }");
+    // 6. Insert line breaks between Parabola and Line sections for readability
+    // Pattern: "). \text{Line" -> "). \\ \text{Line"
+    clean = clean.replace(/\)\.\s*(\\text\{Line)/gi, '). \\\\ $1');
+
+    // 7. Improve readability: convert "and" separators to new lines
+    clean = clean.replace(/\\quad\\text\{and\}\\quad/g, " \\\\ ");
+
+    // 8. Split comma-separated equations for readability
+    clean = clean.replace(/(\w+\s*=[^,]+),\s+(?=\w+\s*=)/g, "$1 \\\\ ");
 
     return clean;
 }
+
+// Additional helper to split multi-part solutions into separate renderable lines
+export function splitSolutionIntoLines(input: string): string[] {
+    // First sanitize
+    const sanitized = sanitizeLatex(input);
+
+    // Split on common separators: \\, newlines, or pattern like "). \text{Line"
+    const lines = sanitized
+        .split(/(?:\\\\\s*)|(?:\n)|(?:\)\.\s*(?=\\\\?text\{(?:Line|Parabola|Plot)))/gi)
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+
+    return lines.length > 0 ? lines : [sanitized];
+}
+
 
 export default function MathRenderer({ content, className = "", inline = false, forceMath = false }: MathRendererProps) {
     if (content === null || content === undefined) return null;
