@@ -88,6 +88,13 @@
   color: #2563eb;
 }
 
+/* Make KaTeX inherit color inside blue primary banner */
+.bg-primary .katex,
+.bg-primary .katex-display,
+.bg-primary .math-inline {
+  color: inherit !important;
+}
+
 
 /* Custom Math Keyboard Styles */
 .key-cap {

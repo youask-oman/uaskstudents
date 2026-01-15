@@ -274,9 +274,44 @@ export default function WorkspaceLayout({
                                             YouAsk AI Confidence {confidence}%
                                         </span>
                                     </div>
-                                    {/* Proper wrapping for Refined Solution text */}
-                                    <div className="text-sm md:text-base font-bold tracking-tight whitespace-normal" style={{ overflowWrap: 'break-word', wordBreak: 'normal' }}>
-                                        <MathRenderer content={`\\color{white} {${sanitizeLatex(finalAnswer)}}`} forceMath inline />
+                                    {/* Smart rendering: split into Parabola/Line segments */}
+                                    <div className="text-sm md:text-base font-bold tracking-tight whitespace-normal space-y-2" style={{ overflowWrap: 'break-word', wordBreak: 'normal', color: 'white' }}>
+                                        {(() => {
+                                            // Smart split: detect .textLine, textParabola, etc. and render as separate labeled sections
+                                            const answer = finalAnswer || '';
+                                            // Split by .textLine or textLine/textParabola patterns
+                                            const segments = answer
+                                                .replace(/\.textLine\s*:/gi, '\n**Line:** ')
+                                                .replace(/\)textLine\s*:/gi, ')\n**Line:** ')
+                                                .replace(/textLine\s*:/gi, '\n**Line:** ')
+                                                .replace(/\.textParabola\s*:/gi, '\n**Parabola:** ')
+                                                .replace(/textParabola\s*:/gi, '\n**Parabola:** ')
+                                                .replace(/Parabola\s*:/gi, '**Parabola:** ')
+                                                .split('\n')
+                                                .filter(s => s.trim());
+
+                                            return segments.map((segment, idx) => {
+                                                // Check if segment starts with a label like **Line:** or **Parabola:**
+                                                const labelMatch = segment.match(/^\*\*(Line|Parabola|Plot):\*\*\s*/i);
+                                                if (labelMatch) {
+                                                    const label = labelMatch[1];
+                                                    const mathPart = segment.replace(labelMatch[0], '').trim();
+                                                    return (
+                                                        <div key={idx} className="flex flex-wrap items-baseline gap-2">
+                                                            <span className="text-blue-200 font-bold">{label}:</span>
+                                                            <span className="text-white">
+                                                                <MathRenderer content={mathPart} forceMath inline />
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                }
+                                                return (
+                                                    <div key={idx}>
+                                                        <MathRenderer content={segment} forceMath inline />
+                                                    </div>
+                                                );
+                                            });
+                                        })()}
                                     </div>
                                 </div>
                             </div>
@@ -285,8 +320,17 @@ export default function WorkspaceLayout({
                             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 pl-0 sm:pl-16">
                                 <span className="text-xs font-bold text-blue-200 uppercase tracking-wider shrink-0">Solution Set:</span>
                                 <div className="bg-white/15 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/20 max-w-full">
-                                    <div className="text-sm font-bold text-emerald-300 whitespace-normal break-words">
-                                        <MathRenderer content={`\\color{#86efac} \\{${sanitizeLatex(finalAnswer)}\\}`} forceMath inline />
+                                    <div className="text-sm font-bold whitespace-normal break-words" style={{ color: '#86efac' }}>
+                                        {(() => {
+                                            // Clean the answer for Solution Set display
+                                            const cleanedAnswer = (finalAnswer || '')
+                                                .replace(/\.textLine\s*:/gi, '. Line: ')
+                                                .replace(/\)textLine\s*:/gi, '). Line: ')
+                                                .replace(/textLine\s*:/gi, 'Line: ')
+                                                .replace(/\.textParabola\s*:/gi, '. Parabola: ')
+                                                .replace(/textParabola\s*:/gi, 'Parabola: ');
+                                            return <MathRenderer content={cleanedAnswer} forceMath inline />;
+                                        })()}
                                     </div>
                                 </div>
                             </div>
