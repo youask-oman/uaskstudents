@@ -216,7 +216,6 @@ def validate_math_query(text: str) -> None:
         r"https://",
         r"\$\{",
         r"\{\{",
-        r"\{[^}]*[0-9=+\-*/^][^}]*\}",
     ]
     if any(re.search(pattern, normalized) for pattern in forbidden_patterns):
         raise HTTPException(status_code=400, detail="Input blocked. Please enter a valid math question.")
