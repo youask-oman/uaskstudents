@@ -629,8 +629,7 @@ export default function DashboardPage() {
             /union\s+select/i,
             /https?:\/\//i,
             /\$\{/i,
-            /\{\{/i,
-            /\{[^}]*[0-9=+\-*/^][^}]*\}/i
+            /\{\{/i
         ];
         if (forbiddenPatterns.some(pattern => pattern.test(normalized))) {
             return "Input blocked. Please enter a valid math question.";
