@@ -4,6 +4,7 @@
 
 import { estimateTokens, isInputTooLong, getTokenStatus } from '../tokenEstimator';
 import { detectMultiQuestion, autoSplitQuestions, shouldShowSplitUI } from '../multiQuestionDetector';
+import { describe, it, expect } from './test-utils';
 
 // ============================================================================
 // TOKEN ESTIMATOR TESTS
@@ -12,8 +13,8 @@ import { detectMultiQuestion, autoSplitQuestions, shouldShowSplitUI } from '../m
 describe('estimateTokens', () => {
     describe('normal text estimation', () => {
         it('should estimate ~500 tokens for 2000 chars of normal text', () => {
-            const normalText = 'The quick brown fox jumps over the lazy dog. '.repeat(40);
-            // This is ~2000 chars of normal English text
+            const normalText = 'The quick brown fox jumps over the lazy dog. '.repeat(41);
+            // This is > 1800 chars
             expect(normalText.length).toBeGreaterThan(1800);
             expect(normalText.length).toBeLessThan(2200);
 
@@ -164,7 +165,7 @@ describe('autoSplitQuestions', () => {
     });
 
     it('should split by blank lines', () => {
-        const text = 'x = 5\n\ny = 10';
+        const text = 'Evaluate x = 5\n\nEvaluate y = 10';
         const splits = autoSplitQuestions(text);
         expect(splits.length).toBe(2);
     });

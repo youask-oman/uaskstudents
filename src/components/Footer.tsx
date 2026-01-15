@@ -13,7 +13,7 @@ export default function Footer() {
                     <a className="hover:text-primary transition-colors" href="#">Contact</a>
                     <a className="hover:text-primary transition-colors" href="#">Twitter</a>
                 </div>
-                <p className="text-xs text-[#616f89] dark:text-gray-500">© 2024 uask.ai. All rights reserved.</p>
+                <p className="text-xs text-[#616f89] dark:text-gray-500">© {new Date().getFullYear()} YouAsk AI LLM Math Solver Labs. All rights reserved.</p>
             </div>
         </footer>
     );

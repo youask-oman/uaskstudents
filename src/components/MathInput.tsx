@@ -10,6 +10,8 @@ interface MathInputProps {
     placeholder?: string;
     onEnter?: () => void;
     className?: string;
+    maxLength?: number;
+    onPaste?: (pastedText: string) => void;
 }
 
 export interface MathInputRef {
@@ -18,12 +20,12 @@ export interface MathInputRef {
     setValue: (latex: string) => void;
 }
 
-const MathInput = forwardRef<MathInputRef, MathInputProps>(({ value, onChange, placeholder, onEnter, className = "" }, ref) => {
+const MathInput = forwardRef<MathInputRef, MathInputProps>(({ value, onChange, placeholder, onEnter, className = "", maxLength, onPaste }, ref) => {
     const mfRef = useRef<HTMLElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const isInternalChange = useRef(false);
 
-    const kbBg = '#ffffff';
+    const kbBg: string = '#ffffff';
 
     useEffect(() => {
         // Dynamically import mathlive to avoid SSR issues
@@ -90,14 +92,32 @@ const MathInput = forwardRef<MathInputRef, MathInputProps>(({ value, onChange, p
             }
         };
 
+        // Paste handler for worksheet protection
+        const handlePaste = (e: ClipboardEvent) => {
+            const pastedText = e.clipboardData?.getData('text') || '';
+
+            // Truncate if over maxLength
+            if (maxLength && pastedText.length > maxLength) {
+                e.preventDefault();
+                const truncated = pastedText.slice(0, maxLength);
+                (mf as any).setValue(truncated);
+                onChange(truncated);
+            }
+
+            // Call external paste handler
+            onPaste?.(pastedText);
+        };
+
         mf.addEventListener('input', handleInput);
         mf.addEventListener('keydown', handleKeyDown as any);
+        mf.addEventListener('paste', handlePaste as any);
 
         return () => {
             mf.removeEventListener('input', handleInput);
             mf.removeEventListener('keydown', handleKeyDown as any);
+            mf.removeEventListener('paste', handlePaste as any);
         };
-    }, [onChange, onEnter]);
+    }, [onChange, onEnter, maxLength, onPaste]);
 
     // Sync external value changes
     useEffect(() => {

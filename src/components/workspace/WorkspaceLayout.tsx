@@ -417,7 +417,7 @@ export default function WorkspaceLayout({
                             </svg>
                         </div>
                         <h2 className="text-md font-bold">uask.ai</h2>
-                        <p className="text-xs text-[#616f89] ml-4">© 2024 Math Solver Labs. All rights reserved.</p>
+                        <p className="text-xs text-[#616f89] ml-4">© {new Date().getFullYear()} YouAsk AI LLM Math Solver Labs. All rights reserved.</p>
                     </div>
                     <div className="flex gap-6">
                         <a className="text-xs text-[#616f89] hover:text-primary" href="#">Terms</a>

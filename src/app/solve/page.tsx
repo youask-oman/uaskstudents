@@ -19,6 +19,11 @@ import { MAX_INPUT_CHARS, MAX_INPUT_TOKENS, willRequestFit } from "@/lib/tokenBu
 import InputStatus from "@/components/InputStatus";
 import SplitModal from "@/components/SplitModal";
 
+// Input mode imports
+import InputModeSelector from "@/components/InputModeSelector";
+import LiveMathPreview from "@/components/LiveMathPreview";
+import { InputModeId, INPUT_MODES, GraphingOptions, DEFAULT_GRAPHING_OPTIONS } from "@/lib/inputModes";
+
 interface ChatSession {
     id: number;
     title: string;
@@ -55,6 +60,10 @@ export default function DashboardPage() {
     // Token validation state
     const [showSplitModal, setShowSplitModal] = useState(false);
     const [suggestedSplits, setSuggestedSplits] = useState<string[]>([]);
+
+    // Input mode state
+    const [selectedInputMode, setSelectedInputMode] = useState<InputModeId>('expression');
+    const [graphingOptions, setGraphingOptions] = useState<GraphingOptions>(DEFAULT_GRAPHING_OPTIONS);
 
     // Compute token estimate and multi-question detection
     const tokenEstimate = useMemo(() => estimateTokens(query), [query]);
@@ -118,17 +127,27 @@ export default function DashboardPage() {
     }, [router]);
 
     const handleSuggestionClick = (suggestion: Suggestion) => {
-        if (!mathInputRef.current) return;
+        setMathModeEnabled(true);
 
         if (suggestion.insertMode === 'replace') {
-            setQuery(suggestion.latex.replace(/#\?/g, ''));
-            mathInputRef.current.setValue(suggestion.latex);
-        } else {
-            mathInputRef.current.insert(suggestion.latex);
-        }
+            // If Math Mode was off, this state update will initialize MathInput with this value
+            setQuery(suggestion.latex);
 
-        // Focus the input
-        mathInputRef.current.focus();
+            // If checking ref immediately (it might be stale if we just switched mode), try to set it
+            if (mathInputRef.current) {
+                mathInputRef.current.setValue(suggestion.latex);
+                mathInputRef.current.focus();
+            }
+        } else {
+            // Append
+            if (mathInputRef.current) {
+                mathInputRef.current.insert(suggestion.latex);
+                mathInputRef.current.focus();
+            } else {
+                // If switching from text mode, just append to state
+                setQuery(prev => prev + suggestion.latex);
+            }
+        }
 
         // Close the dropdown panel
         setActiveMode(null);
@@ -136,6 +155,7 @@ export default function DashboardPage() {
 
     const handleClear = () => {
         setQuery("");
+        setInputError(null);
         if (mathInputRef.current) {
             mathInputRef.current.setValue("");
             mathInputRef.current.focus();
@@ -655,7 +675,10 @@ export default function DashboardPage() {
                     question_id: selectedQuestionId,
                     mode: 'general',
                     subject: voiceSubject,
-                    difficulty: voiceDifficulty
+                    difficulty: voiceDifficulty,
+                    // Input mode metadata
+                    input_mode: selectedInputMode,
+                    graphing_options: selectedInputMode === 'graphing' ? graphingOptions : undefined,
                 })
             });
 
@@ -1139,9 +1162,20 @@ export default function DashboardPage() {
                                 )}
                                 {activeTab === 'text' && (
                                     <div className="flex flex-col gap-6 relative">
-                                        {/* 2. Visual Math Editor Layout */}
+                                        {/* Input Mode Selector (Expression / Word Problem / Graphing) */}
+                                        <InputModeSelector
+                                            selectedMode={selectedInputMode}
+                                            onModeChange={setSelectedInputMode}
+                                            graphingOptions={graphingOptions}
+                                            onGraphingOptionsChange={setGraphingOptions}
+                                            onTemplateClick={(template) => {
+                                                setQuery(template);
+                                                setMathModeEnabled(false); // Switch to regular textarea to show template
+                                                if (inputError) setInputError(null);
+                                            }}
+                                        />
 
-                                        {/* Mode Bar */}
+                                        {/* Math Symbol Mode Bar */}
                                         <div className="flex items-center gap-2">
                                             <div className="flex-1 flex gap-2 overflow-x-auto pb-2 scrollbar-hide items-center">
                                                 {MODES.slice(0, 5).map(mode => (
@@ -1195,9 +1229,12 @@ export default function DashboardPage() {
                                             </div>
                                         </div>
 
-                                        {/* Input Area with Dropdown Anchor */}
                                         <div className="relative group z-10">
-                                            <div className={`bg-white dark:bg-slate-900 border rounded-xl transition-all shadow-sm flex flex-col min-h-[150px] ${activeMode ? 'border-primary ring-1 ring-primary' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
+                                            <div className={`bg-white dark:bg-slate-900 border rounded-xl transition-all shadow-sm flex flex-col min-h-[150px] ${inputError
+                                                ? 'border-red-500 ring-1 ring-red-500 bg-red-50/10'
+                                                : activeMode
+                                                    ? 'border-primary ring-1 ring-primary'
+                                                    : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
                                                 }`}>
 
                                                 {/* Suggestions Dropdown (Combobox) */}
@@ -1242,8 +1279,23 @@ export default function DashboardPage() {
                                                         ref={mathInputRef}
                                                         value={query}
                                                         onChange={(value) => {
-                                                            setQuery(value);
-                                                            if (inputError) setInputError(null);
+                                                            // Enforce character limit
+                                                            if (value.length <= MAX_INPUT_CHARS) {
+                                                                setQuery(value);
+                                                                if (inputError) setInputError(null);
+                                                            }
+                                                        }}
+                                                        maxLength={MAX_INPUT_CHARS}
+                                                        onPaste={(pastedText) => {
+                                                            if (pastedText.length > MAX_INPUT_CHARS) {
+                                                                setInputError(`Pasted text was truncated to ${MAX_INPUT_CHARS} characters.`);
+                                                            }
+                                                            // Check for multi-question on paste
+                                                            const checkResult = detectMultiQuestion(pastedText);
+                                                            if (checkResult.isMultiple && checkResult.confidence !== 'low') {
+                                                                setSuggestedSplits(autoSplitQuestions(pastedText));
+                                                                setTimeout(() => setShowSplitModal(true), 500);
+                                                            }
                                                         }}
                                                         className="flex-1 p-2"
                                                     />
@@ -1281,7 +1333,7 @@ export default function DashboardPage() {
                                                             wordBreak: 'normal',
                                                             hyphens: 'auto',
                                                         }}
-                                                        placeholder="Type your question..."
+                                                        placeholder={INPUT_MODES.find(m => m.id === selectedInputMode)?.placeholder || "Type your question..."}
                                                     />
                                                 )}
 
@@ -1349,6 +1401,11 @@ export default function DashboardPage() {
                                                     </div>
                                                 </div>
                                             </div>
+                                        </div>
+
+                                        {/* Live Math Preview */}
+                                        <div className="mt-6">
+                                            <LiveMathPreview content={query} />
                                         </div>
                                     </div>
                                 )}
@@ -1579,19 +1636,7 @@ export default function DashboardPage() {
                             </div>
                         </div>
 
-                        {/* Math Preview Section (Mock) */}
-                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 transition-colors">
-                            <div className="flex items-center justify-between mb-4">
-                                <h4 className="font-bold flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                                    <span className="material-symbols-outlined text-primary">function</span>
-                                    Live Math Preview
-                                </h4>
-                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">LaTeX Engine v2.4</span>
-                            </div>
-                            <div className="w-full h-32 math-preview-bg dark:bg-slate-800/50 rounded-lg flex items-center justify-center border border-slate-100 dark:border-slate-800">
-                                <p className="text-slate-400 italic text-sm">Waiting for input...</p>
-                            </div>
-                        </div>
+
                     </div>
 
                     {/* Sidebar */}
@@ -1711,7 +1756,7 @@ export default function DashboardPage() {
             </main>
 
             <footer className="max-w-7xl mx-auto px-4 py-8 border-t border-slate-200 dark:border-slate-800 text-center">
-                <p className="text-slate-400 text-xs font-medium">© 2024 uask.ai - Intelligent Math & Physics Tutoring Platform</p>
+                <p className="text-slate-400 text-xs font-medium">© {new Date().getFullYear()} YouAsk AI LLM Math Solver Labs. All rights reserved.</p>
             </footer>
 
             {/* Split Modal for multiple questions */}
