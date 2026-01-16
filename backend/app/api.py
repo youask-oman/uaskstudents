@@ -1799,9 +1799,9 @@ async def solve_v3_stream_endpoint(
             "mode": body.mode or "general"
         }
         
-        # Part B1: Configurable caps (Increased significantly for V3 schema - schema is verbose)
-        caps = {"general": 5000, "verbose": 8000, "debug": 6000}
-        max_output_tokens = caps.get(body.mode, 5000)
+        # Part B1: Configurable caps (High limits for complex V3 schema)
+        caps = {"general": 8000, "verbose": 12000, "debug": 10000}
+        max_output_tokens = caps.get(body.mode, 8000)
         meta_data["type"] = "meta"
         yield f"event: meta\ndata: {json.dumps(meta_data)}\n\n"
 
