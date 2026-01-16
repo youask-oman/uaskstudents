@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Request
+from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
@@ -8,6 +9,9 @@ import requests
 import hashlib
 import json
 import os
+import time
+import logging
+from datetime import datetime, timedelta
 
 from app.database import get_session
 from app.services.solve.normalizer_service import problem_normalizer_service
@@ -1730,28 +1734,28 @@ async def solve_v3_endpoint(
         else:
              final_answer = str(final_ans_obj)
         
+        # Token tracking (Part D4)
+        tokens_actual = result.get("total_tokens") or result.get("telemetry", {}).get("total_tokens", 3000)
+        add_tokens_to_user(user_id, tokens_actual, session)
+        session.add(UsageLog(user_id=user_id, action_type="solve_v3_request", tokens_used=tokens_actual))
+        
         session.add(ChatMessage(
             session_id=new_chat.id,
             role="assistant",
             content=final_answer,
             structured_data=result,
             model_used=result.get("_model", "gpt-5-mini"),
-            tokens_used=3000, # V3 uses more tokens due to depth
+            tokens_used=tokens_actual,
             telemetry=result.get("telemetry")
         ))
-        
-        # Token tracking
-        add_tokens_to_user(user_id, 3000, session)
-        session.add(UsageLog(user_id=user_id, action_type="solve_v3_request", tokens_used=3000))
         
         session.commit()
         
         # Return V3 response
-        # Return V3 response
         # Merge session info into the result
         result["session_id"] = new_chat.id
         result["plot_url"] = plot_url
-        result["tokens_used"] = 3000
+        result["tokens_used"] = tokens_actual
         result["request_id"] = request_id
         
         return result
@@ -1765,6 +1769,264 @@ async def solve_v3_endpoint(
             detail=f"Solver V3 failed: {str(e)}"
         )
     
+@api_router.post("/solve_v3_stream")
+async def solve_v3_stream_endpoint(
+    request: Request,
+    body: SolveRequest,
+    user_id: int = Query(...),
+    session: Session = Depends(get_session)
+):
+    """
+    Streaming Math Solver V3 (Part A1).
+    SSE Sequence: meta -> stage -> delta -> telemetry -> done
+    """
+    from app.services.solver_v3 import get_solver_v3
+    from app.services.solve.question_identity_service import question_identity_service
+    import base64
+    from pathlib import Path
+
+    async def generate():
+        start_total = time.perf_counter()
+        request_id = str(uuid.uuid4())
+        
+        # Meta Event (Part A1)
+        meta_data = {
+            "request_id": request_id,
+            "session_id": None, # Will be set after creation
+            "message_id": None,
+            "model": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-4o"),
+            "max_output_tokens": 900, # default
+            "mode": body.mode or "general"
+        }
+        
+        # Part B1: Configurable caps (Increased significantly for V3 schema - schema is verbose)
+        caps = {"general": 5000, "verbose": 8000, "debug": 6000}
+        max_output_tokens = caps.get(body.mode, 5000)
+        meta_data["type"] = "meta"
+        yield f"event: meta\ndata: {json.dumps(meta_data)}\n\n"
+
+        # Stage: Preparing request... (Part A2)
+        yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': 'Preparing request...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
+
+        problem_text = (
+            body.confirmed_text or
+            body.confirmed_markdown or
+            body.text_query or
+            "No problem provided"
+        ).strip()
+
+        if not problem_text:
+            print(f"[SOLVER_V3_STREAM] ⚠️ No problem text found in request body")
+            yield f"event: done\ndata: {json.dumps({'ok': False, 'error': {'code': 'no_input', 'message': 'No input provided'}})}\n\n"
+            return
+        
+        print(f"[SOLVER_V3_STREAM] Recv: {problem_text[:50]}... (Mode: {body.mode}, tokens: {max_output_tokens})")
+
+        try:
+            validate_math_query(problem_text)
+        except HTTPException as e:
+            yield f"event: done\ndata: {json.dumps({'ok': False, 'error': {'code': 'validation_error', 'message': e.detail}})}\n\n"
+            return
+
+        # Context Assembly (Matches existing logic)
+        context = f"Subject: {body.subject or 'General'}"
+        if body.difficulty: context += f", Difficulty: {body.difficulty}"
+        if body.mode: context += f", Mode: {body.mode}"
+        
+        user_obj = session.get(User, user_id)
+        if user_obj:
+            country = user_obj.profile_country or 'Canada'
+            province = user_obj.profile_province_state or 'ON'
+            context += f"\n\n[STUDENT CONTEXT]\nCountry: {country}\nProvince: {province}\nGrade: {user_obj.grade_level or 'Unknown'}"
+
+        # Part E1: Create placeholder assistant message row
+        new_chat = ChatSession(
+            user_id=user_id,
+            title=problem_text[:50],
+            subject=body.subject or "General",
+            is_saved=False
+        )
+        session.add(new_chat)
+        session.commit()
+        session.refresh(new_chat)
+
+        placeholder_msg = ChatMessage(
+            session_id=new_chat.id,
+            role="assistant",
+            content="",
+            model_used=meta_data["model"]
+        )
+        session.add(ChatMessage(session_id=new_chat.id, role="user", content=problem_text, media_url=body.image_url))
+        session.add(placeholder_msg)
+        session.commit()
+        session.refresh(placeholder_msg)
+
+        # Update meta with IDs
+        meta_data["session_id"] = new_chat.id
+        meta_data["message_id"] = placeholder_msg.id
+        # Re-send meta with IDs
+        yield f"event: meta\ndata: {json.dumps(meta_data)}\n\n"
+
+        # Stage: Calling AI model...
+        yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': 'Calling AI model...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
+
+        solver = get_solver_v3()
+        full_content = ""
+        openai_telemetry = {}
+        
+        # Stage: Waiting for model...
+        yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': 'Waiting for model...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
+
+        try:
+            async for chunk in solver.solve_stream(problem_text, context, trace=True, request_id=request_id, max_output_tokens=max_output_tokens):
+                if chunk["type"] == "delta":
+                    full_content += chunk["text"]
+                    yield f"event: delta\ndata: {json.dumps({'type': 'delta', 'text': chunk['text']})}\n\n"
+                elif chunk["type"] == "telemetry":
+                    openai_telemetry = chunk["telemetry"]
+                elif chunk["type"] == "meta" and chunk.get("truncated"):
+                    yield f"event: meta\ndata: {json.dumps({'type': 'meta', 'truncated': True})}\n\n"
+                elif chunk["type"] == "error":
+                    yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': False, 'error': chunk['error']})}\n\n"
+                    return
+
+            # Stage: Validating response...
+            yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': 'Validating response...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
+            
+            # Post-stream persistence and validation (Part E1)
+            final_data = {}
+            is_truncated = openai_telemetry.get("truncated", False)
+            print(f"[SOLVER_V3_STREAM] Stream finished. Content length: {len(full_content)} chars, truncated: {is_truncated}")
+            
+            def try_recover_json(content: str) -> dict:
+                """Attempt to recover truncated JSON by removing incomplete elements and closing brackets."""
+                import re
+                
+                # Step 1: Find the last complete key-value pair by removing trailing incomplete string
+                # Remove incomplete string at end (e.g., `"key": "incomplete text` without closing quote)
+                content = re.sub(r':\s*"[^"]*$', ': ""', content)  # Close incomplete string values
+                content = re.sub(r',\s*"[^"]*$', '', content)  # Remove trailing incomplete keys
+                content = re.sub(r',\s*$', '', content)  # Remove trailing comma
+                
+                # Step 2: Close all open brackets/braces
+                open_braces = content.count('{') - content.count('}')
+                open_brackets = content.count('[') - content.count(']')
+                content += '""' * (content.count('"') % 2)  # Close open quote if odd
+                content += ']' * max(0, open_brackets)
+                content += '}' * max(0, open_braces)
+                
+                return json.loads(content)
+            
+            try:
+                if not full_content.strip():
+                    raise ValueError("Empty content received from LLM")
+                
+                # Attempt direct parse first
+                try:
+                    final_data = json.loads(full_content)
+                    print(f"[SOLVER_V3_STREAM] ✅ JSON parsed directly")
+                except json.JSONDecodeError as parse_err:
+                    print(f"[SOLVER_V3_STREAM] ⚠️ Direct parse failed: {parse_err}. Attempting recovery...")
+                    try:
+                        final_data = try_recover_json(full_content)
+                        print(f"[SOLVER_V3_STREAM] ✅ JSON recovered successfully")
+                        is_truncated = True  # Mark as truncated since we had to recover
+                    except Exception as recovery_err:
+                        print(f"[SOLVER_V3_STREAM] ⚠️ Recovery failed: {recovery_err}")
+                        raise parse_err
+                
+                final_data = solver.normalize_solver_response(final_data)
+                if is_truncated:
+                    final_data["_truncated"] = True
+                    final_data["_truncation_warning"] = "Response was truncated due to output token limit"
+                print(f"[SOLVER_V3_STREAM] ✅ Normalized. Steps: {len(final_data.get('steps', []))}")
+            except Exception as e:
+                print(f"[SOLVER_V3_STREAM] ❌ All parsing failed. Error: {e}")
+                print(f"[SOLVER_V3_STREAM] Partial content (first 500 chars): {full_content[:500]}")
+                # Create minimal valid structure even on complete failure
+                final_data = {
+                    "problem": {"original_text": problem_text, "normalized_text": problem_text},
+                    "classification": {"topic": "Unknown", "difficulty": "Unknown"},
+                    "steps": [],
+                    "final_answer": {"answer_text": "Solution generation failed - response was truncated or malformed", "answer_latex": "\\text{Error}"},
+                    "verification": {"method": "N/A", "work_latex": "", "conclusion": "Unable to verify"},
+                    "visuals": {"should_visualize": False, "plots": []},
+                    "quality": {"confidence": 0.0, "common_mistakes": [], "next_practice": []},
+                    "assumptions": [],
+                    "refusal": {"is_refusal": False, "reason": "", "safe_alternative": ""},
+                    "_truncated": True,
+                    "_parse_error": str(e),
+                    "_raw_partial": full_content[:1000] if len(full_content) > 1000 else full_content
+                }
+
+            if True: # Always attempt to save what we have
+                # Stage: Rendering plot...
+                plot_url = None
+                if final_data.get("visuals", {}).get("should_visualize"):
+                    yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': 'Rendering plot...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
+                    if "_plot_image" in final_data:
+                        try:
+                            plot_bytes = base64.b64decode(final_data["_plot_image"])
+                            plots_dir = Path(__file__).parent.parent / "storage" / "plots"
+                            plots_dir.mkdir(parents=True, exist_ok=True)
+                            filename = f"plot_{user_id}_{datetime.utcnow().timestamp()}.png"
+                            filepath = plots_dir / filename
+                            with open(filepath, "wb") as f: f.write(plot_bytes)
+                            plot_url = f"/storage/plots/{filename}"
+                            final_data["visuals"]["plot_url"] = plot_url
+                        except: pass
+
+                # Stage: Finalizing...
+                yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': 'Finalizing...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
+
+                # Update DB (Part E1)
+                placeholder_msg.content = str(final_data.get("final_answer", {}).get("answer_text", "Solution complete"))
+                placeholder_msg.structured_data = final_data
+                placeholder_msg.telemetry = openai_telemetry
+                placeholder_msg.tokens_used = openai_telemetry.get("total_tokens", 0)
+                
+                # Token Tracking (Part D3)
+                tokens = openai_telemetry.get("total_tokens", 0)
+                if tokens > 0:
+                    add_tokens_to_user(user_id, tokens, session)
+                    session.add(UsageLog(user_id=user_id, action_type="solve_v3_stream", tokens_used=tokens))
+                
+                # Cache store
+                try:
+                    question_fingerprint = question_identity_service.compute_question_fingerprint(problem_text)
+                    question_key = question_identity_service.compute_question_key(question_fingerprint)
+                    question_identity_service.store_question_result(session, question_key, question_fingerprint, final_data, problem_text)
+                except: pass
+
+                session.commit()
+                print(f"[SOLVER_V3_STREAM] ✅ Successfully persisted results for session {new_chat.id}")
+
+            # Final Telemetry Event
+            openai_telemetry["type"] = "telemetry"
+            openai_telemetry["latency_ms_total"] = int((time.perf_counter() - start_total) * 1000)
+            yield f"event: telemetry\ndata: {json.dumps(openai_telemetry)}\n\n"
+
+            # Done Event
+            yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': True, 'session_id': new_chat.id, 'message_id': placeholder_msg.id})}\n\n"
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"[SOLVER_V3_STREAM] ❌ FATAL ERROR: {str(e)}")
+            session.commit()
+            yield f"event: done\ndata: {json.dumps({'ok': False, 'error': {'code': 'internal_error', 'message': str(e)}})}\n\n"
+
+    return StreamingResponse(
+        generate(), 
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive"
+        }
+    )
+
+
     # ------------------------------------------------------------------
 # Billing & User Location Endpoints
 # ------------------------------------------------------------------

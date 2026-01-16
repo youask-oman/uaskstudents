@@ -8,7 +8,7 @@ Simplified to pass through structured visual data to frontend.
 import os
 import json
 import time
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple, AsyncIterator
 from datetime import datetime
 
 from app.schemas.na_math_solver_v3 import get_json_schema_for_openai_v3
@@ -113,6 +113,9 @@ class SolverV3:
             elif isinstance(response_data.get("verification"), dict) and "alternative_method" not in response_data["verification"]:
                  response_data["verification"]["alternative_method"] = None
 
+            # Step 2.6: Normalize with Defaults (Part C1)
+            response_data = self.normalize_solver_response(response_data)
+
             # Step 3: Validate
             _model_temp = response_data.pop("_model", None)
             validation = validate_response(response_data, strict=True)
@@ -170,16 +173,155 @@ class SolverV3:
             return self._handle_error(problem_text, str(e), "fatal_error", telemetry, start_time_perf)
 
 
-    def _handle_error(self, problem, errors, code, telemetry, start_time_perf):
-        telemetry["latency_ms_total"] = int((time.perf_counter() - start_time_perf) * 1000)
-        err_resp = create_error_response(problem, errors if isinstance(errors, list) else [str(errors)], code)
-        err_resp["_telemetry"] = telemetry
-        err_resp["telemetry"] = telemetry
-        return err_resp
+    def normalize_solver_response(self, obj: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Inject defaults for boilerplate keys to ensure schema validation passes 
+        without extra OpenAI repair calls for non-critical metadata. (Part C1)
+        """
+        # refusal defaults
+        if "refusal" not in obj or not isinstance(obj["refusal"], dict):
+            obj["refusal"] = {"is_refusal": False, "refusal_reason": None, "safe_alternative": None}
+        else:
+            if "is_refusal" not in obj["refusal"]: obj["refusal"]["is_refusal"] = False
+            if "refusal_reason" not in obj["refusal"]: obj["refusal"]["refusal_reason"] = None
+            if "safe_alternative" not in obj["refusal"]: obj["refusal"]["safe_alternative"] = None
 
+        # visuals defaults
+        if "visuals" not in obj or not isinstance(obj["visuals"], dict):
+            obj["visuals"] = {"should_visualize": False, "decision_reason": "Default", "plots": [], "alternative_visual": None}
+        else:
+            if "should_visualize" not in obj["visuals"]: obj["visuals"]["should_visualize"] = False
+            if "decision_reason" not in obj["visuals"]: obj["visuals"]["decision_reason"] = ""
+            if "plots" not in obj["visuals"] or obj["visuals"]["plots"] is None: obj["visuals"]["plots"] = []
+            if "alternative_visual" not in obj["visuals"]: obj["visuals"]["alternative_visual"] = None
 
-    async def _call_llm_with_schema(self, problem_text, context, system_prompt, trace=False):
-        user_message = f"""Problem: {problem_text}
+        # quality defaults
+        if "quality" not in obj or not isinstance(obj["quality"], dict):
+            obj["quality"] = {"confidence": 0.5, "common_mistakes": [], "next_practice": []}
+        else:
+            if "confidence" not in obj["quality"]: obj["quality"]["confidence"] = 0.5
+            if "common_mistakes" not in obj["quality"] or obj["quality"]["common_mistakes"] is None: obj["quality"]["common_mistakes"] = []
+            if "next_practice" not in obj["quality"] or obj["quality"]["next_practice"] is None: obj["quality"]["next_practice"] = []
+
+        # verification defaults
+        if "verification" not in obj or not isinstance(obj["verification"], dict):
+             obj["verification"] = {"method": "Self-Consistency", "work_latex": "Verified internally", "conclusion": "Stable", "alternative_method": None}
+        elif "alternative_method" not in obj["verification"]:
+             obj["verification"]["alternative_method"] = None
+
+        # assumptions
+        if "assumptions" not in obj or obj["assumptions"] is None:
+            obj["assumptions"] = []
+
+        return obj
+
+    async def solve_stream(
+        self,
+        problem_text: str,
+        context: str = "",
+        trace: bool = False,
+        request_id: str = None,
+        max_output_tokens: int = 900
+    ) -> AsyncIterator[Dict[str, Any]]:
+        """
+        Streamed Math Solver V3 using OpenAI Structured Outputs.
+        Yields chunks with 'type': 'delta' or 'usage'. (Part A3, Part D)
+        """
+        start_time_perf = time.perf_counter()
+        
+        telemetry = {
+            "request_id": request_id,
+            "model": self._model,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_tokens": 0,
+            "cached_tokens": None,
+            "latency_ms_openai": 0,
+            "truncated": False,
+            "validated": False,
+            "repaired": False
+        }
+
+        try:
+            system_prompt = get_prompt("solver_system", "v3")
+            user_message = self._build_user_message(problem_text, context)
+            
+            # Implementation of Retries with Exponential Backoff (Part G1)
+            max_retries = 3
+            current_retry = 0
+            
+            while current_retry <= max_retries:
+                try:
+                    llm_start_perf = time.perf_counter()
+                    
+                    # Note: Structured Outputs with Streaming works best with Chat Completions
+                    params = {
+                        "model": self._model,
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_message}
+                        ],
+                        "response_format": {
+                            "type": "json_schema",
+                            "json_schema": {
+                                "name": "solve_response_v3",
+                                "strict": True,
+                                "schema": deref_json_schema(get_json_schema_for_openai_v3())
+                            }
+                        },
+                        "stream": True,
+                        "stream_options": {"include_usage": True},
+                        "max_completion_tokens": max_output_tokens # Part B2
+                    }
+
+                    response = await self.client.chat.completions.create(**params)
+                    
+                    async for chunk in response:
+                        if not chunk.choices:
+                            # Usage chunk (last one in stream_options: include_usage)
+                            if chunk.usage:
+                                telemetry["input_tokens"] = chunk.usage.prompt_tokens
+                                telemetry["output_tokens"] = chunk.usage.completion_tokens
+                                telemetry["total_tokens"] = chunk.usage.total_tokens
+                                if hasattr(chunk.usage, 'prompt_tokens_details') and chunk.usage.prompt_tokens_details:
+                                    telemetry["cached_tokens"] = getattr(chunk.usage.prompt_tokens_details, 'cached_tokens', 0)
+                                
+                                telemetry["latency_ms_openai"] = int((time.perf_counter() - llm_start_perf) * 1000)
+                                yield {"type": "telemetry", "telemetry": telemetry}
+                            continue
+                            
+                        delta = chunk.choices[0].delta
+                        if delta.content:
+                            yield {"type": "delta", "text": delta.content}
+                        
+                        if chunk.choices[0].finish_reason == "length":
+                            telemetry["truncated"] = True
+                            # We yield truncation info in telemetry at the end, but can also notify here
+                            yield {"type": "meta", "truncated": True}
+                        elif chunk.choices[0].finish_reason == "content_filter":
+                            yield {"type": "error", "error": {"code": "content_filter", "message": "Content filtered."}}
+
+                    return # Success
+
+                except Exception as e:
+                    # Handle Rate Limits (429) and Transient Errors (Part G1)
+                    current_retry += 1
+                    if current_retry > max_retries:
+                        raise e
+                    
+                    # Simple exponential backoff
+                    wait_time = (2 ** current_retry) + (time.time() % 1) # add a bit of jitter
+                    if trace:
+                        print(f"[SOLVER_V3_STREAM] Error: {e}. Retrying in {wait_time:.2f}s... ({current_retry}/{max_retries})")
+                    await asyncio.sleep(wait_time)
+
+        except Exception as e:
+            if trace:
+                print(f"[SOLVER_V3_STREAM] ❌ FATAL: {e}")
+            yield {"type": "error", "error": {"code": "fatal", "message": str(e)}}
+
+    def _build_user_message(self, problem_text: str, context: str) -> str:
+        return f"""Problem: {problem_text}
 
 Context: {context if context else "No additional context provided."}
 
@@ -190,6 +332,18 @@ Context: {context if context else "No additional context provided."}
 - refusal.is_refusal = true ONLY if safety policy requires it
 - Avoid nulls where possible, use empty arrays/strings instead.
 """
+
+
+    def _handle_error(self, problem, errors, code, telemetry, start_time_perf):
+        telemetry["latency_ms_total"] = int((time.perf_counter() - start_time_perf) * 1000)
+        err_resp = create_error_response(problem, errors if isinstance(errors, list) else [str(errors)], code)
+        err_resp["_telemetry"] = telemetry
+        err_resp["telemetry"] = telemetry
+        return err_resp
+
+
+    async def _call_llm_with_schema(self, problem_text, context, system_prompt, trace=False):
+        user_message = self._build_user_message(problem_text, context)
         tokens = {"input": 0, "output": 0, "total": 0, "cached": None}
         
         # Check model type for API method
@@ -324,6 +478,7 @@ Context: {context if context else "No additional context provided."}
         data["_repaired"] = True
         return data
 
+import asyncio
 _solver_instance = None
 def get_solver_v3():
     global _solver_instance

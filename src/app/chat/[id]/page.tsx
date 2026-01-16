@@ -210,12 +210,12 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     const renderContent = () => {
         if (!solutionData) return <div className="p-8 text-center text-slate-500">No solution details found in this session.</div>;
 
-        if (solutionData.error) {
+        if (solutionData.error && !solutionData._truncated) {
             return (
                 <div className="max-w-2xl mx-auto mt-10 p-6 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 rounded-2xl text-center">
                     <span className="material-symbols-outlined text-4xl text-red-500 mb-4">error_outline</span>
                     <h3 className="text-lg font-bold text-red-700 dark:text-red-300 mb-2">Solver Error</h3>
-                    <p className="text-sm text-red-600 dark:text-red-200">{solutionData.message || "An unexpected error occurred."}</p>
+                    <p className="text-sm text-red-600 dark:text-red-200">{solutionData.message || solutionData.error || "An unexpected error occurred."}</p>
                     {solutionData.validation_errors && solutionData.validation_errors.length > 0 && (
                         <div className="mt-4 text-left bg-white/50 dark:bg-black/20 p-4 rounded-xl text-xs font-mono text-red-800 dark:text-red-200 overflow-auto max-h-40">
                             {solutionData.validation_errors.map((e: string, i: number) => <div key={i}>{e}</div>)}
@@ -224,6 +224,17 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
                 </div>
             );
         }
+
+        // Show truncation warning if applicable but continue to render what we have
+        const truncationWarning = solutionData._truncated ? (
+            <div className="max-w-2xl mx-auto mb-6 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl flex items-center gap-3">
+                <span className="material-symbols-outlined text-xl text-amber-500">warning</span>
+                <div>
+                    <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Response Truncated</p>
+                    <p className="text-xs text-amber-600 dark:text-amber-400">The AI response was cut off due to output limits. Showing partial solution.</p>
+                </div>
+            </div>
+        ) : null;
 
         // Extract Common Props
         const steps = solutionData.steps || [];
@@ -243,21 +254,23 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
 
         switch (activeTab) {
             case 'steps':
-                return <StepsTab
-                    title={solutionData.classification?.topic || "Solution"}
-                    steps={mappedSteps}
-                    visuals={visuals}
-                    problemLatex={problemLatex}
-                    problem={{
-                        goal: problem.original_text, // Fallback
-                        given_data: solutionData.assumptions, // Mapping assumptions to given/assumptions
-                        assumptions: solutionData.assumptions
-                    }}
-                    analysisPlan={[]} // No longer in V3 schema explicit plan
-                    finalAnswer={solutionData.final_answer?.answer_text}
-                    activeTab={activeTab as "steps" | "verification" | "concepts" | "practice"}
-                    onSelectTab={setActiveTab}
-                />;
+                return <>
+                    {truncationWarning}
+                    <StepsTab
+                        steps={mappedSteps}
+                        visuals={visuals}
+                        problemLatex={problemLatex}
+                        problem={{
+                            goal: problem.original_text,
+                            given_data: solutionData.assumptions,
+                            assumptions: solutionData.assumptions
+                        }}
+                        analysisPlan={[]}
+                        finalAnswer={solutionData.final_answer?.answer_text}
+                        activeTab={activeTab as "steps" | "verification" | "concepts" | "practice"}
+                        onSelectTab={setActiveTab}
+                    />
+                </>;
             case 'verification':
                 // Map single verification object to list
                 const verifObj = solutionData.verification;

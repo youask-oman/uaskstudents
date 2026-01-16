@@ -65,6 +65,12 @@ export default function DashboardPage() {
     const [selectedInputMode, setSelectedInputMode] = useState<InputModeId>('expression');
     const [graphingOptions, setGraphingOptions] = useState<GraphingOptions>(DEFAULT_GRAPHING_OPTIONS);
 
+    // Streaming Solve States (Part F1)
+    const [streamingContent, setStreamingContent] = useState("");
+    const [currentStage, setCurrentStage] = useState("");
+    const [streamingTelemetry, setStreamingTelemetry] = useState<any>(null);
+    const [solveStartTime, setSolveStartTime] = useState<number | null>(null);
+
     // Compute token estimate and multi-question detection
     const tokenEstimate = useMemo(() => estimateTokens(query), [query]);
     const multiQuestionResult = useMemo(() => detectMultiQuestion(query), [query]);
@@ -664,11 +670,23 @@ export default function DashboardPage() {
         }
 
         setIsSolving(true);
+        setStreamingContent("");
+        setCurrentStage("Initializing...");
+        setStreamingTelemetry(null);
+        setSolveStartTime(Date.now());
 
         try {
-            const res = await fetch(`/api/v1/solve_v3?user_id=${encodeURIComponent(userId)}`, {
+            // Bypass Next.js proxy for streaming if on localhost/127.0.0.1 dev server to avoid buffering (Part F2)
+            const baseUrl = (typeof window !== 'undefined' && (window.location.port === '3000' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+                ? `${window.location.protocol}//${window.location.hostname}:8000`
+                : '';
+
+            console.log(`[SOLVER_STREAM] Host: ${window.location.hostname}, Port: ${window.location.port} -> Fetching from ${baseUrl}/api/v1/solve_v3_stream`);
+            const response = await fetch(`${baseUrl}/api/v1/solve_v3_stream?user_id=${encodeURIComponent(userId)}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                mode: 'cors',
                 body: JSON.stringify({
                     confirmed_markdown: query,
                     confirmed_text: query,
@@ -680,56 +698,99 @@ export default function DashboardPage() {
                     mode: 'general',
                     subject: voiceSubject,
                     difficulty: voiceDifficulty,
-                    // Input mode metadata
                     input_mode: selectedInputMode,
                     graphing_options: selectedInputMode === 'graphing' ? graphingOptions : undefined,
                 })
             });
 
-            if (!res.ok) {
-                const message = await res.text();
+            console.log(`[SOLVER_STREAM] Response status: ${response.status}, ok: ${response.ok}`);
+
+            if (!response.ok) {
+                const message = await response.text();
                 throw new Error(message || "Solve request failed");
             }
 
-            const data = await res.json();
-            if (data?.error) {
-                throw new Error(data.message || "Solve request failed");
-            }
-            setSolveProgress(100);
-            router.push(`/chat/${data.session_id}`);
+            const reader = response.body?.getReader();
+            if (!reader) throw new Error("No reader available");
 
+            const decoder = new TextDecoder();
+            let accumulatedBuffer = "";
+            let currentEvent = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                accumulatedBuffer += decoder.decode(value, { stream: true });
+                const lines = accumulatedBuffer.split('\n');
+
+                // Keep the last partial line in the buffer
+                accumulatedBuffer = lines.pop() || "";
+
+                for (const line of lines) {
+                    const trimmedLine = line.trim();
+                    if (!trimmedLine) continue;
+
+                    if (trimmedLine.startsWith('event: ')) {
+                        currentEvent = trimmedLine.slice(7).trim();
+                        console.log(`[SSE] Event: ${currentEvent}`);
+                    } else if (trimmedLine.startsWith('data: ')) {
+                        try {
+                            const data = JSON.parse(trimmedLine.slice(6));
+                            console.log(`[SSE] Data for ${currentEvent}:`, data);
+
+                            if (currentEvent === 'delta') {
+                                setStreamingContent(prev => prev + data.text);
+                            } else if (currentEvent === 'stage') {
+                                setCurrentStage(data.name);
+                            } else if (currentEvent === 'telemetry') {
+                                setStreamingTelemetry(data);
+                            } else if (currentEvent === 'done') {
+                                console.log("[SSE] Done event received", data);
+                                if (data.ok) {
+                                    setSolveProgress(100);
+                                    setTimeout(() => router.push(`/chat/${data.session_id}`), 500);
+                                } else {
+                                    throw new Error(data.error?.message || "Solve failed");
+                                }
+                            } else if (currentEvent === 'meta') {
+                                if (data.truncated) console.warn("Response truncated");
+                            }
+                        } catch (e) {
+                            console.error("Error parsing SSE data", e);
+                        }
+                    }
+                }
+            }
         } catch (err) {
-            console.error(err);
-            alert((err as Error).message || "Failed to generate solution. Make sure the backend is running and you have a stable connection.");
+            console.error("[SOLVER_STREAM] Error in stream processing:", err);
+            alert((err as Error).message || "Failed to generate solution.");
         } finally {
             setIsSolving(false);
+            setSolveStartTime(null);
         }
     };
 
     useEffect(() => {
-        if (!isSolving) {
+        if (!isSolving || !solveStartTime) {
             setSolveProgress(0);
             return;
         }
-        setSolveProgress(5);
-        const start = Date.now();
-        const timer = setInterval(() => {
-            const elapsed = Date.now() - start;
 
-            // Phase 1: Quick ramp up to 90% (increases by 3 every 300ms)
-            if (elapsed < 8500) {
-                const target = Math.min(90, 5 + Math.floor(elapsed / 300) * 3);
-                setSolveProgress(prev => (target > prev ? target : prev));
+        const tick = setInterval(() => {
+            const elapsed = Date.now() - solveStartTime;
+
+            // Artificial progress bar logic adjusted for streaming
+            if (elapsed < 15000) {
+                const p = Math.min(95, 5 + Math.floor(elapsed / 200) * 1.5);
+                setSolveProgress(p);
             } else {
-                // Phase 2: Slow increment after 90% (1% every 3 seconds, max 99%)
-                const extraElapsed = elapsed - 8500;
-                const extraProgress = Math.floor(extraElapsed / 3000);
-                const target = Math.min(99, 90 + extraProgress);
-                setSolveProgress(prev => (target > prev ? target : prev));
+                setSolveProgress(98);
             }
-        }, 300);
-        return () => clearInterval(timer);
-    }, [isSolving]);
+        }, 250); // 250ms tick as requested (Part F1)
+
+        return () => clearInterval(tick);
+    }, [isSolving, solveStartTime]);
 
     const handleConfirmOcr = async () => {
         if (!artifactId || isSolving) return;
@@ -1772,6 +1833,113 @@ export default function DashboardPage() {
             <footer className="max-w-7xl mx-auto px-4 py-8 border-t border-slate-200 dark:border-slate-800 text-center">
                 <p className="text-slate-400 text-xs font-medium">© {new Date().getFullYear()} YouAsk AI LLM Math Solver Labs. All rights reserved.</p>
             </footer>
+
+            {/* Streaming Solve Popup (Part F1) */}
+            {isSolving && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col max-h-[80vh] animate-in zoom-in-95 duration-300">
+                        {/* Header */}
+                        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
+                            <div className="flex items-center gap-3">
+                                <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
+                                    <span className="material-symbols-outlined text-sm animate-spin-slow">auto_awesome</span>
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-bold dark:text-white">Solving Problem...</h3>
+                                    <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-widest">{currentStage || "Preparing..."}</p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Elapsed Time</p>
+                                <p className="text-xs font-mono font-bold text-primary">
+                                    {solveStartTime ? ((Date.now() - solveStartTime) / 1000).toFixed(1) : "0.0"}s
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="h-1 bg-slate-100 dark:bg-slate-800">
+                            <div
+                                className="h-full bg-primary transition-all duration-300"
+                                style={{ width: `${solveProgress}%` }}
+                            ></div>
+                        </div>
+
+                        {/* Content Area - Stage-based progress UI (Part F1) */}
+                        <div className="flex-1 overflow-y-auto p-8 space-y-6">
+                            {/* Stage Progress Display */}
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                    <span className="material-symbols-outlined text-xs animate-spin">sync</span>
+                                    AI Processing Status
+                                </div>
+
+                                {/* Stage List */}
+                                <div className="space-y-3">
+                                    {['Preparing request...', 'Calling AI model...', 'Waiting for model...', 'Validating response...', 'Rendering plot...', 'Finalizing...'].map((stage, idx) => {
+                                        const isActive = currentStage === stage;
+                                        const isPast = ['Preparing request...', 'Calling AI model...', 'Waiting for model...', 'Validating response...', 'Rendering plot...', 'Finalizing...']
+                                            .indexOf(currentStage || '') > idx;
+                                        return (
+                                            <div key={stage} className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-300 ${isActive ? 'bg-primary/10 border border-primary/30' : isPast ? 'opacity-50' : 'opacity-30'}`}>
+                                                <span className={`material-symbols-outlined text-lg ${isActive ? 'text-primary animate-pulse' : isPast ? 'text-green-500' : 'text-slate-400'}`}>
+                                                    {isPast ? 'check_circle' : isActive ? 'pending' : 'radio_button_unchecked'}
+                                                </span>
+                                                <span className={`font-semibold ${isActive ? 'text-primary' : 'text-slate-600 dark:text-slate-400'}`}>
+                                                    {stage}
+                                                </span>
+                                                {isActive && <span className="ml-auto text-xs text-primary font-mono">{solveStartTime ? ((Date.now() - solveStartTime) / 1000).toFixed(1) : '0.0'}s</span>}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Tokens received indicator */}
+                                {streamingContent && streamingContent.length > 0 && (
+                                    <div className="mt-4 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs text-slate-500 font-mono">
+                                        📦 Receiving structured data... ({streamingContent.length} characters)
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Telemetry (Final) */}
+                            {streamingTelemetry && (
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6 border-t border-slate-100 dark:border-slate-800 animate-in slide-in-from-bottom-2 duration-500">
+                                    <div className="space-y-1">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Model</p>
+                                        <p className="text-xs font-bold truncate">{streamingTelemetry.model}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Total Tokens</p>
+                                        <p className="text-xs font-bold">{streamingTelemetry.total_tokens}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Latency (AI)</p>
+                                        <p className="text-xs font-bold">{streamingTelemetry.latency_ms_openai}ms</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Status</p>
+                                        <p className={`text-xs font-bold ${streamingTelemetry.truncated ? 'text-amber-500' : 'text-emerald-500'}`}>
+                                            {streamingTelemetry.truncated ? 'Truncated' : 'Complete'}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 py-4 bg-slate-50/50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <p className="text-[10px] text-slate-400 font-medium italic">
+                                Do not refresh until the solution is finalized.
+                            </p>
+                            <div className="flex items-center gap-2">
+                                <div className="size-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Streaming Active</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Split Modal for multiple questions */}
             <SplitModal
