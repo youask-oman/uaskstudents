@@ -76,22 +76,36 @@
 }
 
 /* Equation styling */
+.markdown-math {
+  color: inherit;
+  white-space: normal;
+  /* Ensure wrapping works, avoiding 'nowrap' issues */
+}
+
+/* Apply color ONLY to KaTeX elements */
+.markdown-math .katex,
+.markdown-math .katex * {
+  color: var(--math-blue, #2563eb);
+}
+
+/* Ensure consistent font size */
+.markdown-math .katex {
+  font-size: 1.05em;
+}
+
+/* Safe Fallback for non-wrapped KaTeX */
 .katex,
 .katex-display,
 .math-inline {
   color: #2563eb;
 }
 
-.dark .katex,
-.dark .katex-display,
-.dark .math-inline {
-  color: #2563eb;
-}
-
-/* Make KaTeX inherit color inside blue primary banner */
+/* Inside Primary Banner: Force inherit for white text */
 .bg-primary .katex,
 .bg-primary .katex-display,
-.bg-primary .math-inline {
+.bg-primary .math-inline,
+.bg-primary .markdown-math .katex,
+.bg-primary .markdown-math .katex * {
   color: inherit !important;
 }
 

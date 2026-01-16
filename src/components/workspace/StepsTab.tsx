@@ -165,8 +165,10 @@ export default function StepsTab({
                                                     // Aggressive check: If it's long (>30 chars) and NO backslash, assume Text/Mixed, even if it has math symbols.
                                                     const isLongMixed = line.length > 30 && !hasExplicitLatex;
 
-                                                    // It is 'Text' if: (No Explicit LaTeX) AND (Is Long Mixed OR Is Long with Spaces OR No distinct math symbols)
-                                                    const isText = !hasExplicitLatex && (isLongMixed || (line.includes(' ') && line.split(' ').length > 4) || !hasMathSymbols);
+                                                    // Heuristic: If it has spaces, treat as Text (mixed content) so we don't force-wrap in $$
+                                                    // The new smart MathRenderer will inject $ for specific math symbols.
+                                                    const spaceCount = (line.match(/\s/g) || []).length;
+                                                    const isText = spaceCount >= 3;
 
                                                     // Style logic: Last line is Primary Blue Bold ONLY if it's not a text sentence
                                                     const textClass = (isLastLine && !isText)
@@ -176,7 +178,7 @@ export default function StepsTab({
                                                     return (
                                                         <div key={idx} className="flex flex-col items-center w-full">
                                                             <div className={`break-words whitespace-normal max-w-full px-1 ${textClass}`}>
-                                                                <MathRenderer content={line} forceMath={!isText} inline />
+                                                                <MathRenderer content={line} forceMath={!isText} />
                                                             </div>
                                                             {idx < cardLines.length - 1 && (
                                                                 <div className="h-px w-full bg-slate-300 dark:bg-slate-700 my-2"></div>

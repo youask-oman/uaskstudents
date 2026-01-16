@@ -1,3 +1,4 @@
+import "katex/dist/katex.min.css";
 import type { Metadata } from "next";
 import { Space_Grotesk, Lexend } from "next/font/google"; // For Student & Admin
 import "./globals.css";
@@ -21,11 +22,6 @@ export default function RootLayout({
       <head>
         {/* Material Symbols */}
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
-
-        {/* KaTeX for Math Rendering */}
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossOrigin="anonymous" />
-        <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossOrigin="anonymous"></script>
-        <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossOrigin="anonymous"></script>
 
         {/* Tailwind CDN - Must load first */}
         <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
