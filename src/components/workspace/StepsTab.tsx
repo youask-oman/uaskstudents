@@ -1,53 +1,35 @@
 "use client";
 
 import React from 'react';
-import 'katex/dist/katex.min.css';
-
-import VisualRenderer, { Visual } from './VisualRenderer';
 import MathRenderer from '../MathRenderer';
+import VisualRenderer, { Visual } from './VisualRenderer';
 
-interface V3Checkpoint {
+interface Checkpoint {
     question: string;
     expected_answer: string;
+    options?: string[];
 }
 
 interface Step {
-    index: number;
     title: string;
-    explanation?: string; // V2 or V3 fallback
+    explanation: string;
     work?: string[];
+    checkpoint?: Checkpoint;
     rules_used?: string[];
-    result?: string;
-    checkpoint?: V3Checkpoint;
-    visual_refs?: string[];
 }
 
 interface StepsTabProps {
-    title: string;
     steps: Step[];
-    visuals?: Visual[];
-    problemLatex?: string;
-    problem?: any;
-    // Props passed by parent but handled in WorkspaceLayout now, 
-    // keeping them optional or ignored to avoid errors if passed
-    analysisPlan?: string[];
-    finalAnswer?: string;
-    activeTab?: string;
-    onSelectTab?: any;
+    visuals: Visual[];
 }
 
-// Helper to process and split math work lines for the 'Card' format
+// Helper to flatten work lines
 const processWorkLines = (work: string[]): string[] => {
-    if (!work || work.length === 0) return [];
-
     const splitLines: string[] = [];
+    if (!work) return splitLines;
 
-    work.forEach(rawLine => {
-        let content = rawLine.trim();
-        // Split by standard separators used in the solver output: \Rightarrow, \rightarrow, ->, or \quad enclosed variations
-        // Also handle explicit newlines if any
-        const parts = content.split(/\\quad\\Rightarrow\\quad|\\Rightarrow|\\rightarrow|->/g);
-
+    work.forEach(line => {
+        const parts = line.split('\n');
         parts.forEach(part => {
             const cleanPart = part.trim();
             if (cleanPart) {
@@ -55,14 +37,12 @@ const processWorkLines = (work: string[]): string[] => {
             }
         });
     });
-
     return splitLines;
 };
 
-// Helper to cleaning outer math delimiters if present (fixes connected words issue)
+// Helper to clean explanation text
 const cleanExplanation = (text?: string): string => {
     if (!text) return "Follow the procedure on the right.";
-    // Remove wrapping $$ or $
     let cleaned = text.trim();
     if (cleaned.startsWith('$$') && cleaned.endsWith('$$')) {
         cleaned = cleaned.slice(2, -2);
@@ -72,15 +52,47 @@ const cleanExplanation = (text?: string): string => {
     return cleaned;
 };
 
-export default function StepsTab({
-    steps,
-    visuals,
-}: StepsTabProps) {
+// Checkpoint Interaction Component
+function CheckpointInteraction({ question, answer }: { question: string, answer: string }) {
+    const [isRevealed, setIsRevealed] = React.useState(false);
 
     return (
-        <div className="flex flex-col gap-8">
+        <div className="bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-xl p-4 transition-all">
+            <div className="flex items-center gap-2 mb-2">
+                <span className="material-symbols-outlined text-primary text-[16px]">quiz</span>
+                <span className="text-xs font-bold text-primary uppercase">Checkpoint</span>
+            </div>
+            <div className="text-xs font-medium mb-3 text-[#111318] dark:text-white">
+                <MathRenderer content={question} />
+            </div>
 
-            {/* Global Tips (Once, at the top) */}
+            {isRevealed ? (
+                <div className="animate-in fade-in zoom-in duration-300">
+                    <div className="px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-500/30 rounded-lg text-sm font-bold flex items-start gap-2 text-emerald-800 dark:text-emerald-300 shadow-sm">
+                        <span className="material-symbols-outlined text-[18px] shrink-0 fill-1">check_circle</span>
+                        <div>
+                            <p className="text-[10px] uppercase font-black text-emerald-600 dark:text-emerald-400 mb-0.5">Answer</p>
+                            <MathRenderer content={answer} inline />
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <button
+                    onClick={() => setIsRevealed(true)}
+                    className="w-full sm:w-auto px-4 py-2 bg-white dark:bg-[#1e2634] border border-primary/30 rounded-lg text-xs font-bold text-primary hover:bg-primary hover:text-white hover:border-primary transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95 group"
+                >
+                    <span className="material-symbols-outlined text-[18px] group-hover:scale-110 transition-transform">visibility</span>
+                    Reveal Answer
+                </button>
+            )}
+        </div>
+    );
+}
+
+export default function StepsTab({ steps, visuals }: StepsTabProps) {
+    return (
+        <div className="flex flex-col gap-8">
+            {/* Global Tips */}
             <div className="bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-200 dark:border-amber-900/50 p-4 flex flex-col md:flex-row items-start md:items-center gap-4 text-xs">
                 <div className="flex items-center gap-2 text-amber-700 dark:text-amber-500 font-bold uppercase tracking-wider shrink-0">
                     <span className="material-symbols-outlined text-[18px]">warning</span>
@@ -104,6 +116,34 @@ export default function StepsTab({
                 {steps.map((step, index) => {
                     const cardLines = processWorkLines(step.work || []);
                     const explanationText = cleanExplanation(step.explanation);
+                    // Match visualization to step roughly by index if we wanted, but logic usually separate.
+                    // For now displaying visuals in right column if index matches? 
+                    // Wait, original design (Step 2937 Line 114) had grid-cols-10.
+                    // Left 7 cols, Middle 3 cols? Math Work was Right?
+                    // Original Layout: Left: Steps (70%), Middle: Math Work (30%)? 
+                    // Wait, Step 2937 says:
+                    // Left Content Steps lg:col-span-7
+                    // Middle Content Math Work lg:col-span-3
+                    // Where are visuals?
+                    // Ah, visual is probably a separate step or rendered nearby.
+                    // Let's check Visual rendering. Step 2848 showed visuals map.
+                    // It was likely passed as a prop but rendered where?
+                    // The original code rendered visuals inside step logic? 
+                    // No, Step 2848 showed: `visuals.map(visual => ...)`
+                    // Let's assume visuals are rendered in a separate block or aligned. 
+                    // Actually, looking at the layout: StepsTab usually renders the *steps*. The visuals might be interleaved.
+                    // I'll render Visuals *inside* the step if they match? 
+                    // Or maybe at the bottom?
+                    // Wait, Step 2848 diff shows:
+                    // `{visuals.map(visual => ( ... ))}`
+                    // It was inside `return ( ... )` of `StepsTab`?
+                    // I'll append visuals section at the end if not specific.
+                    // BUT, to be safe and cleaner, I'll stick to the layout found in Step 2937.
+                    // Step layout: 
+                    // <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
+                    //   <div className="lg:col-span-7 ...">Title, Explanation, Checkpoint</div>
+                    //   <div className="lg:col-span-3 ...">Math Work Box</div>
+                    // </div>
 
                     return (
                         <div key={index} className="relative pl-8 border-l-2 border-primary/20">
@@ -112,8 +152,8 @@ export default function StepsTab({
 
                             {/* Step Container */}
                             <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
-                                {/* Left Content: Steps (70% width) */}
-                                <div className="lg:col-span-7 space-y-4">
+                                {/* Left Content: Steps (60% width) */}
+                                <div className="lg:col-span-6 space-y-4">
                                     <div>
                                         <div className="flex items-center gap-3 mb-2">
                                             <h4 className="text-xl font-bold text-[#111318] dark:text-white">
@@ -134,55 +174,39 @@ export default function StepsTab({
 
                                         {/* Checkpoint Quiz */}
                                         {step.checkpoint && (
-                                            <div className="bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-xl p-4">
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <span className="material-symbols-outlined text-primary text-[16px]">quiz</span>
-                                                    <span className="text-xs font-bold text-primary uppercase">Checkpoint</span>
-                                                </div>
-                                                <div className="text-xs font-medium mb-3 text-[#111318] dark:text-white">
-                                                    <MathRenderer content={step.checkpoint.question} />
-                                                </div>
-                                                <div className="flex flex-wrap gap-2">
-                                                    <button className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-primary/20 rounded-lg text-[11px] hover:bg-primary hover:text-white transition-all text-[#616f89] dark:text-slate-300">
-                                                        <MathRenderer content={step.checkpoint.expected_answer} inline />
-                                                    </button>
-                                                </div>
-                                            </div>
+                                            <CheckpointInteraction
+                                                question={step.checkpoint.question}
+                                                answer={step.checkpoint.expected_answer}
+                                            />
                                         )}
                                     </div>
                                 </div>
 
-                                {/* Middle Content: Math Work Box (30% width) */}
-                                <div className="lg:col-span-3">
+                                {/* Middle/Right Content: Math Work Box (40% width) */}
+                                <div className="lg:col-span-4">
                                     {cardLines.length > 0 && (
                                         <div className="w-full h-full bg-white dark:bg-[#1e2634] p-4 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c] flex flex-col items-center justify-center shadow-sm overflow-hidden">
                                             <div className="text-center space-y-2 w-full overflow-x-auto">
                                                 {cardLines.map((line, idx) => {
                                                     const isLastLine = idx === cardLines.length - 1;
 
-                                                    const hasExplicitLatex = line.includes('\\');
-                                                    const hasMathSymbols = line.includes('=') || line.includes('^') || line.includes('{');
-                                                    // Aggressive check: If it's long (>30 chars) and NO backslash, assume Text/Mixed, even if it has math symbols.
-                                                    const isLongMixed = line.length > 30 && !hasExplicitLatex;
-
-                                                    // Heuristic: If it has spaces, treat as Text (mixed content) so we don't force-wrap in $$
-                                                    // The new smart MathRenderer will inject $ for specific math symbols.
+                                                    // Determine if line is text using heuristic
                                                     const spaceCount = (line.match(/\s/g) || []).length;
                                                     const isText = spaceCount >= 3;
 
-                                                    // Style logic: Last line is Primary Blue Bold ONLY if it's not a text sentence
                                                     const textClass = (isLastLine && !isText)
-                                                        ? "text-base font-bold text-primary" // Reduced from text-lg
-                                                        : "text-[10px] text-[#111318] dark:text-white font-medium"; // Reduced from text-xs
+                                                        ? "text-base font-bold text-primary"
+                                                        : "text-sm text-[#111318] dark:text-white font-medium"; // Corrected to text-sm
 
                                                     return (
                                                         <div key={idx} className="flex flex-col items-center w-full">
                                                             <div className={`break-words whitespace-normal max-w-full px-1 ${textClass}`}>
-                                                                <MathRenderer content={line} forceMath={!isText} />
+                                                                <MathRenderer
+                                                                    content={line}
+                                                                    inline={true}
+                                                                    forceMath={!isText}
+                                                                />
                                                             </div>
-                                                            {idx < cardLines.length - 1 && (
-                                                                <div className="h-px w-full bg-slate-300 dark:bg-slate-700 my-2"></div>
-                                                            )}
                                                         </div>
                                                     );
                                                 })}
@@ -194,27 +218,20 @@ export default function StepsTab({
                         </div>
                     );
                 })}
-            </div>
 
-            {/* Visualizations Section (At the end) */}
-            {visuals && visuals.length > 0 && (
-                <div className="mt-8 space-y-8 border-t border-[#e5e7eb] dark:border-[#2a303c] pt-8">
-                    <h3 className="font-bold text-xl text-[#111318] dark:text-white">Visualizations</h3>
-                    {visuals.map(visual => (
-                        <div key={visual.id} className="bg-white dark:bg-[#1e2634] rounded-xl border border-[#e5e7eb] dark:border-[#2a303c] overflow-hidden p-4 shadow-sm">
-                            <div className="flex items-center justify-between mb-4">
-                                <h4 className="font-bold text-sm text-[#111318] dark:text-white">
-                                    <MathRenderer content={visual.title || "Graph"} inline />
-                                </h4>
-                                <span className="material-symbols-outlined text-primary text-[24px]">monitoring</span>
-                            </div>
-                            <div className="w-full h-[400px]">
-                                <VisualRenderer visual={visual} height={400} />
-                            </div>
+                {/* Visualizations Section */}
+                {visuals && visuals.length > 0 && (
+                    <div className="mt-8 pt-8 border-t border-[#e5e7eb] dark:border-[#2a303c]">
+                        <div className="flex items-center gap-2 mb-6">
+                            <span className="material-symbols-outlined text-primary text-[24px]">monitoring</span>
+                            <h3 className="text-xl font-bold text-[#111318] dark:text-white">Visualizations</h3>
                         </div>
-                    ))}
-                </div>
-            )}
+                        {visuals.map(visual => (
+                            <VisualRenderer key={visual.id} visual={visual} />
+                        ))}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
