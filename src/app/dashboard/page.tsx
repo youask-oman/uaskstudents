@@ -172,19 +172,27 @@ export default function DashboardPage() {
             <section className="p-8">
                 <div className="max-w-5xl mx-auto space-y-8">
                     {/* Hero/Welcome Section */}
-                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-[#06399c] p-10 text-white shadow-xl">
+                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-200 to-yellow-400 p-10 text-slate-800 shadow-xl">
                         <div className="relative z-10">
                             <h1 className="text-4xl font-bold mb-4 tracking-tight leading-tight">
                                 Welcome back, {user?.full_name?.split(' ')[0] || "Alex"}. <br />Ready to solve?
                             </h1>
-                            <p className="text-blue-100/80 max-w-md mb-8">
-                                {history.length > 0
-                                    ? `Your last problem "${history[0].title}" is ready for review.`
-                                    : "Start your first problem solving session today!"}
-                            </p>
+                            <div className="text-slate-800/90 max-w-md mb-8 text-sm">
+                                {history.length > 0 ? (
+                                    <div className="flex flex-col gap-1">
+                                        <span>Your last problem:</span>
+                                        <div className="font-bold bg-white/40 px-3 py-2 rounded-lg backdrop-blur-sm inline-block">
+                                            <MathRenderer content={history[0].title} />
+                                        </div>
+                                        <span>is ready for review.</span>
+                                    </div>
+                                ) : (
+                                    "Start your first problem solving session today!"
+                                )}
+                            </div>
                             <button
                                 onClick={() => history[0] ? router.push(`/chat/${history[0].id}`) : router.push('/chat/new')}
-                                className="bg-white text-primary px-6 py-3 rounded-lg font-bold text-sm shadow-lg hover:shadow-xl transition-all"
+                                className="bg-white text-amber-700 px-6 py-3 rounded-lg font-bold text-sm shadow-lg hover:shadow-xl transition-all"
                             >
                                 {history.length > 0 ? "Continue Last Session" : "Start New Session"}
                             </button>

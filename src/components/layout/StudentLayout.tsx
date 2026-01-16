@@ -109,7 +109,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     ];
 
     return (
-        <div className="flex h-screen overflow-hidden bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased">
+        <div className="flex h-screen w-full overflow-hidden bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased fixed inset-0">
             {/* Sidebar Navigation */}
             <aside className="w-64 flex flex-col bg-[#111827] h-full border-r border-slate-800/50 flex-shrink-0">
                 <div className="p-6 flex items-center gap-3">
