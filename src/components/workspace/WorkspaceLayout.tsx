@@ -43,6 +43,8 @@ interface WorkspaceLayoutProps {
     questionTokensUsed?: number;
     totalProblemsSolved?: number;
     tokenUsage?: number;
+    sessionId?: string | number;
+    initialSaved?: boolean;
 }
 
 export default function WorkspaceLayout({
@@ -54,9 +56,32 @@ export default function WorkspaceLayout({
     stepsCount,
     analysisPlan = [],
     finalAnswer,
-    confidence = 99
+    confidence = 99,
+    sessionId,
+    initialSaved = false
 }: WorkspaceLayoutProps) {
     const [isPlanOpen, setIsPlanOpen] = React.useState(true);
+    const [isSaved, setIsSaved] = React.useState(initialSaved);
+    const [isBookmarked, setIsBookmarked] = React.useState(false);
+
+    const handleSave = async () => {
+        // Optimistic toggle
+        const newState = !isSaved;
+        setIsSaved(newState);
+
+        if (newState && sessionId) {
+            try {
+                // Call save endpoint
+                await fetch(`/api/v1/sessions/${sessionId}/save`, { method: 'POST' });
+            } catch (err) {
+                console.error("Failed to save session", err);
+                setIsSaved(!newState); // Revert on error
+            }
+        }
+        // If un-saving is supported we'd call it here, but current API only has /save.
+        // Assuming /save is idempotent or we only care about saving. 
+        // If user un-saves locally, it just visually toggles off.
+    };
 
     return (
         <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background-light dark:bg-background-dark font-display text-[#111318] dark:text-white transition-colors duration-200">
@@ -158,20 +183,26 @@ export default function WorkspaceLayout({
                         <div className="flex items-center gap-2 shrink-0 flex-wrap">
                             {/* Save to Library */}
                             <button
-                                onClick={() => alert('Solution saved to your library!')}
-                                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-bold text-xs shadow-md transition-all"
+                                onClick={handleSave}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs shadow-md transition-all ${isSaved
+                                    ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                                    : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                                    }`}
                             >
-                                <span className="material-symbols-outlined text-[16px]">bookmark</span>
-                                Save
+                                <span className="material-symbols-outlined text-[16px]">{isSaved ? 'bookmark_added' : 'bookmark_add'}</span>
+                                {isSaved ? 'Saved' : 'Save'}
                             </button>
 
                             {/* Bookmark Toggle */}
                             <button
-                                onClick={() => alert('Bookmarked! Find this in your dashboard.')}
-                                className="p-2 rounded-lg border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-800/30 transition-all text-emerald-700 dark:text-emerald-400"
-                                title="Bookmark for later"
+                                onClick={() => setIsBookmarked(!isBookmarked)}
+                                className={`p-2 rounded-lg border transition-all ${isBookmarked
+                                    ? "bg-emerald-100 border-emerald-300 text-emerald-700 fill-1"
+                                    : "border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-800/30 text-emerald-700 dark:text-emerald-400"
+                                    }`}
+                                title={isBookmarked ? "Remove Bookmark" : "Bookmark for later"}
                             >
-                                <span className="material-symbols-outlined text-[18px]">star</span>
+                                <span className={`material-symbols-outlined text-[18px] ${isBookmarked ? 'fill-1' : ''}`}>star</span>
                             </button>
 
                             {/* Share Dropdown */}

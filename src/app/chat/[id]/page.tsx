@@ -327,6 +327,8 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             questionTokensUsed={sessionTokensUsed}
             totalProblemsSolved={totalProblemsSolved ?? 0}
             tokenUsage={totalTokensUsed}
+            sessionId={typeof id === 'string' ? id : (Array.isArray(id) ? id[0] : id)}
+            initialSaved={session?.is_saved}
         >
             {renderContent()}
         </WorkspaceLayout>
