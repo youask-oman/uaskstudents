@@ -83,10 +83,10 @@ class CanonicalizationService:
             return canonical_obj, assumptions
             
         except Exception as e:
-            # Fallback: Normalize whitespace and lower case as "math object"
-            # This allows "semantic" cache or just basic string match to still work partially
-            fallback = re.sub(r'\s+', '', clean_text).lower()
-            return fallback, {"parse_error": str(e)}
+            # Fallback: Use robust text normalization for word problems
+            # This gives consistent hashes even with OCR variations
+            fallback = self._normalize_text_for_hashing(text)
+            return fallback, {"parse_error": str(e), "normalized_text": True}
 
     def _clean_text_for_parsing(self, text: str) -> str:
         # Remove common english command words mostly
@@ -96,6 +96,43 @@ class CanonicalizationService:
         # Remove common sentence punctuation
         cleaned = re.sub(r'[?]$', '', cleaned.strip())
         return cleaned.strip()
+
+    def _normalize_text_for_hashing(self, text: str) -> str:
+        """
+        Aggressively normalize text for consistent hashing.
+        Used when SymPy parsing fails (word problems, etc.)
+        """
+        # Unicode normalize
+        text = unicodedata.normalize('NFKC', text)
+        
+        # Lowercase
+        text = text.lower()
+        
+        # Replace common OCR variations
+        text = text.replace('−', '-').replace('×', '*').replace('÷', '/')
+        text = text.replace('\u2018', "'").replace('\u2019', "'").replace('\u201c', '"').replace('\u201d', '"')
+        
+        # Normalize whitespace (collapse multiple spaces, newlines -> single space)
+        text = re.sub(r'\s+', ' ', text)
+        
+        # Remove leading/trailing whitespace
+        text = text.strip()
+        
+        # Remove common sentence-ending punctuation that might vary
+        text = re.sub(r'[.!?]+$', '', text)
+        
+        # Normalize fractions (both forms should hash the same)
+        # e.g., "1/5" and "\\frac{1}{5}" -> same form
+        text = re.sub(r'\\frac\{(\d+)\}\{(\d+)\}', r'\1/\2', text)
+        
+        # Remove LaTeX wrappers that might vary
+        text = re.sub(r'\$+', '', text)
+        text = re.sub(r'\\[a-zA-Z]+\{([^}]*)\}', r'\1', text)  # Remove \textbf{...} -> ...
+        
+        # For multiple choice, normalize option markers
+        text = re.sub(r'\b([A-D])\s*[):\.]', r'\1)', text)
+        
+        return text
 
     def compute_canonical_key(self, intent: str, math_obj: str, assumptions: Dict) -> str:
         settings = self.settings

@@ -715,8 +715,18 @@ export default function DashboardPage() {
         const start = Date.now();
         const timer = setInterval(() => {
             const elapsed = Date.now() - start;
-            const target = Math.min(90, 5 + Math.floor(elapsed / 300) * 3);
-            setSolveProgress(prev => (target > prev ? target : prev));
+
+            // Phase 1: Quick ramp up to 90% (increases by 3 every 300ms)
+            if (elapsed < 8500) {
+                const target = Math.min(90, 5 + Math.floor(elapsed / 300) * 3);
+                setSolveProgress(prev => (target > prev ? target : prev));
+            } else {
+                // Phase 2: Slow increment after 90% (1% every 3 seconds, max 99%)
+                const extraElapsed = elapsed - 8500;
+                const extraProgress = Math.floor(extraElapsed / 3000);
+                const target = Math.min(99, 90 + extraProgress);
+                setSolveProgress(prev => (target > prev ? target : prev));
+            }
         }, 300);
         return () => clearInterval(timer);
     }, [isSolving]);

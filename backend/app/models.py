@@ -521,3 +521,29 @@ class SystemErrorEntry(SQLModel, table=True):
     stack_trace: Optional[str] = None
     is_resolved: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class QuestionIdentityCache(SQLModel, table=True):
+    """
+    OCR-proof cache for Snap & Solve questions.
+    Prevents duplicate OpenAI calls for the same question.
+    """
+    __tablename__ = "question_identity_cache"
+    
+    id: Optional[int] = Field(default=None, primary_key=True)
+    question_key: str = Field(unique=True, index=True)  # SHA256 of fingerprint
+    
+    # Fingerprint components (for debugging/analysis)
+    normalized_stem: str = Field(default="")
+    normalized_options: Optional[str] = None  # JSON array of normalized options
+    question_type: str = Field(default="unknown")
+    
+    # Cached result
+    solution_json: dict = Field(sa_column=Column(JSON))
+    
+    # Debug & analytics
+    original_variants: List[str] = Field(default=[], sa_column=Column(JSON))  # OCR texts that hit this key
+    hit_count: int = Field(default=0)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    last_seen_at: datetime = Field(default_factory=datetime.utcnow)
+

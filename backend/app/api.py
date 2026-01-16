@@ -1531,6 +1531,27 @@ async def solve_v3_endpoint(
     # Enable trace mode for debugging
     trace = body.mode == "debug"
 
+    # --- QUESTION IDENTITY CACHE (OCR-proof) ---
+    # This is checked BEFORE the canonical cache as it's more robust for OCR text
+    from app.services.solve.question_identity_service import question_identity_service
+    
+    question_fingerprint = None
+    question_key = None
+    question_cache_hit = False
+    
+    try:
+        question_fingerprint = question_identity_service.compute_question_fingerprint(problem_text)
+        question_key = question_identity_service.compute_question_key(question_fingerprint)
+        
+        # Check question identity cache first
+        cached_result = question_identity_service.get_cached_question(session, question_key)
+        if cached_result:
+            result = cached_result
+            was_cached = True
+            question_cache_hit = True
+            print(f"[QUESTION_CACHE] HIT - skipping OpenAI call")
+    except Exception as e:
+        print(f"[QUESTION_CACHE] Fingerprint error: {e}")
     
     try:
         # Call Solver V3 (Logic: Only if not cached)
@@ -1542,27 +1563,44 @@ async def solve_v3_endpoint(
                 trace=trace
             )
         
-        # Check if it's an error response
+        # Check if it's an error response - fallback to V2 if V3 fails
         if result.get("error", False):
-            print(f"[API_V3] Solver returned error: {result.get('error_type')}")
-            # Return error but still create a session for logging
-            new_chat = ChatSession(
-                user_id=user_id,
-                title="Error: " + problem_text[:40],
-                subject=body.subject or "General",
-                is_saved=False
-            )
-            session.add(new_chat)
-            session.commit()
-            session.refresh(new_chat)
+            print(f"[API_V3] Solver V3 returned error: {result.get('error_type')}, falling back to V2...")
             
-            return {
-                "session_id": new_chat.id,
-                "error": True,
-                "error_type": result.get("error_type"),
-                "message": result.get("message"),
-                "validation_errors": result.get("validation_errors", [])
-            }
+            # Try Solver V2 as fallback
+            try:
+                from app.services.solver_v2 import solver_service_v2
+                result = await solver_service_v2.solve_problem_v2(
+                    problem_text=problem_text,
+                    context=context,
+                    user_id=user_id,
+                    trace=trace
+                )
+                print(f"[API_V3] Solver V2 fallback successful")
+                # V2 doesn't return the same error format, so we can proceed
+                if not result.get("error", False):
+                    # Convert V2 response to V3-compatible format
+                    pass  # V2 response is already compatible enough
+            except Exception as v2_error:
+                print(f"[API_V3] Solver V2 fallback also failed: {v2_error}")
+                # Return original V3 error
+                new_chat = ChatSession(
+                    user_id=user_id,
+                    title="Error: " + problem_text[:40],
+                    subject=body.subject or "General",
+                    is_saved=False
+                )
+                session.add(new_chat)
+                session.commit()
+                session.refresh(new_chat)
+                
+                return {
+                    "session_id": new_chat.id,
+                    "error": True,
+                    "error_type": result.get("error_type"),
+                    "message": result.get("message"),
+                    "validation_errors": result.get("validation_errors", [])
+                }
         
         # Success - process plot if available
         plot_url = None
@@ -1604,6 +1642,15 @@ async def solve_v3_endpoint(
                 print(f"[CACHE] Stored: {canonical_key}")
             except Exception as e:
                 print(f"[CACHE] Store failed: {e}")
+        
+        # --- QUESTION IDENTITY CACHE STORE --- (OCR-proof cache)
+        if not question_cache_hit and question_key and question_fingerprint and not result.get("error"):
+            try:
+                question_identity_service.store_question_result(
+                    session, question_key, question_fingerprint, result, problem_text
+                )
+            except Exception as e:
+                print(f"[QUESTION_CACHE] Store failed: {e}")
         
         # Create chat session
         new_chat = ChatSession(
