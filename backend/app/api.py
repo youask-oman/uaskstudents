@@ -209,6 +209,8 @@ class SolveResponse(BaseModel):
     model_used: Optional[str] = "OpenAI GPT-4o Mini"
     tokens_used: Optional[int] = 500
     has_image: Optional[bool] = False
+    telemetry: Optional[Dict[str, Any]] = None # Added telemetry
+
 
 def validate_math_query(text: str) -> None:
     normalized = (text or "").strip().lower()
@@ -308,6 +310,9 @@ class ChatHistoryItem(BaseModel):
     topic: Optional[str] = None
     input: Optional[str] = None
     is_saved: Optional[bool] = None
+    telemetry: Optional[Dict[str, Any]] = None
+
+
 
 class LoginRequest(BaseModel):
     email: str
@@ -1365,7 +1370,8 @@ async def solve_problem(
         content=assistant_content,
         structured_data=solution_data,
         model_used=model_name,
-        tokens_used=estimated_tokens
+        tokens_used=estimated_tokens,
+        telemetry=solution_data.get("telemetry") or solution_data.get("_telemetry")
     )
     session.add(ai_msg)
     
@@ -1410,7 +1416,8 @@ async def solve_problem(
         verification=solution_data.get("verification"),
         model_used=model_name,
         tokens_used=estimated_tokens,
-        has_image=is_image
+        has_image=is_image,
+        telemetry=solution_data.get("telemetry") or solution_data.get("_telemetry")
     )
     
     # ------------------------------------------------------------------
@@ -1440,6 +1447,10 @@ async def solve_v3_endpoint(
     """
     from app.services.solver_v3 import get_solver_v3
     import base64
+    
+    # Generate unique Request ID
+    request_id = str(uuid.uuid4())
+
     
     # Extract problem text
     problem_text = (
@@ -1613,7 +1624,8 @@ async def solve_v3_endpoint(
             result = await solver.solve(
                 problem_text=problem_text,
                 context=context,
-                trace=trace
+                trace=trace,
+                request_id=request_id
             )
         
         # Check if it's an error response - fallback to V2 if V3 fails
@@ -1724,7 +1736,8 @@ async def solve_v3_endpoint(
             content=final_answer,
             structured_data=result,
             model_used=result.get("_model", "gpt-5-mini"),
-            tokens_used=3000  # V3 uses more tokens due to depth
+            tokens_used=3000, # V3 uses more tokens due to depth
+            telemetry=result.get("telemetry")
         ))
         
         # Token tracking
@@ -1739,6 +1752,7 @@ async def solve_v3_endpoint(
         result["session_id"] = new_chat.id
         result["plot_url"] = plot_url
         result["tokens_used"] = 3000
+        result["request_id"] = request_id
         
         return result
     
@@ -2077,18 +2091,30 @@ async def get_history(
         
     results = session.exec(stmt).all()
     
-    return [
-        ChatHistoryItem(
+    history_items = []
+    for chat in results:
+        # Extract user input
+        user_input = next((msg.content for msg in chat.messages if msg.role == "user"), None)
+        
+        # Extract telemetry from any assistant message (prefer most recent)
+        telemetry = None
+        for msg in reversed(chat.messages):
+            if msg.role == "assistant" and msg.telemetry:
+                telemetry = msg.telemetry
+                break
+        
+        history_items.append(ChatHistoryItem(
             id=chat.id, 
             title=chat.title, 
             created_at=chat.created_at.isoformat(),
             subject=chat.subject or "Math",
             topic=chat.topic,
-            input=next((msg.content for msg in chat.messages if msg.role == "user"), None),
-            is_saved=chat.is_saved
-        ) 
-        for chat in results
-    ]
+            input=user_input,
+            is_saved=chat.is_saved,
+            telemetry=telemetry
+        ))
+        
+    return history_items
 
 class ChatMessageSchema(BaseModel):
     role: str

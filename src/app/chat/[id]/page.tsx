@@ -16,7 +16,9 @@ interface ChatMessage {
     structured_data?: Record<string, unknown> | null;
     model_used?: string;
     tokens_used?: number;
+    telemetry?: any; // Added telemetry
 }
+
 
 interface ChatSession {
     id: number | string;
@@ -302,6 +304,9 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     };
 
 
+
+    const telemetry = assistantMsg?.telemetry || solutionData?.telemetry || solutionData?._telemetry;
+
     return (
         <WorkspaceLayout
             messages={session.messages}
@@ -329,6 +334,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             tokenUsage={totalTokensUsed}
             sessionId={typeof id === 'string' ? id : (Array.isArray(id) ? id[0] : id)}
             initialSaved={session?.is_saved}
+            telemetry={telemetry}
         >
             {renderContent()}
         </WorkspaceLayout>

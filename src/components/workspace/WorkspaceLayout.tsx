@@ -45,6 +45,16 @@ interface WorkspaceLayoutProps {
     tokenUsage?: number;
     sessionId?: string | number;
     initialSaved?: boolean;
+    telemetry?: {
+        request_id?: string;
+        model?: string;
+        total_tokens?: number;
+        input_tokens?: number;
+        output_tokens?: number;
+        latency_ms_openai?: number;
+        latency_ms_total?: number;
+        cached_tokens?: number;
+    };
 }
 
 export default function WorkspaceLayout({
@@ -58,11 +68,13 @@ export default function WorkspaceLayout({
     finalAnswer,
     confidence = 99,
     sessionId,
-    initialSaved = false
+    initialSaved = false,
+    telemetry
 }: WorkspaceLayoutProps) {
     const [isPlanOpen, setIsPlanOpen] = React.useState(true);
     const [isSaved, setIsSaved] = React.useState(initialSaved);
     const [isBookmarked, setIsBookmarked] = React.useState(false);
+    const [isMetricsOpen, setIsMetricsOpen] = React.useState(false);
 
     const handleSave = async () => {
         // Optimistic toggle
@@ -78,14 +90,11 @@ export default function WorkspaceLayout({
                 setIsSaved(!newState); // Revert on error
             }
         }
-        // If un-saving is supported we'd call it here, but current API only has /save.
-        // Assuming /save is idempotent or we only care about saving. 
-        // If user un-saves locally, it just visually toggles off.
     };
 
     return (
         <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background-light dark:bg-background-dark font-display text-[#111318] dark:text-white transition-colors duration-200">
-            {/* Top Header */}
+            {/* ... (Header Omitted) ... */}
             <header className="sticky top-0 z-50 flex items-center justify-between whitespace-nowrap border-b border-solid border-[#e5e7eb] dark:border-[#2a303c] bg-white dark:bg-[#0d1117] px-6 lg:px-10 py-3">
                 {/* Left: Logo + Nav */}
                 <div className="flex items-center gap-8">
@@ -416,6 +425,62 @@ export default function WorkspaceLayout({
                         {children}
                     </div>
                 </div>
+
+                {/* Metrics / Telemetry Block */}
+                {telemetry && (
+                    <div className="mt-8 border-t border-slate-200 dark:border-slate-700 pt-6">
+                        <button
+                            onClick={() => setIsMetricsOpen(!isMetricsOpen)}
+                            className="flex items-center gap-2 text-xs font-mono text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition-colors w-full"
+                        >
+                            <span className="material-symbols-outlined text-[16px]">{isMetricsOpen ? 'expand_more' : 'chevron_right'}</span>
+                            <span className="font-bold">METRICS</span>
+                            <span className="ml-auto opacity-50">{telemetry.request_id}</span>
+                        </button>
+
+                        {isMetricsOpen && (
+                            <div className="mt-2 p-4 bg-slate-100 dark:bg-slate-900 rounded-lg font-mono text-xs text-slate-700 dark:text-slate-400 overflow-x-auto">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
+                                    <div className="flex justify-between">
+                                        <span className="opacity-70">Request ID:</span>
+                                        <span className="font-bold select-all">{telemetry.request_id}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="opacity-70">Model:</span>
+                                        <span className="font-bold">{telemetry.model}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="opacity-70">OpenAI Latency:</span>
+                                        <span className="font-bold">{telemetry.latency_ms_openai}ms</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="opacity-70">Total Latency:</span>
+                                        <span className="font-bold">{telemetry.latency_ms_total}ms</span>
+                                    </div>
+                                    <div className="col-span-1 md:col-span-2 border-t border-slate-200 dark:border-slate-800 my-1"></div>
+                                    <div className="flex justify-between">
+                                        <span className="opacity-70">Input Tokens:</span>
+                                        <span>{telemetry.input_tokens}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="opacity-70">Output Tokens:</span>
+                                        <span>{telemetry.output_tokens}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="opacity-70">Total Tokens:</span>
+                                        <span className="font-bold text-primary">{telemetry.total_tokens}</span>
+                                    </div>
+                                    {typeof telemetry.cached_tokens === 'number' && (
+                                        <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
+                                            <span className="opacity-70">Cached Tokens:</span>
+                                            <span>{telemetry.cached_tokens}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
 
             </main>
 

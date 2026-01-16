@@ -13,7 +13,14 @@ interface ChatSession {
     input?: string;
     created_at: string;
     is_saved?: boolean;
+    telemetry?: {
+        latency_ms_total: number;
+        total_tokens: number;
+        model: string;
+    };
 }
+
+
 
 export default function DashboardPage() {
     const [stats, setStats] = useState([
@@ -345,11 +352,12 @@ export default function DashboardPage() {
                                                         />
                                                     </div>
                                                 </div>
-                                                <div className="px-6 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 grid grid-cols-[1.2fr_0.9fr_1.5fr_0.8fr] gap-4">
+                                                <div className="px-6 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 grid grid-cols-[1.2fr_0.8fr_1.2fr_0.8fr_0.6fr] gap-4">
                                                     <div>Session</div>
                                                     <div>Topic</div>
                                                     <div>Input</div>
-                                                    <div>Date</div>
+                                                    <div className="text-right">Stats</div>
+                                                    <div className="text-right">Date</div>
                                                 </div>
                                                 {pagedHistory.map((session) => (
                                                     <div
@@ -357,7 +365,7 @@ export default function DashboardPage() {
                                                         onClick={() => router.push(`/chat/${session.id}`)}
                                                         className="p-4 flex items-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group px-6"
                                                     >
-                                                        <div className="grid grid-cols-[1.2fr_0.9fr_1.5fr_0.8fr] gap-4 items-center w-full">
+                                                        <div className="grid grid-cols-[1.2fr_0.8fr_1.2fr_0.8fr_0.6fr] gap-4 items-center w-full">
                                                             <div className="flex items-center gap-3 min-w-0">
                                                                 <div className="w-9 h-9 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
                                                                     <span className="material-symbols-outlined">
@@ -365,7 +373,7 @@ export default function DashboardPage() {
                                                                     </span>
                                                                 </div>
                                                                 <div className="min-w-0">
-                                                                    <h4 className="text-sm font-semibold truncate">
+                                                                    <h4 className="text-sm font-semibold truncate" title={session.title}>
                                                                         <MathRenderer content={session.title} />
                                                                     </h4>
                                                                     {session.is_saved && (
@@ -376,10 +384,20 @@ export default function DashboardPage() {
                                                             <div className="text-xs text-slate-500 font-medium truncate">
                                                                 {session.topic || session.subject || "Math"}
                                                             </div>
-                                                            <div className="text-xs text-slate-500 truncate">
+                                                            <div className="text-xs text-slate-500 truncate" title={session.input}>
                                                                 <MathRenderer content={session.input || "-"} />
                                                             </div>
-                                                            <div className="text-xs text-slate-500">
+                                                            <div className="text-xs text-slate-500 text-right font-mono">
+                                                                {session.telemetry ? (
+                                                                    <div className="flex flex-col gap-0.5">
+                                                                        <span title="Total Latency">{(session.telemetry.latency_ms_total / 1000).toFixed(1)}s</span>
+                                                                        <span title="Total Tokens">{session.telemetry.total_tokens}t</span>
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="opacity-50">-</span>
+                                                                )}
+                                                            </div>
+                                                            <div className="text-xs text-slate-500 text-right">
                                                                 {new Date(session.created_at).toLocaleDateString()}
                                                             </div>
                                                         </div>

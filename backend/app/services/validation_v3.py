@@ -67,22 +67,19 @@ class SchemaValidator:
         pydantic_errors = None
         
         # 1. JSON Schema validation
-        try:
-            validate(instance=data, schema=self.schema)
-        except JsonSchemaValidationError as e:
-            errors.append(f"JSON Schema error: {e.message}")
+        # 1. JSON Schema validation
+        for i, error in enumerate(self.validator.iter_errors(data)):
+            if i >= 20: 
+                break
+            
+            errors.append(f"JSON Schema error: {error.message}")
             error_details.append({
                 "type": "json_schema",
-                "message": e.message,
-                "path": list(e.absolute_path),
-                "schema_path": list(e.absolute_schema_path),
-                "validator": e.validator
-            })
-        except Exception as e:
-            errors.append(f"Unexpected validation error: {str(e)}")
-            error_details.append({
-                "type": "unexpected",
-                "message": str(e)
+                "message": error.message,
+                "path": list(error.absolute_path),
+                "schema_path": list(error.absolute_schema_path),
+                "validator": error.validator,
+                "validator_value": error.validator_value
             })
         
         # 2. Pydantic validation (stricter checks)

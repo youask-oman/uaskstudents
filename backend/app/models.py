@@ -1,7 +1,7 @@
 from typing import Optional, List
 from datetime import datetime
 from sqlmodel import Field, SQLModel, Relationship
-from sqlalchemy import Column, JSON
+from sqlalchemy import Column, JSON, BigInteger
 
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -97,6 +97,9 @@ class ChatMessage(SQLModel, table=True):
     # Metadata for tracking
     model_used: Optional[str] = None
     tokens_used: int = Field(default=0)
+    
+    # Detailed Telemetry (Latency, detailed tokens, cached status)
+    telemetry: Optional[dict] = Field(default=None, sa_column=Column(JSON))
     
     created_at: datetime = Field(default_factory=datetime.utcnow)
 

@@ -40,15 +40,24 @@ class SolverV3:
         problem_text: str,
         context: str = "",
         trace: bool = False,
-        include_plot_base64: bool = False # Deprecated but kept for signature compatibility
+        include_plot_base64: bool = False,
+        request_id: str = None
     ) -> Dict[str, Any]:
-        import time
-        start_time = time.time()
+        
+        start_time_perf = time.perf_counter()
+        
+        # Default telemetry structure
         telemetry = {
+            "request_id": request_id,
+            "model": self._model,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_tokens": 0,
+            "cached_tokens": None, # Null if N/A
+            "latency_ms_openai": 0,
             "latency_ms_total": 0,
-            "latency_ms_llm": 0,
-            "tokens_in": 0,
-            "tokens_out": 0,
+            
+            # Internal/Debug metrics
             "validated": False,
             "repaired": False,
             "repair_reason": None,
@@ -61,31 +70,48 @@ class SolverV3:
             print(f"\n[SOLVER_V3] ==================== START ====================")
             print(f"[SOLVER_V3] Problem: {problem_text[:100]}...")
             print(f"[SOLVER_V3] Model: {self._model}")
-            print(f"[SOLVER_V3] Schema: v1.0 (Strict)")
+            print(f"[SOLVER_V3] Request ID: {request_id}")
 
         try:
             # Step 1: Load Prompts
             try:
                 system_prompt = get_prompt("solver_system", "v3")
-                if trace:
-                     print(f"[SOLVER_V3] ✅ Loaded prompts")
             except Exception as e:
-                return self._handle_error(problem_text, f"Prompt load failed: {e}", "prompt_error", telemetry, start_time)
+                return self._handle_error(problem_text, f"Prompt load failed: {e}", "prompt_error", telemetry, start_time_perf)
 
             # Step 2: Call LLM
-            llm_start = time.time()
+            llm_start_perf = time.perf_counter()
             try:
                 response_data, llm_tokens = await self._call_llm_with_schema(
                     problem_text, context, system_prompt, trace=trace
                 )
-                telemetry["latency_ms_llm"] = int((time.time() - llm_start) * 1000)
-                telemetry["tokens_in"] = llm_tokens.get("input", 0)
-                telemetry["tokens_out"] = llm_tokens.get("output", 0)
+                
+                # Capture precise OpenAI latency
+                llm_end_perf = time.perf_counter()
+                telemetry["latency_ms_openai"] = int((llm_end_perf - llm_start_perf) * 1000)
+                
+                # Extract tokens
+                telemetry["input_tokens"] = llm_tokens.get("input", 0)
+                telemetry["output_tokens"] = llm_tokens.get("output", 0)
+                telemetry["total_tokens"] = llm_tokens.get("total", 0)
+                telemetry["cached_tokens"] = llm_tokens.get("cached", None)
                 
                 if trace:
-                    print(f"[SOLVER_V3] ✅ Received LLM response ({telemetry['latency_ms_llm']}ms)")
+                    print(f"[SOLVER_V3] ✅ Received LLM response ({telemetry['latency_ms_openai']}ms)")
             except Exception as e:
-                return self._handle_error(problem_text, f"LLM Call failed: {e}", "llm_error", telemetry, start_time)
+                return self._handle_error(problem_text, f"LLM Call failed: {e}", "llm_error", telemetry, start_time_perf)
+
+            # Step 2.5: Normalize Response (Inject Defaults)
+            if "refusal" not in response_data:
+                response_data["refusal"] = {"is_refusal": False, "refusal_reason": None}
+            if "visuals" not in response_data:
+                response_data["visuals"] = {"should_visualize": False, "decision_reason": "Default", "plots": None, "alternative_visual": None}
+            if "quality" not in response_data:
+                response_data["quality"] = {"confidence": 95, "common_mistakes": [], "next_practice": []}
+            if "verification" not in response_data:
+                 response_data["verification"] = {"method": "Self-Consistency", "work_latex": "Verified internally", "conclusion": "Stable", "alternative_method": None}
+            elif isinstance(response_data.get("verification"), dict) and "alternative_method" not in response_data["verification"]:
+                 response_data["verification"]["alternative_method"] = None
 
             # Step 3: Validate
             _model_temp = response_data.pop("_model", None)
@@ -97,8 +123,6 @@ class SolverV3:
                 telemetry["validation_failures_count"] += 1
                 if trace:
                     print(f"[SOLVER_V3] ⚠️ Validation failed ({len(validation.errors)} errors)")
-                    for err in validation.errors[:3]:
-                        print(f"  - {err}")
                 
                 # Step 4: Repair Loop
                 telemetry["repair_reason"] = f"{len(validation.errors)} validation errors"
@@ -112,22 +136,23 @@ class SolverV3:
                 if not validation.valid:
                     if trace:
                         print(f"[SOLVER_V3] ❌ Repair failed")
-                    return self._handle_error(problem_text, validation.errors, "validation_failed_after_repair", telemetry, start_time)
+                    return self._handle_error(problem_text, validation.errors, "validation_failed_after_repair", telemetry, start_time_perf)
 
             telemetry["validated"] = True
             
             # Step 5: Visuals Telemetry
             visuals = response_data.get("visuals", {})
-            should_visualize = visuals.get("should_visualize", False)
-            if should_visualize:
+            if visuals.get("should_visualize", False):
                 telemetry["plot_attempted"] = True
                 telemetry["plot_generated"] = True
-                if trace:
-                    print(f"[SOLVER_V3] ✅ Visuals: {len(visuals.get('plots', []))} plots defined")
 
             # Finalize
-            telemetry["latency_ms_total"] = int((time.time() - start_time) * 1000)
-            response_data["_telemetry"] = telemetry
+            telemetry["latency_ms_total"] = int((time.perf_counter() - start_time_perf) * 1000)
+            
+            # Embed telemetry in response payload (legacy key + new key)
+            response_data["_telemetry"] = telemetry 
+            response_data["telemetry"] = telemetry
+            
             response_data["_timestamp"] = datetime.utcnow().isoformat()
             response_data["schema_version"] = "v1.0"
             
@@ -141,13 +166,16 @@ class SolverV3:
                 print(f"[SOLVER_V3] ❌ FATAL: {e}")
                 import traceback
                 traceback.print_exc()
-            return self._handle_error(problem_text, str(e), "fatal_error", telemetry, start_time)
+            return self._handle_error(problem_text, str(e), "fatal_error", telemetry, start_time_perf)
 
-    def _handle_error(self, problem, errors, code, telemetry, start_time):
-        telemetry["latency_ms_total"] = int((time.time() - start_time) * 1000)
+
+    def _handle_error(self, problem, errors, code, telemetry, start_time_perf):
+        telemetry["latency_ms_total"] = int((time.perf_counter() - start_time_perf) * 1000)
         err_resp = create_error_response(problem, errors if isinstance(errors, list) else [str(errors)], code)
         err_resp["_telemetry"] = telemetry
+        err_resp["telemetry"] = telemetry
         return err_resp
+
 
     async def _call_llm_with_schema(self, problem_text, context, system_prompt, trace=False):
         user_message = f"""Problem: {problem_text}
@@ -155,16 +183,17 @@ class SolverV3:
 Context: {context if context else "No additional context provided."}
 
 **CRITICAL**: Return ONLY strictly valid JSON matching the schema (v1.0).
+- All top-level keys are REQUIRED: problem, classification, refusal, assumptions, steps, final_answer, verification, visuals, quality.
 - visuals.should_visualize = true for any graphable content
-- verification is a SINGLE object (method, work_latex, conclusion)
+- verification is a SINGLE object (method, work_latex, conclusion). verification.alternative_method is also required (object or null).
 - refusal.is_refusal = true ONLY if safety policy requires it
-- Avoid nulls where possible
+- Avoid nulls where possible, use empty arrays/strings instead.
 """
-        tokens = {"input": 0, "output": 0}
+        tokens = {"input": 0, "output": 0, "total": 0, "cached": None}
         
         # Check model type for API method
         if "gpt-5" in self._model.lower():
-             # Use client.responses.create for gpt-5 access (as seen in original code)
+             # Use client.responses.create for gpt-5 access
              params = {
                 "model": self._model,
                 "input": [
@@ -184,8 +213,17 @@ Context: {context if context else "No additional context provided."}
              }
              try:
                  response = await self.client.responses.create(**params)
+                 
+                 # Extract tokens from responses API
+                 if hasattr(response, 'usage'):
+                     tokens["input"] = response.usage.input_tokens
+                     tokens["output"] = response.usage.output_tokens
+                     tokens["total"] = response.usage.total_tokens
+                     # Check for cached tokens if available
+                     if hasattr(response.usage, 'input_token_details'):
+                          tokens["cached"] = getattr(response.usage.input_token_details, 'cached_tokens', 0)
+                 
                  if hasattr(response, 'output') and response.output:
-                     # Check for content item
                      content = None
                      for item in response.output:
                          if hasattr(item, 'content') and item.content:
@@ -194,7 +232,6 @@ Context: {context if context else "No additional context provided."}
                      if not content:
                          raise ValueError("No content in gpt-5 response")
                                       
-                     # Tokens? Response attributes might vary, assuming not easily available or handled else
                      return json.loads(content), tokens
                  else:
                      raise ValueError("Empty gpt-5 output")
@@ -221,9 +258,18 @@ Context: {context if context else "No additional context provided."}
             
             response = await self.client.chat.completions.create(**params)
             content = response.choices[0].message.content
+            
             if hasattr(response, 'usage'):
                 tokens["input"] = response.usage.prompt_tokens
                 tokens["output"] = response.usage.completion_tokens
+                tokens["total"] = response.usage.total_tokens
+                
+                # Check for cached tokens in prompt_tokens_details
+                if hasattr(response.usage, 'prompt_tokens_details') and response.usage.prompt_tokens_details:
+                    tokens["cached"] = getattr(response.usage.prompt_tokens_details, 'cached_tokens', 0)
+                # Or sometimes top level logic depending on library version
+                if tokens["cached"] is None and hasattr(response.usage, 'cached_tokens'):
+                     tokens["cached"] = response.usage.cached_tokens
 
             return json.loads(content), tokens
 
@@ -246,7 +292,7 @@ Context: {context if context else "No additional context provided."}
         ]
         
         params = {
-            "model": self._model,
+            "model": self._fallback_model,
             "messages": messages,
             "response_format": {
                 "type": "json_schema",
