@@ -4,6 +4,43 @@
 import React from 'react';
 import MathRenderer from './MathRenderer';
 
+/**
+ * Preprocess LaTeX content to handle document commands that KaTeX doesn't support.
+ * Converts \textbf{...} to **...**, \item to bullet, \[...\] to $$...$$, etc.
+ */
+function preprocessLatexContent(content: string): string {
+    let processed = content;
+
+    // FIRST: Convert display math \[...\] to $$...$$ (must do before other replacements)
+    // Use a non-greedy match to handle multiple display math blocks
+    processed = processed.replace(/\\\[([\s\S]*?)\\\]/g, (match, inner) => {
+        return `$$${inner.trim()}$$`;
+    });
+
+    // Convert inline math \(...\) to $...$
+    processed = processed.replace(/\\\(([\s\S]*?)\\\)/g, (match, inner) => {
+        return `$${inner.trim()}$`;
+    });
+
+    // Replace \textbf{...} with **...** for bold (markdown style)
+    processed = processed.replace(/\\textbf\{([^}]*)\}/g, '**$1**');
+
+    // Replace \textit{...} with *...* for italic
+    processed = processed.replace(/\\textit\{([^}]*)\}/g, '*$1*');
+
+    // Replace \emph{...} with *...* for emphasis
+    processed = processed.replace(/\\emph\{([^}]*)\}/g, '*$1*');
+
+    // Replace \item with bullet point
+    processed = processed.replace(/\\item\s*/g, '• ');
+
+    // Remove \begin{...} and \end{...} for unsupported environments
+    processed = processed.replace(/\\begin\{(itemize|enumerate|document|center)\}/g, '');
+    processed = processed.replace(/\\end\{(itemize|enumerate|document|center)\}/g, '');
+
+    return processed;
+}
+
 interface LiveMathPreviewProps {
     /** The LaTeX or math content to render */
     content: string;
@@ -31,10 +68,10 @@ export default function LiveMathPreview({ content, hideIfEmpty = true }: LiveMat
 
             {/* Content Area */}
             <div className="p-8 flex items-center justify-center min-h-[120px] bg-yellow-50 dark:bg-slate-900">
-                <div className="text-2xl text-blue-600 dark:text-blue-400 font-serif">
+                <div className="text-xl text-red-600 dark:text-red-400 leading-relaxed">
                     <MathRenderer
-                        content={`$$ ${content} $$`}
-                        forceMath={true}
+                        content={preprocessLatexContent(content)}
+                        forceMath={false}
                     />
                 </div>
             </div>

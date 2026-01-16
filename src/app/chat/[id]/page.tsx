@@ -228,7 +228,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         // Map steps to match StepsTab expectation (work array)
         const mappedSteps = steps.map((s: any) => ({
             ...s,
-            work: s.math_latex ? [s.explanation, s.math_latex] : [s.explanation], // Combine exp + math
+            work: s.math_latex ? [s.math_latex] : [], // Only math equations for right-side card
             rules_used: s.rules_used || [],
             checkpoint: s.checkpoint ? {
                 question: s.checkpoint.question,

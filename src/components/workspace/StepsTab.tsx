@@ -163,10 +163,10 @@ export default function StepsTab({ steps, visuals }: StepsTabProps) {
                                         <div className="text-lg font-bold text-[#111318] dark:text-white mb-2 leading-snug">
                                             <MathRenderer content={step.title} />
                                         </div>
-                                        <div className="text-sm text-[#616f89] dark:text-slate-400 mb-4 leading-relaxed">
+                                        <div className="text-sm font-semibold text-[#111318] dark:text-slate-300 mb-4 leading-relaxed">
                                             <MathRenderer content={explanationText} />
                                             {step.rules_used && step.rules_used.length > 0 && (
-                                                <span className="block mt-2 italic text-xs">
+                                                <span className="block mt-2 px-3 py-1.5 rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-xs font-medium not-italic">
                                                     Using: {step.rules_used.join(", ")}
                                                 </span>
                                             )}
@@ -184,35 +184,42 @@ export default function StepsTab({ steps, visuals }: StepsTabProps) {
 
                                 {/* Middle/Right Content: Math Work Box (40% width) */}
                                 <div className="lg:col-span-4">
-                                    {cardLines.length > 0 && (
-                                        <div className="w-full h-full bg-white dark:bg-[#1e2634] p-4 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c] flex flex-col items-center justify-center shadow-sm overflow-hidden">
-                                            <div className="text-center space-y-2 w-full overflow-x-auto">
-                                                {cardLines.map((line, idx) => {
-                                                    const isLastLine = idx === cardLines.length - 1;
+                                    {(() => {
+                                        // Get all non-empty parts after splitting on semicolons
+                                        const allParts = cardLines.flatMap(line =>
+                                            line.split(';').map(p => p.trim()).filter(p => p.length > 0)
+                                        );
 
-                                                    // Determine if line is text using heuristic
-                                                    const spaceCount = (line.match(/\s/g) || []).length;
-                                                    const isText = spaceCount >= 3;
+                                        // Only render if there's actual content
+                                        if (allParts.length === 0) return null;
 
-                                                    const textClass = (isLastLine && !isText)
-                                                        ? "text-base font-bold text-primary"
-                                                        : "text-sm text-[#111318] dark:text-white font-medium"; // Corrected to text-sm
+                                        return (
+                                            <div className="w-full h-full bg-white dark:bg-[#1e2634] p-4 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c] shadow-sm relative">
+                                                <div className="absolute inset-0 flex flex-col items-center justify-center p-4 overflow-y-auto">
+                                                    <div className="text-center space-y-2 w-full">
+                                                        {allParts.map((part, idx) => {
+                                                            const isLastPart = idx === allParts.length - 1;
+                                                            const textClass = isLastPart
+                                                                ? "text-base font-bold text-primary"
+                                                                : "text-sm text-[#111318] dark:text-white font-medium";
 
-                                                    return (
-                                                        <div key={idx} className="flex flex-col items-center w-full">
-                                                            <div className={`break-words whitespace-normal max-w-full px-1 ${textClass}`}>
-                                                                <MathRenderer
-                                                                    content={line}
-                                                                    inline={true}
-                                                                    forceMath={!isText}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
+                                                            return (
+                                                                <div key={idx} className="flex flex-col items-center w-full">
+                                                                    <div className={`break-words whitespace-normal max-w-full px-1 ${textClass}`}>
+                                                                        <MathRenderer
+                                                                            content={part}
+                                                                            inline={true}
+                                                                            forceMath={true}
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
+                                        );
+                                    })()}
                                 </div>
                             </div>
                         </div>
