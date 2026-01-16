@@ -8,38 +8,56 @@ interface WorkspaceTabsProps {
     stepsCount?: number;
 }
 
+
 export default function WorkspaceTabs({ activeTab, onSelectTab, stepsCount = 0 }: WorkspaceTabsProps) {
     const tabs = [
-        { id: "steps", label: "Steps" },
-        { id: "verification", label: "Verification" },
-        { id: "concepts", label: "Concepts" },
-        { id: "practice", label: "Practice" }
+        { id: "steps", label: "Steps", icon: "format_list_numbered" },
+        { id: "verification", label: "Verification", icon: "verified_user" },
+        { id: "concepts", label: "Concepts", icon: "lightbulb" },
+        { id: "practice", label: "Practice", icon: "fitness_center" }
     ] as const;
 
     return (
-        <div className="flex items-center gap-6 border-b border-gray-200 dark:border-border-dark">
-            {tabs.map(tab => {
-                const isActive = activeTab === tab.id;
-                return (
-                    <button
-                        key={tab.id}
-                        onClick={() => onSelectTab(tab.id)}
-                        className={`px-1 pb-3 text-sm font-medium transition-colors ${isActive
-                            ? "border-b-2 border-primary text-primary dark:text-accent font-bold"
-                            : "text-gray-500 hover:text-gray-800 dark:text-slate-400 dark:hover:text-slate-200"
-                            }`}
-                    >
-                        <span className="flex items-center gap-2">
-                            {tab.label}
+        <div className="w-full">
+            {/* Premium Segmented Control Container */}
+            <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 dark:bg-[#0f1115] rounded-xl border border-slate-200 dark:border-white/5 overflow-x-auto no-scrollbar">
+                {tabs.map(tab => {
+                    const isActive = activeTab === tab.id;
+                    return (
+                        <button
+                            key={tab.id}
+                            onClick={() => onSelectTab(tab.id as any)}
+                            className={`
+                                relative flex-1 min-w-[100px] flex items-center justify-center gap-2 py-3 px-3 rounded-lg text-sm font-bold transition-all duration-300 ease-out select-none
+                                ${isActive
+                                    ? "bg-white dark:bg-[#1e2634] text-primary shadow-sm shadow-slate-200/50 dark:shadow-none ring-1 ring-black/5 dark:ring-white/10 scale-[1.02]"
+                                    : "text-slate-500 dark:text-slate-400 hover:bg-white/60 dark:hover:bg-white/5 hover:text-slate-700 dark:hover:text-slate-200"
+                                }
+                            `}
+                        >
+                            {/* Icon with motion pop */}
+                            <span className={`material-symbols-outlined text-[20px] transition-transform duration-300 ${isActive ? 'scale-110' : ''} ${isActive ? 'fill-1' : ''}`}>
+                                {tab.icon}
+                            </span>
+
+                            <span className="whitespace-nowrap">{tab.label}</span>
+
+                            {/* Steps Badge */}
                             {tab.id === "steps" && stepsCount > 0 && (
-                                <span className="px-1.5 py-0.5 rounded-full bg-primary/10 dark:bg-accent/20 text-[10px] font-bold">
-                                    1/{stepsCount}
+                                <span className={`
+                                    ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-extrabold transition-colors
+                                    ${isActive
+                                        ? "bg-primary/10 text-primary"
+                                        : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
+                                    }
+                                `}>
+                                    {stepsCount}
                                 </span>
                             )}
-                        </span>
-                    </button>
-                );
-            })}
+                        </button>
+                    );
+                })}
+            </div>
         </div>
     );
 }

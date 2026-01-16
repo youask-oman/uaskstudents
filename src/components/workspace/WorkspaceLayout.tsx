@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import MathRenderer, { sanitizeLatex } from '../MathRenderer';
+import WorkspaceTabs from './WorkspaceTabs';
 
 interface WorkspaceMessage {
     role: string;
@@ -373,32 +374,11 @@ export default function WorkspaceLayout({
 
                 {/* Tabbed Interface Headers */}
                 <div className="flex flex-col gap-6">
-                    <div className="flex border-b border-[#e5e7eb] dark:border-[#2a303c] gap-8">
-                        <button
-                            onClick={() => onSelectTab("steps")}
-                            className={`pb-3 border-b-2 font-bold text-sm transition-colors ${activeTab === "steps" ? "border-primary text-primary" : "border-transparent text-[#616f89] dark:text-slate-400 hover:text-primary"}`}
-                        >
-                            Steps
-                        </button>
-                        <button
-                            onClick={() => onSelectTab("verification")}
-                            className={`pb-3 border-b-2 font-bold text-sm transition-colors ${activeTab === "verification" ? "border-primary text-primary" : "border-transparent text-[#616f89] dark:text-slate-400 hover:text-primary"}`}
-                        >
-                            Verification
-                        </button>
-                        <button
-                            onClick={() => onSelectTab("concepts")}
-                            className={`pb-3 border-b-2 font-bold text-sm transition-colors ${activeTab === "concepts" ? "border-primary text-primary" : "border-transparent text-[#616f89] dark:text-slate-400 hover:text-primary"}`}
-                        >
-                            Concepts
-                        </button>
-                        <button
-                            onClick={() => onSelectTab("practice")}
-                            className={`pb-3 border-b-2 font-bold text-sm transition-colors ${activeTab === "practice" ? "border-primary text-primary" : "border-transparent text-[#616f89] dark:text-slate-400 hover:text-primary"}`}
-                        >
-                            Practice
-                        </button>
-                    </div>
+                    <WorkspaceTabs
+                        activeTab={activeTab}
+                        onSelectTab={onSelectTab}
+                        stepsCount={stepsCount}
+                    />
 
                     {/* Tab Content (Children) */}
                     <div>
