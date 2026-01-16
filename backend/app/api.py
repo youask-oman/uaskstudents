@@ -30,6 +30,9 @@ from app.services.ocr.crop_service import crop_service
 from app.services.ocr.ocr_router_service import ocr_router_service
 from app.services.ocr.audit_log_service import audit_log_service
 from app.services.ocr.ocr_service import ocr_service
+from app.services.solve.canonicalization_service import canonicalization_service
+from app.services.solve.cache_service import cache_service
+from app.config import get_settings
 
 
 
@@ -1398,6 +1401,28 @@ async def solve_v3_endpoint(
 
     validate_math_query(problem_text)
     
+    # --- CACHE LOGIC ---
+    settings = get_settings()
+    canonical_key = None
+    intent = "unknown"
+    math_obj = ""
+    assumptions = {}
+    result = None
+    was_cached = False
+    
+    if settings.CANONICAL_CACHE_ENABLED:
+        try:
+            intent = canonicalization_service.get_intent(problem_text)
+            math_obj, assumptions = canonicalization_service.normalize_math_object(problem_text, intent)
+            canonical_key = canonicalization_service.compute_canonical_key(intent, math_obj, assumptions)
+            
+            result = cache_service.get_cached_solution(session, canonical_key)
+            if result:
+                print(f"[CACHE] Hit: {canonical_key}")
+                was_cached = True
+        except Exception as e:
+            print(f"[CACHE] Error: {e}")
+    
     # Context assembly
     context = f"Subject: {body.subject or 'General'}"
     if body.difficulty:
@@ -1508,13 +1533,14 @@ async def solve_v3_endpoint(
 
     
     try:
-        # Call Solver V3
-        solver = get_solver_v3()
-        result = await solver.solve(
-            problem_text=problem_text,
-            context=context,
-            trace=trace
-        )
+        # Call Solver V3 (Logic: Only if not cached)
+        if not result:
+            solver = get_solver_v3()
+            result = await solver.solve(
+                problem_text=problem_text,
+                context=context,
+                trace=trace
+            )
         
         # Check if it's an error response
         if result.get("error", False):
@@ -1566,6 +1592,18 @@ async def solve_v3_endpoint(
             except Exception as e:
                 print(f"[API_V3] Failed to save plot: {e}")
                 # Continue without plot - non-critical
+
+        # --- CACHE STORE --- (Only if fresh solve and successful)
+        if not was_cached and canonical_key and settings.CACHE_WRITE_ENABLED and not result.get("error"):
+            try:
+                # Store processed result (with plot_url if any? No, we store raw usually, but here result has plot info)
+                # Ideally we store the result as is
+                cache_service.store_solution(
+                    session, canonical_key, problem_text, intent, math_obj, [], assumptions, result
+                )
+                print(f"[CACHE] Stored: {canonical_key}")
+            except Exception as e:
+                print(f"[CACHE] Store failed: {e}")
         
         # Create chat session
         new_chat = ChatSession(

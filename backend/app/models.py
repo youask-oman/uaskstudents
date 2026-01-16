@@ -252,7 +252,19 @@ class OCRConfirmation(SQLModel, table=True):
 class CanonicalProblem(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     normalized_problem_hash: str = Field(index=True, unique=True)
-    normalized_text: str
+    
+    # Core Canonical Fields
+    normalized_text: str # Original normalized text (backward compat)
+    intent: str = Field(default="unknown", index=True)
+    canonical_math_object: str = Field(default="")
+    assumptions_hash: Optional[str] = None
+    
+    # Versioning (Part of Key)
+    prompt_version: Optional[str] = None
+    solver_version: Optional[str] = None
+    schema_version: Optional[str] = None
+    
+    # Metadata
     normalized_latex_blocks: Optional[List[dict]] = Field(default=None, sa_column=Column(JSON))
     subject: Optional[str] = None
     language: str = Field(default="en")
@@ -267,6 +279,10 @@ class CanonicalSolution(SQLModel, table=True):
     solution_json: dict = Field(sa_column=Column(JSON))
     verification_status: str = Field(default="pending") # pass, partial, fail
     verification_report: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    
+    # Redundant version info for easy access
+    prompt_version: Optional[str] = None
+    model_id: Optional[str] = None
     
     created_at: datetime = Field(default_factory=datetime.utcnow)
     last_served_at: datetime = Field(default_factory=datetime.utcnow)
