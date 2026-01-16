@@ -97,15 +97,22 @@ def run_ocr_job(self, job_id: str):
             skip_refinement = fast_mode or os.getenv("OCR_SKIP_REFINEMENT", "0") == "1"
             max_refinements = int(os.getenv("OCR_MAX_FIGURE_REFINEMENTS", "3"))
 
+            # Resolve engine: use requested engine, or fall back to "auto" (uses OCR_ENGINE env var)
+            engine_to_use = job.requested_engine if job.requested_engine != "auto" else "auto"
+            
             # --- STAGE 1: OCR Extraction (Pass 1) ---
-            logger.info(f"Running Pass 1 (OCR) for job {job_id}...")
+            logger.info(f"Running Pass 1 (OCR) for job {job_id} with engine={engine_to_use}...")
             start_time = time.time()
             ocr_result = ocr_service.process_job(
                 crop.cropped_storage_url, 
-                engine_name=job.requested_engine,
-                out_dir=assets_dir if job.requested_engine == "local" else None
+                engine_name=engine_to_use,
+                out_dir=assets_dir if engine_to_use == "local" else None
             )
             latency_ms = int((time.time() - start_time) * 1000)
+            
+            # Log which engine was actually used (may differ from requested due to fallback)
+            engine_used = ocr_result.get("engine_used", engine_to_use)
+            logger.info(f"OCR completed: engine_used={engine_used}, latency={latency_ms}ms")
             
             raw_markdown = ocr_result.get("markdown", "")
             blocks = markdown_block_parser.parse(raw_markdown)

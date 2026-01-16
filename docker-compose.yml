@@ -69,6 +69,9 @@ services:
       ULTRALYTICS_CONFIG_DIR: /tmp/Ultralytics
       YOLO_RUNS_DIR: /tmp/Ultralytics/runs
       RUNS_DIR: /tmp/Ultralytics/runs
+      # OCR Engine: vlm (default, fast), local (private), auto (vlm with fallback)
+      OCR_ENGINE: ${OCR_ENGINE:-vlm}
+      VLM_MODEL_OCR: ${VLM_MODEL_OCR:-gpt-4o}
     depends_on:
       postgres:
         condition: service_healthy

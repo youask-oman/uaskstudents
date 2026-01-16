@@ -319,8 +319,9 @@ export default function DashboardPage() {
     const PROGRESS_STEPS = [
         { label: "Uploading Image...", percent: 10 },
         { label: "Saving Crop...", percent: 30 },
-        { label: "OCR Job Queued...", percent: 50 },
-        { label: "Extracting LaTeX...", percent: 80 },
+        { label: "OCR Job Queued...", percent: 45 },
+        { label: "Analyzing Image... (this may take a moment)", percent: 65 },
+        { label: "Extracting LaTeX...", percent: 85 },
         { label: "Finalizing...", percent: 100 }
     ];
 
@@ -456,6 +457,10 @@ export default function DashboardPage() {
                 } else if (data.status === 'failed') {
                     throw new Error(data.error_message || "OCR Job Failed");
                 } else {
+                    // Update UI for processing state
+                    if (data.status === 'processing') {
+                        setProgressStep(3); // Analyzing Image
+                    }
                     // Keep polling with exponential backoff
                     setTimeout(poll, backoff);
                     backoff = Math.min(backoff * 1.5, maxBackoff);
