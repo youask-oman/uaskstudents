@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 
 export default function TopNavBar() {
     const [isDark, setIsDark] = useState(false);
+    const [user, setUser] = useState<{ name: string, avatar: string } | null>(null);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     useEffect(() => {
         // Check initial preference
@@ -15,6 +17,15 @@ export default function TopNavBar() {
         } else {
             setIsDark(false);
             document.documentElement.classList.remove('dark');
+        }
+
+        // Check Auth
+        const token = localStorage.getItem("token");
+        if (token) {
+            setUser({
+                name: localStorage.getItem("user_name") || "User",
+                avatar: localStorage.getItem("user_avatar") || ""
+            });
         }
     }, []);
 
@@ -28,6 +39,18 @@ export default function TopNavBar() {
             localStorage.theme = 'dark';
             setIsDark(true);
         }
+    };
+
+    const handleLogout = () => {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user_id");
+        localStorage.removeItem("user_name");
+        localStorage.removeItem("user_role");
+        localStorage.removeItem("user_avatar");
+        localStorage.removeItem("session_token");
+        localStorage.removeItem("user");
+        setUser(null);
+        window.location.href = "/";
     };
 
     return (
@@ -57,20 +80,59 @@ export default function TopNavBar() {
                         </span>
                     </button>
 
-                    <Link href="/login">
-                        <button className="hidden sm:flex px-4 py-2 text-[#111318] dark:text-white text-sm font-bold hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-                            Login
-                        </button>
-                    </Link>
+                    {user ? (
+                        <div className="flex items-center gap-3">
+                            <Link href="/solve">
+                                <button className="hidden sm:flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary text-sm font-bold hover:bg-primary/20 rounded-lg transition-colors">
+                                    <span className="material-symbols-outlined text-[18px]">dashboard</span>
+                                    Workspace
+                                </button>
+                            </Link>
 
-                    <Link href="/signup">
-                        <button className="flex items-center justify-center rounded-lg h-10 px-5 bg-primary text-white text-sm font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-primary/20">
-                            Sign Up
-                        </button>
-                    </Link>
+                            <div className="relative group">
+                                <button className="h-9 w-9 rounded-full bg-gradient-to-tr from-primary to-purple-500 text-white flex items-center justify-center font-bold text-sm border-2 border-white dark:border-slate-800">
+                                    {user.avatar ? <img src={user.avatar} className="rounded-full w-full h-full object-cover" /> : user.name.charAt(0)}
+                                </button>
+                                {/* Dropdown */}
+                                <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right z-50">
+                                    <div className="p-3 border-b border-gray-100 dark:border-slate-800">
+                                        <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{user.name}</p>
+                                    </div>
+                                    <div className="p-1">
+                                        <Link href="/profile" className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-lg">
+                                            <span className="material-symbols-outlined text-[18px]">person</span>
+                                            Profile
+                                        </Link>
+                                        <Link href="/solve" className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-lg">
+                                            <span className="material-symbols-outlined text-[18px]">calculate</span>
+                                            Solver
+                                        </Link>
+                                        <button onClick={handleLogout} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg">
+                                            <span className="material-symbols-outlined text-[18px]">logout</span>
+                                            Sign Out
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            <Link href="/login">
+                                <button className="hidden sm:flex px-4 py-2 text-[#111318] dark:text-white text-sm font-bold hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                                    Login
+                                </button>
+                            </Link>
 
-                    <button className="hidden md:flex items-center justify-center rounded-lg h-10 w-10 bg-[#f0f2f4] dark:bg-slate-800 text-[#111318] dark:text-white hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors">
-                        <span className="material-symbols-outlined">open_in_new</span>
+                            <Link href="/signup">
+                                <button className="flex items-center justify-center rounded-lg h-10 px-5 bg-primary text-white text-sm font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-primary/20">
+                                    Sign Up
+                                </button>
+                            </Link>
+                        </>
+                    )}
+
+                    <button className="md:hidden p-2 text-[#111318] dark:text-white hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                        <span className="material-symbols-outlined">menu</span>
                     </button>
                 </div>
             </div>

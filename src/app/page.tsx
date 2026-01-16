@@ -1,6 +1,7 @@
 import Link from "next/link";
 import TopNavBar from "@/components/TopNavBar";
 import Footer from "@/components/Footer";
+import HeroCTA from "@/components/HeroCTA";
 
 export default function Home() {
   return (
@@ -21,12 +22,7 @@ export default function Home() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-4">
-                <Link href="/signup">
-                  <button className="h-14 px-8 bg-primary text-white rounded-xl font-bold text-lg hover:scale-[1.02] transition-transform shadow-xl shadow-primary/25 flex items-center gap-2">
-                    Get Started for Free
-                    <span className="material-symbols-outlined">arrow_forward</span>
-                  </button>
-                </Link>
+                <HeroCTA />
                 <button className="h-14 px-8 bg-white dark:bg-slate-800 border border-[#dbdfe6] dark:border-slate-700 text-[#111318] dark:text-white rounded-xl font-bold text-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
                   Watch Demo
                 </button>

@@ -46,60 +46,128 @@ api_router = APIRouter()
 
 
 # --- Helper Functions ---
-def _transform_v2_to_v1_format(v2_data: Dict[str, Any]) -> Dict[str, Any]:
+def _transform_v3_to_v1_format(v3_data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Transform Solver V2 response format to V1 format for frontend compatibility.
+    Transform Solver V3 response format to V1 format for frontend compatibility.
     
-    V2 Format:
-    - verification.methods_used[]: {name, steps[], result}
-    - concepts[]: {name, description, applies_here}
+    V3 Format:
+    - verification: {method, work_latex, conclusion, alternative_method}
+    - No concepts array (derived from rules/steps)
     
     V1 Format:
     - verification.methods[]: {name, math: {latex_lines: []}, result, steps}
-    - concepts[] (same structure)
+    - concepts[]: {name, description, applies_here}
     """
     try:
-        print(f"[TRANSFORM] Starting V2 to V1 transformation")
-        transformed = v2_data.copy()
+        # print(f"[TRANSFORM] Starting V3 to V1 transformation") # Debug logging
+        transformed = v3_data.copy()
         
-        # Transform verification.methods_used -> verification.methods
-        if "verification" in transformed and "methods_used" in transformed["verification"]:
-            methods_v2 = transformed["verification"]["methods_used"]
-            methods_v1 = []
+        # Transform V3 verification -> V1 verification.methods
+        methods_v1 = []
+        if "verification" in transformed and isinstance(transformed["verification"], dict):
+            verif_v3 = transformed["verification"]
             
-            for method in methods_v2:
-                # Convert steps array to latex_lines format
+            # Primary Method
+            if "method" in verif_v3:
+                methods_v1.append({
+                    "name": verif_v3.get("method", "Verification"),
+                    "math": {
+                        "latex_lines": [line.strip() for line in verif_v3.get("work_latex", "").split("\n") if line.strip()]
+                    },
+                    "result": verif_v3.get("conclusion", "Verified"),
+                    "steps": []
+                })
+            
+            # Alternative Method
+            if "alternative_method" in verif_v3 and verif_v3["alternative_method"]:
+                alt = verif_v3["alternative_method"]
+                methods_v1.append({
+                    "name": alt.get("name", "Alternative"),
+                    "math": {
+                        "latex_lines": [] # V3 alt method is just summary usually?
+                    },
+                    "result": alt.get("summary", ""),
+                    "steps": []
+                })
+                
+                
+        # If no methods extracted but verification exists (maybe V2 style fallback?), try methods_used
+        if not methods_v1 and "verification" in transformed and "methods_used" in transformed["verification"]:
+             # Fallback for V2 inputs
+             for method in transformed["verification"]["methods_used"]:
                 steps_text = method.get("steps", [])
                 latex_lines = steps_text if isinstance(steps_text, list) else [steps_text]
-                
-                method_v1 = {
+                methods_v1.append({
                     "name": method.get("name", ""),
-                    "math": {
-                        "latex_lines": latex_lines
-                    },
+                    "math": {"latex_lines": latex_lines},
                     "result": method.get("result", ""),
-                    "steps": steps_text  # Keep original for compatibility
-                }
-                methods_v1.append(method_v1)
+                    "steps": steps_text
+                })
+
+        transformed["verification"] = {"methods": methods_v1}
+        
+        # Transform V3 visuals (object) -> V1 visuals (list of plots)
+        if "visuals" in transformed and isinstance(transformed["visuals"], dict):
+            visuals_v3 = transformed["visuals"]
+            # Extract plots list
+            plots = visuals_v3.get("plots") or []
+            # Check for alternative visual if no plots?
+            # V1 expects list of plot specs.
+            transformed["visuals"] = plots
             
-            # Replace methods_used with methods
-            transformed["verification"]["methods"] = methods_v1
-            if "methods_used" in transformed["verification"]:
-                del transformed["verification"]["methods_used"]
-            
-            print(f"[TRANSFORM] Converted {len(methods_v1)} verification methods")
+            # V3 doesn't typically separate 'visuals_suggested', it has 'alternative_visual' in the object.
+            # We can map 'alternative_visual' to 'visuals_suggested' list if needed?
+            # For now, just extracting plots is crucial.
+
         
         # Ensure concepts array exists
         if "concepts" not in transformed or not transformed["concepts"]:
-            print(f"[TRANSFORM] WARNING: No concepts found, adding default")
             transformed["concepts"] = [
                 {
                     "name": "Problem Solving",
-                    "description": "Breaking down problems into manageable steps",
-                    "applies_here": "Applied systematic approach to solve this problem"
+                    "description": "Systematic approach",
+                    "applies_here": "Applied logical steps to find the solution."
                 }
             ]
+            
+        # Ensure solution object exists (V1 expects top level solution dict sometimes, or flattened?)
+        # V1: solution_data.get("solution", solution_data) in return.
         
+        # GENERATE _content (Markdown) for ChatMessage if missing
+        if "_content" not in transformed:
+            md_lines = []
+            
+            # Problem Goal
+            if "problem" in transformed and "original_text" in transformed["problem"]:
+                 md_lines.append(f"**Problem:** {transformed['problem']['original_text']}\n")
+            
+            # Steps
+            if "steps" in transformed and isinstance(transformed["steps"], list):
+                md_lines.append("**Solution Steps:**\n")
+                for step in transformed["steps"]:
+                    title = step.get("title", f"Step {step.get('index', '')}")
+                    explanation = step.get("explanation", "")
+                    latex = step.get("math_latex", "")
+                    
+                    md_lines.append(f"**{title}**")
+                    md_lines.append(explanation)
+                    if latex:
+                        md_lines.append(f"$$ {latex} $$")
+                    md_lines.append("") # Spacer
+            
+            # Final Answer
+            if "final_answer" in transformed:
+                fa = transformed["final_answer"]
+                ans_text = fa.get("answer_text", "")
+                ans_latex = fa.get("answer_latex", "")
+                
+                md_lines.append("**Final Answer:**")
+                md_lines.append(ans_text)
+                if ans_latex:
+                    md_lines.append(f"$$ {ans_latex} $$")
+            
+            transformed["_content"] = "\n".join(md_lines)
+            
         print(f"[TRANSFORM] Success! Transformed keys: {list(transformed.keys())}")
         return transformed
         
@@ -1157,6 +1225,8 @@ async def solve_problem(
                     is_already_saved = True
 
         # RETURN CACHED SOLUTION
+        model_name = cached_solution.get("_model", model_name_fallback)
+        
         new_chat = ChatSession(
             user_id=user_id,
             title=cached_solution.get("problem", {}).get("goal", "Resolved Problem")[:50],
@@ -1206,66 +1276,49 @@ async def solve_problem(
 
     concepts = await rag_service.search_related_concepts(base_query_for_retrieval)
 
-    # 4. Solve (Calling expensive LLM with context enhancement)
-    # Check if Solver V2 is enabled
-    use_solver_v2 = os.environ.get("SOLVER_V2_ENABLED", "false").lower() == "true"
-    use_stub = os.environ.get("SOLVER_STUB_ENABLED", "false").lower() == "true"
-
-    if use_stub:
-        from app.services.solver_stub import get_stub_solution_v1
-        print("[API] Using solver stub (V1 format)")
-        solution_data = get_stub_solution_v1(final_prompt)
-        use_solver_v2 = False
-    elif use_solver_v2:
-        # Use Solver V2 - Responses API with structured outputs
-        from app.services.solver_v2 import solver_service_v2
-        
-        try:
-            print(f"[API] Using Solver V2 for: {final_prompt[:50]}...")
-            solution_data = await solver_service_v2.solve_problem_v2(
-                problem_text=final_prompt,
-                context=None,
-                user_id=user_id,
-                trace=False
-            )
-            
-            # V2 response includes _content (student-friendly markdown)
-            # and _model (actual model used)
-            print(f"[API] Solver V2 returned successfully")
-            print(f"[API] Response keys: {list(solution_data.keys())}")
-            
-        except Exception as e:
-            print(f"[API_ERROR] Solver V2 failed: {type(e).__name__}: {e}")
-            import traceback
-            traceback.print_exc()
-            print(f"[API] Falling back to Solver V1...")
-            # Fallback to V1 on error
-            try:
-                solution_data = await solver_service.solve_problem(final_prompt)
-                print(f"[API] Solver V1 fallback successful")
-            except Exception as v1_error:
-                print(f"[API_FATAL] Solver V1 also failed: {type(v1_error).__name__}: {v1_error}")
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"All solvers failed. V2: {str(e)}, V1: {str(v1_error)}"
-                )
-    else:
-        # Use legacy Solver V1
-        print(f"[API] Using Solver V1 (V2 disabled)")
-        try:
-            solution_data = await solver_service.solve_problem(final_prompt)
-            print(f"[API] Solver V1 successful")
-        except Exception as e:
-            print(f"[API_ERROR] Solver V1 failed: {type(e).__name__}: {e}")
-            import traceback
-            traceback.print_exc()
-            raise HTTPException(status_code=500, detail=f"Solver failed: {str(e)}")
+    # 4. Solve (Using Solver V3 exclusively)
+    from app.services.solver_v3 import get_solver_v3
     
-    # Transform V2 format to V1 format for frontend compatibility
-    if use_solver_v2 and solution_data:
-        print(f"[API] Transforming V2 response to V1 format...")
-        solution_data = _transform_v2_to_v1_format(solution_data)
+    # Build Context
+    context = f"Subject: {body.subject or 'General'}"
+    if body.difficulty:
+        context += f", Difficulty: {body.difficulty}"
+    if body.mode:
+        context += f", Mode: {body.mode}"
+    
+    # Student Location & Curriculum Context
+    user = session.get(User, user_id)
+    if user:
+         country = user.profile_country or 'Canada'
+         province = user.profile_province_state or 'ON'
+         # context += f"\nCountry: {country}, Province: {province}"
+         # Use implied curriculum hints if needed, but for now location is key
+         if user.grade_level:
+             context += f", Grade: {user.grade_level}"
+
+    if concepts:
+         context += f"\nRelated Concepts: {', '.join([c.get('title') for c in concepts])}"
+
+    solver = get_solver_v3()
+    try:
+        print(f"[API] Using Solver V3 for: {final_prompt[:50]}...")
+        solution_data = await solver.solve(
+            problem_text=final_prompt,
+            context=context,
+            trace=body.mode == "debug"
+        )
+        print(f"[API] Solver V3 returned successfully")
+        
+        # Transform V3 format (SolveResponseV3) to V1 format (SolveResponse)
+        print(f"[API] Transforming V3 response to V1 format...")
+        solution_data = _transform_v3_to_v1_format(solution_data)
         print(f"[API] Transformation complete")
+        
+    except Exception as e:
+        print(f"[API_ERROR] Solver V3 failed: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Solver V3 failed: {str(e)}")
     
     # DEBUG LOGGING
     print(f"DEBUG: LLM Response Visuals: {json.dumps(solution_data.get('visuals', []), indent=2)}")
@@ -1564,43 +1617,28 @@ async def solve_v3_endpoint(
             )
         
         # Check if it's an error response - fallback to V2 if V3 fails
+        # Check if it's an error response
         if result.get("error", False):
-            print(f"[API_V3] Solver V3 returned error: {result.get('error_type')}, falling back to V2...")
+            print(f"[API_V3] Solver V3 returned error: {result.get('error_type')}")
             
-            # Try Solver V2 as fallback
-            try:
-                from app.services.solver_v2 import solver_service_v2
-                result = await solver_service_v2.solve_problem_v2(
-                    problem_text=problem_text,
-                    context=context,
-                    user_id=user_id,
-                    trace=trace
-                )
-                print(f"[API_V3] Solver V2 fallback successful")
-                # V2 doesn't return the same error format, so we can proceed
-                if not result.get("error", False):
-                    # Convert V2 response to V3-compatible format
-                    pass  # V2 response is already compatible enough
-            except Exception as v2_error:
-                print(f"[API_V3] Solver V2 fallback also failed: {v2_error}")
-                # Return original V3 error
-                new_chat = ChatSession(
-                    user_id=user_id,
-                    title="Error: " + problem_text[:40],
-                    subject=body.subject or "General",
-                    is_saved=False
-                )
-                session.add(new_chat)
-                session.commit()
-                session.refresh(new_chat)
-                
-                return {
-                    "session_id": new_chat.id,
-                    "error": True,
-                    "error_type": result.get("error_type"),
-                    "message": result.get("message"),
-                    "validation_errors": result.get("validation_errors", [])
-                }
+            # Record error in a chat session for visibility
+            new_chat = ChatSession(
+                user_id=user_id,
+                title="Error: " + problem_text[:40],
+                subject=body.subject or "General",
+                is_saved=False
+            )
+            session.add(new_chat)
+            session.commit()
+            session.refresh(new_chat)
+            
+            return {
+                "session_id": new_chat.id,
+                "error": True,
+                "error_type": result.get("error_type"),
+                "message": result.get("message"),
+                "validation_errors": result.get("validation_errors", [])
+            }
         
         # Success - process plot if available
         plot_url = None

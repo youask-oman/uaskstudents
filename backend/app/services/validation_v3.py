@@ -11,7 +11,8 @@ from dataclasses import dataclass
 from jsonschema import validate, ValidationError as JsonSchemaValidationError, Draft202012Validator
 from pydantic import ValidationError as PydanticValidationError
 
-from app.schemas.na_math_solver_v3 import SolveResponseV3, ErrorResponseV3
+from app.schemas.na_math_solver_v3 import SolveResponseV3, ErrorResponseV3, get_json_schema_for_openai_v3
+from app.utils.schema_deref import deref_json_schema
 from app.prompts import get_schema
 
 
@@ -36,8 +37,18 @@ class SchemaValidator:
     """
     
     def __init__(self):
-        """Initialize validator with schema."""
-        self.schema = get_schema("na_math_solver")
+        """Initialize validator with source-of-truth Pydantic schema."""
+        # Use simple un-dereferenced schema for local validation if validator supports refs, 
+        # OR use dereferenced one. JSonschema library handles $refs if specificed correctly.
+        # But to be consistent with what OpenAI sees, we use the dereferenced strictly-typed schema.
+        try:
+            raw_schema = get_json_schema_for_openai_v3()
+            self.schema = deref_json_schema(raw_schema)
+        except Exception as e:
+            # Fallback (log error)
+            print(f"Error loading Pydantic schema for validation: {e}. Falling back to file registry.")
+            self.schema = get_schema("na_math_solver")
+            
         self.validator = Draft202012Validator(self.schema)
     
     def validate(self, data: Dict[str, Any], strict: bool = True) -> ValidationResult:

@@ -14,7 +14,7 @@ from datetime import datetime
 from app.schemas.na_math_solver_v3 import get_json_schema_for_openai_v3
 from app.services.validation_v3 import validate_response, create_error_response, generate_repair_prompt
 from app.prompts import get_prompt, get_schema
-from app.prompts import get_prompt, get_schema
+from app.utils.schema_deref import deref_json_schema, validate_no_refs
 
 class SolverV3:
     """
@@ -129,6 +129,7 @@ class SolverV3:
             telemetry["latency_ms_total"] = int((time.time() - start_time) * 1000)
             response_data["_telemetry"] = telemetry
             response_data["_timestamp"] = datetime.utcnow().isoformat()
+            response_data["schema_version"] = "v1.0"
             
             if trace:
                  print(f"[SOLVER_V3] ==================== SUCCESS ====================")
@@ -176,7 +177,7 @@ Context: {context if context else "No additional context provided."}
                         "type": "json_schema",
                         "name": "solve_response_v3",
                         "strict": True,
-                        "schema": get_json_schema_for_openai_v3()
+                        "schema": deref_json_schema(get_json_schema_for_openai_v3())
                     }
                 },
                 "max_output_tokens": 5000
@@ -213,7 +214,7 @@ Context: {context if context else "No additional context provided."}
                     "json_schema": {
                         "name": "solve_response_v3",
                         "strict": True,
-                        "schema": get_json_schema_for_openai_v3()
+                        "schema": deref_json_schema(get_json_schema_for_openai_v3())
                     }
                 }
             }
@@ -252,7 +253,7 @@ Context: {context if context else "No additional context provided."}
                 "json_schema": {
                     "name": "solve_response_v3",
                     "strict": True,
-                    "schema": get_json_schema_for_openai_v3()
+                    "schema": deref_json_schema(get_json_schema_for_openai_v3())
                 }
             }
         }
