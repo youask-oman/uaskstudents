@@ -203,7 +203,9 @@ export default function StepsTab({
                     {visuals.map(visual => (
                         <div key={visual.id} className="bg-white dark:bg-[#1e2634] rounded-xl border border-[#e5e7eb] dark:border-[#2a303c] overflow-hidden p-4 shadow-sm">
                             <div className="flex items-center justify-between mb-4">
-                                <h4 className="font-bold text-sm text-[#111318] dark:text-white">{visual.title || "Graph"}</h4>
+                                <h4 className="font-bold text-sm text-[#111318] dark:text-white">
+                                    <MathRenderer content={visual.title || "Graph"} inline />
+                                </h4>
                                 <span className="material-symbols-outlined text-primary text-[24px]">monitoring</span>
                             </div>
                             <div className="w-full h-[400px]">

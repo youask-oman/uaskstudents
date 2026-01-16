@@ -132,10 +132,10 @@ function injectMissingMathDelimiters(text: string): string {
         if (part.startsWith('`') || part.startsWith('$')) return part;
 
         // Otherwise, look for raw LaTeX patterns
-        // Regex: matches \cmd (excluding left/right/begin/end) possibly followed by {args} with up to 1 level of nesting
-        // We exclude structural commands like \left, \right because wrapping them individually breaks the pair.
+        // Regex: matches \cmd (excluding left/right/begin/end) possibly followed by multiple {args} groups (for \frac{a}{b} etc)
+        // allowing up to 1 level of nesting inside braces.
         return part.replace(
-            /(\\(?!left|right|begin|end)[a-zA-Z]+(?:\{([^{}]|(\{[^{}]*\}))*\})?)+/g,
+            /(\\(?!left|right|begin|end)[a-zA-Z]+(?:\{([^{}]|(\{[^{}]*\}))*\})*)+/g,
             (match) => `$${match}$`
         );
     }).join('');

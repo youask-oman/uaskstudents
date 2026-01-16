@@ -4,6 +4,8 @@ import React from 'react';
 import dynamic from 'next/dynamic';
 import katex from 'katex';
 
+import MathRenderer from '../MathRenderer';
+
 // Dynamically import Plot with no SSR
 const Plot = dynamic(() => import('react-plotly.js'), { ssr: false });
 
@@ -94,7 +96,9 @@ export default function VisualRenderer({ visual, height = 350 }: VisualRendererP
         <div className="w-full bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-border-dark overflow-hidden my-4 shadow-sm">
             {visual.title && (
                 <div className="px-4 py-2 border-b border-slate-100 dark:border-border-dark bg-slate-50/50 dark:bg-white/5">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{visual.title}</span>
+                    <span className="text-xs font-bold tracking-wider text-slate-500">
+                        <MathRenderer content={visual.title} inline />
+                    </span>
                 </div>
             )}
             <div className="p-2 flex justify-center bg-white dark:bg-white/5">
