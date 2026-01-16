@@ -443,32 +443,32 @@ export default function WorkspaceLayout({
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
                                     <div className="flex justify-between">
                                         <span className="opacity-70">Request ID:</span>
-                                        <span className="font-bold select-all">{telemetry.request_id}</span>
+                                        <span className="font-bold select-all">{telemetry.request_id || '-'}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="opacity-70">Model:</span>
-                                        <span className="font-bold">{telemetry.model}</span>
+                                        <span className="font-bold">{telemetry.model || '-'}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="opacity-70">OpenAI Latency:</span>
-                                        <span className="font-bold">{telemetry.latency_ms_openai}ms</span>
+                                        <span className="font-bold">{telemetry.latency_ms_openai ?? '-'}ms</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="opacity-70">Total Latency:</span>
-                                        <span className="font-bold">{telemetry.latency_ms_total}ms</span>
+                                        <span className="font-bold">{telemetry.latency_ms_total ?? '-'}ms</span>
                                     </div>
                                     <div className="col-span-1 md:col-span-2 border-t border-slate-200 dark:border-slate-800 my-1"></div>
                                     <div className="flex justify-between">
                                         <span className="opacity-70">Input Tokens:</span>
-                                        <span>{telemetry.input_tokens}</span>
+                                        <span>{telemetry.input_tokens ?? '-'}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="opacity-70">Output Tokens:</span>
-                                        <span>{telemetry.output_tokens}</span>
+                                        <span>{telemetry.output_tokens ?? '-'}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="opacity-70">Total Tokens:</span>
-                                        <span className="font-bold text-primary">{telemetry.total_tokens}</span>
+                                        <span className="font-bold text-primary">{telemetry.total_tokens ?? '-'}</span>
                                     </div>
                                     {typeof telemetry.cached_tokens === 'number' && (
                                         <div className="flex justify-between text-emerald-600 dark:text-emerald-400">

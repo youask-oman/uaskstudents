@@ -2099,9 +2099,15 @@ async def get_history(
         # Extract telemetry from any assistant message (prefer most recent)
         telemetry = None
         for msg in reversed(chat.messages):
-            if msg.role == "assistant" and msg.telemetry:
-                telemetry = msg.telemetry
-                break
+            if msg.role == "assistant":
+                if msg.telemetry:
+                    telemetry = msg.telemetry
+                    break
+                # Fallback to structured_data telemetry (legacy/migration support)
+                elif msg.structured_data and isinstance(msg.structured_data, dict):
+                    telemetry = msg.structured_data.get("telemetry") or msg.structured_data.get("_telemetry")
+                    if telemetry: 
+                        break
         
         history_items.append(ChatHistoryItem(
             id=chat.id, 
@@ -2124,6 +2130,7 @@ class ChatMessageSchema(BaseModel):
     created_at: str
     model_used: Optional[str] = None
     tokens_used: Optional[int] = None
+    telemetry: Optional[dict] = None # Added telemetry
 
 class ChatSessionResponse(BaseModel):
     id: int
@@ -2153,7 +2160,12 @@ async def get_session_details(session_id: int, session: Session = Depends(get_se
                 structured_data=msg.structured_data,
                 created_at=msg.created_at.isoformat(),
                 model_used=getattr(msg, "model_used", None),
-                tokens_used=getattr(msg, "tokens_used", None)
+                tokens_used=getattr(msg, "tokens_used", None),
+                # Fallback logic for telemetry
+                telemetry=(
+                    msg.telemetry if hasattr(msg, "telemetry") and msg.telemetry else
+                    (msg.structured_data.get("telemetry") or msg.structured_data.get("_telemetry")) if msg.structured_data and isinstance(msg.structured_data, dict) else None
+                )
             )
             for msg in chat_session.messages
         ]

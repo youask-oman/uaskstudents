@@ -157,6 +157,7 @@ class SolverV3:
             response_data["schema_version"] = "v1.0"
             
             if trace:
+                 print(f"[SOLVER_V3] Telemetry: {json.dumps(telemetry)}")
                  print(f"[SOLVER_V3] ==================== SUCCESS ====================")
             
             return response_data
@@ -216,11 +217,20 @@ Context: {context if context else "No additional context provided."}
                  
                  # Extract tokens from responses API
                  if hasattr(response, 'usage'):
-                     tokens["input"] = response.usage.input_tokens
-                     tokens["output"] = response.usage.output_tokens
-                     tokens["total"] = response.usage.total_tokens
+                     # Try standard OpenAI fields first, then specific gpt-5 ones
+                     if hasattr(response.usage, 'prompt_tokens'):
+                         tokens["input"] = response.usage.prompt_tokens
+                         tokens["output"] = response.usage.completion_tokens
+                         tokens["total"] = response.usage.total_tokens
+                     elif hasattr(response.usage, 'input_tokens'):
+                         tokens["input"] = response.usage.input_tokens
+                         tokens["output"] = response.usage.output_tokens
+                         tokens["total"] = response.usage.total_tokens
+                     
                      # Check for cached tokens if available
-                     if hasattr(response.usage, 'input_token_details'):
+                     if hasattr(response.usage, 'prompt_tokens_details'):
+                          tokens["cached"] = getattr(response.usage.prompt_tokens_details, 'cached_tokens', 0)
+                     elif hasattr(response.usage, 'input_token_details'):
                           tokens["cached"] = getattr(response.usage.input_token_details, 'cached_tokens', 0)
                  
                  if hasattr(response, 'output') and response.output:
