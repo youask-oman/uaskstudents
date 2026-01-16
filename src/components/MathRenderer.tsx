@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -11,86 +10,113 @@ interface MathRendererProps {
     content?: string | number;
     className?: string;
     inline?: boolean;
-    forceMath?: boolean; // If true, wraps content in delimiters if missing
+    forceMath?: boolean;
 }
 
-// Export for unit testing
+// =============================================================================
+// PREPROCESSING HELPERS (Production-Grade Fixes)
+// =============================================================================
+
+/**
+ * Fix A: Convert fenced ```latex or ```tex code blocks into $$...$$ 
+ */
+function convertLatexFencesToMath(md: string): string {
+    return md.replace(/```(?:latex|tex)\s*\n([\s\S]*?)```/gi, (_, body) => {
+        const inner = String(body).trim();
+        return `$$\n${inner}\n$$`;
+    });
+}
+
+/**
+ * Fix A: Auto-wrap LaTeX environments in $$...$$ if not already wrapped
+ * This runs REGARDLESS of forceMath - environments always need math mode
+ */
+function autoWrapLatexEnvironments(md: string): string {
+    const hasEnv = /\\begin\{(aligned|align|gather|equation|cases|matrix|pmatrix|bmatrix|vmatrix|array|split)\}/.test(md);
+    if (!hasEnv) return md;
+
+    const trimmed = md.trim();
+    const alreadyMath =
+        (trimmed.startsWith("$$") && trimmed.endsWith("$$")) ||
+        (trimmed.startsWith("\\[") && trimmed.endsWith("\\]")) ||
+        (trimmed.startsWith("\\(") && trimmed.endsWith("\\)")) ||
+        (trimmed.startsWith("$") && trimmed.endsWith("$"));
+
+    return alreadyMath ? md : `$$\n${md}\n$$`;
+}
+
+/**
+ * Fix C: Wrap simple math tokens like M_n, L^1, x_i that aren't inside math delimiters
+ */
+function wrapSimpleMathTokens(md: string): string {
+    // Split by code/math delimiters to avoid double-wrapping
+    const parts = md.split(/(```[\s\S]*?```|`[^`]*`|\$\$[\s\S]*?\$\$|\$[^\$]+\$)/g);
+    return parts.map(part => {
+        if (
+            part.startsWith("```") ||
+            part.startsWith("`") ||
+            part.startsWith("$")
+        ) return part;
+
+        // Wrap tokens like M_n, x_1, L^1, a_{n+1}
+        return part.replace(
+            /\b([A-Za-z]+(?:_\{[^}]+\}|_[A-Za-z0-9]+|\^\{[^}]+\}|\^[A-Za-z0-9]+)+)\b/g,
+            (_, tok) => `$${tok}$`
+        );
+    }).join("");
+}
+
+/**
+ * Sanitize common LaTeX artifacts from LLM output
+ */
 export function sanitizeLatex(input: string): string {
     let clean = input;
 
-    // STEP 1: Direct string replacements for EXACT known artifacts
-    // Using split().join() is more reliable than regex for exact matches
-
-    // Fix .textLine : patterns (with various spacing)
+    // Fix .textLine patterns
     clean = clean.split('.textLine :').join('. \\text{Line: }');
     clean = clean.split('.textLine:').join('. \\text{Line: }');
     clean = clean.split(').textLine :').join('). \\text{Line: }');
     clean = clean.split(').textLine:').join('). \\text{Line: }');
-    clean = clean.split(')textLine :').join(') \\text{Line: }');
-    clean = clean.split(')textLine:').join(') \\text{Line: }');
 
     // Fix textParabola patterns
     clean = clean.split('.textParabola :').join('. \\text{Parabola: }');
     clean = clean.split('.textParabola:').join('. \\text{Parabola: }');
-    clean = clean.split(').textParabola :').join('). \\text{Parabola: }');
-    clean = clean.split(').textParabola:').join('). \\text{Parabola: }');
 
-    // Fix textPlot patterns
-    clean = clean.split('.textPlot :').join('. \\text{Plot: }');
-    clean = clean.split('.textPlot:').join('. \\text{Plot: }');
-
-    // Fix remaining standalone textLine, textParabola at word boundaries
-    clean = clean.split(' textLine :').join(' \\text{Line: }');
-    clean = clean.split(' textLine:').join(' \\text{Line: }');
-    clean = clean.split(' textParabola :').join(' \\text{Parabola: }');
-    clean = clean.split(' textParabola:').join(' \\text{Parabola: }');
-
-    // STEP 2: Fix double-escaped backslashes
+    // Fix double-escaped backslashes
     clean = clean.split('\\\\text').join('\\text');
     clean = clean.split('\\\\quad').join('\\quad');
 
-    // STEP 3: Fix :; artifact
+    // Fix :; artifact
     clean = clean.split(':;').join(':');
 
-    // STEP 4: Fix missing backslash in text{...}
-    // Use regex for this since we need negative lookbehind behavior
+    // Fix missing backslash in text{...}
     clean = clean.replace(/(^|[^\\])text\{/g, '$1\\text{');
-
-    // STEP 5: General CamelCase text* patterns (regex needed for flexibility)
-    clean = clean.replace(/(^|[^a-zA-Z\\])text([A-Z][a-z]+(?:[A-Z][a-z]*)*)/g, (match, prefix, camelText) => {
-        const spaced = camelText
-            .replace(/([A-Z])/g, ' $1')
-            .trim()
-            .replace(/\s+/g, ' ');
-        return `${prefix}\\text{${spaced} }`;
-    });
-
-    // STEP 6: Add line break before \text{Line to separate from Parabola
-    clean = clean.split('). \\text{Line').join('). \\\\ \\text{Line');
 
     return clean;
 }
 
-// Additional helper to split multi-part solutions into separate renderable lines
-export function splitSolutionIntoLines(input: string): string[] {
-    // First sanitize
-    const sanitized = sanitizeLatex(input);
+/**
+ * Inject $...$ around raw LaTeX commands in mixed text (e.g., "Solve \sqrt{x}")
+ */
+function injectMissingMathDelimiters(text: string): string {
+    const parts = text.split(/(`[^`]*`|\$\$[\s\S]*?\$\$|\$[^\$]+\$)/g);
 
-    // Split on common separators: \\, newlines, or pattern like "). \text{Line"
-    const lines = sanitized
-        .split(/(?:\\\\\s*)|(?:\n)|(?:\)\.\s*(?=\\\\?text\{(?:Line|Parabola|Plot)))/gi)
-        .map(line => line.trim())
-        .filter(line => line.length > 0);
+    return parts.map((part) => {
+        if (part.startsWith('`') || part.startsWith('$')) return part;
 
-    return lines.length > 0 ? lines : [sanitized];
+        // Match \cmd possibly followed by {args} groups
+        return part.replace(
+            /(\\(?!left|right|begin|end)[a-zA-Z]+(?:\{([^{}]|(\{[^{}]*\}))*\})*)+/g,
+            (match) => `$${match}$`
+        );
+    }).join('');
 }
 
-// Helper to detect and fix accidental math wrapping on plain text
+/**
+ * Unwrap text that was accidentally wrapped in math delimiters
+ */
 function fixAccidentalMathWrapping(text: string): string {
     const trimmed = text.trim();
-
-    // Check for "Paragraph Wrapped in Math" e.g. "$Radicals require...$" 
-    // Logic: Starts/Ends with $, but looks like text inside.
     let innerContent = trimmed;
     let isWrapped = false;
 
@@ -103,15 +129,12 @@ function fixAccidentalMathWrapping(text: string): string {
     }
 
     if (isWrapped) {
-        // Heuristic: If it has multiple spaces and minimal LaTeX syntax, it's text.
-        // If > 20 chars, > 3 spaces, and few backslashes, unwrap it.
         const spaceCount = (innerContent.match(/\s/g) || []).length;
         const latexCmdCount = (innerContent.match(/\\[a-zA-Z]+/g) || []).length;
         const length = innerContent.length;
 
-        // "Radicals require their radicands..." has 0 commands, many spaces.
+        // It's likely plain text if many spaces and few commands
         if (spaceCount >= 3 && latexCmdCount < 2 && length > 20) {
-            // It's likely text. Return unwrapped content.
             return innerContent;
         }
     }
@@ -119,92 +142,76 @@ function fixAccidentalMathWrapping(text: string): string {
     return text;
 }
 
-
-// Helper: Auto-wrap raw LaTeX commands in $...$ if they are missing delimiters
-// Handles up to 1 level of nested braces, e.g. \sqrt{x+3} or \frac{1}{2}
-function injectMissingMathDelimiters(text: string): string {
-    // Split by code blocks or existing math to avoid double-wrapping
-    // Regex matches `code`, $$math$$, or $math$
-    const parts = text.split(/(`[^`]*`|\$\$[\s\S]*?\$\$|\$[\s\S]*?\$)/g);
-
-    return parts.map((part) => {
-        // If part is a code block or already math, return as-is
-        if (part.startsWith('`') || part.startsWith('$')) return part;
-
-        // Otherwise, look for raw LaTeX patterns
-        // Regex: matches \cmd (excluding left/right/begin/end) possibly followed by multiple {args} groups (for \frac{a}{b} etc)
-        // allowing up to 1 level of nesting inside braces.
-        return part.replace(
-            /(\\(?!left|right|begin|end)[a-zA-Z]+(?:\{([^{}]|(\{[^{}]*\}))*\})*)+/g,
-            (match) => `$${match}$`
-        );
-    }).join('');
-}
-
+// =============================================================================
+// MAIN COMPONENT
+// =============================================================================
 
 export default function MathRenderer({ content, className = "", inline = false, forceMath = false }: MathRendererProps) {
     if (content === null || content === undefined) return null;
     let text = String(content);
 
-    // DEBUG LOG (Dev Only) - Check spacing/content
-    if (process.env.NODE_ENV === 'development' && text.length > 0) {
-        // console.log(`[MathRenderer] Raw input (${text.length}):`, text.slice(0, 100));
-    }
+    // Step 1: Convert fenced ```latex blocks to $$...$$
+    text = convertLatexFencesToMath(text);
 
-    // 1. Fix Accidental Wrapping (C3) - Unwrap "Text wrapped in $$"
+    // Step 2: Auto-wrap LaTeX environments (ALWAYS, regardless of forceMath)
+    text = autoWrapLatexEnvironments(text);
+
+    // Step 3: Fix accidentally wrapped text
     text = fixAccidentalMathWrapping(text);
 
-    // 2. Inject Delimiters for Raw Math (Fixes "Solve \sqrt{x}" -> "Solve $\sqrt{x}$")
-    // CRITICAL: Only do this for mixed text! if forceMath is true, we expect the whole string to be math (or we wrap it all later).
-    // Injecting $ inside a string we plan to wrap in $$ creates invalid double-nested math.
+    // Step 4: Wrap simple math tokens like M_n, L^1
+    text = wrapSimpleMathTokens(text);
+
+    // Step 5: Inject delimiters for raw math commands (only if NOT forceMath)
     if (!forceMath) {
         text = injectMissingMathDelimiters(text);
     }
 
-    // 3. Sanitize Artifacts
+    // Step 6: Sanitize LaTeX artifacts
     text = sanitizeLatex(text);
 
-    // Auto-detect if we should force BLOCK mode despite "inline" prop
-    const hasBlockTriggers = text.includes("\\\\") || text.includes("\\begin{");
-    const shouldUseBlock = hasBlockTriggers || !inline;
-
+    // Step 7: If forceMath is true and not already wrapped, wrap now
     if (forceMath) {
-        // cleanup potential existing delimiters to avoid double wrapping
         const trimmed = text.trim();
-        // Only wrap if NOT already wrapped
-        const hasDelimiters = (trimmed.startsWith('$') && trimmed.endsWith('$')) ||
+        const hasDelimiters =
+            (trimmed.startsWith('$$') && trimmed.endsWith('$$')) ||
+            (trimmed.startsWith('$') && trimmed.endsWith('$')) ||
             (trimmed.startsWith('\\(') && trimmed.endsWith('\\)')) ||
             (trimmed.startsWith('\\[') && trimmed.endsWith('\\]'));
 
         if (!hasDelimiters) {
-            // Logic: If it looks like text (has spaces, no math symbols), maybe DON'T force wrap?
-            // But forceMath=true implies caller knows better. 
-            // We'll wrap it.
-            if (shouldUseBlock && hasBlockTriggers) {
+            // Check if content requires block mode
+            const requiresBlock = /\\begin\{|\\\\/.test(text);
+            if (requiresBlock || !inline) {
                 text = `$$${text}$$`;
-            } else if (inline) {
-                text = `$${text}$`;
             } else {
-                // Default to block if not explicitly inline
-                text = `$$${text}$$`;
+                text = `$${text}$`;
             }
         }
     }
 
+    // Fix B: Use correct wrapper element based on mode
+    const Wrapper: React.ElementType = inline ? "span" : "div";
+
     return (
-        <span className={`math-renderer markdown-math ${className} ${inline ? 'inline-block' : 'block'}`}>
+        <Wrapper className={`math-renderer markdown-math ${className}`}>
             <ReactMarkdown
                 remarkPlugins={[remarkMath]}
                 rehypePlugins={[
                     [rehypeKatex, { throwOnError: false, strict: 'ignore' }]
                 ]}
                 components={{
-                    // Override p to span to avoid block breaking in inline contexts
-                    p: ({ node, ...props }) => <span {...props} className="maybe-math" />
+                    // Fix B: Only override p to span in inline mode
+                    p: ({ node, children, ...props }) => {
+                        if (inline) {
+                            return <span {...props}>{children} </span>;
+                        }
+                        return <p {...props}>{children}</p>;
+                    },
                 }}
             >
                 {text}
             </ReactMarkdown>
-        </span>
+        </Wrapper>
     );
 }

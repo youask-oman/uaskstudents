@@ -185,36 +185,35 @@ export default function StepsTab({ steps, visuals }: StepsTabProps) {
                                 {/* Middle/Right Content: Math Work Box (40% width) */}
                                 <div className="lg:col-span-4">
                                     {(() => {
-                                        // Get all non-empty parts after splitting on semicolons
-                                        const allParts = cardLines.flatMap(line =>
-                                            line.split(';').map(p => p.trim()).filter(p => p.length > 0)
-                                        );
-
-                                        // Only render if there's actual content
-                                        if (allParts.length === 0) return null;
+                                        // Render the entire math content as a single block
+                                        // Don't split - keep LaTeX environments intact
+                                        const mathContent = cardLines.join('\n').trim();
+                                        if (!mathContent) return null;
 
                                         return (
-                                            <div className="w-full h-full bg-white dark:bg-[#1e2634] p-4 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c] shadow-sm relative">
-                                                <div className="absolute inset-0 flex flex-col items-center justify-center p-4 overflow-y-auto">
-                                                    <div className="text-center space-y-2 w-full">
-                                                        {allParts.map((part, idx) => {
-                                                            const isLastPart = idx === allParts.length - 1;
-                                                            const textClass = isLastPart
-                                                                ? "text-base font-bold text-primary"
-                                                                : "text-sm text-[#111318] dark:text-white font-medium";
-
-                                                            return (
-                                                                <div key={idx} className="flex flex-col items-center w-full">
-                                                                    <div className={`break-words whitespace-normal max-w-full px-1 ${textClass}`}>
-                                                                        <MathRenderer
-                                                                            content={part}
-                                                                            inline={true}
-                                                                            forceMath={true}
-                                                                        />
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
+                                            <div className="w-full bg-white dark:bg-[#1e2634] p-4 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c] shadow-sm">
+                                                <div
+                                                    className="w-full text-sm text-[#111318] dark:text-white overflow-hidden"
+                                                    style={{
+                                                        textAlign: 'left',
+                                                        fontWeight: 'bold'
+                                                    }}
+                                                >
+                                                    <style>{`
+                                                        .math-card-content .katex-display {
+                                                            text-align: left !important;
+                                                            margin: 0 !important;
+                                                        }
+                                                        .math-card-content .katex {
+                                                            font-weight: bold !important;
+                                                        }
+                                                    `}</style>
+                                                    <div className="math-card-content">
+                                                        <MathRenderer
+                                                            content={mathContent}
+                                                            inline={false}
+                                                            forceMath={true}
+                                                        />
                                                     </div>
                                                 </div>
                                             </div>
