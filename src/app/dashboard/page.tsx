@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import StudentLayout from "@/components/layout/StudentLayout";
+import MathRenderer from "@/components/MathRenderer";
 
 interface ChatSession {
     id: number;
@@ -23,8 +24,17 @@ export default function DashboardPage() {
     const [history, setHistory] = useState<ChatSession[]>([]);
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<any>(null);
-    const [activeTab, setActiveTab] = useState("history"); // history, saved, concepts
+    const [activeTab, setActiveTab] = useState("history"); // history, bookmarked
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const tabParam = searchParams.get('tab');
+
+    useEffect(() => {
+        if (tabParam && ['history', 'bookmarked'].includes(tabParam)) {
+            setActiveTab(tabParam);
+        }
+    }, [tabParam]);
+
     const [isPublic, setIsPublic] = useState(false);
     const [interests, setInterests] = useState<string[]>([]);
     const [newInterest, setNewInterest] = useState("");
@@ -284,7 +294,7 @@ export default function DashboardPage() {
                     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden min-h-[400px]">
                         {/* Tabs Header */}
                         <div className="px-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-8">
-                            {["history", "saved", "concepts"].map((tab) => (
+                            {["history", "bookmarked"].map((tab) => (
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
@@ -347,7 +357,9 @@ export default function DashboardPage() {
                                                                     </span>
                                                                 </div>
                                                                 <div className="min-w-0">
-                                                                    <h4 className="text-sm font-semibold truncate">{session.title}</h4>
+                                                                    <h4 className="text-sm font-semibold truncate">
+                                                                        <MathRenderer content={session.title} />
+                                                                    </h4>
                                                                     {session.is_saved && (
                                                                         <span className="mt-1 inline-flex px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-[10px] font-bold rounded">Saved</span>
                                                                     )}
@@ -357,7 +369,7 @@ export default function DashboardPage() {
                                                                 {session.topic || session.subject || "Math"}
                                                             </div>
                                                             <div className="text-xs text-slate-500 truncate">
-                                                                {session.input || "-"}
+                                                                <MathRenderer content={session.input || "-"} />
                                                             </div>
                                                             <div className="text-xs text-slate-500">
                                                                 {new Date(session.created_at).toLocaleDateString()}
@@ -394,7 +406,7 @@ export default function DashboardPage() {
                                         )
                                     )}
 
-                                    {activeTab === 'saved' && (
+                                    {activeTab === 'bookmarked' && (
                                         history.filter(h => h.is_saved).length === 0 ? (
                                             <div className="p-12 text-center text-slate-500 italic">No saved solutions yet.</div>
                                         ) : (
@@ -408,7 +420,9 @@ export default function DashboardPage() {
                                                         <span className="material-symbols-outlined">bookmark</span>
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <h4 className="text-sm font-semibold truncate">{session.title}</h4>
+                                                        <h4 className="text-sm font-semibold truncate">
+                                                            <MathRenderer content={session.title} />
+                                                        </h4>
                                                         <p className="text-xs text-slate-500 capitalize">
                                                             {session.subject || "Math"} • {new Date(session.created_at).toLocaleDateString()}
                                                         </p>
@@ -421,15 +435,7 @@ export default function DashboardPage() {
                                         )
                                     )}
 
-                                    {activeTab === 'concepts' && (
-                                        <div className="p-12 text-center text-slate-500">
-                                            <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
-                                                <span className="material-symbols-outlined text-3xl">lightbulb</span>
-                                            </div>
-                                            <p>Concepts aggregation coming soon!</p>
-                                            <p className="text-xs mt-2">Solve more problems to build your knowledge graph.</p>
-                                        </div>
-                                    )}
+                                    {/* Concepts tab removed */}
                                 </>
                             )}
                         </div>

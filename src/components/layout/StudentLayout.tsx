@@ -104,9 +104,8 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     ];
 
     const learningItems = [
-        { label: "History", icon: "history", href: "#", id: "history" },
-        { label: "Saved Items", icon: "bookmark", href: "#", id: "saved" },
-        { label: "Concepts", icon: "menu_book", href: "#", id: "concepts" },
+        { label: "History", icon: "history", href: "/dashboard?tab=history", id: "history" },
+        { label: "Bookmarked", icon: "bookmark", href: "/dashboard?tab=bookmarked", id: "bookmarked" },
     ];
 
     return (
