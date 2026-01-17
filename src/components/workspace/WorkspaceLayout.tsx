@@ -194,11 +194,11 @@ export default function WorkspaceLayout({
                             <button
                                 onClick={handleSave}
                                 className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs shadow-md transition-all ${isSaved
-                                    ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                                    ? "bg-amber-100 text-amber-600 hover:bg-amber-200"
                                     : "bg-emerald-600 hover:bg-emerald-700 text-white"
                                     }`}
                             >
-                                <span className="material-symbols-outlined text-[16px]">{isSaved ? 'bookmark_added' : 'bookmark_add'}</span>
+                                <span className={`material-symbols-outlined text-[16px] ${isSaved ? 'text-amber-500' : ''}`}>{isSaved ? 'bookmark_added' : 'bookmark_add'}</span>
                                 {isSaved ? 'Saved' : 'Save'}
                             </button>
 
@@ -206,12 +206,12 @@ export default function WorkspaceLayout({
                             <button
                                 onClick={() => setIsBookmarked(!isBookmarked)}
                                 className={`p-2 rounded-lg border transition-all ${isBookmarked
-                                    ? "bg-emerald-100 border-emerald-300 text-emerald-700 fill-1"
+                                    ? "bg-amber-100 border-amber-300 text-amber-500"
                                     : "border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-800/30 text-emerald-700 dark:text-emerald-400"
                                     }`}
                                 title={isBookmarked ? "Remove Bookmark" : "Bookmark for later"}
                             >
-                                <span className={`material-symbols-outlined text-[18px] ${isBookmarked ? 'fill-1' : ''}`}>star</span>
+                                <span className={`material-symbols-outlined text-[18px] ${isBookmarked ? 'fill-1 text-amber-500' : ''}`}>star</span>
                             </button>
 
                             {/* Share Dropdown */}

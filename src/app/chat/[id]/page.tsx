@@ -285,15 +285,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
                     methods={methods}
                     finalAnswer={solutionData.final_answer?.answer_latex || solutionData.final_answer?.answer_text}
                     confidence={solutionData.quality?.confidence}
-                />;
-            case 'concepts':
-                return <ConceptsTab
-                    keyConcepts={steps.flatMap((s: any) => s.rules_used || []).filter((v: string, i: number, a: string[]) => a.indexOf(v) === i)} // Unique rules
                     commonMistakes={solutionData.quality?.common_mistakes || []}
-                    visuals={visuals}
-                    activeTab={activeTab as "steps" | "verification" | "concepts" | "practice"}
-                    onSelectTab={setActiveTab}
-                    stepsCount={steps.length}
                 />;
             case 'practice':
                 const practiceItems = (solutionData.quality?.next_practice || []).map((p: string) => ({
@@ -304,10 +296,9 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
 
                 return <PracticeTab
                     similarExamples={practiceItems}
-                    progress={65} // Mock
                     level={solutionData.classification?.difficulty || "Standard"}
                     topic={solutionData.classification?.topic}
-                    activeTab={activeTab as "steps" | "verification" | "concepts" | "practice"}
+                    activeTab={activeTab as "steps" | "verification" | "practice"}
                     onSelectTab={setActiveTab}
                     stepsCount={steps.length}
                 />;

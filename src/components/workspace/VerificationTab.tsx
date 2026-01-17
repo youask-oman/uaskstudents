@@ -14,12 +14,14 @@ interface VerificationTabProps {
     methods: VerificationItem[];
     finalAnswer?: string;
     confidence?: number;
+    commonMistakes?: string[];
 }
 
 export default function VerificationTab({
     methods,
     finalAnswer,
-    confidence
+    confidence,
+    commonMistakes = []
 }: VerificationTabProps) {
     const defaultMethods = [
         {
@@ -67,14 +69,14 @@ export default function VerificationTab({
 
                     <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl space-y-3 flex-1">
                         {displayMethods[0]?.steps.map((step, idx) => (
-                            <div key={idx} className="flex justify-between items-center text-sm">
-                                <div className="text-[#616f89] dark:text-slate-400 w-full">
+                            <div key={idx} className="text-left">
+                                <div className="text-[#616f89] dark:text-slate-400 w-full text-lg font-medium">
                                     <MathRenderer content={step} />
                                 </div>
                             </div>
                         ))}
                         <div className="pt-2 mt-2 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                            <span className="text-xs font-bold uppercase text-emerald-600 dark:text-emerald-400">Conclusion</span>
+                            <span className="text-xs font-bold uppercase bg-primary text-white px-2 py-1 rounded">Conclusion</span>
                             <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
                                 <MathRenderer content={displayMethods[0]?.conclusion || "True"} inline />
                             </span>
@@ -180,120 +182,24 @@ export default function VerificationTab({
                 </div>
             </div>
 
-            {/* Improve Your Mastery Section */}
-            <div className="mb-12">
-                <h3 className="text-xl font-bold mb-6 text-[#111318] dark:text-white">Improve Your Mastery</h3>
-
-                {/* Progress Bar */}
-                <div className="bg-white dark:bg-[#1e2634] p-6 rounded-2xl border border-[#e5e7eb] dark:border-[#2a303c] mb-8">
-                    <div className="flex items-center justify-between mb-3">
-                        <span className="text-sm font-bold text-[#111318] dark:text-white">Algebra: Linear Equations</span>
-                        <span className="text-sm font-black text-primary">99%</span>
-                    </div>
-                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
-                        <div className="bg-primary h-full rounded-full" style={{ width: "99%" }}></div>
-                    </div>
-                </div>
-
-                {/* Example Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                    {/* Example A */}
-                    <div className="bg-white dark:bg-[#1e2634] rounded-2xl border border-[#e5e7eb] dark:border-[#2a303c] overflow-hidden flex flex-col">
-                        <div className="p-6 flex-1">
-                            <div className="flex justify-between items-start mb-4">
-                                <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded text-[10px] font-bold uppercase">Example A</span>
-                                <span className="material-symbols-outlined text-slate-300">fitness_center</span>
-                            </div>
-                            <div className="text-2xl font-medium mb-6 text-[#111318] dark:text-white">
-                                <MathRenderer content="4(x - 1) = 20" forceMath inline />
-                            </div>
-                            <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl mb-4 border border-blue-100 dark:border-blue-900/30">
-                                <span className="material-symbols-outlined text-primary text-[18px]">info</span>
-                                <div>
-                                    <p className="text-[10px] font-black uppercase text-primary mb-0.5">Key Idea</p>
-                                    <p className="text-[11px] text-[#616f89] dark:text-slate-400 leading-tight">Start by dividing both sides by 4.</p>
-                                </div>
-                            </div>
+            {/* Common Mistakes Section */}
+            {commonMistakes.length > 0 && (
+                <div className="mb-12">
+                    <div className="bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 rounded-2xl p-6">
+                        <div className="flex items-center gap-2 text-lg font-bold text-red-600 dark:text-red-300 mb-4">
+                            <span className="material-symbols-outlined text-xl">error</span>
+                            Common Mistakes to Avoid
                         </div>
-                        <details className="group border-t border-[#e5e7eb] dark:border-[#2a303c]">
-                            <summary className="flex items-center justify-center p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors list-none">
-                                <span className="text-xs font-bold text-primary flex items-center gap-1">
-                                    <span className="material-symbols-outlined text-[16px] group-open:rotate-180 transition-transform">expand_more</span>
-                                    <span className="group-open:hidden">Show Solution</span>
-                                    <span className="hidden group-open:inline">Hide Solution</span>
-                                </span>
-                            </summary>
-                            <div className="p-6 bg-slate-50 dark:bg-slate-800/30 text-center border-t border-[#e5e7eb] dark:border-[#2a303c]">
-                                <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
-                                    <MathRenderer content="x = 6" forceMath inline />
+                        <div className="space-y-4">
+                            {commonMistakes.slice(0, 3).map((mistake, idx) => (
+                                <div key={idx} className="border border-red-100 dark:border-red-900/50 bg-white/70 dark:bg-red-950/40 rounded-xl p-4">
+                                    <p className="text-sm font-semibold text-red-600 dark:text-red-200">{mistake}</p>
                                 </div>
-                                <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest font-black">Final Answer</p>
-                            </div>
-                        </details>
-                    </div>
-
-                    {/* Example B with Test Case */}
-                    <div className="bg-white dark:bg-[#1e2634] rounded-2xl border border-[#e5e7eb] dark:border-[#2a303c] overflow-hidden flex flex-col">
-                        <div className="p-6 flex-1">
-                            <div className="flex justify-between items-start mb-4">
-                                <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded text-[10px] font-bold uppercase">Example B</span>
-                                <span className="material-symbols-outlined text-slate-300">fitness_center</span>
-                            </div>
-                            <div className="text-2xl font-medium mb-6 text-[#111318] dark:text-white">
-                                <MathRenderer content="2(x + 3) = 14" forceMath inline />
-                            </div>
-                            <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl mb-4 border border-blue-100 dark:border-blue-900/30">
-                                <span className="material-symbols-outlined text-primary text-[18px]">info</span>
-                                <div>
-                                    <p className="text-[10px] font-black uppercase text-primary mb-0.5">Key Idea</p>
-                                    <p className="text-[11px] text-[#616f89] dark:text-slate-400 leading-tight">Divide by 2, then subtract 3.</p>
-                                </div>
-                            </div>
+                            ))}
                         </div>
-                        <details className="group border-t border-[#e5e7eb] dark:border-[#2a303c]">
-                            <summary className="flex items-center justify-center p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors list-none">
-                                <span className="text-xs font-bold text-primary flex items-center gap-1">
-                                    <span className="material-symbols-outlined text-[16px] group-open:rotate-180 transition-transform">expand_more</span>
-                                    <span className="group-open:hidden">Show Solution</span>
-                                    <span className="hidden group-open:inline">Hide Solution</span>
-                                </span>
-                            </summary>
-                            <div className="p-6 bg-slate-50 dark:bg-slate-800/30 text-center border-t border-[#e5e7eb] dark:border-[#2a303c]">
-                                <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
-                                    <MathRenderer content="x = -2 \text{ or } x = 5" forceMath inline />
-                                </div>
-                                <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest font-black">Final Answer</p>
-                            </div>
-
-                            {/* Regex Repair Test Cases */}
-                            <div className="p-4 border-t border-[#e5e7eb] dark:border-[#2a303c] bg-amber-50 dark:bg-amber-900/10">
-                                <p className="text-[10px] text-amber-600 font-bold mb-2 uppercase">Sanitization Tests</p>
-                                <div className="space-y-2 text-sm">
-                                    <div className="flex gap-2 items-center">
-                                        <span className="text-xs text-slate-400 w-24 shrink-0">textLet...</span>
-                                        <MathRenderer content="textLet y = x^2" forceMath inline />
-                                    </div>
-                                    <div className="flex gap-2 items-center">
-                                        <span className="text-xs text-slate-400 w-24 shrink-0">textLine :</span>
-                                        <MathRenderer content="textLine : y = 2x + 1" forceMath inline />
-                                    </div>
-                                    <div className="flex gap-2 items-center">
-                                        <span className="text-xs text-slate-400 w-24 shrink-0">text{"{...}"}</span>
-                                        <MathRenderer content="text{Thus intersections are} (3,9)" forceMath inline />
-                                    </div>
-                                </div>
-                            </div>
-                        </details>
                     </div>
                 </div>
-
-                <div className="w-full">
-                    <button className="w-full py-5 bg-primary text-white rounded-2xl font-bold flex items-center justify-center gap-3 shadow-xl shadow-primary/30 hover:bg-blue-700 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed">
-                        <span className="material-symbols-outlined fill-1">auto_awesome</span>
-                        Generate More Practice Problems
-                    </button>
-                </div>
-            </div>
+            )}
         </div>
     );
 }

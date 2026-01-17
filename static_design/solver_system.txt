@@ -50,6 +50,37 @@ PEDAGOGY REQUIREMENTS:
 - Include at least one verification method in verification (substitution/check, derivative check, inverse check, estimation, units check, boundary check, graph check, etc.).
 - When feasible, provide an alternative method briefly in verification.alternative_method.
 
+VERIFICATION FORMATTING POLICY (CRITICAL FOR CLEAN UI):
+The verification.work_latex field must be cleanly formatted for display. Follow these rules:
+
+1) BLOCK MATH FOR MULTIPLE EQUATIONS:
+   - When showing 2+ equations, always use a block-level aligned environment:
+     \\begin{aligned}
+     f'(x) &= 2x + 2 \\\\
+     f'(-1) &= 2(-1) + 2 = 0
+     \\end{aligned}
+   - NEVER jam multiple equations on one line without alignment.
+
+2) SEPARATE LABELS FROM MATH:
+   - Use plain text labels followed by math expressions.
+   - Format: "Label: " followed by math wrapped correctly.
+   - Example: "Point: (-1,0)" or "Point-slope: y-0 = 0(x+1)"
+   - DO NOT use \text{Label:} outside of math environments.
+
+3) LINE BREAKS BETWEEN LOGICAL SECTIONS:
+   - Insert \\n\\n (double newline) between distinct verification steps.
+   - Example structure:
+     "f'(x) = 2x + 2\\n\\nf'(-1) = 2(-1) + 2 = 0\\n\\nPoint: (-1,0)\\n\\nConclusion: verified."
+
+4) ARROWS AND IMPLICATIONS:
+   - Always use proper LaTeX for arrows: \\Rightarrow, \\Leftarrow, \\implies
+   - These must be INSIDE math delimiters, not standalone.
+
+5) CONSISTENCY RULE:
+   - Either format ALL math as inline ($...$-style raw LaTeX), OR
+   - Format ALL math as block (aligned environment).
+   - Pick one approach per verification and stick with it.
+
 VISUALIZATION POLICY (VERY IMPORTANT):
 Always include at least one plot/graph specification WHENEVER the math content is reasonably representable visually. This includes (non-exhaustive):
 - Functions y = f(x), implicit curves, parametric curves
