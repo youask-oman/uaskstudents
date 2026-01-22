@@ -9,12 +9,23 @@ const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: '--font-space
 const lexend = Lexend({ subsets: ["latin"], variable: '--font-lexend' });
 
 const mathJaxConfig = {
-  loader: { load: ["input/tex", "output/chtml"] },
+  loader: { load: ["input/tex", "output/chtml", "[tex]/ams"] },
   tex: {
-    inlineMath: [["\\(", "\\)"]],
-    displayMath: [["\\[", "\\]"]],
-    processEscapes: false,
+    packages: { "[+]": ["ams"] },
+    inlineMath: [
+      ["\\(", "\\)"],
+      ["$", "$"]
+    ],
+    displayMath: [
+      ["\\[", "\\]"],
+      ["$$", "$$"]
+    ],
+    processEscapes: true,
     processEnvironments: true,
+  },
+  chtml: {
+    scale: 2,
+    matchFontHeight: true,
   },
 };
 

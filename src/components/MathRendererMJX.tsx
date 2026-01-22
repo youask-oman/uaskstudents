@@ -387,6 +387,57 @@ const normalizePlainSqrt = (text: string) => {
     .join("");
 };
 
+/**
+ * Auto-detect and wrap bare math expressions that lack LaTeX delimiters.
+ * Uses a single-pass approach to avoid double-wrapping.
+ */
+const wrapBareMathExpressions = (text: string) => {
+  // Skip if already inside LaTeX delimiters or code blocks
+  const parts = text.split(/(```[\s\S]*?```|`[^`]*`|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\))/g);
+
+  return parts
+    .map((part) => {
+      if (
+        part.startsWith("```") ||
+        part.startsWith("`") ||
+        part.startsWith("\\[") ||
+        part.startsWith("\\(")
+      ) {
+        return part;
+      }
+
+      // Combined pattern that matches complete math expressions
+      // Use simple patterns and check for existing delimiters via string inspection
+      let output = part;
+
+      // Only apply if no existing LaTeX delimiters are detected in this segment
+      if (!output.includes("\\(") && !output.includes("\\[")) {
+
+        // Pattern 1: Function with equation like f(-1) = expression  
+        // Match: letter + optional ' + parens + = + rest of expression until comma/period/newline
+        output = output.replace(
+          /\b([a-zA-Z]'?)\(([^)]+)\)\s*=\s*([^,.;:!?\n]+)/g,
+          (m, fn, arg, expr) => `\\(${fn}(${arg}) = ${expr.trim()}\\)`
+        );
+
+        // Pattern 2: Simple equation x = number 
+        output = output.replace(
+          /\b([a-zA-Z])\s*=\s*(-?\d+(?:\.\d+)?)\b/g,
+          "\\($1 = $2\\)"
+        );
+
+        // Pattern 3: Coordinate points followed by punctuation or at sentence end
+        output = output.replace(
+          /\((-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)\)(?=[.,;:!?\s]|$)/g,
+          "\\(($1, $2)\\)"
+        );
+      }
+
+      return output;
+    })
+    .join("");
+};
+
 export const prepareMathJaxContent = (content?: string | number) => {
   if (content === null || content === undefined) return "";
   let text = String(content);
@@ -394,6 +445,7 @@ export const prepareMathJaxContent = (content?: string | number) => {
   text = convertDisplayMath(text);
   text = convertInlineMath(text);
   text = normalizePlainSqrt(text);
+  text = wrapBareMathExpressions(text);
   text = wrapBareLatexFragments(text);
   return text;
 };
