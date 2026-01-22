@@ -8,6 +8,7 @@ This is the canonical schema for tutoring-quality math solutions.
 from typing import List, Optional, Literal, Union, Any
 from pydantic import BaseModel, Field, field_validator
 from enum import Enum
+from app.utils.schema_cleaner import enforce_strict
 
 # ============================================================================
 # Enums
@@ -235,54 +236,6 @@ def get_json_schema_for_openai_v3() -> dict:
     """
     schema = SolveResponseV3.model_json_schema()
     
-    def enforce_strict(node: dict):
-        if not isinstance(node, dict):
-            return node
-            
-        node.pop('title', None)
-        node.pop('description', None)
-        node.pop('default', None) 
-        
-        if node.get("type") == "object" or "properties" in node:
-            node["type"] = "object"
-            node["additionalProperties"] = False
-            
-            props = node.get("properties", {})
-            node["required"] = list(props.keys()) if props else []
-
-            for prop_name, prop_schema in props.items():
-                enforce_strict(prop_schema)
-                
-        if node.get("type") == "array":
-            if "items" in node:
-                enforce_strict(node["items"])
-                
-        if "$defs" in node:
-            for def_name, def_schema in node["$defs"].items():
-                enforce_strict(def_schema)
-                
-        if isinstance(node.get("type"), list):
-            node["type"] = [t for t in node["type"] if t != "null"]
-            if len(node["type"]) == 1:
-                node["type"] = node["type"][0]
-        
-        for key in ["anyOf", "allOf", "oneOf"]:
-             if key in node:
-                non_null_nodes = []
-                for sub_node in node[key]:
-                    if isinstance(sub_node, dict) and sub_node.get("type") == "null":
-                        continue
-                    enforce_strict(sub_node)
-                    non_null_nodes.append(sub_node)
-                
-                if len(non_null_nodes) == 1:
-                    del node[key]
-                    node.update(non_null_nodes[0])
-                else:
-                    node[key] = non_null_nodes
-
-        return node
-
     return enforce_strict(schema)
 
 if __name__ == "__main__":

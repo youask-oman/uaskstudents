@@ -12,6 +12,7 @@ from typing import Dict, Any, List, Optional, Tuple, AsyncIterator
 from datetime import datetime
 
 from app.schemas.na_math_solver_v3 import get_json_schema_for_openai_v3
+from app.utils.schema_cleaner import enforce_strict
 from app.services.validation_v3 import validate_response, create_error_response, generate_repair_prompt
 from app.prompts import get_prompt, get_schema
 from app.utils.schema_deref import deref_json_schema, validate_no_refs
@@ -164,6 +165,11 @@ class SolverV3:
                 candidate = config_schema
                 if not isinstance(candidate, dict) or not candidate:
                     candidate = get_json_schema_for_openai_v3()
+                
+                # Check for "wrapped" schema style
+                if "schema" in candidate and isinstance(candidate["schema"], dict):
+                     candidate = candidate["schema"]
+
                 try:
                     deref = deref_json_schema(candidate)
                 except Exception as exc:
@@ -171,6 +177,10 @@ class SolverV3:
                     deref = deref_json_schema(get_json_schema_for_openai_v3())
                 if not isinstance(deref, dict):
                     deref = deref_json_schema(get_json_schema_for_openai_v3())
+
+                # Apply strict cleaning
+                deref = enforce_strict(deref)
+
                 if deref.get("type") is None:
                     deref["type"] = "object"
                 return deref
@@ -399,16 +409,21 @@ class SolverV3:
         try:
             resolved_system_prompt = system_prompt or get_prompt("solver_system", "v3")
             if isinstance(json_schema_config, dict):
+                # Check for "wrapped" schema style (used in free/schema.json)
+                target_schema = json_schema_config
+                if "schema" in json_schema_config and isinstance(json_schema_config["schema"], dict):
+                     target_schema = json_schema_config["schema"]
+                
                 schema_wrapper = {
                     "name": "solve_response_v3",
                     "strict": True,
-                    "schema": deref_json_schema(json_schema_config)
+                    "schema": enforce_strict(deref_json_schema(target_schema))
                 }
             else:
                 schema_wrapper = {
                     "name": "solve_response_v3",
                     "strict": True,
-                    "schema": deref_json_schema(get_json_schema_for_openai_v3())
+                    "schema": enforce_strict(deref_json_schema(get_json_schema_for_openai_v3()))
                 }
 
             user_message = self._build_user_message(

@@ -1,0 +1,534 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uask.ai/schemas/math_tutor_response.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "problem",
+    "classification",
+    "refusal",
+    "assumptions",
+    "steps",
+    "final_answer",
+    "verification",
+    "visuals",
+    "quality"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "v1.0"
+    },
+    "problem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "original_text",
+        "normalized_text",
+        "detected_tasks"
+      ],
+      "properties": {
+        "original_text": {
+          "type": "string"
+        },
+        "normalized_text": {
+          "type": "string"
+        },
+        "detected_tasks": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "solve_equation",
+              "solve_inequality",
+              "simplify",
+              "factor",
+              "expand",
+              "evaluate",
+              "graph",
+              "find_intercepts",
+              "find_vertex",
+              "find_extrema",
+              "find_roots",
+              "system_solve",
+              "word_problem",
+              "geometry",
+              "trigonometry",
+              "calculus_derivative",
+              "calculus_integral",
+              "statistics",
+              "probability",
+              "sequence_series",
+              "other"
+            ]
+          }
+        }
+      }
+    },
+    "classification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "grade_band",
+        "domain",
+        "topic",
+        "difficulty"
+      ],
+      "properties": {
+        "grade_band": {
+          "type": "string",
+          "enum": [
+            "K-2",
+            "3-5",
+            "6-8",
+            "9-10",
+            "11-12",
+            "college_intro",
+            "unknown"
+          ]
+        },
+        "domain": {
+          "type": "string",
+          "enum": [
+            "arithmetic",
+            "algebra",
+            "geometry",
+            "trigonometry",
+            "calculus",
+            "statistics",
+            "probability",
+            "discrete",
+            "mixed",
+            "unknown"
+          ]
+        },
+        "topic": {
+          "type": "string"
+        },
+        "difficulty": {
+          "type": "string",
+          "enum": [
+            "easy",
+            "standard",
+            "challenging",
+            "unknown"
+          ]
+        }
+      }
+    },
+    "refusal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "is_refusal",
+        "reason",
+        "safe_alternative"
+      ],
+      "properties": {
+        "is_refusal": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "safe_alternative": {
+          "type": "string"
+        }
+      }
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "index",
+          "title",
+          "explanation",
+          "math_latex",
+          "rules_used",
+          "checkpoint"
+        ],
+        "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "title": {
+            "type": "string"
+          },
+          "explanation": {
+            "type": "string"
+          },
+          "math_latex": {
+            "type": "string"
+          },
+          "rules_used": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "checkpoint": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "question",
+              "answer"
+            ],
+            "properties": {
+              "question": {
+                "type": "string"
+              },
+              "answer": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "final_answer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "answer_text",
+        "answer_latex",
+        "values",
+        "units"
+      ],
+      "properties": {
+        "answer_text": {
+          "type": "string"
+        },
+        "answer_latex": {
+          "type": "string"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "label",
+              "value",
+              "value_latex"
+            ],
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "value": {
+                "type": "number"
+              },
+              "value_latex": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "units": {
+          "type": "string"
+        }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "work_latex",
+        "conclusion",
+        "alternative_method"
+      ],
+      "properties": {
+        "method": {
+          "type": "string"
+        },
+        "work_latex": {
+          "type": "string"
+        },
+        "conclusion": {
+          "type": "string"
+        },
+        "alternative_method": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "summary"
+          ],
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "visuals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "should_visualize",
+        "decision_reason",
+        "plots",
+        "alternative_visual"
+      ],
+      "properties": {
+        "should_visualize": {
+          "type": "boolean"
+        },
+        "decision_reason": {
+          "type": "string"
+        },
+        "plots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "plot_id",
+              "plot_type",
+              "title",
+              "x_label",
+              "y_label",
+              "x_min",
+              "x_max",
+              "y_min",
+              "y_max",
+              "series",
+              "key_points",
+              "annotations"
+            ],
+            "properties": {
+              "plot_id": {
+                "type": "string"
+              },
+              "plot_type": {
+                "type": "string",
+                "enum": [
+                  "cartesian_2d",
+                  "number_line_1d",
+                  "coordinate_geometry_2d",
+                  "statistics_chart"
+                ]
+              },
+              "title": {
+                "type": "string"
+              },
+              "x_label": {
+                "type": "string"
+              },
+              "y_label": {
+                "type": "string"
+              },
+              "x_min": {
+                "type": "number"
+              },
+              "x_max": {
+                "type": "number"
+              },
+              "y_min": {
+                "type": "number"
+              },
+              "y_max": {
+                "type": "number"
+              },
+              "series": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "name",
+                    "kind",
+                    "expression_latex",
+                    "points",
+                    "style_hint"
+                  ],
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "function_y_of_x",
+                        "implicit",
+                        "parametric",
+                        "scatter",
+                        "line_segments",
+                        "histogram",
+                        "bar"
+                      ]
+                    },
+                    "expression_latex": {
+                      "type": "string"
+                    },
+                    "points": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "x",
+                          "y",
+                          "label"
+                        ],
+                        "properties": {
+                          "x": {
+                            "type": "number"
+                          },
+                          "y": {
+                            "type": "number"
+                          },
+                          "label": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "style_hint": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "key_points": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "x",
+                    "y",
+                    "label"
+                  ],
+                  "properties": {
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    },
+                    "label": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "annotations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "text",
+                    "x",
+                    "y"
+                  ],
+                  "properties": {
+                    "text": {
+                      "type": "string"
+                    },
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "alternative_visual": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "description",
+            "data"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "none",
+                "number_line",
+                "table",
+                "diagram"
+              ]
+            },
+            "description": {
+              "type": "string"
+            },
+            "data": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "label",
+                  "x",
+                  "y"
+                ],
+                "properties": {
+                  "label": {
+                    "type": "string"
+                  },
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "confidence",
+        "common_mistakes",
+        "next_practice"
+      ],
+      "properties": {
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "common_mistakes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "next_practice": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
