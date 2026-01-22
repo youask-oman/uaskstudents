@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 
 interface UserListItem {
@@ -18,8 +18,8 @@ export default function AdminUsersPage() {
     const [users, setUsers] = useState<UserListItem[]>([]);
     const [totalCount, setTotalCount] = useState(0);
     const [search, setSearch] = useState("");
-    const [roleFilter, setRoleFilter] = useState("All Roles");
-    const [planFilter, setPlanFilter] = useState("All Plans");
+    const [roleFilter, setRoleFilter] = useState("");
+    const [planFilter, setPlanFilter] = useState("");
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
     const [limit] = useState(10);
@@ -27,6 +27,7 @@ export default function AdminUsersPage() {
     const [inviteForm, setInviteForm] = useState({ full_name: "", email: "", password: "TempPassword123!", academic_level: "High School" });
     const [activeRowMenu, setActiveRowMenu] = useState<number | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [availablePlans, setAvailablePlans] = useState<{ id: number; name: string; slug: string }[]>([]);
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
     const getAuthHeaders = (includeJson = false) => {
         const token = localStorage.getItem("token");
@@ -43,14 +44,40 @@ export default function AdminUsersPage() {
         return () => controller.abort();
     }, [search, roleFilter, planFilter, page]);
 
+    const roleOptions = useMemo(() => {
+        const roles = new Set<string>();
+        users.forEach((user) => {
+            if (user.role) roles.add(user.role.toLowerCase());
+        });
+        return Array.from(roles).sort();
+    }, [users]);
+
+    useEffect(() => {
+        const controller = new AbortController();
+        const loadPlans = async () => {
+            try {
+                const res = await fetch(`${baseUrl}/api/v1/admin/plans`, { headers: getAuthHeaders(), signal: controller.signal });
+                if (res.ok) {
+                    const data = await res.json();
+                    setAvailablePlans(Array.isArray(data) ? data : []);
+                }
+            } catch (error) {
+                if ((error as Error).name === "AbortError") return;
+                console.error("Failed to load plans", error);
+            }
+        };
+        loadPlans();
+        return () => controller.abort();
+    }, [baseUrl]);
+
     const fetchUsers = async (signal?: AbortSignal) => {
         setLoading(true);
         try {
             setErrorMessage(null);
             const params = new URLSearchParams();
             if (search) params.append("q", search);
-            if (roleFilter !== "All Roles") params.append("role", roleFilter.toLowerCase());
-            if (planFilter !== "All Plans") params.append("plan", planFilter.toLowerCase());
+            if (roleFilter) params.append("role", roleFilter);
+            if (planFilter) params.append("plan", planFilter);
             params.append("offset", ((page - 1) * limit).toString());
             params.append("limit", limit.toString());
 
@@ -187,24 +214,28 @@ export default function AdminUsersPage() {
                         <div className="h-8 w-px bg-slate-800"></div>
                         <div className="flex gap-3">
                             <select
-                                className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 px-3 py-2 focus:ring-admin-primary"
+                                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-900 dark:text-white px-3 py-2 focus:ring-admin-primary"
                                 value={roleFilter}
                                 onChange={(e) => setRoleFilter(e.target.value)}
                             >
-                                <option>All Roles</option>
-                                <option>Student</option>
-                                <option>Supervisor</option>
-                                <option>Admin</option>
+                                <option value="">All Roles</option>
+                                {roleOptions.map((role) => (
+                                    <option key={role} value={role}>
+                                        {role.charAt(0).toUpperCase() + role.slice(1)}
+                                    </option>
+                                ))}
                             </select>
                             <select
-                                className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 px-3 py-2 focus:ring-admin-primary"
+                                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-900 dark:text-white px-3 py-2 focus:ring-admin-primary"
                                 value={planFilter}
                                 onChange={(e) => setPlanFilter(e.target.value)}
                             >
-                                <option>All Plans</option>
-                                <option>Free</option>
-                                <option>Pro</option>
-                                <option>Enterprise</option>
+                                <option value="">All Plans</option>
+                                {availablePlans.map((plan) => (
+                                    <option key={plan.slug} value={plan.slug}>
+                                        {plan.name}
+                                    </option>
+                                ))}
                             </select>
                         </div>
                     </div>

@@ -160,18 +160,28 @@ class SolverV3:
             # Ensure schema is dereferenced if dict
             json_schema_config = profile.json_schema_content
             # Wrap for OpenAI structured output strict mode
-            if isinstance(json_schema_config, dict):
-                 # Assume it's the inner schema. We need the wrapper.
-                 # Or did loader return full config[ERROR] Loader returns raw JSON content.
-                 # Usually that's just the { "type": "object", ... }
-                 # We need to wrap it.
-                 openai_schema_wrapper = {
-                        "name": "solve_response_v3",
-                        "strict": True,
-                        "schema": deref_json_schema(json_schema_config)
-                 }
-            else:
-                 return self._handle_error(problem_text, "Invalid schema content in profile", "config_error", telemetry, start_time_perf)
+            def load_schema(config_schema: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+                candidate = config_schema
+                if not isinstance(candidate, dict) or not candidate:
+                    candidate = get_json_schema_for_openai_v3()
+                try:
+                    deref = deref_json_schema(candidate)
+                except Exception as exc:
+                    print(f"[SOLVER_V3] Schema dereference failed: {exc}")
+                    deref = deref_json_schema(get_json_schema_for_openai_v3())
+                if not isinstance(deref, dict):
+                    deref = deref_json_schema(get_json_schema_for_openai_v3())
+                if deref.get("type") is None:
+                    deref["type"] = "object"
+                return deref
+
+            deref_schema = load_schema(json_schema_config if isinstance(json_schema_config, dict) else None)
+
+            openai_schema_wrapper = {
+                 "name": "solve_response_v3",
+                 "strict": True,
+                 "schema": deref_schema
+            }
 
             # Step 3: Call LLM
             # Set max_output_tokens by mode: study gets more tokens for micro-steps
@@ -545,8 +555,16 @@ class SolverV3:
             print(f"[SOLVER_DEBUG] _call_llm_with_schema user_message[:100]: {user_message[:100]}...")
         tokens = {"input": 0, "output": 0, "total": 0, "cached": None}
         schema_name = None
+        schema_payload = json_schema_config
         if isinstance(json_schema_config, dict):
             schema_name = json_schema_config.get("name")
+            if "schema" in json_schema_config:
+                schema_payload = json_schema_config["schema"]
+        payload_type = schema_payload.get("type") if isinstance(schema_payload, dict) else None
+        if payload_type is None:
+            print(f"[SOLVER_V3] WARNING: schema_payload missing type -> {schema_payload.get('$id', 'no-id')}? forcing object")
+            if isinstance(schema_payload, dict):
+                schema_payload["type"] = "object"
         
         # Check model type for API method
         if "gpt-5" in self._model.lower():
@@ -562,9 +580,9 @@ class SolverV3:
                     "verbosity": verbosity,
                     "format": {
                         "type": "json_schema",
-                        "json_schema": json_schema_config
-                    }
-                },
+                    "json_schema": schema_payload
+                }
+            },
                 "max_output_tokens": max_output_tokens
             }
             response = await self.client.responses.create(**params)
@@ -612,7 +630,7 @@ class SolverV3:
                 ],
                 "response_format": {
                     "type": "json_schema",
-                    "json_schema": json_schema_config
+                    "json_schema": schema_payload
                 },
                 "max_completion_tokens": max_output_tokens
             }
