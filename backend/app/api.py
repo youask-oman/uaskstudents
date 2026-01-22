@@ -398,6 +398,38 @@ class AdminUserDetailResponse(BaseModel):
     scans_used: int
     notes: List[AdminNoteResponse]
 
+# --- Subscription Endpoint Schemas (for tier-aware solve UX) ---
+class SubscriptionPlanInfo(BaseModel):
+    id: int
+    slug: str
+    display_name: str
+    credits_monthly: int
+    seats: int
+    multipliers: Dict[str, float]
+    features: Dict[str, Any]
+
+class SubscriptionUsage(BaseModel):
+    credits_used: float
+    credits_remaining: float
+    ocr_used: int
+    ocr_limit: int
+    voice_used: int
+    voice_limit: int
+
+class SubscriptionProfile(BaseModel):
+    grade_level: Optional[str] = None
+    region_country: Optional[str] = None
+    region_state_province: Optional[str] = None
+    display_name: str
+
+class SubscriptionResponse(BaseModel):
+    plan: SubscriptionPlanInfo
+    usage: SubscriptionUsage
+    profile: SubscriptionProfile
+    allow_detailed: bool
+    allow_ocr: bool
+    allow_voice: bool
+
 class AdminUserUpdateRequest(BaseModel):
     role: Optional[str] = None
     subscription_tier: Optional[str] = None
@@ -644,6 +676,92 @@ async def login_for_access_token(form_data: LoginRequest, session: Session = Dep
         session_token=session_token # Return to client
     )
 
+
+# --- User Subscription Endpoint (for tier-aware solve UX) ---
+@api_router.get("/me/subscription", response_model=SubscriptionResponse)
+async def get_my_subscription(
+    user_id: int = Query(..., description="User ID"), 
+    session: Session = Depends(get_session)
+):
+    """
+    Returns subscription details, usage, and profile for the current user.
+    Used by the Solve page for tier-aware UX (cost preview, feature gating).
+    """
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Get subscription and plan
+    subscription = session.exec(
+        select(Subscription).where(Subscription.user_id == user_id)
+    ).first()
+    
+    if not subscription:
+        # Return default Free plan info
+        free_plan = session.exec(select(Plan).where(Plan.slug == "free")).first()
+        plan_info = SubscriptionPlanInfo(
+            id=free_plan.id if free_plan else 0,
+            slug="free",
+            display_name="Free",
+            credits_monthly=50,
+            seats=1,
+            multipliers={"text_concise": 1, "text_detailed": 1000, "ocr_add": 1, "voice_add": 1},
+            features={"allow_detailed": False, "allow_ocr": True, "allow_voice": True}
+        )
+        usage_info = SubscriptionUsage(
+            credits_used=0,
+            credits_remaining=50,
+            ocr_used=0,
+            ocr_limit=3,
+            voice_used=0,
+            voice_limit=3
+        )
+    else:
+        plan = session.get(Plan, subscription.plan_id)
+        features = plan.features or {}
+        multipliers = plan.multipliers or {"text_concise": 1, "text_detailed": 2, "ocr_add": 1, "voice_add": 1}
+        
+        plan_info = SubscriptionPlanInfo(
+            id=plan.id,
+            slug=plan.slug,
+            display_name=plan.name,
+            credits_monthly=plan.credits_per_month,
+            seats=plan.seats or 1,
+            multipliers=multipliers,
+            features=features
+        )
+        
+        feature_usage = subscription.feature_usage or {}
+        usage_info = SubscriptionUsage(
+            credits_used=subscription.credits_used_this_period,
+            credits_remaining=subscription.credits_balance,
+            ocr_used=feature_usage.get("ocr_used", 0),
+            ocr_limit=features.get("ocr_monthly_cap", 100),
+            voice_used=feature_usage.get("voice_used", 0),
+            voice_limit=features.get("voice_monthly_cap", 50)
+        )
+    
+    # Profile info
+    profile_info = SubscriptionProfile(
+        grade_level=user.grade_level,
+        region_country=user.profile_country,
+        region_state_province=user.profile_province_state,
+        display_name=user.full_name
+    )
+    
+    # Feature allowance flags
+    allow_detailed = plan_info.slug != "free"
+    allow_ocr = usage_info.ocr_used < usage_info.ocr_limit
+    allow_voice = usage_info.voice_used < usage_info.voice_limit
+    
+    return SubscriptionResponse(
+        plan=plan_info,
+        usage=usage_info,
+        profile=profile_info,
+        allow_detailed=allow_detailed,
+        allow_ocr=allow_ocr,
+        allow_voice=allow_voice
+    )
 
 
 

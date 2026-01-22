@@ -24,6 +24,12 @@ import InputModeSelector from "@/components/InputModeSelector";
 import LiveMathPreview from "@/components/LiveMathPreview";
 import { InputModeId, INPUT_MODES, GraphingOptions, DEFAULT_GRAPHING_OPTIONS } from "@/lib/inputModes";
 
+// Tier-aware solve imports
+import SegmentedControl from "@/components/ui/SegmentedControl";
+import UsageMeter from "@/components/ui/UsageMeter";
+import CostPreview from "@/components/solve/CostPreview";
+import { SubscriptionResponse, DEFAULT_SUBSCRIPTION, fetchSubscription, calculateSolveCost } from "@/lib/subscription";
+
 interface ChatSession {
     id: number;
     title: string;
@@ -70,6 +76,12 @@ export default function DashboardPage() {
     const [currentStage, setCurrentStage] = useState("");
     const [streamingTelemetry, setStreamingTelemetry] = useState<any>(null);
     const [solveStartTime, setSolveStartTime] = useState<number | null>(null);
+
+    // Tier-Aware Solve State
+    const [selectedGoal, setSelectedGoal] = useState<'solve' | 'study'>('solve');
+    const [selectedAnswerStyle, setSelectedAnswerStyle] = useState<'quick' | 'tutor'>('quick');
+    const [subscription, setSubscription] = useState<SubscriptionResponse>(DEFAULT_SUBSCRIPTION);
+    const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
 
     // Compute token estimate and multi-question detection
     const tokenEstimate = useMemo(() => estimateTokens(query), [query]);
@@ -126,8 +138,21 @@ export default function DashboardPage() {
             } catch (e) { console.error(e); }
         };
 
+        // Fetch subscription for tier-aware solve UX
+        const loadSubscription = async () => {
+            try {
+                const subData = await fetchSubscription(userId);
+                setSubscription(subData);
+                setSubscriptionLoaded(true);
+            } catch (e) {
+                console.warn("Failed to load subscription, using defaults", e);
+                setSubscriptionLoaded(true);
+            }
+        };
+
         fetchHistory();
         fetchOnline();
+        loadSubscription();
         const interval = setInterval(fetchOnline, 30000);
         return () => clearInterval(interval);
     }, [router]);
@@ -695,11 +720,23 @@ export default function DashboardPage() {
                     ],
                     artifact_id: artifactId,
                     question_id: selectedQuestionId,
-                    mode: 'general',
+                    mode: selectedAnswerStyle === 'tutor' ? 'detailed' : 'minimal',
                     subject: voiceSubject,
                     difficulty: voiceDifficulty,
                     input_mode: selectedInputMode,
                     graphing_options: selectedInputMode === 'graphing' ? graphingOptions : undefined,
+                    // Tier-aware fields
+                    requested_mode: selectedAnswerStyle === 'tutor' ? 'detailed' : 'minimal',
+                    trusted_context: {
+                        learning_mode: selectedGoal,
+                        grade_level: subscription.profile.grade_level || null,
+                        region_country: subscription.profile.region_country || null,
+                        region_state_province: subscription.profile.region_state_province || null
+                    },
+                    features_used: {
+                        ocr_used: activeTab === 'snap',
+                        voice_used: activeTab === 'voice'
+                    }
                 })
             });
 
@@ -841,6 +878,77 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     {/* Main Interaction Area */}
                     <div className="lg:col-span-8 space-y-6">
+
+                        {/* Tier-Aware Controls Section */}
+                        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-800 p-4">
+                            <div className="flex flex-wrap items-center justify-between gap-4">
+                                {/* Goal Toggle */}
+                                <SegmentedControl
+                                    label="Goal"
+                                    options={[
+                                        { value: "solve", label: "Solve", icon: "bolt" },
+                                        { value: "study", label: "Study", icon: "school", tooltip: "Breaks steps into smaller chunks with check-ins" }
+                                    ]}
+                                    value={selectedGoal}
+                                    onChange={(v) => setSelectedGoal(v as 'solve' | 'study')}
+                                    size="sm"
+                                />
+
+                                {/* Answer Style Toggle */}
+                                <SegmentedControl
+                                    label="Answer Style"
+                                    options={[
+                                        { value: "quick", label: "Quick", icon: "speed" },
+                                        {
+                                            value: "tutor",
+                                            label: "Tutor",
+                                            icon: "menu_book",
+                                            disabled: !subscription.allow_detailed,
+                                            tooltip: subscription.allow_detailed
+                                                ? "Step-by-step with checkpoints"
+                                                : "Upgrade to unlock detailed explanations"
+                                        }
+                                    ]}
+                                    value={selectedAnswerStyle}
+                                    onChange={(v) => {
+                                        if (subscription.allow_detailed || v === "quick") {
+                                            setSelectedAnswerStyle(v as 'quick' | 'tutor');
+                                        }
+                                    }}
+                                    size="sm"
+                                />
+
+                                {/* Usage Meters */}
+                                {subscriptionLoaded && (
+                                    <div className="flex items-center gap-4">
+                                        <UsageMeter
+                                            label="Credits"
+                                            used={subscription.usage.credits_used}
+                                            limit={subscription.plan.credits_monthly}
+                                            icon="payments"
+                                        />
+                                        <UsageMeter
+                                            label="OCR"
+                                            used={subscription.usage.ocr_used}
+                                            limit={subscription.usage.ocr_limit}
+                                            icon="document_scanner"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Cost Preview */}
+                            <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                                <CostPreview
+                                    baseCost={calculateSolveCost(subscription, selectedAnswerStyle, false, false)}
+                                    ocrCost={activeTab === 'snap' ? subscription.plan.multipliers.ocr_add : 0}
+                                    voiceCost={activeTab === 'voice' ? subscription.plan.multipliers.voice_add : 0}
+                                    creditsRemaining={subscription.usage.credits_remaining}
+                                    isDetailed={selectedAnswerStyle === 'tutor'}
+                                />
+                            </div>
+                        </div>
+
                         {/* Input Mode Tabs */}
                         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl shadow-black/5 border border-slate-200 dark:border-slate-800 transition-colors">
                             <div className="flex border-b border-slate-200 dark:border-slate-800">
