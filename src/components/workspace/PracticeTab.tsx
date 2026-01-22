@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import MathRenderer from "../MathRenderer";
+import MathRendererMJX from "../MathRendererMJX";
 import VisualRenderer, { Visual } from "./VisualRenderer";
 
 interface SimilarExample {
@@ -19,6 +20,9 @@ interface PracticeTabProps {
     onSelectTab: (tab: PracticeTabProps["activeTab"]) => void;
     stepsCount?: number;
 }
+
+const isMathJaxEnabled = (process.env.NEXT_PUBLIC_MATH_RENDERER || "katex") === "mathjax";
+const PracticeRenderer = isMathJaxEnabled ? MathRendererMJX : MathRenderer;
 
 const fallbackExamples: SimilarExample[] = [
     {
@@ -117,7 +121,7 @@ export default function PracticeTab({
                                         </div>
                                     </div>
                                     <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                                        <MathRenderer content={example.problem} />
+                                        <PracticeRenderer content={example.problem} />
                                     </div>
 
                                     {example.key_idea && (
@@ -145,7 +149,7 @@ export default function PracticeTab({
                                                     {isRevealed && (
                                                         <div className="animate-in fade-in slide-in-from-left-2 duration-300">
                                                             <span className="text-sm font-bold text-slate-800 dark:text-white px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg">
-                                                                <MathRenderer content={example.short_solution} />
+                                                                <PracticeRenderer content={example.short_solution} />
                                                             </span>
                                                         </div>
                                                     )}

@@ -22,6 +22,13 @@ describe("MathRendererMJX helper", () => {
     expect(output).toContain("\\(\\neq 1\\)");
   });
 
+  test("converts plain sqrt(...) to latex sqrt{}", () => {
+    const input = "Solve for x: sqrt(x+3) + sqrt(x) = 5";
+    const output = prepareMathJaxContent(input);
+    expect(output).toContain("\\(\\sqrt{x+3}\\)");
+    expect(output).toContain("\\(\\sqrt{x}\\)");
+  });
+
   test("outputs a representative step explanation without mangling spaces", () => {
     const stepExplanation = `
 Step 2: Square both sides and simplify.

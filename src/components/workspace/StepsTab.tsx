@@ -88,7 +88,7 @@ function CheckpointInteraction({ question, answer }: { question: string, answer:
                 <span className="text-xs font-bold text-primary uppercase">Checkpoint</span>
             </div>
             <div className="text-xs font-medium mb-3 text-[#111318] dark:text-white">
-                <MathRenderer content={question} />
+                <ExplanationRenderer content={question} />
             </div>
 
             {isRevealed ? (
@@ -97,7 +97,7 @@ function CheckpointInteraction({ question, answer }: { question: string, answer:
                         <span className="material-symbols-outlined text-[18px] shrink-0 fill-1">check_circle</span>
                         <div>
                             <p className="text-[10px] uppercase font-black text-emerald-600 dark:text-emerald-400 mb-0.5">Answer</p>
-                            <MathRenderer content={answer} inline />
+                            <ExplanationRenderer content={answer} inline />
                         </div>
                     </div>
                 </div>
@@ -186,7 +186,7 @@ export default function StepsTab({ steps, visuals }: StepsTabProps) {
                                             </h4>
                                         </div>
                                         <div className="text-lg font-bold text-[#111318] dark:text-white mb-2 leading-snug">
-                                            <MathRenderer content={step.title} />
+                                            <ExplanationRenderer content={step.title} />
                                         </div>
                                         <div className="text-sm font-semibold text-[#111318] dark:text-slate-300 mb-4 leading-relaxed">
                                             <ExplanationRenderer content={explanationText} />
