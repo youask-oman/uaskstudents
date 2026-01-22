@@ -2902,7 +2902,13 @@ async def solve_v3_stream_endpoint(
                 yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': 'Finalizing...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
 
                 # Update DB (Part E1)
-                placeholder_msg.content = str(final_data.get("final_answer", {}).get("answer_text", "Solution complete"))
+                # Safe extraction of answer_text (handles both dict and string final_answer)
+                final_answer_obj = final_data.get("final_answer", {})
+                if isinstance(final_answer_obj, dict):
+                    answer_text = final_answer_obj.get("answer_text", "Solution complete")
+                else:
+                    answer_text = str(final_answer_obj) if final_answer_obj else "Solution complete"
+                placeholder_msg.content = answer_text
                 placeholder_msg.structured_data = final_data
                 placeholder_msg.telemetry = openai_telemetry
                 placeholder_msg.tokens_used = openai_telemetry.get("total_tokens", 0)

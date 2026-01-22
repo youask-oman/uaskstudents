@@ -347,6 +347,18 @@ class SolverV3:
         if "assumptions" not in obj or obj["assumptions"] is None:
             obj["assumptions"] = []
 
+        # final_answer - ensure it's always a dict with required fields
+        if "final_answer" not in obj or obj["final_answer"] is None:
+            obj["final_answer"] = {"answer_text": "", "answer_latex": "", "values": [], "units": ""}
+        elif isinstance(obj["final_answer"], str):
+            # Convert string to proper object
+            obj["final_answer"] = {"answer_text": obj["final_answer"], "answer_latex": "", "values": [], "units": ""}
+        elif isinstance(obj["final_answer"], dict):
+            if "answer_text" not in obj["final_answer"]: obj["final_answer"]["answer_text"] = ""
+            if "answer_latex" not in obj["final_answer"]: obj["final_answer"]["answer_latex"] = ""
+            if "values" not in obj["final_answer"] or obj["final_answer"]["values"] is None: obj["final_answer"]["values"] = []
+            if "units" not in obj["final_answer"]: obj["final_answer"]["units"] = ""
+
         return obj
 
     async def solve_stream(
