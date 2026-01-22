@@ -67,6 +67,16 @@ def on_startup():
         root_logger.addHandler(handler)
     
     create_db_and_tables()
+    
+    # Initialize Plans
+    from app.services.subscription_service import subscription_service
+    from app.database import engine
+    from sqlmodel import Session
+    with Session(engine) as session:
+        try:
+            subscription_service.ensure_plans_exist(session)
+        except Exception as e:
+            logging.error(f"Failed to initialize plans: {e}")
 
 # Monitoring Endpoints
 @app.get("/health")

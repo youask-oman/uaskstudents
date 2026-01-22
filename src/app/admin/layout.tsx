@@ -37,6 +37,7 @@ export default function AdminLayout({
         { label: "Overview", href: "/admin/dashboard", icon: "dashboard" },
         { label: "Users", href: "/admin/users", icon: "group" },
         { label: "Quotas", href: "/admin/quotas", icon: "speed" },
+        { label: "Subscriptions", href: "/admin/subscriptions", icon: "diamond" },
         { label: "Prompts", href: "/admin/prompts", icon: "terminal" },
         { label: "Performance", href: "/admin/performance", icon: "monitoring" },
     ];

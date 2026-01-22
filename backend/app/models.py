@@ -57,6 +57,9 @@ class User(SQLModel, table=True):
     session_token: Optional[str] = None
     last_ip: Optional[str] = None
 
+    # Subscription Relationship
+    subscription: Optional["Subscription"] = Relationship(back_populates="user")
+    
     # Relationships
     school: Optional["School"] = Relationship(back_populates="students")
     sessions: List["ChatSession"] = Relationship(back_populates="user")
@@ -113,6 +116,69 @@ class UsageLog(SQLModel, table=True):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     
     user: User = Relationship(back_populates="usage_logs")
+
+# --- Subscription System Models ---
+
+class Plan(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str  # Free, Student Standard, Family Standard
+    slug: str = Field(unique=True, index=True)
+    credits_per_month: int
+    price_monthly_cents: int
+    price_yearly_cents: int
+    seats: int = Field(default=1)
+    
+    # Configuration JSONs
+    features: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    multipliers: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    
+    # Linked Prompts
+    system_prompt_template_id: Optional[int] = Field(default=None, foreign_key="prompttemplate.id")
+    schema_prompt_template_id: Optional[int] = Field(default=None, foreign_key="prompttemplate.id")
+    
+    is_active: bool = Field(default=True)
+    version: int = Field(default=1) # Optimistic locking
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class Subscription(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True, unique=True) # One sub per user
+    plan_id: int = Field(foreign_key="plan.id")
+    
+    status: str = Field(default="active") # active, past_due, cancelled
+    current_period_start: datetime = Field(default_factory=datetime.utcnow)
+    current_period_end: datetime
+    
+    # Balance & Usage
+    credits_balance: float = Field(default=0.0)
+    credits_used_this_period: float = Field(default=0.0)
+    
+    # Feature Usage Counters (reset monthly)
+    feature_usage: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    
+    auto_renew: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    user: User = Relationship(back_populates="subscription")
+    plan: Plan = Relationship()
+    ledger_entries: List["UsageLedger"] = Relationship(back_populates="subscription")
+
+class UsageLedger(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    subscription_id: int = Field(foreign_key="subscription.id", index=True)
+    
+    transaction_type: str # DEBIT, CREDIT, REFUND, RESET
+    amount: float
+    balance_after: float
+    
+    reference_id: Optional[str] = Field(default=None, index=True) # question_id, payment_id
+    meta: Optional[dict] = Field(default=None, sa_column=Column(JSON)) # reason, details
+    
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    subscription: Subscription = Relationship(back_populates="ledger_entries")
+
 
 class Payment(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -549,4 +615,11 @@ class QuestionIdentityCache(SQLModel, table=True):
     hit_count: int = Field(default=0)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     last_seen_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class DeviceSignupLog(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    device_hash: str = Field(index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    user_id: Optional[int] = None
 

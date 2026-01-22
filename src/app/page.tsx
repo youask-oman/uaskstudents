@@ -2,6 +2,7 @@ import Link from "next/link";
 import TopNavBar from "@/components/TopNavBar";
 import Footer from "@/components/Footer";
 import HeroCTA from "@/components/HeroCTA";
+import PricingSection from "@/components/PricingSection";
 
 export default function Home() {
   return (
@@ -164,79 +165,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Pricing Preview */}
-        <section className="bg-background-light dark:bg-background-dark py-24 transition-colors duration-200" id="pricing">
-          <div className="max-w-[1000px] mx-auto px-4">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-4xl font-bold font-display mb-4 text-[#111318] dark:text-white">Simple Pricing</h2>
-              <p className="text-[#616f89] dark:text-gray-400">Start for free, upgrade when you're ready to master it all.</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Free Plan */}
-              <div className="bg-white dark:bg-slate-900 p-10 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 flex flex-col transition-colors">
-                <div className="mb-8">
-                  <h3 className="text-2xl font-bold mb-2 text-[#111318] dark:text-white">Free</h3>
-                  <div className="text-4xl font-black font-display text-[#111318] dark:text-white">$0<span className="text-lg font-normal text-gray-400">/mo</span></div>
-                </div>
-                <ul className="space-y-4 mb-10 flex-1">
-                  <li className="flex items-center gap-3 text-sm text-[#111318] dark:text-gray-300">
-                    <span className="material-symbols-outlined text-green-500 font-bold">check</span>
-                    5 Daily AI Scans
-                  </li>
-                  <li className="flex items-center gap-3 text-sm text-[#111318] dark:text-gray-300">
-                    <span className="material-symbols-outlined text-green-500 font-bold">check</span>
-                    Basic Tutoring Path
-                  </li>
-                  <li className="flex items-center gap-3 text-sm text-[#111318] dark:text-gray-300">
-                    <span className="material-symbols-outlined text-green-500 font-bold">check</span>
-                    Concept Library Access
-                  </li>
-                  <li className="flex items-center gap-3 text-sm text-gray-400 line-through">
-                    PDF Export Solutions
-                  </li>
-                </ul>
-                <button className="w-full py-4 rounded-xl border-2 border-primary text-primary font-bold hover:bg-primary/5 transition-colors">
-                  Current Plan
-                </button>
-              </div>
-              {/* Pro Plan */}
-              <div className="bg-white dark:bg-slate-900 p-10 rounded-2xl border-2 border-primary shadow-2xl shadow-primary/10 flex flex-col relative overflow-hidden transition-colors">
-                <div className="absolute top-0 right-0 bg-primary text-white px-4 py-1 rounded-bl-xl font-bold text-xs uppercase tracking-widest">Recommended</div>
-                <div className="mb-8">
-                  <h3 className="text-2xl font-bold mb-2 text-[#111318] dark:text-white">Pro</h3>
-                  <div className="text-4xl font-black font-display text-[#111318] dark:text-white">$9.99<span className="text-lg font-normal text-gray-400">/mo</span></div>
-                </div>
-                <ul className="space-y-4 mb-10 flex-1">
-                  <li className="flex items-center gap-3 text-sm text-[#111318] dark:text-gray-300">
-                    <span className="material-symbols-outlined text-primary font-bold">check</span>
-                    Unlimited AI Scans
-                  </li>
-                  <li className="flex items-center gap-3 text-sm text-[#111318] dark:text-gray-300">
-                    <span className="material-symbols-outlined text-primary font-bold">check</span>
-                    Priority Socratic AI (Deep Guidance)
-                  </li>
-                  <li className="flex items-center gap-3 text-sm text-[#111318] dark:text-gray-300">
-                    <span className="material-symbols-outlined text-primary font-bold">check</span>
-                    Concept Deep-Dives
-                  </li>
-                  <li className="flex items-center gap-3 text-sm text-[#111318] dark:text-gray-300">
-                    <span className="material-symbols-outlined text-primary font-bold">check</span>
-                    PDF Export & LaTeX Source
-                  </li>
-                  <li className="flex items-center gap-3 text-sm text-[#111318] dark:text-gray-300">
-                    <span className="material-symbols-outlined text-primary font-bold">check</span>
-                    Ad-free Experience
-                  </li>
-                </ul>
-                <Link href="/pricing">
-                  <button className="w-full py-4 rounded-xl bg-primary text-white font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-primary/20">
-                    Upgrade to Pro
-                  </button>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </section>
+        <PricingSection />
 
         {/* Final CTA */}
         <section className="py-24 max-w-[1200px] mx-auto px-4 text-center">

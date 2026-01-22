@@ -22,8 +22,9 @@ from app.models import (
     OCRQuestion, OCRChoice, OCRFigure,
     VoiceSession, VoiceAudio, VoiceJob, VoiceArtifact, VoiceConfirmation,
     AdminNote, SystemConfig, PromptTemplate, PromptVersion, UserQuotaOverride, SystemErrorEntry,
-    School
+    School, Plan, Subscription, UsageLedger
 )
+from app.services.subscription_service import subscription_service
 from app.services.vision import VisionService, vision_service
 from app.services.solver import solver_service
 from app.services.intent import should_require_visual
@@ -203,6 +204,14 @@ class SolveRequest(BaseModel):
     difficulty: Optional[str] = None
     mode: Optional[str] = "general"
     user_id: Optional[int] = None
+    
+    # Entitlement flags
+    is_make_it_right: Optional[bool] = False
+    previous_request_id: Optional[str] = None
+    has_voice: Optional[bool] = False
+
+from app.models import Plan, Subscription, UsageLedger
+from app.services.subscription_service import subscription_service
 
 class SolveResponse(BaseModel):
     session_id: int
@@ -579,6 +588,23 @@ async def signup(form_data: SignupRequest, session: Session = Depends(get_sessio
     )
 
     session.add(new_user)
+    
+    # Anti-Abuse
+    if hasattr(form_data, "device_fingerprint") and form_data.device_fingerprint:
+        # Check last signup from this device
+        from datetime import datetime, timedelta
+        cutoff = datetime.utcnow() - timedelta(days=30)
+        recent_signups = session.exec(select(DeviceSignupLog).where(
+            DeviceSignupLog.device_hash == form_data.device_fingerprint,
+            DeviceSignupLog.created_at > cutoff
+        )).all()
+        
+        # Limit to 3 signups per device per 30 days
+        if len(recent_signups) >= 3:
+             raise HTTPException(status_code=400, detail="Device limit exceeded. Too many accounts created from this device.")
+             
+        # Log this signup
+        session.add(DeviceSignupLog(device_hash=form_data.device_fingerprint))
     session.commit()
     session.refresh(new_user)
 
@@ -1624,17 +1650,51 @@ async def solve_v3_endpoint(
     try:
         # Call Solver V3 (Logic: Only if not cached)
         if not result:
-            solver = get_solver_v3()
-            result = await solver.solve(
-                problem_text=problem_text,
-                context=context,
-                trace=trace,
-                request_id=request_id
+            # --- ENTITLEMENT CHECK & DEBIT ---
+            action_req = {
+                "mode": body.mode or "concise",
+                "has_ocr": bool(body.image_url or body.artifact_id),
+                "has_voice": getattr(body, 'has_voice', False),
+                "question_hash": question_key or str(hash(problem_text)),
+                "is_make_it_right": getattr(body, 'is_make_it_right', False)
+            }
+            
+            check_result = subscription_service.check_entitlement_and_debit(session, user_id, action_req)
+            if not check_result["allowed"]:
+                 raise HTTPException(status_code=402, detail=f"Entitlement Check Failed: {check_result['reason']}")
+                 
+            # Execute Debit
+            sub_id = check_result["subscription"].id
+            debit_cost = check_result["cost"]
+            subscription_service.execute_debit(
+                session, 
+                check_result["subscription"], 
+                debit_cost, 
+                {"action": "solve_v3", "req": action_req}, 
+                request_id
             )
+            session.commit()
+            
+            try:
+                solver = get_solver_v3()
+                result = await solver.solve(
+                    problem_text=problem_text,
+                    context=context,
+                    trace=trace,
+                    request_id=request_id
+                )
+            except Exception as e:
+                # REFUND ON EXCEPTION
+                subscription_service.refund_credits(session, sub_id, debit_cost, f"System Error: {str(e)}", request_id)
+                raise e
         
         # Check if it's an error response - fallback to V2 if V3 fails
         # Check if it's an error response
         if result.get("error", False):
+            # REFUND ON SOLVER ERROR (Policy: refund on technical failures)
+            if not was_cached and 'debit_cost' in locals():
+                 subscription_service.refund_credits(session, sub_id, debit_cost, f"Solver Error: {result.get('error_type')}", request_id)
+
             print(f"[API_V3] Solver V3 returned error: {result.get('error_type')}")
             
             # Record error in a chat session for visibility
@@ -3075,8 +3135,8 @@ async def admin_get_prompts(db: Session = Depends(get_session)):
     
     # If no templates, seed default ones
     if not templates:
-        t1 = PromptTemplate(name="Math Solver", description="System instruction for advanced step-by-step math resolution")
-        t2 = PromptTemplate(name="OCR Formatter", description="Normalization rules for raw OCR output")
+        t1 = PromptTemplate(name="Math Solver", slug="math-solver", description="System instruction for advanced step-by-step math resolution")
+        t2 = PromptTemplate(name="OCR Formatter", slug="ocr-formatter", description="Normalization rules for raw OCR output")
         db.add(t1)
         db.add(t2)
         db.commit()
@@ -3280,4 +3340,66 @@ async def get_session_save_status(session_id: int, db: Session = Depends(get_ses
         created_at=chat_session.created_at.isoformat()
     )
 
+
+
+# ------------------------------------------------------------------
+# Admin & Subscription Endpoints
+# ------------------------------------------------------------------
+
+class PlanCreate(BaseModel):
+    name: str
+    slug: str
+    credits_per_month: int
+    price_monthly_cents: int
+    price_yearly_cents: int
+    seats: int = 1
+    features: Dict[str, Any] = {}
+    multipliers: Dict[str, Any] = {}
+    system_prompt_template_id: Optional[int] = None
+    schema_prompt_template_id: Optional[int] = None
+    is_active: bool = True
+
+@api_router.get('/admin/plans')
+async def list_plans(session: Session = Depends(get_session)):
+    return session.exec(select(Plan)).all()
+
+@api_router.post('/admin/plans')
+async def create_or_update_plan(plan_data: PlanCreate, session: Session = Depends(get_session)):
+    # Check if slug exists
+    existing = session.exec(select(Plan).where(Plan.slug == plan_data.slug)).first()
+    if existing:
+        for key, value in plan_data.dict().items():
+            setattr(existing, key, value)
+        existing.version += 1
+        session.add(existing)
+        session.commit()
+        session.refresh(existing)
+        return existing
+    else:
+        new_plan = Plan(**plan_data.dict())
+        session.add(new_plan)
+        session.commit()
+        session.refresh(new_plan)
+        return new_plan
+
+@api_router.get('/users/me/subscription')
+async def get_my_subscription(user_id: int = Query(...), session: Session = Depends(get_session)):
+    user = session.get(User, user_id)
+    if not user: raise HTTPException(404, detail='User not found')
+    sub = subscription_service.get_or_create_subscription(session, user)
+    return sub
+
+
+@api_router.get('/admin/plans-with-prompts')
+async def list_plans_with_prompts(session: Session = Depends(get_session)):
+    plans = session.exec(select(Plan)).all()
+    # Eager loading prompts would be better, but for now just returning IDs is fine
+    # Frontend can fetch prompts separately
+    return plans
+
+
+@api_router.get('/public/plans')
+async def list_public_plans(session: Session = Depends(get_session)):
+    """Public endpoint to list active subscription plans for the pricing page"""
+    return session.exec(select(Plan).where(Plan.is_active == True)).all()
 
