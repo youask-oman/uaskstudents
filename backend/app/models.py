@@ -82,6 +82,11 @@ class ChatSession(SQLModel, table=True):
     # Save functionality - only saved sessions appear in history
     is_saved: bool = Field(default=False, index=True)
 
+    # Tier & Goal Tracking
+    learning_mode: Optional[str] = Field(default="solve") # solve, study
+    requested_mode: Optional[str] = Field(default="minimal") # minimal, detailed
+    solve_tier: Optional[str] = Field(default="free") # free, standard
+
     user: Optional[User] = Relationship(back_populates="sessions")
     messages: List["ChatMessage"] = Relationship(back_populates="session")
 

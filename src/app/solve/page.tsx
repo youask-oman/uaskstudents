@@ -713,26 +713,22 @@ export default function DashboardPage() {
                 credentials: 'include',
                 mode: 'cors',
                 body: JSON.stringify({
-                    confirmed_markdown: query,
+                    // Primary problem input - only one text field
                     confirmed_text: query,
-                    confirmed_latex_blocks: [
-                        ...Object.entries(choices).map(([k, v]) => ({ type: 'choice', key: k, value: v }))
-                    ],
-                    artifact_id: artifactId,
-                    question_id: selectedQuestionId,
-                    mode: selectedAnswerStyle === 'tutor' ? 'detailed' : 'minimal',
-                    subject: voiceSubject,
-                    difficulty: voiceDifficulty,
-                    input_mode: selectedInputMode,
-                    graphing_options: selectedInputMode === 'graphing' ? graphingOptions : undefined,
-                    // Tier-aware fields
+                    // Entity references (for OCR flow)
+                    artifact_id: artifactId || undefined,
+                    question_id: selectedQuestionId || undefined,
+                    // Tier-aware mode - single field, no duplication
                     requested_mode: selectedAnswerStyle === 'tutor' ? 'detailed' : 'minimal',
+                    // Normalized trusted_context (compact enums)
                     trusted_context: {
                         learning_mode: selectedGoal,
-                        grade_level: subscription.profile.grade_level || null,
-                        region_country: subscription.profile.region_country || null,
-                        region_state_province: subscription.profile.region_state_province || null
+                        // Values already normalized from API (CA, CA-ON, 11)
+                        grade_level: subscription.profile.grade_level || undefined,
+                        region_country: subscription.profile.region_country || undefined,
+                        region_state_province: subscription.profile.region_state_province || undefined
                     },
+                    // Feature flags for accounting (not sent to OpenAI)
                     features_used: {
                         ocr_used: activeTab === 'snap',
                         voice_used: activeTab === 'voice'

@@ -210,6 +210,11 @@ class SolveRequest(BaseModel):
     is_make_it_right: Optional[bool] = False
     previous_request_id: Optional[str] = None
     has_voice: Optional[bool] = False
+    
+    # Tier-Aware & Trusted Context
+    trusted_context: Optional[Dict[str, Any]] = None
+    requested_mode: Optional[str] = "minimal"
+    features_used: Optional[Dict[str, Any]] = None
 
 from app.models import Plan, Subscription, UsageLedger
 from app.services.subscription_service import subscription_service
@@ -1463,7 +1468,8 @@ async def solve_problem(
             user_tier=user.subscription_tier if user else "free",
             user_id=user_id,
             db_session=session,
-            requested_mode="detailed" if body.mode == "detailed" else "minimal"
+            requested_mode=body.requested_mode or ("detailed" if body.mode == "detailed" else "minimal"),
+            trusted_context=body.trusted_context
         )
         print(f"[API] Solver V3 returned successfully")
         
@@ -1498,7 +1504,10 @@ async def solve_problem(
         user_id=user_id,
         title=solution_data.get("problem", {}).get("goal", "New Problem")[:50],
         subject=body.subject or "General",
-        is_saved=False
+        is_saved=False,
+        learning_mode=(body.trusted_context or {}).get("learning_mode", "solve"),
+        requested_mode=body.requested_mode or "minimal",
+        solve_tier=user.subscription_tier if user else "free"
     )
     session.add(new_chat)
     session.commit()
@@ -1519,6 +1528,9 @@ async def solve_problem(
     
     # Calculate final tokens (prefer telemetry)
     telemetry_data = solution_data.get("_telemetry") or solution_data.get("telemetry") or {}
+    telemetry_data["learning_mode"] = new_chat.learning_mode
+    telemetry_data["requested_mode"] = new_chat.requested_mode
+    telemetry_data["solve_tier"] = new_chat.solve_tier
 # --- Admin Prompt Asset & Link Management ---
 
 class PromptAssetResponse(BaseModel):

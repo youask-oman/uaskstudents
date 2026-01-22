@@ -54,6 +54,9 @@ interface WorkspaceLayoutProps {
         latency_ms_openai?: number;
         latency_ms_total?: number;
         cached_tokens?: number;
+        learning_mode?: string;
+        requested_mode?: string;
+        solve_tier?: string;
     };
 }
 
@@ -448,6 +451,14 @@ export default function WorkspaceLayout({
                                     <div className="flex justify-between">
                                         <span className="opacity-70">Model:</span>
                                         <span className="font-bold">{telemetry.model || '-'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="opacity-70">Goal:</span>
+                                        <span className="font-bold uppercase text-xs pt-1">{telemetry.learning_mode || 'SOLVE'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="opacity-70">Style:</span>
+                                        <span className="font-bold uppercase text-xs pt-1">{telemetry.requested_mode || 'MINIMAL'}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="opacity-70">OpenAI Latency:</span>

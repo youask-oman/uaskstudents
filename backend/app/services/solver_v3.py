@@ -49,7 +49,10 @@ class SolverV3:
         user_id: Optional[int] = None,
         db_session: Optional[Any] = None,  # SQLModel Session
         requested_mode: str = "minimal",
-        db_plan: Optional[Any] = None
+        db_plan: Optional[Any] = None,
+        # Tier-aware payload fields (normalized at frontend)
+        trusted_context: Optional[Dict[str, Any]] = None,
+        learning_mode: Optional[str] = None  # "solve" | "study"
     ) -> Dict[str, Any]:
         
         start_time_perf = time.perf_counter()
@@ -168,6 +171,13 @@ class SolverV3:
                  return self._handle_error(problem_text, "Invalid schema content in profile", "config_error", telemetry, start_time_perf)
 
             # Step 3: Call LLM
+            # Set max_output_tokens by mode: study gets more tokens for micro-steps
+            effective_learning_mode = trusted_context.get("learning_mode") if trusted_context else learning_mode
+            if effective_learning_mode == "study":
+                effective_max_tokens = min(profile.max_output_tokens, 4000)
+            else:
+                effective_max_tokens = min(profile.max_output_tokens, 3000)
+            
             llm_start_perf = time.perf_counter()
             try:
                 response_data, llm_tokens = await self._call_llm_with_schema(
@@ -175,8 +185,10 @@ class SolverV3:
                     context, 
                     system_prompt, 
                     json_schema_config=openai_schema_wrapper, 
-                    max_output_tokens=profile.max_output_tokens,
-                    trace=trace
+                    max_output_tokens=effective_max_tokens,
+                    trace=trace,
+                    trusted_context=trusted_context,
+                    requested_mode=requested_mode
                 )
                 
                 llm_end_perf = time.perf_counter()
@@ -431,18 +443,30 @@ class SolverV3:
                 print(f"[SOLVER_V3_STREAM] ❌ FATAL: {e}")
             yield {"type": "error", "error": {"code": "fatal", "message": str(e)}}
 
-    def _build_user_message(self, problem_text: str, context: str) -> str:
-        return f"""Problem: {problem_text}
-
-Context: {context if context else "No additional context provided."}
-
-**CRITICAL**: Return ONLY strictly valid JSON matching the schema (v1.0).
-- All top-level keys are REQUIRED: problem, classification, refusal, assumptions, steps, final_answer, verification, visuals, quality.
-- visuals.should_visualize = true for any graphable content
-- verification is a SINGLE object (method, work_latex, conclusion). verification.alternative_method is also required (object or null).
-- refusal.is_refusal = true ONLY if safety policy requires it
-- Avoid nulls where possible, use empty arrays/strings instead.
-"""
+    def _build_user_message(
+        self, 
+        problem_text: str, 
+        context: str = "",
+        trusted_context: dict = None,
+        requested_mode: str = "minimal"
+    ) -> str:
+        """
+        Build compact JSON user message for OpenAI.
+        
+        Only includes: trusted_context (normalized), requested_mode, problem.
+        No billing/feature metadata, no redundant fields.
+        """
+        from app.services.context_normalizer import build_compact_user_message, normalize_trusted_context
+        
+        # Normalize trusted_context to compact enums (CA, CA-ON, 11)
+        normalized_ctx = normalize_trusted_context(trusted_context) if trusted_context else {}
+        
+        # Add requested_mode to context
+        if requested_mode:
+            normalized_ctx["requested_mode"] = requested_mode
+        
+        # Build compact JSON message
+        return build_compact_user_message(problem_text, normalized_ctx)
 
 
     def _handle_error(self, problem, errors, code, telemetry, start_time_perf):
@@ -460,9 +484,17 @@ Context: {context if context else "No additional context provided."}
         system_prompt, 
         json_schema_config,
         max_output_tokens=4096,
-        trace=False
+        trace=False,
+        trusted_context: dict = None,
+        requested_mode: str = "minimal"
     ):
-        user_message = self._build_user_message(problem_text, context)
+        # Build compact JSON user message with normalized trusted_context
+        user_message = self._build_user_message(
+            problem_text, 
+            context, 
+            trusted_context=trusted_context,
+            requested_mode=requested_mode
+        )
         tokens = {"input": 0, "output": 0, "total": 0, "cached": None}
         
         # Check model type for API method
