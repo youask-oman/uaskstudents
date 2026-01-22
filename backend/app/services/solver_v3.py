@@ -15,6 +15,8 @@ from app.schemas.na_math_solver_v3 import get_json_schema_for_openai_v3
 from app.services.validation_v3 import validate_response, create_error_response, generate_repair_prompt
 from app.prompts import get_prompt, get_schema
 from app.utils.schema_deref import deref_json_schema, validate_no_refs
+from app.llm_profiles.profiles import get_prompt_profile
+from app.services.response_mapper import map_minimal_to_canonical
 
 class SolverV3:
     """
@@ -41,65 +43,174 @@ class SolverV3:
         context: str = "",
         trace: bool = False,
         include_plot_base64: bool = False,
-        request_id: str = None
+        request_id: str = None,
+        user_tier: str = "free",
+        # New Context Params
+        user_id: Optional[int] = None,
+        db_session: Optional[Any] = None,  # SQLModel Session
+        requested_mode: str = "minimal",
+        db_plan: Optional[Any] = None
     ) -> Dict[str, Any]:
         
         start_time_perf = time.perf_counter()
         
-        # Default telemetry structure
+        # Default telemetry
         telemetry = {
             "request_id": request_id,
             "model": self._model,
             "input_tokens": 0,
             "output_tokens": 0,
             "total_tokens": 0,
-            "cached_tokens": None, # Null if N/A
+            "cached_tokens": None,
             "latency_ms_openai": 0,
             "latency_ms_total": 0,
-            
-            # Internal/Debug metrics
+            "mode_resolved": "unknown",
+            "tier_effective": user_tier,
             "validated": False,
             "repaired": False,
             "repair_reason": None,
             "validation_failures_count": 0,
             "plot_attempted": False,
             "plot_generated": False,
+            "debit_status": "none"
         }
+        
+        # If no DB session provided (backwards compat?), we can't do advanced resolution/accounting.
+        # But for V3 strict we expect db_session.
         
         if trace:
             print(f"\n[SOLVER_V3] ==================== START ====================")
-            print(f"[SOLVER_V3] Problem: {problem_text[:100]}...")
-            print(f"[SOLVER_V3] Model: {self._model}")
             print(f"[SOLVER_V3] Request ID: {request_id}")
 
-        try:
-            # Step 1: Load Prompts
-            try:
-                system_prompt = get_prompt("solver_system", "v3")
-            except Exception as e:
-                return self._handle_error(problem_text, f"Prompt load failed: {e}", "prompt_error", telemetry, start_time_perf)
+        profile = None
+        debit_result = None
 
-            # Step 2: Call LLM
+        try:
+            # Step 1: Resolve Profile
+            if db_session:
+                from app.llm_profiles.profile_resolver import ProfileResolver
+                from app.models import User
+                
+                # Load user object if needed
+                user_obj = None
+                if user_id:
+                     from sqlmodel import select
+                     user_obj = db_session.get(User, user_id)
+
+                try:
+                    profile = ProfileResolver.resolve_profile(
+                        db_session, 
+                        user_obj, 
+                        requested_mode=requested_mode,
+                        force_tier=user_tier if not user_obj else None
+                    )
+                    telemetry["mode_resolved"] = profile.mode
+                    telemetry["tier_effective"] = profile.tier
+                    
+                    if trace:
+                        print(f"[SOLVER_V3] Resolved Profile: Tier={profile.tier}, Mode={profile.mode}")
+
+                except Exception as e:
+                    return self._handle_error(problem_text, f"Profile resolution failed: {e}", "config_error", telemetry, start_time_perf)
+            else:
+                # Fallback purely for unit tests without DB
+                from app.llm_profiles.profiles import get_prompt_profile
+                profile = get_prompt_profile(user_tier)
+                profile.mode = "minimal" if user_tier == "free" else "detailed" # Mock
+
+            # Step 1.5: Accounting (Debit Pending)
+            if db_session and user_id:
+                # We need to perform a debit reservation ideally.
+                # For now, we'll check entitlement.
+                from app.services.subscription_service import subscription_service
+                
+                # Determine cost based on mode/features
+                cost_reason = f"Solve ({profile.mode})"
+                cost = 1.0 # Base cost
+                if profile.mode == "detailed":
+                    cost = 1.5 # Example multiplier? Or driven by plan config?
+                    # Ideally ProfileResolver provided a multiplier or we use Plan fields.
+                    # Implementing simple logic: 1 credit per solve for now unless otherwise specified.
+                
+                # Check credits
+                has_credits = subscription_service.check_credits(db_session, user_id, cost)
+                if not has_credits:
+                     return self._handle_error(problem_text, "Insufficient credits", "quota_error", telemetry, start_time_perf)
+                
+                # Create pending debit logic could go here if we had 2-phase commit.
+                # Currently we debit AFTER success or simpler: Debit now, refund on failure.
+                # Let's debit now.
+                debit_result = subscription_service.deduct_credits(
+                    db_session, 
+                    user_id, 
+                    amount=cost, 
+                    reason=cost_reason, 
+                    ref_id=request_id
+                )
+                telemetry["debit_status"] = "debited"
+
+            # Step 2: Prepare LLM Args
+            system_prompt = profile.system_prompt_content
+            # Ensure schema is dereferenced if dict
+            json_schema_config = profile.json_schema_content
+            # Wrap for OpenAI structured output strict mode
+            if isinstance(json_schema_config, dict):
+                 # Assume it's the inner schema. We need the wrapper.
+                 # Or did loader return full config? Loader returns raw JSON content.
+                 # Usually that's just the { "type": "object", ... }
+                 # We need to wrap it.
+                 openai_schema_wrapper = {
+                        "name": "solve_response_v3",
+                        "strict": True,
+                        "schema": deref_json_schema(json_schema_config)
+                 }
+            else:
+                 return self._handle_error(problem_text, "Invalid schema content in profile", "config_error", telemetry, start_time_perf)
+
+            # Step 3: Call LLM
             llm_start_perf = time.perf_counter()
             try:
                 response_data, llm_tokens = await self._call_llm_with_schema(
-                    problem_text, context, system_prompt, trace=trace
+                    problem_text, 
+                    context, 
+                    system_prompt, 
+                    json_schema_config=openai_schema_wrapper, 
+                    max_output_tokens=profile.max_output_tokens,
+                    trace=trace
                 )
                 
-                # Capture precise OpenAI latency
                 llm_end_perf = time.perf_counter()
                 telemetry["latency_ms_openai"] = int((llm_end_perf - llm_start_perf) * 1000)
                 
-                # Extract tokens
                 telemetry["input_tokens"] = llm_tokens.get("input", 0)
                 telemetry["output_tokens"] = llm_tokens.get("output", 0)
                 telemetry["total_tokens"] = llm_tokens.get("total", 0)
                 telemetry["cached_tokens"] = llm_tokens.get("cached", None)
-                
-                if trace:
-                    print(f"[SOLVER_V3] ✅ Received LLM response ({telemetry['latency_ms_openai']}ms)")
+
             except Exception as e:
+                # Refund logic
+                if debit_result and db_session:
+                    subscription_service.refund_credits(db_session, user_id, debit_result.amount, "LLM Failure Refund", request_id)
+                    telemetry["debit_status"] = "refunded"
                 return self._handle_error(problem_text, f"LLM Call failed: {e}", "llm_error", telemetry, start_time_perf)
+
+            # Step 4: Map Minimal Response (if needed)
+            # The ProfileResolver should tell us if mapping is needed, or we rely on mode="minimal"
+            # AND the fact that the schema used was minimal.
+            # Minimal schema usually doesn't match canonical V3 fully? 
+            # Or does minimal schema match V3 structure but with missing fields?
+            # Our `map_minimal_to_canonical` takes `MinimalSolveResponse` and makes `SolveResponseV3`.
+            # We assume if mode="minimal", we must map.
+            
+            if profile.mode == "minimal":
+                 try:
+                    response_data = map_minimal_to_canonical(response_data, problem_text)
+                 except Exception as e:
+                    if debit_result and db_session:
+                        subscription_service.refund_credits(db_session, user_id, debit_result.amount, "Mapping Error Refund", request_id)
+                        telemetry["debit_status"] = "refunded"
+                    return self._handle_error(problem_text, f"Response Mapping failed: {e}", "mapping_error", telemetry, start_time_perf)
+
 
             # Step 2.5: Normalize Response (Inject Defaults)
             if "refusal" not in response_data:
@@ -342,7 +453,15 @@ Context: {context if context else "No additional context provided."}
         return err_resp
 
 
-    async def _call_llm_with_schema(self, problem_text, context, system_prompt, trace=False):
+    async def _call_llm_with_schema(
+        self, 
+        problem_text, 
+        context, 
+        system_prompt, 
+        json_schema_config,
+        max_output_tokens=4096,
+        trace=False
+    ):
         user_message = self._build_user_message(problem_text, context)
         tokens = {"input": 0, "output": 0, "total": 0, "cached": None}
         
@@ -359,12 +478,10 @@ Context: {context if context else "No additional context provided."}
                     "verbosity": "high",
                     "format": {
                         "type": "json_schema",
-                        "name": "solve_response_v3",
-                        "strict": True,
-                        "schema": deref_json_schema(get_json_schema_for_openai_v3())
+                        "json_schema": json_schema_config
                     }
                 },
-                "max_output_tokens": 5000
+                "max_output_tokens": max_output_tokens
              }
              try:
                  response = await self.client.responses.create(**params)
@@ -412,12 +529,9 @@ Context: {context if context else "No additional context provided."}
                 ],
                 "response_format": {
                     "type": "json_schema",
-                    "json_schema": {
-                        "name": "solve_response_v3",
-                        "strict": True,
-                        "schema": deref_json_schema(get_json_schema_for_openai_v3())
-                    }
-                }
+                    "json_schema": json_schema_config
+                },
+                "max_completion_tokens": max_output_tokens
             }
             
             response = await self.client.chat.completions.create(**params)

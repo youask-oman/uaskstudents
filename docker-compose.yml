@@ -44,6 +44,7 @@ services:
       - storage_data:/app/storage
       - ./static_design:/static_design:ro
       - ./backend/data:/app/data:ro
+      - ./backend:/app
 
   worker:
     image: uask-worker:prod

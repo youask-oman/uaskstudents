@@ -623,3 +623,27 @@ class DeviceSignupLog(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     user_id: Optional[int] = None
 
+
+# --- Tier-Aware Prompt Routing Models ---
+
+class PromptAsset(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    key: str = Field(unique=True, index=True) # e.g. "shared:minimal_system"
+    kind: str = Field(index=True) # system, schema
+    path: str # relative to backend/app, e.g. "llm_profiles/shared/minimal_system.txt"
+    checksum: Optional[str] = None # sha256
+    is_active: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class PlanPromptLink(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    plan_id: int = Field(foreign_key="plan.id", index=True)
+    mode: str = Field(index=True) # minimal, detailed
+    
+    system_prompt_asset_id: Optional[int] = Field(default=None, foreign_key="promptasset.id")
+    schema_prompt_asset_id: Optional[int] = Field(default=None, foreign_key="promptasset.id")
+    
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+

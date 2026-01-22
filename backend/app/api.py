@@ -22,7 +22,8 @@ from app.models import (
     OCRQuestion, OCRChoice, OCRFigure,
     VoiceSession, VoiceAudio, VoiceJob, VoiceArtifact, VoiceConfirmation,
     AdminNote, SystemConfig, PromptTemplate, PromptVersion, UserQuotaOverride, SystemErrorEntry,
-    School, Plan, Subscription, UsageLedger
+    School, Plan, Subscription, UsageLedger,
+    PromptAsset, PlanPromptLink
 )
 from app.services.subscription_service import subscription_service
 from app.services.vision import VisionService, vision_service
@@ -1340,7 +1341,11 @@ async def solve_problem(
         solution_data = await solver.solve(
             problem_text=final_prompt,
             context=context,
-            trace=body.mode == "debug"
+            trace=body.mode == "debug",
+            user_tier=user.subscription_tier if user else "free",
+            user_id=user_id,
+            db_session=session,
+            requested_mode="detailed" if body.mode == "detailed" else "minimal"
         )
         print(f"[API] Solver V3 returned successfully")
         
@@ -1394,14 +1399,98 @@ async def solve_problem(
     # V2 provides _content (markdown), V1 uses final_answer
     assistant_content = solution_data.get("_content") or solution_data.get("solution", {}).get("final_answer", "")
     
+    # Calculate final tokens (prefer telemetry)
+    telemetry_data = solution_data.get("_telemetry") or solution_data.get("telemetry") or {}
+# --- Admin Prompt Asset & Link Management ---
+
+class PromptAssetResponse(BaseModel):
+    id: int
+    key: str
+    kind: str
+    checksum: Optional[str]
+
+class PlanLinkUpdateRequest(BaseModel):
+    # Nested dict structure { mode: { system_id, schema_id } }
+    # Or flattened list?
+    # Request body: { "minimal": {"system_asset_id": 1, ...}, "detailed": ... }
+    minimal: Optional[Dict[str, int]] = None
+    detailed: Optional[Dict[str, int]] = None
+
+@api_router.get("/admin/prompt-assets", response_model=List[PromptAssetResponse])
+async def list_prompt_assets(
+    kind: Optional[str] = None,
+    session: Session = Depends(get_session)
+):
+    query = select(PromptAsset)
+    if kind:
+        query = query.where(PromptAsset.kind == kind)
+    assets = session.exec(query).all()
+    return assets
+
+@api_router.put("/admin/plans/{plan_id}/prompt-links")
+async def update_plan_links(
+    plan_id: int,
+    body: PlanLinkUpdateRequest,
+    session: Session = Depends(get_session)
+):
+    plan = session.get(Plan, plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    from app.models import PlanPromptLink
+
+    # Helper to update or create link
+    def _update_link(mode: str, data: Dict[str, int]):
+        if not data: return
+        
+        link = session.exec(select(PlanPromptLink).where(PlanPromptLink.plan_id == plan_id, PlanPromptLink.mode == mode)).first()
+        if not link:
+            link = PlanPromptLink(plan_id=plan_id, mode=mode)
+            session.add(link)
+        
+        if "system_asset_id" in data:
+            link.system_prompt_asset_id = data["system_asset_id"]
+        if "schema_asset_id" in data:
+            link.schema_prompt_asset_id = data["schema_asset_id"]
+        session.add(link)
+
+    if body.minimal:
+        _update_link("minimal", body.minimal)
+    
+    if body.detailed:
+        _update_link("detailed", body.detailed)
+        
+    session.commit()
+    return {"status": "ok", "message": "Links updated"}
+
+@api_router.get("/admin/plans/{plan_id}/prompt-links")
+async def get_plan_links(
+    plan_id: int,
+    session: Session = Depends(get_session)
+):
+    from app.models import PlanPromptLink
+    links = session.exec(select(PlanPromptLink).where(PlanPromptLink.plan_id == plan_id)).all()
+    
+    # Reshape for frontend
+    response = {"minimal": {}, "detailed": {}}
+    for link in links:
+        if link.mode in response:
+            response[link.mode] = {
+                "system_asset_id": link.system_prompt_asset_id,
+                "schema_asset_id": link.schema_prompt_asset_id
+            }
+    return response
+
+    final_tokens_count = real_tokens if real_tokens > 0 else estimated_tokens
+
     ai_msg = ChatMessage(
         session_id=new_chat.id,
         role="assistant",
         content=assistant_content,
         structured_data=solution_data,
         model_used=model_name,
-        tokens_used=estimated_tokens,
-        telemetry=solution_data.get("telemetry") or solution_data.get("_telemetry")
+        tokens_used=final_tokens_count,
+        telemetry=telemetry_data
     )
     session.add(ai_msg)
     
@@ -1430,11 +1519,23 @@ async def solve_problem(
         except Exception as e:
             print(f"WARNING: Failed to save canonical record: {e}") # Using print as logger not defined in snippet
 
-    # Estimate tokens used (already calculated at the top)
-    add_tokens_to_user(user_id, estimated_tokens, session)
-    
-    # Log Solve Usage
-    session.add(UsageLog(user_id=user_id, action_type="solve_request", tokens_used=estimated_tokens))
+    # Update User Tokens
+    if user:
+        add_tokens_to_user(user_id, final_tokens_count, session)
+        
+        # Log Solve Usage
+        session.add(UsageLog(user_id=user_id, action_type="solve_request", tokens_used=final_tokens_count))
+        
+        # Deduct Credits (1 per solve for now)
+        if user.subscription:
+            # We assume active subscription if they are here (or free tier)
+            # Free tier usually has no credits_balance logic unless we give them free credits?
+            # Or maybe we just track usage.
+            # Plan says: "For the Free tier, deduct 1 credit per solve".
+            # If they have a subscription object (even free), we deduct.
+            user.subscription.credits_balance -= 1 
+            user.subscription.credits_used_this_period += 1
+            session.add(user.subscription)
     
     session.commit()
 

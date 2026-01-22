@@ -1,0 +1,134 @@
+from typing import Optional
+from sqlmodel import Session, select
+from app.models import User, Plan, PlanPromptLink, PromptAsset, Subscription
+from app.llm_profiles.asset_loader import AssetLoader
+from app.llm_profiles.profiles import PromptProfile, get_profile_free
+
+class ProfileResolutionError(Exception):
+    """Raised when a profile cannot be resolved (e.g. missing links)."""
+    pass
+
+class ProfileResolver:
+    """
+    Resolves the appropriate LLM PromptProfile for a given user and context.
+    Uses Database-driven PlanPromptLinks.
+    """
+    
+    @staticmethod
+    def resolve_profile(
+        session: Session,
+        user: Optional[User],
+        requested_mode: str = "minimal",  # "minimal" or "detailed"
+        learning_mode: str = "solve",     # "solve" or "study"
+        force_tier: Optional[str] = None
+    ) -> PromptProfile:
+        
+        # 1. Determine Plan
+        plan = None
+        tier_slug = "free"
+        
+        if force_tier:
+             # Admin override logic if needed, or mapping string to a plan?
+             # For now, just logging or simplistic fallback if we supported dynamic tiers by string alone.
+             # We really need a Plan object to get links.
+             # If force_tier is passed, we might need to fetch that plan by slug.
+             plan = session.exec(select(Plan).where(Plan.slug == force_tier)).first()
+             if plan:
+                 tier_slug = plan.slug
+        elif user and user.subscription and user.subscription.status == "active":
+             # Eager load plan if not present? Usually accessing user.subscription.plan triggers lazy load if session active.
+             plan = user.subscription.plan
+             if plan:
+                 tier_slug = plan.slug
+        
+        # If no plan found (or user is None/Free), try to get the default Free plan object
+        if not plan:
+            plan = session.exec(select(Plan).where(Plan.slug == "free")).first()
+            tier_slug = "free"
+
+        if not plan:
+            # Fallback if DB is completely broken/empty?
+            # Use the hardcoded free profile from profiles.py as emergency fallback
+            print("WARNING: No 'free' plan found in DB. Using hardcoded fallback.")
+            return get_profile_free()
+
+        # 2. Determine Effective Mode
+        # - Free tier: force minimal unless specific override?
+        # - Standard/Family: respect requested_mode
+        # - Study mode: might force detailed if plan allows
+        
+        effective_mode = requested_mode
+        
+        # Logic: If requested 'detailed' but plan doesn't support it (e.g. Free), fallback to minimal?
+        # Or check if link exists.
+        
+        # 3. Fetch Link
+        # Optimization: We could join, but simple select is fine.
+        link = session.exec(
+            select(PlanPromptLink)
+            .where(PlanPromptLink.plan_id == plan.id)
+            .where(PlanPromptLink.mode == effective_mode)
+        ).first()
+        
+        if not link and effective_mode == "detailed":
+            # Fallback to minimal if detailed not configured
+            effective_mode = "minimal"
+            link = session.exec(
+                select(PlanPromptLink)
+                .where(PlanPromptLink.plan_id == plan.id)
+                .where(PlanPromptLink.mode == "minimal")
+            ).first()
+            
+        if not link:
+            # If still no link (even for minimal), this is a config error.
+            # However, for robustness, if we are Free tier, we have hardcoded fallback.
+            if tier_slug == "free":
+                return get_profile_free()
+            raise ProfileResolutionError(f"No prompt links configured for Plan {plan.slug} ({plan.id}) in mode {effective_mode}")
+
+        # 4. Load Assets
+        try:
+            sys_asset = session.get(PromptAsset, link.system_prompt_asset_id)
+            if not sys_asset:
+                raise ProfileResolutionError(f"System prompt asset {link.system_prompt_asset_id} missing.")
+            
+            schema_asset = session.get(PromptAsset, link.schema_prompt_asset_id)
+            if not schema_asset:
+                raise ProfileResolutionError(f"Schema prompt asset {link.schema_prompt_asset_id} missing.")
+                
+            system_content = AssetLoader.get_asset_content(sys_asset)
+            schema_content = AssetLoader.get_asset_content(schema_asset)
+            
+        except Exception as e:
+            raise ProfileResolutionError(f"Failed to load assets: {e}")
+
+        # 5. Construct Profile
+        # We need to decide max output tokens and steps based on Plan or Mode.
+        # Currently stored in python profile logic or plan features?
+        # Plan model has `features` dict. We can store `max_tokens` there.
+        # Or hardcode defaults based on mode/tier.
+        
+        max_tokens = 800
+        max_steps = 5
+        
+        if "standard" in tier_slug or "family" in tier_slug:
+            max_tokens = 4096
+            max_steps = 15
+        elif effective_mode == "detailed":
+            # If free somehow got detailed, give it more room?
+            max_tokens = 2000
+            
+        # Overrides from Plan features if present
+        if plan.features and "max_tokens" in plan.features:
+            max_tokens = int(plan.features["max_tokens"])
+
+        return PromptProfile(
+            tier=tier_slug,
+            system_prompt_content=system_content if isinstance(system_content, str) else str(system_content),
+            json_schema_content=schema_content if isinstance(schema_content, dict) else {},
+            max_output_tokens=max_tokens,
+            max_steps=max_steps,
+            mode=effective_mode,
+            allow_detailed=(effective_mode == "detailed"),
+            allow_visuals_only_if_asked=(effective_mode == "minimal" and "free" in tier_slug)
+        )

@@ -1,0 +1,31 @@
+{
+    "name": "MinimalSolveResponse",
+    "strict": true,
+    "schema": {
+        "type": "object",
+        "properties": {
+            "final_answer": {
+                "type": "string"
+            },
+            "steps": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "topic": {
+                "type": "string"
+            },
+            "confidence_score": {
+                "type": "number"
+            }
+        },
+        "required": [
+            "final_answer",
+            "steps",
+            "topic",
+            "confidence_score"
+        ],
+        "additionalProperties": false
+    }
+}
