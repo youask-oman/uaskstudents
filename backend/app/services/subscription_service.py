@@ -126,12 +126,17 @@ class SubscriptionService:
 
     def calculate_cost(self, plan: Plan, mode: str, has_ocr: bool, has_voice: bool) -> float:
         multipliers = plan.multipliers or {}
-        base_cost = multipliers.get(f"text_{mode}", 1) 
+        
+        # Map frontend modes to plan multiplier keys
+        # minimal -> concise, detailed -> detailed
+        cost_key_mode = mode
+        if mode == "minimal":
+             cost_key_mode = "concise"
+             
+        base_cost = multipliers.get(f"text_{cost_key_mode}", 1) 
         
         # Check if mode is effectively disabled (high cost)
         if base_cost >= 999:
-             # Logic to handle disabled can be here, or check features['allowed_modes']
-             # For now, we trust the cost reflects it.
              pass
 
         cost = base_cost
@@ -263,5 +268,49 @@ class SubscriptionService:
             )
             session.add(ledger)
             session.commit()
+
+    def charge_for_solve(self, session: Session, user_id: int, mode: str, has_ocr: bool, has_voice: bool, ref_id: str, is_make_it_right: bool = False) -> dict:
+        """
+        High-level wrapper to check entitlement and execute debit immediately.
+        Used by non-streaming solver.
+        """
+        action_req = {
+            "mode": mode,
+            "has_ocr": has_ocr, 
+            "has_voice": has_voice,
+            "is_make_it_right": is_make_it_right
+        }
+        
+        entitlement = self.check_entitlement_and_debit(session, user_id, action_req)
+        if not entitlement["allowed"]:
+             return entitlement
+             
+        # Execute
+        self.execute_debit(
+            session, 
+            entitlement["subscription"], 
+            entitlement["cost"], 
+            action_req, 
+            ref_id
+        )
+        # Add debit_result keys for caller convenience
+        entitlement["amount"] = entitlement["cost"]
+        entitlement["status"] = "debited"
+        return entitlement
+
+    def deduct_credits(self, session: Session, user_id: int, amount: float, reason: str, ref_id: str, meta: dict = None):
+        """
+        Legacy/Direct wrapper for generic deductions outside the solve loop.
+        """
+        user = session.get(User, user_id)
+        if not user or not user.subscription:
+             return
+        
+        sub = user.subscription
+        # Create a dummy meta if not provided
+        if not meta: meta = {"reason": reason}
+        
+        self.execute_debit(session, sub, amount, meta, ref_id)
+        return type('DebitResult', (object,), {"amount": amount, "status": "debited"})()
 
 subscription_service = SubscriptionService()

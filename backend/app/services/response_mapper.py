@@ -75,12 +75,23 @@ def map_minimal_to_canonical(
             ))
         
     # 5. Final Answer
-    fa_data = minimal_data.get("final_answer", {})
+    fa_source = minimal_data.get("final_answer", {})
+    answer_text = ""
+    answer_latex = ""
+    units = ""
+    
+    if isinstance(fa_source, str):
+        answer_text = fa_source
+    elif isinstance(fa_source, dict):
+        answer_text = fa_source.get("answer_text", "")
+        answer_latex = fa_source.get("answer_latex", "")
+        units = fa_source.get("units", "")
+
     final_answer = FinalAnswerV3(
-        answer_text=fa_data.get("answer_text", ""),
-        answer_latex=fa_data.get("answer_latex", ""),
+        answer_text=answer_text,
+        answer_latex=answer_latex,
         values=[], # Minimal doesn't separate values
-        units=fa_data.get("units") or ""
+        units=units
     )
     
     # 6. Verification

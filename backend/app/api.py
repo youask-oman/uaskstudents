@@ -2258,10 +2258,8 @@ async def solve_v3_endpoint(
             plan_key = resolved_profile.tier
         effective_max_tokens = None
         if resolved_profile:
-            effective_max_tokens = min(
-                resolved_profile.max_output_tokens,
-                4000 if learning_mode == "study" else 3000
-            )
+            from app.utils.token_limits import get_effective_max_tokens
+            effective_max_tokens = get_effective_max_tokens(resolved_profile.mode, learning_mode)
         log_solve_trace({
             "request_id": request_id,
             "user_id": user_id,
@@ -2415,6 +2413,7 @@ async def solve_v3_stream_endpoint(
     from app.services.solve.trace_logger import log_solve_trace
     from app.services.admin.analytics_service import record_request_event, _calc_cost
     import base64
+    from app.utils.token_limits import get_effective_max_tokens
     from pathlib import Path
 
     async def generate():
@@ -2444,10 +2443,7 @@ async def solve_v3_stream_endpoint(
         else:
             plan_key = profile.tier
 
-        effective_max_tokens = min(
-            profile.max_output_tokens,
-            4000 if learning_mode == "study" else 3000
-        )
+        effective_max_tokens = get_effective_max_tokens(profile.mode, learning_mode)
 
         problem_text = (
             body.confirmed_text or
@@ -2852,6 +2848,13 @@ async def solve_v3_stream_endpoint(
                         print(f"[SOLVER_V3_STREAM] ⚠️ Recovery failed: {recovery_err}")
                         raise parse_err
                 
+                if profile.mode == "minimal":
+                    from app.services.response_mapper import map_minimal_to_canonical
+                    try:
+                        final_data = map_minimal_to_canonical(final_data, problem_text)
+                    except Exception as e:
+                        print(f"[SOLVER_V3_STREAM] Warning: Mapping failed: {e}")
+
                 final_data = solver.normalize_solver_response(final_data)
                 if is_truncated:
                     final_data["_truncated"] = True

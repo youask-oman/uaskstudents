@@ -18,6 +18,7 @@ from app.prompts import get_prompt, get_schema
 from app.utils.schema_deref import deref_json_schema, validate_no_refs
 from app.llm_profiles.profiles import get_prompt_profile
 from app.services.response_mapper import map_minimal_to_canonical
+from app.utils.token_limits import get_effective_max_tokens
 
 class SolverV3:
     """
@@ -125,36 +126,11 @@ class SolverV3:
                 profile = get_prompt_profile(user_tier)
                 profile.mode = "minimal" if user_tier == "free" else "detailed" # Mock
 
-            # Step 1.5: Accounting (Debit Pending)
+            # Step 1.5: Accounting (Debit Pending) - MOVED TO API LAYER
             if db_session and user_id:
-                # We need to perform a debit reservation ideally.
-                # For now, we'll check entitlement.
-                from app.services.subscription_service import subscription_service
-                
-                # Determine cost based on mode/features
-                cost_reason = f"Solve ({profile.mode})"
-                cost = 1.0 # Base cost
-                if profile.mode == "detailed":
-                    cost = 1.5 # Example multiplier[ERROR] Or driven by plan config[ERROR]
-                    # Ideally ProfileResolver provided a multiplier or we use Plan fields.
-                    # Implementing simple logic: 1 credit per solve for now unless otherwise specified.
-                
-                # Check credits
-                has_credits = subscription_service.check_credits(db_session, user_id, cost)
-                if not has_credits:
-                     return self._handle_error(problem_text, "Insufficient credits", "quota_error", telemetry, start_time_perf)
-                
-                # Create pending debit logic could go here if we had 2-phase commit.
-                # Currently we debit AFTER success or simpler: Debit now, refund on failure.
-                # Let's debit now.
-                debit_result = subscription_service.deduct_credits(
-                    db_session, 
-                    user_id, 
-                    amount=cost, 
-                    reason=cost_reason, 
-                    ref_id=request_id
-                )
-                telemetry["debit_status"] = "debited"
+                # API layer (api.py) handles check_entitlement_and_debit before calling solve().
+                # We do NOT debit here to avoid double-charging.
+                pass
 
             # Step 2: Prepare LLM Args
             system_prompt = profile.system_prompt_content
@@ -194,12 +170,18 @@ class SolverV3:
             }
 
             # Step 3: Call LLM
-            # Set max_output_tokens by mode: study gets more tokens for micro-steps
+            # Enforce deterministic token caps (Part A2)
+            # FORCE learning_mode="solve" if mode="minimal" to prevent token blowout (Part A3)
+            if profile.mode == "minimal":
+                learning_mode = "solve"
+                if trusted_context:
+                    trusted_context["learning_mode"] = "solve"
+
             effective_learning_mode = trusted_context.get("learning_mode") if trusted_context else learning_mode
-            if effective_learning_mode == "study":
-                effective_max_tokens = min(profile.max_output_tokens, 4000)
-            else:
-                effective_max_tokens = min(profile.max_output_tokens, 3000)
+            effective_max_tokens = get_effective_max_tokens(profile.mode, effective_learning_mode)
+            
+            # Telemetry for effective max
+            telemetry["max_output_tokens_effective"] = effective_max_tokens
             
             llm_start_perf = time.perf_counter()
             try:
@@ -225,10 +207,7 @@ class SolverV3:
                 telemetry["openai_calls_count"] = llm_tokens.get("openai_calls", 1)
 
             except Exception as e:
-                # Refund logic
-                if debit_result and db_session:
-                    subscription_service.refund_credits(db_session, user_id, debit_result.amount, "LLM Failure Refund", request_id)
-                    telemetry["debit_status"] = "refunded"
+                # Refund logic - HANDLED BY API LAYER
                 return self._handle_error(problem_text, f"LLM Call failed: {e}", "llm_error", telemetry, start_time_perf)
 
             # Step 4: Map Minimal Response (if needed)
@@ -243,9 +222,6 @@ class SolverV3:
                  try:
                     response_data = map_minimal_to_canonical(response_data, problem_text)
                  except Exception as e:
-                    if debit_result and db_session:
-                        subscription_service.refund_credits(db_session, user_id, debit_result.amount, "Mapping Error Refund", request_id)
-                        telemetry["debit_status"] = "refunded"
                     return self._handle_error(problem_text, f"Response Mapping failed: {e}", "mapping_error", telemetry, start_time_perf)
 
 
@@ -379,7 +355,7 @@ class SolverV3:
         context: str = "",
         trace: bool = False,
         request_id: str = None,
-        max_output_tokens: int = 900,
+        max_output_tokens: int = 900, # Ignored in favor of deterministic cap
         system_prompt: Optional[str] = None,
         json_schema_config: Optional[Dict[str, Any]] = None,
         trusted_context: Optional[Dict[str, Any]] = None,
@@ -432,9 +408,27 @@ class SolverV3:
                 trusted_context=trusted_context,
                 requested_mode=requested_mode
             )
+            
+            # FORCE learning_mode="solve" if mode="minimal" to prevent token blowout
+            # We must inspect trusted_context if present, or rely on requested_mode mapping
+            # Assuming profile check or logic upstream. Here we enforce hard-cap logic.
+            # If requested_mode is minimal, we treat it as minimal for caps.
+            
+            # Ideally we need "profile" object here too for mode, but we have `requested_mode`.
+            # We will use requested_mode to determine our deterministic cap.
+            
+            effective_learning_mode_stream = None
+            if trusted_context:
+                if requested_mode == "minimal":
+                     trusted_context["learning_mode"] = "solve"
+                effective_learning_mode_stream = trusted_context.get("learning_mode")
+
+            effective_max_tokens = get_effective_max_tokens(requested_mode, effective_learning_mode_stream)
+            telemetry["max_output_tokens_effective"] = effective_max_tokens
+
             telemetry["openai_payload"] = {
                 "response_format_schema_name": schema_wrapper.get("name", "solve_response_v3"),
-                "max_output_tokens": max_output_tokens,
+                "max_output_tokens": effective_max_tokens,
                 "system_message_length": len(resolved_system_prompt or ""),
                 "user_message_length": len(user_message or "")
             }
@@ -461,7 +455,7 @@ class SolverV3:
                         },
                         "stream": True,
                         "stream_options": {"include_usage": True},
-                        "max_completion_tokens": max_output_tokens # Part B2
+                        "max_completion_tokens": effective_max_tokens # Part A2
                     }
 
                     response = await self.client.chat.completions.create(**params)
