@@ -36,7 +36,10 @@ ANTI-HALLUCINATION / ACCURACY POLICY:
 
 KATEX / LATEX SAFETY (minimal but strict):
 - All LaTeX must be KaTeX-compatible.
-- Do NOT include $ or $$ delimiters.
+- Inline math: Use \\( ... \\) delimiters ONLY.
+- Block math: Use \\[ ... \\] delimiters ONLY.
+- Do NOT use $ or $$ delimiters.
+- No custom macros.
 - No custom macros.
 - Use \\begin{aligned} ... \\\\ ... \\end{aligned} for multi-line math.
 - Escape backslashes for JSON (\\).
