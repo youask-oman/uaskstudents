@@ -2,6 +2,7 @@
 
 import React from 'react';
 import MathRenderer from '../MathRenderer';
+import MathRendererMJX from '../MathRendererMJX';
 import VisualRenderer, { Visual } from './VisualRenderer';
 
 interface Checkpoint {
@@ -21,7 +22,31 @@ interface Step {
 interface StepsTabProps {
     steps: Step[];
     visuals: Visual[];
+    problemLatex?: string;
+    problem?: {
+        goal?: string;
+        given_data?: string[];
+        assumptions?: string[];
+    };
+    analysisPlan?: any[];
+    finalAnswer?: string;
+    activeTab?: "steps" | "verification" | "concepts" | "practice";
+    onSelectTab?: (tab: "steps" | "verification" | "concepts" | "practice") => void;
 }
+
+const isMathJaxEnabled = (process.env.NEXT_PUBLIC_MATH_RENDERER || "katex") === "mathjax";
+const ExplanationRenderer = isMathJaxEnabled ? MathRendererMJX : MathRenderer;
+
+const normalizeMathJaxBlock = (content: string) => {
+    let text = content.trim();
+    if (text.includes("\\end{aligned}") && !text.includes("\\begin{aligned}")) {
+        text = `\\begin{aligned}\n${text}`;
+    }
+    if (!text.startsWith("\\[") && !text.startsWith("\\(")) {
+        text = `\\[\n${text}\n\\]`;
+    }
+    return text;
+};
 
 // Helper to flatten work lines
 const processWorkLines = (work: string[]): string[] => {
@@ -164,7 +189,7 @@ export default function StepsTab({ steps, visuals }: StepsTabProps) {
                                             <MathRenderer content={step.title} />
                                         </div>
                                         <div className="text-sm font-semibold text-[#111318] dark:text-slate-300 mb-4 leading-relaxed">
-                                            <MathRenderer content={explanationText} />
+                                            <ExplanationRenderer content={explanationText} />
                                             {step.rules_used && step.rules_used.length > 0 && (
                                                 <span className="block mt-2 px-3 py-1.5 rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-xs font-medium not-italic">
                                                     Using: {step.rules_used.join(", ")}
@@ -209,11 +234,19 @@ export default function StepsTab({ steps, visuals }: StepsTabProps) {
                                                         }
                                                     `}</style>
                                                     <div className="math-card-content">
-                                                        <MathRenderer
-                                                            content={mathContent}
-                                                            inline={false}
-                                                            forceMath={true}
-                                                        />
+                                                        {isMathJaxEnabled ? (
+                                                            <MathRendererMJX
+                                                                content={normalizeMathJaxBlock(mathContent)}
+                                                                inline={false}
+                                                                dynamic={true}
+                                                            />
+                                                        ) : (
+                                                            <MathRenderer
+                                                                content={mathContent}
+                                                                inline={false}
+                                                                forceMath={true}
+                                                            />
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>

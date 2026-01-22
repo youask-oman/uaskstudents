@@ -8,4 +8,7 @@ module.exports = {
             }
         }],
     },
+    testPathIgnorePatterns: [
+        "<rootDir>/src/lib/__tests__"
+    ],
 };

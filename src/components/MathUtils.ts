@@ -26,6 +26,14 @@ export function sanitizeLatex(input: string): string {
     clean = clean.split('.textLine:').join('. \\text{Line: }');
     clean = clean.split(').textLine :').join('). \\text{Line: }');
     clean = clean.split(').textLine:').join('). \\text{Line: }');
+    clean = clean.split('textLine: ').join('\\text{Line: } ');
+    clean = clean.split('textLine:').join('\\text{Line: } ');
+    clean = clean.split('textPlot: ').join('\\text{Plot: } ');
+    clean = clean.split('textPlot:').join('\\text{Plot: } ');
+    clean = clean.split('textOtherpoints:').join('\\text{Other points } ');
+    clean = clean.split('textOtherpoints').join('\\text{Other points } ');
+    clean = clean.split('textPlotdomainsuggestion').join('\\text{Plot domain suggestion }');
+    clean = clean.split('textThus').join('\\text{Thus ');
 
     // Fix textParabola patterns
     clean = clean.split('.textParabola :').join('. \\text{Parabola: }');
@@ -164,6 +172,14 @@ export function convertStrictToLibFormat(input: string): string {
 
         return s;
     }).join('');
+}
+
+export function splitSolutionIntoLines(input: string) {
+    if (!input) return [];
+    return input
+        .split(/\\\\|\r?\n/)
+        .map(line => line.trim())
+        .filter(Boolean);
 }
 
 /** 

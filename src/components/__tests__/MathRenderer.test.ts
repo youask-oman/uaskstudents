@@ -1,7 +1,7 @@
 /**
  * Unit tests for MathRenderer sanitizeLatex function
  */
-import { sanitizeLatex, splitSolutionIntoLines } from '../MathRenderer';
+import { sanitizeLatex, splitSolutionIntoLines } from '../MathUtils';
 
 describe('sanitizeLatex', () => {
     describe('textLine artifact fixes', () => {

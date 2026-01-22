@@ -250,6 +250,7 @@ const MathInput = forwardRef<MathInputRef, MathInputProps>(({ value, onChange, p
                 }}
             >
                 {value}
+            {/* @ts-ignore - math-field is a custom element */}
             </math-field>
         </div>
     );

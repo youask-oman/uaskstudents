@@ -2,7 +2,9 @@
 
 import React from 'react';
 import Link from 'next/link';
-import MathRenderer, { sanitizeLatex } from '../MathRenderer';
+import MathRenderer from '../MathRenderer';
+import MathRendererMJX from '../MathRendererMJX';
+import { sanitizeLatex } from '../MathUtils';
 import WorkspaceTabs from './WorkspaceTabs';
 
 interface WorkspaceMessage {
@@ -26,6 +28,9 @@ interface WorkspaceProblem {
     assumptions?: string[];
     given_data?: string[];
 }
+
+const isMathJaxEnabled = (process.env.NEXT_PUBLIC_MATH_RENDERER || "katex") === "mathjax";
+const InlineRenderer = isMathJaxEnabled ? MathRendererMJX : MathRenderer;
 
 interface WorkspaceLayoutProps {
     children: React.ReactNode;
@@ -187,7 +192,7 @@ export default function WorkspaceLayout({
                             </div>
                             <h1 className="text-xl font-bold tracking-tight mb-2 text-[#111318] dark:text-white">{problem?.goal || "Solve"}</h1>
                             <div className="text-sm text-emerald-800 dark:text-emerald-300 font-medium leading-relaxed max-w-2xl">
-                                <MathRenderer content={problem?.input || "Expression"} inline />
+                                <InlineRenderer content={problem?.input || "Expression"} inline />
                             </div>
                         </div>
 
@@ -267,7 +272,7 @@ export default function WorkspaceLayout({
                         <div className="flex-1 min-w-0">
                             <p className="text-xs font-bold text-orange-700 dark:text-orange-400 uppercase mb-1">Given</p>
                             <div className="text-sm font-medium text-[#111318] dark:text-white whitespace-normal break-words" style={{ overflowWrap: 'break-word', wordBreak: 'normal', hyphens: 'auto' }}>
-                                <MathRenderer content={problem?.given_data?.join(", ") || problem?.input || "N/A"} inline />
+                                <InlineRenderer content={problem?.given_data?.join(", ") || problem?.input || "N/A"} inline />
                             </div>
                         </div>
                     </div>
@@ -280,7 +285,7 @@ export default function WorkspaceLayout({
                         <div className="flex-1 min-w-0">
                             <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase mb-1">Find</p>
                             <div className="text-base font-bold text-[#111318] dark:text-white whitespace-normal break-words">
-                                <MathRenderer content={problem?.unknowns?.join(", ") || problem?.goal || "x"} inline />
+                                <InlineRenderer content={problem?.unknowns?.join(", ") || problem?.goal || "x"} inline />
                             </div>
                         </div>
                     </div>
@@ -293,7 +298,7 @@ export default function WorkspaceLayout({
                         <div className="flex-1 min-w-0">
                             <p className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase mb-1">Assumptions</p>
                             <div className="text-sm font-medium text-[#111318] dark:text-white whitespace-normal break-words" style={{ overflowWrap: 'break-word', wordBreak: 'normal', hyphens: 'auto' }}>
-                                <MathRenderer content={problem?.assumptions?.join(", ") || "Standard"} />
+                                <InlineRenderer content={problem?.assumptions?.join(", ") || "Standard"} />
                             </div>
                         </div>
                     </div>

@@ -3,9 +3,20 @@ import type { Metadata } from "next";
 import { Space_Grotesk, Lexend } from "next/font/google"; // For Student & Admin
 import "./globals.css";
 import ThemeToggle from "@/components/ThemeToggle";
+import { MathJaxContext } from "better-react-mathjax";
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: '--font-space-grotesk' });
 const lexend = Lexend({ subsets: ["latin"], variable: '--font-lexend' });
+
+const mathJaxConfig = {
+  loader: { load: ["input/tex", "output/chtml"] },
+  tex: {
+    inlineMath: [["\\(", "\\)"]],
+    displayMath: [["\\[", "\\]"]],
+    processEscapes: false,
+    processEnvironments: true,
+  },
+};
 
 export const metadata: Metadata = {
   title: "uask.ai | Master Math & Physics with AI",
@@ -91,8 +102,10 @@ export default function RootLayout({
         `}</style>
       </head>
       <body className="bg-background-light dark:bg-background-dark text-[#111318] dark:text-white transition-colors duration-200">
-        {children}
-        <ThemeToggle />
+        <MathJaxContext config={mathJaxConfig}>
+          {children}
+          <ThemeToggle />
+        </MathJaxContext>
       </body>
     </html>
   );

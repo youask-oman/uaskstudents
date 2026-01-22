@@ -2,6 +2,7 @@
 
 import React from "react";
 import MathRenderer from "../MathRenderer";
+import MathRendererMJX from "../MathRendererMJX";
 
 interface VerificationItem {
     method: string;
@@ -16,6 +17,9 @@ interface VerificationTabProps {
     confidence?: number;
     commonMistakes?: string[];
 }
+
+const isMathJaxEnabled = (process.env.NEXT_PUBLIC_MATH_RENDERER || "katex") === "mathjax";
+const VerificationRenderer = isMathJaxEnabled ? MathRendererMJX : MathRenderer;
 
 export default function VerificationTab({
     methods,
@@ -71,14 +75,14 @@ export default function VerificationTab({
                         {displayMethods[0]?.steps.map((step, idx) => (
                             <div key={idx} className="text-left">
                                 <div className="text-[#616f89] dark:text-slate-400 w-full text-lg font-medium">
-                                    <MathRenderer content={step} />
+                                    <VerificationRenderer content={step} />
                                 </div>
                             </div>
                         ))}
                         <div className="pt-2 mt-2 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
                             <span className="text-xs font-bold uppercase bg-primary text-white px-2 py-1 rounded">Conclusion</span>
                             <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
-                                <MathRenderer content={displayMethods[0]?.conclusion || "True"} inline />
+                                <VerificationRenderer content={displayMethods[0]?.conclusion || "True"} inline />
                             </span>
                         </div>
                     </div>
@@ -142,7 +146,7 @@ export default function VerificationTab({
                             <div>
                                 <p className="font-bold text-sm text-[#111318] dark:text-white">Distributive Property</p>
                                 <p className="text-[11px] text-[#616f89] dark:text-slate-400">
-                                    <MathRenderer content="a(b + c) = ab + ac" inline />
+                                    <VerificationRenderer content="a(b + c) = ab + ac" inline />
                                 </p>
                             </div>
                         </div>
@@ -163,7 +167,7 @@ export default function VerificationTab({
                                 <p className="text-xs leading-relaxed text-[#616f89] dark:text-slate-400">
                                     Students often divide the left side to "cancel" the coefficient but forget to divide the constant on the right.
                                     <span className="block mt-2 font-medium text-amber-800 dark:text-amber-400 italic">
-                                        Correct: <MathRenderer content="3(x-2)/3 = 15/3" inline />
+                                        Correct: <VerificationRenderer content="3(x-2)/3 = 15/3" inline />
                                     </span>
                                 </p>
                             </div>
@@ -171,7 +175,7 @@ export default function VerificationTab({
                         <div className="grid grid-cols-2 gap-4">
                             <div className="bg-white dark:bg-[#1e2634] p-4 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c]">
                                 <p className="text-[10px] font-black uppercase text-slate-400 mb-1">y-intercept</p>
-                                <p className="text-lg font-bold text-primary"><MathRenderer content="(0, 0)" inline /></p>
+                                <p className="text-lg font-bold text-primary"><VerificationRenderer content="(0, 0)" inline /></p>
                             </div>
                             <div className="bg-white dark:bg-[#1e2634] p-4 rounded-xl border border-[#e5e7eb] dark:border-[#2a303c]">
                                 <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Domain</p>

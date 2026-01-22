@@ -1,0 +1,15 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`MathRendererMJX helper outputs a representative step explanation without mangling spaces 1`] = `
+"
+Step 2: Square both sides and simplify.
+
+We start with \\(x + 3 = 7\\) and square to get:
+\\[
+
+x^2 + 6x + 9 = 49
+
+\\]
+Now we collect like terms and solve for \\(x\\).
+"
+`;
