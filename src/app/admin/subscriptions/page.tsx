@@ -149,7 +149,7 @@ export default function AdminSubscriptionsPage() {
         <div className="p-8 max-w-7xl mx-auto w-full">
             <header className="mb-8 flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-bold text-white mb-2">Subscriptions & Plans</h1>
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Subscriptions & Plans</h1>
                     <p className="text-slate-400">Manage pricing tiers, entitlements, and credit multipliers.</p>
                 </div>
                 <button
@@ -177,10 +177,10 @@ export default function AdminSubscriptionsPage() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {plans.map(plan => (
-                        <div key={plan.id} className="bg-slate-900 border border-slate-700 rounded-xl p-6 hover:border-admin-primary/50 transition-colors">
+                        <div key={plan.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-6 hover:border-admin-primary/50 transition-colors">
                             <div className="flex justify-between items-start mb-4">
                                 <div>
-                                    <h3 className="text-lg font-bold text-white">{plan.name}</h3>
+                                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">{plan.name}</h3>
                                     <p className="text-xs text-slate-500 font-mono uppercase tracking-wider">{plan.slug}</p>
                                 </div>
                                 <span className={`px-2 py-1 rounded text-xs font-bold ${plan.is_active ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-700 text-slate-400"}`}>
@@ -189,17 +189,17 @@ export default function AdminSubscriptionsPage() {
                             </div>
 
                             <div className="space-y-3 mb-6">
-                                <div className="flex justify-between py-2 border-b border-slate-800">
+                                <div className="flex justify-between py-2 border-b border-slate-200 dark:border-slate-800">
                                     <span className="text-slate-400">Credits / Mo</span>
-                                    <span className="text-white font-mono">{plan.credits_per_month}</span>
+                                    <span className="text-slate-900 dark:text-white font-mono">{plan.credits_per_month}</span>
                                 </div>
-                                <div className="flex justify-between py-2 border-b border-slate-800">
+                                <div className="flex justify-between py-2 border-b border-slate-200 dark:border-slate-800">
                                     <span className="text-slate-400">Price (USD)</span>
-                                    <span className="text-white font-mono">${(plan.price_monthly_cents / 100).toFixed(2)}</span>
+                                    <span className="text-slate-900 dark:text-white font-mono">${(plan.price_monthly_cents / 100).toFixed(2)}</span>
                                 </div>
-                                <div className="flex justify-between py-2 border-b border-slate-800">
+                                <div className="flex justify-between py-2 border-b border-slate-200 dark:border-slate-800">
                                     <span className="text-slate-400">Seats</span>
-                                    <span className="text-white font-mono">{plan.seats}</span>
+                                    <span className="text-slate-900 dark:text-white font-mono">{plan.seats}</span>
                                 </div>
                             </div>
 
@@ -217,10 +217,10 @@ export default function AdminSubscriptionsPage() {
             {/* Edit Modal */}
             {selectedPlan && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
-                        <div className="p-6 border-b border-slate-800 flex justify-between items-center sticky top-0 bg-slate-900 z-10">
-                            <h2 className="text-xl font-bold text-white">Edit Plan: {selectedPlan.name}</h2>
-                            <button onClick={() => setSelectedPlan(null)} className="text-slate-400 hover:text-white">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
+                        <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center sticky top-0 bg-white dark:bg-slate-900 z-10">
+                            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Edit Plan: {selectedPlan.name}</h2>
+                            <button onClick={() => setSelectedPlan(null)} className="text-slate-400 hover:text-slate-900 dark:text-white">
                                 <span className="material-symbols-outlined">close</span>
                             </button>
                         </div>
@@ -229,14 +229,14 @@ export default function AdminSubscriptionsPage() {
                             {/* Basic Details */}
                             <div className="grid grid-cols-2 gap-6">
                                 <div className="space-y-4">
-                                    <h3 className="text-white font-bold border-b border-slate-800 pb-2">Basic Details</h3>
+                                    <h3 className="text-slate-900 dark:text-white font-bold border-b border-slate-200 dark:border-slate-800 pb-2">Basic Details</h3>
                                     <div className="space-y-2">
                                         <label className="text-xs text-slate-400 uppercase font-bold">Plan Name</label>
                                         <input
                                             type="text"
                                             value={selectedPlan.name}
                                             onChange={(e) => setSelectedPlan({ ...selectedPlan, name: e.target.value })}
-                                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:border-admin-primary outline-none"
+                                            className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-slate-900 dark:text-white focus:border-admin-primary outline-none"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -245,7 +245,7 @@ export default function AdminSubscriptionsPage() {
                                             type="text"
                                             value={selectedPlan.slug}
                                             onChange={(e) => setSelectedPlan({ ...selectedPlan, slug: e.target.value })}
-                                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:border-admin-primary outline-none font-mono text-sm"
+                                            className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-slate-900 dark:text-white focus:border-admin-primary outline-none font-mono text-sm"
                                         />
                                     </div>
                                     <div className="flex items-center gap-3 pt-2">
@@ -254,14 +254,14 @@ export default function AdminSubscriptionsPage() {
                                             id="isActive"
                                             checked={selectedPlan.is_active}
                                             onChange={(e) => setSelectedPlan({ ...selectedPlan, is_active: e.target.checked })}
-                                            className="w-5 h-5 rounded border-slate-700 bg-slate-800 text-admin-primary"
+                                            className="w-5 h-5 rounded border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-admin-primary"
                                         />
-                                        <label htmlFor="isActive" className="text-white font-medium">Active Plan</label>
+                                        <label htmlFor="isActive" className="text-slate-900 dark:text-white font-medium">Active Plan</label>
                                     </div>
                                 </div>
 
                                 <div className="space-y-4">
-                                    <h3 className="text-white font-bold border-b border-slate-800 pb-2">Pricing & Entitlements</h3>
+                                    <h3 className="text-slate-900 dark:text-white font-bold border-b border-slate-200 dark:border-slate-800 pb-2">Pricing & Entitlements</h3>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <label className="text-xs text-slate-400 uppercase font-bold">Credits/Mo</label>
@@ -269,7 +269,7 @@ export default function AdminSubscriptionsPage() {
                                                 type="number"
                                                 value={selectedPlan.credits_per_month}
                                                 onChange={(e) => setSelectedPlan({ ...selectedPlan, credits_per_month: parseInt(e.target.value) })}
-                                                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:border-admin-primary outline-none font-mono"
+                                                className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-slate-900 dark:text-white focus:border-admin-primary outline-none font-mono"
                                             />
                                         </div>
                                         <div className="space-y-2">
@@ -278,7 +278,7 @@ export default function AdminSubscriptionsPage() {
                                                 type="number"
                                                 value={selectedPlan.price_monthly_cents}
                                                 onChange={(e) => setSelectedPlan({ ...selectedPlan, price_monthly_cents: parseInt(e.target.value) })}
-                                                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:border-admin-primary outline-none font-mono"
+                                                className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-slate-900 dark:text-white focus:border-admin-primary outline-none font-mono"
                                             />
                                         </div>
                                         <div className="space-y-2">
@@ -287,7 +287,7 @@ export default function AdminSubscriptionsPage() {
                                                 type="number"
                                                 value={selectedPlan.seats}
                                                 onChange={(e) => setSelectedPlan({ ...selectedPlan, seats: parseInt(e.target.value) })}
-                                                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:border-admin-primary outline-none font-mono"
+                                                className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-slate-900 dark:text-white focus:border-admin-primary outline-none font-mono"
                                             />
                                         </div>
                                     </div>
@@ -295,14 +295,14 @@ export default function AdminSubscriptionsPage() {
                             </div>
 
                             {/* Prompt Routing Section */}
-                            <div className="space-y-4 pt-4 border-t border-slate-800">
+                            <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
                                 <div className="flex justify-between items-center">
-                                    <h3 className="text-white font-bold">Tier-Aware Prompt Routing</h3>
+                                    <h3 className="text-slate-900 dark:text-white font-bold">Tier-Aware Prompt Routing</h3>
                                     <span className="text-xs text-slate-500">Configure assets for each mode</span>
                                 </div>
                                 <div className="grid grid-cols-2 gap-8">
                                     {/* Minimal Mode */}
-                                    <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
+                                    <div className="bg-white dark:bg-slate-950/50 p-4 rounded-lg border border-slate-200 dark:border-slate-800">
                                         <h4 className="text-sm font-bold text-sky-400 mb-4 flex items-center gap-2">
                                             <span className="material-symbols-outlined text-sm">bolt</span>
                                             Minimal Mode (Fast)
@@ -316,7 +316,7 @@ export default function AdminSubscriptionsPage() {
                                                         ...currentLinks,
                                                         minimal: { ...currentLinks.minimal, system_asset_id: e.target.value ? parseInt(e.target.value) : null }
                                                     })}
-                                                    className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm"
+                                                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded p-2 text-slate-900 dark:text-white text-sm"
                                                 >
                                                     <option value="">-- Use Default / Inherit --</option>
                                                     {systemAssets.map(a => (
@@ -332,7 +332,7 @@ export default function AdminSubscriptionsPage() {
                                                         ...currentLinks,
                                                         minimal: { ...currentLinks.minimal, schema_asset_id: e.target.value ? parseInt(e.target.value) : null }
                                                     })}
-                                                    className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm"
+                                                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded p-2 text-slate-900 dark:text-white text-sm"
                                                 >
                                                     <option value="">-- Use Default / Inherit --</option>
                                                     {schemaAssets.map(a => (
@@ -344,7 +344,7 @@ export default function AdminSubscriptionsPage() {
                                     </div>
 
                                     {/* Detailed Mode */}
-                                    <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
+                                    <div className="bg-white dark:bg-slate-950/50 p-4 rounded-lg border border-slate-200 dark:border-slate-800">
                                         <h4 className="text-sm font-bold text-violet-400 mb-4 flex items-center gap-2">
                                             <span className="material-symbols-outlined text-sm">psychology</span>
                                             Detailed Mode (Reasoning)
@@ -358,7 +358,7 @@ export default function AdminSubscriptionsPage() {
                                                         ...currentLinks,
                                                         detailed: { ...currentLinks.detailed, system_asset_id: e.target.value ? parseInt(e.target.value) : null }
                                                     })}
-                                                    className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm"
+                                                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded p-2 text-slate-900 dark:text-white text-sm"
                                                 >
                                                     <option value="">-- Use Default / Inherit --</option>
                                                     {systemAssets.map(a => (
@@ -374,7 +374,7 @@ export default function AdminSubscriptionsPage() {
                                                         ...currentLinks,
                                                         detailed: { ...currentLinks.detailed, schema_asset_id: e.target.value ? parseInt(e.target.value) : null }
                                                     })}
-                                                    className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm"
+                                                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded p-2 text-slate-900 dark:text-white text-sm"
                                                 >
                                                     <option value="">-- Use Default / Inherit --</option>
                                                     {schemaAssets.map(a => (
@@ -389,8 +389,8 @@ export default function AdminSubscriptionsPage() {
 
 
                             {/* Multipliers Section */}
-                            <div className="space-y-4 pt-4 border-t border-slate-800">
-                                <h3 className="text-white font-bold">Multipliers (Credit Cost)</h3>
+                            <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+                                <h3 className="text-slate-900 dark:text-white font-bold">Multipliers (Credit Cost)</h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     {Object.entries(selectedPlan.multipliers || {}).map(([key, val]) => (
                                         <div key={key} className="flex flex-col gap-1">
@@ -402,7 +402,7 @@ export default function AdminSubscriptionsPage() {
                                                     const newMultipliers = { ...selectedPlan.multipliers, [key]: parseFloat(e.target.value) };
                                                     setSelectedPlan({ ...selectedPlan, multipliers: newMultipliers });
                                                 }}
-                                                className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-white text-sm"
+                                                className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded px-2 py-1 text-slate-900 dark:text-white text-sm"
                                             />
                                         </div>
                                     ))}
@@ -424,10 +424,10 @@ export default function AdminSubscriptionsPage() {
 
                         </div>
 
-                        <div className="p-6 border-t border-slate-800 bg-slate-900/50 sticky bottom-0 flex justify-end gap-3 rounded-b-2xl">
+                        <div className="p-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 sticky bottom-0 flex justify-end gap-3 rounded-b-2xl">
                             <button
                                 onClick={() => setSelectedPlan(null)}
-                                className="px-5 py-2.5 text-slate-400 hover:text-white font-medium"
+                                className="px-5 py-2.5 text-slate-400 hover:text-slate-900 dark:text-white font-medium"
                             >
                                 Cancel
                             </button>

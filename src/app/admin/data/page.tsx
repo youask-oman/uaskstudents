@@ -46,7 +46,7 @@ export default function AdminDataPage() {
         const controller = new AbortController();
         const fetchRows = async () => {
             try {
-                const res = await fetch(`${baseUrl}/api/v1/admin/db/table/${selectedTable}?limit=${limit}&offset=${offset}`, { headers: getHeaders(), signal: controller.signal });
+                const res = await fetch(`${baseUrl}/api/v1/admin/db/table/${encodeURIComponent(selectedTable)}?limit=${limit}&offset=${offset}`, { headers: getHeaders(), signal: controller.signal });
                 if (!res.ok) throw new Error("Failed to load rows.");
                 const data = await res.json();
                 setRows(Array.isArray(data) ? data : []);
@@ -74,12 +74,12 @@ export default function AdminDataPage() {
     return (
         <div className="p-8 max-w-[1400px] mx-auto w-full flex flex-col gap-6">
             <header className="flex flex-col gap-2">
-                <h2 className="text-xl font-bold text-white">Data Explorer</h2>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Data Explorer</h2>
                 <p className="text-sm text-slate-400">Browse raw database tables with filters and pagination.</p>
             </header>
             <div className="flex flex-wrap items-center gap-4">
                 <select
-                    className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 text-sm text-white"
+                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-900 dark:text-white"
                     value={selectedTable}
                     onChange={(e) => {
                         setSelectedTable(e.target.value);
@@ -93,7 +93,7 @@ export default function AdminDataPage() {
                     ))}
                 </select>
                 <input
-                    className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 text-sm text-white placeholder:text-slate-600"
+                    className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-600"
                     placeholder="Filter rows (JSON search)"
                     value={filter}
                     onChange={(e) => setFilter(e.target.value)}
@@ -101,7 +101,7 @@ export default function AdminDataPage() {
                 <div className="flex items-center gap-2 text-xs text-slate-500">
                     <span>Limit</span>
                     <input
-                        className="w-20 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-xs text-white"
+                        className="w-20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-xs text-slate-900 dark:text-white"
                         type="number"
                         value={limit}
                         min={1}
@@ -112,7 +112,7 @@ export default function AdminDataPage() {
                 <div className="flex items-center gap-2 text-xs text-slate-500">
                     <span>Offset</span>
                     <input
-                        className="w-20 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-xs text-white"
+                        className="w-20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-xs text-slate-900 dark:text-white"
                         type="number"
                         value={offset}
                         min={0}
@@ -120,10 +120,10 @@ export default function AdminDataPage() {
                     />
                 </div>
             </div>
-            <section className="bg-[#111827] border border-slate-800 rounded-2xl overflow-hidden">
+            <section className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="min-w-full text-left">
-                        <thead className="bg-slate-900/50">
+                        <thead className="bg-slate-50 dark:bg-slate-900/50">
                             <tr>
                                 {columns.map((col) => (
                                     <th key={col} className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
@@ -132,11 +132,11 @@ export default function AdminDataPage() {
                                 ))}
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800">
+                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                             {filteredRows.map((row, idx) => (
-                                <tr key={idx} className="hover:bg-slate-800/40 transition-colors">
+                                <tr key={idx} className="hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors">
                                     {columns.map((col) => (
-                                        <td key={col} className="px-4 py-3 text-[11px] text-slate-300 whitespace-pre-wrap break-words">
+                                        <td key={col} className="px-4 py-3 text-[11px] text-slate-600 dark:text-slate-300 whitespace-pre-wrap break-words">
                                             {typeof row[col] === "object" ? JSON.stringify(row[col]) : String(row[col] ?? "")}
                                         </td>
                                     ))}

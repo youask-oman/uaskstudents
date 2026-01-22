@@ -1,20 +1,82 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+type FilterState = {
+    mode: string;
+    model: string;
+    provider: string;
+    route: string;
+};
+
+const defaultFilters: FilterState = {
+    mode: "",
+    model: "",
+    provider: "",
+    route: ""
+};
+
+const buildQuery = (params: Record<string, string | number | undefined>) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+        if (value === undefined || value === "") {
+            return;
+        }
+        query.set(key, String(value));
+    });
+    return query.toString();
+};
+
+const formatNumber = (value: number | null | undefined, fallback = "0") => {
+    if (!Number.isFinite(value)) return fallback;
+    return Number(value).toLocaleString();
+};
+
+const formatPercent = (value: number | null | undefined) => {
+    if (!Number.isFinite(value)) return "0.0%";
+    return `${Number(value).toFixed(1)}%`;
+};
+
+const formatCurrency = (value: number | null | undefined) => {
+    if (!Number.isFinite(value)) return "$0.00";
+    return `$${Number(value).toFixed(4)}`;
+};
+
+const TrendBars = ({ series, color }: { series: number[]; color: string }) => {
+    const max = Math.max(...series, 1);
+    return (
+        <div className="flex items-end gap-1 h-14">
+            {series.map((value, idx) => (
+                <div
+                    key={idx}
+                    className="flex-1 rounded-sm"
+                    style={{ height: `${(value / max) * 100}%`, backgroundColor: color }}
+                    title={String(value)}
+                />
+            ))}
+        </div>
+    );
+};
 
 export default function AdminDashboardPage() {
     const [stats, setStats] = useState<any>(null);
     const [routing, setRouting] = useState<any>(null);
     const [solveTraces, setSolveTraces] = useState<any[]>([]);
     const [selectedTrace, setSelectedTrace] = useState<any | null>(null);
+    const [overview, setOverview] = useState<any>(null);
+    const [errors, setErrors] = useState<any[]>([]);
+    const [anomalies, setAnomalies] = useState<any>(null);
+    const [range, setRange] = useState("7d");
+    const [filters, setFilters] = useState<FilterState>(defaultFilters);
     const [isLoading, setIsLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
 
     useEffect(() => {
         const controller = new AbortController();
         const fetchData = async () => {
             const token = localStorage.getItem("token");
-            const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
             const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
             try {
                 const [statsRes, routingRes, tracesRes] = await Promise.all([
@@ -25,11 +87,9 @@ export default function AdminDashboardPage() {
                 if (!statsRes.ok || !routingRes.ok || !tracesRes.ok) {
                     throw new Error("Failed to load admin metrics.");
                 }
-                const statsData = await statsRes.json();
-                const routingData = await routingRes.json();
+                setStats(await statsRes.json());
+                setRouting(await routingRes.json());
                 const tracesData = await tracesRes.json();
-                setStats(statsData);
-                setRouting(routingData);
                 setSolveTraces(Array.isArray(tracesData) ? tracesData : []);
             } catch (err) {
                 if ((err as Error).name === "AbortError") {
@@ -43,7 +103,56 @@ export default function AdminDashboardPage() {
         };
         fetchData();
         return () => controller.abort();
-    }, []);
+    }, [baseUrl]);
+
+    useEffect(() => {
+        const controller = new AbortController();
+        const fetchAnalytics = async () => {
+            const token = localStorage.getItem("token");
+            const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+            const query = buildQuery({ range, ...filters });
+            try {
+                const [overviewRes, errorsRes, anomaliesRes] = await Promise.all([
+                    fetch(`${baseUrl}/api/v1/admin/analytics/overview?${query}`, { headers, signal: controller.signal }),
+                    fetch(`${baseUrl}/api/v1/admin/analytics/errors?${buildQuery({ range, ...filters })}`, { headers, signal: controller.signal }),
+                    fetch(`${baseUrl}/api/v1/admin/analytics/anomalies?${buildQuery({ range, ...filters })}`, { headers, signal: controller.signal })
+                ]);
+                if (!overviewRes.ok || !errorsRes.ok || !anomaliesRes.ok) {
+                    throw new Error("Failed to load analytics data.");
+                }
+                setOverview(await overviewRes.json());
+                setErrors(await errorsRes.json());
+                setAnomalies(await anomaliesRes.json());
+            } catch (err) {
+                if ((err as Error).name === "AbortError") {
+                    return;
+                }
+                console.error("Failed to fetch analytics data:", err);
+            }
+        };
+        fetchAnalytics();
+        return () => controller.abort();
+    }, [baseUrl, range, filters]);
+
+    const routingSeries = Array.isArray(routing?.series) ? routing.series : [];
+    const maxVolume = routingSeries.length > 0
+        ? Math.max(...routingSeries.map((x: any) => x.volume || 0), 1)
+        : 1;
+
+    const questionTrendSeries = useMemo(() => {
+        const trend = overview?.trends?.questions || [];
+        return trend.map((item: any) => item.total || 0);
+    }, [overview]);
+
+    const costTrendSeries = useMemo(() => {
+        const trend = overview?.trends?.cost || [];
+        return trend.map((item: any) => item.total || 0);
+    }, [overview]);
+
+    const latencyTrendSeries = useMemo(() => {
+        const trend = overview?.trends?.latency || [];
+        return trend.map((item: any) => item.p95 || 0);
+    }, [overview]);
 
     if (isLoading) {
         return <div className="p-8 text-slate-400">Loading dashboard metrics...</div>;
@@ -53,33 +162,24 @@ export default function AdminDashboardPage() {
         return <div className="p-8 text-rose-400">{errorMessage}</div>;
     }
 
-    const safeNumber = (value: number | null | undefined, fallback = 0) =>
-        Number.isFinite(value) ? Number(value) : fallback;
-    const formatPercent = (value: number | null | undefined, fallback = "0.0%") =>
-        Number.isFinite(value) ? `${Number(value).toFixed(1)}%` : fallback;
-    const formatCurrency = (value: number | null | undefined, fallback = "$0.00") =>
-        Number.isFinite(value) ? `$${Number(value).toFixed(2)}` : fallback;
-    const routingSeries = Array.isArray(routing?.series) ? routing.series : [];
-    const maxVolume = routingSeries.length > 0
-        ? Math.max(...routingSeries.map((x: any) => x.volume || 0), 1)
-        : 1;
+    const kpis = overview?.kpis || {};
 
     return (
         <>
-            <header className="sticky top-0 z-10 flex items-center justify-between bg-[#0F172A]/80 backdrop-blur-md border-b border-slate-800 px-8 py-3 w-full">
+            <header className="sticky top-0 z-10 flex items-center justify-between bg-white/80 dark:bg-[#0F172A]/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-8 py-3 w-full">
                 <div className="flex items-center gap-6">
-                    <h2 className="text-lg font-bold tracking-tight text-white">Analytics Dashboard</h2>
+                    <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Analytics Dashboard</h2>
                     <div className="relative group">
                         <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
                             <span className="material-symbols-outlined text-lg">search</span>
                         </span>
-                        <input className="bg-slate-800 border-none rounded-lg py-2 pl-10 pr-4 text-sm w-64 focus:ring-2 focus:ring-admin-primary text-white placeholder-slate-500 transition-all" placeholder="Search metrics or models..." type="text" />
+                        <input className="bg-slate-800 border-none rounded-lg py-2 pl-10 pr-4 text-sm w-64 focus:ring-2 focus:ring-admin-primary text-slate-900 dark:text-white placeholder-slate-500 transition-all" placeholder="Search metrics or models..." type="text" />
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
                     <button className="p-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors relative">
                         <span className="material-symbols-outlined">notifications</span>
-                        <span className="absolute top-2 right-2.5 size-2 bg-rose-500 rounded-full border-2 border-[#0F172A]"></span>
+                        <span className="absolute top-2 right-2.5 size-2 bg-rose-500 rounded-full border-2 border-slate-200 dark:border-[#0F172A]"></span>
                     </button>
                     <button className="p-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors">
                         <span className="material-symbols-outlined">settings</span>
@@ -91,130 +191,308 @@ export default function AdminDashboardPage() {
             </header>
 
             <div className="p-8 max-w-[1400px] mx-auto w-full flex flex-col gap-8">
-                <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div className="kpi-card border-l-4 border-accent-cyan p-5 rounded-xl shadow-lg border-slate-800 border hover:border-accent-cyan/50 transition-all group">
-                        <div className="flex justify-between items-start mb-4">
-                            <span className="p-2 bg-accent-cyan/10 text-accent-cyan rounded-lg material-symbols-outlined">bolt</span>
-                            <span className="text-accent-emerald text-xs font-bold bg-accent-emerald/10 px-2 py-1 rounded-full">+{safeNumber(stats?.requests_growth).toFixed(1)}%</span>
+                <section className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-5">
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-slate-300">
+                        <div className="flex items-center gap-2">
+                            <span className="text-slate-500 uppercase text-xs tracking-widest">Range</span>
+                            <select
+                                value={range}
+                                onChange={(e) => setRange(e.target.value)}
+                                className="bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-sm"
+                            >
+                                <option value="7d">7 days</option>
+                                <option value="30d">30 days</option>
+                            </select>
                         </div>
-                        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Daily Requests</p>
-                        <h3 className="text-2xl font-bold mt-1 tracking-tight text-white group-hover:text-accent-cyan transition-colors">{safeNumber(stats?.daily_requests).toLocaleString()}</h3>
-                    </div>
-                    <div className="kpi-card border-l-4 border-accent-emerald p-5 rounded-xl shadow-lg border-slate-800 border hover:border-accent-emerald/50 transition-all group">
-                        <div className="flex justify-between items-start mb-4">
-                            <span className="p-2 bg-accent-emerald/10 text-accent-emerald rounded-lg material-symbols-outlined">document_scanner</span>
-                            <span className="text-rose-500 text-xs font-bold bg-rose-500/10 px-2 py-1 rounded-full">{safeNumber(stats?.success_rate_change)}%</span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-slate-500 uppercase text-xs tracking-widest">Mode</span>
+                            <select
+                                value={filters.mode}
+                                onChange={(e) => setFilters((prev) => ({ ...prev, mode: e.target.value }))}
+                                className="bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-sm"
+                            >
+                                <option value="">All</option>
+                                <option value="minimal">Quick</option>
+                                <option value="detailed">Detailed</option>
+                            </select>
                         </div>
-                        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">OCR Success Rate</p>
-                        <h3 className="text-2xl font-bold mt-1 tracking-tight text-white group-hover:text-accent-emerald transition-colors">{formatPercent(stats?.ocr_success_rate)}</h3>
-                    </div>
-                    <div className="kpi-card border-l-4 border-accent-purple p-5 rounded-xl shadow-lg border-slate-800 border hover:border-accent-purple/50 transition-all group">
-                        <div className="flex justify-between items-start mb-4">
-                            <span className="p-2 bg-accent-purple/10 text-accent-purple rounded-lg material-symbols-outlined">payments</span>
-                            <span className="text-accent-emerald text-xs font-bold bg-accent-emerald/10 px-2 py-1 rounded-full">+{safeNumber(stats?.cost_change)}%</span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-slate-500 uppercase text-xs tracking-widest">Provider</span>
+                            <input
+                                value={filters.provider}
+                                onChange={(e) => setFilters((prev) => ({ ...prev, provider: e.target.value }))}
+                                placeholder="openai"
+                                className="bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-sm"
+                            />
                         </div>
-                        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">LLM Cost Est.</p>
-                        <h3 className="text-2xl font-bold mt-1 tracking-tight text-white group-hover:text-accent-purple transition-colors">{formatCurrency(stats?.llm_cost_est)}</h3>
-                        <p className="text-[10px] text-slate-500 mt-2">
-                            Monthly tokens in/out: {safeNumber(stats?.llm_tokens_in_monthly).toLocaleString()} / {safeNumber(stats?.llm_tokens_out_monthly).toLocaleString()}
-                        </p>
-                        <p className="text-[10px] text-slate-500">
-                            Daily tokens in/out: {safeNumber(stats?.llm_tokens_in_daily).toLocaleString()} / {safeNumber(stats?.llm_tokens_out_daily).toLocaleString()}
-                        </p>
-                        <p className="text-[10px] text-slate-500">
-                            Total requests (M/D): {safeNumber(stats?.llm_total_requests_monthly).toLocaleString()} / {safeNumber(stats?.llm_total_requests_daily).toLocaleString()}
-                        </p>
-                        <p className="text-[10px] text-slate-500">
-                            Total spend (M/D): {formatCurrency(stats?.llm_total_spend_monthly)} / {formatCurrency(stats?.llm_total_spend_daily)}
-                        </p>
-                    </div>
-                    <div className="kpi-card border-l-4 border-accent-amber p-5 rounded-xl shadow-lg border-slate-800 border hover:border-accent-amber/50 transition-all group">
-                        <div className="flex justify-between items-start mb-4">
-                            <span className="p-2 bg-accent-amber/10 text-accent-amber rounded-lg material-symbols-outlined">database</span>
-                            <span className="text-accent-emerald text-xs font-bold bg-accent-emerald/10 px-2 py-1 rounded-full">+{safeNumber(stats?.cache_hit_change)}%</span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-slate-500 uppercase text-xs tracking-widest">Model</span>
+                            <input
+                                value={filters.model}
+                                onChange={(e) => setFilters((prev) => ({ ...prev, model: e.target.value }))}
+                                placeholder="gpt-5-mini"
+                                className="bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-sm"
+                            />
                         </div>
-                        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Cache Hit Rate</p>
-                        <h3 className="text-2xl font-bold mt-1 tracking-tight text-white group-hover:text-accent-amber transition-colors">{safeNumber(stats?.cache_hit_rate)}%</h3>
+                        <div className="flex items-center gap-2">
+                            <span className="text-slate-500 uppercase text-xs tracking-widest">Route</span>
+                            <input
+                                value={filters.route}
+                                onChange={(e) => setFilters((prev) => ({ ...prev, route: e.target.value }))}
+                                placeholder="solve_v3"
+                                className="bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-sm"
+                            />
+                        </div>
                     </div>
                 </section>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <section className="lg:col-span-2 bg-panel-dark border border-slate-800 rounded-xl overflow-hidden shadow-xl">
-                        <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-800/20">
-                            <div>
-                                <h4 className="text-base font-bold text-white">Model Routing Volume</h4>
-                                <p className="text-sm text-slate-400">Requests distributed across GPT-4, Claude-3, and Llama-3</p>
-                            </div>
-                            <div className="flex gap-2">
-                                <button className="px-3 py-1.5 text-xs font-bold bg-admin-primary text-white rounded-lg">7 Days</button>
-                                <button className="px-3 py-1.5 text-xs font-bold bg-slate-800 text-slate-400 rounded-lg hover:text-white transition-colors">30 Days</button>
-                            </div>
-                        </div>
-                        <div className="p-6">
-                            <div className="mb-6 flex gap-8">
-                                <div>
-                                    <p className="text-[32px] font-bold tracking-tight text-accent-cyan">{safeNumber(routing?.total_requests).toLocaleString()}</p>
-                                    <p className="text-slate-400 text-sm font-medium flex items-center gap-1">
-                                        Total Requests <span className="text-accent-emerald font-bold">+{safeNumber(routing?.requests_growth)}%</span>
-                                    </p>
-                                </div>
-                                <div className="w-px bg-slate-800 self-stretch"></div>
-                                <div>
-                                    <p className="text-[32px] font-bold tracking-tight text-accent-emerald">{safeNumber(routing?.avg_latency).toFixed(1)}s</p>
-                                    <p className="text-slate-400 text-sm font-medium flex items-center gap-1">
-                                        Avg Latency <span className="text-rose-500 font-bold">+{safeNumber(routing?.latency_change)}%</span>
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="relative h-[240px] w-full flex flex-col justify-end bg-slate-800/10 rounded-lg p-2">
-                                {/* SVG Grid and Path would remain similar but ideally mapped to routing.series */}
-                                <div className="flex items-end justify-between h-48 px-4 gap-2">
-                                    {routingSeries.map((s: any) => {
-                                        const h = (safeNumber(s.volume) / maxVolume) * 100;
-                                        return (
-                                            <div key={s.day} className="flex-1 flex flex-col items-center gap-2 group">
-                                                <div
-                                                    className="w-full bg-accent-cyan/20 border-t-2 border-accent-cyan rounded-t-sm transition-all group-hover:bg-accent-cyan/40"
-                                                    style={{ height: `${h}%` }}
-                                                    title={`${s.volume} requests`}
-                                                ></div>
-                                                <p className="text-slate-500 text-[11px] font-bold">{s.day}</p>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-                    <section className="bg-panel-dark border border-slate-800 rounded-xl flex flex-col shadow-xl">
-                        <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-800/20">
-                            <h4 className="text-base font-bold text-white">Recent Errors Inbox</h4>
-                            <span className="bg-rose-500/10 text-rose-500 text-[10px] font-bold px-2 py-0.5 rounded uppercase flex items-center gap-1">
-                                <span className="size-1.5 bg-rose-500 rounded-full"></span> Live
-                            </span>
-                        </div>
-                        <div className="flex-1 overflow-y-auto max-h-[460px] divide-y divide-slate-800">
-                            {/* Empty state or real errors if endpoint added later */}
-                            <div className="p-8 text-center text-slate-500 text-sm italic">
-                                No critical system errors in the last 24 hours.
-                            </div>
-                        </div>
-                        <div className="p-4 border-t border-slate-800 bg-slate-800/10">
-                            <button className="w-full py-2 text-xs font-bold text-admin-primary hover:text-admin-primary/80 transition-colors">View All Logs</button>
-                        </div>
-                    </section>
-                </div>
+                <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="kpi-card border-l-4 border-accent-cyan p-5 rounded-xl shadow-lg border-slate-200 dark:border-slate-800 border">
+                        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Total Students</p>
+                        <h3 className="text-2xl font-bold mt-1 tracking-tight text-slate-900 dark:text-white">{formatNumber(kpis?.total_students?.value)}</h3>
+                        <p className="text-[11px] text-slate-500 mt-1">Delta {formatPercent(kpis?.total_students?.delta_pct)}</p>
+                    </div>
+                    <div className="kpi-card border-l-4 border-accent-emerald p-5 rounded-xl shadow-lg border-slate-200 dark:border-slate-800 border">
+                        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Active Students Today</p>
+                        <h3 className="text-2xl font-bold mt-1 tracking-tight text-slate-900 dark:text-white">{formatNumber(kpis?.active_students_today?.value)}</h3>
+                        <p className="text-[11px] text-slate-500 mt-1">Delta {formatPercent(kpis?.active_students_today?.delta_pct)}</p>
+                    </div>
+                    <div className="kpi-card border-l-4 border-accent-amber p-5 rounded-xl shadow-lg border-slate-200 dark:border-slate-800 border">
+                        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Online Now</p>
+                        <h3 className="text-2xl font-bold mt-1 tracking-tight text-slate-900 dark:text-white">{formatNumber(kpis?.online_now?.value)}</h3>
+                        <p className="text-[11px] text-slate-500 mt-1">Delta {formatPercent(kpis?.online_now?.delta_pct)}</p>
+                    </div>
+                    <div className="kpi-card border-l-4 border-accent-purple p-5 rounded-xl shadow-lg border-slate-200 dark:border-slate-800 border">
+                        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">New Users Today</p>
+                        <h3 className="text-2xl font-bold mt-1 tracking-tight text-slate-900 dark:text-white">{formatNumber(kpis?.new_users_today?.value)}</h3>
+                        <p className="text-[11px] text-slate-500 mt-1">Delta {formatPercent(kpis?.new_users_today?.delta_pct)}</p>
+                    </div>
+                    <div className="kpi-card border-l-4 border-accent-cyan p-5 rounded-xl shadow-lg border-slate-200 dark:border-slate-800 border">
+                        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Questions Today</p>
+                        <h3 className="text-2xl font-bold mt-1 tracking-tight text-slate-900 dark:text-white">{formatNumber(kpis?.questions_today?.value)}</h3>
+                        <p className="text-[11px] text-slate-500 mt-1">Delta {formatPercent(kpis?.questions_today?.delta_pct)}</p>
+                    </div>
+                    <div className="kpi-card border-l-4 border-accent-emerald p-5 rounded-xl shadow-lg border-slate-200 dark:border-slate-800 border">
+                        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Avg Qs / Active</p>
+                        <h3 className="text-2xl font-bold mt-1 tracking-tight text-slate-900 dark:text-white">{formatNumber(kpis?.avg_questions_per_active?.value)}</h3>
+                        <p className="text-[11px] text-slate-500 mt-1">Delta {formatPercent(kpis?.avg_questions_per_active?.delta_pct)}</p>
+                    </div>
+                    <div className="kpi-card border-l-4 border-accent-amber p-5 rounded-xl shadow-lg border-slate-200 dark:border-slate-800 border">
+                        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Tokens Today</p>
+                        <h3 className="text-2xl font-bold mt-1 tracking-tight text-slate-900 dark:text-white">
+                            {formatNumber(kpis?.tokens_in_today?.value)} / {formatNumber(kpis?.tokens_out_today?.value)}
+                        </h3>
+                        <p className="text-[11px] text-slate-500 mt-1">Delta {formatPercent(kpis?.tokens_in_today?.delta_pct)}</p>
+                    </div>
+                    <div className="kpi-card border-l-4 border-accent-purple p-5 rounded-xl shadow-lg border-slate-200 dark:border-slate-800 border">
+                        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">LLM Cost Today</p>
+                        <h3 className="text-2xl font-bold mt-1 tracking-tight text-slate-900 dark:text-white">{formatCurrency(kpis?.llm_cost_today?.value)}</h3>
+                        <p className="text-[11px] text-slate-500 mt-1">Cost / Q {formatCurrency(kpis?.cost_per_question?.value)}</p>
+                    </div>
+                    <div className="kpi-card border-l-4 border-accent-cyan p-5 rounded-xl shadow-lg border-slate-200 dark:border-slate-800 border">
+                        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Credit Deductions</p>
+                        <h3 className="text-2xl font-bold mt-1 tracking-tight text-slate-900 dark:text-white">{formatNumber(kpis?.credit_deductions_today?.value)}</h3>
+                        <p className="text-[11px] text-slate-500 mt-1">Failures {formatNumber(kpis?.deduction_failures_today?.value)}</p>
+                    </div>
+                </section>
 
-                <section className="bg-panel-dark border border-slate-800 rounded-xl shadow-xl">
-                    <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-800/20">
+                <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-6">
+                        <h4 className="text-base font-bold text-slate-900 dark:text-white">Questions Trend</h4>
+                        <p className="text-xs text-slate-400 mb-3">Quick vs Study vs Solve</p>
+                        <TrendBars series={questionTrendSeries} color="#38BDF8" />
+                    </div>
+                    <div className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-6">
+                        <h4 className="text-base font-bold text-slate-900 dark:text-white">Cost Trend</h4>
+                        <p className="text-xs text-slate-400 mb-3">Total cost per day</p>
+                        <TrendBars series={costTrendSeries} color="#A855F7" />
+                    </div>
+                    <div className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-6">
+                        <h4 className="text-base font-bold text-slate-900 dark:text-white">Latency Trend</h4>
+                        <p className="text-xs text-slate-400 mb-3">p95 latency (ms)</p>
+                        <TrendBars series={latencyTrendSeries} color="#34D399" />
+                    </div>
+                </section>
+
+                <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-6">
+                        <h4 className="text-base font-bold text-slate-900 dark:text-white">Breakdowns</h4>
+                        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-slate-300">
+                            <div>
+                                <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Top Subjects</p>
+                                {(overview?.breakdowns?.subjects || []).map((item: any) => (
+                                    <div key={item.subject} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 py-1">
+                                        <span>{item.subject}</span>
+                                        <span className="text-slate-400">{item.count}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <div>
+                                <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Grades</p>
+                                {(overview?.breakdowns?.grades || []).map((item: any) => (
+                                    <div key={item.grade} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 py-1">
+                                        <span>{item.grade}</span>
+                                        <span className="text-slate-400">{item.count}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-6">
+                        <h4 className="text-base font-bold text-slate-900 dark:text-white">Model Routing Share</h4>
+                        <div className="mt-4 space-y-2 text-sm text-slate-300">
+                            {(overview?.breakdowns?.model_routing || []).slice(0, 6).map((item: any) => (
+                                <div key={item.model} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-1">
+                                    <span>{item.model}</span>
+                                    <span className="text-slate-400">{item.share}%</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-6">
+                        <h4 className="text-base font-bold text-slate-900 dark:text-white">Quality & Safety</h4>
+                        <div className="mt-4 text-sm text-slate-300 space-y-2">
+                            <div className="flex items-center justify-between">
+                                <span>Verified pass rate</span>
+                                <span>{formatPercent(overview?.quality?.verified_rate)}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span>Schema violations</span>
+                                <span>{formatPercent(overview?.quality?.schema_violation_rate)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-6">
+                        <h4 className="text-base font-bold text-slate-900 dark:text-white">Operational Health</h4>
+                        <div className="mt-4 text-sm text-slate-300 space-y-2">
+                            {(overview?.health?.providers || []).map((item: any) => (
+                                <div key={item.provider} className="flex items-center justify-between">
+                                    <span>{item.provider}</span>
+                                    <span>{formatPercent(item.error_rate)}</span>
+                                </div>
+                            ))}
+                            <div className="flex items-center justify-between">
+                                <span>Stream disconnects</span>
+                                <span>{formatPercent(overview?.health?.streaming?.disconnect_rate)}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span>Stream truncations</span>
+                                <span>{formatPercent(overview?.health?.streaming?.truncated_rate)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-6">
+                        <h4 className="text-base font-bold text-slate-900 dark:text-white">Recent Errors Inbox</h4>
+                        <div className="mt-4 text-xs text-slate-400 space-y-2">
+                            {errors.length === 0 && <div>No errors in the selected window.</div>}
+                            {errors.slice(0, 6).map((item: any, index: number) => (
+                                <div key={item.request_id || index} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-1">
+                                    <span>{item.error_type}</span>
+                                    <span className="text-slate-500">{item.endpoint || "unknown"}</span>
+                                </div>
+                            ))}
+                        </div>
+                        <button className="mt-4 text-xs font-bold text-admin-primary">View All Logs</button>
+                    </div>
+                </section>
+
+                <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-6">
+                        <h4 className="text-base font-bold text-slate-900 dark:text-white">Anomalies</h4>
+                        <div className="mt-4 text-sm text-slate-300 space-y-4">
+                            <div>
+                                <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Top Cost Users</p>
+                                {(anomalies?.top_cost_users || []).map((item: any) => (
+                                    <div key={item.user_id} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 py-1">
+                                        <span>User {item.user_id}</span>
+                                        <span className="text-slate-400">{formatCurrency(item.cost_usd)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <div>
+                                <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Token Spike Requests</p>
+                                {(anomalies?.token_spike_requests || []).map((item: any) => (
+                                    <div key={item.request_id} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 py-1">
+                                        <span>{item.request_id?.slice(0, 6)}</span>
+                                        <span className="text-slate-400">{formatNumber(item.tokens_total)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-6">
+                        <h4 className="text-base font-bold text-slate-900 dark:text-white">OCR Failure Reasons</h4>
+                        <div className="mt-4 text-sm text-slate-300 space-y-2">
+                            {(anomalies?.ocr_failures || []).map((item: any, index: number) => (
+                                <div key={`${item.reason}-${index}`} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 py-1">
+                                    <span>{item.reason}</span>
+                                    <span className="text-slate-400">{item.count}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="kpi-card border-l-4 border-accent-cyan p-5 rounded-xl shadow-lg border-slate-200 dark:border-slate-800 border">
+                        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Daily Requests</p>
+                        <h3 className="text-2xl font-bold mt-1 tracking-tight text-slate-900 dark:text-white">{formatNumber(stats?.daily_requests)}</h3>
+                    </div>
+                    <div className="kpi-card border-l-4 border-accent-emerald p-5 rounded-xl shadow-lg border-slate-200 dark:border-slate-800 border">
+                        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">OCR Success Rate</p>
+                        <h3 className="text-2xl font-bold mt-1 tracking-tight text-slate-900 dark:text-white">{formatPercent(stats?.ocr_success_rate)}</h3>
+                    </div>
+                    <div className="kpi-card border-l-4 border-accent-purple p-5 rounded-xl shadow-lg border-slate-200 dark:border-slate-800 border">
+                        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">LLM Cost Est.</p>
+                        <h3 className="text-2xl font-bold mt-1 tracking-tight text-slate-900 dark:text-white">{formatCurrency(stats?.llm_cost_est)}</h3>
+                    </div>
+                    <div className="kpi-card border-l-4 border-accent-amber p-5 rounded-xl shadow-lg border-slate-200 dark:border-slate-800 border">
+                        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Cache Hit Rate</p>
+                        <h3 className="text-2xl font-bold mt-1 tracking-tight text-slate-900 dark:text-white">{formatNumber(stats?.cache_hit_rate)}%</h3>
+                    </div>
+                </section>
+
+                <section className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xl">
+                    <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-800/20">
                         <div>
-                            <h4 className="text-base font-bold text-white">Solve Request Traces</h4>
+                            <h4 className="text-base font-bold text-slate-900 dark:text-white">Model Routing Volume</h4>
+                            <p className="text-sm text-slate-400">Requests distributed across major models</p>
+                        </div>
+                    </div>
+                    <div className="p-6">
+                        <div className="relative h-[240px] w-full flex flex-col justify-end bg-slate-800/10 rounded-lg p-2">
+                            <div className="flex items-end justify-between h-48 px-4 gap-2">
+                                {routingSeries.map((s: any) => {
+                                    const h = (Number(s.volume || 0) / maxVolume) * 100;
+                                    return (
+                                        <div key={s.day} className="flex-1 flex flex-col items-center gap-2 group">
+                                            <div
+                                                className="w-full bg-accent-cyan/20 border-t-2 border-accent-cyan rounded-t-sm transition-all group-hover:bg-accent-cyan/40"
+                                                style={{ height: `${h}%` }}
+                                                title={`${s.volume} requests`}
+                                            ></div>
+                                            <p className="text-slate-500 text-[11px] font-bold">{s.day}</p>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl">
+                    <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-800/20">
+                        <div>
+                            <h4 className="text-base font-bold text-slate-900 dark:text-white">Solve Request Traces</h4>
                             <p className="text-sm text-slate-400">Latest streamed solve requests (JSONL)</p>
                         </div>
                         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Last 120</span>
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-3">
-                        <div className="lg:col-span-2 border-r border-slate-800">
+                        <div className="lg:col-span-2 border-r border-slate-200 dark:border-slate-800">
                             <div className="max-h-[420px] overflow-y-auto divide-y divide-slate-800">
                                 {solveTraces.length === 0 && (
                                     <div className="p-6 text-slate-500 text-sm italic">No trace logs available.</div>
@@ -241,7 +519,7 @@ export default function AdminDashboardPage() {
                         </div>
                         <div className="p-6">
                             <h5 className="text-xs font-bold uppercase tracking-widest text-slate-500">Selected Trace</h5>
-                            <div className="mt-3 bg-slate-900/60 border border-slate-800 rounded-lg p-4 max-h-[360px] overflow-y-auto">
+                            <div className="mt-3 bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-lg p-4 max-h-[360px] overflow-y-auto">
                                 {selectedTrace ? (
                                     <pre className="text-[11px] text-slate-300 whitespace-pre-wrap">{JSON.stringify(selectedTrace, null, 2)}</pre>
                                 ) : (
@@ -252,7 +530,7 @@ export default function AdminDashboardPage() {
                     </div>
                 </section>
 
-                <footer className="mt-auto pt-8 flex items-center justify-between text-slate-500 text-[11px] font-medium border-t border-slate-800">
+                <footer className="mt-auto pt-8 flex items-center justify-between text-slate-500 text-[11px] font-medium border-t border-slate-200 dark:border-slate-800">
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-1.5">
                             <span className="size-2 bg-accent-emerald rounded-full"></span>

@@ -96,7 +96,7 @@ export default function AdminQuotasPage() {
         <div className="flex flex-col gap-8 p-8 max-w-[1400px] mx-auto w-full">
             <header className="flex flex-wrap justify-between items-end gap-3 mb-4">
                 <div className="flex flex-col gap-2">
-                    <h1 className="text-white text-4xl font-black leading-tight tracking-tight">Usage & Quotas</h1>
+                    <h1 className="text-slate-900 dark:text-white text-4xl font-black leading-tight tracking-tight">Usage & Quotas</h1>
                     <p className="text-slate-400 text-base font-normal leading-normal">Monitor resource consumption and manage manual overrides.</p>
                 </div>
                 <div className="flex gap-3">
@@ -116,11 +116,11 @@ export default function AdminQuotasPage() {
 
             {/* Global Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="flex flex-col gap-4 rounded-xl p-6 bg-panel-dark border border-slate-800 shadow-xl group hover:border-admin-primary/50 transition-all">
+                <div className="flex flex-col gap-4 rounded-xl p-6 bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 shadow-xl group hover:border-admin-primary/50 transition-all">
                     <div className="flex justify-between items-start">
                         <div>
                             <p className="text-slate-400 text-sm font-medium">Global API Consumption</p>
-                            <p className="text-3xl font-bold mt-1 text-white">{data?.global_consumption}%</p>
+                            <p className="text-3xl font-bold mt-1 text-slate-900 dark:text-white">{data?.global_consumption}%</p>
                         </div>
                         <div className="p-2 bg-admin-primary/10 rounded-lg text-admin-primary group-hover:scale-110 transition-transform">
                             <span className="material-symbols-outlined">data_usage</span>
@@ -132,11 +132,11 @@ export default function AdminQuotasPage() {
                     <p className="text-slate-500 text-xs font-medium">Change data not available.</p>
                 </div>
 
-                <div className="flex flex-col gap-4 rounded-xl p-6 bg-panel-dark border border-slate-800 shadow-xl group hover:border-accent-emerald/50 transition-all">
+                <div className="flex flex-col gap-4 rounded-xl p-6 bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 shadow-xl group hover:border-accent-emerald/50 transition-all">
                     <div className="flex justify-between items-start">
                         <div>
                             <p className="text-slate-400 text-sm font-medium">Daily Active Quota Holders</p>
-                            <p className="text-3xl font-bold mt-1 text-white">{data?.daily_active_holders.toLocaleString()}</p>
+                            <p className="text-3xl font-bold mt-1 text-slate-900 dark:text-white">{data?.daily_active_holders.toLocaleString()}</p>
                         </div>
                         <div className="p-2 bg-accent-emerald/10 rounded-lg text-accent-emerald group-hover:scale-110 transition-transform">
                             <span className="material-symbols-outlined">group</span>
@@ -148,11 +148,11 @@ export default function AdminQuotasPage() {
                     <p className="text-slate-500 text-xs font-medium">Change data not available.</p>
                 </div>
 
-                <div className="flex flex-col gap-4 rounded-xl p-6 bg-panel-dark border border-slate-800 shadow-xl group hover:border-accent-amber/50 transition-all">
+                <div className="flex flex-col gap-4 rounded-xl p-6 bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 shadow-xl group hover:border-accent-amber/50 transition-all">
                     <div className="flex justify-between items-start">
                         <div>
                             <p className="text-slate-400 text-sm font-medium">Tokens Burned (24h)</p>
-                            <p className="text-3xl font-bold mt-1 text-white">{data?.tokens_burned_24h}</p>
+                            <p className="text-3xl font-bold mt-1 text-slate-900 dark:text-white">{data?.tokens_burned_24h}</p>
                         </div>
                         <div className="p-2 bg-accent-amber/10 rounded-lg text-accent-amber group-hover:scale-110 transition-transform">
                             <span className="material-symbols-outlined">toll</span>
@@ -167,11 +167,11 @@ export default function AdminQuotasPage() {
 
             <div className="flex gap-8 items-start">
                 {/* User Table */}
-                <div className="flex-1 overflow-hidden rounded-xl border border-slate-800 bg-panel-dark shadow-2xl">
+                <div className="flex-1 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-panel-dark shadow-2xl">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="bg-slate-800/50 border-b border-slate-800">
-                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">User ID</th>
+                            <tr className="bg-slate-100 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">User</th>
                                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">Plan</th>
                                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400 w-64">Daily Usage %</th>
                                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">Daily Usage</th>
@@ -183,8 +183,14 @@ export default function AdminQuotasPage() {
                             {data?.users.map((u: any) => (
                                 <tr key={u.id}
                                     onClick={() => setSelectedUser(u)}
-                                    className={`hover:bg-slate-800/50 cursor-pointer transition-colors group ${selectedUser?.id === u.id ? 'bg-admin-primary/10 border-l-2 border-admin-primary' : ''}`}>
-                                    <td className="px-6 py-5 font-medium text-slate-200">{u.full_id}</td>
+                                    className={`hover:bg-slate-100 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group ${selectedUser?.id === u.id ? 'bg-admin-primary/10 border-l-2 border-admin-primary' : ''}`}>
+                                    <td className="px-6 py-5">
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-bold text-slate-900 dark:text-slate-200">{u.full_name}</span>
+                                            <span className="text-xs text-slate-500">{u.email}</span>
+                                            <span className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">{u.full_id}</span>
+                                        </div>
+                                    </td>
                                     <td className="px-6 py-5">
                                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${u.plan === 'Pro' ? 'bg-admin-primary/10 text-admin-primary' : 'bg-slate-800 text-slate-400'}`}>
                                             {u.plan}
@@ -195,7 +201,7 @@ export default function AdminQuotasPage() {
                                             <div className="flex-1 bg-slate-800 h-1.5 rounded-full overflow-hidden">
                                                 <div className={`h-full ${u.usage_percent > 80 ? 'bg-rose-500' : 'bg-admin-primary'}`} style={{ width: `${u.usage_percent}%` }}></div>
                                             </div>
-                                            <span className={`text-sm font-bold w-8 text-right ${u.usage_percent > 80 ? 'text-rose-500' : 'text-slate-300'}`}>{u.usage_percent}%</span>
+                                            <span className={`text-sm font-bold w-8 text-right ${u.usage_percent > 80 ? 'text-rose-500' : 'text-slate-600 dark:text-slate-300'}`}>{u.usage_percent}%</span>
                                         </div>
                                     </td>
                                     <td className="px-6 py-5 text-slate-400 text-xs">
@@ -203,9 +209,20 @@ export default function AdminQuotasPage() {
                                     </td>
                                     <td className="px-6 py-5 text-slate-400 text-sm">{u.last_active}</td>
                                     <td className="px-6 py-5 text-right">
-                                        <button className="text-rose-500 font-bold text-xs uppercase tracking-widest hover:underline decoration-2 underline-offset-4">
-                                            {u.is_banned ? "Unban" : "Ban"}
-                                        </button>
+                                        <div className="flex items-center justify-end gap-3">
+                                            <button
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    window.location.href = `/admin/users/${u.id}`;
+                                                }}
+                                                className="text-admin-primary font-bold text-xs uppercase tracking-widest hover:underline decoration-2 underline-offset-4"
+                                            >
+                                                View
+                                            </button>
+                                            <button className="text-rose-500 font-bold text-xs uppercase tracking-widest hover:underline decoration-2 underline-offset-4">
+                                                {u.is_banned ? "Unban" : "Ban"}
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -215,21 +232,22 @@ export default function AdminQuotasPage() {
 
                 {/* Side Override Panel */}
                 {selectedUser && (
-                    <div className="w-[400px] shrink-0 bg-panel-dark border border-slate-800 rounded-xl shadow-2xl p-6 flex flex-col gap-6 sticky top-8 animate-in slide-in-from-right duration-300">
+                    <div className="w-[400px] shrink-0 bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl p-6 flex flex-col gap-6 sticky top-8 animate-in slide-in-from-right duration-300">
                         <div className="flex items-center justify-between">
-                            <h3 className="text-xl font-bold text-white tracking-tight">Limit Override</h3>
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Limit Override</h3>
                             <button onClick={() => setSelectedUser(null)} className="text-slate-500 hover:text-white transition-colors">
                                 <span className="material-symbols-outlined">close</span>
                             </button>
                         </div>
 
-                            <div className="flex items-center gap-4 bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                            <div className="flex items-center gap-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
                                 <div className="size-12 rounded-full bg-admin-primary/20 text-admin-primary flex items-center justify-center font-bold text-xl ring-2 ring-admin-primary/20">
-                                    {selectedUser.full_id[4]}
+                                    {(selectedUser.full_name || selectedUser.full_id || "U").slice(0, 1)}
                                 </div>
                                 <div>
-                                    <p className="font-bold text-white text-lg leading-tight">{selectedUser.full_id}</p>
-                                    <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">{selectedUser.plan} Account</p>
+                                    <p className="font-bold text-slate-900 dark:text-white text-lg leading-tight">{selectedUser.full_name}</p>
+                                    <p className="text-xs text-slate-500">{selectedUser.email}</p>
+                                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">{selectedUser.full_id} · {selectedUser.plan} Account</p>
                                     <p className="text-[10px] text-slate-500 mt-1">Credits: {selectedUser.credits_balance ?? "n/a"} used {selectedUser.credits_used_this_period ?? "n/a"}</p>
                                 </div>
                             </div>

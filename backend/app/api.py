@@ -24,7 +24,7 @@ from app.models import (
     VoiceSession, VoiceAudio, VoiceJob, VoiceArtifact, VoiceConfirmation,
     AdminNote, SystemConfig, PromptTemplate, PromptVersion, UserQuotaOverride, SystemErrorEntry,
     School, Plan, Subscription, UsageLedger,
-    PromptAsset, PlanPromptLink
+    PromptAsset, PlanPromptLink, RequestEvent, DeviceSignupLog
 )
 from app.services.subscription_service import subscription_service
 from app.services.vision import VisionService, vision_service
@@ -323,6 +323,16 @@ def validate_math_query(text: str) -> None:
         raise HTTPException(status_code=400, detail="Input must be a math question.")
 
 
+def _verification_passed(result: Dict[str, Any]) -> bool:
+    verification = result.get("verification")
+    if not isinstance(verification, dict):
+        return False
+    conclusion = (verification.get("conclusion") or "").lower()
+    if "verified" in conclusion or "valid" in conclusion:
+        return True
+    return False
+
+
 def _sqlmodel_to_dict(obj: Any) -> Dict[str, Any]:
     if obj is None:
         return {}
@@ -535,6 +545,8 @@ class SystemErrorItem(BaseModel):
 class AdminQuotaUserItem(BaseModel):
     id: int
     full_id: str # e.g. USR-123
+    full_name: str
+    email: str
     plan: str
     usage_percent: int
     last_active: str
@@ -553,6 +565,28 @@ class AdminQuotaListResponse(BaseModel):
     total_users: int
     global_consumption: float
     daily_active_holders: int
+
+
+class AdminQuestionHistoryItem(BaseModel):
+    request_id: Optional[str] = None
+    created_at: str
+    session_id: Optional[int] = None
+    session_title: Optional[str] = None
+    prompt: Optional[str] = None
+    response: Optional[str] = None
+    model: Optional[str] = None
+    route: Optional[str] = None
+    tokens_in: Optional[int] = None
+    tokens_out: Optional[int] = None
+    tokens_total: Optional[int] = None
+    cost_usd: Optional[float] = None
+    latency_ms: Optional[int] = None
+    status: Optional[str] = None
+    error_type: Optional[str] = None
+    schema_valid: Optional[bool] = None
+    verification_pass: Optional[bool] = None
+    is_stream: Optional[bool] = None
+    is_cached: Optional[bool] = None
     tokens_burned_24h: str
 
 class QuotaOverrideRequest(BaseModel):
@@ -1488,6 +1522,7 @@ async def solve_problem(
 
     # 4. Solve (Using Solver V3 exclusively)
     from app.services.solver_v3 import get_solver_v3
+    from app.services.admin.analytics_service import record_request_event, _calc_cost
     
     # Build Context
     context = f"Subject: {body.subject or 'General'}"
@@ -1989,6 +2024,33 @@ async def solve_v3_endpoint(
                     "problem_text": problem_text,
                     "error": f"entitlement_denied: {check_result.get('reason')}"
                 })
+                record_request_event(session, {
+                    "request_id": request_id,
+                    "user_id": user_id,
+                    "mode": requested_mode,
+                    "learning_mode": learning_mode,
+                    "subject": body.subject,
+                    "grade_level": user.grade_level if user else None,
+                    "model": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                    "provider": "openai",
+                    "route": "solve_v3",
+                    "tokens_in": None,
+                    "tokens_out": None,
+                    "tokens_total": None,
+                    "cost_usd": 0.0,
+                    "latency_ms": None,
+                    "status": "error",
+                    "error_type": "entitlement_denied",
+                    "schema_valid": None,
+                    "verification_pass": None,
+                    "is_stream": False,
+                    "is_cached": bool(was_cached or question_cache_hit),
+                    "credit_deducted": False,
+                    "credit_amount": None,
+                    "ocr_used": bool(body.image_url or body.artifact_id or features_used.get("ocr_used")),
+                    "voice_used": bool(body.has_voice or features_used.get("voice_used")),
+                    "response_truncated": False
+                })
                 raise HTTPException(status_code=402, detail=f"Entitlement Check Failed: {check_result['reason']}")
                  
             # Execute Debit
@@ -2042,6 +2104,38 @@ async def solve_v3_endpoint(
             session.commit()
             session.refresh(new_chat)
             
+            record_request_event(session, {
+                "request_id": request_id,
+                "user_id": user_id,
+                "mode": requested_mode,
+                "learning_mode": learning_mode,
+                "subject": body.subject,
+                "grade_level": user.grade_level if user else None,
+                "model": (result.get("telemetry") or {}).get("model") or os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                "provider": "openai",
+                "route": "solve_v3",
+                "tokens_in": (result.get("telemetry") or {}).get("input_tokens"),
+                "tokens_out": (result.get("telemetry") or {}).get("output_tokens"),
+                "tokens_total": (result.get("telemetry") or {}).get("total_tokens"),
+                "cost_usd": _calc_cost(
+                    (result.get("telemetry") or {}).get("total_tokens"),
+                    (result.get("telemetry") or {}).get("model"),
+                    (result.get("telemetry") or {}).get("input_tokens"),
+                    (result.get("telemetry") or {}).get("output_tokens")
+                ),
+                "latency_ms": (result.get("telemetry") or {}).get("latency_ms_total"),
+                "status": "error",
+                "error_type": result.get("error_type") or "solver_error",
+                "schema_valid": (result.get("telemetry") or {}).get("validated"),
+                "verification_pass": False,
+                "is_stream": False,
+                "is_cached": bool(was_cached or question_cache_hit),
+                "credit_deducted": deduct_committed,
+                "credit_amount": debit_cost if deduct_committed and 'debit_cost' in locals() else None,
+                "ocr_used": bool(body.image_url or body.artifact_id or features_used.get("ocr_used")),
+                "voice_used": bool(body.has_voice or features_used.get("voice_used")),
+                "response_truncated": bool(result.get("_truncated"))
+            })
             return {
                 "session_id": new_chat.id,
                 "error": True,
@@ -2194,6 +2288,39 @@ async def solve_v3_endpoint(
             "problem_text": problem_text
         })
 
+        record_request_event(session, {
+            "request_id": request_id,
+            "user_id": user_id,
+            "mode": requested_mode,
+            "learning_mode": learning_mode,
+            "subject": body.subject,
+            "grade_level": user.grade_level if user else None,
+            "model": telemetry.get("model") or result.get("_model") or os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+            "provider": "openai",
+            "route": "solve_v3",
+            "tokens_in": telemetry.get("input_tokens"),
+            "tokens_out": telemetry.get("output_tokens"),
+            "tokens_total": telemetry.get("total_tokens") or tokens_actual,
+            "cost_usd": _calc_cost(
+                telemetry.get("total_tokens") or tokens_actual,
+                telemetry.get("model"),
+                telemetry.get("input_tokens"),
+                telemetry.get("output_tokens")
+            ),
+            "latency_ms": telemetry.get("latency_ms_total") or telemetry.get("latency_ms_openai"),
+            "status": "ok",
+            "error_type": None,
+            "schema_valid": telemetry.get("validated"),
+            "verification_pass": _verification_passed(result),
+            "is_stream": False,
+            "is_cached": bool(was_cached or question_cache_hit),
+            "credit_deducted": deduct_committed,
+            "credit_amount": debit_cost if deduct_committed and 'debit_cost' in locals() else None,
+            "ocr_used": bool(body.image_url or body.artifact_id or features_used.get("ocr_used")),
+            "voice_used": bool(body.has_voice or features_used.get("voice_used")),
+            "response_truncated": bool(result.get("_truncated") or telemetry.get("truncated"))
+        })
+
         return result
     
     except Exception as e:
@@ -2237,6 +2364,36 @@ async def solve_v3_endpoint(
             })
         except Exception:
             pass
+        try:
+            record_request_event(session, {
+                "request_id": request_id,
+                "user_id": user_id,
+                "mode": requested_mode,
+                "learning_mode": learning_mode,
+                "subject": body.subject,
+                "grade_level": user.grade_level if user else None,
+                "model": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                "provider": "openai",
+                "route": "solve_v3",
+                "tokens_in": None,
+                "tokens_out": None,
+                "tokens_total": None,
+                "cost_usd": 0.0,
+                "latency_ms": None,
+                "status": "error",
+                "error_type": type(e).__name__,
+                "schema_valid": None,
+                "verification_pass": False,
+                "is_stream": False,
+                "is_cached": bool(was_cached or question_cache_hit),
+                "credit_deducted": deduct_committed,
+                "credit_amount": debit_cost if deduct_committed and 'debit_cost' in locals() else None,
+                "ocr_used": bool(body.image_url or body.artifact_id or features_used.get("ocr_used")),
+                "voice_used": bool(body.has_voice or features_used.get("voice_used")),
+                "response_truncated": False
+            })
+        except Exception:
+            pass
         raise HTTPException(
             status_code=500,
             detail=f"Solver V3 failed: {str(e)}"
@@ -2256,6 +2413,7 @@ async def solve_v3_stream_endpoint(
     from app.services.solver_v3 import get_solver_v3
     from app.services.solve.question_identity_service import question_identity_service
     from app.services.solve.trace_logger import log_solve_trace
+    from app.services.admin.analytics_service import record_request_event, _calc_cost
     import base64
     from pathlib import Path
 
@@ -2267,6 +2425,7 @@ async def solve_v3_stream_endpoint(
         learning_mode = (body.trusted_context or {}).get("learning_mode", "solve")
         deduct_attempted = {"credits": False, "ocr": False, "voice": False}
         deduct_committed = False
+        features_used = body.features_used or {}
 
         # Resolve profile for correct prompt/schema/tokens
         from app.llm_profiles.profile_resolver import ProfileResolver
@@ -2325,12 +2484,38 @@ async def solve_v3_stream_endpoint(
                 "problem_text": problem_text,
                 "error": "no_input"
             })
+            record_request_event(session, {
+                "request_id": request_id,
+                "user_id": user_id,
+                "mode": requested_mode,
+                "learning_mode": learning_mode,
+                "subject": body.subject,
+                "grade_level": user_obj.grade_level if user_obj else None,
+                "model": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                "provider": "openai",
+                "route": "solve_v3_stream",
+                "tokens_in": None,
+                "tokens_out": None,
+                "tokens_total": None,
+                "cost_usd": 0.0,
+                "latency_ms": None,
+                "status": "error",
+                "error_type": "no_input",
+                "schema_valid": None,
+                "verification_pass": False,
+                "is_stream": True,
+                "is_cached": False,
+                "credit_deducted": False,
+                "credit_amount": None,
+                "ocr_used": bool(body.image_url or body.artifact_id or features_used.get("ocr_used")),
+                "voice_used": bool(body.has_voice or features_used.get("voice_used")),
+                "response_truncated": False
+            })
             yield f"event: done\ndata: {json.dumps({'ok': False, 'error': {'code': 'no_input', 'message': 'No input provided'}})}\n\n"
             return
 
         # Entitlement check + debit (credits/OCR/voice)
         action_mode = "detailed" if requested_mode == "detailed" else "concise"
-        features_used = body.features_used or {}
         action_req = {
             "mode": action_mode,
             "has_ocr": bool(body.image_url or body.artifact_id or features_used.get("ocr_used")),
@@ -2371,6 +2556,33 @@ async def solve_v3_stream_endpoint(
                 "openai_payload": None,
                 "problem_text": problem_text,
                 "error": f"entitlement_denied: {check_result.get('reason')}"
+            })
+            record_request_event(session, {
+                "request_id": request_id,
+                "user_id": user_id,
+                "mode": requested_mode,
+                "learning_mode": learning_mode,
+                "subject": body.subject,
+                "grade_level": user_obj.grade_level if user_obj else None,
+                "model": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                "provider": "openai",
+                "route": "solve_v3_stream",
+                "tokens_in": None,
+                "tokens_out": None,
+                "tokens_total": None,
+                "cost_usd": 0.0,
+                "latency_ms": None,
+                "status": "error",
+                "error_type": "entitlement_denied",
+                "schema_valid": None,
+                "verification_pass": False,
+                "is_stream": True,
+                "is_cached": False,
+                "credit_deducted": False,
+                "credit_amount": None,
+                "ocr_used": action_req["has_ocr"],
+                "voice_used": action_req["has_voice"],
+                "response_truncated": False
             })
             raise HTTPException(status_code=402, detail=f"Entitlement Check Failed: {check_result['reason']}")
 
@@ -2433,6 +2645,33 @@ async def solve_v3_stream_endpoint(
                 "openai_payload": None,
                 "problem_text": problem_text,
                 "error": f"validation_error: {e.detail}"
+            })
+            record_request_event(session, {
+                "request_id": request_id,
+                "user_id": user_id,
+                "mode": requested_mode,
+                "learning_mode": learning_mode,
+                "subject": body.subject,
+                "grade_level": user_obj.grade_level if user_obj else None,
+                "model": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                "provider": "openai",
+                "route": "solve_v3_stream",
+                "tokens_in": None,
+                "tokens_out": None,
+                "tokens_total": None,
+                "cost_usd": 0.0,
+                "latency_ms": None,
+                "status": "error",
+                "error_type": "validation_error",
+                "schema_valid": False,
+                "verification_pass": False,
+                "is_stream": True,
+                "is_cached": False,
+                "credit_deducted": deduct_committed,
+                "credit_amount": None,
+                "ocr_used": action_req["has_ocr"],
+                "voice_used": action_req["has_voice"],
+                "response_truncated": False
             })
             yield f"event: done\ndata: {json.dumps({'ok': False, 'error': {'code': 'validation_error', 'message': e.detail}})}\n\n"
             return
@@ -2532,6 +2771,38 @@ async def solve_v3_stream_endpoint(
                         "openai_payload": openai_telemetry.get("openai_payload"),
                         "problem_text": problem_text,
                         "error": str(chunk.get("error"))
+                    })
+                    record_request_event(session, {
+                        "request_id": request_id,
+                        "user_id": user_id,
+                        "mode": requested_mode,
+                        "learning_mode": learning_mode,
+                        "subject": body.subject,
+                        "grade_level": user_obj.grade_level if user_obj else None,
+                        "model": openai_telemetry.get("model") or os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                        "provider": "openai",
+                        "route": "solve_v3_stream",
+                        "tokens_in": openai_telemetry.get("input_tokens"),
+                        "tokens_out": openai_telemetry.get("output_tokens"),
+                        "tokens_total": openai_telemetry.get("total_tokens"),
+                        "cost_usd": _calc_cost(
+                            openai_telemetry.get("total_tokens"),
+                            openai_telemetry.get("model"),
+                            openai_telemetry.get("input_tokens"),
+                            openai_telemetry.get("output_tokens")
+                        ),
+                        "latency_ms": openai_telemetry.get("latency_ms_total") or openai_telemetry.get("latency_ms_openai"),
+                        "status": "error",
+                        "error_type": "stream_error",
+                        "schema_valid": False,
+                        "verification_pass": False,
+                        "is_stream": True,
+                        "is_cached": False,
+                        "credit_deducted": deduct_committed,
+                        "credit_amount": debit_cost if deduct_committed else None,
+                        "ocr_used": action_req["has_ocr"],
+                        "voice_used": action_req["has_voice"],
+                        "response_truncated": bool(openai_telemetry.get("truncated"))
                     })
                     yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': False, 'error': chunk['error']})}\n\n"
                     return
@@ -2677,6 +2948,38 @@ async def solve_v3_stream_endpoint(
                 "openai_payload": openai_telemetry.get("openai_payload"),
                 "problem_text": problem_text
             })
+            record_request_event(session, {
+                "request_id": request_id,
+                "user_id": user_id,
+                "mode": requested_mode,
+                "learning_mode": learning_mode,
+                "subject": body.subject,
+                "grade_level": user_obj.grade_level if user_obj else None,
+                "model": openai_telemetry.get("model") or os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                "provider": "openai",
+                "route": "solve_v3_stream",
+                "tokens_in": openai_telemetry.get("input_tokens"),
+                "tokens_out": openai_telemetry.get("output_tokens"),
+                "tokens_total": openai_telemetry.get("total_tokens"),
+                "cost_usd": _calc_cost(
+                    openai_telemetry.get("total_tokens"),
+                    openai_telemetry.get("model"),
+                    openai_telemetry.get("input_tokens"),
+                    openai_telemetry.get("output_tokens")
+                ),
+                "latency_ms": openai_telemetry.get("latency_ms_total") or openai_telemetry.get("latency_ms_openai"),
+                "status": "ok",
+                "error_type": None,
+                "schema_valid": not final_data.get("_parse_error"),
+                "verification_pass": _verification_passed(final_data),
+                "is_stream": True,
+                "is_cached": False,
+                "credit_deducted": deduct_committed,
+                "credit_amount": debit_cost if deduct_committed else None,
+                "ocr_used": action_req["has_ocr"],
+                "voice_used": action_req["has_voice"],
+                "response_truncated": bool(openai_telemetry.get("truncated") or final_data.get("_truncated"))
+            })
             yield f"event: telemetry\ndata: {json.dumps(openai_telemetry)}\n\n"
 
             # Done Event
@@ -2713,6 +3016,41 @@ async def solve_v3_stream_endpoint(
                 "problem_text": problem_text,
                 "error": str(e)
             })
+            try:
+                record_request_event(session, {
+                    "request_id": request_id,
+                    "user_id": user_id,
+                    "mode": requested_mode,
+                    "learning_mode": learning_mode,
+                    "subject": body.subject,
+                    "grade_level": user_obj.grade_level if user_obj else None,
+                    "model": openai_telemetry.get("model") or os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                    "provider": "openai",
+                    "route": "solve_v3_stream",
+                    "tokens_in": openai_telemetry.get("input_tokens"),
+                    "tokens_out": openai_telemetry.get("output_tokens"),
+                    "tokens_total": openai_telemetry.get("total_tokens"),
+                    "cost_usd": _calc_cost(
+                        openai_telemetry.get("total_tokens"),
+                        openai_telemetry.get("model"),
+                        openai_telemetry.get("input_tokens"),
+                        openai_telemetry.get("output_tokens")
+                    ),
+                    "latency_ms": openai_telemetry.get("latency_ms_total") or openai_telemetry.get("latency_ms_openai"),
+                    "status": "error",
+                    "error_type": type(e).__name__,
+                    "schema_valid": False,
+                    "verification_pass": False,
+                    "is_stream": True,
+                    "is_cached": False,
+                    "credit_deducted": deduct_committed,
+                    "credit_amount": debit_cost if deduct_committed else None,
+                    "ocr_used": action_req["has_ocr"],
+                    "voice_used": action_req["has_voice"],
+                    "response_truncated": bool(openai_telemetry.get("truncated"))
+                })
+            except Exception:
+                pass
             yield f"event: done\ndata: {json.dumps({'ok': False, 'error': {'code': 'internal_error', 'message': str(e)}})}\n\n"
 
     return StreamingResponse(
@@ -3426,6 +3764,8 @@ async def admin_get_user_full(
     ledger_limit: int = Query(100, ge=1, le=2000),
     ocr_limit: int = Query(200, ge=1, le=2000),
     voice_limit: int = Query(200, ge=1, le=2000),
+    request_limit: int = Query(200, ge=1, le=2000),
+    device_limit: int = Query(100, ge=1, le=2000),
     db: Session = Depends(get_session)
 ):
     user = db.get(User, user_id)
@@ -3436,6 +3776,18 @@ async def admin_get_user_full(
     plan = subscription.plan if subscription else None
 
     notes = db.exec(select(AdminNote).where(AdminNote.user_id == user_id).order_by(AdminNote.created_at.desc())).all()
+    request_events = db.exec(
+        select(RequestEvent)
+        .where(RequestEvent.user_id == user_id)
+        .order_by(RequestEvent.created_at.desc())
+        .limit(request_limit)
+    ).all()
+    device_signups = db.exec(
+        select(DeviceSignupLog)
+        .where(DeviceSignupLog.user_id == user_id)
+        .order_by(DeviceSignupLog.created_at.desc())
+        .limit(device_limit)
+    ).all()
     usage_logs = db.exec(select(UsageLog).where(UsageLog.user_id == user_id).order_by(UsageLog.timestamp.desc()).limit(ledger_limit)).all()
     payments = db.exec(select(Payment).where(Payment.user_id == user_id).order_by(Payment.created_at.desc()).limit(ledger_limit)).all()
     overrides = db.exec(select(UserQuotaOverride).where(UserQuotaOverride.user_id == user_id).order_by(UserQuotaOverride.created_at.desc())).all()
@@ -3515,6 +3867,8 @@ async def admin_get_user_full(
         "payments": _sqlmodel_list(payments),
         "quota_overrides": _sqlmodel_list(overrides),
         "admin_notes": _sqlmodel_list(notes),
+        "request_events": _sqlmodel_list(request_events),
+        "device_signup_logs": _sqlmodel_list(device_signups),
         "sessions": _sqlmodel_list(sessions),
         "messages": _sqlmodel_list(messages),
         "uploads": _sqlmodel_list(uploads),
@@ -3759,6 +4113,64 @@ async def admin_get_dashboard_stats(db: Session = Depends(get_session)):
         system_errors=system_errors
     )
 
+
+@api_router.get("/admin/analytics/overview")
+async def admin_analytics_overview(
+    range: str = Query("7d"),
+    mode: Optional[str] = Query(None),
+    model: Optional[str] = Query(None),
+    provider: Optional[str] = Query(None),
+    route: Optional[str] = Query(None),
+    db: Session = Depends(get_session)
+):
+    from app.services.admin.analytics_service import get_overview
+    filters = {
+        "mode": mode,
+        "model": model,
+        "provider": provider,
+        "route": route
+    }
+    return get_overview(db, range, filters)
+
+
+@api_router.get("/admin/analytics/errors")
+async def admin_analytics_errors(
+    range: str = Query("1d"),
+    severity: Optional[str] = Query(None),
+    mode: Optional[str] = Query(None),
+    model: Optional[str] = Query(None),
+    provider: Optional[str] = Query(None),
+    route: Optional[str] = Query(None),
+    db: Session = Depends(get_session)
+):
+    from app.services.admin.analytics_service import get_errors
+    filters = {
+        "mode": mode,
+        "model": model,
+        "provider": provider,
+        "route": route
+    }
+    return get_errors(db, range, severity, filters)
+
+
+@api_router.get("/admin/analytics/anomalies")
+async def admin_analytics_anomalies(
+    range: str = Query("1d"),
+    mode: Optional[str] = Query(None),
+    model: Optional[str] = Query(None),
+    provider: Optional[str] = Query(None),
+    route: Optional[str] = Query(None),
+    db: Session = Depends(get_session)
+):
+    from app.services.admin.analytics_service import get_anomalies
+    filters = {
+        "mode": mode,
+        "model": model,
+        "provider": provider,
+        "route": route
+    }
+    return get_anomalies(db, range, filters)
+
 @api_router.get("/admin/solve-traces", response_model=List[SolveTraceEntry])
 async def admin_get_solve_traces(
     limit: int = Query(100, ge=1, le=1000)
@@ -3890,6 +4302,8 @@ async def admin_get_quotas(db: Session = Depends(get_session)):
         quota_items.append(AdminQuotaUserItem(
             id=u.id,
             full_id=f"USR-{u.id}",
+            full_name=u.full_name,
+            email=u.email,
             plan=u.subscription_tier.capitalize(),
             usage_percent=min(usage_pct, 100) if usage_pct > 0 else 0,
             last_active=active_str,
@@ -3979,6 +4393,98 @@ async def admin_get_user_activity(user_id: int, db: Session = Depends(get_sessio
     # Sort by timestamp
     activity.sort(key=lambda x: x.timestamp, reverse=True)
     return activity[:10]
+
+
+@api_router.get("/admin/users/{user_id}/question-history", response_model=List[AdminQuestionHistoryItem])
+async def admin_get_user_question_history(
+    user_id: int,
+    limit: int = Query(200, ge=1, le=2000),
+    db: Session = Depends(get_session)
+):
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    sessions = db.exec(
+        select(ChatSession)
+        .where(ChatSession.user_id == user_id)
+        .order_by(ChatSession.created_at.desc())
+        .limit(200)
+    ).all()
+    session_ids = [s.id for s in sessions]
+    if not session_ids:
+        return []
+
+    messages = db.exec(
+        select(ChatMessage)
+        .where(ChatMessage.session_id.in_(session_ids))
+        .order_by(ChatMessage.created_at.asc())
+    ).all()
+
+    session_title_map = {s.id: s.title for s in sessions}
+    last_user_by_session: Dict[int, ChatMessage] = {}
+    assistant_items: List[Dict[str, Any]] = []
+
+    for msg in messages:
+        if msg.role == "user":
+            last_user_by_session[msg.session_id] = msg
+            continue
+        if msg.role != "assistant":
+            continue
+        request_id = None
+        if msg.structured_data and isinstance(msg.structured_data, dict):
+            request_id = msg.structured_data.get("request_id")
+        if not request_id and msg.telemetry and isinstance(msg.telemetry, dict):
+            request_id = msg.telemetry.get("request_id")
+
+        assistant_items.append({
+            "request_id": request_id,
+            "created_at": msg.created_at,
+            "session_id": msg.session_id,
+            "session_title": session_title_map.get(msg.session_id),
+            "prompt": last_user_by_session.get(msg.session_id).content if last_user_by_session.get(msg.session_id) else None,
+            "response": msg.content,
+            "model": (msg.telemetry or {}).get("model") if msg.telemetry else msg.model_used,
+            "tokens_total": msg.tokens_used
+        })
+
+    assistant_items = sorted(assistant_items, key=lambda item: item["created_at"], reverse=True)
+    assistant_items = assistant_items[:limit]
+    request_ids = [item["request_id"] for item in assistant_items if item.get("request_id")]
+    event_map: Dict[str, RequestEvent] = {}
+    if request_ids:
+        events = db.exec(
+            select(RequestEvent)
+            .where(RequestEvent.user_id == user_id, RequestEvent.request_id.in_(request_ids))
+        ).all()
+        event_map = {event.request_id: event for event in events if event.request_id}
+
+    response_items: List[AdminQuestionHistoryItem] = []
+    for item in assistant_items:
+        event = event_map.get(item.get("request_id"))
+        response_items.append(AdminQuestionHistoryItem(
+            request_id=item.get("request_id"),
+            created_at=item["created_at"].isoformat() if hasattr(item["created_at"], "isoformat") else str(item["created_at"]),
+            session_id=item.get("session_id"),
+            session_title=item.get("session_title"),
+            prompt=item.get("prompt"),
+            response=item.get("response"),
+            model=(event.model if event else item.get("model")),
+            route=(event.route if event else None),
+            tokens_in=(event.tokens_in if event else None),
+            tokens_out=(event.tokens_out if event else None),
+            tokens_total=(event.tokens_total if event else item.get("tokens_total")),
+            cost_usd=(event.cost_usd if event else None),
+            latency_ms=(event.latency_ms if event else None),
+            status=(event.status if event else None),
+            error_type=(event.error_type if event else None),
+            schema_valid=(event.schema_valid if event else None),
+            verification_pass=(event.verification_pass if event else None),
+            is_stream=(event.is_stream if event else None),
+            is_cached=(event.is_cached if event else None)
+        ))
+
+    return response_items
 
 @api_router.get("/admin/prompts", response_model=List[PromptTemplateListItem])
 async def admin_get_prompts(db: Session = Depends(get_session)):

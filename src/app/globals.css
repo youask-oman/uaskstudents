@@ -52,7 +52,26 @@
 }
 
 .kpi-card {
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+:root:not(.dark) .kpi-card {
+  background: linear-gradient(135deg, #f3f3f6 0%, #ffffff 100%);
+  box-shadow: 0 15px 30px rgba(15, 23, 42, 0.1);
+}
+
+.dark .kpi-card {
   background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+}
+:root:not(.dark) .kpi-card {
+  background: linear-gradient(135deg, #f3f3f6 0%, #ffffff 100%);
+  box-shadow: 0 15px 30px rgba(15, 23, 42, 0.1);
+}
+
+.dark .kpi-card {
+  background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
 }
 
 .latex-white {

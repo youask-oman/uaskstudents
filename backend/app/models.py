@@ -629,6 +629,36 @@ class DeviceSignupLog(SQLModel, table=True):
     user_id: Optional[int] = None
 
 
+class RequestEvent(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    request_id: Optional[str] = Field(default=None, index=True)
+    user_id: Optional[int] = Field(default=None, index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    mode: Optional[str] = Field(default=None, index=True) # minimal/detailed
+    learning_mode: Optional[str] = Field(default=None, index=True) # solve/study
+    subject: Optional[str] = Field(default=None, index=True)
+    grade_level: Optional[str] = Field(default=None, index=True)
+    model: Optional[str] = Field(default=None, index=True)
+    provider: Optional[str] = Field(default=None, index=True)
+    route: Optional[str] = Field(default=None, index=True)
+    tokens_in: Optional[int] = None
+    tokens_out: Optional[int] = None
+    tokens_total: Optional[int] = None
+    cost_usd: Optional[float] = None
+    latency_ms: Optional[int] = None
+    status: Optional[str] = Field(default=None, index=True) # ok/error
+    error_type: Optional[str] = Field(default=None, index=True)
+    schema_valid: Optional[bool] = None
+    verification_pass: Optional[bool] = None
+    is_stream: bool = False
+    is_cached: bool = False
+    credit_deducted: Optional[bool] = None
+    credit_amount: Optional[float] = None
+    ocr_used: bool = False
+    voice_used: bool = False
+    response_truncated: bool = False
+
+
 # --- Tier-Aware Prompt Routing Models ---
 
 class PromptAsset(SQLModel, table=True):

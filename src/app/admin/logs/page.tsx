@@ -84,12 +84,12 @@ export default function AdminLogsPage() {
     return (
         <div className="p-8 max-w-[1400px] mx-auto w-full flex flex-col gap-6">
             <header className="flex flex-col gap-2">
-                <h2 className="text-xl font-bold text-white">Solve Request Logs</h2>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Solve Request Logs</h2>
                 <p className="text-sm text-slate-400">Full trace log for each request, including OpenAI payload metadata.</p>
             </header>
             <div className="flex items-center gap-3">
                 <input
-                    className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 text-sm text-white placeholder:text-slate-600 focus:ring-admin-primary"
+                    className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-600 focus:ring-admin-primary"
                     placeholder="Search request_id, user_id, schema, model..."
                     value={filter}
                     onChange={(e) => setFilter(e.target.value)}
@@ -97,8 +97,8 @@ export default function AdminLogsPage() {
                 <span className="text-xs text-slate-500">{filteredTraces.length} results</span>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <section className="lg:col-span-2 bg-[#111827] border border-slate-800 rounded-2xl overflow-hidden">
-                    <div className="max-h-[640px] overflow-y-auto divide-y divide-slate-800">
+                <section className="lg:col-span-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+                    <div className="max-h-[640px] overflow-y-auto divide-y divide-slate-200 dark:divide-slate-800">
                         {filteredTraces.length === 0 && (
                             <div className="p-6 text-slate-500 text-sm italic">No trace logs available.</div>
                         )}
@@ -106,10 +106,10 @@ export default function AdminLogsPage() {
                                     <button
                                         key={entry.request_id || index}
                                         onClick={() => setSelectedTrace(entry)}
-                                        className="w-full text-left px-6 py-4 hover:bg-slate-800/50 transition-colors"
+                                        className="w-full text-left px-6 py-4 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"
                                     >
                                         <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
-                                            <span className="font-mono text-slate-200">{entry.request_id?.slice(0, 10) || "unknown"}</span>
+                                            <span className="font-mono text-slate-700 dark:text-slate-200">{entry.request_id?.slice(0, 10) || "unknown"}</span>
                                             <span>User {entry.user_id ?? "n/a"}</span>
                                             <span>{entry.ui_goal || "solve"} / {entry.ui_style || "minimal"}</span>
                                             <span>{entry.schema_name || "schema"}</span>
@@ -127,10 +127,10 @@ export default function AdminLogsPage() {
                                 ))}
                     </div>
                 </section>
-                <section className="bg-[#111827] border border-slate-800 rounded-2xl p-6 flex flex-col gap-4">
+                <section className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 flex flex-col gap-4">
                     <div>
-                        <h4 className="text-sm font-bold text-white mb-2">Selected Trace</h4>
-                        <div className="bg-slate-900/60 border border-slate-800 rounded-lg p-4 max-h-[300px] overflow-y-auto">
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-2">Selected Trace</h4>
+                        <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-lg p-4 max-h-[300px] overflow-y-auto">
                             {selectedTrace ? (
                                 <pre className="text-[11px] text-slate-300 whitespace-pre-wrap break-words">{JSON.stringify(selectedTrace, null, 2)}</pre>
                             ) : (
@@ -139,8 +139,8 @@ export default function AdminLogsPage() {
                         </div>
                     </div>
                     <div>
-                        <h4 className="text-sm font-bold text-white mb-2">Related User Data (Full)</h4>
-                        <div className="bg-slate-900/60 border border-slate-800 rounded-lg p-4 max-h-[300px] overflow-y-auto">
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-2">Related User Data (Full)</h4>
+                        <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-lg p-4 max-h-[300px] overflow-y-auto">
                             {isLoadingUserData && <p className="text-sm text-slate-500">Loading user data...</p>}
                             {!isLoadingUserData && relatedUserData ? (
                                 <pre className="text-[11px] text-slate-300 whitespace-pre-wrap break-words">{JSON.stringify(relatedUserData, null, 2)}</pre>

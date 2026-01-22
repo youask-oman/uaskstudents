@@ -61,7 +61,92 @@ interface FullUserData {
     voice_artifacts: any[];
     voice_confirmations: any[];
     saved_solutions: any[];
+    request_events: any[];
+    device_signup_logs: any[];
 }
+
+const formatDateTime = (value?: string) => {
+    if (!value) return "n/a";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString();
+};
+
+const renderFieldValue = (value: any) => {
+    if (value === null || value === undefined || value === "") return "n/a";
+    if (typeof value === "boolean") return value ? "true" : "false";
+    if (typeof value === "object") return JSON.stringify(value);
+    return String(value);
+};
+
+const renderShortText = (value: any, maxLength = 240) => {
+    const text = renderFieldValue(value);
+    if (text === "n/a") return text;
+    if (text.length <= maxLength) return text;
+    return `${text.slice(0, maxLength)}...`;
+};
+
+const FieldGrid = ({ data, title }: { data: Record<string, any> | undefined; title: string }) => {
+    const entries = Object.entries(data || {});
+    return (
+        <section className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl">
+            <h4 className="text-base font-bold text-slate-900 dark:text-white mb-4 tracking-tight">{title}</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-slate-300">
+                {entries.length === 0 && <div className="text-slate-500">No data.</div>}
+                {entries.map(([key, value]) => (
+                    <div key={key} className="flex items-start justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-2">
+                        <span className="text-slate-500">{key}</span>
+                        <span className="text-right break-all">{renderFieldValue(value)}</span>
+                    </div>
+                ))}
+            </div>
+        </section>
+    );
+};
+
+const DataTable = ({
+    title,
+    rows,
+    columns
+}: {
+    title: string;
+    rows: any[];
+    columns: { key: string; label: string; render?: (value: any, row: any) => string }[];
+}) => (
+    <section className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl">
+        <div className="flex items-center justify-between mb-4">
+            <h4 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">{title}</h4>
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{rows.length} total</span>
+        </div>
+        <div className="overflow-x-auto">
+            <table className="w-full text-xs text-slate-300">
+                <thead>
+                    <tr className="text-slate-500 uppercase tracking-widest text-[10px]">
+                        {columns.map((col) => (
+                            <th key={col.key} className="text-left py-2 border-b border-slate-200 dark:border-slate-800">{col.label}</th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows.length === 0 && (
+                        <tr>
+                            <td colSpan={columns.length} className="py-4 text-slate-500">No records.</td>
+                        </tr>
+                    )}
+                    {rows.map((row, index) => (
+                        <tr key={row.id ?? index} className="border-b border-slate-200 dark:border-slate-800">
+                            {columns.map((col) => (
+                                <td key={col.key} className="py-2 pr-4">
+                                    {col.render ? col.render(row[col.key], row) : renderFieldValue(row[col.key])}
+                                </td>
+                            ))}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    </section>
+);
 
 export default function UserDetailPage() {
     const { id } = useParams();
@@ -69,6 +154,7 @@ export default function UserDetailPage() {
     const [activity, setActivity] = useState<ActivityItem[]>([]);
     const [sessions, setSessions] = useState<any[]>([]);
     const [payments, setPayments] = useState<any[]>([]);
+    const [questionHistory, setQuestionHistory] = useState<any[]>([]);
     const [fullData, setFullData] = useState<FullUserData | null>(null);
     const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);
     const [activeTab, setActiveTab] = useState("Profile Detail");
@@ -98,6 +184,7 @@ export default function UserDetailPage() {
         fetchUserDetail(controller.signal);
         fetchActivity(controller.signal);
         fetchFullUserData(controller.signal);
+        fetchQuestionHistory(controller.signal);
         fetchPlans(controller.signal);
         return () => controller.abort();
     }, [id]);
@@ -164,6 +251,22 @@ export default function UserDetailPage() {
             }
             console.error("Failed to fetch sessions:", error);
             setErrorMessage("Unable to load session history.");
+        }
+    };
+
+    const fetchQuestionHistory = async (signal?: AbortSignal) => {
+        try {
+            const res = await fetch(`${baseUrl}/api/v1/admin/users/${id}/question-history`, { headers: getAuthHeaders(), signal });
+            if (res.ok) {
+                const data = await res.json();
+                setQuestionHistory(Array.isArray(data) ? data : []);
+            }
+        } catch (error) {
+            if ((error as Error).name === "AbortError") {
+                return;
+            }
+            console.error("Failed to fetch question history:", error);
+            setErrorMessage("Unable to load question history.");
         }
     };
 
@@ -297,7 +400,7 @@ export default function UserDetailPage() {
     };
 
     if (loading) return (
-        <div className="flex-1 flex items-center justify-center bg-[#0F172A]">
+        <div className="flex-1 flex items-center justify-center bg-slate-50 dark:bg-[#0F172A]">
             <div className="flex flex-col items-center gap-4">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-admin-primary"></div>
                 <p className="text-slate-400 font-medium">Loading secure student profiles...</p>
@@ -305,13 +408,23 @@ export default function UserDetailPage() {
         </div>
     );
 
-    if (!user) return <div className="p-8 text-white">User not found</div>;
+    if (!user) return <div className="p-8 text-slate-900 dark:text-white">User not found</div>;
+
+    const questionUsagePct = user.quota_questions_total > 0
+        ? Math.min((user.questions_used / user.quota_questions_total) * 100, 100)
+        : 0;
+    const scanUsagePct = user.quota_scans_total > 0
+        ? Math.min((user.scans_used / user.quota_scans_total) * 100, 100)
+        : 0;
+    const isVerified = Boolean(fullData?.user?.is_verified);
+    const securityLabel = isVerified ? "Account Verified" : "Verification Pending";
+    const securitySubLabel = isVerified ? "Identity Confirmed" : "Needs Review";
 
     return (
-        <div className="flex h-screen bg-[#0F172A] overflow-hidden">
+        <div className="flex h-screen bg-slate-50 dark:bg-[#0F172A] overflow-hidden">
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col overflow-y-auto w-full">
-                <header className="sticky top-0 z-10 bg-[#0F172A]/80 backdrop-blur-md border-b border-slate-800 p-8 flex flex-col gap-6">
+                <header className="sticky top-0 z-10 bg-white/80 dark:bg-slate-50 dark:bg-[#0F172A]/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 p-8 flex flex-col gap-6">
                     {errorMessage && (
                         <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs font-bold uppercase tracking-widest text-rose-300">
                             {errorMessage}
@@ -327,7 +440,7 @@ export default function UserDetailPage() {
                             </div>
                             <div className="flex flex-col gap-1">
                                 <div className="flex items-center gap-3">
-                                    <h1 className="text-2xl font-bold text-white tracking-tight">{user.full_name}</h1>
+                                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{user.full_name}</h1>
                                     <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-[10px] font-bold uppercase tracking-widest rounded border border-emerald-500/20 flex items-center gap-1">
                                         <span className="size-1 bg-emerald-500 rounded-full"></span> Active
                                     </span>
@@ -342,7 +455,7 @@ export default function UserDetailPage() {
                             </div>
                         </div>
                         <div className="flex gap-3">
-                            <button className="flex items-center gap-2 px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold rounded-xl transition-all border border-slate-700">
+                            <button className="flex items-center gap-2 px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-900 dark:text-white text-sm font-bold rounded-xl transition-all border border-slate-700">
                                 <span className="material-symbols-outlined text-[20px]">mail</span>
                                 Message User
                             </button>
@@ -358,7 +471,7 @@ export default function UserDetailPage() {
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
-                                className={`pb-4 text-sm font-bold tracking-tight transition-all relative ${activeTab === tab ? "text-white" : "text-slate-500 hover:text-slate-300"
+                                className={`pb-4 text-sm font-bold tracking-tight transition-all relative ${activeTab === tab ? "text-slate-900 dark:text-white" : "text-slate-500 hover:text-slate-300"
                                     }`}
                             >
                                 {tab}
@@ -371,42 +484,42 @@ export default function UserDetailPage() {
                 <div className="p-8 flex flex-col gap-10">
                     {/* KPI Section */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="bg-[#111827] border border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col gap-4">
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col gap-4">
                             <div className="flex justify-between items-start">
                                 <div className="p-2 bg-admin-primary/10 text-admin-primary rounded-lg font-bold text-xs uppercase tracking-widest leading-none">Usage</div>
                                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Questions</span>
                             </div>
                             <div className="flex items-end justify-between">
-                                <h3 className="text-4xl font-black text-white">{user.questions_used}</h3>
+                                <h3 className="text-4xl font-black text-slate-900 dark:text-white">{user.questions_used}</h3>
                                 <p className="text-slate-400 text-sm font-bold mb-1">/ {user.quota_questions_total} total</p>
                             </div>
                             <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                <div className="h-full bg-admin-primary shadow-[0_0_8px_rgba(59,130,246,0.5)] transition-all duration-1000" style={{ width: `${(user.questions_used / user.quota_questions_total) * 100}%` }}></div>
+                                <div className="h-full bg-admin-primary shadow-[0_0_8px_rgba(59,130,246,0.5)] transition-all duration-1000" style={{ width: `${questionUsagePct}%` }}></div>
                             </div>
                         </div>
-                        <div className="bg-[#111827] border border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col gap-4">
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col gap-4">
                             <div className="flex justify-between items-start">
                                 <div className="p-2 bg-purple-500/10 text-purple-500 rounded-lg font-bold text-xs uppercase tracking-widest leading-none">Vision</div>
                                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">OCR Scans</span>
                             </div>
                             <div className="flex items-end justify-between">
-                                <h3 className="text-4xl font-black text-white">{user.scans_used}</h3>
+                                <h3 className="text-4xl font-black text-slate-900 dark:text-white">{user.scans_used}</h3>
                                 <p className="text-slate-400 text-sm font-bold mb-1">/ {user.quota_scans_total} total</p>
                             </div>
                             <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                <div className="h-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.5)] transition-all duration-1000" style={{ width: `${(user.scans_used / user.quota_scans_total) * 100}%` }}></div>
+                                <div className="h-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.5)] transition-all duration-1000" style={{ width: `${scanUsagePct}%` }}></div>
                             </div>
                         </div>
-                        <div className="bg-[#111827] border border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col justify-between">
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col justify-between">
                             <div className="flex justify-between items-start">
                                 <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg font-bold text-xs uppercase tracking-widest leading-none">Security</div>
                                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Status</span>
                             </div>
                             <div className="flex items-center gap-3">
-                                <span className="material-symbols-outlined text-emerald-500 text-3xl">verified_user</span>
+                                <span className={`material-symbols-outlined text-3xl ${isVerified ? "text-emerald-500" : "text-amber-400"}`}>verified_user</span>
                                 <div className="flex flex-col">
-                                    <p className="text-white font-bold text-sm">Account Verified</p>
-                                    <p className="text-slate-500 text-[10px] uppercase font-bold tracking-widest">Identity Confirmed</p>
+                                    <p className="text-slate-900 dark:text-white font-bold text-sm">{securityLabel}</p>
+                                    <p className="text-slate-500 text-[10px] uppercase font-bold tracking-widest">{securitySubLabel}</p>
                                 </div>
                             </div>
                         </div>
@@ -415,9 +528,9 @@ export default function UserDetailPage() {
                     {activeTab === "Profile Detail" && (
                         <>
                             {/* Activity Section */}
-                            <section className="bg-[#111827] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
-                                <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
-                                    <h4 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+                            <section className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+                                <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-900/50">
+                                    <h4 className="text-base font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
                                         <span className="material-symbols-outlined text-slate-400">history</span>
                                         Recent Activity
                                     </h4>
@@ -426,7 +539,7 @@ export default function UserDetailPage() {
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left border-collapse">
                                         <thead>
-                                            <tr className="border-b border-slate-800">
+                                            <tr className="border-b border-slate-200 dark:border-slate-800">
                                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Timestamp</th>
                                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Subject</th>
                                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Method</th>
@@ -454,7 +567,7 @@ export default function UserDetailPage() {
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 text-right">
-                                                        <button className="text-[10px] font-bold text-slate-500 hover:text-white uppercase tracking-widest transition-colors">View Details</button>
+                                                        <button className="text-[10px] font-bold text-slate-500 hover:text-slate-900 dark:text-white uppercase tracking-widest transition-colors">View Details</button>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -463,10 +576,238 @@ export default function UserDetailPage() {
                                 </div>
                             </section>
 
+                            <DataTable
+                                title="Question History (Prompt + Response)"
+                                rows={questionHistory}
+                                columns={[
+                                    { key: "created_at", label: "Created", render: (value) => formatDateTime(value) },
+                                    { key: "session_title", label: "Session" },
+                                    { key: "prompt", label: "Prompt", render: (value) => renderShortText(value) },
+                                    { key: "response", label: "Response", render: (value) => renderShortText(value, 320) },
+                                    { key: "tokens_in", label: "In" },
+                                    { key: "tokens_out", label: "Out" },
+                                    { key: "tokens_total", label: "Total" },
+                                    { key: "cost_usd", label: "Cost" },
+                                    { key: "model", label: "Model" },
+                                    { key: "status", label: "Status" }
+                                ]}
+                            />
+
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                <FieldGrid data={fullData?.user} title="User Fields" />
+                                <FieldGrid data={fullData?.subscription} title="Subscription Fields" />
+                                <FieldGrid data={fullData?.plan} title="Plan Fields" />
+                                <FieldGrid data={fullData?.quota_overrides?.[0]} title="Quota Override (Latest)" />
+                            </div>
+
+                            <DataTable
+                                title="Usage Logs"
+                                rows={fullData?.usage_logs || []}
+                                columns={[
+                                    { key: "timestamp", label: "Timestamp", render: (value) => formatDateTime(value) },
+                                    { key: "action_type", label: "Action" },
+                                    { key: "tokens_used", label: "Tokens" }
+                                ]}
+                            />
+
+                            <DataTable
+                                title="Usage Ledger"
+                                rows={fullData?.usage_ledger || []}
+                                columns={[
+                                    { key: "created_at", label: "Timestamp", render: (value) => formatDateTime(value) },
+                                    { key: "transaction_type", label: "Type" },
+                                    { key: "amount", label: "Amount" },
+                                    { key: "balance_after", label: "Balance" },
+                                    { key: "reference_id", label: "Reference" }
+                                ]}
+                            />
+                            <DataTable
+                                title="Request Events"
+                                rows={fullData?.request_events || []}
+                                columns={[
+                                    { key: "created_at", label: "Created", render: (value) => formatDateTime(value) },
+                                    { key: "request_id", label: "Request ID" },
+                                    { key: "learning_mode", label: "Goal" },
+                                    { key: "mode", label: "Style" },
+                                    { key: "model", label: "Model" },
+                                    { key: "tokens_in", label: "In" },
+                                    { key: "tokens_out", label: "Out" },
+                                    { key: "cost_usd", label: "Cost" },
+                                    { key: "status", label: "Status" },
+                                    { key: "error_type", label: "Error" }
+                                ]}
+                            />
+                            <DataTable
+                                title="Device Signup Logs"
+                                rows={fullData?.device_signup_logs || []}
+                                columns={[
+                                    { key: "device_hash", label: "Device Hash" },
+                                    { key: "created_at", label: "Created", render: (value) => formatDateTime(value) },
+                                    { key: "user_id", label: "User ID" }
+                                ]}
+                            />
+
+                            <DataTable
+                                title="OCR Jobs"
+                                rows={fullData?.ocr_jobs || []}
+                                columns={[
+                                    { key: "id", label: "Job ID" },
+                                    { key: "status", label: "Status" },
+                                    { key: "requested_engine", label: "Engine" },
+                                    { key: "created_at", label: "Created", render: (value) => formatDateTime(value) }
+                                ]}
+                            />
+
+                            <DataTable
+                                title="Voice Jobs"
+                                rows={fullData?.voice_jobs || []}
+                                columns={[
+                                    { key: "id", label: "Job ID" },
+                                    { key: "status", label: "Status" },
+                                    { key: "created_at", label: "Created", render: (value) => formatDateTime(value) }
+                                ]}
+                            />
+
+                            <DataTable
+                                title="Saved Solutions"
+                                rows={fullData?.saved_solutions || []}
+                                columns={[
+                                    { key: "solution_id", label: "Solution ID" },
+                                    { key: "saved_at", label: "Saved At", render: (value) => formatDateTime(value) },
+                                    { key: "notes", label: "Notes" }
+                                ]}
+                            />
+
+                            <DataTable
+                                title="Uploads"
+                                rows={fullData?.uploads || []}
+                                columns={[
+                                    { key: "id", label: "Upload ID" },
+                                    { key: "storage_url", label: "Storage URL" },
+                                    { key: "created_at", label: "Created", render: (value) => formatDateTime(value) }
+                                ]}
+                            />
+
+                            <DataTable
+                                title="Crops"
+                                rows={fullData?.crops || []}
+                                columns={[
+                                    { key: "id", label: "Crop ID" },
+                                    { key: "upload_id", label: "Upload ID" },
+                                    { key: "crop_image_hash", label: "Hash" },
+                                    { key: "created_at", label: "Created", render: (value) => formatDateTime(value) }
+                                ]}
+                            />
+
+                            <DataTable
+                                title="OCR Artifacts"
+                                rows={fullData?.ocr_artifacts || []}
+                                columns={[
+                                    { key: "id", label: "Artifact ID" },
+                                    { key: "job_id", label: "Job ID" },
+                                    { key: "engine_used", label: "Engine" },
+                                    { key: "created_at", label: "Created", render: (value) => formatDateTime(value) }
+                                ]}
+                            />
+
+                            <DataTable
+                                title="OCR Questions"
+                                rows={fullData?.ocr_questions || []}
+                                columns={[
+                                    { key: "id", label: "Question ID" },
+                                    { key: "artifact_id", label: "Artifact ID" },
+                                    { key: "prompt", label: "Prompt" }
+                                ]}
+                            />
+
+                            <DataTable
+                                title="OCR Choices"
+                                rows={fullData?.ocr_choices || []}
+                                columns={[
+                                    { key: "id", label: "Choice ID" },
+                                    { key: "question_id", label: "Question ID" },
+                                    { key: "label", label: "Label" },
+                                    { key: "text", label: "Text" }
+                                ]}
+                            />
+
+                            <DataTable
+                                title="OCR Figures"
+                                rows={fullData?.ocr_figures || []}
+                                columns={[
+                                    { key: "id", label: "Figure ID" },
+                                    { key: "artifact_id", label: "Artifact ID" },
+                                    { key: "type", label: "Type" },
+                                    { key: "description", label: "Description" }
+                                ]}
+                            />
+
+                            <DataTable
+                                title="OCR Confirmations"
+                                rows={fullData?.ocr_confirmations || []}
+                                columns={[
+                                    { key: "id", label: "Confirmation ID" },
+                                    { key: "artifact_id", label: "Artifact ID" },
+                                    { key: "created_at", label: "Created", render: (value) => formatDateTime(value) }
+                                ]}
+                            />
+
+                            <DataTable
+                                title="Voice Sessions"
+                                rows={fullData?.voice_sessions || []}
+                                columns={[
+                                    { key: "id", label: "Session ID" },
+                                    { key: "status", label: "Status" },
+                                    { key: "created_at", label: "Created", render: (value) => formatDateTime(value) }
+                                ]}
+                            />
+
+                            <DataTable
+                                title="Voice Audios"
+                                rows={fullData?.voice_audios || []}
+                                columns={[
+                                    { key: "id", label: "Audio ID" },
+                                    { key: "voice_session_id", label: "Session ID" },
+                                    { key: "duration_ms", label: "Duration" },
+                                    { key: "created_at", label: "Created", render: (value) => formatDateTime(value) }
+                                ]}
+                            />
+
+                            <DataTable
+                                title="Voice Artifacts"
+                                rows={fullData?.voice_artifacts || []}
+                                columns={[
+                                    { key: "id", label: "Artifact ID" },
+                                    { key: "job_id", label: "Job ID" },
+                                    { key: "created_at", label: "Created", render: (value) => formatDateTime(value) }
+                                ]}
+                            />
+
+                            <DataTable
+                                title="Voice Confirmations"
+                                rows={fullData?.voice_confirmations || []}
+                                columns={[
+                                    { key: "id", label: "Confirmation ID" },
+                                    { key: "artifact_id", label: "Artifact ID" },
+                                    { key: "created_at", label: "Created", render: (value) => formatDateTime(value) }
+                                ]}
+                            />
+
+                            <DataTable
+                                title="Admin Notes"
+                                rows={fullData?.admin_notes || []}
+                                columns={[
+                                    { key: "id", label: "Note ID" },
+                                    { key: "admin_name", label: "Admin" },
+                                    { key: "content", label: "Content" },
+                                    { key: "created_at", label: "Created", render: (value) => formatDateTime(value) }
+                                ]}
+                            />
+
                             {/* Management Section */}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                <section className="p-8 bg-[#111827] border border-slate-800 rounded-2xl shadow-xl">
-                                    <h4 className="text-lg font-bold text-white mb-6 tracking-tight">Account Management</h4>
+                                <section className="p-8 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl">
+                                    <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-6 tracking-tight">Account Management</h4>
                                     <div className="space-y-6">
                                         <div className="space-y-3">
                                             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Quota Adjustment</p>
@@ -474,7 +815,7 @@ export default function UserDetailPage() {
                                                 <div className="flex-1 space-y-2">
                                                     <label className="text-xs text-slate-400 font-medium">Monthly Questions</label>
                                                     <input
-                                                        className="w-full bg-slate-900 border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-admin-primary"
+                                                        className="w-full bg-slate-900 border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white focus:ring-admin-primary"
                                                         type="number"
                                                         value={newQuotaQuestions}
                                                         onChange={(e) => setNewQuotaQuestions(parseInt(e.target.value))}
@@ -483,7 +824,7 @@ export default function UserDetailPage() {
                                                 <div className="flex-1 space-y-2">
                                                     <label className="text-xs text-slate-400 font-medium">OCR Scan Limit</label>
                                                     <input
-                                                        className="w-full bg-slate-900 border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-admin-primary"
+                                                        className="w-full bg-slate-900 border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white focus:ring-admin-primary"
                                                         type="number"
                                                         value={newQuotaScans}
                                                         onChange={(e) => setNewQuotaScans(parseInt(e.target.value))}
@@ -494,7 +835,7 @@ export default function UserDetailPage() {
                                         <div className="space-y-3">
                                             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Subscription Plan</p>
                                             <select
-                                                className="w-full bg-slate-900 border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-admin-primary"
+                                                className="w-full bg-slate-900 border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white focus:ring-admin-primary"
                                                 value={newTier}
                                                 onChange={(e) => setNewTier(e.target.value)}
                                             >
@@ -507,22 +848,22 @@ export default function UserDetailPage() {
                                         </div>
                                         <button
                                             onClick={handleUpdateUser}
-                                            className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold rounded-xl transition-all border border-slate-700 mt-4"
+                                            className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-900 dark:text-white text-sm font-bold rounded-xl transition-all border border-slate-700 mt-4"
                                         >
                                             Apply Changes & Notify User
                                         </button>
                                     </div>
                                 </section>
 
-                                <section className="p-8 bg-[#111827] border border-slate-800 rounded-2xl shadow-xl flex flex-col justify-between">
+                                <section className="p-8 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl flex flex-col justify-between">
                                     <div className="space-y-6">
-                                        <h4 className="text-lg font-bold text-white mb-6 tracking-tight tracking-tight">Quick Actions</h4>
+                                        <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-6 tracking-tight tracking-tight">Quick Actions</h4>
                                         <div className="grid grid-cols-2 gap-4">
-                                            <button onClick={() => handleQuickAction("reset")} className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl border border-slate-700 transition-all">
+                                            <button onClick={() => handleQuickAction("reset")} className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-900 dark:text-white text-xs font-bold rounded-xl border border-slate-700 transition-all">
                                                 <span className="material-symbols-outlined text-base">lock_reset</span>
                                                 Password Reset
                                             </button>
-                                            <button onClick={() => handleQuickAction("resend")} className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl border border-slate-700 transition-all">
+                                            <button onClick={() => handleQuickAction("resend")} className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-900 dark:text-white text-xs font-bold rounded-xl border border-slate-700 transition-all">
                                                 <span className="material-symbols-outlined text-base">mark_email_read</span>
                                                 Resend Email
                                             </button>
@@ -530,7 +871,7 @@ export default function UserDetailPage() {
                                                 <span className="material-symbols-outlined text-base text-rose-500">block</span>
                                                 {user.subscription_status === 'expired' ? 'Unban Account' : 'Ban Account'}
                                             </button>
-                                            <button onClick={() => handleQuickAction("delete")} className="flex items-center justify-center gap-2 px-4 py-3 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-xl shadow-lg shadow-rose-500/20 transition-all">
+                                            <button onClick={() => handleQuickAction("delete")} className="flex items-center justify-center gap-2 px-4 py-3 bg-rose-500 hover:bg-rose-600 text-slate-900 dark:text-white text-xs font-bold rounded-xl shadow-lg shadow-rose-500/20 transition-all">
                                                 <span className="material-symbols-outlined text-base">delete</span>
                                                 Delete User
                                             </button>
@@ -550,9 +891,9 @@ export default function UserDetailPage() {
 
                     {activeTab === "Session Logs" && (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <section className="lg:col-span-1 bg-[#111827] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
-                                <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
-                                    <h4 className="text-base font-bold text-white tracking-tight">Sessions</h4>
+                            <section className="lg:col-span-1 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+                                <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-900/50">
+                                    <h4 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">Sessions</h4>
                                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{sessions.length} total</span>
                                 </div>
                                 <div className="max-h-[520px] overflow-y-auto divide-y divide-slate-800">
@@ -564,7 +905,7 @@ export default function UserDetailPage() {
                                         >
                                             <div className="flex items-center justify-between gap-4">
                                                 <div className="flex flex-col">
-                                                    <span className="text-xs font-bold text-white">{sessionItem.title || "Untitled"}</span>
+                                                    <span className="text-xs font-bold text-slate-900 dark:text-white">{sessionItem.title || "Untitled"}</span>
                                                     <span className="text-[10px] text-slate-500">{sessionItem.subject || "General"}</span>
                                                 </div>
                                                 <span className="text-[10px] text-slate-500">{sessionItem.created_at ? new Date(sessionItem.created_at).toLocaleDateString() : "n/a"}</span>
@@ -573,9 +914,9 @@ export default function UserDetailPage() {
                                     ))}
                                 </div>
                             </section>
-                            <section className="lg:col-span-2 bg-[#111827] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
-                                <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
-                                    <h4 className="text-base font-bold text-white tracking-tight">Messages</h4>
+                            <section className="lg:col-span-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+                                <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-900/50">
+                                    <h4 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">Messages</h4>
                                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                                         {fullData?.messages?.length || 0} total
                                     </span>
@@ -607,79 +948,99 @@ export default function UserDetailPage() {
                     )}
 
                     {activeTab === "Billing & Plan" && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="bg-[#111827] border border-slate-800 rounded-2xl p-8 shadow-xl">
-                                <h4 className="text-lg font-bold text-white mb-6">Subscription & Usage</h4>
-                                <div className="p-4 bg-slate-900 rounded-xl border border-slate-800 flex flex-col gap-4">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-xs text-slate-400 uppercase font-bold tracking-widest">Current Plan</span>
-                                        <span className="px-2 py-1 bg-admin-primary/10 text-admin-primary text-[10px] font-bold uppercase rounded border border-admin-primary/20">{user?.subscription_tier}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-xs text-slate-400 uppercase font-bold tracking-widest">Status</span>
-                                        <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded border ${user?.subscription_status === 'active' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-rose-500/10 text-rose-500 border-rose-500/20'}`}>{user?.subscription_status}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="bg-[#111827] border border-slate-800 rounded-2xl p-8 shadow-xl">
-                                <h4 className="text-lg font-bold text-white mb-6">Payment History</h4>
-                                <div className="space-y-4">
-                                    {payments.map(p => (
-                                        <div key={p.id} className="flex justify-between items-center py-2 border-b border-slate-800">
-                                            <span className="text-xs text-slate-400">{new Date(p.date).toLocaleDateString()}</span>
-                                            <span className="text-sm font-bold text-white">${p.amount}</span>
-                                            <span className="text-[10px] font-bold text-emerald-500 uppercase">{p.status}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <FieldGrid title="Subscription Fields" data={fullData?.subscription} />
+                            <FieldGrid title="Plan Fields" data={fullData?.plan} />
+                            <DataTable
+                                title="Payments"
+                                rows={payments}
+                                columns={[
+                                    { key: "created_at", label: "Date", render: (value) => formatDateTime(value) },
+                                    { key: "amount", label: "Amount" },
+                                    { key: "currency", label: "Currency" },
+                                    { key: "status", label: "Status" },
+                                    { key: "transaction_id", label: "Transaction" }
+                                ]}
+                            />
+                            <DataTable
+                                title="Ledger Entries"
+                                rows={fullData?.usage_ledger || []}
+                                columns={[
+                                    { key: "created_at", label: "Date", render: (value) => formatDateTime(value) },
+                                    { key: "transaction_type", label: "Type" },
+                                    { key: "amount", label: "Amount" },
+                                    { key: "balance_after", label: "Balance" },
+                                    { key: "reference_id", label: "Reference" }
+                                ]}
+                            />
                         </div>
                     )}
 
                     {activeTab === "Security & Privacy" && (
-                        <div className="bg-[#111827] border border-slate-800 rounded-2xl p-8 shadow-xl">
-                            <h4 className="text-lg font-bold text-white mb-6 tracking-tight">Security Audit Trail</h4>
-                            <div className="space-y-6">
-                                <div className="flex items-start gap-4 p-4 hover:bg-slate-800/20 rounded-xl transition-colors">
-                                    <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg">
-                                        <span className="material-symbols-outlined text-base">password</span>
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-sm font-bold text-white">Password changed</p>
-                                        <p className="text-xs text-slate-500 mt-0.5">The user updated their password via the recovery flow.</p>
-                                    </div>
-                                    <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">3 Days Ago</span>
-                                </div>
-                                <div className="flex items-start gap-4 p-4 hover:bg-slate-800/20 rounded-xl transition-colors">
-                                    <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg">
-                                        <span className="material-symbols-outlined text-base">devices</span>
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-sm font-bold text-white">New device login</p>
-                                        <p className="text-xs text-slate-500 mt-0.5">Authorization from iPhone 15 Pro, San Francisco, CA.</p>
-                                    </div>
-                                    <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Oct 28</span>
-                                </div>
-                            </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <FieldGrid
+                                title="Security Fields"
+                                data={{
+                                    ip_address: fullData?.user?.ip_address,
+                                    last_ip: fullData?.user?.last_ip,
+                                    session_token: fullData?.user?.session_token,
+                                    is_verified: fullData?.user?.is_verified,
+                                    verification_token: fullData?.user?.verification_token,
+                                    last_active_at: fullData?.user?.last_active_at,
+                                    created_at: fullData?.user?.created_at,
+                                    country: fullData?.user?.country,
+                                    timezone: fullData?.user?.timezone
+                                }}
+                            />
+                            <DataTable
+                                title="Recent Sessions"
+                                rows={(fullData?.sessions || []).slice(0, 20)}
+                                columns={[
+                                    { key: "id", label: "Session ID" },
+                                    { key: "title", label: "Title" },
+                                    { key: "subject", label: "Subject" },
+                                    { key: "created_at", label: "Created", render: (value) => formatDateTime(value) }
+                                ]}
+                            />
+                            <DataTable
+                                title="OCR Audit Events"
+                                rows={(fullData?.ocr_audit_events || []).slice(0, 20)}
+                                columns={[
+                                    { key: "id", label: "Event ID" },
+                                    { key: "routing_engine_chosen", label: "Engine" },
+                                    { key: "provider_model", label: "Model" },
+                                    { key: "created_at", label: "Created", render: (value) => formatDateTime(value) }
+                                ]}
+                            />
+                            <DataTable
+                                title="Voice Sessions"
+                                rows={(fullData?.voice_sessions || []).slice(0, 20)}
+                                columns={[
+                                    { key: "id", label: "Session ID" },
+                                    { key: "status", label: "Status" },
+                                    { key: "preferred_stt", label: "STT" },
+                                    { key: "created_at", label: "Created", render: (value) => formatDateTime(value) }
+                                ]}
+                            />
                         </div>
                     )}
 
                     {activeTab === "Full Data" && (
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <section className="bg-[#111827] border border-slate-800 rounded-2xl p-6 shadow-xl">
-                                <h4 className="text-base font-bold text-white mb-4 tracking-tight">User + Subscription</h4>
+                            <section className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl">
+                                <h4 className="text-base font-bold text-slate-900 dark:text-white mb-4 tracking-tight">User + Subscription</h4>
                                 <pre className="text-[11px] text-slate-300 whitespace-pre-wrap break-words">
                                     {JSON.stringify({ user: fullData?.user, subscription: fullData?.subscription, plan: fullData?.plan }, null, 2)}
                                 </pre>
                             </section>
-                            <section className="bg-[#111827] border border-slate-800 rounded-2xl p-6 shadow-xl">
-                                <h4 className="text-base font-bold text-white mb-4 tracking-tight">Usage + Ledger</h4>
+                            <section className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl">
+                                <h4 className="text-base font-bold text-slate-900 dark:text-white mb-4 tracking-tight">Usage + Ledger</h4>
                                 <pre className="text-[11px] text-slate-300 whitespace-pre-wrap break-words">
                                     {JSON.stringify({ usage_logs: fullData?.usage_logs, usage_ledger: fullData?.usage_ledger }, null, 2)}
                                 </pre>
                             </section>
-                            <section className="bg-[#111827] border border-slate-800 rounded-2xl p-6 shadow-xl">
-                                <h4 className="text-base font-bold text-white mb-4 tracking-tight">OCR Data</h4>
+                            <section className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl">
+                                <h4 className="text-base font-bold text-slate-900 dark:text-white mb-4 tracking-tight">OCR Data</h4>
                                 <pre className="text-[11px] text-slate-300 whitespace-pre-wrap break-words">
                                     {JSON.stringify({
                                         uploads: fullData?.uploads,
@@ -694,8 +1055,8 @@ export default function UserDetailPage() {
                                     }, null, 2)}
                                 </pre>
                             </section>
-                            <section className="bg-[#111827] border border-slate-800 rounded-2xl p-6 shadow-xl">
-                                <h4 className="text-base font-bold text-white mb-4 tracking-tight">Voice Data</h4>
+                            <section className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl">
+                                <h4 className="text-base font-bold text-slate-900 dark:text-white mb-4 tracking-tight">Voice Data</h4>
                                 <pre className="text-[11px] text-slate-300 whitespace-pre-wrap break-words">
                                     {JSON.stringify({
                                         sessions: fullData?.voice_sessions,
@@ -706,8 +1067,8 @@ export default function UserDetailPage() {
                                     }, null, 2)}
                                 </pre>
                             </section>
-                            <section className="lg:col-span-2 bg-[#111827] border border-slate-800 rounded-2xl p-6 shadow-xl">
-                                <h4 className="text-base font-bold text-white mb-4 tracking-tight">Raw JSON (All)</h4>
+                            <section className="lg:col-span-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl">
+                                <h4 className="text-base font-bold text-slate-900 dark:text-white mb-4 tracking-tight">Raw JSON (All)</h4>
                                 <pre className="text-[11px] text-slate-300 whitespace-pre-wrap break-words">
                                     {JSON.stringify(fullData, null, 2)}
                                 </pre>
@@ -718,9 +1079,9 @@ export default function UserDetailPage() {
             </div>
 
             {/* Support Notes Sidebar */}
-            <aside className="w-80 flex-shrink-0 bg-[#0c1222] border-l border-slate-800 flex flex-col p-6 overflow-y-auto sticky top-0 h-screen shadow-2xl">
+            <aside className="w-80 flex-shrink-0 bg-white dark:bg-[#0c1222] border-l border-slate-200 dark:border-slate-800 flex flex-col p-6 overflow-y-auto sticky top-0 h-screen shadow-2xl">
                 <div className="flex items-center justify-between mb-8">
-                    <h4 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+                    <h4 className="text-base font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
                         <span className="material-symbols-outlined text-admin-primary">sticky_note_2</span>
                         Support Notes
                     </h4>
@@ -729,7 +1090,7 @@ export default function UserDetailPage() {
 
                 <div className="flex-1 flex flex-col gap-6">
                     {user.notes.map((note) => (
-                        <div key={note.id} className="p-4 bg-[#111827] border border-slate-800 rounded-xl space-y-3 shadow-md relative group">
+                        <div key={note.id} className="p-4 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl space-y-3 shadow-md relative group">
                             <div className="flex justify-between items-start">
                                 <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-widest ${note.admin_name === 'SARAH' ? 'bg-purple-500/10 text-purple-500' : 'bg-blue-500/10 text-blue-500'
                                     }`}>
@@ -749,7 +1110,7 @@ export default function UserDetailPage() {
                     <div className="space-y-2">
                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Internal Update</p>
                         <textarea
-                            className="w-full bg-[#0c1222] border-slate-800 rounded-xl p-4 text-xs text-white placeholder:text-slate-600 focus:ring-admin-primary h-24 resize-none transition-all focus:border-admin-primary"
+                            className="w-full bg-white dark:bg-[#0c1222] border-slate-200 dark:border-slate-800 rounded-xl p-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-600 focus:ring-admin-primary h-24 resize-none transition-all focus:border-admin-primary"
                             placeholder="Add case update or internal observation..."
                             value={noteContent}
                             onChange={(e) => setNoteContent(e.target.value)}

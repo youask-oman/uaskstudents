@@ -39,20 +39,19 @@ export default function AdminLayout({
         { label: "Quotas", href: "/admin/quotas", icon: "speed" },
         { label: "Subscriptions", href: "/admin/subscriptions", icon: "diamond" },
         { label: "Prompts", href: "/admin/prompts", icon: "terminal" },
-        { label: "Performance", href: "/admin/performance", icon: "monitoring" },
         { label: "Logs", href: "/admin/logs", icon: "receipt_long" },
         { label: "Data", href: "/admin/data", icon: "table_view" },
     ];
 
     return (
-        <div className="font-admin bg-[#0F172A] text-slate-200 min-h-screen flex overflow-hidden">
+        <div className="font-admin bg-slate-50 text-slate-900 dark:bg-[#0F172A] dark:text-slate-200 min-h-screen flex overflow-hidden transition-colors">
             {/* Sidebar */}
-            <aside className="w-64 flex-shrink-0 bg-[#0c1222] border-r border-slate-800 flex flex-col justify-between p-4">
+            <aside className="w-64 flex-shrink-0 bg-white dark:bg-[#0c1222] border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between p-4 transition-colors">
                 <div className="flex flex-col gap-8">
                     <div className="flex items-center gap-3 px-2">
                         <img src="/logo-dark.png" alt="uask.ai" className="h-8 w-auto" />
                         <div className="flex flex-col">
-                            <h1 className="text-white text-base font-bold leading-none">uask.ai</h1>
+                            <h1 className="text-slate-900 dark:text-white text-base font-bold leading-none">uask.ai</h1>
                             <p className="text-slate-500 text-[10px] uppercase tracking-widest font-semibold mt-1">Admin Panel</p>
                         </div>
                     </div>
@@ -63,7 +62,7 @@ export default function AdminLayout({
                                 href={item.href}
                                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${pathname === item.href
                                     ? "bg-admin-primary text-white shadow-lg shadow-admin-primary/20"
-                                    : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
                                     }`}
                             >
                                 <span className={`material-symbols-outlined ${pathname === item.href ? "fill-current" : ""}`}>
@@ -79,8 +78,8 @@ export default function AdminLayout({
                         <span className="material-symbols-outlined text-sm">add</span>
                         New Report
                     </button>
-                    <div className="flex items-center gap-3 px-2 py-2 border-t border-slate-800 pt-4">
-                        <div className="size-8 rounded-full bg-slate-700 bg-cover bg-center overflow-hidden flex items-center justify-center border border-slate-700 shadow-sm">
+                    <div className="flex items-center gap-3 px-2 py-2 border-t border-slate-200 dark:border-slate-800 pt-4">
+                        <div className="size-8 rounded-full bg-slate-200 dark:bg-slate-700 bg-cover bg-center overflow-hidden flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm">
                             {adminAvatar ? (
                                 <img src={adminAvatar} alt={adminName} className="w-full h-full object-cover" />
                             ) : (
@@ -88,7 +87,7 @@ export default function AdminLayout({
                             )}
                         </div>
                         <div className="flex flex-col">
-                            <p className="text-white text-xs font-bold truncate max-w-[120px]">{adminName}</p>
+                            <p className="text-slate-900 dark:text-white text-xs font-bold truncate max-w-[120px]">{adminName}</p>
                             <p className="text-slate-500 text-[10px]">{adminRole}</p>
                         </div>
                     </div>

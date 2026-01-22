@@ -25,10 +25,10 @@ export default function AdminContentManagementPage() {
 
     return (
         <>
-            <header className="bg-admin-bg-dark/80 backdrop-blur-md border-b border-border-dark pt-8 px-10">
+            <header className="bg-white/80 dark:bg-white dark:bg-admin-bg-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-border-dark pt-8 px-10">
                 <div className="flex justify-between items-center mb-8">
                     <div className="flex flex-col gap-1">
-                        <h2 className="text-3xl font-bold text-white tracking-tight">Manage Collections</h2>
+                        <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Manage Collections</h2>
                         <p className="text-sm text-slate-500 font-medium">Vector database administration and metadata control</p>
                     </div>
                     <div className="flex items-center gap-4">
@@ -54,11 +54,11 @@ export default function AdminContentManagementPage() {
                 </div>
             </header>
             <div className="px-10 py-6">
-                <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center bg-surface-dark p-2 rounded-xl border border-border-dark">
+                <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center bg-surface-dark p-2 rounded-xl border border-slate-200 dark:border-border-dark">
                     <div className="flex flex-1 gap-3 items-center w-full">
                         <div className="flex-1 max-w-lg pl-2">
                             <label className="flex flex-col h-10 w-full">
-                                <div className="flex w-full flex-1 items-stretch rounded-lg bg-admin-bg-dark/50 border border-border-dark focus-within:border-admin-primary transition-all">
+                                <div className="flex w-full flex-1 items-stretch rounded-lg bg-white/50 dark:bg-white dark:bg-admin-bg-dark/50 border border-slate-200 dark:border-border-dark focus-within:border-admin-primary transition-all">
                                     <div className="text-slate-500 flex items-center justify-center pl-3">
                                         <span className="material-symbols-outlined text-[20px]">search</span>
                                     </div>
@@ -67,11 +67,11 @@ export default function AdminContentManagementPage() {
                             </label>
                         </div>
                         <div className="flex gap-2">
-                            <button className="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-admin-bg-dark border border-border-dark px-4 hover:border-admin-primary transition-all text-slate-300">
+                            <button className="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-white dark:bg-admin-bg-dark border border-slate-200 dark:border-border-dark px-4 hover:border-admin-primary transition-all text-slate-300">
                                 <p className="text-xs font-semibold">Subject: All</p>
                                 <span className="material-symbols-outlined text-[16px]">expand_more</span>
                             </button>
-                            <button className="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-admin-bg-dark border border-border-dark px-4 hover:border-admin-primary transition-all text-slate-300">
+                            <button className="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-white dark:bg-admin-bg-dark border border-slate-200 dark:border-border-dark px-4 hover:border-admin-primary transition-all text-slate-300">
                                 <p className="text-xs font-semibold">Level: All</p>
                                 <span className="material-symbols-outlined text-[16px]">expand_more</span>
                             </button>
@@ -84,10 +84,10 @@ export default function AdminContentManagementPage() {
                 </div>
             </div>
             <div className="flex-1 overflow-auto px-10 pb-10 no-scrollbar">
-                <div className="bg-surface-dark rounded-xl border border-border-dark overflow-hidden shadow-2xl">
+                <div className="bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark overflow-hidden shadow-2xl">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="bg-admin-bg-dark/40 border-b border-border-dark">
+                            <tr className="bg-white/40 dark:bg-white dark:bg-admin-bg-dark/40 border-b border-slate-200 dark:border-border-dark">
                                 <th className="px-8 py-5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Title / Entity</th>
                                 <th className="px-8 py-5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Metadata (LaTeX)</th>
                                 <th className="px-8 py-5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Subject</th>
@@ -100,8 +100,8 @@ export default function AdminContentManagementPage() {
                             <tr className="hover:bg-admin-primary/5 transition-colors group">
                                 <td className="px-8 py-5">
                                     <div className="flex flex-col gap-0.5">
-                                        <span className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors">Pythagorean Theorem</span>
-                                        <span className="text-[10px] font-mono text-slate-500 bg-admin-bg-dark w-fit px-1.5 py-0.5 rounded border border-border-dark">CC-MATH-9012</span>
+                                        <span className="text-sm font-semibold text-slate-200 group-hover:text-slate-900 dark:text-white transition-colors">Pythagorean Theorem</span>
+                                        <span className="text-[10px] font-mono text-slate-500 bg-white dark:bg-admin-bg-dark w-fit px-1.5 py-0.5 rounded border border-slate-200 dark:border-border-dark">CC-MATH-9012</span>
                                     </div>
                                 </td>
                                 <td className="px-8 py-5">
@@ -127,8 +127,8 @@ export default function AdminContentManagementPage() {
                             <tr className="hover:bg-admin-primary/5 transition-colors group">
                                 <td className="px-8 py-5">
                                     <div className="flex flex-col gap-0.5">
-                                        <span className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors">Maxwell Equations</span>
-                                        <span className="text-[10px] font-mono text-slate-500 bg-admin-bg-dark w-fit px-1.5 py-0.5 rounded border border-border-dark">CC-PHYS-3312</span>
+                                        <span className="text-sm font-semibold text-slate-200 group-hover:text-slate-900 dark:text-white transition-colors">Maxwell Equations</span>
+                                        <span className="text-[10px] font-mono text-slate-500 bg-white dark:bg-admin-bg-dark w-fit px-1.5 py-0.5 rounded border border-slate-200 dark:border-border-dark">CC-PHYS-3312</span>
                                     </div>
                                 </td>
                                 <td className="px-8 py-5">
@@ -154,8 +154,8 @@ export default function AdminContentManagementPage() {
                             <tr className="hover:bg-admin-primary/5 transition-colors group">
                                 <td className="px-8 py-5">
                                     <div className="flex flex-col gap-0.5">
-                                        <span className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors">Quantum State</span>
-                                        <span className="text-[10px] font-mono text-slate-500 bg-admin-bg-dark w-fit px-1.5 py-0.5 rounded border border-border-dark">CC-PHYS-1002</span>
+                                        <span className="text-sm font-semibold text-slate-200 group-hover:text-slate-900 dark:text-white transition-colors">Quantum State</span>
+                                        <span className="text-[10px] font-mono text-slate-500 bg-white dark:bg-admin-bg-dark w-fit px-1.5 py-0.5 rounded border border-slate-200 dark:border-border-dark">CC-PHYS-1002</span>
                                     </div>
                                 </td>
                                 <td className="px-8 py-5">
@@ -181,8 +181,8 @@ export default function AdminContentManagementPage() {
                             <tr className="hover:bg-admin-primary/5 transition-colors group">
                                 <td className="px-8 py-5">
                                     <div className="flex flex-col gap-0.5">
-                                        <span className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors">Binary Search Tree</span>
-                                        <span className="text-[10px] font-mono text-slate-500 bg-admin-bg-dark w-fit px-1.5 py-0.5 rounded border border-border-dark">CC-CS-5512</span>
+                                        <span className="text-sm font-semibold text-slate-200 group-hover:text-slate-900 dark:text-white transition-colors">Binary Search Tree</span>
+                                        <span className="text-[10px] font-mono text-slate-500 bg-white dark:bg-admin-bg-dark w-fit px-1.5 py-0.5 rounded border border-slate-200 dark:border-border-dark">CC-CS-5512</span>
                                     </div>
                                 </td>
                                 <td className="px-8 py-5">
@@ -207,18 +207,18 @@ export default function AdminContentManagementPage() {
                             </tr>
                         </tbody>
                     </table>
-                    <div className="px-8 py-5 flex justify-between items-center bg-admin-bg-dark/40 border-t border-border-dark">
+                    <div className="px-8 py-5 flex justify-between items-center bg-white/40 dark:bg-white dark:bg-admin-bg-dark/40 border-t border-slate-200 dark:border-border-dark">
                         <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Page 1 of 321 • 1,284 Records</span>
                         <div className="flex gap-1.5">
-                            <button className="px-4 py-2 rounded border border-border-dark text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:bg-admin-bg-dark hover:text-white transition-all disabled:opacity-50" disabled>Prev</button>
+                            <button className="px-4 py-2 rounded border border-slate-200 dark:border-border-dark text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:bg-white dark:bg-admin-bg-dark hover:text-slate-900 dark:text-white transition-all disabled:opacity-50" disabled>Prev</button>
                             <button className="px-4 py-2 rounded bg-admin-primary text-white text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-admin-primary/10">1</button>
-                            <button className="px-4 py-2 rounded border border-border-dark text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:bg-admin-bg-dark hover:text-white transition-all">2</button>
-                            <button className="px-4 py-2 rounded border border-border-dark text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:bg-admin-bg-dark hover:text-white transition-all">Next</button>
+                            <button className="px-4 py-2 rounded border border-slate-200 dark:border-border-dark text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:bg-white dark:bg-admin-bg-dark hover:text-slate-900 dark:text-white transition-all">2</button>
+                            <button className="px-4 py-2 rounded border border-slate-200 dark:border-border-dark text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:bg-white dark:bg-admin-bg-dark hover:text-slate-900 dark:text-white transition-all">Next</button>
                         </div>
                     </div>
                 </div>
             </div>
-            <footer className="h-12 border-t border-border-dark bg-admin-bg-dark/90 backdrop-blur-sm flex items-center px-10 justify-between shrink-0">
+            <footer className="h-12 border-t border-slate-200 dark:border-border-dark bg-white/90 dark:bg-white dark:bg-admin-bg-dark/90 backdrop-blur-sm flex items-center px-10 justify-between shrink-0">
                 <div className="flex gap-10">
                     <div className="flex items-center gap-2.5">
                         <span className="material-symbols-outlined text-[16px] text-neon-green">verified_user</span>
@@ -226,11 +226,11 @@ export default function AdminContentManagementPage() {
                     </div>
                     <div className="flex items-center gap-2.5">
                         <span className="material-symbols-outlined text-[16px] text-admin-primary">bolt</span>
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">LATENCY <span className="text-white ml-1">12ms</span></span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">LATENCY <span className="text-slate-900 dark:text-white ml-1">12ms</span></span>
                     </div>
                     <div className="flex items-center gap-2.5">
                         <span className="material-symbols-outlined text-[16px] text-admin-primary">storage</span>
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">DIMENSIONS <span className="text-white ml-1">1536d</span></span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">DIMENSIONS <span className="text-slate-900 dark:text-white ml-1">1536d</span></span>
                     </div>
                 </div>
                 <div className="flex items-center gap-5">
