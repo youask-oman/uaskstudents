@@ -60,6 +60,7 @@ export default function UserDetailPage() {
     const [newQuotaQuestions, setNewQuotaQuestions] = useState(0);
     const [newQuotaScans, setNewQuotaScans] = useState(0);
     const [newTier, setNewTier] = useState("");
+    const [availablePlans, setAvailablePlans] = useState<{ id: number; name: string; slug: string }[]>([]);
 
     useEffect(() => {
         if (!id) return;
@@ -68,8 +69,22 @@ export default function UserDetailPage() {
         fetchActivity(controller.signal);
         fetchSessions(controller.signal);
         fetchPayments(controller.signal);
+        fetchPlans(controller.signal);
         return () => controller.abort();
     }, [id]);
+
+    const fetchPlans = async (signal?: AbortSignal) => {
+        try {
+            const res = await fetch(`${baseUrl}/api/v1/admin/plans`, { headers: getAuthHeaders(), signal });
+            if (res.ok) {
+                const data = await res.json();
+                setAvailablePlans(data);
+            }
+        } catch (error) {
+            if ((error as Error).name === "AbortError") return;
+            console.error("Failed to fetch plans:", error);
+        }
+    };
 
     const fetchUserDetail = async (signal?: AbortSignal) => {
         try {
@@ -425,9 +440,11 @@ export default function UserDetailPage() {
                                                 value={newTier}
                                                 onChange={(e) => setNewTier(e.target.value)}
                                             >
-                                                <option value="free">Free - Limited Access</option>
-                                                <option value="pro">Pro - $19.99/mo</option>
-                                                <option value="enterprise">Enterprise - Customized</option>
+                                                {availablePlans.map(plan => (
+                                                    <option key={plan.id} value={plan.slug}>
+                                                        {plan.name} ({plan.slug})
+                                                    </option>
+                                                ))}
                                             </select>
                                         </div>
                                         <button
