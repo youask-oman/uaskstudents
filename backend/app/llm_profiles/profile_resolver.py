@@ -132,17 +132,21 @@ class ProfileResolver:
             
         # Overrides from Plan features if present (handle with care)
         if plan.features and "max_tokens" in plan.features:
-            # Only override if plan explicitly demands higher than default
-            # AND we are not in minimal mode (unless plan is specific to minimal)
-            # For safety, trust plan config but warn if high for minimal.
             plan_max = int(plan.features["max_tokens"])
-            if plan_max > max_tokens:
+            if effective_mode == "minimal":
+                # Hard cap minimal mode to avoid runaway outputs.
+                max_tokens = min(max_tokens, 700, plan_max)
+            elif plan_max > max_tokens:
                 max_tokens = plan_max
 
         return PromptProfile(
             tier=tier_slug,
             system_prompt_content=system_content if isinstance(system_content, str) else str(system_content),
             json_schema_content=schema_content if isinstance(schema_content, dict) else {},
+            system_asset_path=sys_asset.path if sys_asset else None,
+            schema_asset_path=schema_asset.path if schema_asset else None,
+            system_asset_key=sys_asset.key if sys_asset else None,
+            schema_asset_key=schema_asset.key if schema_asset else None,
             max_output_tokens=max_tokens,
             max_steps=max_steps,
             mode=effective_mode,

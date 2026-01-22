@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 export default function AdminDashboardPage() {
     const [stats, setStats] = useState<any>(null);
     const [routing, setRouting] = useState<any>(null);
+    const [solveTraces, setSolveTraces] = useState<any[]>([]);
+    const [selectedTrace, setSelectedTrace] = useState<any | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -15,17 +17,20 @@ export default function AdminDashboardPage() {
             const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
             const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
             try {
-                const [statsRes, routingRes] = await Promise.all([
+                const [statsRes, routingRes, tracesRes] = await Promise.all([
                     fetch(`${baseUrl}/api/v1/admin/stats/dashboard`, { headers, signal: controller.signal }),
-                    fetch(`${baseUrl}/api/v1/admin/stats/model-routing`, { headers, signal: controller.signal })
+                    fetch(`${baseUrl}/api/v1/admin/stats/model-routing`, { headers, signal: controller.signal }),
+                    fetch(`${baseUrl}/api/v1/admin/solve-traces?limit=120`, { headers, signal: controller.signal })
                 ]);
-                if (!statsRes.ok || !routingRes.ok) {
+                if (!statsRes.ok || !routingRes.ok || !tracesRes.ok) {
                     throw new Error("Failed to load admin metrics.");
                 }
                 const statsData = await statsRes.json();
                 const routingData = await routingRes.json();
+                const tracesData = await tracesRes.json();
                 setStats(statsData);
                 setRouting(routingData);
+                setSolveTraces(Array.isArray(tracesData) ? tracesData : []);
             } catch (err) {
                 if ((err as Error).name === "AbortError") {
                     return;
@@ -200,6 +205,53 @@ export default function AdminDashboardPage() {
                     </section>
                 </div>
 
+                <section className="bg-panel-dark border border-slate-800 rounded-xl shadow-xl">
+                    <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-800/20">
+                        <div>
+                            <h4 className="text-base font-bold text-white">Solve Request Traces</h4>
+                            <p className="text-sm text-slate-400">Latest streamed solve requests (JSONL)</p>
+                        </div>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Last 120</span>
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-3">
+                        <div className="lg:col-span-2 border-r border-slate-800">
+                            <div className="max-h-[420px] overflow-y-auto divide-y divide-slate-800">
+                                {solveTraces.length === 0 && (
+                                    <div className="p-6 text-slate-500 text-sm italic">No trace logs available.</div>
+                                )}
+                                {solveTraces.map((entry, index) => (
+                                    <button
+                                        key={entry.request_id || index}
+                                        onClick={() => setSelectedTrace(entry)}
+                                        className="w-full text-left px-6 py-3 hover:bg-slate-800/50 transition-colors"
+                                    >
+                                        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
+                                            <span className="font-mono text-slate-200">{entry.request_id?.slice(0, 8) || "unknown"}</span>
+                                            <span>User {entry.user_id ?? "n/a"}</span>
+                                            <span>{entry.ui_goal || "solve"} / {entry.ui_style || "minimal"}</span>
+                                            <span>{entry.resolved_profile_key || "profile"}</span>
+                                            <span>{entry.input_tokens ?? 0}/{entry.output_tokens ?? 0} tok</span>
+                                            <span className={entry.deduct_committed ? "text-emerald-400" : "text-rose-400"}>
+                                                {entry.deduct_committed ? "debited" : "no debit"}
+                                            </span>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="p-6">
+                            <h5 className="text-xs font-bold uppercase tracking-widest text-slate-500">Selected Trace</h5>
+                            <div className="mt-3 bg-slate-900/60 border border-slate-800 rounded-lg p-4 max-h-[360px] overflow-y-auto">
+                                {selectedTrace ? (
+                                    <pre className="text-[11px] text-slate-300 whitespace-pre-wrap">{JSON.stringify(selectedTrace, null, 2)}</pre>
+                                ) : (
+                                    <p className="text-sm text-slate-500">Pick a trace entry to inspect the OpenAI payload and metering.</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 <footer className="mt-auto pt-8 flex items-center justify-between text-slate-500 text-[11px] font-medium border-t border-slate-800">
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-1.5">
@@ -210,7 +262,7 @@ export default function AdminDashboardPage() {
                         <span>API v2.4.1</span>
                     </div>
                     <div>
-                        © 2024 uask.ai Admin Console
+                        (c) 2024 uask.ai Admin Console
                     </div>
                 </footer>
             </div>

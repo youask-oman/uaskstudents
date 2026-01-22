@@ -35,12 +35,42 @@ interface ActivityItem {
     timestamp: string;
 }
 
+interface FullUserData {
+    user: Record<string, any>;
+    subscription: Record<string, any>;
+    plan: Record<string, any>;
+    usage_ledger: any[];
+    usage_logs: any[];
+    payments: any[];
+    quota_overrides: any[];
+    admin_notes: any[];
+    sessions: any[];
+    messages: any[];
+    uploads: any[];
+    crops: any[];
+    ocr_jobs: any[];
+    ocr_artifacts: any[];
+    ocr_questions: any[];
+    ocr_choices: any[];
+    ocr_figures: any[];
+    ocr_confirmations: any[];
+    ocr_audit_events: any[];
+    voice_sessions: any[];
+    voice_audios: any[];
+    voice_jobs: any[];
+    voice_artifacts: any[];
+    voice_confirmations: any[];
+    saved_solutions: any[];
+}
+
 export default function UserDetailPage() {
     const { id } = useParams();
     const [user, setUser] = useState<UserDetail | null>(null);
     const [activity, setActivity] = useState<ActivityItem[]>([]);
     const [sessions, setSessions] = useState<any[]>([]);
     const [payments, setPayments] = useState<any[]>([]);
+    const [fullData, setFullData] = useState<FullUserData | null>(null);
+    const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);
     const [activeTab, setActiveTab] = useState("Profile Detail");
     const [loading, setLoading] = useState(true);
     const [noteContent, setNoteContent] = useState("");
@@ -67,8 +97,7 @@ export default function UserDetailPage() {
         const controller = new AbortController();
         fetchUserDetail(controller.signal);
         fetchActivity(controller.signal);
-        fetchSessions(controller.signal);
-        fetchPayments(controller.signal);
+        fetchFullUserData(controller.signal);
         fetchPlans(controller.signal);
         return () => controller.abort();
     }, [id]);
@@ -128,11 +157,7 @@ export default function UserDetailPage() {
 
     const fetchSessions = async (signal?: AbortSignal) => {
         try {
-            const res = await fetch(`${baseUrl}/api/v1/admin/users/${id}/activity`, { headers: getAuthHeaders(), signal }); // Reusing activity for now as it's a good summary
-            if (res.ok) {
-                const data = await res.json();
-                setSessions(data);
-            }
+            if (signal?.aborted) return;
         } catch (error) {
             if ((error as Error).name === "AbortError") {
                 return;
@@ -144,18 +169,51 @@ export default function UserDetailPage() {
 
     const fetchPayments = async (signal?: AbortSignal) => {
         try {
-            await fetch(`${baseUrl}/api/v1/user/token-usage?user_id=${id}`, { headers: getAuthHeaders(), signal }); // Example, should be a payment endpoint
-            // Actually, let's just mock the list for now but wire it to a real check
-            setPayments([
-                { id: 1, date: "2024-10-05", amount: 19.99, status: "completed" },
-                { id: 2, date: "2024-09-05", amount: 19.99, status: "completed" }
-            ]);
+            if (signal?.aborted) return;
         } catch (error) {
             if ((error as Error).name === "AbortError") {
                 return;
             }
             console.error("Failed to fetch payments:", error);
             setErrorMessage("Unable to load billing history.");
+        }
+    };
+
+    const fetchFullUserData = async (signal?: AbortSignal) => {
+        try {
+            const headers = getAuthHeaders();
+            const baseUrls = [baseUrl, "http://localhost:8000", "http://127.0.0.1:8000"];
+            let lastError: string | null = null;
+            for (const candidateBase of baseUrls) {
+                try {
+                    const res = await fetch(`${candidateBase}/api/v1/admin/users/${id}/full`, { headers, signal });
+                    if (!res.ok) {
+                        const detail = await res.text();
+                        lastError = detail || res.statusText;
+                        continue;
+                    }
+                    const data = await res.json();
+                    setFullData(data);
+                    setSessions(Array.isArray(data.sessions) ? data.sessions : []);
+                    setPayments(Array.isArray(data.payments) ? data.payments : []);
+                    if (!selectedSessionId && Array.isArray(data.sessions) && data.sessions.length > 0) {
+                        setSelectedSessionId(data.sessions[0].id);
+                    }
+                    return;
+                } catch (err) {
+                    if ((err as Error).name === "AbortError") {
+                        return;
+                    }
+                    lastError = (err as Error).message;
+                }
+            }
+            throw new Error(lastError || "Failed to load full user data.");
+        } catch (error) {
+            if ((error as Error).name === "AbortError") {
+                return;
+            }
+            console.error("Failed to fetch full user data:", error);
+            setErrorMessage(`Unable to load full user data: ${(error as Error).message}`);
         }
     };
 
@@ -296,7 +354,7 @@ export default function UserDetailPage() {
                     </div>
 
                     <nav className="flex items-center gap-8">
-                        {["Profile Detail", "Session Logs", "Billing & Plan", "Security & Privacy"].map((tab) => (
+                        {["Profile Detail", "Session Logs", "Billing & Plan", "Security & Privacy", "Full Data"].map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
@@ -491,30 +549,60 @@ export default function UserDetailPage() {
                     )}
 
                     {activeTab === "Session Logs" && (
-                        <div className="bg-[#111827] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
-                            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
-                                <h4 className="text-base font-bold text-white tracking-tight">Access & Session History</h4>
-                            </div>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr className="border-b border-slate-800">
-                                            <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Type</th>
-                                            <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Detail</th>
-                                            <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Timestamp</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-800">
-                                        {sessions.map((s, i) => (
-                                            <tr key={i} className="hover:bg-slate-800/30 transition-colors">
-                                                <td className="px-6 py-4 text-xs font-bold text-white">{s.type}</td>
-                                                <td className="px-6 py-4 text-xs text-slate-400">{s.subject} ({s.method})</td>
-                                                <td className="px-6 py-4 text-xs text-slate-500">{new Date(s.timestamp).toLocaleString()}</td>
-                                            </tr>
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <section className="lg:col-span-1 bg-[#111827] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+                                <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+                                    <h4 className="text-base font-bold text-white tracking-tight">Sessions</h4>
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{sessions.length} total</span>
+                                </div>
+                                <div className="max-h-[520px] overflow-y-auto divide-y divide-slate-800">
+                                    {sessions.map((sessionItem) => (
+                                        <button
+                                            key={sessionItem.id}
+                                            onClick={() => setSelectedSessionId(sessionItem.id)}
+                                            className={`w-full text-left px-5 py-4 hover:bg-slate-800/40 transition-colors ${selectedSessionId === sessionItem.id ? "bg-slate-800/40" : ""}`}
+                                        >
+                                            <div className="flex items-center justify-between gap-4">
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs font-bold text-white">{sessionItem.title || "Untitled"}</span>
+                                                    <span className="text-[10px] text-slate-500">{sessionItem.subject || "General"}</span>
+                                                </div>
+                                                <span className="text-[10px] text-slate-500">{sessionItem.created_at ? new Date(sessionItem.created_at).toLocaleDateString() : "n/a"}</span>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </section>
+                            <section className="lg:col-span-2 bg-[#111827] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+                                <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+                                    <h4 className="text-base font-bold text-white tracking-tight">Messages</h4>
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                        {fullData?.messages?.length || 0} total
+                                    </span>
+                                </div>
+                                <div className="max-h-[520px] overflow-y-auto divide-y divide-slate-800">
+                                    {(fullData?.messages || [])
+                                        .filter((message) => !selectedSessionId || message.session_id === selectedSessionId)
+                                        .map((message) => (
+                                            <div key={message.id} className="px-6 py-4">
+                                                <div className="flex items-center justify-between">
+                                                    <span className={`text-[10px] font-bold uppercase tracking-widest ${message.role === "assistant" ? "text-emerald-400" : "text-slate-400"}`}>
+                                                        {message.role}
+                                                    </span>
+                                                    <span className="text-[10px] text-slate-500">
+                                                        {message.created_at ? new Date(message.created_at).toLocaleString() : "n/a"}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-slate-300 mt-2 whitespace-pre-wrap break-words">
+                                                    {message.content}
+                                                </p>
+                                            </div>
                                         ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                    {selectedSessionId && (fullData?.messages || []).filter((m) => m.session_id === selectedSessionId).length === 0 && (
+                                        <div className="p-6 text-xs text-slate-500">No messages for this session.</div>
+                                    )}
+                                </div>
+                            </section>
                         </div>
                     )}
 
@@ -573,6 +661,57 @@ export default function UserDetailPage() {
                                     <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Oct 28</span>
                                 </div>
                             </div>
+                        </div>
+                    )}
+
+                    {activeTab === "Full Data" && (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <section className="bg-[#111827] border border-slate-800 rounded-2xl p-6 shadow-xl">
+                                <h4 className="text-base font-bold text-white mb-4 tracking-tight">User + Subscription</h4>
+                                <pre className="text-[11px] text-slate-300 whitespace-pre-wrap break-words">
+                                    {JSON.stringify({ user: fullData?.user, subscription: fullData?.subscription, plan: fullData?.plan }, null, 2)}
+                                </pre>
+                            </section>
+                            <section className="bg-[#111827] border border-slate-800 rounded-2xl p-6 shadow-xl">
+                                <h4 className="text-base font-bold text-white mb-4 tracking-tight">Usage + Ledger</h4>
+                                <pre className="text-[11px] text-slate-300 whitespace-pre-wrap break-words">
+                                    {JSON.stringify({ usage_logs: fullData?.usage_logs, usage_ledger: fullData?.usage_ledger }, null, 2)}
+                                </pre>
+                            </section>
+                            <section className="bg-[#111827] border border-slate-800 rounded-2xl p-6 shadow-xl">
+                                <h4 className="text-base font-bold text-white mb-4 tracking-tight">OCR Data</h4>
+                                <pre className="text-[11px] text-slate-300 whitespace-pre-wrap break-words">
+                                    {JSON.stringify({
+                                        uploads: fullData?.uploads,
+                                        crops: fullData?.crops,
+                                        jobs: fullData?.ocr_jobs,
+                                        artifacts: fullData?.ocr_artifacts,
+                                        questions: fullData?.ocr_questions,
+                                        choices: fullData?.ocr_choices,
+                                        figures: fullData?.ocr_figures,
+                                        confirmations: fullData?.ocr_confirmations,
+                                        audit_events: fullData?.ocr_audit_events
+                                    }, null, 2)}
+                                </pre>
+                            </section>
+                            <section className="bg-[#111827] border border-slate-800 rounded-2xl p-6 shadow-xl">
+                                <h4 className="text-base font-bold text-white mb-4 tracking-tight">Voice Data</h4>
+                                <pre className="text-[11px] text-slate-300 whitespace-pre-wrap break-words">
+                                    {JSON.stringify({
+                                        sessions: fullData?.voice_sessions,
+                                        audios: fullData?.voice_audios,
+                                        jobs: fullData?.voice_jobs,
+                                        artifacts: fullData?.voice_artifacts,
+                                        confirmations: fullData?.voice_confirmations
+                                    }, null, 2)}
+                                </pre>
+                            </section>
+                            <section className="lg:col-span-2 bg-[#111827] border border-slate-800 rounded-2xl p-6 shadow-xl">
+                                <h4 className="text-base font-bold text-white mb-4 tracking-tight">Raw JSON (All)</h4>
+                                <pre className="text-[11px] text-slate-300 whitespace-pre-wrap break-words">
+                                    {JSON.stringify(fullData, null, 2)}
+                                </pre>
+                            </section>
                         </div>
                     )}
                 </div>

@@ -40,6 +40,15 @@ export default function AdminQuotasPage() {
         return () => controller.abort();
     }, []);
 
+    useEffect(() => {
+        if (!selectedUser) return;
+        if (selectedUser.override_token_limit) setOverrideTokens(selectedUser.override_token_limit);
+        if (selectedUser.override_ocr_concurrency) setOverrideConcurrency(selectedUser.override_ocr_concurrency);
+        if (selectedUser.override_expires_at) {
+            setOverrideDuration(null);
+        }
+    }, [selectedUser]);
+
     const handleApplyOverride = async () => {
         if (!selectedUser) return;
         setIsSaving(true);
@@ -120,9 +129,7 @@ export default function AdminQuotasPage() {
                     <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
                         <div className="bg-admin-primary h-full transition-all duration-1000" style={{ width: `${data?.global_consumption}%` }}></div>
                     </div>
-                    <p className="text-accent-emerald text-sm font-medium flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm">trending_up</span> +5.2% from last hour
-                    </p>
+                    <p className="text-slate-500 text-xs font-medium">Change data not available.</p>
                 </div>
 
                 <div className="flex flex-col gap-4 rounded-xl p-6 bg-panel-dark border border-slate-800 shadow-xl group hover:border-accent-emerald/50 transition-all">
@@ -136,11 +143,9 @@ export default function AdminQuotasPage() {
                         </div>
                     </div>
                     <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                        <div className="bg-accent-emerald h-full" style={{ width: '48%' }}></div>
+                        <div className="bg-accent-emerald h-full" style={{ width: '100%' }}></div>
                     </div>
-                    <p className="text-accent-emerald text-sm font-medium flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm">trending_up</span> +1.8% vs yesterday
-                    </p>
+                    <p className="text-slate-500 text-xs font-medium">Change data not available.</p>
                 </div>
 
                 <div className="flex flex-col gap-4 rounded-xl p-6 bg-panel-dark border border-slate-800 shadow-xl group hover:border-accent-amber/50 transition-all">
@@ -154,11 +159,9 @@ export default function AdminQuotasPage() {
                         </div>
                     </div>
                     <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                        <div className="bg-accent-amber h-full" style={{ width: '85%' }}></div>
+                        <div className="bg-accent-amber h-full" style={{ width: '100%' }}></div>
                     </div>
-                    <p className="text-rose-500 text-sm font-medium flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm">trending_down</span> -0.4% from peak
-                    </p>
+                    <p className="text-slate-500 text-xs font-medium">Change data not available.</p>
                 </div>
             </div>
 
@@ -171,6 +174,7 @@ export default function AdminQuotasPage() {
                                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">User ID</th>
                                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">Plan</th>
                                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400 w-64">Daily Usage %</th>
+                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">Daily Usage</th>
                                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">Last Active</th>
                                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400 text-right">Actions</th>
                             </tr>
@@ -194,6 +198,9 @@ export default function AdminQuotasPage() {
                                             <span className={`text-sm font-bold w-8 text-right ${u.usage_percent > 80 ? 'text-rose-500' : 'text-slate-300'}`}>{u.usage_percent}%</span>
                                         </div>
                                     </td>
+                                    <td className="px-6 py-5 text-slate-400 text-xs">
+                                        {u.daily_tokens_used?.toLocaleString() || 0} tok / {u.daily_credit_cap ? `${u.daily_credit_cap} cr` : "n/a"}
+                                    </td>
                                     <td className="px-6 py-5 text-slate-400 text-sm">{u.last_active}</td>
                                     <td className="px-6 py-5 text-right">
                                         <button className="text-rose-500 font-bold text-xs uppercase tracking-widest hover:underline decoration-2 underline-offset-4">
@@ -216,15 +223,16 @@ export default function AdminQuotasPage() {
                             </button>
                         </div>
 
-                        <div className="flex items-center gap-4 bg-slate-900/50 p-4 rounded-xl border border-slate-800">
-                            <div className="size-12 rounded-full bg-admin-primary/20 text-admin-primary flex items-center justify-center font-bold text-xl ring-2 ring-admin-primary/20">
-                                {selectedUser.full_id[4]}
+                            <div className="flex items-center gap-4 bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                                <div className="size-12 rounded-full bg-admin-primary/20 text-admin-primary flex items-center justify-center font-bold text-xl ring-2 ring-admin-primary/20">
+                                    {selectedUser.full_id[4]}
+                                </div>
+                                <div>
+                                    <p className="font-bold text-white text-lg leading-tight">{selectedUser.full_id}</p>
+                                    <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">{selectedUser.plan} Account</p>
+                                    <p className="text-[10px] text-slate-500 mt-1">Credits: {selectedUser.credits_balance ?? "n/a"} used {selectedUser.credits_used_this_period ?? "n/a"}</p>
+                                </div>
                             </div>
-                            <div>
-                                <p className="font-bold text-white text-lg leading-tight">{selectedUser.full_id}</p>
-                                <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">{selectedUser.plan} Account</p>
-                            </div>
-                        </div>
 
                         <div className="space-y-6">
                             <div className="flex flex-col gap-2">

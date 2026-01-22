@@ -326,14 +326,14 @@
                 },
                 "common_mistakes": {
                     "type": "array",
-                    "maxItems": 3,
+                    "maxItems": 1,
                     "items": {
                         "type": "string"
                     }
                 },
                 "next_practice": {
                     "type": "array",
-                    "maxItems": 3,
+                    "maxItems": 1,
                     "items": {
                         "type": "string"
                     }

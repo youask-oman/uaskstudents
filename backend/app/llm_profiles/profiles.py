@@ -11,6 +11,10 @@ class PromptProfile(BaseModel):
     # Direct Content (populated by resolver)
     system_prompt_content: Optional[str] = None
     json_schema_content: Optional[dict] = None
+    system_asset_path: Optional[str] = None
+    schema_asset_path: Optional[str] = None
+    system_asset_key: Optional[str] = None
+    schema_asset_key: Optional[str] = None
     
     max_output_tokens: int
     max_steps: int
@@ -37,6 +41,10 @@ def get_profile_free() -> PromptProfile:
         tier="free",
         system_relative_path="free/system.txt",
         schema_relative_path="free/schema.json",
+        system_asset_path="llm_profiles/free/system.txt",
+        schema_asset_path="llm_profiles/free/schema.json",
+        system_asset_key="free:system",
+        schema_asset_key="free:schema",
         max_output_tokens=800,  # Strict limit for cost control
         max_steps=5,            # Limit reasoning depth
         allow_visuals_only_if_asked=True,

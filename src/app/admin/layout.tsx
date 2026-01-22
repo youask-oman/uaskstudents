@@ -40,6 +40,8 @@ export default function AdminLayout({
         { label: "Subscriptions", href: "/admin/subscriptions", icon: "diamond" },
         { label: "Prompts", href: "/admin/prompts", icon: "terminal" },
         { label: "Performance", href: "/admin/performance", icon: "monitoring" },
+        { label: "Logs", href: "/admin/logs", icon: "receipt_long" },
+        { label: "Data", href: "/admin/data", icon: "table_view" },
     ];
 
     return (

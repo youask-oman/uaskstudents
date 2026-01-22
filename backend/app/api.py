@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Request
 from fastapi.responses import StreamingResponse
-from sqlmodel import Session, select
+from sqlmodel import Session, SQLModel, select
+from sqlalchemy import text as sql_text
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 import uuid
@@ -19,7 +20,7 @@ from app.models import (
     User, ChatSession, ChatMessage, UsageLog, OCRJob,
     Upload, Crop, OCRArtifact, OCRConfirmation,
     CanonicalProblem, CanonicalSolution, UserSavedSolution, Payment, PromoCode,
-    OCRQuestion, OCRChoice, OCRFigure,
+    OCRQuestion, OCRChoice, OCRFigure, OCRAuditEvent,
     VoiceSession, VoiceAudio, VoiceJob, VoiceArtifact, VoiceConfirmation,
     AdminNote, SystemConfig, PromptTemplate, PromptVersion, UserQuotaOverride, SystemErrorEntry,
     School, Plan, Subscription, UsageLedger,
@@ -321,6 +322,21 @@ def validate_math_query(text: str) -> None:
     if not any(re.search(pattern, normalized) for pattern in math_hints):
         raise HTTPException(status_code=400, detail="Input must be a math question.")
 
+
+def _sqlmodel_to_dict(obj: Any) -> Dict[str, Any]:
+    if obj is None:
+        return {}
+    if hasattr(obj, "dict"):
+        data = obj.dict()
+    else:
+        data = dict(getattr(obj, "__dict__", {}))
+    data.pop("_sa_instance_state", None)
+    return data
+
+
+def _sqlmodel_list(items: List[Any]) -> List[Dict[str, Any]]:
+    return [_sqlmodel_to_dict(item) for item in items]
+
 class ChatHistoryItem(BaseModel):
     id: int
     title: str
@@ -450,6 +466,33 @@ class AdminActivityItem(BaseModel):
     status: str
     timestamp: str
 
+class SolveTraceEntry(BaseModel):
+    request_id: Optional[str] = None
+    user_id: Optional[int] = None
+    seat_id: Optional[int] = None
+    plan_key: Optional[str] = None
+    ui_goal: Optional[str] = None
+    ui_style: Optional[str] = None
+    resolved_profile_key: Optional[str] = None
+    resolved_system_file_path: Optional[str] = None
+    resolved_schema_file_path: Optional[str] = None
+    schema_name: Optional[str] = None
+    max_output_tokens_sent: Optional[int] = None
+    model_sent: Optional[str] = None
+    cache_hit: Optional[bool] = None
+    openai_calls_count: Optional[int] = None
+    repair_attempted: Optional[bool] = None
+    prompt_tokens_estimate: Optional[int] = None
+    input_tokens: Optional[int] = None
+    output_tokens: Optional[int] = None
+    cached_tokens: Optional[int] = None
+    deduct_attempted: Optional[Dict[str, bool]] = None
+    deduct_committed: Optional[bool] = None
+    openai_payload: Optional[Dict[str, Any]] = None
+    problem_text: Optional[str] = None
+    error: Optional[str] = None
+    logged_at: Optional[str] = None
+
 class DashboardStatsResponse(BaseModel):
     total_users: int
     daily_requests: int
@@ -496,6 +539,14 @@ class AdminQuotaUserItem(BaseModel):
     usage_percent: int
     last_active: str
     is_banned: bool
+    credits_balance: Optional[float] = None
+    credits_used_this_period: Optional[float] = None
+    daily_credits_used: Optional[float] = None
+    daily_credit_cap: Optional[float] = None
+    daily_tokens_used: Optional[int] = None
+    override_token_limit: Optional[int] = None
+    override_ocr_concurrency: Optional[int] = None
+    override_expires_at: Optional[str] = None
 
 class AdminQuotaListResponse(BaseModel):
     users: List[AdminQuotaUserItem]
@@ -1707,10 +1758,17 @@ async def solve_v3_endpoint(
         SolveResponseV3 with complete solution, plots, and verification
     """
     from app.services.solver_v3 import get_solver_v3
+    from app.services.solve.trace_logger import log_solve_trace
     import base64
     
     # Generate unique Request ID
     request_id = str(uuid.uuid4())
+    requested_mode = body.requested_mode or "minimal"
+    learning_mode = (body.trusted_context or {}).get("learning_mode", "solve")
+    features_used = body.features_used or {}
+    deduct_attempted = {"credits": False, "ocr": False, "voice": False}
+    deduct_committed = False
+    resolved_profile = None
 
     
     # Extract problem text
@@ -1758,6 +1816,13 @@ async def solve_v3_endpoint(
     # --- STUDENT LOCATION CONTEXT INJECTION ---
     # Fetch user to get profile location for curriculum adaptation
     user = session.get(User, user_id)
+    from app.llm_profiles.profile_resolver import ProfileResolver
+    resolved_profile = ProfileResolver.resolve_profile(
+        session,
+        user,
+        requested_mode=requested_mode,
+        learning_mode=learning_mode
+    )
     if user:
         student_context_parts = []
         
@@ -1882,17 +1947,49 @@ async def solve_v3_endpoint(
         # Call Solver V3 (Logic: Only if not cached)
         if not result:
             # --- ENTITLEMENT CHECK & DEBIT ---
+            action_mode = "detailed" if requested_mode == "detailed" else "concise"
             action_req = {
-                "mode": body.mode or "concise",
-                "has_ocr": bool(body.image_url or body.artifact_id),
-                "has_voice": getattr(body, 'has_voice', False),
+                "mode": action_mode,
+                "has_ocr": bool(body.image_url or body.artifact_id or features_used.get("ocr_used")),
+                "has_voice": bool(body.has_voice or features_used.get("voice_used")),
                 "question_hash": question_key or str(hash(problem_text)),
-                "is_make_it_right": getattr(body, 'is_make_it_right', False)
+                "is_make_it_right": getattr(body, "is_make_it_right", False)
+            }
+            deduct_attempted = {
+                "credits": True,
+                "ocr": action_req["has_ocr"],
+                "voice": action_req["has_voice"]
             }
             
             check_result = subscription_service.check_entitlement_and_debit(session, user_id, action_req)
             if not check_result["allowed"]:
-                 raise HTTPException(status_code=402, detail=f"Entitlement Check Failed: {check_result['reason']}")
+                log_solve_trace({
+                    "request_id": request_id,
+                    "user_id": user_id,
+                    "seat_id": None,
+                    "plan_key": resolved_profile.tier if resolved_profile else None,
+                    "ui_goal": learning_mode,
+                    "ui_style": requested_mode,
+                    "resolved_profile_key": f"{resolved_profile.tier.upper().replace('-', '_')}_{resolved_profile.mode.upper()}" if resolved_profile else None,
+                    "resolved_system_file_path": (resolved_profile.system_asset_path if resolved_profile else None) or (resolved_profile.system_relative_path if resolved_profile else None),
+                    "resolved_schema_file_path": (resolved_profile.schema_asset_path if resolved_profile else None) or (resolved_profile.schema_relative_path if resolved_profile else None),
+                    "schema_name": None,
+                    "max_output_tokens_sent": resolved_profile.max_output_tokens if resolved_profile else None,
+                    "model_sent": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                    "cache_hit": bool(was_cached or question_cache_hit),
+                    "openai_calls_count": 0,
+                    "repair_attempted": False,
+                    "prompt_tokens_estimate": None,
+                    "input_tokens": None,
+                    "output_tokens": None,
+                    "cached_tokens": None,
+                    "deduct_attempted": deduct_attempted,
+                    "deduct_committed": False,
+                    "openai_payload": None,
+                    "problem_text": problem_text,
+                    "error": f"entitlement_denied: {check_result.get('reason')}"
+                })
+                raise HTTPException(status_code=402, detail=f"Entitlement Check Failed: {check_result['reason']}")
                  
             # Execute Debit
             sub_id = check_result["subscription"].id
@@ -1901,10 +1998,11 @@ async def solve_v3_endpoint(
                 session, 
                 check_result["subscription"], 
                 debit_cost, 
-                {"action": "solve_v3", "req": action_req}, 
+                {"action": "solve_v3", **action_req}, 
                 request_id
             )
             session.commit()
+            deduct_committed = True
             
             try:
                 solver = get_solver_v3()
@@ -1912,7 +2010,12 @@ async def solve_v3_endpoint(
                     problem_text=problem_text,
                     context=context,
                     trace=trace,
-                    request_id=request_id
+                    request_id=request_id,
+                    user_id=user_id,
+                    db_session=session,
+                    requested_mode=requested_mode,
+                    trusted_context=body.trusted_context,
+                    learning_mode=learning_mode
                 )
             except Exception as e:
                 # REFUND ON EXCEPTION
@@ -2048,13 +2151,92 @@ async def solve_v3_endpoint(
         result["plot_url"] = plot_url
         result["tokens_used"] = tokens_actual
         result["request_id"] = request_id
-        
+
+        telemetry = result.get("telemetry") or result.get("_telemetry") or {}
+        openai_payload = telemetry.get("openai_payload") or {}
+        profile_key = None
+        if resolved_profile:
+            profile_key = f"{resolved_profile.tier.upper().replace('-', '_')}_{resolved_profile.mode.upper()}"
+        plan_key = None
+        if user and user.subscription and user.subscription.plan:
+            plan_key = user.subscription.plan.slug
+        elif resolved_profile:
+            plan_key = resolved_profile.tier
+        effective_max_tokens = None
+        if resolved_profile:
+            effective_max_tokens = min(
+                resolved_profile.max_output_tokens,
+                4000 if learning_mode == "study" else 3000
+            )
+        log_solve_trace({
+            "request_id": request_id,
+            "user_id": user_id,
+            "seat_id": None,
+            "plan_key": plan_key,
+            "ui_goal": learning_mode,
+            "ui_style": requested_mode,
+            "resolved_profile_key": profile_key,
+            "resolved_system_file_path": (resolved_profile.system_asset_path if resolved_profile else None) or (resolved_profile.system_relative_path if resolved_profile else None),
+            "resolved_schema_file_path": (resolved_profile.schema_asset_path if resolved_profile else None) or (resolved_profile.schema_relative_path if resolved_profile else None),
+            "schema_name": openai_payload.get("response_format_schema_name"),
+            "max_output_tokens_sent": effective_max_tokens,
+            "model_sent": telemetry.get("model") or os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+            "cache_hit": bool(was_cached or question_cache_hit),
+            "openai_calls_count": telemetry.get("openai_calls_count", 0),
+            "repair_attempted": telemetry.get("repair_attempted", False),
+            "prompt_tokens_estimate": None,
+            "input_tokens": telemetry.get("input_tokens"),
+            "output_tokens": telemetry.get("output_tokens"),
+            "cached_tokens": telemetry.get("cached_tokens"),
+            "deduct_attempted": deduct_attempted,
+            "deduct_committed": deduct_committed,
+            "openai_payload": openai_payload,
+            "problem_text": problem_text
+        })
+
         return result
     
     except Exception as e:
         print(f"[API_V3_ERROR] Solver V3 failed: {type(e).__name__}: {e}")
         import traceback
         traceback.print_exc()
+        try:
+            profile_key = None
+            if resolved_profile:
+                profile_key = f"{resolved_profile.tier.upper().replace('-', '_')}_{resolved_profile.mode.upper()}"
+            plan_key = None
+            if user and user.subscription and user.subscription.plan:
+                plan_key = user.subscription.plan.slug
+            elif resolved_profile:
+                plan_key = resolved_profile.tier
+            log_solve_trace({
+                "request_id": request_id,
+                "user_id": user_id,
+                "seat_id": None,
+                "plan_key": plan_key,
+                "ui_goal": learning_mode,
+                "ui_style": requested_mode,
+                "resolved_profile_key": profile_key,
+                "resolved_system_file_path": (resolved_profile.system_asset_path if resolved_profile else None) or (resolved_profile.system_relative_path if resolved_profile else None),
+                "resolved_schema_file_path": (resolved_profile.schema_asset_path if resolved_profile else None) or (resolved_profile.schema_relative_path if resolved_profile else None),
+                "schema_name": None,
+                "max_output_tokens_sent": None,
+                "model_sent": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                "cache_hit": bool(was_cached or question_cache_hit),
+                "openai_calls_count": 0,
+                "repair_attempted": False,
+                "prompt_tokens_estimate": None,
+                "input_tokens": None,
+                "output_tokens": None,
+                "cached_tokens": None,
+                "deduct_attempted": deduct_attempted,
+                "deduct_committed": deduct_committed,
+                "openai_payload": None,
+                "problem_text": problem_text,
+                "error": str(e)
+            })
+        except Exception:
+            pass
         raise HTTPException(
             status_code=500,
             detail=f"Solver V3 failed: {str(e)}"
@@ -2073,6 +2255,7 @@ async def solve_v3_stream_endpoint(
     """
     from app.services.solver_v3 import get_solver_v3
     from app.services.solve.question_identity_service import question_identity_service
+    from app.services.solve.trace_logger import log_solve_trace
     import base64
     from pathlib import Path
 
@@ -2080,24 +2263,32 @@ async def solve_v3_stream_endpoint(
         start_total = time.perf_counter()
         request_id = str(uuid.uuid4())
         
-        # Meta Event (Part A1)
-        meta_data = {
-            "request_id": request_id,
-            "session_id": None, # Will be set after creation
-            "message_id": None,
-            "model": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-4o"),
-            "max_output_tokens": 900, # default
-            "mode": body.mode or "general"
-        }
-        
-        # Part B1: Configurable caps (High limits for complex V3 schema)
-        caps = {"general": 8000, "verbose": 12000, "debug": 10000}
-        max_output_tokens = caps.get(body.mode, 8000)
-        meta_data["type"] = "meta"
-        yield f"event: meta\ndata: {json.dumps(meta_data)}\n\n"
+        requested_mode = body.requested_mode or "minimal"
+        learning_mode = (body.trusted_context or {}).get("learning_mode", "solve")
+        deduct_attempted = {"credits": False, "ocr": False, "voice": False}
+        deduct_committed = False
 
-        # Stage: Preparing request... (Part A2)
-        yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': 'Preparing request...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
+        # Resolve profile for correct prompt/schema/tokens
+        from app.llm_profiles.profile_resolver import ProfileResolver
+        user_obj = session.get(User, user_id)
+        profile = ProfileResolver.resolve_profile(
+            session,
+            user_obj,
+            requested_mode=requested_mode,
+            learning_mode=learning_mode
+        )
+        print(f"[SOLVER_V3_STREAM] Resolved Profile: Tier={profile.tier}, Mode={profile.mode}, MaxTokens={profile.max_output_tokens}")
+        profile_key = f"{profile.tier.upper().replace('-', '_')}_{profile.mode.upper()}"
+        plan_key = None
+        if user_obj and user_obj.subscription and user_obj.subscription.plan:
+            plan_key = user_obj.subscription.plan.slug
+        else:
+            plan_key = profile.tier
+
+        effective_max_tokens = min(
+            profile.max_output_tokens,
+            4000 if learning_mode == "study" else 3000
+        )
 
         problem_text = (
             body.confirmed_text or
@@ -2107,15 +2298,142 @@ async def solve_v3_stream_endpoint(
         ).strip()
 
         if not problem_text:
-            print(f"[SOLVER_V3_STREAM] ⚠️ No problem text found in request body")
+            print("[SOLVER_V3_STREAM] No problem text found in request body")
+            log_solve_trace({
+                "request_id": request_id,
+                "user_id": user_id,
+                "seat_id": None,
+                "plan_key": plan_key,
+                "ui_goal": learning_mode,
+                "ui_style": requested_mode,
+                "resolved_profile_key": profile_key,
+                "resolved_system_file_path": profile.system_asset_path or profile.system_relative_path,
+                "resolved_schema_file_path": profile.schema_asset_path or profile.schema_relative_path,
+                "schema_name": None,
+                "max_output_tokens_sent": effective_max_tokens,
+                "model_sent": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                "cache_hit": False,
+                "openai_calls_count": 0,
+                "repair_attempted": False,
+                "prompt_tokens_estimate": None,
+                "input_tokens": None,
+                "output_tokens": None,
+                "cached_tokens": None,
+                "deduct_attempted": deduct_attempted,
+                "deduct_committed": deduct_committed,
+                "openai_payload": None,
+                "problem_text": problem_text,
+                "error": "no_input"
+            })
             yield f"event: done\ndata: {json.dumps({'ok': False, 'error': {'code': 'no_input', 'message': 'No input provided'}})}\n\n"
             return
+
+        # Entitlement check + debit (credits/OCR/voice)
+        action_mode = "detailed" if requested_mode == "detailed" else "concise"
+        features_used = body.features_used or {}
+        action_req = {
+            "mode": action_mode,
+            "has_ocr": bool(body.image_url or body.artifact_id or features_used.get("ocr_used")),
+            "has_voice": bool(body.has_voice or features_used.get("voice_used")),
+            "question_hash": str(hash(problem_text)),
+            "is_make_it_right": getattr(body, "is_make_it_right", False)
+        }
+        deduct_attempted = {
+            "credits": True,
+            "ocr": action_req["has_ocr"],
+            "voice": action_req["has_voice"]
+        }
+
+        check_result = subscription_service.check_entitlement_and_debit(session, user_id, action_req)
+        if not check_result["allowed"]:
+            log_solve_trace({
+                "request_id": request_id,
+                "user_id": user_id,
+                "seat_id": None,
+                "plan_key": plan_key,
+                "ui_goal": learning_mode,
+                "ui_style": requested_mode,
+                "resolved_profile_key": profile_key,
+                "resolved_system_file_path": profile.system_asset_path or profile.system_relative_path,
+                "resolved_schema_file_path": profile.schema_asset_path or profile.schema_relative_path,
+                "schema_name": None,
+                "max_output_tokens_sent": effective_max_tokens,
+                "model_sent": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                "cache_hit": False,
+                "openai_calls_count": 0,
+                "repair_attempted": False,
+                "prompt_tokens_estimate": None,
+                "input_tokens": None,
+                "output_tokens": None,
+                "cached_tokens": None,
+                "deduct_attempted": deduct_attempted,
+                "deduct_committed": False,
+                "openai_payload": None,
+                "problem_text": problem_text,
+                "error": f"entitlement_denied: {check_result.get('reason')}"
+            })
+            raise HTTPException(status_code=402, detail=f"Entitlement Check Failed: {check_result['reason']}")
+
+        sub_id = check_result["subscription"].id
+        debit_cost = check_result["cost"]
+        subscription_service.execute_debit(
+            session,
+            check_result["subscription"],
+            debit_cost,
+            {"action": "solve_v3_stream", **action_req},
+            request_id
+        )
+        session.commit()
+        deduct_committed = True
+
+        # Meta Event (Part A1)
+        meta_data = {
+            "request_id": request_id,
+            "session_id": None, # Will be set after creation
+            "message_id": None,
+            "model": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-4o"),
+            "max_output_tokens": effective_max_tokens,
+            "mode": requested_mode
+        }
         
+        max_output_tokens = effective_max_tokens
+        meta_data["type"] = "meta"
+        yield f"event: meta\ndata: {json.dumps(meta_data)}\n\n"
+
+        # Stage: Preparing request... (Part A2)
+        yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': 'Preparing request...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
+
         print(f"[SOLVER_V3_STREAM] Recv: {problem_text[:50]}... (Mode: {body.mode}, tokens: {max_output_tokens})")
 
         try:
             validate_math_query(problem_text)
         except HTTPException as e:
+            log_solve_trace({
+                "request_id": request_id,
+                "user_id": user_id,
+                "seat_id": None,
+                "plan_key": plan_key,
+                "ui_goal": learning_mode,
+                "ui_style": requested_mode,
+                "resolved_profile_key": profile_key,
+                "resolved_system_file_path": profile.system_asset_path or profile.system_relative_path,
+                "resolved_schema_file_path": profile.schema_asset_path or profile.schema_relative_path,
+                "schema_name": None,
+                "max_output_tokens_sent": effective_max_tokens,
+                "model_sent": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                "cache_hit": False,
+                "openai_calls_count": 0,
+                "repair_attempted": False,
+                "prompt_tokens_estimate": None,
+                "input_tokens": None,
+                "output_tokens": None,
+                "cached_tokens": None,
+                "deduct_attempted": deduct_attempted,
+                "deduct_committed": deduct_committed,
+                "openai_payload": None,
+                "problem_text": problem_text,
+                "error": f"validation_error: {e.detail}"
+            })
             yield f"event: done\ndata: {json.dumps({'ok': False, 'error': {'code': 'validation_error', 'message': e.detail}})}\n\n"
             return
 
@@ -2169,7 +2487,17 @@ async def solve_v3_stream_endpoint(
         yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': 'Waiting for model...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
 
         try:
-            async for chunk in solver.solve_stream(problem_text, context, trace=True, request_id=request_id, max_output_tokens=max_output_tokens):
+            async for chunk in solver.solve_stream(
+                problem_text,
+                context,
+                trace=True,
+                request_id=request_id,
+                max_output_tokens=max_output_tokens,
+                system_prompt=profile.system_prompt_content,
+                json_schema_config=profile.json_schema_content,
+                trusted_context=body.trusted_context,
+                requested_mode=requested_mode
+            ):
                 if chunk["type"] == "delta":
                     full_content += chunk["text"]
                     yield f"event: delta\ndata: {json.dumps({'type': 'delta', 'text': chunk['text']})}\n\n"
@@ -2178,6 +2506,33 @@ async def solve_v3_stream_endpoint(
                 elif chunk["type"] == "meta" and chunk.get("truncated"):
                     yield f"event: meta\ndata: {json.dumps({'type': 'meta', 'truncated': True})}\n\n"
                 elif chunk["type"] == "error":
+                    subscription_service.refund_credits(session, sub_id, debit_cost, f"Stream Error: {chunk['error']}", request_id)
+                    log_solve_trace({
+                        "request_id": request_id,
+                        "user_id": user_id,
+                        "seat_id": None,
+                        "plan_key": plan_key,
+                        "ui_goal": learning_mode,
+                        "ui_style": requested_mode,
+                        "resolved_profile_key": profile_key,
+                        "resolved_system_file_path": profile.system_asset_path or profile.system_relative_path,
+                        "resolved_schema_file_path": profile.schema_asset_path or profile.schema_relative_path,
+                        "schema_name": (openai_telemetry.get("openai_payload") or {}).get("response_format_schema_name"),
+                        "max_output_tokens_sent": effective_max_tokens,
+                        "model_sent": openai_telemetry.get("model") or os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                        "cache_hit": False,
+                        "openai_calls_count": openai_telemetry.get("openai_calls_count", 0),
+                        "repair_attempted": False,
+                        "prompt_tokens_estimate": None,
+                        "input_tokens": openai_telemetry.get("input_tokens"),
+                        "output_tokens": openai_telemetry.get("output_tokens"),
+                        "cached_tokens": openai_telemetry.get("cached_tokens"),
+                        "deduct_attempted": deduct_attempted,
+                        "deduct_committed": deduct_committed,
+                        "openai_payload": openai_telemetry.get("openai_payload"),
+                        "problem_text": problem_text,
+                        "error": str(chunk.get("error"))
+                    })
                     yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': False, 'error': chunk['error']})}\n\n"
                     return
 
@@ -2232,6 +2587,8 @@ async def solve_v3_stream_endpoint(
                     final_data["_truncation_warning"] = "Response was truncated due to output token limit"
                 print(f"[SOLVER_V3_STREAM] ✅ Normalized. Steps: {len(final_data.get('steps', []))}")
             except Exception as e:
+                # Refund on failure
+                subscription_service.refund_credits(session, sub_id, debit_cost, f"Stream Error: {str(e)}", request_id)
                 print(f"[SOLVER_V3_STREAM] ❌ All parsing failed. Error: {e}")
                 print(f"[SOLVER_V3_STREAM] Partial content (first 500 chars): {full_content[:500]}")
                 # Create minimal valid structure even on complete failure
@@ -2295,6 +2652,31 @@ async def solve_v3_stream_endpoint(
             # Final Telemetry Event
             openai_telemetry["type"] = "telemetry"
             openai_telemetry["latency_ms_total"] = int((time.perf_counter() - start_total) * 1000)
+            log_solve_trace({
+                "request_id": request_id,
+                "user_id": user_id,
+                "seat_id": None,
+                "plan_key": plan_key,
+                "ui_goal": learning_mode,
+                "ui_style": requested_mode,
+                "resolved_profile_key": profile_key,
+                "resolved_system_file_path": profile.system_asset_path or profile.system_relative_path,
+                "resolved_schema_file_path": profile.schema_asset_path or profile.schema_relative_path,
+                "schema_name": (openai_telemetry.get("openai_payload") or {}).get("response_format_schema_name"),
+                "max_output_tokens_sent": effective_max_tokens,
+                "model_sent": openai_telemetry.get("model") or os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                "cache_hit": False,
+                "openai_calls_count": openai_telemetry.get("openai_calls_count", 0),
+                "repair_attempted": False,
+                "prompt_tokens_estimate": None,
+                "input_tokens": openai_telemetry.get("input_tokens"),
+                "output_tokens": openai_telemetry.get("output_tokens"),
+                "cached_tokens": openai_telemetry.get("cached_tokens"),
+                "deduct_attempted": deduct_attempted,
+                "deduct_committed": deduct_committed,
+                "openai_payload": openai_telemetry.get("openai_payload"),
+                "problem_text": problem_text
+            })
             yield f"event: telemetry\ndata: {json.dumps(openai_telemetry)}\n\n"
 
             # Done Event
@@ -2305,6 +2687,32 @@ async def solve_v3_stream_endpoint(
             traceback.print_exc()
             print(f"[SOLVER_V3_STREAM] ❌ FATAL ERROR: {str(e)}")
             session.commit()
+            log_solve_trace({
+                "request_id": request_id,
+                "user_id": user_id,
+                "seat_id": None,
+                "plan_key": plan_key,
+                "ui_goal": learning_mode,
+                "ui_style": requested_mode,
+                "resolved_profile_key": profile_key,
+                "resolved_system_file_path": profile.system_asset_path or profile.system_relative_path,
+                "resolved_schema_file_path": profile.schema_asset_path or profile.schema_relative_path,
+                "schema_name": (openai_telemetry.get("openai_payload") or {}).get("response_format_schema_name"),
+                "max_output_tokens_sent": effective_max_tokens,
+                "model_sent": openai_telemetry.get("model") or os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                "cache_hit": False,
+                "openai_calls_count": openai_telemetry.get("openai_calls_count", 0),
+                "repair_attempted": False,
+                "prompt_tokens_estimate": None,
+                "input_tokens": openai_telemetry.get("input_tokens"),
+                "output_tokens": openai_telemetry.get("output_tokens"),
+                "cached_tokens": openai_telemetry.get("cached_tokens"),
+                "deduct_attempted": deduct_attempted,
+                "deduct_committed": deduct_committed,
+                "openai_payload": openai_telemetry.get("openai_payload"),
+                "problem_text": problem_text,
+                "error": str(e)
+            })
             yield f"event: done\ndata: {json.dumps({'ok': False, 'error': {'code': 'internal_error', 'message': str(e)}})}\n\n"
 
     return StreamingResponse(
@@ -3009,6 +3417,123 @@ async def admin_get_user_detail(user_id: int, db: Session = Depends(get_session)
         ]
     )
 
+
+@api_router.get("/admin/users/{user_id}/full", response_model=Dict[str, Any])
+async def admin_get_user_full(
+    user_id: int,
+    sessions_limit: int = Query(50, ge=1, le=500),
+    messages_limit: int = Query(200, ge=1, le=2000),
+    ledger_limit: int = Query(100, ge=1, le=2000),
+    ocr_limit: int = Query(200, ge=1, le=2000),
+    voice_limit: int = Query(200, ge=1, le=2000),
+    db: Session = Depends(get_session)
+):
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    subscription = db.exec(select(Subscription).where(Subscription.user_id == user_id)).first()
+    plan = subscription.plan if subscription else None
+
+    notes = db.exec(select(AdminNote).where(AdminNote.user_id == user_id).order_by(AdminNote.created_at.desc())).all()
+    usage_logs = db.exec(select(UsageLog).where(UsageLog.user_id == user_id).order_by(UsageLog.timestamp.desc()).limit(ledger_limit)).all()
+    payments = db.exec(select(Payment).where(Payment.user_id == user_id).order_by(Payment.created_at.desc()).limit(ledger_limit)).all()
+    overrides = db.exec(select(UserQuotaOverride).where(UserQuotaOverride.user_id == user_id).order_by(UserQuotaOverride.created_at.desc())).all()
+
+    ledger_entries = []
+    if subscription:
+        ledger_entries = db.exec(
+            select(UsageLedger)
+            .where(UsageLedger.subscription_id == subscription.id)
+            .order_by(UsageLedger.created_at.desc())
+            .limit(ledger_limit)
+        ).all()
+
+    sessions = db.exec(
+        select(ChatSession)
+        .where(ChatSession.user_id == user_id)
+        .order_by(ChatSession.created_at.desc())
+        .limit(sessions_limit)
+    ).all()
+    session_ids = [s.id for s in sessions]
+    messages = []
+    if session_ids:
+        messages = db.exec(
+            select(ChatMessage)
+            .where(ChatMessage.session_id.in_(session_ids))
+            .order_by(ChatMessage.created_at.desc())
+            .limit(messages_limit)
+        ).all()
+
+    uploads = db.exec(select(Upload).where(Upload.user_id == user_id).order_by(Upload.created_at.desc()).limit(ocr_limit)).all()
+    upload_ids = [u.id for u in uploads]
+    crops = []
+    if upload_ids:
+        crops = db.exec(select(Crop).where(Crop.upload_id.in_(upload_ids)).limit(ocr_limit)).all()
+    crop_ids = [c.id for c in crops]
+    ocr_jobs = db.exec(select(OCRJob).where(OCRJob.user_id == user_id).order_by(OCRJob.created_at.desc()).limit(ocr_limit)).all()
+    artifacts = []
+    if crop_ids:
+        artifacts = db.exec(select(OCRArtifact).where(OCRArtifact.crop_id.in_(crop_ids)).limit(ocr_limit)).all()
+    artifact_ids = [a.id for a in artifacts]
+    questions = []
+    figures = []
+    confirmations = db.exec(select(OCRConfirmation).where(OCRConfirmation.user_id == user_id).order_by(OCRConfirmation.created_at.desc()).limit(ocr_limit)).all()
+    audit_events = db.exec(select(OCRAuditEvent).where(OCRAuditEvent.user_id == user_id).order_by(OCRAuditEvent.created_at.desc()).limit(ocr_limit)).all()
+    if artifact_ids:
+        questions = db.exec(select(OCRQuestion).where(OCRQuestion.artifact_id.in_(artifact_ids)).limit(ocr_limit)).all()
+        figures = db.exec(select(OCRFigure).where(OCRFigure.artifact_id.in_(artifact_ids)).limit(ocr_limit)).all()
+    question_ids = [q.id for q in questions]
+    choices = []
+    if question_ids:
+        choices = db.exec(select(OCRChoice).where(OCRChoice.question_id.in_(question_ids)).limit(ocr_limit)).all()
+
+    voice_sessions = db.exec(select(VoiceSession).where(VoiceSession.user_id == user_id).order_by(VoiceSession.created_at.desc()).limit(voice_limit)).all()
+    voice_session_ids = [s.id for s in voice_sessions]
+    voice_audios = []
+    voice_jobs = []
+    voice_artifacts = []
+    voice_confirmations = []
+    if voice_session_ids:
+        voice_audios = db.exec(select(VoiceAudio).where(VoiceAudio.voice_session_id.in_(voice_session_ids)).limit(voice_limit)).all()
+        voice_jobs = db.exec(select(VoiceJob).where(VoiceJob.voice_session_id.in_(voice_session_ids)).limit(voice_limit)).all()
+    voice_job_ids = [j.id for j in voice_jobs]
+    if voice_job_ids:
+        voice_artifacts = db.exec(select(VoiceArtifact).where(VoiceArtifact.job_id.in_(voice_job_ids)).limit(voice_limit)).all()
+    voice_artifact_ids = [a.id for a in voice_artifacts]
+    if voice_artifact_ids:
+        voice_confirmations = db.exec(select(VoiceConfirmation).where(VoiceConfirmation.artifact_id.in_(voice_artifact_ids)).limit(voice_limit)).all()
+
+    saved_solutions = db.exec(select(UserSavedSolution).where(UserSavedSolution.user_id == user_id)).all()
+
+    return {
+        "user": _sqlmodel_to_dict(user),
+        "subscription": _sqlmodel_to_dict(subscription),
+        "plan": _sqlmodel_to_dict(plan),
+        "usage_ledger": _sqlmodel_list(ledger_entries),
+        "usage_logs": _sqlmodel_list(usage_logs),
+        "payments": _sqlmodel_list(payments),
+        "quota_overrides": _sqlmodel_list(overrides),
+        "admin_notes": _sqlmodel_list(notes),
+        "sessions": _sqlmodel_list(sessions),
+        "messages": _sqlmodel_list(messages),
+        "uploads": _sqlmodel_list(uploads),
+        "crops": _sqlmodel_list(crops),
+        "ocr_jobs": _sqlmodel_list(ocr_jobs),
+        "ocr_artifacts": _sqlmodel_list(artifacts),
+        "ocr_questions": _sqlmodel_list(questions),
+        "ocr_choices": _sqlmodel_list(choices),
+        "ocr_figures": _sqlmodel_list(figures),
+        "ocr_confirmations": _sqlmodel_list(confirmations),
+        "ocr_audit_events": _sqlmodel_list(audit_events),
+        "voice_sessions": _sqlmodel_list(voice_sessions),
+        "voice_audios": _sqlmodel_list(voice_audios),
+        "voice_jobs": _sqlmodel_list(voice_jobs),
+        "voice_artifacts": _sqlmodel_list(voice_artifacts),
+        "voice_confirmations": _sqlmodel_list(voice_confirmations),
+        "saved_solutions": _sqlmodel_list(saved_solutions)
+    }
+
 @api_router.patch("/admin/users/{user_id}")
 async def admin_update_user(user_id: int, req: AdminUserUpdateRequest, db: Session = Depends(get_session)):
     """Admin only: Update user subscription or role"""
@@ -3234,6 +3759,53 @@ async def admin_get_dashboard_stats(db: Session = Depends(get_session)):
         system_errors=system_errors
     )
 
+@api_router.get("/admin/solve-traces", response_model=List[SolveTraceEntry])
+async def admin_get_solve_traces(
+    limit: int = Query(100, ge=1, le=1000)
+):
+    from app.services.solve.trace_logger import TRACE_LOG_PATH
+    if not TRACE_LOG_PATH.exists():
+        return []
+    try:
+        lines = TRACE_LOG_PATH.read_text(encoding="utf-8").splitlines()
+    except Exception:
+        return []
+    trimmed = lines[-limit:]
+    entries: List[Dict[str, Any]] = []
+    for line in trimmed:
+        try:
+            entries.append(json.loads(line))
+        except Exception:
+            continue
+    return entries
+
+
+@api_router.get("/admin/db/tables", response_model=List[str])
+async def admin_list_db_tables():
+    return sorted(list(SQLModel.metadata.tables.keys()))
+
+
+@api_router.get("/admin/db/table/{table_name}", response_model=List[Dict[str, Any]])
+async def admin_get_db_table(
+    table_name: str,
+    limit: int = Query(200, ge=1, le=2000),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_session)
+):
+    table = SQLModel.metadata.tables.get(table_name)
+    if not table:
+        raise HTTPException(status_code=404, detail="Table not found")
+    if table.schema:
+        qualified_name = f"\"{table.schema}\".\"{table.name}\""
+    else:
+        qualified_name = f"\"{table.name}\""
+    try:
+        query = sql_text(f"SELECT * FROM {qualified_name} LIMIT :limit OFFSET :offset")
+        rows = db.exec(query, {"limit": limit, "offset": offset}).all()
+        return [dict(row._mapping) for row in rows]
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to read table {table_name}: {exc}")
+
 @api_router.get("/admin/stats/model-routing", response_model=ModelRoutingResponse)
 async def admin_get_model_routing(db: Session = Depends(get_session)):
     """Admin only: Get model distribution data"""
@@ -3263,13 +3835,51 @@ async def admin_get_quotas(db: Session = Depends(get_session)):
     
     users = db.exec(select(User).limit(50)).all()
     quota_items = []
+    daily_active_holders = 0
+    total_daily_tokens = 0
+    total_daily_credits_used = 0.0
+    total_daily_credit_cap = 0.0
     
     for u in users:
-        # Calculate daily usage %
-        # Assuming 1M tokens/month -> approx 33k/day
-        daily_limit = 33333
-        daily_usage = sum([l.tokens_used for l in db.exec(select(UsageLog).where(UsageLog.user_id == u.id, UsageLog.timestamp >= last_24h)).all()])
-        usage_pct = int((daily_usage / daily_limit) * 100) if daily_limit > 0 else 0
+        subscription = db.exec(select(Subscription).where(Subscription.user_id == u.id)).first()
+        plan = subscription.plan if subscription else None
+        plan_features = plan.features or {} if plan else {}
+        daily_credit_cap = float(plan_features.get("daily_credit_cap", 0)) if plan_features else 0.0
+
+        daily_usage_logs = db.exec(
+            select(UsageLog).where(UsageLog.user_id == u.id, UsageLog.timestamp >= last_24h)
+        ).all()
+        daily_tokens = sum([l.tokens_used for l in daily_usage_logs])
+        total_daily_tokens += daily_tokens
+
+        if daily_usage_logs:
+            daily_active_holders += 1
+
+        if subscription:
+            daily_ledger = db.exec(
+                select(UsageLedger)
+                .where(UsageLedger.subscription_id == subscription.id)
+                .where(UsageLedger.transaction_type == "DEBIT")
+                .where(UsageLedger.created_at >= last_24h)
+            ).all()
+            daily_credits_used = sum([l.amount for l in daily_ledger])
+        else:
+            daily_credits_used = 0.0
+
+        total_daily_credits_used += daily_credits_used
+        if daily_credit_cap > 0:
+            total_daily_credit_cap += daily_credit_cap
+
+        override = db.exec(select(UserQuotaOverride).where(UserQuotaOverride.user_id == u.id)).first()
+        override_token_limit = override.token_limit if override else None
+        override_ocr_concurrency = override.ocr_concurrency if override else None
+        override_expires_at = override.expires_at.isoformat() if override and override.expires_at else None
+
+        usage_pct = 0
+        if override_token_limit and override_token_limit > 0:
+            usage_pct = int((daily_tokens / override_token_limit) * 100)
+        elif daily_credit_cap > 0:
+            usage_pct = int((daily_credits_used / daily_credit_cap) * 100)
         
         last_active = (u.last_active_at or u.created_at or now)
         diff = now - last_active
@@ -3281,18 +3891,29 @@ async def admin_get_quotas(db: Session = Depends(get_session)):
             id=u.id,
             full_id=f"USR-{u.id}",
             plan=u.subscription_tier.capitalize(),
-            usage_percent=min(usage_pct, 100),
+            usage_percent=min(usage_pct, 100) if usage_pct > 0 else 0,
             last_active=active_str,
-            is_banned=u.subscription_status == "expired"
+            is_banned=u.subscription_status == "expired",
+            credits_balance=subscription.credits_balance if subscription else None,
+            credits_used_this_period=subscription.credits_used_this_period if subscription else None,
+            daily_credits_used=daily_credits_used,
+            daily_credit_cap=daily_credit_cap or None,
+            daily_tokens_used=daily_tokens,
+            override_token_limit=override_token_limit,
+            override_ocr_concurrency=override_ocr_concurrency,
+            override_expires_at=override_expires_at
         ))
     
-    total_tokens_24h = sum([l.tokens_used for l in db.exec(select(UsageLog).where(UsageLog.timestamp >= last_24h)).all()])
+    total_tokens_24h = total_daily_tokens
+    global_consumption = 0.0
+    if total_daily_credit_cap > 0:
+        global_consumption = min((total_daily_credits_used / total_daily_credit_cap) * 100, 100.0)
     
     return AdminQuotaListResponse(
         users=quota_items,
         total_users=len(db.exec(select(User.id)).all()),
-        global_consumption=72.4, # Mock
-        daily_active_holders=14205, # Mock
+        global_consumption=round(global_consumption, 1),
+        daily_active_holders=daily_active_holders,
         tokens_burned_24h=f"{total_tokens_24h/1_000_000:.1f}M"
     )
 

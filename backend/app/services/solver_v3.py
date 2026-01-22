@@ -75,10 +75,13 @@ class SolverV3:
             "validation_failures_count": 0,
             "plot_attempted": False,
             "plot_generated": False,
-            "debit_status": "none"
+            "debit_status": "none",
+            "repair_attempted": False,
+            "openai_calls_count": 0,
+            "openai_payload": None
         }
         
-        # If no DB session provided (backwards compat?), we can't do advanced resolution/accounting.
+        # If no DB session provided (backwards compat[ERROR]), we can't do advanced resolution/accounting.
         # But for V3 strict we expect db_session.
         
         if trace:
@@ -131,7 +134,7 @@ class SolverV3:
                 cost_reason = f"Solve ({profile.mode})"
                 cost = 1.0 # Base cost
                 if profile.mode == "detailed":
-                    cost = 1.5 # Example multiplier? Or driven by plan config?
+                    cost = 1.5 # Example multiplier[ERROR] Or driven by plan config[ERROR]
                     # Ideally ProfileResolver provided a multiplier or we use Plan fields.
                     # Implementing simple logic: 1 credit per solve for now unless otherwise specified.
                 
@@ -159,7 +162,7 @@ class SolverV3:
             # Wrap for OpenAI structured output strict mode
             if isinstance(json_schema_config, dict):
                  # Assume it's the inner schema. We need the wrapper.
-                 # Or did loader return full config? Loader returns raw JSON content.
+                 # Or did loader return full config[ERROR] Loader returns raw JSON content.
                  # Usually that's just the { "type": "object", ... }
                  # We need to wrap it.
                  openai_schema_wrapper = {
@@ -198,6 +201,8 @@ class SolverV3:
                 telemetry["output_tokens"] = llm_tokens.get("output", 0)
                 telemetry["total_tokens"] = llm_tokens.get("total", 0)
                 telemetry["cached_tokens"] = llm_tokens.get("cached", None)
+                telemetry["openai_payload"] = llm_tokens.get("payload")
+                telemetry["openai_calls_count"] = llm_tokens.get("openai_calls", 1)
 
             except Exception as e:
                 # Refund logic
@@ -209,8 +214,8 @@ class SolverV3:
             # Step 4: Map Minimal Response (if needed)
             # The ProfileResolver should tell us if mapping is needed, or we rely on mode="minimal"
             # AND the fact that the schema used was minimal.
-            # Minimal schema usually doesn't match canonical V3 fully? 
-            # Or does minimal schema match V3 structure but with missing fields?
+            # Minimal schema usually doesn't match canonical V3 fully[ERROR] 
+            # Or does minimal schema match V3 structure but with missing fields[ERROR]
             # Our `map_minimal_to_canonical` takes `MinimalSolveResponse` and makes `SolveResponseV3`.
             # We assume if mode="minimal", we must map.
             
@@ -248,12 +253,22 @@ class SolverV3:
             if not validation.valid:
                 telemetry["validation_failures_count"] += 1
                 if trace:
-                    print(f"[SOLVER_V3] ⚠️ Validation failed ({len(validation.errors)} errors)")
+                    print(f"[SOLVER_V3] [WARN] Validation failed ({len(validation.errors)} errors)")
                 
                 # Step 4: Repair Loop
                 telemetry["repair_reason"] = f"{len(validation.errors)} validation errors"
+                telemetry["repair_attempted"] = True
+                telemetry["openai_calls_count"] = telemetry.get("openai_calls_count", 0) + 1
                 response_data = await self._repair_response(
-                    problem_text, context, system_prompt, response_data, validation, trace=trace
+                    problem_text,
+                    context,
+                    system_prompt,
+                    response_data,
+                    validation,
+                    json_schema_config=openai_schema_wrapper,
+                    max_output_tokens=effective_max_tokens,
+                    requested_mode=requested_mode,
+                    trace=trace
                 )
                 telemetry["repaired"] = response_data.get("_repaired", False)
                 
@@ -261,7 +276,7 @@ class SolverV3:
                 validation = validate_response(response_data, strict=True)
                 if not validation.valid:
                     if trace:
-                        print(f"[SOLVER_V3] ❌ Repair failed")
+                        print(f"[SOLVER_V3] [ERROR] Repair failed")
                     return self._handle_error(problem_text, validation.errors, "validation_failed_after_repair", telemetry, start_time_perf)
 
             telemetry["validated"] = True
@@ -290,7 +305,7 @@ class SolverV3:
 
         except Exception as e:
             if trace:
-                print(f"[SOLVER_V3] ❌ FATAL: {e}")
+                print(f"[SOLVER_V3] [ERROR] FATAL: {e}")
                 import traceback
                 traceback.print_exc()
             return self._handle_error(problem_text, str(e), "fatal_error", telemetry, start_time_perf)
@@ -344,7 +359,11 @@ class SolverV3:
         context: str = "",
         trace: bool = False,
         request_id: str = None,
-        max_output_tokens: int = 900
+        max_output_tokens: int = 900,
+        system_prompt: Optional[str] = None,
+        json_schema_config: Optional[Dict[str, Any]] = None,
+        trusted_context: Optional[Dict[str, Any]] = None,
+        requested_mode: str = "minimal"
     ) -> AsyncIterator[Dict[str, Any]]:
         """
         Streamed Math Solver V3 using OpenAI Structured Outputs.
@@ -362,12 +381,38 @@ class SolverV3:
             "latency_ms_openai": 0,
             "truncated": False,
             "validated": False,
-            "repaired": False
+            "repaired": False,
+            "openai_calls_count": 0,
+            "openai_payload": None
         }
 
         try:
-            system_prompt = get_prompt("solver_system", "v3")
-            user_message = self._build_user_message(problem_text, context)
+            resolved_system_prompt = system_prompt or get_prompt("solver_system", "v3")
+            if isinstance(json_schema_config, dict):
+                schema_wrapper = {
+                    "name": "solve_response_v3",
+                    "strict": True,
+                    "schema": deref_json_schema(json_schema_config)
+                }
+            else:
+                schema_wrapper = {
+                    "name": "solve_response_v3",
+                    "strict": True,
+                    "schema": deref_json_schema(get_json_schema_for_openai_v3())
+                }
+
+            user_message = self._build_user_message(
+                problem_text,
+                context,
+                trusted_context=trusted_context,
+                requested_mode=requested_mode
+            )
+            telemetry["openai_payload"] = {
+                "response_format_schema_name": schema_wrapper.get("name", "solve_response_v3"),
+                "max_output_tokens": max_output_tokens,
+                "system_message_length": len(resolved_system_prompt or ""),
+                "user_message_length": len(user_message or "")
+            }
             
             # Implementation of Retries with Exponential Backoff (Part G1)
             max_retries = 3
@@ -376,21 +421,18 @@ class SolverV3:
             while current_retry <= max_retries:
                 try:
                     llm_start_perf = time.perf_counter()
+                    telemetry["openai_calls_count"] += 1
                     
                     # Note: Structured Outputs with Streaming works best with Chat Completions
                     params = {
                         "model": self._model,
                         "messages": [
-                            {"role": "system", "content": system_prompt},
+                            {"role": "system", "content": resolved_system_prompt},
                             {"role": "user", "content": user_message}
                         ],
                         "response_format": {
                             "type": "json_schema",
-                            "json_schema": {
-                                "name": "solve_response_v3",
-                                "strict": True,
-                                "schema": deref_json_schema(get_json_schema_for_openai_v3())
-                            }
+                            "json_schema": schema_wrapper
                         },
                         "stream": True,
                         "stream_options": {"include_usage": True},
@@ -440,7 +482,7 @@ class SolverV3:
 
         except Exception as e:
             if trace:
-                print(f"[SOLVER_V3_STREAM] ❌ FATAL: {e}")
+                print(f"[SOLVER_V3_STREAM] [ERROR] FATAL: {e}")
             yield {"type": "error", "error": {"code": "fatal", "message": str(e)}}
 
     def _build_user_message(
@@ -502,60 +544,63 @@ class SolverV3:
         if trace:
             print(f"[SOLVER_DEBUG] _call_llm_with_schema user_message[:100]: {user_message[:100]}...")
         tokens = {"input": 0, "output": 0, "total": 0, "cached": None}
+        schema_name = None
+        if isinstance(json_schema_config, dict):
+            schema_name = json_schema_config.get("name")
         
         # Check model type for API method
         if "gpt-5" in self._model.lower():
-             # Use client.responses.create for gpt-5 access
-             params = {
+            # Use client.responses.create for gpt-5 access
+            verbosity = "low" if requested_mode == "minimal" else "high"
+            params = {
                 "model": self._model,
                 "input": [
                     {"role": "system", "content": [{"type": "input_text", "text": system_prompt}]},
                     {"role": "user", "content": [{"type": "input_text", "text": user_message}]}
                 ],
                 "text": {
-                    "verbosity": "high",
+                    "verbosity": verbosity,
                     "format": {
                         "type": "json_schema",
                         "json_schema": json_schema_config
                     }
                 },
                 "max_output_tokens": max_output_tokens
-             }
-             try:
-                 response = await self.client.responses.create(**params)
-                 
-                 # Extract tokens from responses API
-                 if hasattr(response, 'usage'):
-                     # Try standard OpenAI fields first, then specific gpt-5 ones
-                     if hasattr(response.usage, 'prompt_tokens'):
-                         tokens["input"] = response.usage.prompt_tokens
-                         tokens["output"] = response.usage.completion_tokens
-                         tokens["total"] = response.usage.total_tokens
-                     elif hasattr(response.usage, 'input_tokens'):
-                         tokens["input"] = response.usage.input_tokens
-                         tokens["output"] = response.usage.output_tokens
-                         tokens["total"] = response.usage.total_tokens
-                     
-                     # Check for cached tokens if available
-                     if hasattr(response.usage, 'prompt_tokens_details'):
-                          tokens["cached"] = getattr(response.usage.prompt_tokens_details, 'cached_tokens', 0)
-                     elif hasattr(response.usage, 'input_token_details'):
-                          tokens["cached"] = getattr(response.usage.input_token_details, 'cached_tokens', 0)
-                 
-                 if hasattr(response, 'output') and response.output:
-                     content = None
-                     for item in response.output:
-                         if hasattr(item, 'content') and item.content:
-                             content = item.content[0].text
-                             break
-                     if not content:
-                         raise ValueError("No content in gpt-5 response")
-                                      
-                     return json.loads(content), tokens
-                 else:
-                     raise ValueError("Empty gpt-5 output")
-             except Exception:
-                 raise
+            }
+            response = await self.client.responses.create(**params)
+
+            if hasattr(response, "usage"):
+                if hasattr(response.usage, "prompt_tokens"):
+                    tokens["input"] = response.usage.prompt_tokens
+                    tokens["output"] = response.usage.completion_tokens
+                    tokens["total"] = response.usage.total_tokens
+                elif hasattr(response.usage, "input_tokens"):
+                    tokens["input"] = response.usage.input_tokens
+                    tokens["output"] = response.usage.output_tokens
+                    tokens["total"] = response.usage.total_tokens
+
+                if hasattr(response.usage, "prompt_tokens_details"):
+                    tokens["cached"] = getattr(response.usage.prompt_tokens_details, "cached_tokens", 0)
+                elif hasattr(response.usage, "input_token_details"):
+                    tokens["cached"] = getattr(response.usage.input_token_details, "cached_tokens", 0)
+
+            content = None
+            if hasattr(response, "output") and response.output:
+                for item in response.output:
+                    if hasattr(item, "content") and item.content:
+                        content = item.content[0].text
+                        break
+            if not content:
+                raise ValueError("Empty gpt-5 output")
+
+            tokens["payload"] = {
+                "response_format_schema_name": schema_name or "solve_response_v3",
+                "max_output_tokens": max_output_tokens,
+                "system_message_length": len(system_prompt or ""),
+                "user_message_length": len(user_message or "")
+            }
+            tokens["openai_calls"] = 1
+            return json.loads(content), tokens
 
         else:
             # Standard Chat Completions for gpt-4o
@@ -587,9 +632,27 @@ class SolverV3:
                 if tokens["cached"] is None and hasattr(response.usage, 'cached_tokens'):
                      tokens["cached"] = response.usage.cached_tokens
 
+            tokens["payload"] = {
+                "response_format_schema_name": schema_name or "solve_response_v3",
+                "max_output_tokens": max_output_tokens,
+                "system_message_length": len(system_prompt or ""),
+                "user_message_length": len(user_message or "")
+            }
+            tokens["openai_calls"] = 1
             return json.loads(content), tokens
 
-    async def _repair_response(self, problem, context, system_prompt, invalid_data, validation, trace=False):
+    async def _repair_response(
+        self,
+        problem,
+        context,
+        system_prompt,
+        invalid_data,
+        validation,
+        json_schema_config,
+        max_output_tokens=1200,
+        requested_mode: str = "minimal",
+        trace=False
+    ):
         if trace:
              print(f"[SOLVER_V3] Attempting repair...")
         
@@ -597,7 +660,7 @@ class SolverV3:
         
         # For Strict Structured Output repair:
         # We start a fresh conversation or append. strict mode validation is rigid.
-        # Simple approach: New request with "previous_invalid_json" in context?
+        # Simple approach: New request with "previous_invalid_json" in context[ERROR]
         # Or standard append.
         
         messages = [
@@ -612,21 +675,51 @@ class SolverV3:
             "messages": messages,
             "response_format": {
                 "type": "json_schema",
-                "json_schema": {
-                    "name": "solve_response_v3",
-                    "strict": True,
-                    "schema": deref_json_schema(get_json_schema_for_openai_v3())
-                }
-            }
+                "json_schema": json_schema_config
+            },
+            "max_completion_tokens": max_output_tokens
         }
         
         # Note: If gpt-5, we should use responses.create similarly.
         # But repair is edge case, often fallback to gpt-4o works fine.
-        # We'll use fallback model for repair to be safe and cheap?
+        # We'll use fallback model for repair to be safe and cheap[ERROR]
         # Original code used fallback model (gpt-5-mini).
         
-        response = await self.client.chat.completions.create(**params)
-        data = json.loads(response.choices[0].message.content)
+        if "gpt-5" in self._fallback_model.lower():
+            verbosity = "low" if requested_mode == "minimal" else "high"
+            repair_user_content = (
+                f"Problem: {problem}\n"
+                f"Context: {context}\n"
+                f"Previous invalid JSON:\n{json.dumps(invalid_data)}\n"
+                f"{repair_prompt}"
+            )
+            response = await self.client.responses.create(
+                model=self._fallback_model,
+                input=[
+                    {"role": "system", "content": [{"type": "input_text", "text": system_prompt}]},
+                    {"role": "user", "content": [{"type": "input_text", "text": repair_user_content}]}
+                ],
+                text={
+                    "verbosity": verbosity,
+                    "format": {
+                        "type": "json_schema",
+                        "json_schema": json_schema_config
+                    }
+                },
+                max_output_tokens=max_output_tokens
+            )
+            content = None
+            if hasattr(response, "output") and response.output:
+                for item in response.output:
+                    if hasattr(item, "content") and item.content:
+                        content = item.content[0].text
+                        break
+            if not content:
+                raise ValueError("Empty gpt-5 repair output")
+            data = json.loads(content)
+        else:
+            response = await self.client.chat.completions.create(**params)
+            data = json.loads(response.choices[0].message.content)
         data["_repaired"] = True
         return data
 
