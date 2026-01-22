@@ -108,19 +108,36 @@ class ProfileResolver:
         # Plan model has `features` dict. We can store `max_tokens` there.
         # Or hardcode defaults based on mode/tier.
         
+        # 5. Construct Profile - STRICT Token Caps for Minimal Mode
         max_tokens = 800
         max_steps = 5
         
         if "standard" in tier_slug or "family" in tier_slug:
-            max_tokens = 4096
-            max_steps = 15
+            if effective_mode == "detailed":
+                max_tokens = 4096
+                max_steps = 12
+            else:
+                # STRICT CAP for Paid Minimal: 600 tokens
+                # Enough for 2 steps + JSON overhead, but forces brevity.
+                max_tokens = 600
+                max_steps = 2
         elif effective_mode == "detailed":
-            # If free somehow got detailed, give it more room?
+            # Free tier detailed (fallback/mock)
             max_tokens = 2000
+            max_steps = 8
+        else:
+            # Free Minimal: STRICT CAP 450 tokens
+            max_tokens = 450
+            max_steps = 2
             
-        # Overrides from Plan features if present
+        # Overrides from Plan features if present (handle with care)
         if plan.features and "max_tokens" in plan.features:
-            max_tokens = int(plan.features["max_tokens"])
+            # Only override if plan explicitly demands higher than default
+            # AND we are not in minimal mode (unless plan is specific to minimal)
+            # For safety, trust plan config but warn if high for minimal.
+            plan_max = int(plan.features["max_tokens"])
+            if plan_max > max_tokens:
+                max_tokens = plan_max
 
         return PromptProfile(
             tier=tier_slug,

@@ -489,12 +489,18 @@ class SolverV3:
         requested_mode: str = "minimal"
     ):
         # Build compact JSON user message with normalized trusted_context
+        if trace:
+            print(f"[SOLVER_DEBUG] _call_llm_with_schema requested_mode={requested_mode}")
+            if trusted_context:
+                print(f"[SOLVER_DEBUG] trusted_context: {trusted_context}")
         user_message = self._build_user_message(
             problem_text, 
             context, 
             trusted_context=trusted_context,
             requested_mode=requested_mode
         )
+        if trace:
+            print(f"[SOLVER_DEBUG] _call_llm_with_schema user_message[:100]: {user_message[:100]}...")
         tokens = {"input": 0, "output": 0, "total": 0, "cached": None}
         
         # Check model type for API method

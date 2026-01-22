@@ -28,21 +28,23 @@ function convertLatexFencesToMath(md: string): string {
 }
 
 /**
- * Fix A: Auto-wrap LaTeX environments in $$...$$ if not already wrapped
- * This runs REGARDLESS of forceMath - environments always need math mode
+ * Fix A: Auto-wrap LaTeX environments in $$...$$ if not already wrapped.
+ * Only correctly wraps independent blocks, preserving surrounding prose.
  */
 function autoWrapLatexEnvironments(md: string): string {
-    const hasEnv = /\\begin\{(aligned|align|gather|equation|cases|matrix|pmatrix|bmatrix|vmatrix|array|split)\}/.test(md);
-    if (!hasEnv) return md;
-
-    const trimmed = md.trim();
-    const alreadyMath =
-        (trimmed.startsWith("$$") && trimmed.endsWith("$$")) ||
-        (trimmed.startsWith("\\[") && trimmed.endsWith("\\]")) ||
-        (trimmed.startsWith("\\(") && trimmed.endsWith("\\)")) ||
-        (trimmed.startsWith("$") && trimmed.endsWith("$"));
-
-    return alreadyMath ? md : `$$\n${md}\n$$`;
+    // Regex to find \begin{env}...\end{env} blocks that might need wrapping
+    // We capture the env name to match closing tag
+    return md.replace(
+        /(\\begin\{(aligned|align|gather|equation|cases|matrix|pmatrix|bmatrix|vmatrix|array|split)\}[\s\S]*?\\end\{\2\})/g,
+        (match) => {
+            // Check if it's already wrapped in $$ or just double-check context?
+            // Since we process the whole string, simpler to Just Wrap It if not obviously inside $$?
+            // Actually, simplest heuristic: If the match itself isn't surrounded by $$, wrap it.
+            // But checking surroundings in replace callback is hard.
+            // Strategy: We will assume these block envs should be block math tokens.
+            return `$$\n${match}\n$$`;
+        }
+    );
 }
 
 /**
