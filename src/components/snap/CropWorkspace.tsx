@@ -27,6 +27,7 @@ export default function CropWorkspace({
     onRotationChange,
     onCropComplete,
     onImageSize,
+    fullPage,
 }: CropWorkspaceProps) {
     const DEFAULT_WIDTH_SCALE = 0.65;
     const DEFAULT_HEIGHT_SCALE = 0.6;
@@ -35,6 +36,7 @@ export default function CropWorkspace({
     const [cropWidthScale, setCropWidthScale] = useState(DEFAULT_WIDTH_SCALE);
     const [cropHeightScale, setCropHeightScale] = useState(DEFAULT_HEIGHT_SCALE);
     const [lockRatio, setLockRatio] = useState(false);
+    const prevFullPage = useRef(fullPage);
 
     useLayoutEffect(() => {
         const updateSize = () => {
@@ -51,7 +53,12 @@ export default function CropWorkspace({
         if (fullPage) {
             setCropWidthScale(1);
             setCropHeightScale(1);
+        } else if (prevFullPage.current && !fullPage) {
+            setCropWidthScale(DEFAULT_WIDTH_SCALE);
+            setCropHeightScale(DEFAULT_HEIGHT_SCALE);
+            setLockRatio(false);
         }
+        prevFullPage.current = fullPage;
     }, [fullPage]);
 
     const cropSize = {
@@ -72,7 +79,7 @@ export default function CropWorkspace({
     );
 
     return (
-        <div ref={containerRef} className="relative w-full h-[420px] bg-slate-900 rounded-xl overflow-hidden">
+        <div ref={containerRef} className="relative w-full h-[520px] bg-slate-900 rounded-xl overflow-hidden">
             <Cropper
                 image={imageSrc}
                 crop={crop}
@@ -92,7 +99,7 @@ export default function CropWorkspace({
                 objectFit="contain"
                 showGrid={true}
             />
-            <div className="absolute bottom-3 left-3 right-3 bg-white/90 rounded-lg px-4 py-2 shadow flex flex-wrap gap-4 items-center">
+            <div className="absolute bottom-3 left-3 right-3 bg-white/90 rounded-2xl px-5 py-3 shadow-lg flex flex-wrap gap-3 items-center justify-between text-[11px]">
                 <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
                     Zoom
                     <input
@@ -102,6 +109,7 @@ export default function CropWorkspace({
                         step={0.05}
                         value={zoom}
                         onChange={(e) => onZoomChange(parseFloat(e.target.value))}
+                        className="w-28"
                     />
                 </label>
                 <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
@@ -113,6 +121,7 @@ export default function CropWorkspace({
                         step={1}
                         value={rotation}
                         onChange={(e) => onRotationChange(clamp(parseFloat(e.target.value), -180, 180))}
+                        className="w-28"
                     />
                 </label>
                 <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600 w-full max-w-[200px]">
@@ -131,6 +140,7 @@ export default function CropWorkspace({
                                 setCropHeightScale(next);
                             }
                         }}
+                        className="w-full"
                     />
                 </label>
                 <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600 w-full max-w-[200px]">
@@ -149,6 +159,7 @@ export default function CropWorkspace({
                                 setCropWidthScale(next);
                             }
                         }}
+                        className="w-full"
                     />
                 </label>
                 <div className="flex flex-col gap-1 text-xs text-slate-500">
