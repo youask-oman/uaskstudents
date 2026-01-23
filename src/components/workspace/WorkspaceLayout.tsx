@@ -35,8 +35,8 @@ const InlineRenderer = isMathJaxEnabled ? MathRendererMJX : MathRenderer;
 interface WorkspaceLayoutProps {
     children: React.ReactNode;
     messages: WorkspaceMessage[];
-    activeTab: "steps" | "verification" | "concepts" | "practice";
-    onSelectTab: (tab: "steps" | "verification" | "concepts" | "practice") => void;
+    activeTab: "steps" | "verification" | "practice";
+    onSelectTab: (tab: "steps" | "verification" | "practice") => void;
     problem?: WorkspaceProblem;
     stepsCount?: number;
     analysisPlan?: string[];
@@ -399,14 +399,37 @@ export default function WorkspaceLayout({
 
                     {analysisPlan.length > 0 ? (
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            {analysisPlan.map((step, idx) => (
-                                <div key={idx} className="flex flex-col gap-1 bg-white dark:bg-[#1e2634] border border-[#e5e7eb] dark:border-[#2a303c] px-3 py-2 rounded-lg shadow-sm h-full">
-                                    <span className="text-primary font-black text-xs opacity-70">Step {String(idx + 1).padStart(2, '0')}</span>
-                                    <div className="font-bold text-[#111318] dark:text-white text-xs leading-tight line-clamp-2" title={step}>
-                                        <MathRenderer content={step} inline />
-                                    </div>
-                                </div>
-                            ))}
+                            {analysisPlan.map((step, idx) => {
+                                const stepNum = idx + 1;
+                                const title = step.trim();
+                                const isRedundant =
+                                    title.toLowerCase() === `step ${stepNum}` ||
+                                    title.toLowerCase() === `step ${stepNum}:`;
+
+                                return (
+                                    <button
+                                        key={idx}
+                                        onClick={() => {
+                                            onSelectTab("steps");
+                                            setTimeout(() => {
+                                                const el = document.getElementById(`step-${stepNum}`);
+                                                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                            }, 100);
+                                        }}
+                                        className="flex flex-col text-left w-full gap-1 bg-white dark:bg-[#1e2634] border border-[#e5e7eb] dark:border-[#2a303c] px-3 py-2 rounded-lg shadow-sm h-full hover:border-primary/50 hover:shadow-md transition-all active:scale-[0.98] group"
+                                    >
+                                        <div className="flex items-center justify-between w-full">
+                                            <span className="text-primary font-black text-xs opacity-70">Step {String(stepNum).padStart(2, '0')}</span>
+                                            <span className="material-symbols-outlined text-[14px] text-primary opacity-0 group-hover:opacity-100 transition-opacity">north_east</span>
+                                        </div>
+                                        {!isRedundant && (
+                                            <div className="font-bold text-[#111318] dark:text-white text-xs leading-tight line-clamp-2" title={step}>
+                                                <MathRenderer content={step} inline />
+                                            </div>
+                                        )}
+                                    </button>
+                                );
+                            })}
                         </div>
                     ) : (
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 opacity-50">

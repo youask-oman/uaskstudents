@@ -16,7 +16,7 @@ interface PracticeTabProps {
     similarExamples: SimilarExample[];
     level: string;
     topic?: string;
-    activeTab: "steps" | "verification" | "concepts" | "practice";
+    activeTab: "steps" | "verification" | "practice";
     onSelectTab: (tab: PracticeTabProps["activeTab"]) => void;
     stepsCount?: number;
 }

@@ -30,8 +30,8 @@ interface StepsTabProps {
     };
     analysisPlan?: any[];
     finalAnswer?: string;
-    activeTab?: "steps" | "verification" | "concepts" | "practice";
-    onSelectTab?: (tab: "steps" | "verification" | "concepts" | "practice") => void;
+    activeTab?: "steps" | "verification" | "practice";
+    onSelectTab?: (tab: "steps" | "verification" | "practice") => void;
 }
 
 const isMathJaxEnabled = (process.env.NEXT_PUBLIC_MATH_RENDERER || "katex") === "mathjax";
@@ -171,7 +171,7 @@ export default function StepsTab({ steps, visuals }: StepsTabProps) {
                     // </div>
 
                     return (
-                        <div key={index} className="relative pl-8 border-l-2 border-primary/20">
+                        <div key={index} id={`step-${index + 1}`} className="relative pl-8 border-l-2 border-primary/20 scroll-mt-24">
                             {/* Step Dot */}
                             <div className="absolute -left-[9px] top-0 size-4 rounded-full bg-primary border-4 border-white dark:border-[#101622]"></div>
 
@@ -186,7 +186,17 @@ export default function StepsTab({ steps, visuals }: StepsTabProps) {
                                             </h4>
                                         </div>
                                         <div className="text-lg font-bold text-[#111318] dark:text-white mb-2 leading-snug">
-                                            <ExplanationRenderer content={step.title} />
+                                            {(() => {
+                                                const title = step.title.trim();
+                                                const stepNum = index + 1;
+                                                // If title is just "Step X" or "Step X:", don't render it
+                                                const isRedundant =
+                                                    title.toLowerCase() === `step ${stepNum}` ||
+                                                    title.toLowerCase() === `step ${stepNum}:`;
+
+                                                if (isRedundant) return null;
+                                                return <ExplanationRenderer content={step.title} />;
+                                            })()}
                                         </div>
                                         <div className="text-sm font-semibold text-[#111318] dark:text-slate-300 mb-4 leading-relaxed">
                                             <ExplanationRenderer content={explanationText} />
@@ -198,7 +208,7 @@ export default function StepsTab({ steps, visuals }: StepsTabProps) {
                                         </div>
 
                                         {/* Checkpoint Quiz */}
-                                        {step.checkpoint && (
+                                        {step.checkpoint && step.checkpoint.expected_answer && (
                                             <CheckpointInteraction
                                                 question={step.checkpoint.question}
                                                 answer={step.checkpoint.expected_answer}

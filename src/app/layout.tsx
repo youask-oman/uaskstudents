@@ -24,7 +24,7 @@ const mathJaxConfig = {
     processEnvironments: true,
   },
   chtml: {
-    scale: 2,
+    scale: 1.5,
     matchFontHeight: true,
   },
 };

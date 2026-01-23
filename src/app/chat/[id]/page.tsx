@@ -4,7 +4,6 @@ import { useState, useEffect, use } from "react";
 import WorkspaceLayout from "@/components/workspace/WorkspaceLayout";
 import StepsTab from "@/components/workspace/StepsTab";
 import VerificationTab from "@/components/workspace/VerificationTab";
-import ConceptsTab from "@/components/workspace/ConceptsTab";
 import PracticeTab from "@/components/workspace/PracticeTab";
 import { DEMO_SOLUTION } from "@/lib/mock-response";
 
@@ -267,7 +266,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
                         }}
                         analysisPlan={[]}
                         finalAnswer={solutionData.final_answer?.answer_text}
-                        activeTab={activeTab as "steps" | "verification" | "concepts" | "practice"}
+                        activeTab={activeTab as "steps" | "verification" | "practice"}
                         onSelectTab={setActiveTab}
                     />
                 </>;
@@ -314,7 +313,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     return (
         <WorkspaceLayout
             messages={session.messages}
-            activeTab={activeTab as "steps" | "verification" | "concepts" | "practice"}
+            activeTab={activeTab as "steps" | "verification" | "practice"}
             onSelectTab={setActiveTab}
             problem={{
                 ...solutionData?.problem,
