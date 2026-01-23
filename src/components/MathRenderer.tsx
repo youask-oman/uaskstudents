@@ -19,7 +19,8 @@ import {
     normalizeLatexBreaksOutsideMath,
     normalizeAndFixColors,
     escapeAllDollars,
-    convertStrictToLibFormat
+    convertStrictToLibFormat,
+    autoWrapEnvironments
 } from './MathUtils';
 
 // =============================================================================
@@ -33,8 +34,8 @@ export default function MathRenderer({ content, className = "", inline = false, 
     // Step 1: Convert fenced ```latex blocks to \[...\] (Strict Block)
     text = convertLatexFencesToMath(text);
 
-    // Step 2: Auto-wrap LaTeX environments (Removed/Disabled)
-    // text = autoWrapLatexEnvironments(text);
+    // Step 2: Auto-wrap LaTeX environments
+    text = autoWrapEnvironments(text);
 
     // Step 3: Normalize Colors & Fix Prose
     text = normalizeAndFixColors(text);

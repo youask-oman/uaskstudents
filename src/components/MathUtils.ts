@@ -62,7 +62,28 @@ export function sanitizeLatex(input: string): string {
     // Remove $ immediately before = or ) when not matched
     clean = clean.replace(/\$([=)])/g, '$1');
 
+    // Fix \big ( with space
+    clean = clean.replace(/\\big\s+([([{|\\])/g, '\\big$1');
+
     return clean;
+}
+
+/**
+ * Auto-wrap LaTeX environments in \[...\] if they are bare in prose.
+ */
+export function autoWrapEnvironments(input: string): string {
+    if (!input) return "";
+    // Split by protected regions
+    const parts = input.split(/(```[\s\S]*?```|`[^`]*`|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\))/g);
+    return parts.map(part => {
+        if (!part) return "";
+        if (part.startsWith('```') || part.startsWith('`') || part.startsWith('\\[') || part.startsWith('\\(')) return part;
+
+        // In prose parts, find \begin pairs and wrap them
+        return part.replace(/\\begin\{([a-z*]+)\}([\s\S]*?)\\end\{\1\}/gi, (match) => {
+            return `\\[${match}\\]`;
+        });
+    }).join('');
 }
 
 /**
@@ -70,20 +91,19 @@ export function sanitizeLatex(input: string): string {
  * Converts \\ to paragraph breaks, \text{...} to plain text, etc.
  */
 export function normalizeLatexBreaksOutsideMath(input: string): string {
-    // Split by protected regions: code fences, inline code, $$...$$, $...$
-    // NOTE: This considers $ a protected region. But in strict mode we might want to escape it?
-    // However, this helper is old logic. We apply escapeAllDollars AFTER this in strict pipeline (in MathRenderer).
-    // So this still runs first.
-    const parts = input.split(/(```[\s\S]*?```|`[^`]*`|\$\$[\s\S]*?\$\$|\$[\s\S]*?\$)/g);
+    // Split by protected regions: code fences, inline code, strict block math, strict inline math, and bare begin/end envs
+    const parts = input.split(/(```[\s\S]*?```|`[^`]*`|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)|\\begin\{[a-z*]+\}[\s\S]*?\\end\{[a-z*]+\})/gi);
 
     return parts
         .map((part) => {
+            if (!part) return "";
             // Keep protected parts as-is
             if (
                 part.startsWith("```") ||
                 part.startsWith("`") ||
-                part.startsWith("$$") ||
-                part.startsWith("$")
+                part.startsWith("\\[") ||
+                part.startsWith("\\(") ||
+                part.toLowerCase().startsWith("\\begin")
             ) return part;
 
             // Outside math:

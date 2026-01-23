@@ -350,14 +350,14 @@ export default function WorkspaceLayout({
                                                         <div key={idx} className="flex flex-wrap items-baseline gap-2">
                                                             <span className="text-blue-200 font-bold">{label}:</span>
                                                             <span className="text-white">
-                                                                <MathRenderer content={mathPart} forceMath inline />
+                                                                <InlineRenderer content={mathPart} inline />
                                                             </span>
                                                         </div>
                                                     );
                                                 }
                                                 return (
                                                     <div key={idx}>
-                                                        <MathRenderer content={segment} forceMath inline />
+                                                        <InlineRenderer content={segment} inline />
                                                     </div>
                                                 );
                                             });
@@ -379,7 +379,7 @@ export default function WorkspaceLayout({
                                                 .replace(/textLine\s*:/gi, 'Line: ')
                                                 .replace(/\.textParabola\s*:/gi, '. Parabola: ')
                                                 .replace(/textParabola\s*:/gi, 'Parabola: ');
-                                            return <MathRenderer content={cleanedAnswer} forceMath inline />;
+                                            return <InlineRenderer content={cleanedAnswer} inline />;
                                         })()}
                                     </div>
                                 </div>
