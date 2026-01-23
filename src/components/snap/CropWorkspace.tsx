@@ -13,6 +13,7 @@ type CropWorkspaceProps = {
     onZoomChange: (zoom: number) => void;
     onRotationChange: (rotation: number) => void;
     onCropComplete: (areaPixels: CropArea) => void;
+    onImageSize?: (size: { width: number; height: number }) => void;
 };
 
 export default function CropWorkspace({
@@ -24,6 +25,7 @@ export default function CropWorkspace({
     onZoomChange,
     onRotationChange,
     onCropComplete,
+    onImageSize,
 }: CropWorkspaceProps) {
     const handleCropComplete = React.useCallback(
         (_area: Area, areaPixels: Area) => {
@@ -48,6 +50,11 @@ export default function CropWorkspace({
                 onZoomChange={onZoomChange}
                 onRotationChange={onRotationChange}
                 onCropComplete={handleCropComplete}
+                onMediaLoaded={(media) => {
+                    if (onImageSize) {
+                        onImageSize({ width: media.naturalWidth, height: media.naturalHeight });
+                    }
+                }}
                 objectFit="contain"
                 showGrid={true}
             />

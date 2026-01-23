@@ -633,6 +633,30 @@ class OcrCache(SQLModel, table=True):
     last_hit_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class OcrExtractionCache(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    cache_key: str = Field(unique=True, index=True)
+    user_id: Optional[int] = Field(default=None, index=True)
+    result_json: dict = Field(sa_column=Column(JSON))
+    meta: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    hit_count: int = Field(default=0)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    last_hit_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class CreditHold(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    subscription_id: int = Field(foreign_key="subscription.id", index=True)
+    request_id: str = Field(index=True)
+    question_id: Optional[str] = Field(default=None, index=True)
+    reserved_credits: float = Field(default=0.0)
+    status: str = Field(default="held")  # held, finalized, released, failed
+    meta: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    finalized_at: Optional[datetime] = None
+
+
 class DeviceSignupLog(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     device_hash: str = Field(index=True)

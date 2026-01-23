@@ -54,7 +54,8 @@ class SolverV3:
         db_plan: Optional[Any] = None,
         # Tier-aware payload fields (normalized at frontend)
         trusted_context: Optional[Dict[str, Any]] = None,
-        learning_mode: Optional[str] = None  # "solve" | "study"
+        learning_mode: Optional[str] = None,  # "solve" | "study"
+        image_url: Optional[str] = None
     ) -> Dict[str, Any]:
         
         start_time_perf = time.perf_counter()
@@ -193,7 +194,8 @@ class SolverV3:
                     max_output_tokens=effective_max_tokens,
                     trace=trace,
                     trusted_context=trusted_context,
-                    requested_mode=requested_mode
+                    requested_mode=requested_mode,
+                    image_url=image_url
                 )
                 
                 llm_end_perf = time.perf_counter()
@@ -559,7 +561,8 @@ class SolverV3:
         max_output_tokens=4096,
         trace=False,
         trusted_context: dict = None,
-        requested_mode: str = "minimal"
+        requested_mode: str = "minimal",
+        image_url: Optional[str] = None
     ):
         # Build compact JSON user message with normalized trusted_context
         if trace:
@@ -591,11 +594,14 @@ class SolverV3:
         if "gpt-5" in self._model.lower():
             # Use client.responses.create for gpt-5 access
             verbosity = "low" if requested_mode == "minimal" else "high"
+            user_content = [{"type": "input_text", "text": user_message}]
+            if image_url:
+                user_content.append({"type": "input_image", "image_url": image_url})
             params = {
                 "model": self._model,
                 "input": [
                     {"role": "system", "content": [{"type": "input_text", "text": system_prompt}]},
-                    {"role": "user", "content": [{"type": "input_text", "text": user_message}]}
+                    {"role": "user", "content": user_content}
                 ],
                 "text": {
                     "verbosity": verbosity,
@@ -643,11 +649,14 @@ class SolverV3:
 
         else:
             # Standard Chat Completions for gpt-4o
+            user_content = [{"type": "text", "text": user_message}]
+            if image_url:
+                user_content.append({"type": "image_url", "image_url": {"url": image_url, "detail": "high"}})
             params = {
                 "model": self._model,
                 "messages": [
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_message}
+                    {"role": "user", "content": user_content}
                 ],
                 "response_format": {
                     "type": "json_schema",

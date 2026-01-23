@@ -706,6 +706,7 @@ export default function DashboardPage() {
                                             }
                                             handleSolve(text);
                                         }}
+                                        requestedMode={selectedAnswerStyle === "tutor" ? "detailed" : "minimal"}
                                     />
                                 )}
 

@@ -14,6 +14,7 @@ import json
 import os
 import time
 import logging
+import asyncio
 from datetime import datetime, timedelta
 
 from app.database import get_session
@@ -26,7 +27,8 @@ from app.models import (
     VoiceSession, VoiceAudio, VoiceJob, VoiceArtifact, VoiceConfirmation,
     AdminNote, SystemConfig, PromptTemplate, PromptVersion, UserQuotaOverride, SystemErrorEntry,
     School, Plan, Subscription, UsageLedger,
-    PromptAsset, PlanPromptLink, RequestEvent, DeviceSignupLog, OcrCache
+    PromptAsset, PlanPromptLink, RequestEvent, DeviceSignupLog, OcrCache,
+    OcrExtractionCache, CreditHold
 )
 from openai import AsyncOpenAI
 from app.services.subscription_service import subscription_service
@@ -910,6 +912,274 @@ OCR_V5_SCHEMA = {
     }
 }
 
+# ------------------------------------------------------------------
+# Snap & Solve v2 - Extract Questions
+# ------------------------------------------------------------------
+
+EXTRACT_MODEL = os.getenv("OCR_V5_MODEL", "gpt-5-mini")
+EXTRACT_MAX_TOKENS = int(os.getenv("EXTRACT_MAX_TOKENS", "900"))
+EXTRACT_MAX_MB = int(os.getenv("EXTRACT_MAX_MB", "10"))
+
+EXTRACT_SYSTEM_PROMPT = (
+    "You are a strict OCR extraction engine. Extract ONLY questions, do not solve. "
+    "Return ONLY JSON matching the schema. Identify which items are valid math questions. "
+    "Follow the validity rules exactly."
+)
+
+EXTRACT_USER_PROMPT = (
+    "Return STRICT JSON ONLY in this shape: "
+    "{\"is_math_page\":true|false,\"notes\":[\"...\"],\"questions\":[{...}]}. "
+    "Validity rules: A valid math question asks to solve/simplify/compute/graph/prove/find/derive, "
+    "or includes math notation/relationships. Not valid: headings, instructions, names/dates, random notes. "
+    "If requires_figure=true and figure_bbox missing, set is_valid_math=true but add note "
+    "\"needs figure crop\" and keep confidence low."
+)
+
+EXTRACT_SCHEMA = {
+    "name": "extract_questions_v1",
+    "schema": {
+        "type": "object",
+        "properties": {
+            "is_math_page": {"type": "boolean"},
+            "notes": {"type": "array", "items": {"type": "string"}},
+            "questions": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "string"},
+                        "text": {"type": "string"},
+                        "confidence": {"type": "number"},
+                        "is_valid_math": {"type": "boolean"},
+                        "reason_if_invalid": {
+                            "type": ["string", "null"],
+                            "enum": [
+                                "No question asked",
+                                "Only instructions",
+                                "Too ambiguous",
+                                "Not math",
+                                "Unreadable",
+                                None
+                            ]
+                        },
+                        "type": {
+                            "type": ["string", "null"],
+                            "enum": [
+                                "algebra",
+                                "calculus",
+                                "geometry",
+                                "statistics",
+                                "word_problem",
+                                "graphing",
+                                "other",
+                                None
+                            ]
+                        },
+                        "bbox": {
+                            "type": ["object", "null"],
+                            "properties": {
+                                "x": {"type": "number"},
+                                "y": {"type": "number"},
+                                "w": {"type": "number"},
+                                "h": {"type": "number"}
+                            },
+                            "required": ["x", "y", "w", "h"],
+                            "additionalProperties": False
+                        },
+                        "requires_figure": {"type": ["boolean", "null"]},
+                        "figure_type": {
+                            "type": ["string", "null"],
+                            "enum": [
+                                "graph",
+                                "table",
+                                "geometry_diagram",
+                                "chart",
+                                "unknown",
+                                None
+                            ]
+                        },
+                        "figure_bbox": {
+                            "type": ["object", "null"],
+                            "properties": {
+                                "x": {"type": "number"},
+                                "y": {"type": "number"},
+                                "w": {"type": "number"},
+                                "h": {"type": "number"}
+                            },
+                            "required": ["x", "y", "w", "h"],
+                            "additionalProperties": False
+                        },
+                        "figure_role": {
+                            "type": ["string", "null"],
+                            "enum": ["essential", "helpful", "not_needed", None]
+                        }
+                    },
+                    "required": ["id", "text", "confidence", "is_valid_math"],
+                    "additionalProperties": False
+                }
+            }
+        },
+        "required": ["is_math_page", "notes", "questions"],
+        "additionalProperties": False
+    }
+}
+
+
+class ExtractBBox(BaseModel):
+    x: float
+    y: float
+    w: float
+    h: float
+
+
+class ExtractQuestionItem(BaseModel):
+    id: str
+    text: str
+    confidence: float
+    is_valid_math: bool
+    reason_if_invalid: Optional[str] = None
+    type: Optional[str] = None
+    bbox: Optional[ExtractBBox] = None
+    requires_figure: Optional[bool] = None
+    figure_type: Optional[str] = None
+    figure_bbox: Optional[ExtractBBox] = None
+    figure_role: Optional[str] = None
+
+
+class ExtractTelemetry(BaseModel):
+    request_id: str
+    input_tokens: Optional[int] = None
+    output_tokens: Optional[int] = None
+    cached_tokens: Optional[int] = None
+    latency_ms_openai: Optional[int] = None
+    latency_ms_total: Optional[int] = None
+
+
+class ExtractQuestionsResponse(BaseModel):
+    ok: bool
+    is_math_page: bool
+    notes: List[str]
+    questions: List[ExtractQuestionItem]
+    cache_hit: bool
+    cached_at: Optional[str] = None
+    telemetry: Optional[ExtractTelemetry] = None
+
+
+class SolveBatchItem(BaseModel):
+    question_id: str
+    text: str
+    requested_mode: Optional[str] = "minimal"
+    requires_figure: Optional[bool] = False
+    figure_image_base64: Optional[str] = None
+
+
+class SolveBatchRequest(BaseModel):
+    items: List[SolveBatchItem]
+    features_used: Optional[Dict[str, Any]] = None
+
+
+class SolveBatchItemResult(BaseModel):
+    question_id: str
+    ok: bool
+    solve_response_json: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+    telemetry: Optional[Dict[str, Any]] = None
+    credits_reserved: Optional[float] = None
+    credits_final: Optional[float] = None
+    credits_refunded: Optional[float] = None
+
+
+class SolveBatchResponse(BaseModel):
+    ok: bool
+    results: List[SolveBatchItemResult]
+
+
+TOKENS_PER_CREDIT = float(os.getenv("TOKENS_PER_CREDIT", "2000"))
+SOLVE_BATCH_CONCURRENCY = int(os.getenv("SOLVE_BATCH_CONCURRENCY", "3"))
+
+
+def _estimate_credits(
+    plan: Plan,
+    requested_mode: str,
+    text: str,
+    has_ocr: bool,
+    has_voice: bool
+) -> float:
+    mode_key = "detailed" if requested_mode == "detailed" else "concise"
+    base_cost = subscription_service.calculate_cost(plan, mode_key, has_ocr, has_voice)
+    token_est = max(len(text) / 4.0, 1.0)
+    extra_cost = token_est / TOKENS_PER_CREDIT
+    return float(base_cost + extra_cost)
+
+
+async def _call_extract_questions(image_bytes: bytes) -> Dict[str, Any]:
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise ValueError("OPENAI_API_KEY not set")
+
+    client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+    b64 = base64.b64encode(image_bytes).decode("utf-8")
+
+    if "gpt-5" in EXTRACT_MODEL.lower():
+        response = await client.responses.create(
+            model=EXTRACT_MODEL,
+            input=[
+                {"role": "system", "content": [{"type": "input_text", "text": EXTRACT_SYSTEM_PROMPT}]},
+                {"role": "user", "content": [
+                    {"type": "input_text", "text": EXTRACT_USER_PROMPT},
+                    {"type": "input_image", "image_url": f"data:image/jpeg;base64,{b64}"}
+                ]}
+            ],
+            text={
+                "format": {
+                    "type": "json_schema",
+                    "json_schema": EXTRACT_SCHEMA
+                }
+            },
+            max_output_tokens=EXTRACT_MAX_TOKENS
+        )
+        content = None
+        if getattr(response, "output", None):
+            for item in response.output:
+                if getattr(item, "content", None):
+                    content = item.content[0].text
+                    break
+        if not content:
+            raise ValueError("Empty extract response")
+        usage = getattr(response, "usage", None)
+        cached_tokens = None
+        if usage and hasattr(usage, "input_token_details"):
+            cached_tokens = getattr(usage.input_token_details, "cached_tokens", None)
+        return {
+            "payload": _parse_json_response(content),
+            "input_tokens": getattr(usage, "input_tokens", None),
+            "output_tokens": getattr(usage, "output_tokens", None),
+            "cached_tokens": cached_tokens
+        }
+
+    response = await client.chat.completions.create(
+        model=EXTRACT_MODEL,
+        messages=[
+            {"role": "system", "content": EXTRACT_SYSTEM_PROMPT},
+            {"role": "user", "content": [
+                {"type": "text", "text": EXTRACT_USER_PROMPT},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}", "detail": "high"}}
+            ]}
+        ],
+        response_format={"type": "json_schema", "json_schema": EXTRACT_SCHEMA},
+        max_completion_tokens=EXTRACT_MAX_TOKENS
+    )
+    content = response.choices[0].message.content
+    usage = getattr(response, "usage", None)
+    cached_tokens = None
+    if usage and hasattr(usage, "prompt_tokens_details"):
+        cached_tokens = getattr(usage.prompt_tokens_details, "cached_tokens", None)
+    return {
+        "payload": _parse_json_response(content),
+        "input_tokens": getattr(usage, "prompt_tokens", None) if usage else None,
+        "output_tokens": getattr(usage, "completion_tokens", None) if usage else None,
+        "cached_tokens": cached_tokens
+    }
+
 
 def _parse_json_response(content: str) -> Dict[str, Any]:
     if not content:
@@ -1086,6 +1356,425 @@ async def ocr_v5(
         output_tokens=ocr_data.get("output_tokens"),
         cached_tokens=ocr_data.get("cached_tokens")
     )
+
+
+@api_router.post("/extract_questions", response_model=ExtractQuestionsResponse)
+@limiter.limit("10/minute")
+async def extract_questions(
+    request: Request,
+    file: UploadFile = File(...),
+    file_hash: Optional[str] = Form(None),
+    page_number: Optional[int] = Form(None),
+    crop_x: Optional[float] = Form(None),
+    crop_y: Optional[float] = Form(None),
+    crop_w: Optional[float] = Form(None),
+    crop_h: Optional[float] = Form(None),
+    rotation: Optional[float] = Form(None),
+    render_scale: Optional[float] = Form(None),
+    source: str = Form("image"),
+    user_selection: str = Form("crop"),
+    user_id: int = Query(...),
+    session: Session = Depends(get_session)
+):
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not file:
+        raise HTTPException(status_code=400, detail="File is required")
+
+    raw = await file.read()
+    if len(raw) > EXTRACT_MAX_MB * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File exceeds size limit")
+
+    if raw.startswith(b"%PDF"):
+        raise HTTPException(status_code=415, detail="PDF uploads are not accepted")
+    image_kind = imghdr.what(None, raw)
+    content_type = file.content_type or ""
+    if not content_type.startswith("image/") and image_kind not in ("jpeg", "png", "webp"):
+        raise HTTPException(status_code=415, detail="Only image uploads are accepted")
+    if image_kind not in ("jpeg", "png", "webp"):
+        raise HTTPException(status_code=415, detail="Unsupported image type")
+
+    meta = {
+        "file_hash": file_hash,
+        "page_number": page_number,
+        "crop_x": crop_x,
+        "crop_y": crop_y,
+        "crop_w": crop_w,
+        "crop_h": crop_h,
+        "rotation": rotation,
+        "render_scale": render_scale,
+        "source": source,
+        "user_selection": user_selection,
+    }
+    hash_input = raw + json.dumps(meta, sort_keys=True).encode("utf-8")
+    cache_key = hashlib.sha256(hash_input).hexdigest()
+
+    cached = session.exec(select(OcrExtractionCache).where(OcrExtractionCache.cache_key == cache_key)).first()
+    if cached:
+        cached.hit_count += 1
+        cached.last_hit_at = datetime.utcnow()
+        session.add(cached)
+        session.commit()
+        payload = cached.result_json or {}
+        return ExtractQuestionsResponse(
+            ok=True,
+            is_math_page=bool(payload.get("is_math_page", False)),
+            notes=payload.get("notes") or [],
+            questions=payload.get("questions") or [],
+            cache_hit=True,
+            cached_at=cached.created_at.isoformat()
+        )
+
+    request_id = str(uuid.uuid4())
+    start = time.time()
+    try:
+        extract_data = await _call_extract_questions(raw)
+    except Exception as exc:
+        logging.exception("extract_questions failed")
+        raise HTTPException(status_code=502, detail=f"Extract engine error: {str(exc)}") from exc
+
+    payload = extract_data.get("payload") or {}
+    latency_ms = int((time.time() - start) * 1000)
+    telemetry = ExtractTelemetry(
+        request_id=request_id,
+        input_tokens=extract_data.get("input_tokens"),
+        output_tokens=extract_data.get("output_tokens"),
+        cached_tokens=extract_data.get("cached_tokens"),
+        latency_ms_openai=latency_ms,
+        latency_ms_total=latency_ms
+    )
+
+    result = {
+        "is_math_page": bool(payload.get("is_math_page", False)),
+        "notes": payload.get("notes") or [],
+        "questions": payload.get("questions") or []
+    }
+
+    cache_entry = OcrExtractionCache(
+        cache_key=cache_key,
+        user_id=user_id,
+        result_json=result,
+        meta=meta,
+        hit_count=1,
+        created_at=datetime.utcnow(),
+        last_hit_at=datetime.utcnow()
+    )
+    session.add(cache_entry)
+
+    total_tokens = None
+    if telemetry.input_tokens is not None and telemetry.output_tokens is not None:
+        total_tokens = telemetry.input_tokens + telemetry.output_tokens
+    from app.services.admin.analytics_service import record_request_event, _calc_cost
+    record_request_event(session, {
+        "request_id": request_id,
+        "user_id": user_id,
+        "mode": "extract",
+        "learning_mode": None,
+        "subject": None,
+        "grade_level": user.grade_level if user else None,
+        "model": EXTRACT_MODEL,
+        "provider": "openai",
+        "route": "extract_questions",
+        "tokens_in": telemetry.input_tokens,
+        "tokens_out": telemetry.output_tokens,
+        "tokens_total": total_tokens,
+        "cost_usd": _calc_cost(total_tokens, EXTRACT_MODEL, telemetry.input_tokens, telemetry.output_tokens),
+        "latency_ms": latency_ms,
+        "status": "ok",
+        "error_type": None,
+        "schema_valid": True,
+        "verification_pass": None,
+        "is_stream": False,
+        "is_cached": False,
+        "credit_deducted": False,
+        "credit_amount": None,
+        "ocr_used": True,
+        "voice_used": False,
+        "response_truncated": False
+    })
+    session.add(UsageLog(
+        user_id=user_id,
+        action_type="extract_questions",
+        tokens_used=total_tokens or 0,
+        timestamp=datetime.utcnow()
+    ))
+    session.commit()
+
+    return ExtractQuestionsResponse(
+        ok=True,
+        is_math_page=result["is_math_page"],
+        notes=result["notes"],
+        questions=result["questions"],
+        cache_hit=False,
+        telemetry=telemetry
+    )
+
+
+@api_router.post("/solve_questions_batch", response_model=SolveBatchResponse)
+@limiter.limit("5/minute")
+async def solve_questions_batch(
+    request: Request,
+    body: SolveBatchRequest,
+    user_id: int = Query(...),
+    session: Session = Depends(get_session)
+):
+    from app.services.admin.analytics_service import record_request_event, _calc_cost
+    if not body.items:
+        raise HTTPException(status_code=400, detail="No items provided")
+
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    subscription = subscription_service.get_or_create_subscription(session, user)
+    if not subscription:
+        raise HTTPException(status_code=500, detail="Subscription not available")
+
+    plan = session.get(Plan, subscription.plan_id)
+    if not plan:
+        raise HTTPException(status_code=500, detail="Plan not available for subscription")
+
+    features_used = body.features_used or {}
+    has_ocr = bool(features_used.get("ocr_used", True))
+    has_voice = bool(features_used.get("voice_used", False))
+
+    reserve_map: Dict[str, float] = {}
+    total_reserve = 0.0
+    for item in body.items:
+        reserve = _estimate_credits(plan, item.requested_mode or "minimal", item.text, has_ocr, has_voice)
+        reserve_map[item.question_id] = reserve
+        total_reserve += reserve
+
+    if subscription.credits_balance < total_reserve:
+        raise HTTPException(status_code=402, detail="Insufficient credits for batch solve")
+
+    request_id = str(uuid.uuid4())
+    holds: Dict[str, CreditHold] = {}
+    for item in body.items:
+        reserve = reserve_map[item.question_id]
+        subscription.credits_balance -= reserve
+        subscription.credits_used_this_period += reserve
+        hold = CreditHold(
+            user_id=user.id,
+            subscription_id=subscription.id,
+            request_id=request_id,
+            question_id=item.question_id,
+            reserved_credits=reserve,
+            status="held",
+            metadata={
+                "requested_mode": item.requested_mode,
+                "has_ocr": has_ocr,
+                "has_voice": has_voice,
+                "text_length": len(item.text)
+            }
+        )
+        holds[item.question_id] = hold
+        session.add(hold)
+        session.add(UsageLedger(
+            subscription_id=subscription.id,
+            transaction_type="HOLD",
+            amount=reserve,
+            balance_after=subscription.credits_balance,
+            reference_id=request_id,
+            meta={"question_id": item.question_id}
+        ))
+
+    session.add(subscription)
+    session.commit()
+
+    semaphore = asyncio.Semaphore(SOLVE_BATCH_CONCURRENCY)
+    from app.services.solver_v3 import get_solver_v3
+    from app.database import engine
+
+    async def solve_one(item: SolveBatchItem) -> SolveBatchItemResult:
+        async with semaphore:
+            if item.requires_figure and not item.figure_image_base64:
+                return SolveBatchItemResult(
+                    question_id=item.question_id,
+                    ok=False,
+                    error="Figure required. Please crop the figure region."
+                )
+
+            image_url = None
+            if item.figure_image_base64:
+                data = item.figure_image_base64
+                if data.startswith("data:image"):
+                    image_url = data
+                else:
+                    image_url = f"data:image/jpeg;base64,{data}"
+
+            local_session = Session(engine)
+            try:
+                solver = get_solver_v3()
+                result = await solver.solve(
+                    problem_text=item.text,
+                    context="",
+                    request_id=request_id,
+                    user_id=user_id,
+                    db_session=local_session,
+                    requested_mode=item.requested_mode or "minimal",
+                    trusted_context=None,
+                    learning_mode="solve",
+                    image_url=image_url
+                )
+                telemetry = result.get("telemetry") or result.get("_telemetry") or {}
+                return SolveBatchItemResult(
+                    question_id=item.question_id,
+                    ok=not result.get("error", False),
+                    solve_response_json=result,
+                    telemetry=telemetry
+                )
+            except Exception as exc:
+                logging.exception("solve_questions_batch item failed")
+                return SolveBatchItemResult(
+                    question_id=item.question_id,
+                    ok=False,
+                    error=str(exc)
+                )
+            finally:
+                local_session.close()
+
+    results = await asyncio.gather(*[solve_one(item) for item in body.items])
+
+    for item_result in results:
+        hold = holds.get(item_result.question_id)
+        reserved = hold.reserved_credits if hold else 0.0
+
+        if not item_result.ok or not item_result.solve_response_json:
+            subscription_service.refund_credits(
+                session,
+                subscription.id,
+                reserved,
+                "Solve failed",
+                request_id
+            )
+            item_result.credits_reserved = reserved
+            item_result.credits_final = 0.0
+            item_result.credits_refunded = reserved
+            if hold:
+                hold.status = "released"
+                hold.finalized_at = datetime.utcnow()
+                session.add(hold)
+            record_request_event(session, {
+                "request_id": request_id,
+                "user_id": user_id,
+                "mode": hold.meta.get("requested_mode") if hold and hold.meta else None,
+                "learning_mode": "solve",
+                "subject": None,
+                "grade_level": user.grade_level if user else None,
+                "model": None,
+                "provider": "openai",
+                "route": "solve_question",
+                "tokens_in": None,
+                "tokens_out": None,
+                "tokens_total": None,
+                "cost_usd": 0.0,
+                "latency_ms": None,
+                "status": "error",
+                "error_type": item_result.error or "solve_failed",
+                "schema_valid": None,
+                "verification_pass": None,
+                "is_stream": False,
+                "is_cached": False,
+                "credit_deducted": False,
+                "credit_amount": 0.0,
+                "ocr_used": has_ocr,
+                "voice_used": has_voice,
+                "response_truncated": False
+            })
+            session.commit()
+            continue
+
+        telemetry = item_result.telemetry or {}
+        total_tokens = telemetry.get("total_tokens")
+        if total_tokens is None:
+            total_tokens = (telemetry.get("input_tokens") or 0) + (telemetry.get("output_tokens") or 0)
+
+        base_cost = subscription_service.calculate_cost(
+            plan,
+            "detailed" if (hold.meta or {}).get("requested_mode") == "detailed" else "concise",
+            has_ocr,
+            has_voice
+        )
+        actual_cost = float(base_cost + (float(total_tokens or 0) / TOKENS_PER_CREDIT))
+
+        refund_amount = 0.0
+        if actual_cost <= reserved:
+            refund_amount = reserved - actual_cost
+            if refund_amount > 0:
+                subscription_service.refund_credits(
+                    session,
+                    subscription.id,
+                    refund_amount,
+                    "Solve refund",
+                    request_id
+                )
+        else:
+            extra = actual_cost - reserved
+            if subscription.credits_balance >= extra:
+                subscription_service.execute_debit(
+                    session,
+                    subscription,
+                    extra,
+                    {"action": "solve_batch_extra", "question_id": item_result.question_id},
+                    request_id
+                )
+                session.commit()
+            else:
+                actual_cost = reserved
+
+        item_result.credits_reserved = reserved
+        item_result.credits_final = actual_cost
+        item_result.credits_refunded = refund_amount
+
+        session.add(UsageLog(
+            user_id=user_id,
+            action_type="solve_question",
+            tokens_used=int(total_tokens or 0),
+            timestamp=datetime.utcnow()
+        ))
+        record_request_event(session, {
+            "request_id": request_id,
+            "user_id": user_id,
+                "mode": hold.meta.get("requested_mode") if hold and hold.meta else None,
+            "learning_mode": "solve",
+            "subject": None,
+            "grade_level": user.grade_level if user else None,
+            "model": telemetry.get("model") if isinstance(telemetry, dict) else None,
+            "provider": "openai",
+            "route": "solve_question",
+            "tokens_in": telemetry.get("input_tokens") if isinstance(telemetry, dict) else None,
+            "tokens_out": telemetry.get("output_tokens") if isinstance(telemetry, dict) else None,
+            "tokens_total": total_tokens,
+            "cost_usd": _calc_cost(total_tokens, telemetry.get("model") if isinstance(telemetry, dict) else None, telemetry.get("input_tokens") if isinstance(telemetry, dict) else None, telemetry.get("output_tokens") if isinstance(telemetry, dict) else None),
+            "latency_ms": telemetry.get("latency_ms_total") if isinstance(telemetry, dict) else None,
+            "status": "ok" if item_result.ok else "error",
+            "error_type": item_result.error if not item_result.ok else None,
+            "schema_valid": telemetry.get("validated") if isinstance(telemetry, dict) else None,
+            "verification_pass": None,
+            "is_stream": False,
+            "is_cached": False,
+            "credit_deducted": item_result.ok,
+            "credit_amount": actual_cost if item_result.ok else None,
+            "ocr_used": has_ocr,
+            "voice_used": has_voice,
+            "response_truncated": bool(telemetry.get("truncated")) if isinstance(telemetry, dict) else False
+        })
+
+        if hold:
+            hold.status = "finalized"
+            hold.finalized_at = datetime.utcnow()
+            hold.meta = {
+                **(hold.meta or {}),
+                "total_tokens": total_tokens,
+                "credits_final": actual_cost,
+                "credits_refunded": refund_amount
+            }
+            session.add(hold)
+        session.commit()
+
+    return SolveBatchResponse(ok=True, results=results)
 
 @api_router.post("/uploads")
 @limiter.limit("5/minute")
@@ -2302,7 +2991,8 @@ async def solve_v3_endpoint(
                     db_session=session,
                     requested_mode=requested_mode,
                     trusted_context=body.trusted_context,
-                    learning_mode=learning_mode
+                    learning_mode=learning_mode,
+                    image_url=body.image_url
                 )
             except Exception as e:
                 # REFUND ON EXCEPTION
