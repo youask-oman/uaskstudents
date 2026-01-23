@@ -17,10 +17,10 @@ def get_effective_max_tokens(mode: str, learning_mode: Optional[str]) -> int:
     if normalized_mode == "minimal":
         if normalized_learning == "study":
             return 1600
-        return 900
+        return 1200
     elif normalized_mode == "detailed":
         if normalized_learning == "study":
             return 12000
-        return 6000
+        return 9000
         
     return 1000
