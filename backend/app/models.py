@@ -622,6 +622,17 @@ class QuestionIdentityCache(SQLModel, table=True):
     last_seen_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class OcrCache(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    cache_key: str = Field(unique=True, index=True)
+    extracted_text: str
+    extracted_markdown: Optional[str] = None
+    questions: List[str] = Field(default_factory=list, sa_column=Column(JSON))
+    hit_count: int = Field(default=0)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    last_hit_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class DeviceSignupLog(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     device_hash: str = Field(index=True)

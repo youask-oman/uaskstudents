@@ -42,36 +42,6 @@ export interface SubscriptionResponse {
     allow_voice: boolean;
 }
 
-// Default fallback for when API fails
-export const DEFAULT_SUBSCRIPTION: SubscriptionResponse = {
-    plan: {
-        id: 0,
-        slug: "free",
-        display_name: "Free",
-        credits_monthly: 50,
-        seats: 1,
-        multipliers: { text_concise: 1, text_detailed: 1000, ocr_add: 1, voice_add: 1 },
-        features: {}
-    },
-    usage: {
-        credits_used: 0,
-        credits_remaining: 50,
-        ocr_used: 0,
-        ocr_limit: 3,
-        voice_used: 0,
-        voice_limit: 3
-    },
-    profile: {
-        grade_level: null,
-        region_country: null,
-        region_state_province: null,
-        display_name: "Guest"
-    },
-    allow_detailed: false,
-    allow_ocr: true,
-    allow_voice: true
-};
-
 /**
  * Fetch subscription details for tier-aware solve UX.
  */

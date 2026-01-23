@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import MathRenderer from "@/components/math/MathRendererSwitch";
 import MathInput, { MathInputRef } from "@/components/MathInput";
 import { MODES, ModeId, Suggestion } from "@/lib/modes";
-import ImageCropper from "@/components/ImageCropper";
+import SnapSolveV2 from "@/components/snap/SnapSolveV2";
 
 // Token validation imports
 import { estimateTokens, TokenEstimate } from "@/lib/tokenEstimator";
@@ -24,7 +24,7 @@ import { InputModeId, INPUT_MODES, GraphingOptions, DEFAULT_GRAPHING_OPTIONS } f
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import UsageMeter from "@/components/ui/UsageMeter";
 import CostPreview from "@/components/solve/CostPreview";
-import { SubscriptionResponse, DEFAULT_SUBSCRIPTION, fetchSubscription, calculateSolveCost } from "@/lib/subscription";
+import { SubscriptionResponse, fetchSubscription, calculateSolveCost } from "@/lib/subscription";
 
 interface ChatSession {
     id: number;
@@ -56,7 +56,6 @@ export default function DashboardPage() {
     const [voiceSubject, setVoiceSubject] = useState("Mathematics");
     const [voiceDifficulty, setVoiceDifficulty] = useState("High School / AP");
     const [formattingEnabled, setFormattingEnabled] = useState(true);
-    const [ocrFastMode, setOcrFastMode] = useState(true);
     const [solveProgress, setSolveProgress] = useState(0);
 
     // Token validation state
@@ -76,7 +75,7 @@ export default function DashboardPage() {
     // Tier-Aware Solve State
     const [selectedGoal, setSelectedGoal] = useState<'solve' | 'study'>('solve');
     const [selectedAnswerStyle, setSelectedAnswerStyle] = useState<'quick' | 'tutor'>('quick');
-    const [subscription, setSubscription] = useState<SubscriptionResponse>(DEFAULT_SUBSCRIPTION);
+    const [subscription, setSubscription] = useState<SubscriptionResponse | null>(null);
     const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
     const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
 
@@ -98,9 +97,10 @@ export default function DashboardPage() {
                 : null;
 
     const router = useRouter();
-    const subscriptionReady = subscriptionLoaded && !subscriptionError;
-    const allowDetailed = subscriptionReady ? subscription.allow_detailed : false;
-    const trustedProfile = subscriptionReady ? subscription.profile : DEFAULT_SUBSCRIPTION.profile;
+    const subscriptionReady = subscriptionLoaded && !subscriptionError && !!subscription;
+    const readySubscription = subscriptionReady ? subscription : null;
+    const allowDetailed = readySubscription?.allow_detailed ?? false;
+    const trustedProfile = readySubscription?.profile ?? null;
 
     useEffect(() => {
         const userId = localStorage.getItem("user_id");
@@ -333,266 +333,7 @@ export default function DashboardPage() {
         }
     };
 
-    // OCR & Workflow State
-    const [workflowStage, setWorkflowStage] = useState<'input' | 'selecting' | 'processing' | 'review'>('input');
-    const [capturedImage, setCapturedImage] = useState<string | null>(null);
-    const [croppedImage, setCroppedImage] = useState<string | null>(null);
-    const [ocrConfidence, setOcrConfidence] = useState<number>(0);
-    const [progressStep, setProgressStep] = useState(0);
-    const [processingTime, setProcessingTime] = useState(0);
-    const [uploadId, setUploadId] = useState<number | null>(null);
-    const [jobId, setJobId] = useState<string | null>(null);
-    const [artifactId, setArtifactId] = useState<number | null>(null);
-    const [engineTag, setEngineTag] = useState<string | null>(null);
-    const [tokenMetrics, setTokenMetrics] = useState<string | null>(null);
-    const [ocrBlocks, setOcrBlocks] = useState<any[]>([]);
-    const [ocrInventory, setOcrInventory] = useState<any>(null);
-    const [selectedQuestionId, setSelectedQuestionId] = useState<number | null>(null);
-    const [choices, setChoices] = useState<Record<string, string>>({});
-
-    const PROGRESS_STEPS = [
-        { label: "Uploading Image...", percent: 10 },
-        { label: "Saving Crop...", percent: 30 },
-        { label: "OCR Job Queued...", percent: 45 },
-        { label: "Analyzing Image... (this may take a moment)", percent: 65 },
-        { label: "Extracting LaTeX...", percent: 85 },
-        { label: "Finalizing...", percent: 100 }
-    ];
-
-    const processFile = async (file: File) => {
-        if (!file) return;
-        const objectUrl = URL.createObjectURL(file);
-        setCapturedImage(objectUrl);
-        setWorkflowStage('selecting');
-
-        // Start background upload of original
-        try {
-            const formData = new FormData();
-            formData.append('file', file);
-            const userId = localStorage.getItem("user_id") || "1";
-
-            console.log("Original upload starting...", { file: file.name, size: file.size });
-            const res = await fetch(`/api/v1/uploads?user_id=${userId}`, {
-                method: 'POST',
-                body: formData
-            });
-            if (res.ok) {
-                const data = await res.json();
-                console.log("Original uploaded successfully:", data);
-                setUploadId(data.upload_id);
-            } else {
-                const errText = await res.text();
-                console.error("Upload failed with status:", res.status, errText);
-            }
-        } catch (e) {
-            console.error("Critical error during upload fetch:", e);
-        }
-    };
-
-    const handleCropConfirm = async (blob: Blob, coords: { x: number, y: number, w: number, h: number }) => {
-        const croppedUrl = URL.createObjectURL(blob);
-        setCroppedImage(croppedUrl);
-        setWorkflowStage('processing');
-        setProgressStep(1); // Starting Step 2: Saving Crop
-        setProcessingTime(0);
-
-        const timer = setInterval(() => setProcessingTime(p => p + 1), 1000);
-
-        try {
-            const userId = localStorage.getItem("user_id") || "1";
-            console.log("Starting Crop Confirmation...", { coords, userId });
-
-            // 1. Ensure Upload ID exists (wait up to 10s if still uploading)
-            let currentUploadId = uploadId;
-            if (!currentUploadId) {
-                console.log("Upload ID not ready, waiting...");
-                for (let i = 0; i < 20; i++) {
-                    await new Promise(r => setTimeout(r, 500));
-                    if (uploadId) {
-                        currentUploadId = uploadId;
-                        console.log("Upload ID obtained after wait:", currentUploadId);
-                        break;
-                    }
-                }
-            }
-
-            if (!currentUploadId) {
-                throw new Error("Initial upload failed or timed out. Please try again.");
-            }
-
-            // 2. Create Crop
-            console.log("Sending crop request to:", `/api/v1/uploads/${currentUploadId}/crops`);
-            const cropRes = await fetch(`/api/v1/uploads/${currentUploadId}/crops`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    crop_rect: coords,
-                    rotation: 0
-                })
-            });
-
-            if (!cropRes.ok) {
-                const errText = await cropRes.text();
-                console.error("Crop creation failed:", cropRes.status, errText);
-                throw new Error("Failed to save crop: " + errText);
-            }
-
-            const cropData = await cropRes.json();
-            console.log("Crop saved successfully:", cropData);
-            const cid = cropData.crop_id;
-
-            // 3. Create Job
-            setProgressStep(2); // Job Queued
-            console.log("Creating OCR Job...", { crop_id: cid, userId });
-            const jobRes = await fetch(`/api/v1/ocr/jobs?user_id=${userId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    crop_id: cid,
-                    preferred_engine: "auto",
-                    user_intent: ocrFastMode ? "normal" : "high_accuracy"
-                })
-            });
-            if (!jobRes.ok) {
-                const errText = await jobRes.text();
-                console.error("Job creation failed:", jobRes.status, errText);
-                throw new Error("Failed to create OCR job: " + errText);
-            }
-            const jobData = await jobRes.json();
-            console.log("Job created successfully:", jobData);
-            const jid = jobData.job_id;
-            setJobId(jid);
-
-            // 4. Polling
-            await pollJobStatus(jid, timer);
-
-        } catch (e) {
-            console.error("Tiered OCR error", e);
-            alert("Analysis failed. Falling back to legacy...");
-            // TODO: Legacy fallback logic if needed
-            clearInterval(timer);
-            setWorkflowStage('input');
-        }
-    };
-
-    const pollJobStatus = async (jid: string, timer: any) => {
-        let backoff = 1000;
-        const maxBackoff = 15000;
-
-        const poll = async () => {
-            try {
-                const res = await fetch(`/api/v1/ocr/jobs/${jid}`);
-                const data = await res.json();
-
-                if (data.status === 'completed') {
-                    setProgressStep(4);
-                    setArtifactId(data.artifact_id);
-                    await finalizeOcr(data.artifact_id, timer);
-                } else if (data.status === 'failed') {
-                    throw new Error(data.error_message || "OCR Job Failed");
-                } else {
-                    // Update UI for processing state
-                    if (data.status === 'processing') {
-                        setProgressStep(3); // Analyzing Image
-                    }
-                    // Keep polling with exponential backoff
-                    setTimeout(poll, backoff);
-                    backoff = Math.min(backoff * 1.5, maxBackoff);
-                }
-            } catch (e) {
-                console.error("Polling error", e);
-                clearInterval(timer);
-                setWorkflowStage('input');
-            }
-        };
-        poll();
-    };
-
-    const finalizeOcr = async (aid: number, timer: any) => {
-        try {
-            const res = await fetch(`/api/v1/ocr/artifacts/${aid}`);
-            const data = await res.json();
-
-            clearInterval(timer);
-
-            const cleanLatex = (data.raw_markdown || "").trim();
-            setQuery(cleanLatex);
-            if (mathInputRef.current) {
-                mathInputRef.current.setValue(cleanLatex);
-            }
-            setOcrConfidence(data.confidence_score || 0.95);
-            setEngineTag(data.engine_display_tag || "YouAsk AI multimodel");
-            setTokenMetrics(data.token_metrics || null);
-            setOcrBlocks(data.blocks || []);
-
-            // Structured Inventory
-            setOcrInventory({
-                doc_type: data.doc_type,
-                questions: data.questions || [],
-                figures: data.figures || [],
-                coverage_checklist: data.coverage_checklist || {}
-            });
-
-            // Default to first question if available
-            if (data.questions && data.questions.length > 0) {
-                const q1 = data.questions[0];
-                setSelectedQuestionId(q1.id);
-                setQuery(q1.prompt || "");
-
-                const q1Choices: Record<string, string> = {};
-                (q1.choices || []).forEach((c: any) => {
-                    q1Choices[c.label] = c.text;
-                });
-                setChoices(q1Choices);
-            }
-
-            setTimeout(() => {
-                setWorkflowStage('review');
-                setActiveTab('text');
-            }, 800);
-        } catch (e) {
-            console.error("Finalization error", e);
-            clearInterval(timer);
-            setWorkflowStage('input');
-        }
-    };
-
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            processFile(e.target.files[0]);
-        }
-    };
-
-    const handleDrop = (e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            processFile(e.dataTransfer.files[0]);
-        }
-    };
-
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-    };
-
-    const resetWorkflow = () => {
-        setWorkflowStage('input');
-        setCapturedImage(null);
-        setCroppedImage(null);
-        setQuery("");
-        setInputError(null);
-        setProgressStep(0);
-        setArtifactId(null);
-        setSelectedQuestionId(null);
-        setVoiceArtifact(null);
-        setVoiceSessionId(null);
-        setJobId(null);
-        setChoices({});
-        if (mathInputRef.current) mathInputRef.current.setValue("");
-    };
-
-    const validateMathQuery = (value: string) => {
+        const validateMathQuery = (value: string) => {
         const normalized = value.trim().toLowerCase();
         if (!normalized) return "Please enter a math question.";
         if (normalized.length < 3) return "Please enter at least 3 characters.";
@@ -687,11 +428,12 @@ export default function DashboardPage() {
         return null;
     };
 
-    const handleSolve = async () => {
+    const handleSolve = async (overrideText?: string) => {
         if (isSolving) return;
 
         const userId = localStorage.getItem("user_id") || "1";
-        const validationError = validateMathQuery(query);
+        const textToSolve = overrideText ?? query;
+        const validationError = validateMathQuery(textToSolve);
         if (validationError) {
             setInputError(validationError);
             return;
@@ -717,19 +459,16 @@ export default function DashboardPage() {
                 mode: 'cors',
                 body: JSON.stringify({
                     // Primary problem input - only one text field
-                    confirmed_text: query,
-                    // Entity references (for OCR flow)
-                    artifact_id: artifactId || undefined,
-                    question_id: selectedQuestionId || undefined,
+                    confirmed_text: textToSolve,
                     // Tier-aware mode - single field, no duplication
                     requested_mode: selectedAnswerStyle === 'tutor' ? 'detailed' : 'minimal',
                     // Normalized trusted_context (compact enums)
                     trusted_context: {
                         learning_mode: selectedGoal,
                         // Values already normalized from API (CA, CA-ON, 11)
-                        grade_level: trustedProfile.grade_level || undefined,
-                        region_country: trustedProfile.region_country || undefined,
-                        region_state_province: trustedProfile.region_state_province || undefined
+                        grade_level: trustedProfile?.grade_level || undefined,
+                        region_country: trustedProfile?.region_country || undefined,
+                        region_state_province: trustedProfile?.region_state_province || undefined
                     },
                     // Feature flags for accounting (not sent to OpenAI)
                     features_used: {
@@ -828,41 +567,6 @@ export default function DashboardPage() {
         return () => clearInterval(tick);
     }, [isSolving, solveStartTime]);
 
-    const handleConfirmOcr = async () => {
-        if (!artifactId || isSolving) return;
-        const validationError = validateMathQuery(query);
-        if (validationError) {
-            setInputError(validationError);
-            return;
-        }
-
-        setIsSolving(true);
-        try {
-            const res = await fetch(`/api/v1/ocr/artifacts/${artifactId}/confirm`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    confirmed_markdown: query,
-                    confirmed_text: query,
-                    confirmed_latex_blocks: [
-                        ...Object.entries(choices).map(([k, v]) => ({ type: 'choice', key: k, value: v }))
-                    ]
-                })
-            });
-
-            if (!res.ok) {
-                const message = await res.text();
-                throw new Error(message || "Confirm request failed");
-            }
-            await handleSolve();
-        } catch (err) {
-            console.error(err);
-            alert((err as Error).message || "Failed to confirm and solve.");
-        } finally {
-            setIsSolving(false);
-        }
-    };
-
     return (
         <div className="solve-ui bg-background-light dark:bg-background-dark min-h-screen text-slate-900 dark:text-slate-100 font-display transition-colors duration-200">
             <DashboardNavBar />
@@ -920,18 +624,18 @@ export default function DashboardPage() {
                                 />
 
                                 {/* Usage Meters */}
-                                {subscriptionReady && (
+                                {readySubscription && (
                                     <div className="flex items-center gap-4">
                                         <UsageMeter
                                             label="Credits"
-                                            used={subscription.usage.credits_used}
-                                            limit={subscription.plan.credits_monthly}
+                                            used={readySubscription.usage.credits_used}
+                                            limit={readySubscription.plan.credits_monthly}
                                             icon="payments"
                                         />
                                         <UsageMeter
                                             label="OCR"
-                                            used={subscription.usage.ocr_used}
-                                            limit={subscription.usage.ocr_limit}
+                                            used={readySubscription.usage.ocr_used}
+                                            limit={readySubscription.usage.ocr_limit}
                                             icon="document_scanner"
                                         />
                                     </div>
@@ -945,12 +649,12 @@ export default function DashboardPage() {
 
                             {/* Cost Preview */}
                             <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-                                {subscriptionReady ? (
+                                {readySubscription ? (
                                     <CostPreview
-                                        baseCost={calculateSolveCost(subscription, selectedAnswerStyle, false, false)}
-                                        ocrCost={activeTab === 'snap' ? subscription.plan.multipliers.ocr_add : 0}
-                                        voiceCost={activeTab === 'voice' ? subscription.plan.multipliers.voice_add : 0}
-                                        creditsRemaining={subscription.usage.credits_remaining}
+                                        baseCost={calculateSolveCost(readySubscription, selectedAnswerStyle, false, false)}
+                                        ocrCost={activeTab === 'snap' ? readySubscription.plan.multipliers.ocr_add : 0}
+                                        voiceCost={activeTab === 'voice' ? readySubscription.plan.multipliers.voice_add : 0}
+                                        creditsRemaining={readySubscription.usage.credits_remaining}
                                         isDetailed={selectedAnswerStyle === 'tutor'}
                                     />
                                 ) : (
@@ -990,368 +694,21 @@ export default function DashboardPage() {
                             {/* Tab Content */}
                             <div className="p-6">
                                 {activeTab === 'snap' && (
-                                    <div className="flex flex-col gap-6 relative min-h-[400px]">
-                                        {/* STAGE 1: INPUT */}
-                                        {workflowStage === 'input' && (
-                                            <>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                    <div className="space-y-2">
-                                                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Subject Area</label>
-                                                        <div className="relative">
-                                                            <select className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg h-12 px-4 appearance-none focus:ring-2 focus:ring-primary outline-none">
-                                                                <option>Mathematics</option>
-                                                                <option>Physics</option>
-                                                                <option>Chemistry</option>
-                                                            </select>
-                                                            <span className="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-slate-400">expand_more</span>
-                                                        </div>
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Difficulty</label>
-                                                        <div className="relative">
-                                                            <select className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg h-12 px-4 appearance-none focus:ring-2 focus:ring-primary outline-none">
-                                                                <option>High School</option>
-                                                                <option>College</option>
-                                                            </select>
-                                                            <span className="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-slate-400">expand_more</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3">
-                                                    <div>
-                                                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Fast OCR</p>
-                                                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                                                            Faster results with lighter analysis.
-                                                        </p>
-                                                    </div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setOcrFastMode(value => !value)}
-                                                        className={`relative w-12 h-6 rounded-full transition-colors ${ocrFastMode ? "bg-primary" : "bg-slate-300 dark:bg-slate-700"}`}
-                                                    >
-                                                        <div className={`absolute top-1 left-1 size-4 bg-white rounded-full transition-transform ${ocrFastMode ? "translate-x-6" : ""}`}></div>
-                                                    </button>
-                                                </div>
-
-                                                <label
-                                                    onDrop={handleDrop}
-                                                    onDragOver={handleDragOver}
-                                                    className="group relative flex flex-col items-center justify-center border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl px-6 py-16 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer"
-                                                >
-                                                    <input
-                                                        type="file"
-                                                        className="hidden"
-                                                        onChange={handleFileSelect}
-                                                        accept="image/*,application/pdf"
-                                                    />
-                                                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
-                                                        <span className="material-symbols-outlined text-3xl">upload_file</span>
-                                                    </div>
-                                                    <h3 className="text-lg font-bold mb-1">Drag & Drop or Click</h3>
-                                                    <p className="text-slate-500 dark:text-slate-400 text-center max-w-sm mb-6">
-                                                        Upload an image of your math problem. Max 5MB.
-                                                    </p>
-                                                    <div className="flex gap-3">
-                                                        <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-[10px] font-bold text-slate-500 uppercase">JPG</span>
-                                                        <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-[10px] font-bold text-slate-500 uppercase">PNG</span>
-                                                    </div>
-                                                </label>
-
-                                                <div className="flex flex-col items-center gap-2">
-                                                    <label className="flex items-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-90 px-8 py-3 rounded-lg font-bold transition-all shadow-lg cursor-pointer">
-                                                        <input
-                                                            type="file"
-                                                            className="hidden"
-                                                            accept="image/*"
-                                                            capture="environment"
-                                                            onChange={handleFileSelect}
-                                                        />
-                                                        <span className="material-symbols-outlined">photo_camera</span>
-                                                        <span>Snap Photo</span>
-                                                    </label>
-                                                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                                                        Using YouAsk vision AI
-                                                    </span>
-                                                </div>
-                                            </>
-                                        )}
-
-                                        {/* STAGE 1.5: SELECTING (Cropper) */}
-                                        {workflowStage === 'selecting' && capturedImage && (
-                                            <div className="absolute inset-0 z-50">
-                                                <ImageCropper
-                                                    imageSrc={capturedImage}
-                                                    onCancel={resetWorkflow}
-                                                    onConfirm={handleCropConfirm}
-                                                />
-                                            </div>
-                                        )}
-
-                                        {/* STAGE 2: PROCESSING */}
-                                        {workflowStage === 'processing' && (
-                                            <div className="absolute inset-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center rounded-xl p-8">
-                                                <div className="w-full max-w-sm space-y-6 text-center">
-                                                    {/* Animated Icon */}
-                                                    <div className="relative size-16 mx-auto">
-                                                        <div className="absolute inset-0 border-4 border-slate-100 dark:border-slate-800 rounded-full"></div>
-                                                        <div className="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
-                                                        <div className="absolute inset-0 flex items-center justify-center">
-                                                            <span className="material-symbols-outlined text-2xl text-primary font-bold">document_scanner</span>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="space-y-1">
-                                                        <h3 className="text-lg font-bold dark:text-white">
-                                                            {PROGRESS_STEPS[progressStep]?.label || "Processing..."}
-                                                        </h3>
-                                                        <p className="text-xs text-slate-500">
-                                                            Please wait while we analyze your image.
-                                                        </p>
-                                                    </div>
-
-                                                    {/* Progress Bar */}
-                                                    <div className="space-y-2">
-                                                        <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                                            <span>Progress</span>
-                                                            <span>{PROGRESS_STEPS[progressStep]?.percent || 0}%</span>
-                                                        </div>
-                                                        <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                                            <div
-                                                                className="h-full bg-primary transition-all duration-500 ease-out"
-                                                                style={{ width: `${PROGRESS_STEPS[progressStep]?.percent || 0}%` }}
-                                                            ></div>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Long Loading Warning */}
-                                                    {(processingTime > 8) && (
-                                                        <div className="flex gap-2 items-center justify-center text-amber-600 dark:text-amber-400 text-xs">
-                                                            <span className="material-symbols-outlined text-sm">schedule</span>
-                                                            <p>Taking longer than usual...</p>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* STAGE 3: REVIEW (MANDATORY) */}
-                                        {workflowStage === 'review' && (
-                                            <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <h3 className="font-bold flex items-center gap-2 text-lg">
-                                                        <span className="material-symbols-outlined text-green-500">check_circle</span>
-                                                        Review & OCR Check
-                                                    </h3>
-                                                    <button onClick={resetWorkflow} className="text-xs text-slate-500 hover:text-red-500 underline">
-                                                        Retake Photo
-                                                    </button>
-                                                </div>
-
-                                                {/* INVENTORY OVERVIEW (Selected/Multi-Question Support) */}
-                                                {ocrInventory && ocrInventory.questions.length > 0 && (
-                                                    <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl p-4 mb-2">
-                                                        <div className="flex items-center justify-between mb-3">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="material-symbols-outlined text-sm text-primary">inventory_2</span>
-                                                                <span className="text-xs font-black uppercase tracking-widest text-slate-500">Page Inventory</span>
-                                                            </div>
-                                                            <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">
-                                                                {ocrInventory.doc_type}
-                                                            </span>
-                                                        </div>
-                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                            {ocrInventory.questions.map((q: any, idx: number) => {
-                                                                const isSelected = query === q.prompt;
-                                                                return (
-                                                                    <button
-                                                                        key={idx}
-                                                                        onClick={() => {
-                                                                            setSelectedQuestionId(q.id);
-                                                                            setQuery(q.prompt);
-                                                                            const newChoices: Record<string, string> = {};
-                                                                            (q.choices || []).forEach((c: any) => { newChoices[c.label] = c.text; });
-                                                                            setChoices(newChoices);
-                                                                        }}
-                                                                        className={`text-left p-3 rounded-lg border transition-all flex gap-3 ${isSelected
-                                                                            ? 'bg-primary/5 border-primary shadow-sm'
-                                                                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-primary/50'
-                                                                            }`}
-                                                                    >
-                                                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${isSelected ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                                                                            }`}>
-                                                                            {q.external_id || (idx + 1)}
-                                                                        </div>
-                                                                        <div className="flex-1 min-w-0">
-                                                                            <p className="text-xs line-clamp-2 text-slate-600 dark:text-slate-400">
-                                                                                {q.prompt}
-                                                                            </p>
-                                                                            {q.has_figure && (
-                                                                                <span className="inline-flex items-center gap-1 mt-1 text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase">
-                                                                                    <span className="material-symbols-outlined text-[10px]">image</span>
-                                                                                    Figure Linked
-                                                                                </span>
-                                                                            )}
-                                                                        </div>
-                                                                    </button>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                        {ocrInventory.coverage_checklist?.warnings?.length > 0 && (
-                                                            <div className="mt-3 flex flex-wrap gap-2">
-                                                                {ocrInventory.coverage_checklist.warnings.map((w: string, i: number) => (
-                                                                    <div key={i} className="flex items-center gap-1 bg-amber-50 dark:bg-amber-900/10 text-amber-600 px-2 py-0.5 rounded text-[9px] font-bold">
-                                                                        <span className="material-symbols-outlined text-[10px]">warning</span>
-                                                                        {w}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    {/* Left: Original Image */}
-                                                    <div className="bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden relative group h-48 md:h-auto">
-                                                        {/* Left: Original Image (Cropped) */}
-                                                        <div className="bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden relative group h-48 md:h-auto flex items-center justify-center">
-                                                            {croppedImage && (
-                                                                <img
-                                                                    src={croppedImage}
-                                                                    alt="Original Capture"
-                                                                    className="max-w-full max-h-full object-contain"
-                                                                />
-                                                            )}
-                                                            <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] px-2 py-1 text-center">
-                                                                Your Selection
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Right: Editable Markdown & Choices */}
-                                                    <div className="flex flex-col gap-4">
-                                                        <div className="flex flex-wrap gap-2">
-                                                            <div className="flex-1 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/30 rounded-lg p-2.5 flex justify-between items-center min-w-[140px]">
-                                                                <span className="text-[10px] font-bold text-green-700 dark:text-green-300 uppercase tracking-widest">
-                                                                    Confidence
-                                                                </span>
-                                                                <span className="font-mono font-bold text-green-600 dark:text-green-400 text-sm">
-                                                                    {(ocrConfidence * 100).toFixed(0)}%
-                                                                </span>
-                                                            </div>
-                                                            {engineTag && (
-                                                                <div className="flex-1 bg-primary/5 border border-primary/20 rounded-lg p-2.5 flex justify-between items-center min-w-[140px]">
-                                                                    <span className="text-[10px] font-bold text-primary uppercase tracking-widest">
-                                                                        Processor
-                                                                    </span>
-                                                                    <span className="text-[10px] font-black text-primary">
-                                                                        {engineTag}
-                                                                    </span>
-                                                                </div>
-                                                            )}
-                                                        </div>
-
-                                                        <div className="space-y-3">
-                                                            <div>
-                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block px-1">Problem Text (Markdown)</label>
-                                                                <div className="relative border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all">
-                                                                    <textarea
-                                                                        className="w-full bg-transparent p-4 min-h-[120px] outline-none text-sm leading-relaxed custom-scrollbar"
-                                                                        value={query}
-                                                                        onChange={(e) => {
-                                                                            setQuery(e.target.value);
-                                                                            if (inputError) setInputError(null);
-                                                                        }}
-                                                                        placeholder="Enter problem text here..."
-                                                                    />
-                                                                </div>
-                                                            </div>
-
-                                                            <div>
-                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block px-1 flex justify-between">
-                                                                    <span>Multiple Choice Options</span>
-                                                                    <span className="text-primary tracking-normal font-bold">A-D Widget</span>
-                                                                </label>
-                                                                <div className="grid grid-cols-2 gap-2">
-                                                                    {["A", "B", "C", "D"].map(key => (
-                                                                        <div key={key} className="relative group">
-                                                                            <span className={`absolute left-3 top-1/2 -translate-y-1/2 font-black text-xs ${choices[key] ? 'text-primary' : 'text-slate-300'}`}>{key}</span>
-                                                                            <input
-                                                                                className={`w-full bg-slate-50 dark:bg-slate-800/50 border ${choices[key] ? 'border-primary/30' : 'border-slate-200'} dark:border-slate-750 rounded-lg py-2 pl-8 pr-3 text-xs outline-none focus:ring-2 focus:ring-primary/20 transition-all`}
-                                                                                value={choices[key] || ""}
-                                                                                onChange={(e) => setChoices(prev => ({ ...prev, [key]: e.target.value }))}
-                                                                                placeholder="..."
-                                                                            />
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800">
-                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Live Preview (Math)</label>
-                                                                <div className="text-sm overflow-x-auto min-h-[60px]">
-                                                                    <MathRenderer
-                                                                        content={query || "*No content entered yet...*"}
-                                                                        mode="prose"
-                                                                        dynamic
-                                                                    />
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {ocrBlocks.some(b => b.type === 'figure' || b.type === 'refined_figure') && (
-                                                    <div className="space-y-2">
-                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block px-1">Detected Figures</label>
-                                                        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                                                            {ocrBlocks.filter(b => b.type === 'figure' || b.type === 'refined_figure').map((b, i) => (
-                                                                <div key={i} className="flex-none w-32 h-32 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden relative group cursor-pointer hover:border-primary/50 transition-all">
-                                                                    <img
-                                                                        src={b.url ? `${b.url}` : b.content}
-                                                                        className="w-full h-full object-cover"
-                                                                        alt="OCR Block"
-                                                                    />
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/20 p-3 rounded-lg text-xs text-amber-800 dark:text-amber-200 flex gap-2">
-                                                    <span className="material-symbols-outlined text-sm">info</span>
-                                                    <span>Please verify symbols (exponents, minus signs) match your image before solving.</span>
-                                                </div>
-                                                {inputError && (
-                                                    <div className="text-xs text-red-500 font-medium px-2">
-                                                        {inputError}
-                                                    </div>
-                                                )}
-
-                                                <button
-                                                    onClick={handleConfirmOcr}
-                                                    disabled={isSolving || inputError === "Inappropriate language detected. Please rephrase."}
-                                                    className={`relative w-full bg-primary hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-lg shadow-xl shadow-primary/20 flex items-center justify-center gap-2 transition-all overflow-hidden ${isSolving ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.02]'}`}
-                                                >
-                                                    {isSolving && (
-                                                        <div className="absolute inset-0">
-                                                            <div className="h-full bg-white/20 transition-all" style={{ width: `${solveProgress}%` }}></div>
-                                                        </div>
-                                                    )}
-                                                    {isSolving ? (
-                                                        <>
-                                                            <span className="animate-spin material-symbols-outlined">sync</span>
-                                                            <span>Solving... {solveProgress}%</span>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <span>Confirm & Solve</span>
-                                                            <span className="material-symbols-outlined">arrow_forward</span>
-                                                        </>
-                                                    )}
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
+                                    <SnapSolveV2
+                                        onUseText={(text) => {
+                                            setQuery(text);
+                                            setActiveTab("text");
+                                        }}
+                                        onSolveText={(text) => {
+                                            setQuery(text);
+                                            if (mathInputRef.current) {
+                                                mathInputRef.current.setValue(text);
+                                            }
+                                            handleSolve(text);
+                                        }}
+                                    />
                                 )}
+
                                 {activeTab === 'text' && (
                                     <div className="flex flex-col gap-6 relative">
                                         {/* Input Mode Selector (Expression / Word Problem / Graphing) */}

@@ -1,13 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Request, Form
 from fastapi.responses import StreamingResponse
 from sqlmodel import Session, SQLModel, select
 from sqlalchemy import text as sql_text
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import uuid
 import re
 import requests
 import hashlib
+import base64
+import imghdr
 import json
 import os
 import time
@@ -24,8 +26,9 @@ from app.models import (
     VoiceSession, VoiceAudio, VoiceJob, VoiceArtifact, VoiceConfirmation,
     AdminNote, SystemConfig, PromptTemplate, PromptVersion, UserQuotaOverride, SystemErrorEntry,
     School, Plan, Subscription, UsageLedger,
-    PromptAsset, PlanPromptLink, RequestEvent, DeviceSignupLog
+    PromptAsset, PlanPromptLink, RequestEvent, DeviceSignupLog, OcrCache
 )
+from openai import AsyncOpenAI
 from app.services.subscription_service import subscription_service
 from app.services.vision import VisionService, vision_service
 from app.services.solver import solver_service
@@ -647,6 +650,18 @@ class OCRConfirmRequest(BaseModel):
     confirmed_text: str
     confirmed_latex_blocks: Optional[List[dict]] = None
 
+
+class OcrV5Response(BaseModel):
+    ok: bool = True
+    extracted_text: str
+    extracted_markdown: Optional[str] = None
+    questions: List[str] = Field(default_factory=list)
+    cache_hit: bool = False
+    latency_ms: Optional[int] = None
+    input_tokens: Optional[int] = None
+    output_tokens: Optional[int] = None
+    cached_tokens: Optional[int] = None
+
 class LibrarySaveRequest(BaseModel):
     solve_session_id: Optional[int] = None
     solution_id: Optional[int] = None
@@ -776,7 +791,17 @@ async def login_for_access_token(form_data: LoginRequest, session: Session = Dep
 
 
 # --- User Subscription Endpoint (for tier-aware solve UX) ---
-def build_subscription_response(user: User, subscription: Subscription, plan: Plan) -> SubscriptionResponse:
+def _sync_subscription_balance(subscription: Subscription, plan: Plan, session: Session) -> float:
+    expected_remaining = max(float(plan.credits_per_month) - float(subscription.credits_used_this_period or 0), 0.0)
+    if subscription.credits_balance != expected_remaining:
+        subscription.credits_balance = expected_remaining
+        session.add(subscription)
+        session.commit()
+        session.refresh(subscription)
+    return expected_remaining
+
+
+def build_subscription_response(user: User, subscription: Subscription, plan: Plan, credits_remaining: Optional[float] = None) -> SubscriptionResponse:
     features = plan.features or {}
     multipliers = plan.multipliers or {"text_concise": 1, "text_detailed": 2, "ocr_add": 1, "voice_add": 1}
 
@@ -795,7 +820,7 @@ def build_subscription_response(user: User, subscription: Subscription, plan: Pl
     voice_used = feature_usage.get("voice_used", feature_usage.get("voice", 0))
     usage_info = SubscriptionUsage(
         credits_used=subscription.credits_used_this_period,
-        credits_remaining=subscription.credits_balance,
+        credits_remaining=credits_remaining if credits_remaining is not None else subscription.credits_balance,
         ocr_used=ocr_used,
         ocr_limit=features.get("ocr_monthly_cap", 100),
         voice_used=voice_used,
@@ -840,16 +865,10 @@ async def get_my_subscription(
 
     plan = session.get(Plan, subscription.plan_id)
     if not plan:
-        fallback_plan = session.exec(select(Plan).where(Plan.slug == "free")).first()
-        if not fallback_plan:
-            raise HTTPException(status_code=500, detail="Plan not available for subscription")
-        subscription.plan_id = fallback_plan.id
-        session.add(subscription)
-        session.commit()
-        session.refresh(subscription)
-        plan = fallback_plan
+        raise HTTPException(status_code=500, detail="Plan not available for subscription")
 
-    return build_subscription_response(user, subscription, plan)
+    credits_remaining = _sync_subscription_balance(subscription, plan, session)
+    return build_subscription_response(user, subscription, plan, credits_remaining)
 
 
 
@@ -859,6 +878,214 @@ class LatexResponse(BaseModel):
 # ------------------------------------------------------------------
 # OCR Subsystem Endpoints
 # ------------------------------------------------------------------
+
+OCR_V5_MODEL = os.getenv("OCR_V5_MODEL", "gpt-5-mini")
+OCR_V5_MAX_TOKENS = int(os.getenv("OCR_V5_MAX_TOKENS", "800"))
+OCR_V5_MAX_MB = int(os.getenv("OCR_V5_MAX_MB", "10"))
+
+OCR_V5_SYSTEM_PROMPT = (
+    "You are an OCR extraction engine. Extract EXACT text and math as seen. "
+    "Do not solve or explain. Return only JSON with fields extracted_text, "
+    "extracted_markdown, questions."
+)
+
+OCR_V5_USER_PROMPT = (
+    "Return STRICT JSON ONLY in this shape: "
+    "{\"extracted_text\":\"...\",\"extracted_markdown\":\"...\",\"questions\":[\"...\"]}. "
+    "Preserve math. If unreadable, say: "
+    "\"Could not read text. Try cropping tighter or increasing zoom.\""
+)
+
+OCR_V5_SCHEMA = {
+    "name": "ocr_v5_response",
+    "schema": {
+        "type": "object",
+        "properties": {
+            "extracted_text": {"type": "string"},
+            "extracted_markdown": {"type": ["string", "null"]},
+            "questions": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["extracted_text", "questions"],
+        "additionalProperties": False
+    }
+}
+
+
+def _parse_json_response(content: str) -> Dict[str, Any]:
+    if not content:
+        raise ValueError("Empty OCR response")
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        match = re.search(r"\{.*\}", content, re.DOTALL)
+        if not match:
+            raise
+        return json.loads(match.group(0))
+
+
+async def _call_ocr_v5(image_bytes: bytes) -> Dict[str, Any]:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="OPENAI_API_KEY not configured")
+    client = AsyncOpenAI(api_key=api_key)
+    b64 = base64.b64encode(image_bytes).decode("utf-8")
+
+    if "gpt-5" in OCR_V5_MODEL.lower():
+        response = await client.responses.create(
+            model=OCR_V5_MODEL,
+            input=[
+                {"role": "system", "content": [{"type": "input_text", "text": OCR_V5_SYSTEM_PROMPT}]},
+                {"role": "user", "content": [
+                    {"type": "input_text", "text": OCR_V5_USER_PROMPT},
+                    {"type": "input_image", "image_url": f"data:image/jpeg;base64,{b64}"}
+                ]}
+            ],
+            text={
+                "format": {
+                    "type": "json_schema",
+                    "json_schema": OCR_V5_SCHEMA
+                }
+            },
+            max_output_tokens=OCR_V5_MAX_TOKENS
+        )
+        content = None
+        if getattr(response, "output", None):
+            for item in response.output:
+                if getattr(item, "content", None):
+                    content = item.content[0].text
+                    break
+        if not content:
+            raise ValueError("Empty OCR response")
+        usage = getattr(response, "usage", None)
+        cached_tokens = None
+        if usage and hasattr(usage, "input_token_details"):
+            cached_tokens = getattr(usage.input_token_details, "cached_tokens", None)
+        return {
+            "payload": _parse_json_response(content),
+            "input_tokens": getattr(usage, "input_tokens", None),
+            "output_tokens": getattr(usage, "output_tokens", None),
+            "cached_tokens": cached_tokens
+        }
+
+    response = await client.chat.completions.create(
+        model=OCR_V5_MODEL,
+        messages=[
+            {"role": "system", "content": OCR_V5_SYSTEM_PROMPT},
+            {"role": "user", "content": [
+                {"type": "text", "text": OCR_V5_USER_PROMPT},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}", "detail": "high"}}
+            ]}
+        ],
+        response_format={"type": "json_schema", "json_schema": OCR_V5_SCHEMA},
+        max_completion_tokens=OCR_V5_MAX_TOKENS
+    )
+    content = response.choices[0].message.content
+    usage = getattr(response, "usage", None)
+    cached_tokens = None
+    if usage and hasattr(usage, "prompt_tokens_details"):
+        cached_tokens = getattr(usage.prompt_tokens_details, "cached_tokens", None)
+    return {
+        "payload": _parse_json_response(content),
+        "input_tokens": getattr(usage, "prompt_tokens", None) if usage else None,
+        "output_tokens": getattr(usage, "completion_tokens", None) if usage else None,
+        "cached_tokens": cached_tokens
+    }
+
+
+@api_router.post("/ocr_v5", response_model=OcrV5Response)
+@limiter.limit("10/minute")
+async def ocr_v5(
+    request: Request,
+    file: UploadFile = File(...),
+    page_number: int = Form(1),
+    file_hash: Optional[str] = Form(None),
+    crop_x: Optional[int] = Form(None),
+    crop_y: Optional[int] = Form(None),
+    crop_w: Optional[int] = Form(None),
+    crop_h: Optional[int] = Form(None),
+    session: Session = Depends(get_session)
+):
+    if not file:
+        raise HTTPException(status_code=400, detail="File is required")
+
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise HTTPException(status_code=500, detail="OPENAI_API_KEY not set on server")
+
+    raw = await file.read()
+    if len(raw) > OCR_V5_MAX_MB * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File exceeds size limit")
+
+    if raw.startswith(b"%PDF"):
+        raise HTTPException(status_code=415, detail="PDF uploads are not accepted")
+    image_kind = imghdr.what(None, raw)
+    content_type = file.content_type or ""
+    if not content_type.startswith("image/") and image_kind not in ("jpeg", "png", "webp"):
+        raise HTTPException(status_code=415, detail="Only image uploads are accepted")
+    if image_kind not in ("jpeg", "png", "webp"):
+        raise HTTPException(status_code=415, detail="Unsupported image type")
+
+    crop_meta = {
+        "page_number": page_number,
+        "file_hash": file_hash,
+        "crop_x": crop_x,
+        "crop_y": crop_y,
+        "crop_w": crop_w,
+        "crop_h": crop_h,
+    }
+    hash_input = raw + json.dumps(crop_meta, sort_keys=True).encode("utf-8")
+    cache_key = hashlib.sha256(hash_input).hexdigest()
+
+    cached = session.exec(select(OcrCache).where(OcrCache.cache_key == cache_key)).first()
+    if cached:
+        cached.hit_count += 1
+        cached.last_hit_at = datetime.utcnow()
+        session.add(cached)
+        session.commit()
+        return OcrV5Response(
+            extracted_text=cached.extracted_text,
+            extracted_markdown=cached.extracted_markdown,
+            questions=cached.questions or [],
+            cache_hit=True,
+            latency_ms=0
+        )
+
+    start = time.time()
+    try:
+        ocr_data = await _call_ocr_v5(raw)
+    except Exception as exc:
+        logging.exception("OCR v5 failed")
+        raise HTTPException(status_code=502, detail=f"OCR engine error: {str(exc)}") from exc
+    payload = ocr_data.get("payload", {})
+    extracted_text = payload.get("extracted_text") or ""
+    extracted_markdown = payload.get("extracted_markdown")
+    questions = payload.get("questions") or []
+    latency_ms = int((time.time() - start) * 1000)
+
+    if not extracted_text:
+        extracted_text = "Could not read text. Try cropping tighter or increasing zoom."
+
+    cache_entry = OcrCache(
+        cache_key=cache_key,
+        extracted_text=extracted_text,
+        extracted_markdown=extracted_markdown,
+        questions=questions,
+        hit_count=1,
+        created_at=datetime.utcnow(),
+        last_hit_at=datetime.utcnow()
+    )
+    session.add(cache_entry)
+    session.commit()
+
+    return OcrV5Response(
+        extracted_text=extracted_text,
+        extracted_markdown=extracted_markdown,
+        questions=questions,
+        cache_hit=False,
+        latency_ms=latency_ms,
+        input_tokens=ocr_data.get("input_tokens"),
+        output_tokens=ocr_data.get("output_tokens"),
+        cached_tokens=ocr_data.get("cached_tokens")
+    )
 
 @api_router.post("/uploads")
 @limiter.limit("5/minute")
@@ -4773,15 +5000,10 @@ async def get_my_subscription_v2(user_id: int = Query(...), session: Session = D
         raise HTTPException(status_code=500, detail="Subscription not available")
     plan = session.get(Plan, subscription.plan_id)
     if not plan:
-        fallback_plan = session.exec(select(Plan).where(Plan.slug == "free")).first()
-        if not fallback_plan:
-            raise HTTPException(status_code=500, detail="Plan not available for subscription")
-        subscription.plan_id = fallback_plan.id
-        session.add(subscription)
-        session.commit()
-        session.refresh(subscription)
-        plan = fallback_plan
-    return build_subscription_response(user, subscription, plan)
+        raise HTTPException(status_code=500, detail="Plan not available for subscription")
+
+    credits_remaining = _sync_subscription_balance(subscription, plan, session)
+    return build_subscription_response(user, subscription, plan, credits_remaining)
 
 
 @api_router.get('/admin/plans-with-prompts')

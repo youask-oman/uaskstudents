@@ -87,6 +87,28 @@ class SubscriptionService:
 
     def get_or_create_subscription(self, session: Session, user: User) -> Subscription:
         if user.subscription:
+            plan = session.get(Plan, user.subscription.plan_id)
+            if plan:
+                return user.subscription
+
+            # Repair missing plan reference using the user's tier mapping.
+            plan_slug = "free"
+            if user.subscription_tier == "pro":
+                plan_slug = "student_standard"
+            elif user.subscription_tier == "family":
+                plan_slug = "family_standard"
+
+            plan = session.exec(select(Plan).where(Plan.slug == plan_slug)).first()
+            if not plan:
+                self.ensure_plans_exist(session)
+                plan = session.exec(select(Plan).where(Plan.slug == plan_slug)).first()
+            if not plan:
+                raise ValueError("Plan not available for subscription repair")
+
+            user.subscription.plan_id = plan.id
+            session.add(user.subscription)
+            session.commit()
+            session.refresh(user.subscription)
             return user.subscription
         
         # Determine plan based on user.subscription_tier (legacy support)

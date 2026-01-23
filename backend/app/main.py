@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request
+from dotenv import load_dotenv
 from app.database import create_db_and_tables, get_session
 from sqlmodel import Session, select
 import logging
@@ -7,6 +8,8 @@ import time
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.api import limiter
+
+load_dotenv()
 
 app = FastAPI(title="UAsk.ai Orchestrator")
 app.state.limiter = limiter
