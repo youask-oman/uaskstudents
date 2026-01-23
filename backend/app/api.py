@@ -1145,6 +1145,7 @@ async def _call_extract_questions(image_bytes: bytes) -> Dict[str, Any]:
             text={
                 "format": {
                     "type": "json_schema",
+                    "name": EXTRACT_SCHEMA.get("name", "extract_questions"),
                     "json_schema": EXTRACT_SCHEMA
                 }
             },
@@ -1178,7 +1179,7 @@ async def _call_extract_questions(image_bytes: bytes) -> Dict[str, Any]:
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}", "detail": "high"}}
             ]}
         ],
-        response_format={"type": "json_schema", "json_schema": EXTRACT_SCHEMA},
+        response_format={"type": "json_schema", "name": EXTRACT_SCHEMA.get("name", "extract_questions"), "json_schema": EXTRACT_SCHEMA},
         max_completion_tokens=EXTRACT_MAX_TOKENS
     )
     content = response.choices[0].message.content

@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useLayoutEffect, useRef, useState } from "react";
+"use client";
+
+import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
 import Cropper, { Area } from "react-easy-crop";
 import { CropArea, clamp } from "./snapSolveUtils";
 
@@ -15,7 +17,13 @@ type CropWorkspaceProps = {
     onCropComplete: (areaPixels: CropArea) => void;
     onImageSize?: (size: { width: number; height: number }) => void;
     fullPage: boolean;
+    resetToken?: number;
 };
+
+const DEFAULT_WIDTH_SCALE = 0.65;
+const DEFAULT_HEIGHT_SCALE = 0.6;
+const MIN_SCALE = 0.2;
+const MAX_SCALE = 1.1;
 
 export default function CropWorkspace({
     imageSrc,
@@ -28,43 +36,73 @@ export default function CropWorkspace({
     onCropComplete,
     onImageSize,
     fullPage,
+    resetToken,
 }: CropWorkspaceProps) {
-    const DEFAULT_WIDTH_SCALE = 0.65;
-    const DEFAULT_HEIGHT_SCALE = 0.6;
     const containerRef = useRef<HTMLDivElement | null>(null);
     const [workspaceSize, setWorkspaceSize] = useState({ width: 0, height: 0 });
     const [cropWidthScale, setCropWidthScale] = useState(DEFAULT_WIDTH_SCALE);
     const [cropHeightScale, setCropHeightScale] = useState(DEFAULT_HEIGHT_SCALE);
     const [lockRatio, setLockRatio] = useState(false);
     const prevFullPage = useRef(fullPage);
+    const prevReset = useRef(resetToken);
+
+    const updateSize = useCallback(() => {
+        if (!containerRef.current) return;
+        const rect = containerRef.current.getBoundingClientRect();
+        setWorkspaceSize({ width: rect.width, height: rect.height });
+    }, []);
 
     useLayoutEffect(() => {
-        const updateSize = () => {
-            if (!containerRef.current) return;
-            const rect = containerRef.current.getBoundingClientRect();
-            setWorkspaceSize({ width: rect.width, height: rect.height });
-        };
         updateSize();
+        const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => updateSize()) : null;
+        if (observer && containerRef.current) {
+            observer.observe(containerRef.current);
+        }
         window.addEventListener("resize", updateSize);
-        return () => window.removeEventListener("resize", updateSize);
+        return () => {
+            window.removeEventListener("resize", updateSize);
+            observer?.disconnect();
+        };
+    }, [updateSize]);
+
+    React.useEffect(() => {
+        updateSize();
+    }, [imageSrc, updateSize]);
+
+    const clampScale = (value: number) => {
+        return Math.min(MAX_SCALE, Math.max(MIN_SCALE, value));
+    };
+
+    const resetCropScale = React.useCallback(() => {
+        setCropWidthScale(DEFAULT_WIDTH_SCALE);
+        setCropHeightScale(DEFAULT_HEIGHT_SCALE);
+        setLockRatio(false);
     }, []);
 
     React.useEffect(() => {
         if (fullPage) {
             setCropWidthScale(1);
             setCropHeightScale(1);
+            setLockRatio(true);
         } else if (prevFullPage.current && !fullPage) {
-            setCropWidthScale(DEFAULT_WIDTH_SCALE);
-            setCropHeightScale(DEFAULT_HEIGHT_SCALE);
-            setLockRatio(false);
+            resetCropScale();
         }
         prevFullPage.current = fullPage;
-    }, [fullPage]);
+    }, [fullPage, resetCropScale]);
+
+    React.useEffect(() => {
+        if (resetToken == null) return;
+        if (resetToken !== prevReset.current) {
+            resetCropScale();
+            prevReset.current = resetToken;
+        }
+    }, [resetToken, resetCropScale]);
 
     const cropSize = {
-        width: Math.max(32, workspaceSize.width * cropWidthScale),
-        height: Math.max(32, workspaceSize.height * cropHeightScale),
+        width: Math.max(32, clamp(workspaceSize.width * cropWidthScale, 32, workspaceSize.width)),
+        height: Math.max(32, clamp(workspaceSize.height * cropHeightScale, 32, workspaceSize.height)),
     };
+    const cropperKey = `${fullPage ? "full" : "crop"}-${Math.round(cropWidthScale * 100)}-${Math.round(cropHeightScale * 100)}`;
 
     const handleCropComplete = React.useCallback(
         (_area: Area, areaPixels: Area) => {
@@ -78,9 +116,26 @@ export default function CropWorkspace({
         [onCropComplete]
     );
 
+    const handleHorizontalChange = (value: number) => {
+        const next = clampScale(value);
+        setCropWidthScale(next);
+        if (lockRatio) {
+            setCropHeightScale(next);
+        }
+    };
+
+    const handleVerticalChange = (value: number) => {
+        const next = clampScale(value);
+        setCropHeightScale(next);
+        if (lockRatio) {
+            setCropWidthScale(next);
+        }
+    };
+
     return (
-        <div ref={containerRef} className="relative w-full h-[520px] bg-slate-900 rounded-xl overflow-hidden">
+        <div ref={containerRef} className="relative w-full min-h-[520px] bg-slate-900 rounded-xl overflow-hidden">
             <Cropper
+                key={cropperKey}
                 image={imageSrc}
                 crop={crop}
                 zoom={zoom}
@@ -99,72 +154,35 @@ export default function CropWorkspace({
                 objectFit="contain"
                 showGrid={true}
             />
-            <div className="absolute bottom-3 left-3 right-3 bg-white/90 rounded-2xl px-5 py-3 shadow-lg flex flex-wrap gap-3 items-center justify-between text-[11px]">
-                <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                    Zoom
-                    <input
-                        type="range"
-                        min={1}
-                        max={3}
-                        step={0.05}
-                        value={zoom}
-                        onChange={(e) => onZoomChange(parseFloat(e.target.value))}
-                        className="w-28"
-                    />
-                </label>
-                <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                    Rotate
-                    <input
-                        type="range"
-                        min={-180}
-                        max={180}
-                        step={1}
-                        value={rotation}
-                        onChange={(e) => onRotationChange(clamp(parseFloat(e.target.value), -180, 180))}
-                        className="w-28"
-                    />
-                </label>
-                <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600 w-full max-w-[200px]">
-                    Horizontal Crop
-                    <input
-                        type="range"
-                        min={0.3}
-                        max={1}
-                        step={0.05}
-                        value={cropWidthScale}
-                        disabled={fullPage}
-                        onChange={(e) => {
-                            const next = parseFloat(e.target.value);
-                            setCropWidthScale(next);
-                            if (lockRatio) {
-                                setCropHeightScale(next);
-                            }
-                        }}
-                        className="w-full"
-                    />
-                </label>
-                <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600 w-full max-w-[200px]">
-                    Vertical Crop
-                    <input
-                        type="range"
-                        min={0.3}
-                        max={1}
-                        step={0.05}
-                        value={cropHeightScale}
-                        disabled={fullPage}
-                        onChange={(e) => {
-                            const next = parseFloat(e.target.value);
-                            setCropHeightScale(next);
-                            if (lockRatio) {
-                                setCropWidthScale(next);
-                            }
-                        }}
-                        className="w-full"
-                    />
-                </label>
-                <div className="flex flex-col gap-1 text-xs text-slate-500">
-                    <label className="flex items-center gap-2 text-[11px]">
+            <div className="absolute bottom-0 left-0 right-0 px-4 py-3 bg-white/95 border-t border-slate-200 flex flex-col gap-3 text-[11px]">
+                <div className="flex flex-wrap gap-3">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                        Zoom
                         <input
+                            type="range"
+                            min={1}
+                            max={3}
+                            step={0.05}
+                            value={zoom}
+                            onChange={(e) => onZoomChange(parseFloat(e.target.value))}
+                            className="w-28 accent-admin-primary"
+                        />
+                    </label>
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                        Rotate
+                        <input
+                            type="range"
+                            min={-180}
+                            max={180}
+                            step={1}
+                            value={rotation}
+                            onChange={(e) => onRotationChange(clamp(parseFloat(e.target.value), -180, 180))}
+                            className="w-28 accent-admin-primary"
+                        />
+                    </label>
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <input
+                            id="lock-ratio"
                             type="checkbox"
                             checked={lockRatio}
                             onChange={(e) => {
@@ -175,20 +193,40 @@ export default function CropWorkspace({
                                 }
                             }}
                             disabled={fullPage}
+                            className="accent-admin-primary"
                         />
-                        Lock ratio
+                        <label htmlFor="lock-ratio" className="font-semibold text-xs">
+                            Lock ratio
+                        </label>
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                    <label className="flex flex-col gap-1">
+                        <span className="text-xs font-semibold text-slate-600">Horizontal crop</span>
+                        <input
+                            type="range"
+                            min={MIN_SCALE}
+                            max={MAX_SCALE}
+                            step={0.01}
+                            value={cropWidthScale}
+                            disabled={fullPage}
+                            onChange={(e) => handleHorizontalChange(parseFloat(e.target.value))}
+                            className="w-full accent-admin-primary"
+                        />
                     </label>
-                    <button
-                        type="button"
-                        className="text-[11px] font-semibold uppercase tracking-[0.3em] text-admin-primary hover:text-admin-primary/80"
-                        onClick={() => {
-                            setCropWidthScale(DEFAULT_WIDTH_SCALE);
-                            setCropHeightScale(DEFAULT_HEIGHT_SCALE);
-                        }}
-                        disabled={fullPage}
-                    >
-                        Reset crop size
-                    </button>
+                    <label className="flex flex-col gap-1">
+                        <span className="text-xs font-semibold text-slate-600">Vertical crop</span>
+                        <input
+                            type="range"
+                            min={MIN_SCALE}
+                            max={MAX_SCALE}
+                            step={0.01}
+                            value={cropHeightScale}
+                            disabled={fullPage}
+                            onChange={(e) => handleVerticalChange(parseFloat(e.target.value))}
+                            className="w-full accent-admin-primary"
+                        />
+                    </label>
                 </div>
             </div>
         </div>

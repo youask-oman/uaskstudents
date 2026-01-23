@@ -78,8 +78,17 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
     const [isBusy, setIsBusy] = React.useState(false);
     const [imageSize, setImageSize] = React.useState<{ width: number; height: number } | null>(null);
     const [figureCrops, setFigureCrops] = React.useState<Record<string, string>>({});
+    const [cropResetToken, setCropResetToken] = React.useState(0);
 
     const abortRef = React.useRef<AbortController | null>(null);
+
+    const handleResetCropControls = React.useCallback(() => {
+        setCropResetToken((prev) => prev + 1);
+        setCrop({ x: 0, y: 0 });
+        setZoom(1);
+        setRotation(0);
+        setCropPixels(null);
+    }, [setCrop, setZoom, setRotation, setCropPixels]);
 
     const resetAll = React.useCallback(() => {
         if (imageSrc && imageSrc.startsWith("blob:")) {
@@ -106,7 +115,8 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
             abortRef.current.abort();
             abortRef.current = null;
         }
-    }, [imageSrc]);
+        handleResetCropControls();
+    }, [imageSrc, handleResetCropControls]);
 
     const handleFile = React.useCallback((selectedFile: File) => {
         if (!selectedFile) return;
@@ -439,11 +449,12 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                                 onCropComplete={setCropPixels}
                                 onImageSize={setImageSize}
                                 fullPage={fullPage}
+                                resetToken={cropResetToken}
                             />
                         </div>
                     )}
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                         <button
                             type="button"
                             onClick={handleExtract}
@@ -451,6 +462,14 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                             className="px-4 py-2 text-sm font-bold rounded-lg bg-primary text-white disabled:opacity-50"
                         >
                             {isBusy && status === "extracting" ? "Extracting..." : "Send to AI"}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleResetCropControls}
+                            disabled={!imageSrc || fullPage}
+                            className="px-4 py-2 text-sm font-semibold rounded-lg border border-slate-200 text-slate-600 disabled:opacity-50"
+                        >
+                            Reset crop controls
                         </button>
                     </div>
                 </div>
