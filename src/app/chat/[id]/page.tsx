@@ -326,9 +326,16 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
                 assumptions: solutionData?.assumptions
             }}
             stepsCount={(solutionData?.steps || []).length}
-            // Map steps titles to the Analysis Plan for the timeline view
-            analysisPlan={(solutionData?.steps || []).map((s: any) => s.title)}
-            finalAnswer={typeof solutionData?.final_answer === 'object' ? solutionData?.final_answer?.answer_latex : solutionData?.final_answer}
+            // Map the high-level plan from the AI if available, otherwise fall back to step titles
+            analysisPlan={(
+                solutionData?.plan?.map((p: any) => p.summary || p.title) ||
+                (solutionData?.steps || []).map((s: any) => s.title)
+            ).filter(Boolean)}
+            finalAnswer={
+                solutionData?.final_answer?.answer_latex ||
+                solutionData?.final_answer ||
+                (solutionData?._truncated ? "Partial solution in progress..." : null)
+            }
             confidence={solutionData?.quality?.confidence ? Math.round(solutionData.quality.confidence * 100) : 99}
             llmUsed="YouAsk AI"
             totalTokensUsed={totalTokensUsed}

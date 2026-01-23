@@ -114,8 +114,8 @@ class ProfileResolver:
         
         if "standard" in tier_slug or "family" in tier_slug:
             if effective_mode == "detailed":
-                max_tokens = 4096
-                max_steps = 12
+                max_tokens = 12000
+                max_steps = 25
             else:
                 # STRICT CAP for Paid Minimal: 600 tokens
                 # Enough for 2 steps + JSON overhead, but forces brevity.

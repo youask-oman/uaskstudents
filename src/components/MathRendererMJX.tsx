@@ -65,11 +65,14 @@ const looksLikeMath = (candidate: string) => {
   if (!trimmed) return false;
 
   const hasCommand = /\\[a-zA-Z]+/.test(trimmed);
-  const hasOperator = /[=+\-*/^_<>]/.test(trimmed);
+  const hasOperator = /[=+\-*/^_<>±≈≠≥≤√∞]/.test(trimmed);
+  const hasGreek = /[αβγδεζηθικλμνξπρστυφχψωΑΒΓΔΕΖΗΘΙΚΛΜΝΞΠΡΣΤΥΦΧΨΩ]/.test(trimmed);
+  const hasAccented = /[a-zA-Z]\u0304/.test(trimmed); // x-bar
+
   const compactLength = trimmed.replace(/\s+/g, "").length;
   const lettersOnly = /^[\da-zA-Z\s]+$/.test(trimmed);
 
-  if (hasCommand || hasOperator) return true;
+  if (hasCommand || hasOperator || hasGreek || hasAccented) return true;
   if (lettersOnly && compactLength <= 6) return true;
   return false;
 };
@@ -406,31 +409,49 @@ const wrapBareMathExpressions = (text: string) => {
         return part;
       }
 
-      // Combined pattern that matches complete math expressions
-      // Use simple patterns and check for existing delimiters via string inspection
       let output = part;
 
       // Only apply if no existing LaTeX delimiters are detected in this segment
       if (!output.includes("\\(") && !output.includes("\\[")) {
+        // Step 1: Normalize symbols to LaTeX commands
+        output = output
+          .replace(/√\s*([0-9a-zA-Z]+)/g, "\\sqrt{$1}")
+          .replace(/x\u0304/g, "\\bar{x}")
+          .replace(/±/g, "\\pm")
+          .replace(/≈/g, "\\approx")
+          .replace(/≠/g, "\\neq")
+          .replace(/≥/g, "\\ge")
+          .replace(/≤/g, "\\le")
+          .replace(/σ/g, "\\sigma")
+          .replace(/α/g, "\\alpha")
+          .replace(/μ/g, "\\mu");
 
-        // Pattern 1: Function with equation like f(-1) = expression  
-        // Match: letter + optional ' + parens + = + rest of expression until comma/period/newline
-        output = output.replace(
-          /\b([a-zA-Z]'?)\(([^)]+)\)\s*=\s*([^,.;:!?\n]+)/g,
-          (m, fn, arg, expr) => `\\(${fn}(${arg}) = ${expr.trim()}\\)`
-        );
+        // Step 2: Wrap all standard LaTeX commands in \(\)
+        // Match \command or \command{...}
+        output = output.replace(/\\[a-z]+(?:\{[^}]*\})*/g, (m) => `\\(${m}\\)`);
 
-        // Pattern 2: Simple equation x = number 
-        output = output.replace(
-          /\b([a-zA-Z])\s*=\s*(-?\d+(?:\.\d+)?)\b/g,
-          "\\($1 = $2\\)"
-        );
+        // Step 3: Wrap common equations (e.g., n = 725, x = 1.2)
+        // Avoid double wrapping if already inside a delimiter
+        output = output.replace(/\b([a-zA-Z])\s*=\s*(-?\d+(?:\.\d+)?)\b/g, (m) => {
+          if (output.includes(`\\(${m}\\)`)) return m;
+          return `\\(${m}\\)`;
+        });
 
-        // Pattern 3: Coordinate points followed by punctuation or at sentence end
+        // Step 4: Wrap coordinate points
         output = output.replace(
           /\((-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)\)(?=[.,;:!?\s]|$)/g,
           "\\(($1, $2)\\)"
         );
+
+        // Step 5: Wrap complex expressions containing math operators (e.g. CI = ...)
+        output = output.replace(/([a-zA-Z]{1,2}\s*=\s*[^,.;:!?\n]+)/g, (m) => {
+          if (m.includes("\\(")) return m;
+          if (looksLikeMath(m)) return `\\(${m.trim()}\\)`;
+          return m;
+        });
+
+        // Step 6: Fix double-wrapping artifacts
+        output = output.replace(/\\\(\s*\\\(/g, "\\(").replace(/\\\)\s*\\\)/g, "\\)");
       }
 
       return output;

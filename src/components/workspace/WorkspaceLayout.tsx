@@ -337,7 +337,8 @@ export default function WorkspaceLayout({
                                                 .replace(/textParabola\s*:/gi, '\n**Parabola:** ')
                                                 .replace(/Parabola\s*:/gi, '**Parabola:** ')
                                                 .split('\n')
-                                                .filter(s => s.trim());
+                                                .map(s => s.trim())
+                                                .filter(Boolean);
 
                                             return segments.map((segment, idx) => {
                                                 // Check if segment starts with a label like **Line:** or **Parabola:**
@@ -393,7 +394,9 @@ export default function WorkspaceLayout({
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
                             <span className="material-symbols-outlined text-primary text-[20px]">format_list_numbered</span>
-                            <h3 className="font-bold text-sm uppercase tracking-wide text-[#111318] dark:text-white">Solution Plan ({analysisPlan.length > 0 ? analysisPlan.length : 3} Steps)</h3>
+                            <h3 className="font-bold text-sm uppercase tracking-wide text-[#111318] dark:text-white">
+                                Solution Plan {analysisPlan.length > 0 && `(${analysisPlan.length} Steps)`}
+                            </h3>
                         </div>
                     </div>
 
@@ -401,7 +404,9 @@ export default function WorkspaceLayout({
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                             {analysisPlan.map((step, idx) => {
                                 const stepNum = idx + 1;
-                                const title = step.trim();
+                                const title = (step || "").trim();
+                                if (!title) return null; // Skip truly empty ones if filter failed
+
                                 const isRedundant =
                                     title.toLowerCase() === `step ${stepNum}` ||
                                     title.toLowerCase() === `step ${stepNum}:`;
@@ -423,8 +428,13 @@ export default function WorkspaceLayout({
                                             <span className="material-symbols-outlined text-[14px] text-primary opacity-0 group-hover:opacity-100 transition-opacity">north_east</span>
                                         </div>
                                         {!isRedundant && (
-                                            <div className="font-bold text-[#111318] dark:text-white text-xs leading-tight line-clamp-2" title={step}>
-                                                <MathRenderer content={step} inline />
+                                            <div className="font-bold text-[#111318] dark:text-white text-xs leading-tight line-clamp-2" title={title}>
+                                                <MathRenderer content={title} inline />
+                                            </div>
+                                        )}
+                                        {isRedundant && (
+                                            <div className="font-bold text-[#111318] dark:text-white text-xs leading-tight opacity-40">
+                                                Analyzing...
                                             </div>
                                         )}
                                     </button>
