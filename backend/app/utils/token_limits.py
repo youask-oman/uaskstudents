@@ -7,8 +7,8 @@ def get_effective_max_tokens(mode: str, learning_mode: Optional[str]) -> int:
     Caps:
       - minimal + solve: 900
       - minimal + study: 1600 (though study is usually disabled in minimal)
-      - detailed + solve: 3000
-      - detailed + study: 4500
+      - detailed + solve: 6000
+      - detailed + study: 12000
       - default: 1000
     """
     normalized_mode = (mode or "minimal").lower()
