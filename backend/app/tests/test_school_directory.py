@@ -58,9 +58,11 @@ class TestLocationEndpoints:
         assert response.status_code == 200
         data = response.json()
         assert "grades" in data
-        assert "Grade 1" in data["grades"]
+        assert "Grade 4" in data["grades"]
         assert "Grade 12" in data["grades"]
-        assert len(data["grades"]) == 12
+        assert "College" in data["grades"]
+        assert "University" in data["grades"]
+        assert len(data["grades"]) == 11
 
 
 class TestSchoolSearchEndpoints:

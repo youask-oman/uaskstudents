@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type FilterState = {
     mode: string;
@@ -72,6 +74,50 @@ export default function AdminDashboardPage() {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+    const router = useRouter();
+    const settingsPanelRef = useRef<HTMLDivElement | null>(null);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+    const adminFeatureLinks = [
+        { label: "Overview", href: "/admin/dashboard" },
+        { label: "Users", href: "/admin/users" },
+        { label: "Quotas", href: "/admin/quotas" },
+        { label: "Subscriptions", href: "/admin/subscriptions" },
+        { label: "Prompts", href: "/admin/prompts" },
+        { label: "Logs", href: "/admin/logs" },
+        { label: "Content", href: "/admin/content" },
+        { label: "Data", href: "/admin/data" },
+    ];
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (settingsPanelRef.current && !settingsPanelRef.current.contains(event.target as Node)) {
+                setIsSettingsOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const clearSessionData = () => {
+        if (typeof window === "undefined") return;
+        localStorage.removeItem("token");
+        localStorage.removeItem("user_id");
+        localStorage.removeItem("user_name");
+        localStorage.removeItem("user_avatar");
+        localStorage.removeItem("user_role");
+        localStorage.removeItem("session_token");
+        localStorage.removeItem("user");
+        localStorage.removeItem("subscription_cache");
+        localStorage.clear();
+        sessionStorage.clear();
+    };
+
+    const handleAdminLogout = () => {
+        clearSessionData();
+        setIsSettingsOpen(false);
+        router.push("/login");
+    };
 
     useEffect(() => {
         const controller = new AbortController();
@@ -181,9 +227,49 @@ export default function AdminDashboardPage() {
                         <span className="material-symbols-outlined">notifications</span>
                         <span className="absolute top-2 right-2.5 size-2 bg-rose-500 rounded-full border-2 border-slate-200 dark:border-[#0F172A]"></span>
                     </button>
-                    <button className="p-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors">
-                        <span className="material-symbols-outlined">settings</span>
-                    </button>
+                    <div className="relative" ref={settingsPanelRef}>
+                        <button
+                            onClick={() => setIsSettingsOpen((prev) => !prev)}
+                            className="p-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors flex items-center gap-1"
+                            aria-expanded={isSettingsOpen}
+                            aria-label="Settings and session actions"
+                        >
+                            <span className="material-symbols-outlined">settings</span>
+                            <span className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Menu</span>
+                        </button>
+                        {isSettingsOpen && (
+                            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl shadow-black/20 ring-1 ring-black/5 z-50">
+                                <div className="flex flex-col divide-y divide-slate-100 dark:divide-slate-800">
+                                    <div className="p-3">
+                                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">Quick Links</p>
+                                        <div className="flex flex-col gap-1">
+                                            {adminFeatureLinks.map((item) => (
+                                                <Link
+                                                    key={item.href}
+                                                    href={item.href}
+                                                    onClick={() => setIsSettingsOpen(false)}
+                                                    className="text-sm text-slate-700 dark:text-slate-200 hover:text-admin-primary hover:font-semibold transition-colors"
+                                                >
+                                                    {item.label}
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="p-3">
+                                        <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-400 mb-1">
+                                            Dangerous
+                                        </p>
+                                        <button
+                                            onClick={handleAdminLogout}
+                                            className="w-full text-left rounded-lg px-3 py-2 text-sm font-bold text-red-600 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-800 transition-colors"
+                                        >
+                                            Full Sign Out (clears cache)
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                     <button className="p-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors">
                         <span className="material-symbols-outlined">light_mode</span>
                     </button>

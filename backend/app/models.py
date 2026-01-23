@@ -45,7 +45,7 @@ class User(SQLModel, table=True):
     # Student Location Profile (user-selected, required for curriculum context)
     profile_country: Optional[str] = None  # 'USA' or 'Canada' - required after onboarding
     profile_province_state: Optional[str] = None  # State (USA) or Province/Territory (Canada)
-    grade_level: Optional[str] = None  # 'Grade 1' to 'Grade 12'
+    grade_level: Optional[str] = None  # Grade 4-12, College, or University
     school_id: Optional[int] = Field(default=None, foreign_key="school.id", index=True)  # Optional school
     
     # Advanced Profile

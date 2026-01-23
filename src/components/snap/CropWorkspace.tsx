@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import Cropper, { Area } from "react-easy-crop";
 import { CropArea, clamp } from "./snapSolveUtils";
 
@@ -14,6 +14,7 @@ type CropWorkspaceProps = {
     onRotationChange: (rotation: number) => void;
     onCropComplete: (areaPixels: CropArea) => void;
     onImageSize?: (size: { width: number; height: number }) => void;
+    fullPage: boolean;
 };
 
 export default function CropWorkspace({
@@ -27,6 +28,37 @@ export default function CropWorkspace({
     onCropComplete,
     onImageSize,
 }: CropWorkspaceProps) {
+    const DEFAULT_WIDTH_SCALE = 0.65;
+    const DEFAULT_HEIGHT_SCALE = 0.6;
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const [workspaceSize, setWorkspaceSize] = useState({ width: 0, height: 0 });
+    const [cropWidthScale, setCropWidthScale] = useState(DEFAULT_WIDTH_SCALE);
+    const [cropHeightScale, setCropHeightScale] = useState(DEFAULT_HEIGHT_SCALE);
+    const [lockRatio, setLockRatio] = useState(false);
+
+    useLayoutEffect(() => {
+        const updateSize = () => {
+            if (!containerRef.current) return;
+            const rect = containerRef.current.getBoundingClientRect();
+            setWorkspaceSize({ width: rect.width, height: rect.height });
+        };
+        updateSize();
+        window.addEventListener("resize", updateSize);
+        return () => window.removeEventListener("resize", updateSize);
+    }, []);
+
+    React.useEffect(() => {
+        if (fullPage) {
+            setCropWidthScale(1);
+            setCropHeightScale(1);
+        }
+    }, [fullPage]);
+
+    const cropSize = {
+        width: Math.max(32, workspaceSize.width * cropWidthScale),
+        height: Math.max(32, workspaceSize.height * cropHeightScale),
+    };
+
     const handleCropComplete = React.useCallback(
         (_area: Area, areaPixels: Area) => {
             onCropComplete({
@@ -40,7 +72,7 @@ export default function CropWorkspace({
     );
 
     return (
-        <div className="relative w-full h-[420px] bg-slate-900 rounded-xl overflow-hidden">
+        <div ref={containerRef} className="relative w-full h-[420px] bg-slate-900 rounded-xl overflow-hidden">
             <Cropper
                 image={imageSrc}
                 crop={crop}
@@ -55,6 +87,8 @@ export default function CropWorkspace({
                         onImageSize({ width: media.naturalWidth, height: media.naturalHeight });
                     }
                 }}
+                cropSize={cropSize}
+                restrictPosition={false}
                 objectFit="contain"
                 showGrid={true}
             />
@@ -81,6 +115,70 @@ export default function CropWorkspace({
                         onChange={(e) => onRotationChange(clamp(parseFloat(e.target.value), -180, 180))}
                     />
                 </label>
+                <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600 w-full max-w-[200px]">
+                    Horizontal Crop
+                    <input
+                        type="range"
+                        min={0.3}
+                        max={1}
+                        step={0.05}
+                        value={cropWidthScale}
+                        disabled={fullPage}
+                        onChange={(e) => {
+                            const next = parseFloat(e.target.value);
+                            setCropWidthScale(next);
+                            if (lockRatio) {
+                                setCropHeightScale(next);
+                            }
+                        }}
+                    />
+                </label>
+                <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600 w-full max-w-[200px]">
+                    Vertical Crop
+                    <input
+                        type="range"
+                        min={0.3}
+                        max={1}
+                        step={0.05}
+                        value={cropHeightScale}
+                        disabled={fullPage}
+                        onChange={(e) => {
+                            const next = parseFloat(e.target.value);
+                            setCropHeightScale(next);
+                            if (lockRatio) {
+                                setCropWidthScale(next);
+                            }
+                        }}
+                    />
+                </label>
+                <div className="flex flex-col gap-1 text-xs text-slate-500">
+                    <label className="flex items-center gap-2 text-[11px]">
+                        <input
+                            type="checkbox"
+                            checked={lockRatio}
+                            onChange={(e) => {
+                                const next = e.target.checked;
+                                setLockRatio(next);
+                                if (next) {
+                                    setCropHeightScale(cropWidthScale);
+                                }
+                            }}
+                            disabled={fullPage}
+                        />
+                        Lock ratio
+                    </label>
+                    <button
+                        type="button"
+                        className="text-[11px] font-semibold uppercase tracking-[0.3em] text-admin-primary hover:text-admin-primary/80"
+                        onClick={() => {
+                            setCropWidthScale(DEFAULT_WIDTH_SCALE);
+                            setCropHeightScale(DEFAULT_HEIGHT_SCALE);
+                        }}
+                        disabled={fullPage}
+                    >
+                        Reset crop size
+                    </button>
+                </div>
             </div>
         </div>
     );

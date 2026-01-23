@@ -34,7 +34,8 @@ export default function PdfPageViewer({
     }, []);
 
     React.useEffect(() => {
-        let isActive = true;
+        let renderTask: any = null;
+        let cancelled = false;
 
         const renderPage = async () => {
             try {
@@ -46,11 +47,12 @@ export default function PdfPageViewer({
 
                 const arrayBuffer = await file.arrayBuffer();
                 const doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                if (!isActive) return;
+                if (cancelled) return;
                 onPageCount(doc.numPages);
 
                 const safePage = clamp(pageNumber, 1, doc.numPages);
                 const page = await doc.getPage(safePage);
+                if (cancelled) return;
                 const viewport = page.getViewport({ scale: 1 });
 
                 const targetWidth = containerWidth || viewport.width;
@@ -63,12 +65,14 @@ export default function PdfPageViewer({
 
                 canvas.width = scaledViewport.width;
                 canvas.height = scaledViewport.height;
-                await page.render({ canvasContext: context, viewport: scaledViewport }).promise;
-                if (!isActive) return;
+                renderTask = page.render({ canvasContext: context, viewport: scaledViewport });
+                await renderTask.promise;
+                if (cancelled) return;
 
                 const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
                 onRendered(dataUrl, { width: canvas.width, height: canvas.height });
             } catch (err) {
+                if (cancelled && err?.name === "RenderingCancelledException") return;
                 const message = err instanceof Error ? err.message : "Failed to render PDF";
                 onError(message);
             }
@@ -76,7 +80,10 @@ export default function PdfPageViewer({
 
         renderPage();
         return () => {
-            isActive = false;
+            cancelled = true;
+            if (renderTask && typeof renderTask.cancel === "function") {
+                renderTask.cancel();
+            }
         };
     }, [file, pageNumber, containerWidth, onPageCount, onRendered, onError]);
 

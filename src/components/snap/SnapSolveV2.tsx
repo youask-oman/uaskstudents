@@ -438,6 +438,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                                 onRotationChange={setRotation}
                                 onCropComplete={setCropPixels}
                                 onImageSize={setImageSize}
+                                fullPage={fullPage}
                             />
                         </div>
                     )}

@@ -8,11 +8,39 @@ interface UserListItem {
     full_name: string;
     email: string;
     subscription_tier: string;
+    subscription_status?: string;
+    plan_id?: number;
+    plan_slug?: string;
+    plan_name?: string;
+    plan_credits_per_month?: number;
+    plan_price_monthly_cents?: number;
     role: string;
     questions_count: number;
     scans_count: number;
     last_active_at: string;
 }
+
+const formatPlanName = (planName?: string, slug?: string, fallback?: string) => {
+    if (planName) return planName;
+    if (slug) {
+        return slug
+            .split(/[_\-]/)
+            .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+            .join(" ");
+    }
+    if (fallback) return fallback;
+    return "Unassigned";
+};
+
+const formatCurrencyFromCents = (cents?: number) => {
+    if (cents === null || cents === undefined) return "Free";
+    return `$${(cents / 100).toFixed(2)}`;
+};
+
+const formatCreditLabel = (credits?: number) => {
+    if (credits === null || credits === undefined) return "Credits TBD";
+    return `${credits.toLocaleString()} credits / mo`;
+};
 
 export default function AdminUsersPage() {
     const [users, setUsers] = useState<UserListItem[]>([]);
@@ -124,8 +152,17 @@ export default function AdminUsersPage() {
     };
 
     const exportToCSV = () => {
-        const headers = ["ID", "Name", "Email", "Plan", "Role", "Questions", "Scans", "Last Active"];
-        const rows = users.map(u => [u.id, u.full_name, u.email, u.subscription_tier, u.role, u.questions_count, u.scans_count, u.last_active_at]);
+    const headers = ["ID", "Name", "Email", "Plan", "Role", "Questions", "Scans", "Last Active"];
+    const rows = users.map(u => [
+        u.id,
+        u.full_name,
+        u.email,
+        formatPlanName(u.plan_name, u.plan_slug, u.subscription_tier),
+        u.role,
+        u.questions_count,
+        u.scans_count,
+        u.last_active_at
+    ]);
         const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].map(e => e.join(",")).join("\n");
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
@@ -286,14 +323,24 @@ export default function AdminUsersPage() {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${user.subscription_tier === 'pro'
-                                            ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                                            : user.subscription_tier === 'enterprise'
-                                                ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
-                                                : 'bg-slate-800 text-slate-500 border-slate-700'
-                                            }`}>
-                                            {user.subscription_tier} Tier
-                                        </span>
+                                        <div className="flex flex-col gap-1">
+                                            <span className="text-sm font-bold text-slate-900 dark:text-white">
+                                                {formatPlanName(user.plan_name, user.plan_slug, user.subscription_tier)}
+                                            </span>
+                                            <span className="text-[10px] uppercase tracking-[0.3em] text-slate-500">
+                                                {user.plan_slug ? user.plan_slug.replace(/_/g, " ").toUpperCase() : user.subscription_tier.toUpperCase()}
+                                            </span>
+                                            <span className="text-[11px] text-slate-400">
+                                                {formatCreditLabel(user.plan_credits_per_month)}
+                                            </span>
+                                            <span className="text-[11px] text-slate-400">
+                                                {formatCurrencyFromCents(user.plan_price_monthly_cents)} / mo
+                                            </span>
+                                            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest font-semibold text-slate-500">
+                                                <span className="size-1 rounded-full bg-slate-500"></span>
+                                                {user.subscription_status ? user.subscription_status.replace(/_/g, " ").toUpperCase() : "UNKNOWN STATUS"}
+                                            </span>
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex flex-col gap-1">

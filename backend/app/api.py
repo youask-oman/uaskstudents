@@ -403,10 +403,17 @@ class AdminUserListItem(BaseModel):
     full_name: str
     email: str
     subscription_tier: str
+    subscription_status: Optional[str] = None
+    subscription_id: Optional[int] = None
     role: str
     questions_count: int
     scans_count: int
     last_active_at: str
+    plan_id: Optional[int] = None
+    plan_slug: Optional[str] = None
+    plan_name: Optional[str] = None
+    plan_credits_per_month: Optional[int] = None
+    plan_price_monthly_cents: Optional[int] = None
 
 class AdminUserListResponse(BaseModel):
     users: List[AdminUserListItem]
@@ -425,6 +432,12 @@ class AdminUserDetailResponse(BaseModel):
     role: str
     subscription_tier: str
     subscription_status: str
+    subscription_id: Optional[int] = None
+    plan_id: Optional[int] = None
+    plan_slug: Optional[str] = None
+    plan_name: Optional[str] = None
+    plan_credits_per_month: Optional[int] = None
+    plan_price_monthly_cents: Optional[int] = None
     academic_level: Optional[str]
     joined_at: str
     avatar_url: Optional[str]
@@ -600,7 +613,7 @@ class AdminQuestionHistoryItem(BaseModel):
     verification_pass: Optional[bool] = None
     is_stream: Optional[bool] = None
     is_cached: Optional[bool] = None
-    tokens_burned_24h: str
+    tokens_burned_24h: Optional[str] = ""
 
 class QuotaOverrideRequest(BaseModel):
     user_id: int
@@ -4084,7 +4097,7 @@ CA_PROVINCES = [
     'AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT'
 ]
 
-VALID_GRADE_LEVELS = [f"Grade {i}" for i in range(1, 13)]
+VALID_GRADE_LEVELS = [f"Grade {i}" for i in range(4, 13)] + ["College", "University"]
 
 
 @api_router.get("/locations/countries")
@@ -4169,7 +4182,7 @@ class ProfileLocationUpdateRequest(BaseModel):
     """Request body for updating profile location fields."""
     profile_country: str  # Required: 'USA' or 'Canada'
     profile_province_state: str  # Required: State or Province abbreviation
-    grade_level: str  # Required: 'Grade 1' to 'Grade 12'
+    grade_level: str  # Required: Grade 4-12, College, or University
     school_id: Optional[int] = None  # Optional FK to School
 
 
@@ -4612,7 +4625,18 @@ async def admin_list_users(
     # Calculate total count efficiently
     total_count = len(db.exec(statement).all())
     users = db.exec(statement.offset(offset).limit(limit)).all()
-    
+
+    user_ids = [u.id for u in users]
+    subs = []
+    if user_ids:
+        subs = db.exec(select(Subscription).where(Subscription.user_id.in_(user_ids))).all()
+    subscription_map = {sub.user_id: sub for sub in subs}
+    plan_ids = {sub.plan_id for sub in subs if sub.plan_id}
+    plan_map = {}
+    if plan_ids:
+        plans = db.exec(select(Plan).where(Plan.id.in_(plan_ids))).all()
+        plan_map = {plan.id: plan for plan in plans}
+
     user_list = []
     for u in users:
         # Robust counts
@@ -4621,16 +4645,25 @@ async def admin_list_users(
         
         # Robust date handling
         last_active = u.last_active_at or u.created_at or datetime.utcnow()
+        sub = subscription_map.get(u.id)
+        plan = plan_map.get(sub.plan_id) if sub else None
         
         user_list.append(AdminUserListItem(
             id=u.id,
             full_name=u.full_name,
             email=u.email,
             subscription_tier=u.subscription_tier,
+            subscription_status=sub.status if sub else u.subscription_status,
+            subscription_id=sub.id if sub else None,
             role=u.role,
             questions_count=q_count,
             scans_count=s_count,
-            last_active_at=last_active.isoformat()
+            last_active_at=last_active.isoformat(),
+            plan_id=plan.id if plan else None,
+            plan_slug=plan.slug if plan else u.subscription_tier,
+            plan_name=plan.name if plan else None,
+            plan_credits_per_month=plan.credits_per_month if plan else None,
+            plan_price_monthly_cents=plan.price_monthly_cents if plan else None
         ))
     
     return AdminUserListResponse(
@@ -4653,6 +4686,8 @@ async def admin_get_user_detail(user_id: int, db: Session = Depends(get_session)
     scans_used = len(db.exec(select(OCRJob.id).where(OCRJob.user_id == user_id)).all())
 
     joined_at = user.created_at or datetime.utcnow()
+    subscription = db.exec(select(Subscription).where(Subscription.user_id == user_id)).first()
+    plan = db.get(Plan, subscription.plan_id) if subscription else None
 
     return AdminUserDetailResponse(
         id=user.id,
@@ -4661,6 +4696,12 @@ async def admin_get_user_detail(user_id: int, db: Session = Depends(get_session)
         role=user.role,
         subscription_tier=user.subscription_tier,
         subscription_status=user.subscription_status,
+        subscription_id=subscription.id if subscription else None,
+        plan_id=plan.id if plan else None,
+        plan_slug=plan.slug if plan else None,
+        plan_name=plan.name if plan else None,
+        plan_credits_per_month=plan.credits_per_month if plan else None,
+        plan_price_monthly_cents=plan.price_monthly_cents if plan else None,
         academic_level=user.academic_level,
         joined_at=joined_at.isoformat(),
         avatar_url=user.avatar_url,
