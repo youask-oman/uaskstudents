@@ -1,0 +1,60 @@
+"use client";
+
+import React from "react";
+import UnifiedMathRenderer, { UnifiedMathMode } from "./UnifiedMathRenderer";
+import { setRenderEngineUsed } from "./mathTelemetry";
+
+export interface MathRendererSwitchProps {
+    content: string;
+    mode: UnifiedMathMode;
+    className?: string;
+    dynamic?: boolean;
+    idKey?: string;
+}
+
+const mathEngine =
+    process.env.NEXT_PUBLIC_MATH_ENGINE ||
+    process.env.NEXT_PUBLIC_MATH_RENDERER ||
+    "mathjax";
+
+export default function MathRendererSwitch({
+    content,
+    mode,
+    className = "",
+    dynamic = false,
+    idKey,
+}: MathRendererSwitchProps) {
+    const engine = mathEngine === "katex" ? "katex" : "mathjax";
+    React.useEffect(() => {
+        setRenderEngineUsed(engine);
+    }, [engine]);
+
+    if (engine === "katex") {
+        const LegacyMathRenderer = require("../MathRenderer").default as React.ComponentType<{
+            content?: string | number;
+            inline?: boolean;
+            className?: string;
+            forceMath?: boolean;
+        }>;
+        const inline = mode === "inline";
+        const forceMath = mode !== "prose";
+        return (
+            <LegacyMathRenderer
+                content={content}
+                inline={inline}
+                forceMath={forceMath}
+                className={className}
+            />
+        );
+    }
+
+    return (
+        <UnifiedMathRenderer
+            content={content}
+            mode={mode}
+            className={className}
+            dynamic={dynamic}
+            idKey={idKey}
+        />
+    );
+}

@@ -3,14 +3,10 @@
 import DashboardNavBar from "@/components/DashboardNavBar";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import katex from 'katex';
-import 'katex/dist/katex.min.css';
+import MathRenderer from "@/components/math/MathRendererSwitch";
 import MathInput, { MathInputRef } from "@/components/MathInput";
 import { MODES, ModeId, Suggestion } from "@/lib/modes";
 import ImageCropper from "@/components/ImageCropper";
-import ReactMarkdown from 'react-markdown';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
 
 // Token validation imports
 import { estimateTokens, TokenEstimate } from "@/lib/tokenEstimator";
@@ -861,7 +857,7 @@ export default function DashboardPage() {
     };
 
     return (
-        <div className="bg-background-light dark:bg-background-dark min-h-screen text-slate-900 dark:text-slate-100 font-display transition-colors duration-200">
+        <div className="solve-ui bg-background-light dark:bg-background-dark min-h-screen text-slate-900 dark:text-slate-100 font-display transition-colors duration-200">
             <DashboardNavBar />
 
             <main className="max-w-5xl mx-auto px-4 py-8 md:py-12">
@@ -888,6 +884,7 @@ export default function DashboardPage() {
                                     value={selectedGoal}
                                     onChange={(v) => setSelectedGoal(v as 'solve' | 'study')}
                                     size="sm"
+                                    className="solve-segmented"
                                 />
 
                                 {/* Answer Style Toggle */}
@@ -912,6 +909,7 @@ export default function DashboardPage() {
                                         }
                                     }}
                                     size="sm"
+                                    className="solve-segmented"
                                 />
 
                                 {/* Usage Meters */}
@@ -950,23 +948,23 @@ export default function DashboardPage() {
                             <div className="flex border-b border-slate-200 dark:border-slate-800">
                                 <button
                                     onClick={() => setActiveTab('text')}
-                                    className={`flex-1 flex flex-col items-center py-4 transition-all border-b-2 ${activeTab === 'text' ? 'text-primary border-primary bg-primary/5' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 border-transparent'}`}
+                                    className={`solve-tab ${activeTab === 'text' ? 'solve-tab--active' : ''}`}
                                 >
-                                    <span className="material-symbols-outlined mb-1">edit_note</span>
+                                    <span className="material-symbols-outlined mb-1 solve-tab-icon">edit_note</span>
                                     <span className="text-xs font-bold uppercase tracking-wider">Text</span>
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('snap')}
-                                    className={`flex-1 flex flex-col items-center py-4 transition-all border-b-2 ${activeTab === 'snap' ? 'text-primary border-primary bg-primary/5' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 border-transparent'}`}
+                                    className={`solve-tab ${activeTab === 'snap' ? 'solve-tab--active' : ''}`}
                                 >
-                                    <span className="material-symbols-outlined mb-1">add_a_photo</span>
+                                    <span className="material-symbols-outlined mb-1 solve-tab-icon">add_a_photo</span>
                                     <span className="text-xs font-bold uppercase tracking-wider">Snap & Solve</span>
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('voice')}
-                                    className={`flex-1 flex flex-col items-center py-4 transition-all border-b-2 ${activeTab === 'voice' ? 'text-primary border-primary bg-primary/5' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 border-transparent'}`}
+                                    className={`solve-tab ${activeTab === 'voice' ? 'solve-tab--active' : ''}`}
                                 >
-                                    <span className="material-symbols-outlined mb-1">mic</span>
+                                    <span className="material-symbols-outlined mb-1 solve-tab-icon">mic</span>
                                     <span className="text-xs font-bold uppercase tracking-wider">Voice</span>
                                 </button>
                             </div>
@@ -1271,16 +1269,13 @@ export default function DashboardPage() {
                                                             </div>
 
                                                             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800">
-                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Live Preview (Markdown + Math)</label>
+                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Live Preview (Math)</label>
                                                                 <div className="text-sm overflow-x-auto min-h-[60px]">
-                                                                    <div className="prose prose-sm dark:prose-invert max-w-none">
-                                                                        <ReactMarkdown
-                                                                            remarkPlugins={[remarkMath]}
-                                                                            rehypePlugins={[rehypeKatex]}
-                                                                        >
-                                                                            {query || "*No content entered yet...*"}
-                                                                        </ReactMarkdown>
-                                                                    </div>
+                                                                    <MathRenderer
+                                                                        content={query || "*No content entered yet...*"}
+                                                                        mode="prose"
+                                                                        dynamic
+                                                                    />
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -1433,16 +1428,8 @@ export default function DashboardPage() {
                                                                     <span className="w-8 h-8 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover/item:text-primary transition-colors text-xs font-mono">
                                                                         TeX
                                                                     </span>
-                                                                    <div className="flex-1">
-                                                                        <span
-                                                                            className="font-medium text-slate-700 dark:text-slate-200"
-                                                                            dangerouslySetInnerHTML={{
-                                                                                __html: katex.renderToString(suggestion.title, {
-                                                                                    throwOnError: false,
-                                                                                    displayMode: false
-                                                                                })
-                                                                            }}
-                                                                        />
+                                                                    <div className="flex-1 font-medium text-slate-700 dark:text-slate-200">
+                                                                        <MathRenderer content={suggestion.title} mode="inline" />
                                                                     </div>
                                                                     <span className="material-symbols-outlined text-slate-300 group-hover/item:text-primary text-sm opacity-0 group-hover/item:opacity-100 transition-all">
                                                                         arrow_forward
@@ -1682,9 +1669,9 @@ export default function DashboardPage() {
                                                                             : 'bg-white dark:bg-slate-900 border-amber-200 dark:border-amber-800/50 text-amber-700 dark:text-amber-300 hover:border-amber-400'
                                                                             }`}
                                                                     >
-                                                                        <span className="text-base" dangerouslySetInnerHTML={{
-                                                                            __html: katex.renderToString(opt.label, { throwOnError: false })
-                                                                        }} />
+                                                                    <span className="text-base">
+                                                                        <MathRenderer content={opt.label} mode="inline" />
+                                                                    </span>
                                                                         <span className="text-[9px] uppercase tracking-widest opacity-60">
                                                                             {isSelected ? 'Selected' : 'Use this interpretation'}
                                                                         </span>
@@ -1743,9 +1730,7 @@ export default function DashboardPage() {
                                                             <div className="relative z-10 w-full text-center space-y-4">
                                                                 <div className="text-3xl font-bold p-8 flex items-center justify-center min-h-[160px]">
                                                                     {formattingEnabled ? (
-                                                                        <span dangerouslySetInnerHTML={{
-                                                                            __html: katex.renderToString(query || '', { throwOnError: false, displayMode: true })
-                                                                        }} />
+                                                                        <MathRenderer content={query || ""} mode="block" dynamic />
                                                                     ) : (
                                                                         <span className="font-mono text-xl opacity-80 break-all">{query}</span>
                                                                     )}

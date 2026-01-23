@@ -10,6 +10,8 @@ export default function AdminQuotasPage() {
     const [overrideDuration, setOverrideDuration] = useState<number | null>(24);
     const [isSaving, setIsSaving] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [pageIndex, setPageIndex] = useState(0);
+    const pageSize = 15;
 
     const fetchData = async (signal?: AbortSignal) => {
         setIsLoading(true);
@@ -48,6 +50,17 @@ export default function AdminQuotasPage() {
             setOverrideDuration(null);
         }
     }, [selectedUser]);
+
+    useEffect(() => {
+        if (!data?.users) return;
+        setPageIndex(0);
+    }, [data?.users?.length]);
+
+    const totalUsers = data?.users?.length ?? 0;
+    const totalPages = Math.max(1, Math.ceil(totalUsers / pageSize));
+    const startIndex = pageIndex * pageSize;
+    const endIndex = Math.min(totalUsers, startIndex + pageSize);
+    const pagedUsers = data?.users?.slice(startIndex, endIndex) ?? [];
 
     const handleApplyOverride = async () => {
         if (!selectedUser) return;
@@ -180,7 +193,7 @@ export default function AdminQuotasPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800">
-                            {data?.users.map((u: any) => (
+                            {pagedUsers.map((u: any) => (
                                 <tr key={u.id}
                                     onClick={() => setSelectedUser(u)}
                                     className={`hover:bg-slate-100 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group ${selectedUser?.id === u.id ? 'bg-admin-primary/10 border-l-2 border-admin-primary' : ''}`}>
@@ -228,6 +241,30 @@ export default function AdminQuotasPage() {
                             ))}
                         </tbody>
                     </table>
+                    <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40">
+                        <span className="text-xs text-slate-500">
+                            {totalUsers === 0 ? "No users to display" : `Showing ${startIndex + 1}-${endIndex} of ${totalUsers}`}
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setPageIndex((prev) => Math.max(prev - 1, 0))}
+                                disabled={pageIndex === 0}
+                                className="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                            >
+                                Prev
+                            </button>
+                            <span className="text-xs text-slate-500">
+                                Page {totalPages === 0 ? 0 : pageIndex + 1} of {totalPages}
+                            </span>
+                            <button
+                                onClick={() => setPageIndex((prev) => Math.min(prev + 1, totalPages - 1))}
+                                disabled={pageIndex >= totalPages - 1}
+                                className="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Side Override Panel */}

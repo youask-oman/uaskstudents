@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import MathRenderer from '../math/MathRendererSwitch';
 
 interface Message {
     role: string;
@@ -81,7 +82,7 @@ export default function TutorChatSidebar({
                             ? 'bg-primary text-white rounded-tr-none'
                             : 'bg-slate-100 dark:bg-surface-dark border border-slate-200 dark:border-border-dark text-slate-800 dark:text-slate-200 rounded-tl-none'
                             }`}>
-                            {msg.content}
+                            <MathRenderer content={msg.content} mode="prose" dynamic />
                         </div>
                         <span className="text-[10px] text-slate-400 dark:text-slate-500">
                             {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

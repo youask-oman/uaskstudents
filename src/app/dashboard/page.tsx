@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import StudentLayout from "@/components/layout/StudentLayout";
-import MathRenderer from "@/components/MathRenderer";
+import MathRenderer from "@/components/math/MathRendererSwitch";
 
 interface ChatSession {
     id: number;
@@ -189,7 +189,7 @@ export default function DashboardPage() {
                                     <div className="flex flex-col gap-1">
                                         <span>Your last problem:</span>
                                         <div className="font-bold bg-white/40 px-3 py-2 rounded-lg backdrop-blur-sm inline-block">
-                                            <MathRenderer content={history[0].title} />
+                                            <MathRenderer content={history[0].title} mode="prose" />
                                         </div>
                                         <span>is ready for review.</span>
                                     </div>
@@ -374,7 +374,7 @@ export default function DashboardPage() {
                                                                 </div>
                                                                 <div className="min-w-0">
                                                                     <h4 className="text-sm font-semibold truncate" title={session.title}>
-                                                                        <MathRenderer content={session.title} />
+                                                                        <MathRenderer content={session.title} mode="prose" />
                                                                     </h4>
                                                                     {session.is_saved && (
                                                                         <span className="mt-1 inline-flex px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-[10px] font-bold rounded">Saved</span>
@@ -385,7 +385,7 @@ export default function DashboardPage() {
                                                                 {session.topic || session.subject || "Math"}
                                                             </div>
                                                             <div className="text-xs text-slate-500 truncate" title={session.input}>
-                                                                <MathRenderer content={session.input || "-"} />
+                                                                <MathRenderer content={session.input || "-"} mode="prose" />
                                                             </div>
                                                             <div className="text-xs text-slate-500 text-right font-mono">
                                                                 {session.telemetry ? (
@@ -447,7 +447,7 @@ export default function DashboardPage() {
                                                     </div>
                                                     <div className="flex-1 min-w-0">
                                                         <h4 className="text-sm font-semibold truncate">
-                                                            <MathRenderer content={session.title} />
+                                                            <MathRenderer content={session.title} mode="prose" />
                                                         </h4>
                                                         <p className="text-xs text-slate-500 capitalize">
                                                             {session.subject || "Math"} • {new Date(session.created_at).toLocaleDateString()}

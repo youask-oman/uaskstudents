@@ -19,7 +19,7 @@ describe("MathRendererMJX helper", () => {
     const input = "Given f(x)=\\frac{x^2+1}{x-1} and x \\neq 1.";
     const output = prepareMathJaxContent(input);
     expect(output).toContain("\\(\\frac{x^2+1}{x-1}\\)");
-    expect(output).toContain("\\(\\neq 1\\)");
+    expect(output).toContain("\\(\\neq\\) 1");
   });
 
   test("converts plain sqrt(...) to latex sqrt{}", () => {

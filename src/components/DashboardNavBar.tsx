@@ -82,7 +82,7 @@ export default function DashboardNavBar() {
                     <nav className="hidden md:flex space-x-8">
                         <Link className="text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white transition-colors text-sm font-medium" href="/dashboard">Dashboard</Link>
                         <Link className="text-primary dark:text-white border-b-2 border-primary pb-1 text-sm font-medium" href="/dashboard">New Solve</Link>
-                        <Link className="text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white transition-colors text-sm font-medium" href="#">History</Link>
+                        <Link className="text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white transition-colors text-sm font-medium" href="/dashboard?tab=history">History</Link>
                         <Link className="text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white transition-colors text-sm font-medium" href="#">Resources</Link>
                     </nav>
                     <div className="flex items-center gap-4">

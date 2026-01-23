@@ -1,28 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import MathRenderer from "@/components/math/MathRendererSwitch";
 
 export default function AdminContentManagementPage() {
-    // Math Rendering using KaTeX Auto-Render
-    useEffect(() => {
-        const timeoutId = setTimeout(() => {
-            // @ts-ignore
-            if (window.renderMathInElement) {
-                // @ts-ignore
-                window.renderMathInElement(document.body, {
-                    delimiters: [
-                        { left: '$$', right: '$$', display: true },
-                        { left: '$', right: '$', display: false },
-                        { left: '\\(', right: '\\)', display: false },
-                        { left: '\\[', right: '\\]', display: true }
-                    ],
-                    throwOnError: false
-                });
-            }
-        }, 1000);
-        return () => clearTimeout(timeoutId);
-    }, []);
-
     return (
         <>
             <header className="bg-white/80 dark:bg-white dark:bg-admin-bg-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-border-dark pt-8 px-10">
@@ -105,7 +85,9 @@ export default function AdminContentManagementPage() {
                                     </div>
                                 </td>
                                 <td className="px-8 py-5">
-                                    <span className="latex-white text-sm font-medium">$ a^2 + b^2 = c^2 $</span>
+                                    <span className="latex-white text-sm font-medium">
+                                        <MathRenderer content={"a^2 + b^2 = c^2"} mode="inline" />
+                                    </span>
                                 </td>
                                 <td className="px-8 py-5">
                                     <span className="text-xs font-medium text-slate-400">Mathematics</span>
@@ -132,7 +114,9 @@ export default function AdminContentManagementPage() {
                                     </div>
                                 </td>
                                 <td className="px-8 py-5">
-                                    <span className="latex-white text-sm font-medium">$ \nabla \cdot E = \rho / \varepsilon_0 $</span>
+                                    <span className="latex-white text-sm font-medium">
+                                        <MathRenderer content={"\\nabla \\cdot E = \\rho / \\varepsilon_0"} mode="inline" />
+                                    </span>
                                 </td>
                                 <td className="px-8 py-5">
                                     <span className="text-xs font-medium text-slate-400">Physics</span>
@@ -159,7 +143,9 @@ export default function AdminContentManagementPage() {
                                     </div>
                                 </td>
                                 <td className="px-8 py-5">
-                                    <span className="latex-white text-sm font-medium">$ |\psi\rangle = \sum c_i |\phi_i\rangle $</span>
+                                    <span className="latex-white text-sm font-medium">
+                                        <MathRenderer content={"|\\psi\\rangle = \\sum c_i |\\phi_i\\rangle"} mode="inline" />
+                                    </span>
                                 </td>
                                 <td className="px-8 py-5">
                                     <span className="text-xs font-medium text-slate-400">Physics</span>
@@ -186,7 +172,9 @@ export default function AdminContentManagementPage() {
                                     </div>
                                 </td>
                                 <td className="px-8 py-5">
-                                    <span className="latex-white text-sm font-medium">$ O(\log n) $</span>
+                                    <span className="latex-white text-sm font-medium">
+                                        <MathRenderer content={"O(\\log n)"} mode="inline" />
+                                    </span>
                                 </td>
                                 <td className="px-8 py-5">
                                     <span className="text-xs font-medium text-slate-400">CS</span>

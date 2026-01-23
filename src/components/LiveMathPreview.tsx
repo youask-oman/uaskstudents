@@ -1,45 +1,7 @@
+"use client";
 
-'use client';
-
-import React from 'react';
-import MathRenderer from './MathRenderer';
-
-/**
- * Preprocess LaTeX content to handle document commands that KaTeX doesn't support.
- * Converts \textbf{...} to **...**, \item to bullet, \[...\] to $$...$$, etc.
- */
-function preprocessLatexContent(content: string): string {
-    let processed = content;
-
-    // FIRST: Convert display math \[...\] to $$...$$ (must do before other replacements)
-    // Use a non-greedy match to handle multiple display math blocks
-    processed = processed.replace(/\\\[([\s\S]*?)\\\]/g, (match, inner) => {
-        return `$$${inner.trim()}$$`;
-    });
-
-    // Convert inline math \(...\) to $...$
-    processed = processed.replace(/\\\(([\s\S]*?)\\\)/g, (match, inner) => {
-        return `$${inner.trim()}$`;
-    });
-
-    // Replace \textbf{...} with **...** for bold (markdown style)
-    processed = processed.replace(/\\textbf\{([^}]*)\}/g, '**$1**');
-
-    // Replace \textit{...} with *...* for italic
-    processed = processed.replace(/\\textit\{([^}]*)\}/g, '*$1*');
-
-    // Replace \emph{...} with *...* for emphasis
-    processed = processed.replace(/\\emph\{([^}]*)\}/g, '*$1*');
-
-    // Replace \item with bullet point
-    processed = processed.replace(/\\item\s*/g, '• ');
-
-    // Remove \begin{...} and \end{...} for unsupported environments
-    processed = processed.replace(/\\begin\{(itemize|enumerate|document|center)\}/g, '');
-    processed = processed.replace(/\\end\{(itemize|enumerate|document|center)\}/g, '');
-
-    return processed;
-}
+import React from "react";
+import MathRenderer from "./math/MathRendererSwitch";
 
 interface LiveMathPreviewProps {
     /** The LaTeX or math content to render */
@@ -57,7 +19,7 @@ export default function LiveMathPreview({ content, hideIfEmpty = true }: LiveMat
             <div className="flex items-center justify-between px-6 py-4 border-b border-yellow-100/50 dark:border-slate-800/50">
                 <div className="flex items-center gap-3">
                     <div className="size-8 rounded-lg bg-yellow-100/50 dark:bg-blue-900/20 flex items-center justify-center text-yellow-600 dark:text-blue-400 font-serif font-bold text-lg">
-                        Σ
+                        S
                     </div>
                     <span className="font-bold text-slate-800 dark:text-slate-200">Live Math Preview</span>
                 </div>
@@ -69,10 +31,7 @@ export default function LiveMathPreview({ content, hideIfEmpty = true }: LiveMat
             {/* Content Area */}
             <div className="p-8 flex items-center justify-center min-h-[120px] bg-yellow-50 dark:bg-slate-900">
                 <div className="text-xl text-red-600 dark:text-red-400 leading-relaxed">
-                    <MathRenderer
-                        content={preprocessLatexContent(content)}
-                        forceMath={false}
-                    />
+                    <MathRenderer content={content} mode="block" />
                 </div>
             </div>
         </div>

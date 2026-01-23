@@ -12,14 +12,8 @@ const mathJaxConfig = {
   loader: { load: ["input/tex", "output/chtml", "[tex]/ams"] },
   tex: {
     packages: { "[+]": ["ams"] },
-    inlineMath: [
-      ["\\(", "\\)"],
-      ["$", "$"]
-    ],
-    displayMath: [
-      ["\\[", "\\]"],
-      ["$$", "$$"]
-    ],
+    inlineMath: [["\\(", "\\)"]],
+    displayMath: [["\\[", "\\]"]],
     processEscapes: true,
     processEnvironments: true,
   },

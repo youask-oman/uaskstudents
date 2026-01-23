@@ -282,7 +282,8 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
 
                 return <VerificationTab
                     methods={methods}
-                    finalAnswer={solutionData.final_answer?.answer_latex || solutionData.final_answer?.answer_text}
+                    finalAnswer={solutionData.final_answer?.answer_text}
+                    finalAnswerLatex={solutionData.final_answer?.answer_latex}
                     confidence={solutionData.quality?.confidence}
                     commonMistakes={solutionData.quality?.common_mistakes || []}
                 />;
@@ -309,6 +310,10 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
 
 
     const telemetry = assistantMsg?.telemetry || solutionData?.telemetry || solutionData?._telemetry;
+    const finalAnswerLatex = solutionData?.final_answer?.answer_latex || null;
+    const finalAnswerText = solutionData?.final_answer?.answer_text || null;
+    const finalAnswerValue = finalAnswerLatex || finalAnswerText || solutionData?.final_answer || (solutionData?._truncated ? "Partial solution in progress..." : null);
+    const finalAnswerMode = finalAnswerLatex ? "inline" : "prose";
 
     return (
         <WorkspaceLayout
@@ -331,11 +336,8 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
                 solutionData?.plan?.map((p: any) => p.summary || p.title) ||
                 (solutionData?.steps || []).map((s: any) => s.title)
             ).filter(Boolean)}
-            finalAnswer={
-                solutionData?.final_answer?.answer_latex ||
-                solutionData?.final_answer ||
-                (solutionData?._truncated ? "Partial solution in progress..." : null)
-            }
+            finalAnswer={finalAnswerValue}
+            finalAnswerMode={finalAnswerMode as "inline" | "prose"}
             confidence={solutionData?.quality?.confidence ? Math.round(solutionData.quality.confidence * 100) : 99}
             llmUsed="YouAsk AI"
             totalTokensUsed={totalTokensUsed}

@@ -37,15 +37,15 @@ export default function InputModeSelector({
     return (
         <div className="space-y-3">
             {/* Mode Tabs */}
-            <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+            <div className="solve-mode-tabs flex items-center gap-1 p-1 rounded-xl">
                 {INPUT_MODES.map(mode => (
                     <button
                         key={mode.id}
                         type="button"
                         onClick={() => onModeChange(mode.id)}
-                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${selectedMode === mode.id
-                            ? 'bg-white dark:bg-slate-700 text-primary shadow-sm'
-                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                        className={`solve-mode-tab flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${selectedMode === mode.id
+                            ? 'is-active'
+                            : ''
                             }`}
                     >
                         <span className="material-symbols-outlined text-[18px]">{mode.icon}</span>
@@ -68,11 +68,11 @@ export default function InputModeSelector({
                             key={idx}
                             type="button"
                             onClick={() => onTemplateClick(template)}
-                            className="px-3 py-1 text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full hover:bg-primary/10 hover:text-primary transition-colors truncate max-w-[200px]"
-                        >
-                            {template}
-                        </button>
-                    ))}
+                        className="solve-mode-template px-3 py-1 text-xs rounded-full transition-colors truncate max-w-[200px]"
+                    >
+                        {template}
+                    </button>
+                ))}
                 </div>
             )}
         </div>

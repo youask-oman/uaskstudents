@@ -1,8 +1,7 @@
 "use client";
 
 import React from 'react';
-import MathRenderer from '../MathRenderer';
-import MathRendererMJX from '../MathRendererMJX';
+import MathRenderer from '../math/MathRendererSwitch';
 import VisualRenderer, { Visual } from './VisualRenderer';
 
 interface Checkpoint {
@@ -34,19 +33,7 @@ interface StepsTabProps {
     onSelectTab?: (tab: "steps" | "verification" | "practice") => void;
 }
 
-const isMathJaxEnabled = (process.env.NEXT_PUBLIC_MATH_RENDERER || "katex") === "mathjax";
-const ExplanationRenderer = isMathJaxEnabled ? MathRendererMJX : MathRenderer;
-
-const normalizeMathJaxBlock = (content: string) => {
-    let text = content.trim();
-    if (text.includes("\\end{aligned}") && !text.includes("\\begin{aligned}")) {
-        text = `\\begin{aligned}\n${text}`;
-    }
-    if (!text.startsWith("\\[") && !text.startsWith("\\(")) {
-        text = `\\[\n${text}\n\\]`;
-    }
-    return text;
-};
+const ExplanationRenderer = MathRenderer;
 
 // Helper to flatten work lines
 const processWorkLines = (work: string[]): string[] => {
@@ -87,9 +74,9 @@ function CheckpointInteraction({ question, answer }: { question: string, answer:
                 <span className="material-symbols-outlined text-primary text-[16px]">quiz</span>
                 <span className="text-xs font-bold text-primary uppercase">Checkpoint</span>
             </div>
-            <div className="text-xs font-medium mb-3 text-[#111318] dark:text-white">
-                <ExplanationRenderer content={question} />
-            </div>
+                <div className="text-xs font-medium mb-3 text-[#111318] dark:text-white">
+                    <ExplanationRenderer content={question} mode="prose" />
+                </div>
 
             {isRevealed ? (
                 <div className="animate-in fade-in zoom-in duration-300">
@@ -97,7 +84,7 @@ function CheckpointInteraction({ question, answer }: { question: string, answer:
                         <span className="material-symbols-outlined text-[18px] shrink-0 fill-1">check_circle</span>
                         <div>
                             <p className="text-[10px] uppercase font-black text-emerald-600 dark:text-emerald-400 mb-0.5">Answer</p>
-                            <ExplanationRenderer content={answer} inline />
+                            <ExplanationRenderer content={answer} mode="prose" />
                         </div>
                     </div>
                 </div>
@@ -195,11 +182,11 @@ export default function StepsTab({ steps, visuals }: StepsTabProps) {
                                                     title.toLowerCase() === `step ${stepNum}:`;
 
                                                 if (isRedundant) return null;
-                                                return <ExplanationRenderer content={step.title} />;
+                                                return <ExplanationRenderer content={step.title} mode="prose" />;
                                             })()}
                                         </div>
                                         <div className="text-sm font-semibold text-[#111318] dark:text-slate-300 mb-4 leading-relaxed">
-                                            <ExplanationRenderer content={explanationText} />
+                                            <ExplanationRenderer content={explanationText} mode="prose" />
                                             {step.rules_used && step.rules_used.length > 0 && (
                                                 <span className="block mt-2 px-3 py-1.5 rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-xs font-medium not-italic">
                                                     Using: {step.rules_used.join(", ")}
@@ -244,19 +231,11 @@ export default function StepsTab({ steps, visuals }: StepsTabProps) {
                                                         }
                                                     `}</style>
                                                     <div className="math-card-content">
-                                                        {isMathJaxEnabled ? (
-                                                            <MathRendererMJX
-                                                                content={normalizeMathJaxBlock(mathContent)}
-                                                                inline={false}
-                                                                dynamic={true}
-                                                            />
-                                                        ) : (
-                                                            <MathRenderer
-                                                                content={mathContent}
-                                                                inline={false}
-                                                                forceMath={true}
-                                                            />
-                                                        )}
+                                                        <MathRenderer
+                                                            content={mathContent}
+                                                            mode="block"
+                                                            dynamic={true}
+                                                        />
                                                     </div>
                                                 </div>
                                             </div>

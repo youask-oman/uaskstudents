@@ -91,7 +91,7 @@ const FieldGrid = ({ data, title }: { data: Record<string, any> | undefined; tit
     return (
         <section className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl">
             <h4 className="text-base font-bold text-slate-900 dark:text-white mb-4 tracking-tight">{title}</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-slate-300">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-slate-600 dark:text-slate-300">
                 {entries.length === 0 && <div className="text-slate-500">No data.</div>}
                 {entries.map(([key, value]) => (
                     <div key={key} className="flex items-start justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-2">
@@ -119,7 +119,7 @@ const DataTable = ({
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{rows.length} total</span>
         </div>
         <div className="overflow-x-auto">
-            <table className="w-full text-xs text-slate-300">
+            <table className="w-full text-xs text-slate-600 dark:text-slate-300">
                 <thead>
                     <tr className="text-slate-500 uppercase tracking-widest text-[10px]">
                         {columns.map((col) => (
@@ -260,7 +260,14 @@ export default function UserDetailPage() {
             if (res.ok) {
                 const data = await res.json();
                 setQuestionHistory(Array.isArray(data) ? data : []);
+                return;
             }
+            if (res.status === 404) {
+                setQuestionHistory([]);
+                return;
+            }
+            const detail = await res.text();
+            throw new Error(detail || `Question history failed: ${res.status}`);
         } catch (error) {
             if ((error as Error).name === "AbortError") {
                 return;
@@ -455,7 +462,7 @@ export default function UserDetailPage() {
                             </div>
                         </div>
                         <div className="flex gap-3">
-                            <button className="flex items-center gap-2 px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-900 dark:text-white text-sm font-bold rounded-xl transition-all border border-slate-700">
+                            <button className="flex items-center gap-2 px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white text-sm font-bold rounded-xl transition-all border border-slate-200 dark:border-slate-700">
                                 <span className="material-symbols-outlined text-[20px]">mail</span>
                                 Message User
                             </button>
@@ -529,7 +536,7 @@ export default function UserDetailPage() {
                         <>
                             {/* Activity Section */}
                             <section className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
-                                <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-900/50">
+                                <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
                                     <h4 className="text-base font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
                                         <span className="material-symbols-outlined text-slate-400">history</span>
                                         Recent Activity
@@ -815,7 +822,7 @@ export default function UserDetailPage() {
                                                 <div className="flex-1 space-y-2">
                                                     <label className="text-xs text-slate-400 font-medium">Monthly Questions</label>
                                                     <input
-                                                        className="w-full bg-slate-900 border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white focus:ring-admin-primary"
+                                                        className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white focus:ring-admin-primary"
                                                         type="number"
                                                         value={newQuotaQuestions}
                                                         onChange={(e) => setNewQuotaQuestions(parseInt(e.target.value))}
@@ -824,7 +831,7 @@ export default function UserDetailPage() {
                                                 <div className="flex-1 space-y-2">
                                                     <label className="text-xs text-slate-400 font-medium">OCR Scan Limit</label>
                                                     <input
-                                                        className="w-full bg-slate-900 border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white focus:ring-admin-primary"
+                                                        className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white focus:ring-admin-primary"
                                                         type="number"
                                                         value={newQuotaScans}
                                                         onChange={(e) => setNewQuotaScans(parseInt(e.target.value))}
@@ -835,7 +842,7 @@ export default function UserDetailPage() {
                                         <div className="space-y-3">
                                             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Subscription Plan</p>
                                             <select
-                                                className="w-full bg-slate-900 border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white focus:ring-admin-primary"
+                                                className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white focus:ring-admin-primary"
                                                 value={newTier}
                                                 onChange={(e) => setNewTier(e.target.value)}
                                             >
@@ -848,7 +855,7 @@ export default function UserDetailPage() {
                                         </div>
                                         <button
                                             onClick={handleUpdateUser}
-                                            className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-900 dark:text-white text-sm font-bold rounded-xl transition-all border border-slate-700 mt-4"
+                                            className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white text-sm font-bold rounded-xl transition-all border border-slate-200 dark:border-slate-700 mt-4"
                                         >
                                             Apply Changes & Notify User
                                         </button>
@@ -859,11 +866,11 @@ export default function UserDetailPage() {
                                     <div className="space-y-6">
                                         <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-6 tracking-tight tracking-tight">Quick Actions</h4>
                                         <div className="grid grid-cols-2 gap-4">
-                                            <button onClick={() => handleQuickAction("reset")} className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-900 dark:text-white text-xs font-bold rounded-xl border border-slate-700 transition-all">
+                                            <button onClick={() => handleQuickAction("reset")} className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 transition-all">
                                                 <span className="material-symbols-outlined text-base">lock_reset</span>
                                                 Password Reset
                                             </button>
-                                            <button onClick={() => handleQuickAction("resend")} className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-900 dark:text-white text-xs font-bold rounded-xl border border-slate-700 transition-all">
+                                            <button onClick={() => handleQuickAction("resend")} className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 transition-all">
                                                 <span className="material-symbols-outlined text-base">mark_email_read</span>
                                                 Resend Email
                                             </button>
@@ -871,7 +878,7 @@ export default function UserDetailPage() {
                                                 <span className="material-symbols-outlined text-base text-rose-500">block</span>
                                                 {user.subscription_status === 'expired' ? 'Unban Account' : 'Ban Account'}
                                             </button>
-                                            <button onClick={() => handleQuickAction("delete")} className="flex items-center justify-center gap-2 px-4 py-3 bg-rose-500 hover:bg-rose-600 text-slate-900 dark:text-white text-xs font-bold rounded-xl shadow-lg shadow-rose-500/20 transition-all">
+                                            <button onClick={() => handleQuickAction("delete")} className="flex items-center justify-center gap-2 px-4 py-3 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-xl shadow-lg shadow-rose-500/20 transition-all">
                                                 <span className="material-symbols-outlined text-base">delete</span>
                                                 Delete User
                                             </button>
@@ -892,7 +899,7 @@ export default function UserDetailPage() {
                     {activeTab === "Session Logs" && (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <section className="lg:col-span-1 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
-                                <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-900/50">
+                                <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
                                     <h4 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">Sessions</h4>
                                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{sessions.length} total</span>
                                 </div>
@@ -915,7 +922,7 @@ export default function UserDetailPage() {
                                 </div>
                             </section>
                             <section className="lg:col-span-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
-                                <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-900/50">
+                                <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
                                     <h4 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">Messages</h4>
                                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                                         {fullData?.messages?.length || 0} total

@@ -52,7 +52,7 @@ export default function SegmentedControl({
                 </label>
             )}
             <div
-                className="inline-flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1 gap-1"
+                className="segmented-root inline-flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1 gap-1"
                 role="radiogroup"
                 aria-label={label}
             >
@@ -72,14 +72,15 @@ export default function SegmentedControl({
                             onClick={() => !isDisabled && onChange(option.value)}
                             onKeyDown={(e) => handleKeyDown(e, option)}
                             className={`
+                                segmented-option
                                 ${sizeClasses}
                                 font-semibold rounded-md transition-all duration-200
                                 flex items-center justify-center gap-1.5
                                 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900
                                 ${isSelected
-                                    ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                                    ? "is-selected bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
                                     : isDisabled
-                                        ? "text-slate-400 dark:text-slate-600 cursor-not-allowed"
+                                        ? "is-disabled text-slate-400 dark:text-slate-600 cursor-not-allowed"
                                         : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                                 }
                             `}
