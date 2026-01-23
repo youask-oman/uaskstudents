@@ -155,6 +155,9 @@ const MathSegment = ({
     inline: boolean;
     dynamic?: boolean;
 }) => {
+    if (!value.trim()) {
+        return <span />;
+    }
     if (isLikelyMalformed(value)) {
         markMalformedLatex(value);
         return renderFallback(value);
@@ -162,27 +165,30 @@ const MathSegment = ({
 
     const startRef = React.useRef<number | null>(null);
     const wrapped = inline ? `\\(${value}\\)` : `\\[${value}\\]`;
+    const Wrapper: React.ElementType = inline ? "span" : "div";
 
     return (
-        <MathErrorBoundary fallback={renderFallback(value)} onError={markTypesetFailure}>
-            <MathJax
-                inline={inline}
-                dynamic={dynamic}
-                hideUntilTypeset="first"
-                renderMode="post"
-                onInitTypeset={() => {
-                    startRef.current = performance.now();
-                }}
-                onTypeset={() => {
-                    if (startRef.current !== null) {
-                        recordTypesetDuration(performance.now() - startRef.current);
-                        startRef.current = null;
-                    }
-                }}
-            >
-                {wrapped}
-            </MathJax>
-        </MathErrorBoundary>
+        <Wrapper suppressHydrationWarning>
+            <MathErrorBoundary fallback={renderFallback(value)} onError={markTypesetFailure}>
+                <MathJax
+                    inline={inline}
+                    dynamic={dynamic}
+                    hideUntilTypeset="first"
+                    renderMode="post"
+                    onInitTypeset={() => {
+                        startRef.current = performance.now();
+                    }}
+                    onTypeset={() => {
+                        if (startRef.current !== null) {
+                            recordTypesetDuration(performance.now() - startRef.current);
+                            startRef.current = null;
+                        }
+                    }}
+                >
+                    {wrapped}
+                </MathJax>
+            </MathErrorBoundary>
+        </Wrapper>
     );
 };
 
@@ -194,6 +200,11 @@ export default function UnifiedMathRenderer({
     idKey,
 }: UnifiedMathRendererProps) {
     const raw = content ?? "";
+    const [isMounted, setIsMounted] = React.useState(false);
+
+    React.useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
     const stripped = React.useMemo(() => stripOuterDelimiters(raw), [raw]);
     const debounced = useDebouncedValue(stripped, dynamic ? 200 : 0);
@@ -203,6 +214,13 @@ export default function UnifiedMathRenderer({
     const keyPrefix = idKey || "math";
 
     if (!raw) return null;
+
+    if (!isMounted) {
+        const Wrapper: React.ElementType = mode === "inline" ? "span" : "div";
+        return (
+            <Wrapper className={className} suppressHydrationWarning />
+        );
+    }
 
     if (mode === "inline" || mode === "block") {
         const value = dynamic ? debounced : stripped;

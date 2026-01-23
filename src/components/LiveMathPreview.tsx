@@ -14,7 +14,7 @@ export default function LiveMathPreview({ content, hideIfEmpty = true }: LiveMat
     if (hideIfEmpty && !content.trim()) return null;
 
     return (
-        <div className="bg-yellow-50 dark:bg-slate-900 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] border border-yellow-100 dark:border-slate-800 overflow-hidden w-full transition-all duration-300 animate-in fade-in slide-in-from-top-4">
+        <div className="bg-yellow-50 dark:bg-slate-900 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] border border-yellow-100 dark:border-slate-800 overflow-hidden w-full transition-all duration-300 animate-in fade-in slide-in-from-top-4" suppressHydrationWarning>
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-yellow-100/50 dark:border-slate-800/50">
                 <div className="flex items-center gap-3">

@@ -78,6 +78,7 @@ export default function DashboardPage() {
     const [selectedAnswerStyle, setSelectedAnswerStyle] = useState<'quick' | 'tutor'>('quick');
     const [subscription, setSubscription] = useState<SubscriptionResponse>(DEFAULT_SUBSCRIPTION);
     const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
+    const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
 
     // Compute token estimate and multi-question detection
     const tokenEstimate = useMemo(() => estimateTokens(query), [query]);
@@ -97,6 +98,9 @@ export default function DashboardPage() {
                 : null;
 
     const router = useRouter();
+    const subscriptionReady = subscriptionLoaded && !subscriptionError;
+    const allowDetailed = subscriptionReady ? subscription.allow_detailed : false;
+    const trustedProfile = subscriptionReady ? subscription.profile : DEFAULT_SUBSCRIPTION.profile;
 
     useEffect(() => {
         const userId = localStorage.getItem("user_id");
@@ -139,9 +143,12 @@ export default function DashboardPage() {
             try {
                 const subData = await fetchSubscription(userId);
                 setSubscription(subData);
+                setSubscriptionError(null);
                 setSubscriptionLoaded(true);
             } catch (e) {
-                console.warn("Failed to load subscription, using defaults", e);
+                const message = e instanceof Error ? e.message : "Subscription unavailable";
+                console.warn("Failed to load subscription:", message);
+                setSubscriptionError("Unable to load subscription data. Please refresh or contact support.");
                 setSubscriptionLoaded(true);
             }
         };
@@ -720,9 +727,9 @@ export default function DashboardPage() {
                     trusted_context: {
                         learning_mode: selectedGoal,
                         // Values already normalized from API (CA, CA-ON, 11)
-                        grade_level: subscription.profile.grade_level || undefined,
-                        region_country: subscription.profile.region_country || undefined,
-                        region_state_province: subscription.profile.region_state_province || undefined
+                        grade_level: trustedProfile.grade_level || undefined,
+                        region_country: trustedProfile.region_country || undefined,
+                        region_state_province: trustedProfile.region_state_province || undefined
                     },
                     // Feature flags for accounting (not sent to OpenAI)
                     features_used: {
@@ -896,15 +903,15 @@ export default function DashboardPage() {
                                             value: "tutor",
                                             label: "Tutor",
                                             icon: "menu_book",
-                                            disabled: !subscription.allow_detailed,
-                                            tooltip: subscription.allow_detailed
+                                            disabled: !allowDetailed,
+                                            tooltip: allowDetailed
                                                 ? "Step-by-step with checkpoints"
                                                 : "Upgrade to unlock detailed explanations"
                                         }
                                     ]}
                                     value={selectedAnswerStyle}
                                     onChange={(v) => {
-                                        if (subscription.allow_detailed || v === "quick") {
+                                        if (allowDetailed || v === "quick") {
                                             setSelectedAnswerStyle(v as 'quick' | 'tutor');
                                         }
                                     }}
@@ -913,7 +920,7 @@ export default function DashboardPage() {
                                 />
 
                                 {/* Usage Meters */}
-                                {subscriptionLoaded && (
+                                {subscriptionReady && (
                                     <div className="flex items-center gap-4">
                                         <UsageMeter
                                             label="Credits"
@@ -929,17 +936,28 @@ export default function DashboardPage() {
                                         />
                                     </div>
                                 )}
+                                {subscriptionLoaded && subscriptionError && (
+                                    <div className="text-xs font-semibold text-rose-500">
+                                        {subscriptionError}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Cost Preview */}
                             <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-                                <CostPreview
-                                    baseCost={calculateSolveCost(subscription, selectedAnswerStyle, false, false)}
-                                    ocrCost={activeTab === 'snap' ? subscription.plan.multipliers.ocr_add : 0}
-                                    voiceCost={activeTab === 'voice' ? subscription.plan.multipliers.voice_add : 0}
-                                    creditsRemaining={subscription.usage.credits_remaining}
-                                    isDetailed={selectedAnswerStyle === 'tutor'}
-                                />
+                                {subscriptionReady ? (
+                                    <CostPreview
+                                        baseCost={calculateSolveCost(subscription, selectedAnswerStyle, false, false)}
+                                        ocrCost={activeTab === 'snap' ? subscription.plan.multipliers.ocr_add : 0}
+                                        voiceCost={activeTab === 'voice' ? subscription.plan.multipliers.voice_add : 0}
+                                        creditsRemaining={subscription.usage.credits_remaining}
+                                        isDetailed={selectedAnswerStyle === 'tutor'}
+                                    />
+                                ) : (
+                                    <div className="text-xs text-slate-500">
+                                        Subscription data required for cost preview.
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -1404,7 +1422,7 @@ export default function DashboardPage() {
                                         </div>
 
                                         <div className="relative group z-10">
-                                            <div className={`bg-white dark:bg-slate-900 border rounded-xl transition-all shadow-sm flex flex-col min-h-[150px] ${inputError
+                                            <div className={`bg-white dark:bg-slate-900 border rounded-xl transition-all shadow-sm flex flex-col min-h-[190px] ${inputError
                                                 ? 'border-red-500 ring-1 ring-red-500 bg-red-50/10'
                                                 : activeMode
                                                     ? 'border-primary ring-1 ring-primary'
@@ -1429,7 +1447,7 @@ export default function DashboardPage() {
                                                                         TeX
                                                                     </span>
                                                                     <div className="flex-1 font-medium text-slate-700 dark:text-slate-200">
-                                                                        <MathRenderer content={suggestion.title} mode="inline" />
+                                                                        <MathRenderer content={suggestion.title} mode="inline" className="pointer-events-none" />
                                                                     </div>
                                                                     <span className="material-symbols-outlined text-slate-300 group-hover/item:text-primary text-sm opacity-0 group-hover/item:opacity-100 transition-all">
                                                                         arrow_forward
@@ -1463,7 +1481,7 @@ export default function DashboardPage() {
                                                                 setTimeout(() => setShowSplitModal(true), 500);
                                                             }
                                                         }}
-                                                        className="flex-1 p-2"
+                                                        className="flex-1 p-2 min-h-[180px]"
                                                     />
                                                 ) : (
                                                     <textarea
@@ -1492,7 +1510,7 @@ export default function DashboardPage() {
                                                             }
                                                         }}
                                                         maxLength={MAX_INPUT_CHARS}
-                                                        className="flex-1 p-4 bg-transparent outline-none text-slate-700 dark:text-slate-200 text-lg leading-relaxed resize-none"
+                                                        className="flex-1 p-4 bg-transparent outline-none text-slate-700 dark:text-slate-200 text-lg leading-relaxed resize-none min-h-[180px]"
                                                         style={{
                                                             whiteSpace: 'pre-wrap',
                                                             overflowWrap: 'break-word',

@@ -162,6 +162,7 @@ export default function UserDetailPage() {
     const [noteContent, setNoteContent] = useState("");
     const [isSavingNote, setIsSavingNote] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [isSavingProfile, setIsSavingProfile] = useState(false);
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
     const getAuthHeaders = (includeJson = false) => {
         const token = localStorage.getItem("token");
@@ -177,6 +178,14 @@ export default function UserDetailPage() {
     const [newQuotaScans, setNewQuotaScans] = useState(0);
     const [newTier, setNewTier] = useState("");
     const [availablePlans, setAvailablePlans] = useState<{ id: number; name: string; slug: string }[]>([]);
+    const [editFullName, setEditFullName] = useState("");
+    const [editEmail, setEditEmail] = useState("");
+    const [editAcademicLevel, setEditAcademicLevel] = useState("");
+    const [editTimezone, setEditTimezone] = useState("");
+    const [editProfileCountry, setEditProfileCountry] = useState("");
+    const [editProfileProvince, setEditProfileProvince] = useState("");
+    const [editGradeLevel, setEditGradeLevel] = useState("");
+    const [editSchoolId, setEditSchoolId] = useState("");
 
     useEffect(() => {
         if (!id) return;
@@ -212,6 +221,9 @@ export default function UserDetailPage() {
                 setNewQuotaQuestions(data.quota_questions_total);
                 setNewQuotaScans(data.quota_scans_total);
                 setNewTier(data.subscription_tier);
+                setEditFullName(data.full_name || "");
+                setEditEmail(data.email || "");
+                setEditAcademicLevel(data.academic_level || "");
             } else {
                 throw new Error("Failed to load user profile.");
             }
@@ -306,6 +318,11 @@ export default function UserDetailPage() {
                     setFullData(data);
                     setSessions(Array.isArray(data.sessions) ? data.sessions : []);
                     setPayments(Array.isArray(data.payments) ? data.payments : []);
+                    setEditTimezone(data.user?.timezone || "");
+                    setEditProfileCountry(data.user?.profile_country || "");
+                    setEditProfileProvince(data.user?.profile_province_state || "");
+                    setEditGradeLevel(data.user?.grade_level || "");
+                    setEditSchoolId(data.user?.school_id ? String(data.user.school_id) : "");
                     if (!selectedSessionId && Array.isArray(data.sessions) && data.sessions.length > 0) {
                         setSelectedSessionId(data.sessions[0].id);
                     }
@@ -403,6 +420,43 @@ export default function UserDetailPage() {
         } catch (error) {
             console.error("Failed to update user:", error);
             setErrorMessage("Unable to update user settings.");
+        }
+    };
+
+    const handleProfileUpdate = async () => {
+        try {
+            setIsSavingProfile(true);
+            setErrorMessage(null);
+            const trimmedSchoolId = editSchoolId.trim();
+            const parsedSchoolId = trimmedSchoolId === "" ? null : parseInt(trimmedSchoolId, 10);
+            const payload = {
+                full_name: editFullName,
+                email: editEmail,
+                academic_level: editAcademicLevel || null,
+                timezone: editTimezone || null,
+                profile_country: editProfileCountry || null,
+                profile_province_state: editProfileProvince || null,
+                grade_level: editGradeLevel || null,
+                school_id: Number.isNaN(parsedSchoolId) ? null : parsedSchoolId
+            };
+            const res = await fetch(`${baseUrl}/api/v1/admin/users/${id}`, {
+                method: "PATCH",
+                headers: getAuthHeaders(true),
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                alert("Profile updated successfully!");
+                fetchUserDetail();
+                fetchFullUserData();
+            } else {
+                const detail = await res.text();
+                throw new Error(detail || "Update failed.");
+            }
+        } catch (error) {
+            console.error("Failed to update profile:", error);
+            setErrorMessage("Unable to update profile details.");
+        } finally {
+            setIsSavingProfile(false);
         }
     };
 
@@ -534,6 +588,179 @@ export default function UserDetailPage() {
 
                     {activeTab === "Profile Detail" && (
                         <>
+                            <section className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xl">
+                                <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                                    <div>
+                                        <h4 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">User Profile</h4>
+                                        <p className="text-xs text-slate-500">Edit core identity, school, and location data.</p>
+                                    </div>
+                                    <button
+                                        onClick={handleProfileUpdate}
+                                        disabled={isSavingProfile}
+                                        className="px-4 py-2 text-xs font-bold rounded-lg bg-admin-primary text-white hover:bg-admin-primary/90 disabled:opacity-60 disabled:cursor-not-allowed transition"
+                                    >
+                                        {isSavingProfile ? "Saving..." : "Save Profile"}
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="flex flex-col gap-2">
+                                        <label className="text-xs font-semibold text-slate-500">Full Name</label>
+                                        <input
+                                            className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white focus:ring-admin-primary"
+                                            value={editFullName}
+                                            onChange={(e) => setEditFullName(e.target.value)}
+                                            placeholder="Student Name"
+                                        />
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <label className="text-xs font-semibold text-slate-500">Email</label>
+                                        <input
+                                            className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white focus:ring-admin-primary"
+                                            type="email"
+                                            value={editEmail}
+                                            onChange={(e) => setEditEmail(e.target.value)}
+                                            placeholder="student@email.com"
+                                        />
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <label className="text-xs font-semibold text-slate-500">Academic Level</label>
+                                        <input
+                                            className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white focus:ring-admin-primary"
+                                            value={editAcademicLevel}
+                                            onChange={(e) => setEditAcademicLevel(e.target.value)}
+                                            placeholder="High School - Year 11"
+                                        />
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <label className="text-xs font-semibold text-slate-500">Timezone</label>
+                                        <input
+                                            className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white focus:ring-admin-primary"
+                                            value={editTimezone}
+                                            onChange={(e) => setEditTimezone(e.target.value)}
+                                            placeholder="UTC"
+                                        />
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <label className="text-xs font-semibold text-slate-500">Profile Country</label>
+                                        <input
+                                            className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white focus:ring-admin-primary"
+                                            value={editProfileCountry}
+                                            onChange={(e) => setEditProfileCountry(e.target.value)}
+                                            placeholder="USA or Canada"
+                                        />
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <label className="text-xs font-semibold text-slate-500">Province / State</label>
+                                        <input
+                                            className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white focus:ring-admin-primary"
+                                            value={editProfileProvince}
+                                            onChange={(e) => setEditProfileProvince(e.target.value)}
+                                            placeholder="CA-ON or USA-CA"
+                                        />
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <label className="text-xs font-semibold text-slate-500">Grade Level</label>
+                                        <input
+                                            className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white focus:ring-admin-primary"
+                                            value={editGradeLevel}
+                                            onChange={(e) => setEditGradeLevel(e.target.value)}
+                                            placeholder="11"
+                                        />
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <label className="text-xs font-semibold text-slate-500">School ID</label>
+                                        <input
+                                            className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white focus:ring-admin-primary"
+                                            value={editSchoolId}
+                                            onChange={(e) => setEditSchoolId(e.target.value)}
+                                            placeholder="Numeric School ID"
+                                        />
+                                    </div>
+                                </div>
+                            </section>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                <section className="p-8 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl">
+                                    <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-6 tracking-tight">Account Management</h4>
+                                    <div className="space-y-6">
+                                        <div className="space-y-3">
+                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Quota Adjustment</p>
+                                            <div className="flex items-center gap-4">
+                                                <div className="flex-1 space-y-2">
+                                                    <label className="text-xs text-slate-400 font-medium">Monthly Questions</label>
+                                                    <input
+                                                        className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white focus:ring-admin-primary"
+                                                        type="number"
+                                                        value={newQuotaQuestions}
+                                                        onChange={(e) => setNewQuotaQuestions(parseInt(e.target.value))}
+                                                    />
+                                                </div>
+                                                <div className="flex-1 space-y-2">
+                                                    <label className="text-xs text-slate-400 font-medium">OCR Scan Limit</label>
+                                                    <input
+                                                        className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white focus:ring-admin-primary"
+                                                        type="number"
+                                                        value={newQuotaScans}
+                                                        onChange={(e) => setNewQuotaScans(parseInt(e.target.value))}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-3">
+                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Subscription Plan</p>
+                                            <select
+                                                className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white focus:ring-admin-primary"
+                                                value={newTier}
+                                                onChange={(e) => setNewTier(e.target.value)}
+                                            >
+                                                {availablePlans.map(plan => (
+                                                    <option key={plan.id} value={plan.slug}>
+                                                        {plan.name} ({plan.slug})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <button
+                                            onClick={handleUpdateUser}
+                                            className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white text-sm font-bold rounded-xl transition-all border border-slate-200 dark:border-slate-700 mt-4"
+                                        >
+                                            Apply Changes & Notify User
+                                        </button>
+                                    </div>
+                                </section>
+
+                                <section className="p-8 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl flex flex-col justify-between">
+                                    <div className="space-y-6">
+                                        <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-6 tracking-tight tracking-tight">Quick Actions</h4>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <button onClick={() => handleQuickAction("reset")} className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 transition-all">
+                                                <span className="material-symbols-outlined text-base">lock_reset</span>
+                                                Password Reset
+                                            </button>
+                                            <button onClick={() => handleQuickAction("resend")} className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 transition-all">
+                                                <span className="material-symbols-outlined text-base">mark_email_read</span>
+                                                Resend Email
+                                            </button>
+                                            <button onClick={() => handleQuickAction("ban")} className="flex items-center justify-center gap-2 px-4 py-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-xs font-bold rounded-xl border border-rose-500/20 transition-all">
+                                                <span className="material-symbols-outlined text-base text-rose-500">block</span>
+                                                {user.subscription_status === 'expired' ? 'Unban Account' : 'Ban Account'}
+                                            </button>
+                                            <button onClick={() => handleQuickAction("delete")} className="flex items-center justify-center gap-2 px-4 py-3 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-xl shadow-lg shadow-rose-500/20 transition-all">
+                                                <span className="material-symbols-outlined text-base">delete</span>
+                                                Delete User
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="mt-8 p-4 bg-amber-500/5 border border-amber-500/10 rounded-xl flex items-start gap-3">
+                                        <span className="material-symbols-outlined text-amber-500">warning</span>
+                                        <div>
+                                            <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest mb-1">Caution Zone</p>
+                                            <p className="text-[10px] text-slate-500 leading-normal font-medium">Banning or deleting an account is irreversible and will suspend all active billing cycles immediately.</p>
+                                        </div>
+                                    </div>
+                                </section>
+                            </div>
+
                             {/* Activity Section */}
                             <section className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
                                 <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
@@ -811,88 +1038,6 @@ export default function UserDetailPage() {
                                 ]}
                             />
 
-                            {/* Management Section */}
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                <section className="p-8 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl">
-                                    <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-6 tracking-tight">Account Management</h4>
-                                    <div className="space-y-6">
-                                        <div className="space-y-3">
-                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Quota Adjustment</p>
-                                            <div className="flex items-center gap-4">
-                                                <div className="flex-1 space-y-2">
-                                                    <label className="text-xs text-slate-400 font-medium">Monthly Questions</label>
-                                                    <input
-                                                        className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white focus:ring-admin-primary"
-                                                        type="number"
-                                                        value={newQuotaQuestions}
-                                                        onChange={(e) => setNewQuotaQuestions(parseInt(e.target.value))}
-                                                    />
-                                                </div>
-                                                <div className="flex-1 space-y-2">
-                                                    <label className="text-xs text-slate-400 font-medium">OCR Scan Limit</label>
-                                                    <input
-                                                        className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white focus:ring-admin-primary"
-                                                        type="number"
-                                                        value={newQuotaScans}
-                                                        onChange={(e) => setNewQuotaScans(parseInt(e.target.value))}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-3">
-                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Subscription Plan</p>
-                                            <select
-                                                className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white focus:ring-admin-primary"
-                                                value={newTier}
-                                                onChange={(e) => setNewTier(e.target.value)}
-                                            >
-                                                {availablePlans.map(plan => (
-                                                    <option key={plan.id} value={plan.slug}>
-                                                        {plan.name} ({plan.slug})
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <button
-                                            onClick={handleUpdateUser}
-                                            className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white text-sm font-bold rounded-xl transition-all border border-slate-200 dark:border-slate-700 mt-4"
-                                        >
-                                            Apply Changes & Notify User
-                                        </button>
-                                    </div>
-                                </section>
-
-                                <section className="p-8 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl flex flex-col justify-between">
-                                    <div className="space-y-6">
-                                        <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-6 tracking-tight tracking-tight">Quick Actions</h4>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <button onClick={() => handleQuickAction("reset")} className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 transition-all">
-                                                <span className="material-symbols-outlined text-base">lock_reset</span>
-                                                Password Reset
-                                            </button>
-                                            <button onClick={() => handleQuickAction("resend")} className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 transition-all">
-                                                <span className="material-symbols-outlined text-base">mark_email_read</span>
-                                                Resend Email
-                                            </button>
-                                            <button onClick={() => handleQuickAction("ban")} className="flex items-center justify-center gap-2 px-4 py-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-xs font-bold rounded-xl border border-rose-500/20 transition-all">
-                                                <span className="material-symbols-outlined text-base text-rose-500">block</span>
-                                                {user.subscription_status === 'expired' ? 'Unban Account' : 'Ban Account'}
-                                            </button>
-                                            <button onClick={() => handleQuickAction("delete")} className="flex items-center justify-center gap-2 px-4 py-3 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-xl shadow-lg shadow-rose-500/20 transition-all">
-                                                <span className="material-symbols-outlined text-base">delete</span>
-                                                Delete User
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="mt-8 p-4 bg-amber-500/5 border border-amber-500/10 rounded-xl flex items-start gap-3">
-                                        <span className="material-symbols-outlined text-amber-500">warning</span>
-                                        <div>
-                                            <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest mb-1">Caution Zone</p>
-                                            <p className="text-[10px] text-slate-500 leading-normal font-medium">Banning or deleting an account is irreversible and will suspend all active billing cycles immediately.</p>
-                                        </div>
-                                    </div>
-                                </section>
-                            </div>
                         </>
                     )}
 

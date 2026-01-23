@@ -25,9 +25,19 @@ export default function MathRendererSwitch({
     idKey,
 }: MathRendererSwitchProps) {
     const engine = mathEngine === "katex" ? "katex" : "mathjax";
+    const [isMounted, setIsMounted] = React.useState(false);
+
     React.useEffect(() => {
         setRenderEngineUsed(engine);
     }, [engine]);
+
+    React.useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
+    if (!isMounted && engine === "mathjax") {
+        return <span className={className} suppressHydrationWarning />;
+    }
 
     if (engine === "katex") {
         const LegacyMathRenderer = require("../MathRenderer").default as React.ComponentType<{

@@ -462,6 +462,14 @@ class SubscriptionResponse(BaseModel):
     allow_voice: bool
 
 class AdminUserUpdateRequest(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    academic_level: Optional[str] = None
+    timezone: Optional[str] = None
+    profile_country: Optional[str] = None
+    profile_province_state: Optional[str] = None
+    grade_level: Optional[str] = None
+    school_id: Optional[int] = None
     role: Optional[str] = None
     subscription_tier: Optional[str] = None
     subscription_status: Optional[str] = None
@@ -768,6 +776,51 @@ async def login_for_access_token(form_data: LoginRequest, session: Session = Dep
 
 
 # --- User Subscription Endpoint (for tier-aware solve UX) ---
+def build_subscription_response(user: User, subscription: Subscription, plan: Plan) -> SubscriptionResponse:
+    features = plan.features or {}
+    multipliers = plan.multipliers or {"text_concise": 1, "text_detailed": 2, "ocr_add": 1, "voice_add": 1}
+
+    plan_info = SubscriptionPlanInfo(
+        id=plan.id,
+        slug=plan.slug,
+        display_name=plan.name,
+        credits_monthly=plan.credits_per_month,
+        seats=plan.seats or 1,
+        multipliers=multipliers,
+        features=features
+    )
+
+    feature_usage = subscription.feature_usage or {}
+    ocr_used = feature_usage.get("ocr_used", feature_usage.get("ocr", 0))
+    voice_used = feature_usage.get("voice_used", feature_usage.get("voice", 0))
+    usage_info = SubscriptionUsage(
+        credits_used=subscription.credits_used_this_period,
+        credits_remaining=subscription.credits_balance,
+        ocr_used=ocr_used,
+        ocr_limit=features.get("ocr_monthly_cap", 100),
+        voice_used=voice_used,
+        voice_limit=features.get("voice_monthly_cap", 50)
+    )
+
+    profile_info = SubscriptionProfile(
+        grade_level=user.grade_level,
+        region_country=user.profile_country,
+        region_state_province=user.profile_province_state,
+        display_name=user.full_name
+    )
+
+    allow_detailed = plan_info.slug != "free"
+    allow_ocr = usage_info.ocr_used < usage_info.ocr_limit
+    allow_voice = usage_info.voice_used < usage_info.voice_limit
+
+    return SubscriptionResponse(
+        plan=plan_info,
+        usage=usage_info,
+        profile=profile_info,
+        allow_detailed=allow_detailed,
+        allow_ocr=allow_ocr,
+        allow_voice=allow_voice
+    )
 @api_router.get("/me/subscription", response_model=SubscriptionResponse)
 async def get_my_subscription(
     user_id: int = Query(..., description="User ID"), 
@@ -781,77 +834,22 @@ async def get_my_subscription(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Get subscription and plan
-    subscription = session.exec(
-        select(Subscription).where(Subscription.user_id == user_id)
-    ).first()
-    
+    subscription = subscription_service.get_or_create_subscription(session, user)
     if not subscription:
-        # Return default Free plan info
-        free_plan = session.exec(select(Plan).where(Plan.slug == "free")).first()
-        plan_info = SubscriptionPlanInfo(
-            id=free_plan.id if free_plan else 0,
-            slug="free",
-            display_name="Free",
-            credits_monthly=50,
-            seats=1,
-            multipliers={"text_concise": 1, "text_detailed": 1000, "ocr_add": 1, "voice_add": 1},
-            features={"allow_detailed": False, "allow_ocr": True, "allow_voice": True}
-        )
-        usage_info = SubscriptionUsage(
-            credits_used=0,
-            credits_remaining=50,
-            ocr_used=0,
-            ocr_limit=3,
-            voice_used=0,
-            voice_limit=3
-        )
-    else:
-        plan = session.get(Plan, subscription.plan_id)
-        features = plan.features or {}
-        multipliers = plan.multipliers or {"text_concise": 1, "text_detailed": 2, "ocr_add": 1, "voice_add": 1}
-        
-        plan_info = SubscriptionPlanInfo(
-            id=plan.id,
-            slug=plan.slug,
-            display_name=plan.name,
-            credits_monthly=plan.credits_per_month,
-            seats=plan.seats or 1,
-            multipliers=multipliers,
-            features=features
-        )
-        
-        feature_usage = subscription.feature_usage or {}
-        usage_info = SubscriptionUsage(
-            credits_used=subscription.credits_used_this_period,
-            credits_remaining=subscription.credits_balance,
-            ocr_used=feature_usage.get("ocr_used", 0),
-            ocr_limit=features.get("ocr_monthly_cap", 100),
-            voice_used=feature_usage.get("voice_used", 0),
-            voice_limit=features.get("voice_monthly_cap", 50)
-        )
-    
-    # Profile info
-    profile_info = SubscriptionProfile(
-        grade_level=user.grade_level,
-        region_country=user.profile_country,
-        region_state_province=user.profile_province_state,
-        display_name=user.full_name
-    )
-    
-    # Feature allowance flags
-    allow_detailed = plan_info.slug != "free"
-    allow_ocr = usage_info.ocr_used < usage_info.ocr_limit
-    allow_voice = usage_info.voice_used < usage_info.voice_limit
-    
-    return SubscriptionResponse(
-        plan=plan_info,
-        usage=usage_info,
-        profile=profile_info,
-        allow_detailed=allow_detailed,
-        allow_ocr=allow_ocr,
-        allow_voice=allow_voice
-    )
+        raise HTTPException(status_code=500, detail="Subscription not available")
+
+    plan = session.get(Plan, subscription.plan_id)
+    if not plan:
+        fallback_plan = session.exec(select(Plan).where(Plan.slug == "free")).first()
+        if not fallback_plan:
+            raise HTTPException(status_code=500, detail="Plan not available for subscription")
+        subscription.plan_id = fallback_plan.id
+        session.add(subscription)
+        session.commit()
+        session.refresh(subscription)
+        plan = fallback_plan
+
+    return build_subscription_response(user, subscription, plan)
 
 
 
@@ -3906,6 +3904,22 @@ async def admin_update_user(user_id: int, req: AdminUserUpdateRequest, db: Sessi
     
     if req.role is not None:
         user.role = req.role
+    if req.full_name is not None:
+        user.full_name = req.full_name
+    if req.email is not None:
+        user.email = req.email
+    if req.academic_level is not None:
+        user.academic_level = req.academic_level
+    if req.timezone is not None:
+        user.timezone = req.timezone
+    if req.profile_country is not None:
+        user.profile_country = req.profile_country
+    if req.profile_province_state is not None:
+        user.profile_province_state = req.profile_province_state
+    if req.grade_level is not None:
+        user.grade_level = req.grade_level
+    if req.school_id is not None:
+        user.school_id = req.school_id
     if req.subscription_tier is not None:
         user.subscription_tier = req.subscription_tier
     if req.subscription_status is not None:
@@ -4749,12 +4763,25 @@ async def create_or_update_plan(plan_data: PlanCreate, session: Session = Depend
         session.refresh(new_plan)
         return new_plan
 
-@api_router.get('/users/me/subscription')
-async def get_my_subscription(user_id: int = Query(...), session: Session = Depends(get_session)):
+@api_router.get('/users/me/subscription', response_model=SubscriptionResponse)
+async def get_my_subscription_v2(user_id: int = Query(...), session: Session = Depends(get_session)):
     user = session.get(User, user_id)
-    if not user: raise HTTPException(404, detail='User not found')
-    sub = subscription_service.get_or_create_subscription(session, user)
-    return sub
+    if not user:
+        raise HTTPException(404, detail="User not found")
+    subscription = subscription_service.get_or_create_subscription(session, user)
+    if not subscription:
+        raise HTTPException(status_code=500, detail="Subscription not available")
+    plan = session.get(Plan, subscription.plan_id)
+    if not plan:
+        fallback_plan = session.exec(select(Plan).where(Plan.slug == "free")).first()
+        if not fallback_plan:
+            raise HTTPException(status_code=500, detail="Plan not available for subscription")
+        subscription.plan_id = fallback_plan.id
+        session.add(subscription)
+        session.commit()
+        session.refresh(subscription)
+        plan = fallback_plan
+    return build_subscription_response(user, subscription, plan)
 
 
 @api_router.get('/admin/plans-with-prompts')

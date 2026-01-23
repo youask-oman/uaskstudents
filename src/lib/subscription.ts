@@ -77,14 +77,18 @@ export const DEFAULT_SUBSCRIPTION: SubscriptionResponse = {
  */
 export async function fetchSubscription(userId: string): Promise<SubscriptionResponse> {
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
-    const res = await fetch(`${baseUrl}/api/v1/me/subscription?user_id=${userId}`);
+    const res = await fetch(`${baseUrl}/api/v1/users/me/subscription?user_id=${userId}`);
 
     if (!res.ok) {
-        console.warn("[Subscription] Failed to fetch, using defaults");
-        return DEFAULT_SUBSCRIPTION;
+        const detail = await res.text();
+        throw new Error(detail || "Subscription fetch failed");
     }
 
-    return res.json();
+    const data = await res.json();
+    if (!data?.plan || !data?.usage || !data?.profile) {
+        throw new Error("Subscription response missing required fields");
+    }
+    return data as SubscriptionResponse;
 }
 
 /**
