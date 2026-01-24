@@ -2,7 +2,7 @@ from typing import Optional
 from sqlmodel import Session, select
 from app.models import User, Plan, PlanPromptLink, PromptAsset, Subscription
 from app.llm_profiles.asset_loader import AssetLoader
-from app.llm_profiles.profiles import PromptProfile, get_profile_free
+from app.llm_profiles.profiles import PromptProfile, get_profile_free, get_prompt_profile
 
 class ProfileResolutionError(Exception):
     """Raised when a profile cannot be resolved (e.g. missing links)."""
@@ -80,11 +80,13 @@ class ProfileResolver:
             ).first()
             
         if not link:
-            # If still no link (even for minimal), this is a config error.
-            # However, for robustness, if we are Free tier, we have hardcoded fallback.
+            fallback_profile = ProfileResolver._fallback_profile(session, tier_slug, effective_mode)
+            if fallback_profile:
+                return fallback_profile
             if tier_slug == "free":
                 return get_profile_free()
-            raise ProfileResolutionError(f"No prompt links configured for Plan {plan.slug} ({plan.id}) in mode {effective_mode}")
+            print(f"WARNING: Missing prompt links/assets for {tier_slug}. Using free fallback.")
+            return get_profile_free()
 
         # 4. Load Assets
         try:
@@ -152,4 +154,40 @@ class ProfileResolver:
             mode=effective_mode,
             allow_detailed=(effective_mode == "detailed"),
             allow_visuals_only_if_asked=(effective_mode == "minimal" and "free" in tier_slug)
+        )
+
+    @staticmethod
+    def _fallback_profile(session: Session, tier_slug: str, effective_mode: str) -> Optional[PromptProfile]:
+        key_map = {
+            "minimal": ("shared:minimal_system", "shared:minimal_schema"),
+            "detailed": ("shared:detailed_system", "shared:canonical_schema"),
+        }
+        system_key, schema_key = key_map.get(effective_mode, key_map["minimal"])
+        tier_for_profile = "standard" if ("standard" in tier_slug or "family" in tier_slug) else tier_slug
+        profile_defaults = get_prompt_profile(tier_for_profile)
+
+        sys_asset = session.exec(select(PromptAsset).where(PromptAsset.key == system_key)).first()
+        schema_asset = session.exec(select(PromptAsset).where(PromptAsset.key == schema_key)).first()
+        if not sys_asset or not schema_asset:
+            return None
+        try:
+            system_content = AssetLoader.get_asset_content(sys_asset)
+            schema_content = AssetLoader.get_asset_content(schema_asset)
+        except Exception:
+            return None
+
+        return PromptProfile(
+            tier=tier_slug,
+            system_prompt_content=system_content if isinstance(system_content, str) else str(system_content),
+            json_schema_content=schema_content if isinstance(schema_content, dict) else {},
+            system_asset_path=sys_asset.path if sys_asset else None,
+            schema_asset_path=schema_asset.path if schema_asset else None,
+            system_asset_key=sys_asset.key if sys_asset else None,
+            schema_asset_key=schema_asset.key if schema_asset else None,
+            max_output_tokens=profile_defaults.max_output_tokens,
+            max_steps=profile_defaults.max_steps,
+            mode=effective_mode,
+            allow_detailed=(effective_mode == "detailed"),
+            allow_visuals_only_if_asked=profile_defaults.allow_visuals_only_if_asked,
+            cost_multiplier=profile_defaults.cost_multiplier
         )
