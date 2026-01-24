@@ -16,6 +16,7 @@ import time
 import logging
 import asyncio
 from datetime import datetime, timedelta
+from jsonschema import Draft202012Validator, ValidationError
 
 from app.database import get_session
 from app.services.solve.normalizer_service import problem_normalizer_service
@@ -929,113 +930,273 @@ OCR_V5_SCHEMA = {
 # Snap & Solve v2 - Extract Questions
 # ------------------------------------------------------------------
 
-EXTRACT_MODEL = os.getenv("OCR_V5_MODEL", "gpt-5-mini")
+EXTRACT_MODEL = os.getenv("EXTRACT_MODEL", "gpt-5-mini")
 EXTRACT_MAX_TOKENS = int(os.getenv("EXTRACT_MAX_TOKENS", "900"))
 EXTRACT_MAX_MB = int(os.getenv("EXTRACT_MAX_MB", "10"))
 
 EXTRACT_SYSTEM_PROMPT = (
-    "You are a strict OCR extraction engine. Extract ONLY questions, do not solve. "
-    "Return ONLY JSON matching the schema. Identify which items are valid math questions. "
-    "Follow the validity rules exactly."
+    "You are a STRICT JSON OCR EXTRACTOR.\n\n"
+    "Your ONLY task is to extract structured data from the image and return it as JSON "
+    "that EXACTLY matches the provided JSON schema in text.format.\n\n"
+    "ABSOLUTE RULES:\n"
+    "- DO NOT explain.\n"
+    "- DO NOT reason.\n"
+    "- DO NOT summarize.\n"
+    "- DO NOT add commentary.\n"
+    "- DO NOT include markdown, bullet points, or code fences.\n"
+    "- DO NOT include any text outside the JSON object.\n"
+    "- DO NOT invent missing fields or values.\n\n"
+    "If the image cannot be read or the task cannot be completed:\n"
+    "Return EXACTLY this JSON object and nothing else:\n"
+    "{\"ok\": false, \"error\": \"<short reason>\"}\n\n"
+    "If extraction is successful:\n"
+    "Return ONLY a JSON object that fully conforms to the schema.\n\n"
+    "This is a machine-to-machine contract. Any extra text is a failure."
 )
 
 EXTRACT_USER_PROMPT = (
-    "Return STRICT JSON ONLY in this shape: "
-    "{\"is_math_page\":true|false,\"notes\":[\"...\"],\"questions\":[{...}]}. "
-    "Validity rules: A valid math question asks to solve/simplify/compute/graph/prove/find/derive, "
-    "or includes math notation/relationships. Not valid: headings, instructions, names/dates, random notes. "
-    "If requires_figure=true and figure_bbox missing, set is_valid_math=true but add note "
-    "\"needs figure crop\" and keep confidence low."
+    "Extract the requested information from the image.\n\n"
+    "Return ONLY valid JSON.\n"
+    "Match the provided schema EXACTLY.\n"
+    "No sentences. No explanations. No formatting.\n\n"
+    "If the image is unreadable or no valid data exists, return:\n"
+    "{\"ok\": false, \"error\": \"Could not read text\"}"
 )
 
 EXTRACT_SCHEMA = {
     "name": "extract_questions_v1",
     "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
-        "properties": {
-            "is_math_page": {"type": "boolean"},
-            "notes": {"type": "array", "items": {"type": "string"}},
-            "questions": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "id": {"type": "string"},
-                        "text": {"type": "string"},
-                        "confidence": {"type": "number"},
-                        "is_valid_math": {"type": "boolean"},
-                        "reason_if_invalid": {
-                            "type": ["string", "null"],
-                            "enum": [
-                                "No question asked",
-                                "Only instructions",
-                                "Too ambiguous",
-                                "Not math",
-                                "Unreadable",
-                                None
-                            ]
-                        },
-                        "type": {
-                            "type": ["string", "null"],
-                            "enum": [
-                                "algebra",
-                                "calculus",
-                                "geometry",
-                                "statistics",
-                                "word_problem",
-                                "graphing",
-                                "other",
-                                None
-                            ]
-                        },
-                        "bbox": {
-                            "type": ["object", "null"],
+        "oneOf": [
+            {
+                "title": "ErrorResponse",
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["ok", "error"],
+                "properties": {
+                    "ok": {"const": False},
+                    "error": {"type": "string", "minLength": 1, "maxLength": 200},
+                },
+            },
+            {
+                "title": "SuccessResponse",
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["ok", "is_math_page", "notes", "questions"],
+                "properties": {
+                    "ok": {"const": True},
+                    "is_math_page": {"type": "boolean"},
+                    "notes": {"type": "array", "items": {"type": "string", "maxLength": 120}, "maxItems": 20},
+                    "questions": {
+                        "type": "array",
+                        "maxItems": 40,
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "required": ["id", "text", "confidence", "is_valid_math", "reason_if_invalid"],
                             "properties": {
-                                "x": {"type": "number"},
-                                "y": {"type": "number"},
-                                "w": {"type": "number"},
-                                "h": {"type": "number"}
+                                "id": {"type": "string", "pattern": "^q[1-9][0-9]{0,2}$"},
+                                "text": {"type": "string", "minLength": 1, "maxLength": 1200},
+                                "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                                "is_valid_math": {"type": "boolean"},
+                                "reason_if_invalid": {
+                                    "type": "string",
+                                    "enum": [
+                                        "OK",
+                                        "No question asked",
+                                        "Only instructions",
+                                        "Too ambiguous",
+                                        "Not math",
+                                        "Unreadable",
+                                        "Needs figure crop",
+                                    ],
+                                },
+                                "type": {
+                                    "type": "string",
+                                    "enum": [
+                                        "algebra",
+                                        "calculus",
+                                        "geometry",
+                                        "statistics",
+                                        "word_problem",
+                                        "graphing",
+                                        "other",
+                                    ],
+                                },
+                                "bbox": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "required": ["x", "y", "w", "h"],
+                                    "properties": {
+                                        "x": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                                        "y": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                                        "w": {"type": "number", "exclusiveMinimum": 0.0, "maximum": 1.0},
+                                        "h": {"type": "number", "exclusiveMinimum": 0.0, "maximum": 1.0},
+                                    },
+                                },
+                                "requires_figure": {"type": "boolean"},
+                                "figure_type": {
+                                    "type": ["string", "null"],
+                                    "enum": ["graph", "table", "geometry_diagram", "chart", "unknown", None],
+                                },
+                                "figure_bbox": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "required": ["x", "y", "w", "h"],
+                                    "properties": {
+                                        "x": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                                        "y": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                                        "w": {"type": "number", "exclusiveMinimum": 0.0, "maximum": 1.0},
+                                        "h": {"type": "number", "exclusiveMinimum": 0.0, "maximum": 1.0},
+                                    },
+                                },
+                                "figure_role": {
+                                    "type": ["string", "null"],
+                                    "enum": ["essential", "helpful", "not_needed", None],
+                                },
                             },
-                            "required": ["x", "y", "w", "h"],
-                            "additionalProperties": False
                         },
-                        "requires_figure": {"type": ["boolean", "null"]},
-                        "figure_type": {
-                            "type": ["string", "null"],
-                            "enum": [
-                                "graph",
-                                "table",
-                                "geometry_diagram",
-                                "chart",
-                                "unknown",
-                                None
-                            ]
-                        },
-                        "figure_bbox": {
-                            "type": ["object", "null"],
-                            "properties": {
-                                "x": {"type": "number"},
-                                "y": {"type": "number"},
-                                "w": {"type": "number"},
-                                "h": {"type": "number"}
-                            },
-                            "required": ["x", "y", "w", "h"],
-                            "additionalProperties": False
-                        },
-                        "figure_role": {
-                            "type": ["string", "null"],
-                            "enum": ["essential", "helpful", "not_needed", None]
-                        }
                     },
-                    "required": ["id", "text", "confidence", "is_valid_math"],
-                    "additionalProperties": False
-                }
-            }
-        },
-        "required": ["is_math_page", "notes", "questions"],
-        "additionalProperties": False
-    }
+                },
+            },
+        ],
+    },
 }
+
+
+EXTRACT_SCHEMA_RUNTIME = EXTRACT_SCHEMA["schema"]
+EXTRACT_SCHEMA_VALIDATOR = Draft202012Validator(EXTRACT_SCHEMA_RUNTIME)
+INVALID_EXTRACT_PAYLOAD = {
+    "ok": False,
+    "error": "invalid schema from model",
+}
+
+CODE_FENCE_PATTERN = re.compile(r"```(?:[^\n]*\n)?([\s\S]*?)```", re.MULTILINE)
+
+
+def _truncate_text(value: str, limit: int = 4000) -> str:
+    if len(value) <= limit:
+        return value
+    return value[:limit] + "...(truncated)"
+
+
+def _serialize_response_for_log(response: Any) -> str:
+    try:
+        dumped = json.dumps(response, default=str)
+    except Exception:
+        dumped = repr(response)
+    return _truncate_text(dumped)
+
+
+def _normalize_response_text(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    if isinstance(value, (list, tuple)):
+        for element in value:
+            candidate = _normalize_response_text(element)
+            if candidate:
+                return candidate
+        return None
+    if isinstance(value, str):
+        stripped = value.strip()
+        return stripped if stripped else None
+    if isinstance(value, dict):
+        for key in ("text", "output_text"):
+            candidate = _normalize_response_text(value.get(key))
+            if candidate:
+                return candidate
+        for key in ("content", "items"):
+            contents = value.get(key)
+            if isinstance(contents, (list, tuple)):
+                for element in contents:
+                    candidate = _normalize_response_text(element)
+                    if candidate:
+                        return candidate
+        for val in value.values():
+            candidate = _normalize_response_text(val)
+            if candidate:
+                return candidate
+        return None
+    text_attr = getattr(value, "text", None)
+    if text_attr:
+        return _normalize_response_text(text_attr)
+    output_text = getattr(value, "output_text", None)
+    if output_text:
+        return _normalize_response_text(output_text)
+    contents = getattr(value, "content", None) or getattr(value, "items", None)
+    if isinstance(contents, (list, tuple)):
+        for element in contents:
+            candidate = _normalize_response_text(element)
+            if candidate:
+                return candidate
+    return None
+
+
+def _extract_openai_text(response: Any) -> str:
+    if not response:
+        return ""
+    candidate = _normalize_response_text(response)
+    if candidate:
+        return candidate
+    for attr in ("output_text", "text"):
+        candidate = _normalize_response_text(getattr(response, attr, None))
+        if candidate:
+            return candidate
+    output = getattr(response, "output", None) or getattr(response, "result", None)
+    if isinstance(output, (list, tuple)):
+        for item in output:
+            candidate = _normalize_response_text(item)
+            if candidate:
+                return candidate
+    choices = getattr(response, "choices", None)
+    if isinstance(choices, (list, tuple)) and choices:
+        choice = choices[0]
+        if isinstance(choice, dict):
+            message = choice.get("message")
+        else:
+            message = getattr(choice, "message", None)
+        contents = None
+        if isinstance(message, dict):
+            contents = message.get("content")
+        else:
+            contents = getattr(message, "content", None)
+        if contents:
+            for entry in contents:
+                candidate = _normalize_response_text(entry)
+                if candidate:
+                    return candidate
+    logging.warning(
+        "OpenAI extract response missing text; type=%s payload=%s",
+        type(response).__name__,
+        _serialize_response_for_log(response),
+    )
+    return ""
+
+
+def _validate_extract_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+    errors = list(EXTRACT_SCHEMA_VALIDATOR.iter_errors(payload))
+    if not errors:
+        return payload
+    details = "; ".join(
+        f"{'.'.join(str(part) for part in error.path) or '<root>'}: {error.message}"
+        for error in errors[:5]
+    )
+    logging.warning("Extract schema validation failed: %s", details)
+    return INVALID_EXTRACT_PAYLOAD
+
+
+def _clean_content_for_json(content: str) -> str:
+    return CODE_FENCE_PATTERN.sub(r"\1", content)
+
+
+def _try_recover_json(content: str) -> Optional[str]:
+    cleaned = _clean_content_for_json(content)
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+    if start >= 0 and end > start:
+        return cleaned[start : end + 1]
+    return None
 
 
 class ExtractBBox(BaseModel):
@@ -1073,6 +1234,7 @@ class ExtractQuestionsResponse(BaseModel):
     is_math_page: bool
     notes: List[str]
     questions: List[ExtractQuestionItem]
+    error: Optional[str] = None
     cache_hit: bool
     cached_at: Optional[str] = None
     telemetry: Optional[ExtractTelemetry] = None
@@ -1132,8 +1294,8 @@ async def _call_extract_questions(image_bytes: bytes) -> Dict[str, Any]:
     client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
     b64 = base64.b64encode(image_bytes).decode("utf-8")
 
-    if "gpt-5" in EXTRACT_MODEL.lower():
-        response = await client.responses.create(
+    def _build_responses_request():
+        return client.responses.create(
             model=EXTRACT_MODEL,
             input=[
                 {"role": "system", "content": [{"type": "input_text", "text": EXTRACT_SYSTEM_PROMPT}]},
@@ -1146,65 +1308,88 @@ async def _call_extract_questions(image_bytes: bytes) -> Dict[str, Any]:
                 "format": {
                     "type": "json_schema",
                     "name": EXTRACT_SCHEMA.get("name", "extract_questions"),
-                    "json_schema": EXTRACT_SCHEMA
+                    "schema": EXTRACT_SCHEMA.get("schema"),
+                    "json_schema": EXTRACT_SCHEMA.get("schema"),
                 }
             },
             max_output_tokens=EXTRACT_MAX_TOKENS
         )
-        content = None
-        if getattr(response, "output", None):
-            for item in response.output:
-                if getattr(item, "content", None):
-                    content = item.content[0].text
-                    break
-        if not content:
-            raise ValueError("Empty extract response")
-        usage = getattr(response, "usage", None)
-        cached_tokens = None
-        if usage and hasattr(usage, "input_token_details"):
-            cached_tokens = getattr(usage.input_token_details, "cached_tokens", None)
-        return {
-            "payload": _parse_json_response(content),
-            "input_tokens": getattr(usage, "input_tokens", None),
-            "output_tokens": getattr(usage, "output_tokens", None),
-            "cached_tokens": cached_tokens
-        }
 
-    response = await client.chat.completions.create(
-        model=EXTRACT_MODEL,
-        messages=[
-            {"role": "system", "content": EXTRACT_SYSTEM_PROMPT},
-            {"role": "user", "content": [
-                {"type": "text", "text": EXTRACT_USER_PROMPT},
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}", "detail": "high"}}
-            ]}
-        ],
-        response_format={"type": "json_schema", "name": EXTRACT_SCHEMA.get("name", "extract_questions"), "json_schema": EXTRACT_SCHEMA},
-        max_completion_tokens=EXTRACT_MAX_TOKENS
-    )
-    content = response.choices[0].message.content
+    def _build_chat_request():
+        return client.chat.completions.create(
+            model=EXTRACT_MODEL,
+            messages=[
+                {"role": "system", "content": EXTRACT_SYSTEM_PROMPT},
+                {"role": "user", "content": [
+                    {"type": "text", "text": EXTRACT_USER_PROMPT},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}", "detail": "high"}}
+                ]}
+            ],
+            response_format={
+                "type": "json_schema",
+                "name": EXTRACT_SCHEMA.get("name", "extract_questions"),
+                "schema": EXTRACT_SCHEMA.get("schema"),
+                "json_schema": EXTRACT_SCHEMA.get("schema"),
+            },
+            max_completion_tokens=EXTRACT_MAX_TOKENS
+        )
+
+    if "gpt-5" in EXTRACT_MODEL.lower():
+        response = await _build_responses_request()
+    else:
+        response = await _build_chat_request()
+
+    content = _extract_openai_text(response)
+    if not content.strip():
+        logging.error(
+            "extract_questions received empty content from OpenAI response; payload=%s",
+            _serialize_response_for_log(response),
+        )
+        raise ValueError("Empty extract response from OpenAI")
+
+    logging.info("extract_questions response raw content: %r", content)
     usage = getattr(response, "usage", None)
     cached_tokens = None
-    if usage and hasattr(usage, "prompt_tokens_details"):
-        cached_tokens = getattr(usage.prompt_tokens_details, "cached_tokens", None)
+    if usage:
+        if hasattr(usage, "input_token_details"):
+            cached_tokens = getattr(usage.input_token_details, "cached_tokens", None)
+        elif hasattr(usage, "prompt_tokens_details"):
+            cached_tokens = getattr(usage.prompt_tokens_details, "cached_tokens", None)
+
+    payload = _parse_json_response(content)
+    payload = _validate_extract_payload(payload)
+    input_tokens = None
+    output_tokens = None
+    if usage:
+        input_tokens = getattr(usage, "input_tokens", None) or getattr(usage, "prompt_tokens", None)
+        output_tokens = getattr(usage, "output_tokens", None) or getattr(usage, "completion_tokens", None)
+
     return {
-        "payload": _parse_json_response(content),
-        "input_tokens": getattr(usage, "prompt_tokens", None) if usage else None,
-        "output_tokens": getattr(usage, "completion_tokens", None) if usage else None,
-        "cached_tokens": cached_tokens
+        "payload": payload,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cached_tokens": cached_tokens,
     }
 
 
 def _parse_json_response(content: str) -> Dict[str, Any]:
-    if not content:
-        raise ValueError("Empty OCR response")
+    normalized = content.strip()
+    if not normalized:
+        raise ValueError("Empty content received from extract model")
     try:
-        return json.loads(content)
-    except json.JSONDecodeError:
-        match = re.search(r"\{.*\}", content, re.DOTALL)
-        if not match:
-            raise
-        return json.loads(match.group(0))
+        logging.debug("Attempting to parse OCR JSON payload: %s", normalized)
+        return json.loads(normalized)
+    except json.JSONDecodeError as exc:
+        logging.exception("extract_questions failed while parsing OCR json", exc_info=True)
+        candidate = _try_recover_json(normalized)
+        if candidate:
+            try:
+                logging.warning("Retrying parse on substring: %s", _truncate_text(candidate, limit=200))
+                return json.loads(candidate)
+            except json.JSONDecodeError:
+                logging.warning("Best-effort JSON parsing failed; substring=%s", _truncate_text(candidate, limit=200))
+        snippet = _truncate_text(normalized, limit=400)
+        raise ValueError(f"Invalid JSON response from Extract engine: {snippet}") from exc
 
 
 async def _call_ocr_v5(image_bytes: bytes) -> Dict[str, Any]:
@@ -1431,11 +1616,14 @@ async def extract_questions(
         session.add(cached)
         session.commit()
         payload = cached.result_json or {}
+        ok = payload.get("ok", True)
+        error = payload.get("error")
         return ExtractQuestionsResponse(
-            ok=True,
+            ok=bool(ok),
             is_math_page=bool(payload.get("is_math_page", False)),
-            notes=payload.get("notes") or [],
+            notes=payload.get("notes") or ([error] if error else []),
             questions=payload.get("questions") or [],
+            error=error,
             cache_hit=True,
             cached_at=cached.created_at.isoformat()
         )
@@ -1459,10 +1647,14 @@ async def extract_questions(
         latency_ms_total=latency_ms
     )
 
+    ok_value = payload.get("ok", True)
+    error_value = payload.get("error")
     result = {
+        "ok": bool(ok_value),
+        "error": error_value,
         "is_math_page": bool(payload.get("is_math_page", False)),
-        "notes": payload.get("notes") or [],
-        "questions": payload.get("questions") or []
+        "notes": payload.get("notes") or ([error_value] if error_value else []),
+        "questions": payload.get("questions") or [],
     }
 
     cache_entry = OcrExtractionCache(
@@ -1516,10 +1708,11 @@ async def extract_questions(
     session.commit()
 
     return ExtractQuestionsResponse(
-        ok=True,
+        ok=bool(result["ok"]),
         is_math_page=result["is_math_page"],
         notes=result["notes"],
         questions=result["questions"],
+        error=result.get("error"),
         cache_hit=False,
         telemetry=telemetry
     )

@@ -1,0 +1,221 @@
+import base64
+import json
+import logging
+from typing import Any, Dict, Optional
+
+from openai import AsyncOpenAI
+from jsonschema import Draft202012Validator
+
+logger = logging.getLogger(__name__)
+
+EXTRACT_SYSTEM_PROMPT = (
+    "You are a STRICT JSON OCR EXTRACTOR.\n\n"
+    "Your ONLY task is to extract structured data from the image and return it as JSON "
+    "that EXACTLY matches the provided JSON schema in text.format.\n\n"
+    "ABSOLUTE RULES:\n"
+    "- DO NOT explain.\n"
+    "- DO NOT reason.\n"
+    "- DO NOT summarize.\n"
+    "- DO NOT add commentary.\n"
+    "- DO NOT include markdown, bullet points, or code fences.\n"
+    "- DO NOT include any text outside the JSON object.\n"
+    "- DO NOT invent missing fields or values.\n\n"
+    "If the image cannot be read or the task cannot be completed:\n"
+    "Return EXACTLY this JSON object and nothing else:\n"
+    "{\"ok\": false, \"error\": \"<short reason>\"}\n\n"
+    "If extraction is successful:\n"
+    "Return ONLY a JSON object that fully conforms to the schema.\n\n"
+    "This is a machine-to-machine contract. Any extra text is a failure."
+)
+
+EXTRACT_USER_PROMPT = (
+    "Extract the requested information from the image.\n\n"
+    "Return ONLY valid JSON.\n"
+    "Match the provided schema EXACTLY.\n"
+    "No sentences. No explanations. No formatting.\n\n"
+    "If the image is unreadable or no valid data exists, return:\n"
+    "{\"ok\": false, \"error\": \"Could not read text\"}"
+)
+
+def _to_data_url(image_bytes: bytes, mime: str = "image/png") -> str:
+    b64 = base64.b64encode(image_bytes).decode("ascii")
+    return f"data:{mime};base64,{b64}"
+
+def _safe_truncate(s: str, max_len: int = 4000) -> str:
+    s = s or ""
+    return s if len(s) <= max_len else s[:max_len] + "…(truncated)"
+
+def _extract_text_from_responses_api(resp: Any) -> str:
+    """
+    Robustly extracts text from Responses API response shapes.
+    Handles:
+      - resp.output_text (if present)
+      - resp.output[].content[].text or dict-based content entries
+    """
+    # 1) output_text fast path (SDK often provides it)
+    out_text = getattr(resp, "output_text", None)
+    if isinstance(out_text, str) and out_text.strip():
+        return out_text
+
+    # 2) Walk resp.output[*].content[*]
+    output = getattr(resp, "output", None)
+    if not output:
+        return ""
+
+    chunks = []
+    for item in output:
+        content_list = getattr(item, "content", None)
+        if content_list is None and isinstance(item, dict):
+            content_list = item.get("content")
+
+        if not content_list:
+            continue
+
+        for c in content_list:
+            # c may be dict or object
+            if isinstance(c, str):
+                if c.strip():
+                    chunks.append(c)
+                continue
+
+            if isinstance(c, dict):
+                # common shape: {"type":"output_text","text":"..."}
+                text = c.get("text")
+                if isinstance(text, str) and text.strip():
+                    chunks.append(text)
+                continue
+
+            text = getattr(c, "text", None)
+            if isinstance(text, str) and text.strip():
+                chunks.append(text)
+
+    return "\n".join(chunks).strip()
+
+def _parse_json_best_effort(content: str) -> Dict[str, Any]:
+    """
+    Parses JSON from model output. Best-effort:
+      1) direct loads
+      2) find first '{' and last '}' and parse substring
+      3) strip code fences and try again
+    """
+    if content is None:
+        raise ValueError("Empty content received from extract model")
+    content = content.strip()
+    if not content:
+        raise ValueError("Empty content received from extract model")
+
+    # Try direct
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        pass
+
+    # Remove code fences if any
+    cleaned = content.replace("```json", "```").replace("```JSON", "```")
+    if "```" in cleaned:
+        parts = [p for p in cleaned.split("```") if p.strip()]
+        # choose the largest-looking JSON-ish part
+        parts.sort(key=len, reverse=True)
+        cleaned = parts[0].strip() if parts else cleaned.strip()
+
+    # Try substring { ... }
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        sub = cleaned[start : end + 1].strip()
+        return json.loads(sub)
+
+    raise ValueError("Invalid JSON response from Extract engine")
+
+def _validate_extract_payload(payload: Dict[str, Any]) -> Optional[str]:
+    """
+    Returns error message if invalid, else None.
+    """
+    validator = Draft202012Validator(EXTRACT_SCHEMA_V1)
+    errors = sorted(validator.iter_errors(payload), key=lambda e: e.path)
+    if not errors:
+        return None
+    # Return first error as a readable string
+    e = errors[0]
+    path = ".".join([str(p) for p in e.path]) if e.path else "<root>"
+    return f"{path}: {e.message}"
+
+async def _call_extract_questions(
+    client: AsyncOpenAI,
+    image_bytes: bytes,
+    *,
+    model: str = "gpt-5-mini",
+    mime: str = "image/png",
+    max_output_tokens: int = 900,
+    timeout_s: float = 60.0,
+) -> Dict[str, Any]:
+    """
+    Calls GPT-5 Vision in 'extract mode' and returns validated payload.
+    Hardens against empty outputs and non-JSON responses.
+    """
+    image_url = _to_data_url(image_bytes, mime=mime)
+
+    try:
+        resp = await client.responses.create(
+            model=model,
+            input=[
+                {
+                    "role": "system",
+                    "content": [{"type": "input_text", "text": EXTRACT_SYSTEM_PROMPT}],
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "input_text", "text": EXTRACT_USER_PROMPT},
+                        {"type": "input_image", "image_url": image_url},
+                    ],
+                },
+            ],
+            # Force strict JSON schema output
+            text={
+                "format": {
+                    "type": "json_schema",
+                    "name": "extract_questions_v1",
+                    "strict": True,
+                    "schema": EXTRACT_SCHEMA_V1,
+                }
+            },
+            temperature=0,
+            max_output_tokens=max_output_tokens,
+            # if your SDK supports request timeout:
+            # timeout=timeout_s,
+        )
+
+        content = _extract_text_from_responses_api(resp)
+
+        if not content or not content.strip():
+            # Log shape for debugging without dumping secrets
+            try:
+                debug_obj = resp.model_dump() if hasattr(resp, "model_dump") else str(resp)
+            except Exception:
+                debug_obj = str(resp)
+
+            logger.error(
+                "extract_questions: empty content from OpenAI. resp=%s",
+                _safe_truncate(json.dumps(debug_obj, ensure_ascii=False) if isinstance(debug_obj, dict) else str(debug_obj))
+            )
+            return {"ok": False, "error": "Empty extract response from model"}
+
+        payload = _parse_json_best_effort(content)
+
+        # Schema validate; if invalid, fail safely (don’t crash endpoint)
+        schema_err = _validate_extract_payload(payload)
+        if schema_err:
+            logger.error(
+                "extract_questions: schema validation failed: %s | raw=%s",
+                schema_err,
+                _safe_truncate(content)
+            )
+            # Safe fallback
+            return {"ok": False, "error": f"Schema invalid: {schema_err}"}
+
+        return payload
+
+    except Exception as exc:
+        logger.exception("extract_questions: OpenAI call or parsing failed: %s", str(exc))
+        return {"ok": False, "error": "Extract failed"}
