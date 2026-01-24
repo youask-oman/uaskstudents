@@ -16,6 +16,7 @@ type CropWorkspaceProps = {
     onRotationChange: (rotation: number) => void;
     onCropComplete: (areaPixels: CropArea) => void;
     onImageSize?: (size: { width: number; height: number }) => void;
+    onViewportSize?: (size: { width: number; height: number }) => void;
     fullPage: boolean;
     resetToken?: number;
 };
@@ -35,6 +36,7 @@ export default function CropWorkspace({
     onRotationChange,
     onCropComplete,
     onImageSize,
+    onViewportSize,
     fullPage,
     resetToken,
 }: CropWorkspaceProps) {
@@ -50,7 +52,8 @@ export default function CropWorkspace({
         if (!containerRef.current) return;
         const rect = containerRef.current.getBoundingClientRect();
         setWorkspaceSize({ width: rect.width, height: rect.height });
-    }, []);
+        onViewportSize?.({ width: rect.width, height: rect.height });
+    }, [onViewportSize]);
 
     useLayoutEffect(() => {
         updateSize();

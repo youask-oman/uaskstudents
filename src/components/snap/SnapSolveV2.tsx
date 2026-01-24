@@ -8,11 +8,13 @@ import UnifiedMathRenderer from "@/components/math/UnifiedMathRenderer";
 import {
     CropArea,
     buildRequestHash,
+    clamp,
     getCroppedImageBlob,
     hashBytes,
     loadCache,
     saveCache,
     blobToBase64,
+    getRotatedSize,
 } from "./snapSolveUtils";
 
 type SnapSolveV2Props = {
@@ -79,6 +81,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
     const [imageSize, setImageSize] = React.useState<{ width: number; height: number } | null>(null);
     const [figureCrops, setFigureCrops] = React.useState<Record<string, string>>({});
     const [cropResetToken, setCropResetToken] = React.useState(0);
+    const [viewportSize, setViewportSize] = React.useState<{ width: number; height: number } | null>(null);
 
     const abortRef = React.useRef<AbortController | null>(null);
 
@@ -175,11 +178,28 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
         abortRef.current = controller;
 
         try {
+            if (!fullPage && !cropPixels) {
+                setError("Select a crop region.");
+                setStatus("error");
+                setIsBusy(false);
+                return;
+            }
             const fileBytes = await file.arrayBuffer();
             const fileHash = await hashBytes(fileBytes);
+            let normalizedCrop: CropArea | null = null;
+            if (!fullPage && cropPixels && imageSize) {
+                const rotatedSize = getRotatedSize(imageSize.width, imageSize.height, rotation);
+                normalizedCrop = {
+                    x: clamp(cropPixels.x / rotatedSize.width, 0, 1),
+                    y: clamp(cropPixels.y / rotatedSize.height, 0, 1),
+                    width: clamp(cropPixels.width / rotatedSize.width, 0, 1),
+                    height: clamp(cropPixels.height / rotatedSize.height, 0, 1),
+                };
+            }
+
             const meta = {
                 pageNumber,
-                crop: fullPage ? null : cropPixels,
+                crop: fullPage ? null : normalizedCrop,
                 rotation,
             };
             const requestHash = await buildRequestHash(fileBytes, meta);
@@ -193,7 +213,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
 
             const blob = await getCroppedImageBlob({
                 imageSrc,
-                crop: cropPixels,
+                crop: fullPage ? null : cropPixels,
                 rotation,
                 maxEdge: MAX_EDGE,
                 quality: JPEG_QUALITY,
@@ -206,11 +226,20 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
             form.append("file_hash", fileHash);
             form.append("source", fileType === "pdf" ? "pdf_page" : "image");
             form.append("user_selection", fullPage ? "whole_page" : "crop");
-            if (cropPixels && !fullPage) {
-                form.append("crop_x", String(cropPixels.x));
-                form.append("crop_y", String(cropPixels.y));
-                form.append("crop_w", String(cropPixels.width));
-                form.append("crop_h", String(cropPixels.height));
+            form.append("rotation", String(rotation));
+            if (imageSize) {
+                form.append("preview_w", String(imageSize.width));
+                form.append("preview_h", String(imageSize.height));
+            }
+            if (viewportSize) {
+                form.append("viewport_w", String(viewportSize.width));
+                form.append("viewport_h", String(viewportSize.height));
+            }
+            if (normalizedCrop && !fullPage) {
+                form.append("crop_x", String(normalizedCrop.x));
+                form.append("crop_y", String(normalizedCrop.y));
+                form.append("crop_w", String(normalizedCrop.width));
+                form.append("crop_h", String(normalizedCrop.height));
             }
 
             const userId = localStorage.getItem("user_id") || "1";
@@ -438,19 +467,20 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                                     Rotate Right
                                 </button>
                             </div>
-                            <CropWorkspace
-                                imageSrc={imageSrc}
-                                crop={crop}
-                                zoom={zoom}
-                                rotation={rotation}
-                                onCropChange={setCrop}
-                                onZoomChange={setZoom}
-                                onRotationChange={setRotation}
-                                onCropComplete={setCropPixels}
-                                onImageSize={setImageSize}
-                                fullPage={fullPage}
-                                resetToken={cropResetToken}
-                            />
+                        <CropWorkspace
+                            imageSrc={imageSrc}
+                            crop={crop}
+                            zoom={zoom}
+                            rotation={rotation}
+                            onCropChange={setCrop}
+                            onZoomChange={setZoom}
+                            onRotationChange={setRotation}
+                            onCropComplete={setCropPixels}
+                            onImageSize={setImageSize}
+                            onViewportSize={setViewportSize}
+                            fullPage={fullPage}
+                            resetToken={cropResetToken}
+                        />
                         </div>
                     )}
 

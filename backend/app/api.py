@@ -15,8 +15,10 @@ import os
 import time
 import logging
 import asyncio
+import io
 from datetime import datetime, timedelta
 from jsonschema import Draft202012Validator, ValidationError
+from PIL import Image, ImageEnhance, ImageFilter, ImageStat
 
 from app.database import get_session
 from app.services.solve.normalizer_service import problem_normalizer_service
@@ -31,7 +33,7 @@ from app.models import (
     PromptAsset, PlanPromptLink, RequestEvent, DeviceSignupLog, OcrCache,
     OcrExtractionCache, CreditHold
 )
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, BadRequestError
 from app.services.subscription_service import subscription_service
 from app.services.vision import VisionService, vision_service
 from app.services.solver import solver_service
@@ -931,7 +933,7 @@ OCR_V5_SCHEMA = {
 # ------------------------------------------------------------------
 
 EXTRACT_MODEL = os.getenv("EXTRACT_MODEL", "gpt-5-mini")
-EXTRACT_MAX_TOKENS = int(os.getenv("EXTRACT_MAX_TOKENS", "900"))
+EXTRACT_MAX_TOKENS = int(os.getenv("EXTRACT_MAX_TOKENS", "2000"))
 EXTRACT_MAX_MB = int(os.getenv("EXTRACT_MAX_MB", "10"))
 
 EXTRACT_SYSTEM_PROMPT = (
@@ -968,99 +970,84 @@ EXTRACT_SCHEMA = {
     "schema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
-        "oneOf": [
-            {
-                "title": "ErrorResponse",
-                "type": "object",
-                "additionalProperties": False,
-                "required": ["ok", "error"],
-                "properties": {
-                    "ok": {"const": False},
-                    "error": {"type": "string", "minLength": 1, "maxLength": 200},
-                },
-            },
-            {
-                "title": "SuccessResponse",
-                "type": "object",
-                "additionalProperties": False,
-                "required": ["ok", "is_math_page", "notes", "questions"],
-                "properties": {
-                    "ok": {"const": True},
-                    "is_math_page": {"type": "boolean"},
-                    "notes": {"type": "array", "items": {"type": "string", "maxLength": 120}, "maxItems": 20},
-                    "questions": {
-                        "type": "array",
-                        "maxItems": 40,
-                        "items": {
+        "additionalProperties": False,
+        "required": ["ok", "error", "is_math_page", "notes", "questions"],
+        "properties": {
+            "ok": {"type": "boolean"},
+            "error": {"type": ["string", "null"], "minLength": 1, "maxLength": 200},
+            "is_math_page": {"type": ["boolean", "null"]},
+            "notes": {"type": ["array", "null"], "items": {"type": "string", "maxLength": 120}, "maxItems": 20},
+            "questions": {
+                "type": ["array", "null"],
+                "maxItems": 40,
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["id", "text", "confidence", "is_valid_math", "reason_if_invalid", "type", "bbox", "requires_figure", "figure_type", "figure_bbox", "figure_role"],
+                    "properties": {
+                        "id": {"type": "string", "pattern": "^q[1-9][0-9]{0,2}$"},
+                        "text": {"type": "string", "minLength": 1, "maxLength": 1200},
+                        "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                        "is_valid_math": {"type": "boolean"},
+                        "reason_if_invalid": {
+                            "type": "string",
+                            "enum": [
+                                "OK",
+                                "No question asked",
+                                "Only instructions",
+                                "Too ambiguous",
+                                "Not math",
+                                "Unreadable",
+                                "Needs figure crop",
+                            ],
+                        },
+                        "type": {
+                            "type": "string",
+                            "enum": [
+                                "algebra",
+                                "calculus",
+                                "geometry",
+                                "statistics",
+                                "word_problem",
+                                "graphing",
+                                "other",
+                            ],
+                        },
+                        "bbox": {
                             "type": "object",
                             "additionalProperties": False,
-                            "required": ["id", "text", "confidence", "is_valid_math", "reason_if_invalid"],
+                            "required": ["x", "y", "w", "h"],
                             "properties": {
-                                "id": {"type": "string", "pattern": "^q[1-9][0-9]{0,2}$"},
-                                "text": {"type": "string", "minLength": 1, "maxLength": 1200},
-                                "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
-                                "is_valid_math": {"type": "boolean"},
-                                "reason_if_invalid": {
-                                    "type": "string",
-                                    "enum": [
-                                        "OK",
-                                        "No question asked",
-                                        "Only instructions",
-                                        "Too ambiguous",
-                                        "Not math",
-                                        "Unreadable",
-                                        "Needs figure crop",
-                                    ],
-                                },
-                                "type": {
-                                    "type": "string",
-                                    "enum": [
-                                        "algebra",
-                                        "calculus",
-                                        "geometry",
-                                        "statistics",
-                                        "word_problem",
-                                        "graphing",
-                                        "other",
-                                    ],
-                                },
-                                "bbox": {
-                                    "type": "object",
-                                    "additionalProperties": False,
-                                    "required": ["x", "y", "w", "h"],
-                                    "properties": {
-                                        "x": {"type": "number", "minimum": 0.0, "maximum": 1.0},
-                                        "y": {"type": "number", "minimum": 0.0, "maximum": 1.0},
-                                        "w": {"type": "number", "exclusiveMinimum": 0.0, "maximum": 1.0},
-                                        "h": {"type": "number", "exclusiveMinimum": 0.0, "maximum": 1.0},
-                                    },
-                                },
-                                "requires_figure": {"type": "boolean"},
-                                "figure_type": {
-                                    "type": ["string", "null"],
-                                    "enum": ["graph", "table", "geometry_diagram", "chart", "unknown", None],
-                                },
-                                "figure_bbox": {
-                                    "type": "object",
-                                    "additionalProperties": False,
-                                    "required": ["x", "y", "w", "h"],
-                                    "properties": {
-                                        "x": {"type": "number", "minimum": 0.0, "maximum": 1.0},
-                                        "y": {"type": "number", "minimum": 0.0, "maximum": 1.0},
-                                        "w": {"type": "number", "exclusiveMinimum": 0.0, "maximum": 1.0},
-                                        "h": {"type": "number", "exclusiveMinimum": 0.0, "maximum": 1.0},
-                                    },
-                                },
-                                "figure_role": {
-                                    "type": ["string", "null"],
-                                    "enum": ["essential", "helpful", "not_needed", None],
-                                },
+                                "x": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                                "y": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                                "w": {"type": "number", "exclusiveMinimum": 0.0, "maximum": 1.0},
+                                "h": {"type": "number", "exclusiveMinimum": 0.0, "maximum": 1.0},
                             },
+                        },
+                        "requires_figure": {"type": "boolean"},
+                        "figure_type": {
+                            "type": ["string", "null"],
+                            "enum": ["graph", "table", "geometry_diagram", "chart", "unknown", None],
+                        },
+                        "figure_bbox": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "required": ["x", "y", "w", "h"],
+                            "properties": {
+                                "x": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                                "y": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                                "w": {"type": "number", "exclusiveMinimum": 0.0, "maximum": 1.0},
+                                "h": {"type": "number", "exclusiveMinimum": 0.0, "maximum": 1.0},
+                            },
+                        },
+                        "figure_role": {
+                            "type": ["string", "null"],
+                            "enum": ["essential", "helpful", "not_needed", None],
                         },
                     },
                 },
             },
-        ],
+        },
     },
 }
 
@@ -1070,6 +1057,9 @@ EXTRACT_SCHEMA_VALIDATOR = Draft202012Validator(EXTRACT_SCHEMA_RUNTIME)
 INVALID_EXTRACT_PAYLOAD = {
     "ok": False,
     "error": "invalid schema from model",
+    "is_math_page": False,
+    "notes": [],
+    "questions": [],
 }
 
 CODE_FENCE_PATTERN = re.compile(r"```(?:[^\n]*\n)?([\s\S]*?)```", re.MULTILINE)
@@ -1136,19 +1126,16 @@ def _normalize_response_text(value: Any) -> Optional[str]:
 def _extract_openai_text(response: Any) -> str:
     if not response:
         return ""
-    candidate = _normalize_response_text(response)
-    if candidate:
-        return candidate
-    for attr in ("output_text", "text"):
-        candidate = _normalize_response_text(getattr(response, attr, None))
-        if candidate:
-            return candidate
-    output = getattr(response, "output", None) or getattr(response, "result", None)
-    if isinstance(output, (list, tuple)):
-        for item in output:
-            candidate = _normalize_response_text(item)
-            if candidate:
-                return candidate
+    output_text = None
+    if isinstance(response, dict):
+        output_text = response.get("output_text")
+    else:
+        output_text = getattr(response, "output_text", None)
+    if isinstance(output_text, str) and output_text.strip():
+        return output_text.strip()
+    response_text = _extract_responses_message_text(response)
+    if response_text:
+        return response_text
     choices = getattr(response, "choices", None)
     if isinstance(choices, (list, tuple)) and choices:
         choice = choices[0]
@@ -1171,6 +1158,33 @@ def _extract_openai_text(response: Any) -> str:
         type(response).__name__,
         _serialize_response_for_log(response),
     )
+    return ""
+
+
+def _extract_responses_message_text(response: Any) -> str:
+    output = getattr(response, "output", None) or getattr(response, "result", None)
+    if not isinstance(output, (list, tuple)):
+        return ""
+    chunks: List[str] = []
+    for item in output:
+        item_type = getattr(item, "type", None) if not isinstance(item, dict) else item.get("type")
+        if item_type and item_type != "message":
+            continue
+        content_list = getattr(item, "content", None) if not isinstance(item, dict) else item.get("content")
+        if not isinstance(content_list, (list, tuple)):
+            continue
+        for part in content_list:
+            if isinstance(part, dict):
+                text_value = part.get("text")
+            else:
+                text_value = getattr(part, "text", None)
+            if isinstance(text_value, str) and text_value:
+                chunks.append(text_value)
+    if chunks:
+        return "".join(chunks).strip()
+    fallback_text = getattr(response, "output_text", None)
+    if isinstance(fallback_text, str):
+        return fallback_text
     return ""
 
 
@@ -1294,13 +1308,16 @@ async def _call_extract_questions(image_bytes: bytes) -> Dict[str, Any]:
     client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
     b64 = base64.b64encode(image_bytes).decode("utf-8")
 
-    def _build_responses_request():
+    def _build_responses_request(max_tokens: int, prompt_suffix: Optional[str] = None):
+        user_prompt = EXTRACT_USER_PROMPT
+        if prompt_suffix:
+            user_prompt = f"{EXTRACT_USER_PROMPT} {prompt_suffix}"
         return client.responses.create(
             model=EXTRACT_MODEL,
             input=[
                 {"role": "system", "content": [{"type": "input_text", "text": EXTRACT_SYSTEM_PROMPT}]},
                 {"role": "user", "content": [
-                    {"type": "input_text", "text": EXTRACT_USER_PROMPT},
+                    {"type": "input_text", "text": user_prompt},
                     {"type": "input_image", "image_url": f"data:image/jpeg;base64,{b64}"}
                 ]}
             ],
@@ -1310,9 +1327,11 @@ async def _call_extract_questions(image_bytes: bytes) -> Dict[str, Any]:
                     "name": EXTRACT_SCHEMA.get("name", "extract_questions"),
                     "schema": EXTRACT_SCHEMA.get("schema"),
                     "json_schema": EXTRACT_SCHEMA.get("schema"),
+                    "strict": True,
                 }
             },
-            max_output_tokens=EXTRACT_MAX_TOKENS
+            reasoning={"effort": "low"},
+            max_output_tokens=max_tokens
         )
 
     def _build_chat_request():
@@ -1334,20 +1353,68 @@ async def _call_extract_questions(image_bytes: bytes) -> Dict[str, Any]:
             max_completion_tokens=EXTRACT_MAX_TOKENS
         )
 
+    def _is_incomplete(resp: Any) -> bool:
+        status = getattr(resp, "status", None)
+        if status and status != "completed":
+            return True
+        details = getattr(resp, "incomplete_details", None)
+        reason = getattr(details, "reason", None) if details else None
+        return reason == "max_output_tokens"
+
     if "gpt-5" in EXTRACT_MODEL.lower():
-        response = await _build_responses_request()
+        response = await _build_responses_request(EXTRACT_MAX_TOKENS)
+        content = _extract_openai_text(response)
+        if _is_incomplete(response) or not content.strip():
+            logging.warning(
+                "extract_questions incomplete response; status=%s reason=%s",
+                getattr(response, "status", None),
+                getattr(getattr(response, "incomplete_details", None), "reason", None),
+            )
+            retry_tokens = min(int(EXTRACT_MAX_TOKENS * 2), 3500)
+            response = await _build_responses_request(
+                retry_tokens,
+                "Keep notes short and return at most 40 questions."
+            )
+            content = _extract_openai_text(response)
+            if _is_incomplete(response) or not content.strip():
+                logging.error(
+                    "extract_questions retry incomplete; status=%s reason=%s",
+                    getattr(response, "status", None),
+                    getattr(getattr(response, "incomplete_details", None), "reason", None),
+                )
+                return {
+                    "payload": {
+                        "ok": False,
+                        "error": "Extraction truncated. Crop tighter or increase zoom.",
+                        "is_math_page": False,
+                        "notes": ["Extraction truncated. Crop tighter or increase zoom."],
+                        "questions": [],
+                    },
+                    "input_tokens": None,
+                    "output_tokens": None,
+                    "cached_tokens": None,
+                }
     else:
         response = await _build_chat_request()
+        content = _extract_openai_text(response)
 
-    content = _extract_openai_text(response)
     if not content.strip():
         logging.error(
             "extract_questions received empty content from OpenAI response; payload=%s",
             _serialize_response_for_log(response),
         )
-        raise ValueError("Empty extract response from OpenAI")
+        return {
+            "payload": INVALID_EXTRACT_PAYLOAD,
+            "input_tokens": None,
+            "output_tokens": None,
+            "cached_tokens": None,
+        }
 
-    logging.info("extract_questions response raw content: %r", content)
+    logging.info(
+        "extract_questions response raw content: %r (len=%d)",
+        _truncate_text(content, limit=400),
+        len(content)
+    )
     usage = getattr(response, "usage", None)
     cached_tokens = None
     if usage:
@@ -1390,6 +1457,91 @@ def _parse_json_response(content: str) -> Dict[str, Any]:
                 logging.warning("Best-effort JSON parsing failed; substring=%s", _truncate_text(candidate, limit=200))
         snippet = _truncate_text(normalized, limit=400)
         raise ValueError(f"Invalid JSON response from Extract engine: {snippet}") from exc
+
+
+def _normalize_crop_ratios(
+    crop_x: Optional[float],
+    crop_y: Optional[float],
+    crop_w: Optional[float],
+    crop_h: Optional[float],
+    preview_w: Optional[float],
+    preview_h: Optional[float],
+    image_w: int,
+    image_h: int
+) -> Optional[Dict[str, float]]:
+    if crop_x is None or crop_y is None or crop_w is None or crop_h is None:
+        return None
+    if any(value <= 0 for value in (crop_w, crop_h)):
+        return None
+    if max(crop_x, crop_y, crop_w, crop_h) <= 1:
+        return {
+            "x": float(crop_x),
+            "y": float(crop_y),
+            "w": float(crop_w),
+            "h": float(crop_h),
+        }
+    base_w = preview_w or image_w
+    base_h = preview_h or image_h
+    if not base_w or not base_h:
+        return None
+    return {
+        "x": float(crop_x) / float(base_w),
+        "y": float(crop_y) / float(base_h),
+        "w": float(crop_w) / float(base_w),
+        "h": float(crop_h) / float(base_h),
+    }
+
+
+def _ratios_to_pixels(crop: Dict[str, float], width: int, height: int) -> tuple[int, int, int, int]:
+    x = int(round(crop["x"] * width))
+    y = int(round(crop["y"] * height))
+    w = int(round(crop["w"] * width))
+    h = int(round(crop["h"] * height))
+    x = max(0, min(x, width - 1))
+    y = max(0, min(y, height - 1))
+    w = max(1, min(w, width - x))
+    h = max(1, min(h, height - y))
+    return x, y, w, h
+
+
+def _crop_quality_metrics(img: Image.Image) -> Dict[str, float]:
+    gray = img.convert("L")
+    stat = ImageStat.Stat(gray)
+    mean = float(stat.mean[0]) if stat.mean else 0.0
+    stddev = float(stat.stddev[0]) if stat.stddev else 0.0
+    histogram = gray.histogram()
+    total = float(sum(histogram)) or 1.0
+    white = float(sum(histogram[245:256]))
+    white_pct = white / total
+    return {
+        "mean": mean,
+        "stddev": stddev,
+        "white_pct": white_pct,
+        "width": float(gray.width),
+        "height": float(gray.height),
+    }
+
+
+def _is_low_text_crop(metrics: Dict[str, float]) -> bool:
+    if metrics["white_pct"] >= 0.98:
+        return True
+    if metrics["stddev"] <= 6.0:
+        return True
+    return False
+
+
+def _encode_image_jpeg(img: Image.Image, quality: int = 85) -> bytes:
+    output = io.BytesIO()
+    rgb = img.convert("RGB")
+    rgb.save(output, format="JPEG", quality=quality, optimize=True)
+    return output.getvalue()
+
+
+def _should_cache_extract_result(result: Dict[str, Any]) -> bool:
+    if not result.get("ok", True):
+        return False
+    questions = result.get("questions") or []
+    return len(questions) > 0
 
 
 async def _call_ocr_v5(image_bytes: bytes) -> Dict[str, Any]:
@@ -1568,6 +1720,10 @@ async def extract_questions(
     crop_y: Optional[float] = Form(None),
     crop_w: Optional[float] = Form(None),
     crop_h: Optional[float] = Form(None),
+    preview_w: Optional[float] = Form(None),
+    preview_h: Optional[float] = Form(None),
+    viewport_w: Optional[float] = Form(None),
+    viewport_h: Optional[float] = Form(None),
     rotation: Optional[float] = Form(None),
     render_scale: Optional[float] = Form(None),
     source: str = Form("image"),
@@ -1601,6 +1757,10 @@ async def extract_questions(
         "crop_y": crop_y,
         "crop_w": crop_w,
         "crop_h": crop_h,
+        "preview_w": preview_w,
+        "preview_h": preview_h,
+        "viewport_w": viewport_w,
+        "viewport_h": viewport_h,
         "rotation": rotation,
         "render_scale": render_scale,
         "source": source,
@@ -1630,8 +1790,50 @@ async def extract_questions(
 
     request_id = str(uuid.uuid4())
     start = time.time()
+    image_bytes = raw
+    crop_ratios = None
+
     try:
-        extract_data = await _call_extract_questions(raw)
+        img = Image.open(io.BytesIO(raw))
+        img = img.convert("RGB")
+        crop_ratios = _normalize_crop_ratios(
+            crop_x, crop_y, crop_w, crop_h, preview_w, preview_h, img.width, img.height
+        )
+        metrics = _crop_quality_metrics(img)
+        logging.info(
+            "extract_questions input metrics: size=%sx%s stddev=%.2f white=%.3f",
+            int(metrics["width"]),
+            int(metrics["height"]),
+            metrics["stddev"],
+            metrics["white_pct"]
+        )
+        if _is_low_text_crop(metrics):
+            scale = 1.5
+            upscaled = img.resize(
+                (int(img.width * scale), int(img.height * scale)),
+                Image.LANCZOS
+            )
+            retry_crop = ImageEnhance.Contrast(upscaled).enhance(1.4)
+            retry_crop = retry_crop.filter(ImageFilter.SHARPEN)
+            retry_metrics = _crop_quality_metrics(retry_crop)
+            logging.info(
+                "extract_questions retry metrics: size=%sx%s stddev=%.2f white=%.3f",
+                int(retry_metrics["width"]),
+                int(retry_metrics["height"]),
+                retry_metrics["stddev"],
+                retry_metrics["white_pct"]
+            )
+            if not _is_low_text_crop(retry_metrics):
+                img = retry_crop
+        image_bytes = _encode_image_jpeg(img, quality=85)
+    except Exception as exc:
+        logging.warning("extract_questions pre-processing failed: %s", exc)
+        image_bytes = raw
+    try:
+        extract_data = await _call_extract_questions(image_bytes)
+    except BadRequestError as exc:
+        logging.exception("extract_questions OpenAI request failed")
+        raise HTTPException(status_code=400, detail=f"Extract engine error: {str(exc)}") from exc
     except Exception as exc:
         logging.exception("extract_questions failed")
         raise HTTPException(status_code=502, detail=f"Extract engine error: {str(exc)}") from exc
@@ -1657,16 +1859,18 @@ async def extract_questions(
         "questions": payload.get("questions") or [],
     }
 
-    cache_entry = OcrExtractionCache(
-        cache_key=cache_key,
-        user_id=user_id,
-        result_json=result,
-        meta=meta,
-        hit_count=1,
-        created_at=datetime.utcnow(),
-        last_hit_at=datetime.utcnow()
-    )
-    session.add(cache_entry)
+    should_cache = _should_cache_extract_result(result)
+    if should_cache:
+        cache_entry = OcrExtractionCache(
+            cache_key=cache_key,
+            user_id=user_id,
+            result_json=result,
+            meta=meta,
+            hit_count=1,
+            created_at=datetime.utcnow(),
+            last_hit_at=datetime.utcnow()
+        )
+        session.add(cache_entry)
 
     total_tokens = None
     if telemetry.input_tokens is not None and telemetry.output_tokens is not None:
