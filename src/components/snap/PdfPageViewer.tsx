@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import type { RenderTask } from "pdfjs-dist/types/src/display/api";
 import { clamp } from "./snapSolveUtils";
 
 type PdfPageViewerProps = {
@@ -34,7 +35,7 @@ export default function PdfPageViewer({
     }, []);
 
     React.useEffect(() => {
-        let renderTask: any = null;
+      let renderTask: RenderTask | null = null;
         let cancelled = false;
 
         const renderPage = async () => {

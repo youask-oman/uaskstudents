@@ -1,8 +1,18 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+
+interface LoginResponse {
+    access_token: string;
+    user_id: number;
+    full_name: string;
+    role: string;
+    avatar_url?: string;
+    session_token?: string;
+}
 
 export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false);
@@ -10,14 +20,8 @@ export default function LoginPage() {
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
-    const [isDark, setIsDark] = useState(false);
+    const isDark = typeof window !== "undefined" && document.documentElement.classList.contains("dark");
     const router = useRouter();
-
-    useEffect(() => {
-        if (document.documentElement.classList.contains("dark")) {
-            setIsDark(true);
-        }
-    }, []);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -37,7 +41,7 @@ export default function LoginPage() {
                 throw new Error(data.detail || "Login failed");
             }
 
-            const data = await response.json();
+            const data = (await response.json()) as LoginResponse;
 
             // Store Auth Data
             localStorage.setItem("token", data.access_token);
@@ -51,8 +55,9 @@ export default function LoginPage() {
             // Redirect
             router.push("/solve");
 
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Login failed";
+            setError(message);
         } finally {
             setLoading(false);
         }
@@ -71,7 +76,14 @@ export default function LoginPage() {
                 {/* Top Navigation */}
                 <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-black/5 dark:border-white/5 px-6 md:px-10 py-4 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md">
                     <Link href="/" className="flex items-center gap-3 text-[#111318] dark:text-white">
-                        <img src={isDark ? "/logo-dark.png" : "/logo.png"} alt="uask.ai" className="h-8 w-auto" />
+                        <Image
+                            src={isDark ? "/logo-dark.png" : "/logo.png"}
+                            alt="uask.ai"
+                            width={96}
+                            height={24}
+                            className="h-8 w-auto"
+                            priority
+                        />
                         <h2 className="text-[#111318] dark:text-white text-xl font-extrabold leading-tight tracking-[-0.015em]">uask.ai</h2>
                     </Link>
                     <div className="hidden md:block">
@@ -164,7 +176,15 @@ export default function LoginPage() {
                         {/* OAuth Buttons */}
                         <div className="grid grid-cols-2 gap-4">
                             <button className="flex items-center justify-center gap-2 py-3 border border-[#dbdfe6] dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group">
-                                <img alt="" className="w-5 h-5" data-alt="Google colorful icon logo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAJWbywDH8KRd1dJJEkxXYBQ0UsO11AYQEWqePDSRvpdcYQxgbR39aHPFaq1SspnSEpJDyR30md6bK5rcnBFV0WFayiGt1FTjdk0HCY64aR4ivtOCH2eXyR7KwIumZPDpiWw7b47yeX4PEJeKJLFDE9c5M6rgP_wJ5dwdZNM7QcYB47R3CpCL_luMEqdCEUN799qAkfMqCETnzzZl-2mYwUOSKCoHRy1nNrEKQtO4pcYJ33ZDhuEvmKh8f2AoXUjUv_ckHkua-Ecl-k" />
+                                <Image
+                                    alt="Google icon"
+                                    className="w-5 h-5"
+                                    data-alt="Google colorful icon logo"
+                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuAJWbywDH8KRd1dJJEkxXYBQ0UsO11AYQEWqePDSRvpdcYQxgbR39aHPFaq1SspnSEpJDyR30md6bK5rcnBFV0WFayiGt1FTjdk0HCY64aR4ivtOCH2eXyR7KwIumZPDpiWw7b47yeX4PEJeKJLFDE9c5M6rgP_wJ5dwdZNM7QcYB47R3CpCL_luMEqdCEUN799qAkfMqCETnzzZl-2mYwUOSKCoHRy1nNrEKQtO4pcYJ33ZDhuEvmKh8f2AoXUjUv_ckHkua-Ecl-k"
+                                    width={20}
+                                    height={20}
+                                    unoptimized
+                                />
                                 <span className="text-sm font-semibold text-[#111318] dark:text-white">Google</span>
                             </button>
                             <button className="flex items-center justify-center gap-2 py-3 border border-[#dbdfe6] dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group">
@@ -176,7 +196,7 @@ export default function LoginPage() {
                         {/* Footer Toggle */}
                         <div className="mt-8 text-center">
                             <p className="text-[#616f89] dark:text-gray-400 text-sm">
-                                Don't have an account?
+                                Do not have an account?
                                 <Link className="text-primary font-bold hover:underline ml-1" href="/signup">Sign up</Link>
                             </p>
                         </div>

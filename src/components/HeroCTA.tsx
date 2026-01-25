@@ -1,16 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+
+const isUserLoggedIn = () => typeof window !== "undefined" && Boolean(localStorage.getItem("token"));
 
 export default function HeroCTA() {
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-    useEffect(() => {
-        if (localStorage.getItem("token")) {
-            setIsLoggedIn(true);
-        }
-    }, []);
+    const [isLoggedIn] = useState(isUserLoggedIn());
 
     if (isLoggedIn) {
         return (

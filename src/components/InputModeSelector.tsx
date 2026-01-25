@@ -32,6 +32,8 @@ export default function InputModeSelector({
     onGraphingOptionsChange,
     onTemplateClick,
 }: InputModeSelectorProps) {
+    void graphingOptions;
+    void onGraphingOptionsChange;
     const selectedModeData = INPUT_MODES.find(m => m.id === selectedMode);
 
     return (

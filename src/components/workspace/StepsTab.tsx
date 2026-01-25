@@ -27,7 +27,7 @@ interface StepsTabProps {
         given_data?: string[];
         assumptions?: string[];
     };
-    analysisPlan?: any[];
+    analysisPlan?: string[];
     finalAnswer?: string;
     activeTab?: "steps" | "verification" | "practice";
     onSelectTab?: (tab: "steps" | "verification" | "practice") => void;

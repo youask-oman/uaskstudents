@@ -47,6 +47,7 @@ from app.services.ocr.audit_log_service import audit_log_service
 from app.services.ocr.ocr_service import ocr_service
 from app.services.solve.canonicalization_service import canonicalization_service
 from app.services.solve.cache_service import cache_service
+from app.services.token_policy import get_token_policy, serialize_token_policy
 from app.config import get_settings
 
 
@@ -225,6 +226,9 @@ class SolveRequest(BaseModel):
     trusted_context: Optional[Dict[str, Any]] = None
     requested_mode: Optional[str] = "minimal"
     features_used: Optional[Dict[str, Any]] = None
+    input_modality: Optional[str] = Field(None, description="one of 'text', 'ocr_image', 'ocr_pdf', 'voice'")
+    token_policy: Optional[str] = Field(None, description="policy key applied for this request, for auditing")
+    verification_level: Optional[str] = Field(None, description="expected verification rigor: light|moderate|strict")
 
 from app.models import Plan, Subscription, UsageLedger
 from app.services.subscription_service import subscription_service
@@ -324,6 +328,135 @@ def validate_math_query(text: str) -> None:
 
     # Frontend handles math-likeness with mode/template data; keep backend permissive.
 
+
+def _estimate_input_tokens(text: str) -> int:
+    from app.utils.token_estimator import estimate_tokens
+    return estimate_tokens(text or "")
+
+
+VALID_MODALITIES = {"text", "ocr_image", "ocr_pdf", "voice"}
+
+
+def _resolve_modality_flags(
+    body: SolveRequest,
+    features_used: Optional[Dict[str, Any]],
+    has_image: bool,
+    has_voice_flag: bool
+) -> str:
+    requested = body.input_modality
+    if requested in VALID_MODALITIES:
+        return requested
+
+    ocr_used = bool(features_used.get("ocr_used")) if features_used else False
+    voice_used = bool(features_used.get("voice_used")) if features_used else False
+    has_ocr = bool(has_image or ocr_used)
+    has_voice = bool(has_voice_flag or voice_used)
+
+    if has_ocr and has_voice:
+        raise HTTPException(status_code=400, detail="Mixed modality is not supported. Use OCR or voice, not both.")
+
+    if has_voice:
+        return "voice"
+
+    if has_ocr:
+        ocr_source = (features_used or {}).get("ocr_source")
+        if ocr_source == "pdf":
+            return "ocr_pdf"
+        return "ocr_image"
+
+    return "text"
+
+
+def _get_verification_level(body: SolveRequest, modality: str) -> str:
+    if body.verification_level:
+        return body.verification_level
+    if modality == "text":
+        return "light"
+    return "moderate"
+
+
+def _extract_ocr_confidence(features_used: Optional[Dict[str, Any]]) -> Optional[float]:
+    if not features_used:
+        return None
+    raw = features_used.get("ocr_confidence")
+    if raw is None:
+        return None
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def _enforce_ocr_confidence(confidence: Optional[float]) -> None:
+    if confidence is not None and confidence < OCR_CONFIDENCE_THRESHOLD:
+        raise HTTPException(
+            status_code=400,
+            detail=f"OCR confidence too low ({confidence:.2f}). Please re-run extraction."
+        )
+
+
+def _collect_ocr_metadata(features_used: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    if not features_used:
+        return {}
+    return {
+        "ocr_engine": features_used.get("ocr_engine"),
+        "ocr_source": features_used.get("ocr_source"),
+        "ocr_warnings": features_used.get("ocr_warnings"),
+        "ocr_confidence": _extract_ocr_confidence(features_used),
+    }
+
+
+def _ensure_voice_confirmed(features_used: Optional[Dict[str, Any]]) -> None:
+    if features_used and features_used.get("voice_used") and not features_used.get("voice_confirmed"):
+        raise HTTPException(status_code=400, detail="Voice confirmation required before solving.")
+
+
+def _collect_voice_metadata(features_used: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    if not features_used:
+        return {}
+    return {
+        "voice_confirmed": bool(features_used.get("voice_confirmed")),
+        "voice_ambiguity_flags": features_used.get("voice_ambiguity_flags"),
+        "voice_clarifier_question": features_used.get("voice_clarifier_question"),
+        "voice_stt_provider": features_used.get("voice_stt_provider"),
+        "voice_transcript_confidence": features_used.get("voice_transcript_confidence"),
+    }
+
+
+def _apply_modality_metadata(payload: Dict[str, Any], modality: str, ocr_metadata: Dict[str, Any], voice_metadata: Dict[str, Any], verification_level: str, token_policy_key: str) -> None:
+    payload.update({
+        "input_modality": modality,
+        "verification_level": verification_level,
+        "token_policy_key": token_policy_key,
+        "ocr_engine": ocr_metadata.get("ocr_engine"),
+        "ocr_source": ocr_metadata.get("ocr_source"),
+        "ocr_warnings": ocr_metadata.get("ocr_warnings"),
+        "ocr_confidence": ocr_metadata.get("ocr_confidence"),
+        "voice_confirmed": voice_metadata.get("voice_confirmed"),
+        "voice_ambiguity_flags": voice_metadata.get("voice_ambiguity_flags"),
+        "voice_clarifier_question": voice_metadata.get("voice_clarifier_question"),
+        "voice_stt_provider": voice_metadata.get("voice_stt_provider"),
+        "voice_transcript_confidence": voice_metadata.get("voice_transcript_confidence"),
+    })
+
+
+def _log_trace_with_modality(payload: Dict[str, Any], modality: str, ocr_metadata: Dict[str, Any], voice_metadata: Dict[str, Any], verification_level: str, token_policy_key: str) -> None:
+    _apply_modality_metadata(payload, modality, ocr_metadata, voice_metadata, verification_level, token_policy_key)
+    log_solve_trace(payload)
+
+
+def _record_event_with_modality(session: Session, payload: Dict[str, Any], modality: str, ocr_metadata: Dict[str, Any], voice_metadata: Dict[str, Any], verification_level: str, token_policy_key: str) -> None:
+    _apply_modality_metadata(payload, modality, ocr_metadata, voice_metadata, verification_level, token_policy_key)
+    record_request_event(session, payload)
+
+
+def _enforce_input_token_limit(text: str, max_tokens: int, modality: str) -> None:
+    estimated = _estimate_input_tokens(text)
+    if estimated > max_tokens:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Input exceeds {modality} token limit ({estimated} > {max_tokens})"
+        )
 
 # _verification_passed removed in v1.1
 
@@ -469,6 +602,12 @@ class SubscriptionResponse(BaseModel):
     allow_ocr: bool
     allow_voice: bool
 
+
+class TokenPolicyResponse(BaseModel):
+    ok: bool
+    policy: Dict[str, Any]
+    source: str
+
 class AdminUserUpdateRequest(BaseModel):
     full_name: Optional[str] = None
     email: Optional[str] = None
@@ -499,6 +638,7 @@ class SolveTraceEntry(BaseModel):
     plan_key: Optional[str] = None
     ui_goal: Optional[str] = None
     ui_style: Optional[str] = None
+    ocr_confidence: Optional[float] = None
     resolved_profile_key: Optional[str] = None
     resolved_system_file_path: Optional[str] = None
     resolved_schema_file_path: Optional[str] = None
@@ -876,6 +1016,12 @@ async def get_my_subscription(
     return build_subscription_response(user, subscription, plan, credits_remaining)
 
 
+@api_router.get("/config/token-policy", response_model=TokenPolicyResponse)
+async def get_token_policy_endpoint(session: Session = Depends(get_session)):
+    policy = get_token_policy(session)
+    return TokenPolicyResponse(ok=True, policy=serialize_token_policy(policy), source="system_config")
+
+
 
 class LatexResponse(BaseModel):
     latex: str
@@ -885,8 +1031,9 @@ class LatexResponse(BaseModel):
 # ------------------------------------------------------------------
 
 OCR_V5_MODEL = os.getenv("OCR_V5_MODEL", "gpt-5-mini")
-OCR_V5_MAX_TOKENS = int(os.getenv("OCR_V5_MAX_TOKENS", "800"))
 OCR_V5_MAX_MB = int(os.getenv("OCR_V5_MAX_MB", "10"))
+
+OCR_CONFIDENCE_THRESHOLD = float(os.getenv("OCR_CONFIDENCE_THRESHOLD", "0.65"))
 
 OCR_V5_SYSTEM_PROMPT = (
     "You are an OCR extraction engine. Extract EXACT text and math as seen. "
@@ -920,7 +1067,6 @@ OCR_V5_SCHEMA = {
 # ------------------------------------------------------------------
 
 EXTRACT_MODEL = os.getenv("EXTRACT_MODEL", "gpt-5-mini")
-EXTRACT_MAX_TOKENS = int(os.getenv("EXTRACT_MAX_TOKENS", "2000"))
 EXTRACT_MAX_MB = int(os.getenv("EXTRACT_MAX_MB", "10"))
 
 EXTRACT_SYSTEM_PROMPT = (
@@ -1288,7 +1434,7 @@ def _estimate_credits(
     return float(base_cost + extra_cost)
 
 
-async def _call_extract_questions(image_bytes: bytes) -> Dict[str, Any]:
+async def _call_extract_questions(image_bytes: bytes, max_output_tokens: int) -> Dict[str, Any]:
     if not os.environ.get("OPENAI_API_KEY"):
         raise ValueError("OPENAI_API_KEY not set")
 
@@ -1337,7 +1483,7 @@ async def _call_extract_questions(image_bytes: bytes) -> Dict[str, Any]:
                 "schema": EXTRACT_SCHEMA.get("schema"),
                 "json_schema": EXTRACT_SCHEMA.get("schema"),
             },
-            max_completion_tokens=EXTRACT_MAX_TOKENS
+            max_completion_tokens=max_output_tokens
         )
 
     def _is_incomplete(resp: Any) -> bool:
@@ -1349,7 +1495,7 @@ async def _call_extract_questions(image_bytes: bytes) -> Dict[str, Any]:
         return reason == "max_output_tokens"
 
     if "gpt-5" in EXTRACT_MODEL.lower():
-        response = await _build_responses_request(EXTRACT_MAX_TOKENS)
+        response = await _build_responses_request(max_output_tokens)
         content = _extract_openai_text(response)
         if _is_incomplete(response) or not content.strip():
             logging.warning(
@@ -1357,7 +1503,7 @@ async def _call_extract_questions(image_bytes: bytes) -> Dict[str, Any]:
                 getattr(response, "status", None),
                 getattr(getattr(response, "incomplete_details", None), "reason", None),
             )
-            retry_tokens = min(int(EXTRACT_MAX_TOKENS * 2), 3500)
+            retry_tokens = int(max_output_tokens * 2)
             response = await _build_responses_request(
                 retry_tokens,
                 "Keep notes short and return at most 40 questions."
@@ -1531,7 +1677,7 @@ def _should_cache_extract_result(result: Dict[str, Any]) -> bool:
     return len(questions) > 0
 
 
-async def _call_ocr_v5(image_bytes: bytes) -> Dict[str, Any]:
+async def _call_ocr_v5(image_bytes: bytes, max_output_tokens: int) -> Dict[str, Any]:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="OPENAI_API_KEY not configured")
@@ -1554,7 +1700,7 @@ async def _call_ocr_v5(image_bytes: bytes) -> Dict[str, Any]:
                     "json_schema": OCR_V5_SCHEMA
                 }
             },
-            max_output_tokens=OCR_V5_MAX_TOKENS
+            max_output_tokens=max_output_tokens
         )
         content = None
         if getattr(response, "output", None):
@@ -1585,7 +1731,7 @@ async def _call_ocr_v5(image_bytes: bytes) -> Dict[str, Any]:
             ]}
         ],
         response_format={"type": "json_schema", "json_schema": OCR_V5_SCHEMA},
-        max_completion_tokens=OCR_V5_MAX_TOKENS
+        max_completion_tokens=max_output_tokens
     )
     content = response.choices[0].message.content
     usage = getattr(response, "usage", None)
@@ -1615,6 +1761,7 @@ async def ocr_v5(
 ):
     if not file:
         raise HTTPException(status_code=400, detail="File is required")
+    token_policy = get_token_policy(session)
 
     if not os.environ.get("OPENAI_API_KEY"):
         raise HTTPException(status_code=500, detail="OPENAI_API_KEY not set on server")
@@ -1659,7 +1806,9 @@ async def ocr_v5(
 
     start = time.time()
     try:
-        ocr_data = await _call_ocr_v5(raw)
+        if token_policy.ocr_v5_output_max <= 0:
+            raise HTTPException(status_code=500, detail="OCR token policy misconfigured")
+        ocr_data = await _call_ocr_v5(raw, token_policy.ocr_v5_output_max)
     except Exception as exc:
         logging.exception("OCR v5 failed")
         raise HTTPException(status_code=502, detail=f"OCR engine error: {str(exc)}") from exc
@@ -1723,6 +1872,8 @@ async def extract_questions(
         raise HTTPException(status_code=404, detail="User not found")
     if not file:
         raise HTTPException(status_code=400, detail="File is required")
+
+    token_policy = get_token_policy(session)
 
     raw = await file.read()
     if len(raw) > EXTRACT_MAX_MB * 1024 * 1024:
@@ -1817,7 +1968,11 @@ async def extract_questions(
         logging.warning("extract_questions pre-processing failed: %s", exc)
         image_bytes = raw
     try:
-        extract_data = await _call_extract_questions(image_bytes)
+        is_pdf_source = source in ("pdf", "pdf_page")
+        max_extract_tokens = token_policy.ocr_pdf_extract_max if is_pdf_source else token_policy.ocr_image_extract_max
+        if max_extract_tokens <= 0:
+            raise HTTPException(status_code=500, detail="Extract token policy misconfigured")
+        extract_data = await _call_extract_questions(image_bytes, max_extract_tokens)
     except BadRequestError as exc:
         logging.exception("extract_questions OpenAI request failed")
         raise HTTPException(status_code=400, detail=f"Extract engine error: {str(exc)}") from exc
@@ -1925,6 +2080,7 @@ async def solve_questions_batch(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    token_policy = get_token_policy(session)
     subscription = subscription_service.get_or_create_subscription(session, user)
     if not subscription:
         raise HTTPException(status_code=500, detail="Subscription not available")
@@ -1934,8 +2090,19 @@ async def solve_questions_batch(
         raise HTTPException(status_code=500, detail="Plan not available for subscription")
 
     features_used = body.features_used or {}
+    token_policy = get_token_policy(session)
+    ocr_metadata = _collect_ocr_metadata(features_used)
+    voice_metadata = _collect_voice_metadata(features_used)
+    ocr_confidence = ocr_metadata.get("ocr_confidence")
+    modality = _resolve_modality_flags(body, features_used, bool(body.image_url or body.artifact_id), bool(body.has_voice))
+    verification_level = _get_verification_level(body, modality)
+    token_policy_key = body.token_policy or "system_config"
     has_ocr = bool(features_used.get("ocr_used", True))
     has_voice = bool(features_used.get("voice_used", False))
+    if has_voice:
+        raise HTTPException(status_code=400, detail="Voice modality is not supported in OCR batch solves")
+    if modality in ("ocr_image", "ocr_pdf"):
+        _enforce_ocr_confidence(ocr_confidence)
 
     reserve_map: Dict[str, float] = {}
     total_reserve = 0.0
@@ -1993,6 +2160,14 @@ async def solve_questions_batch(
                     ok=False,
                     error="Figure required. Please crop the figure region."
                 )
+            token_estimate = _estimate_input_tokens(item.text)
+            max_input = token_policy.ocr_image_input_max + token_policy.ocr_image_input_overhead
+            if token_estimate > max_input:
+                return SolveBatchItemResult(
+                    question_id=item.question_id,
+                    ok=False,
+                    error=f"OCR input exceeds token limit ({token_estimate} > {max_input})"
+                )
 
             image_url = None
             if item.figure_image_base64:
@@ -2005,6 +2180,8 @@ async def solve_questions_batch(
             local_session = Session(engine)
             try:
                 solver = get_solver_v3()
+                from app.utils.token_limits import get_effective_max_tokens
+                effective_max_tokens = get_effective_max_tokens(item.requested_mode or "minimal", "solve", token_policy)
                 result = await solver.solve(
                     problem_text=item.text,
                     context="",
@@ -2014,7 +2191,8 @@ async def solve_questions_batch(
                     requested_mode=item.requested_mode or "minimal",
                     trusted_context=None,
                     learning_mode="solve",
-                    image_url=image_url
+                    image_url=image_url,
+                    max_output_tokens=effective_max_tokens
                 )
                 telemetry = result.get("telemetry") or result.get("_telemetry") or {}
                 return SolveBatchItemResult(
@@ -2054,7 +2232,7 @@ async def solve_questions_batch(
                 hold.status = "released"
                 hold.finalized_at = datetime.utcnow()
                 session.add(hold)
-            record_request_event(session, {
+            event_payload = {
                 "request_id": request_id,
                 "user_id": user_id,
                 "mode": hold.meta.get("requested_mode") if hold and hold.meta else None,
@@ -2080,7 +2258,8 @@ async def solve_questions_batch(
                 "ocr_used": has_ocr,
                 "voice_used": has_voice,
                 "response_truncated": False
-            })
+            }
+            _record_event_with_modality(session, event_payload, modality, ocr_metadata, voice_metadata, verification_level, token_policy_key)
             session.commit()
             continue
 
@@ -2158,6 +2337,18 @@ async def solve_questions_batch(
             "ocr_used": has_ocr,
             "voice_used": has_voice,
             "response_truncated": bool(telemetry.get("truncated")) if isinstance(telemetry, dict) else False
+            ,
+            "ocr_engine": ocr_metadata.get("ocr_engine"),
+            "ocr_source": ocr_metadata.get("ocr_source"),
+            "ocr_warnings": ocr_metadata.get("ocr_warnings"),
+            "ocr_confidence": ocr_confidence,
+            "voice_confirmed": voice_metadata.get("voice_confirmed"),
+            "voice_ambiguity_flags": voice_metadata.get("voice_ambiguity_flags"),
+            "voice_clarifier_question": voice_metadata.get("voice_clarifier_question"),
+            "voice_stt_provider": voice_metadata.get("voice_stt_provider"),
+            "voice_transcript_confidence": voice_metadata.get("voice_transcript_confidence"),
+            "verification_level": verification_level,
+            "token_policy_key": token_policy_key
         })
 
         if hold:
@@ -2666,6 +2857,8 @@ async def solve_problem(
         user = session.get(User, user_id)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
+
+        token_policy = get_token_policy(session)
         
         # Check and reset monthly tokens if needed
         from datetime import datetime, timedelta
@@ -2712,6 +2905,14 @@ async def solve_problem(
         base_query = body.confirmed_text
 
     validate_math_query(base_query)
+    features_used = body.features_used or {}
+    modality = _resolve_modality_flags(body, features_used, bool(body.image_url or body.artifact_id), bool(body.has_voice))
+    if modality == "voice":
+        _enforce_input_token_limit(base_query, token_policy.voice_input_max, modality)
+    elif modality.startswith("ocr"):
+        _enforce_input_token_limit(base_query, token_policy.ocr_image_input_max + token_policy.ocr_image_input_overhead, modality)
+    else:
+        _enforce_input_token_limit(base_query, token_policy.text_input_max, modality)
     
     if body.artifact_id and body.question_id:
         # Fetch detailed entities to provide "Hallucination Protection"
@@ -2857,6 +3058,13 @@ async def solve_problem(
          context += f"\nRelated Concepts: {', '.join([c.get('title') for c in concepts])}"
 
     solver = get_solver_v3()
+    from app.utils.token_limits import get_effective_max_tokens
+    requested_mode = body.requested_mode or ("detailed" if body.mode == "detailed" else "minimal")
+    effective_max_tokens = get_effective_max_tokens(
+        requested_mode,
+        (body.trusted_context or {}).get("learning_mode", "solve"),
+        token_policy
+    )
     try:
         print(f"[API] Using Solver V3 for: {final_prompt[:50]}...")
         solution_data = await solver.solve(
@@ -2866,8 +3074,9 @@ async def solve_problem(
             user_tier=user.subscription_tier if user else "free",
             user_id=user_id,
             db_session=session,
-            requested_mode=body.requested_mode or ("detailed" if body.mode == "detailed" else "minimal"),
-            trusted_context=body.trusted_context
+            requested_mode=requested_mode,
+            trusted_context=body.trusted_context,
+            max_output_tokens=effective_max_tokens
         )
         print(f"[API] Solver V3 returned successfully")
         
@@ -3116,6 +3325,7 @@ async def solve_v3_endpoint(
     deduct_attempted = {"credits": False, "ocr": False, "voice": False}
     deduct_committed = False
     resolved_profile = None
+    token_policy = get_token_policy(session)
 
     
     # Extract problem text
@@ -3130,6 +3340,13 @@ async def solve_v3_endpoint(
         raise HTTPException(status_code=400, detail="No input provided")
 
     validate_math_query(problem_text)
+    modality = _resolve_modality_flags(body, features_used, bool(body.image_url or body.artifact_id), bool(body.has_voice))
+    if modality == "voice":
+        _enforce_input_token_limit(problem_text, token_policy.voice_input_max, modality)
+    elif modality.startswith("ocr"):
+        _enforce_input_token_limit(problem_text, token_policy.ocr_image_input_max + token_policy.ocr_image_input_overhead, modality)
+    else:
+        _enforce_input_token_limit(problem_text, token_policy.text_input_max, modality)
     
     # --- CACHE LOGIC ---
     settings = get_settings()
@@ -3170,6 +3387,10 @@ async def solve_v3_endpoint(
         requested_mode=requested_mode,
         learning_mode=learning_mode
     )
+    effective_max_tokens = None
+    if resolved_profile:
+        from app.utils.token_limits import get_effective_max_tokens
+        effective_max_tokens = get_effective_max_tokens(resolved_profile.mode, learning_mode, token_policy)
     if user:
         student_context_parts = []
         
@@ -3390,7 +3611,8 @@ async def solve_v3_endpoint(
                     requested_mode=requested_mode,
                     trusted_context=body.trusted_context,
                     learning_mode=learning_mode,
-                    image_url=body.image_url
+                    image_url=body.image_url,
+                    max_output_tokens=effective_max_tokens
                 )
             except Exception as e:
                 # REFUND ON EXCEPTION
@@ -3572,8 +3794,8 @@ async def solve_v3_endpoint(
         effective_max_tokens = None
         if resolved_profile:
             from app.utils.token_limits import get_effective_max_tokens
-            effective_max_tokens = get_effective_max_tokens(resolved_profile.mode, learning_mode)
-        log_solve_trace({
+            effective_max_tokens = get_effective_max_tokens(resolved_profile.mode, learning_mode, token_policy)
+        trace_payload = {
             "request_id": request_id,
             "user_id": user_id,
             "seat_id": None,
@@ -3597,7 +3819,8 @@ async def solve_v3_endpoint(
             "deduct_committed": deduct_committed,
             "openai_payload": openai_payload,
             "problem_text": problem_text
-        })
+        }
+        _log_trace_with_modality(trace_payload, modality, ocr_metadata, voice_metadata, verification_level, token_policy_key)
 
         record_request_event(session, {
             "request_id": request_id,
@@ -3630,10 +3853,14 @@ async def solve_v3_endpoint(
             "ocr_used": bool(body.image_url or body.artifact_id or features_used.get("ocr_used")),
             "voice_used": bool(body.has_voice or features_used.get("voice_used")),
             "response_truncated": bool(result.get("_truncated") or telemetry.get("truncated"))
+            ,
+            "input_modality": modality,
+            "verification_level": verification_level,
+            "token_policy": token_policy_key
         })
 
         return result
-    
+
     except Exception as e:
         print(f"[API_V3_ERROR] Solver V3 failed: {type(e).__name__}: {e}")
         import traceback
@@ -3671,7 +3898,11 @@ async def solve_v3_endpoint(
                 "deduct_committed": deduct_committed,
                 "openai_payload": None,
                 "problem_text": problem_text,
-                "error": str(e)
+                "error": str(e),
+                "input_modality": modality,
+                "verification_level": verification_level,
+                "token_policy_key": token_policy_key,
+                "ocr_confidence": ocr_confidence
             })
         except Exception:
             pass
@@ -3701,7 +3932,10 @@ async def solve_v3_endpoint(
                 "credit_amount": debit_cost if deduct_committed and 'debit_cost' in locals() else None,
                 "ocr_used": bool(body.image_url or body.artifact_id or features_used.get("ocr_used")),
                 "voice_used": bool(body.has_voice or features_used.get("voice_used")),
-                "response_truncated": False
+                "response_truncated": False,
+                "input_modality": modality,
+                "verification_level": verification_level,
+                "token_policy": token_policy_key
             })
         except Exception:
             pass
@@ -3738,6 +3972,7 @@ async def solve_v3_stream_endpoint(
         deduct_attempted = {"credits": False, "ocr": False, "voice": False}
         deduct_committed = False
         features_used = body.features_used or {}
+        token_policy = get_token_policy(session)
 
         # Resolve profile for correct prompt/schema/tokens
         from app.llm_profiles.profile_resolver import ProfileResolver
@@ -3756,7 +3991,7 @@ async def solve_v3_stream_endpoint(
         else:
             plan_key = profile.tier
 
-        effective_max_tokens = get_effective_max_tokens(profile.mode, learning_mode)
+        effective_max_tokens = get_effective_max_tokens(profile.mode, learning_mode, token_policy)
 
         problem_text = (
             body.confirmed_text or
@@ -3822,6 +4057,18 @@ async def solve_v3_stream_endpoint(
             })
             yield f"event: done\ndata: {json.dumps({'ok': False, 'error': {'code': 'no_input', 'message': 'No input provided'}})}\n\n"
             return
+
+        modality = _resolve_modality_flags(body, features_used, bool(body.image_url or body.artifact_id), bool(body.has_voice))
+        verification_level = _get_verification_level(body, modality)
+        policy_key = body.token_policy or "system_config"
+        if modality == "voice":
+            _enforce_input_token_limit(problem_text, token_policy.voice_input_max, modality)
+        elif modality in ("ocr_image", "ocr_pdf"):
+            overhead = token_policy.ocr_image_input_overhead if modality == "ocr_image" else token_policy.ocr_pdf_input_overhead
+            limit = (token_policy.ocr_image_input_max if modality == "ocr_image" else token_policy.ocr_pdf_input_max) + overhead
+            _enforce_input_token_limit(problem_text, limit, modality)
+        else:
+            _enforce_input_token_limit(problem_text, token_policy.text_input_max, modality)
 
         # Entitlement check + debit (credits/OCR/voice)
         action_mode = "detailed" if requested_mode == "detailed" else "concise"
@@ -3916,6 +4163,9 @@ async def solve_v3_stream_endpoint(
             "max_output_tokens": effective_max_tokens,
             "mode": requested_mode
         }
+        meta_data["input_modality"] = modality
+        meta_data["verification_level"] = verification_level
+        meta_data["token_policy_key"] = policy_key
         
         max_output_tokens = effective_max_tokens
         meta_data["type"] = "meta"
@@ -4277,6 +4527,10 @@ async def solve_v3_stream_endpoint(
                 "deduct_committed": deduct_committed,
                 "openai_payload": openai_telemetry.get("openai_payload"),
                 "problem_text": problem_text
+                ,
+                "input_modality": modality,
+                "verification_level": verification_level,
+                "token_policy_key": policy_key
             })
             record_request_event(session, {
                 "request_id": request_id,
@@ -4309,6 +4563,10 @@ async def solve_v3_stream_endpoint(
                 "ocr_used": action_req["has_ocr"],
                 "voice_used": action_req["has_voice"],
                 "response_truncated": bool(openai_telemetry.get("truncated") or final_data.get("_truncated"))
+                ,
+                "input_modality": modality,
+                "verification_level": verification_level,
+                "token_policy": policy_key
             })
             yield f"event: telemetry\ndata: {json.dumps(openai_telemetry)}\n\n"
 

@@ -126,7 +126,7 @@ export default function ProfilePage() {
                 }
             })
             .catch(console.error);
-    }, [profileCountry, apiBaseUrl]);
+    }, [profileCountry, profileProvinceState, apiBaseUrl]);
 
     // School search with debounce
     useEffect(() => {

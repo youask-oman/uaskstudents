@@ -1,10 +1,39 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+
+interface QuotaUser {
+    id: number;
+    full_name?: string;
+    email?: string;
+    full_id?: string;
+    plan?: string;
+    usage_percent?: number;
+    daily_tokens_used?: number;
+    daily_credit_cap?: number;
+    last_active?: string;
+    is_banned?: boolean;
+    override_token_limit?: number;
+    override_ocr_concurrency?: number;
+    override_expires_at?: string | null;
+    credits_balance?: number;
+    credits_used_this_period?: number;
+    [key: string]: unknown;
+}
+
+interface QuotaData {
+    users?: QuotaUser[];
+    global_consumption?: number;
+    daily_active_holders?: number;
+    tokens_burned_24h?: number;
+    [key: string]: unknown;
+}
+
+const DEFAULT_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
 
 export default function AdminQuotasPage() {
-    const [data, setData] = useState<any>(null);
+    const [data, setData] = useState<QuotaData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [selectedUser, setSelectedUser] = useState<any>(null);
+    const [selectedUser, setSelectedUser] = useState<QuotaUser | null>(null);
     const [overrideTokens, setOverrideTokens] = useState(1000000);
     const [overrideConcurrency, setOverrideConcurrency] = useState(10);
     const [overrideDuration, setOverrideDuration] = useState<number | null>(24);
@@ -12,38 +41,47 @@ export default function AdminQuotasPage() {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [pageIndex, setPageIndex] = useState(0);
     const pageSize = 15;
+    const baseUrl = DEFAULT_API_BASE_URL;
 
-    const fetchData = async (signal?: AbortSignal) => {
-        setIsLoading(true);
-        const token = localStorage.getItem("token");
-        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
-        const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
-        try {
-            const res = await fetch(`${baseUrl}/api/v1/admin/quotas`, { headers, signal });
-            if (!res.ok) {
-                throw new Error("Failed to load quotas.");
+    const fetchData = useCallback(
+        async (signal?: AbortSignal) => {
+            setIsLoading(true);
+            const token = localStorage.getItem("token");
+            const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+
+            try {
+                const res = await fetch(`${baseUrl}/api/v1/admin/quotas`, { headers, signal });
+                if (!res.ok) {
+                    throw new Error("Failed to load quotas.");
+                }
+                const json = await res.json();
+                setData(json as QuotaData);
+            } catch (err) {
+                if ((err as Error).name === "AbortError") {
+                    return;
+                }
+                console.error(err);
+                setErrorMessage("Unable to load quotas. Please refresh.");
+            } finally {
+                setIsLoading(false);
             }
-            const json = await res.json();
-            setData(json);
-        } catch (err) {
-            if ((err as Error).name === "AbortError") {
-                return;
-            }
-            console.error(err);
-            setErrorMessage("Unable to load quotas. Please refresh.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
+        },
+        [baseUrl]
+    );
 
     useEffect(() => {
         const controller = new AbortController();
         fetchData(controller.signal);
         return () => controller.abort();
-    }, []);
+    }, [fetchData]);
 
     useEffect(() => {
-        if (!selectedUser) return;
+        if (!selectedUser) {
+            setOverrideTokens(1000000);
+            setOverrideConcurrency(10);
+            setOverrideDuration(24);
+            return;
+        }
         if (selectedUser.override_token_limit) setOverrideTokens(selectedUser.override_token_limit);
         if (selectedUser.override_ocr_concurrency) setOverrideConcurrency(selectedUser.override_ocr_concurrency);
         if (selectedUser.override_expires_at) {
@@ -54,7 +92,7 @@ export default function AdminQuotasPage() {
     useEffect(() => {
         if (!data?.users) return;
         setPageIndex(0);
-    }, [data?.users?.length]);
+    }, [data?.users]);
 
     const totalUsers = data?.users?.length ?? 0;
     const totalPages = Math.max(1, Math.ceil(totalUsers / pageSize));
@@ -62,15 +100,15 @@ export default function AdminQuotasPage() {
     const endIndex = Math.min(totalUsers, startIndex + pageSize);
     const pagedUsers = data?.users?.slice(startIndex, endIndex) ?? [];
 
-    const handleApplyOverride = async () => {
+    const handleApplyOverride = useCallback(async () => {
         if (!selectedUser) return;
         setIsSaving(true);
         const token = localStorage.getItem("token");
-        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
         const headers: HeadersInit = {
             "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {})
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
         };
+
         try {
             const res = await fetch(`${baseUrl}/api/v1/admin/quotas/override`, {
                 method: "POST",
@@ -79,12 +117,12 @@ export default function AdminQuotasPage() {
                     user_id: selectedUser.id,
                     token_limit: overrideTokens,
                     ocr_concurrency: overrideConcurrency,
-                    duration_hours: overrideDuration
-                })
+                    duration_hours: overrideDuration,
+                }),
             });
             if (res.ok) {
                 alert("Override applied successfully");
-                fetchData();
+                await fetchData();
                 setSelectedUser(null);
             } else {
                 throw new Error("Failed to apply override.");
@@ -95,7 +133,7 @@ export default function AdminQuotasPage() {
         } finally {
             setIsSaving(false);
         }
-    };
+    }, [baseUrl, fetchData, overrideConcurrency, overrideDuration, overrideTokens, selectedUser]);
 
     if (isLoading && !data) {
         return <div className="p-8 text-slate-400">Loading quota details...</div>;
@@ -133,14 +171,19 @@ export default function AdminQuotasPage() {
                     <div className="flex justify-between items-start">
                         <div>
                             <p className="text-slate-400 text-sm font-medium">Global API Consumption</p>
-                            <p className="text-3xl font-bold mt-1 text-slate-900 dark:text-white">{data?.global_consumption}%</p>
+                            <p className="text-3xl font-bold mt-1 text-slate-900 dark:text-white">
+                                {data?.global_consumption ?? 0}%
+                            </p>
                         </div>
                         <div className="p-2 bg-admin-primary/10 rounded-lg text-admin-primary group-hover:scale-110 transition-transform">
                             <span className="material-symbols-outlined">data_usage</span>
                         </div>
                     </div>
                     <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                        <div className="bg-admin-primary h-full transition-all duration-1000" style={{ width: `${data?.global_consumption}%` }}></div>
+                        <div
+                            className="bg-admin-primary h-full transition-all duration-1000"
+                            style={{ width: `${data?.global_consumption ?? 0}%` }}
+                        ></div>
                     </div>
                     <p className="text-slate-500 text-xs font-medium">Change data not available.</p>
                 </div>
@@ -149,14 +192,16 @@ export default function AdminQuotasPage() {
                     <div className="flex justify-between items-start">
                         <div>
                             <p className="text-slate-400 text-sm font-medium">Daily Active Quota Holders</p>
-                            <p className="text-3xl font-bold mt-1 text-slate-900 dark:text-white">{data?.daily_active_holders.toLocaleString()}</p>
+                            <p className="text-3xl font-bold mt-1 text-slate-900 dark:text-white">
+                                {(data?.daily_active_holders ?? 0).toLocaleString()}
+                            </p>
                         </div>
                         <div className="p-2 bg-accent-emerald/10 rounded-lg text-accent-emerald group-hover:scale-110 transition-transform">
                             <span className="material-symbols-outlined">group</span>
                         </div>
                     </div>
                     <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                        <div className="bg-accent-emerald h-full" style={{ width: '100%' }}></div>
+                        <div className="bg-accent-emerald h-full" style={{ width: "100%" }}></div>
                     </div>
                     <p className="text-slate-500 text-xs font-medium">Change data not available.</p>
                 </div>
@@ -165,14 +210,16 @@ export default function AdminQuotasPage() {
                     <div className="flex justify-between items-start">
                         <div>
                             <p className="text-slate-400 text-sm font-medium">Tokens Burned (24h)</p>
-                            <p className="text-3xl font-bold mt-1 text-slate-900 dark:text-white">{data?.tokens_burned_24h}</p>
+                            <p className="text-3xl font-bold mt-1 text-slate-900 dark:text-white">
+                                {data?.tokens_burned_24h ?? 0}
+                            </p>
                         </div>
                         <div className="p-2 bg-accent-amber/10 rounded-lg text-accent-amber group-hover:scale-110 transition-transform">
                             <span className="material-symbols-outlined">toll</span>
                         </div>
                     </div>
                     <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                        <div className="bg-accent-amber h-full" style={{ width: '100%' }}></div>
+                        <div className="bg-accent-amber h-full" style={{ width: "100%" }}></div>
                     </div>
                     <p className="text-slate-500 text-xs font-medium">Change data not available.</p>
                 </div>
@@ -193,10 +240,14 @@ export default function AdminQuotasPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800">
-                            {pagedUsers.map((u: any) => (
-                                <tr key={u.id}
+                            {pagedUsers.map((u) => (
+                                <tr
+                                    key={u.id}
                                     onClick={() => setSelectedUser(u)}
-                                    className={`hover:bg-slate-100 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group ${selectedUser?.id === u.id ? 'bg-admin-primary/10 border-l-2 border-admin-primary' : ''}`}>
+                                    className={`hover:bg-slate-100 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group ${
+                                        selectedUser?.id === u.id ? "bg-admin-primary/10 border-l-2 border-admin-primary" : ""
+                                    }`}
+                                >
                                     <td className="px-6 py-5">
                                         <div className="flex flex-col">
                                             <span className="text-sm font-bold text-slate-900 dark:text-slate-200">{u.full_name}</span>
@@ -205,20 +256,33 @@ export default function AdminQuotasPage() {
                                         </div>
                                     </td>
                                     <td className="px-6 py-5">
-                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${u.plan === 'Pro' ? 'bg-admin-primary/10 text-admin-primary' : 'bg-slate-800 text-slate-400'}`}>
+                                        <span
+                                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                                u.plan === "Pro" ? "bg-admin-primary/10 text-admin-primary" : "bg-slate-800 text-slate-400"
+                                            }`}
+                                        >
                                             {u.plan}
                                         </span>
                                     </td>
                                     <td className="px-6 py-5">
                                         <div className="flex items-center gap-3">
                                             <div className="flex-1 bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                                                <div className={`h-full ${u.usage_percent > 80 ? 'bg-rose-500' : 'bg-admin-primary'}`} style={{ width: `${u.usage_percent}%` }}></div>
+                                                <div
+                                                    className={`h-full ${u.usage_percent && u.usage_percent > 80 ? "bg-rose-500" : "bg-admin-primary"}`}
+                                                    style={{ width: `${u.usage_percent ?? 0}%` }}
+                                                ></div>
                                             </div>
-                                            <span className={`text-sm font-bold w-8 text-right ${u.usage_percent > 80 ? 'text-rose-500' : 'text-slate-600 dark:text-slate-300'}`}>{u.usage_percent}%</span>
+                                            <span
+                                                className={`text-sm font-bold w-8 text-right ${
+                                                    u.usage_percent && u.usage_percent > 80 ? "text-rose-500" : "text-slate-600 dark:text-slate-300"
+                                                }`}
+                                            >
+                                                {u.usage_percent ?? 0}%
+                                            </span>
                                         </div>
                                     </td>
                                     <td className="px-6 py-5 text-slate-400 text-xs">
-                                        {u.daily_tokens_used?.toLocaleString() || 0} tok / {u.daily_credit_cap ? `${u.daily_credit_cap} cr` : "n/a"}
+                                        {u.daily_tokens_used?.toLocaleString() ?? 0} tok / {u.daily_credit_cap ? `${u.daily_credit_cap} cr` : "n/a"}
                                     </td>
                                     <td className="px-6 py-5 text-slate-400 text-sm">{u.last_active}</td>
                                     <td className="px-6 py-5 text-right">
@@ -277,17 +341,21 @@ export default function AdminQuotasPage() {
                             </button>
                         </div>
 
-                            <div className="flex items-center gap-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
-                                <div className="size-12 rounded-full bg-admin-primary/20 text-admin-primary flex items-center justify-center font-bold text-xl ring-2 ring-admin-primary/20">
-                                    {(selectedUser.full_name || selectedUser.full_id || "U").slice(0, 1)}
-                                </div>
-                                <div>
-                                    <p className="font-bold text-slate-900 dark:text-white text-lg leading-tight">{selectedUser.full_name}</p>
-                                    <p className="text-xs text-slate-500">{selectedUser.email}</p>
-                                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">{selectedUser.full_id} · {selectedUser.plan} Account</p>
-                                    <p className="text-[10px] text-slate-500 mt-1">Credits: {selectedUser.credits_balance ?? "n/a"} used {selectedUser.credits_used_this_period ?? "n/a"}</p>
-                                </div>
+                        <div className="flex items-center gap-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+                            <div className="size-12 rounded-full bg-admin-primary/20 text-admin-primary flex items-center justify-center font-bold text-xl ring-2 ring-admin-primary/20">
+                                {(selectedUser.full_name || selectedUser.full_id || "U").slice(0, 1)}
                             </div>
+                            <div>
+                                <p className="font-bold text-slate-900 dark:text-white text-lg leading-tight">{selectedUser.full_name}</p>
+                                <p className="text-xs text-slate-500">{selectedUser.email}</p>
+                                <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">
+                                    {selectedUser.full_id} · {selectedUser.plan} Account
+                                </p>
+                                <p className="text-[10px] text-slate-500 mt-1">
+                                    Credits: {selectedUser.credits_balance ?? "n/a"} used {selectedUser.credits_used_this_period ?? "n/a"}
+                                </p>
+                            </div>
+                        </div>
 
                         <div className="space-y-6">
                             <div className="flex flex-col gap-2">
@@ -297,7 +365,7 @@ export default function AdminQuotasPage() {
                                         className="flex-1 rounded-lg border-slate-700 bg-slate-900 px-4 py-2 text-sm text-white focus:ring-admin-primary focus:border-admin-primary"
                                         type="number"
                                         value={overrideTokens}
-                                        onChange={(e) => setOverrideTokens(parseInt(e.target.value))}
+                                        onChange={(e) => setOverrideTokens(Number.parseInt(e.target.value, 10))}
                                     />
                                     <span className="text-sm font-medium text-slate-500">Tokens</span>
                                 </div>
@@ -308,7 +376,7 @@ export default function AdminQuotasPage() {
                                 <select
                                     className="rounded-lg border-slate-700 bg-slate-900 px-4 py-2 text-sm text-white focus:ring-admin-primary focus:border-admin-primary w-full"
                                     value={overrideConcurrency}
-                                    onChange={(e) => setOverrideConcurrency(parseInt(e.target.value))}
+                                    onChange={(e) => setOverrideConcurrency(Number.parseInt(e.target.value, 10))}
                                 >
                                     <option value={5}>Default (5)</option>
                                     <option value={10}>High Priority (10)</option>
@@ -322,12 +390,22 @@ export default function AdminQuotasPage() {
                                 <div className="grid grid-cols-2 gap-2">
                                     <button
                                         onClick={() => setOverrideDuration(24)}
-                                        className={`py-2 text-xs font-bold rounded-lg border-2 transition-all ${overrideDuration === 24 ? 'border-admin-primary bg-admin-primary/10 text-admin-primary' : 'border-slate-800 bg-slate-800/50 text-slate-400'}`}>
+                                        className={`py-2 text-xs font-bold rounded-lg border-2 transition-all ${
+                                            overrideDuration === 24
+                                                ? "border-admin-primary bg-admin-primary/10 text-admin-primary"
+                                                : "border-slate-800 bg-slate-800/50 text-slate-400"
+                                        }`}
+                                    >
                                         24 Hours
                                     </button>
                                     <button
                                         onClick={() => setOverrideDuration(null)}
-                                        className={`py-2 text-xs font-bold rounded-lg border-2 transition-all ${overrideDuration === null ? 'border-admin-primary bg-admin-primary/10 text-admin-primary' : 'border-slate-800 bg-slate-800/50 text-slate-400'}`}>
+                                        className={`py-2 text-xs font-bold rounded-lg border-2 transition-all ${
+                                            overrideDuration === null
+                                                ? "border-admin-primary bg-admin-primary/10 text-admin-primary"
+                                                : "border-slate-800 bg-slate-800/50 text-slate-400"
+                                        }`}
+                                    >
                                         Permanent
                                     </button>
                                 </div>
@@ -338,7 +416,8 @@ export default function AdminQuotasPage() {
                             <button
                                 onClick={handleApplyOverride}
                                 disabled={isSaving}
-                                className="w-full bg-admin-primary text-white py-3 rounded-lg font-bold hover:bg-admin-primary/90 transition-all active:scale-95 disabled:opacity-50 shadow-lg shadow-admin-primary/20">
+                                className="w-full bg-admin-primary text-white py-3 rounded-lg font-bold hover:bg-admin-primary/90 transition-all active:scale-95 disabled:opacity-50 shadow-lg shadow-admin-primary/20"
+                            >
                                 {isSaving ? "Applying..." : "Apply Override"}
                             </button>
                             <button className="w-full bg-slate-900 text-rose-500 border border-rose-500/20 py-3 rounded-lg font-bold hover:bg-rose-500/10 transition-colors">

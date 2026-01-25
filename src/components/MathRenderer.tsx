@@ -74,7 +74,7 @@ export default function MathRenderer({ content, className = "", inline = false, 
     text = convertStrictToLibFormat(text);
 
     // Use correct wrapper element based on mode
-    const Wrapper: any = inline ? "span" : "div";
+    const Wrapper: React.ElementType = inline ? "span" : "div";
 
     return (
         <Wrapper className={`math-renderer markdown-math ${className} ${inline ? "inline-block" : "block"}`}>

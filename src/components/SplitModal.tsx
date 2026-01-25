@@ -15,7 +15,6 @@ interface SplitModalProps {
     /** Close handler */
     onClose: () => void;
     /** Original input text */
-    originalText: string;
     /** Suggested split questions */
     splits: string[];
     /** Handler when user selects a question to solve */
@@ -25,7 +24,6 @@ interface SplitModalProps {
 export default function SplitModal({
     isOpen,
     onClose,
-    originalText,
     splits,
     onSelectQuestion,
 }: SplitModalProps) {
@@ -90,7 +88,7 @@ export default function SplitModal({
                                 <span className="material-symbols-outlined text-3xl text-amber-600 dark:text-amber-400">edit_note</span>
                             </div>
                             <p className="text-slate-600 dark:text-slate-300 mb-2">
-                                We couldn't automatically split your input.
+                            We couldn&apos;t automatically split your input.
                             </p>
                             <p className="text-sm text-slate-500 dark:text-slate-400">
                                 Please manually separate your questions and solve them one at a time.

@@ -8,11 +8,11 @@ interface WorkspaceTabsProps {
     stepsCount?: number;
 }
 
+const tabs = [{ id: "steps", label: "Steps", icon: "format_list_numbered" }] as const;
+
+type TabId = (typeof tabs)[number]["id"];
 
 export default function WorkspaceTabs({ activeTab, onSelectTab, stepsCount = 0 }: WorkspaceTabsProps) {
-    const tabs = [
-        { id: "steps", label: "Steps", icon: "format_list_numbered" }
-    ] as const;
 
     return (
         <div className="w-full">
@@ -23,7 +23,7 @@ export default function WorkspaceTabs({ activeTab, onSelectTab, stepsCount = 0 }
                     return (
                         <button
                             key={tab.id}
-                            onClick={() => onSelectTab(tab.id as any)}
+                            onClick={() => onSelectTab(tab.id as TabId)}
                             className={`
                                 relative flex-1 min-w-[100px] flex items-center justify-center gap-2 py-3 px-3 rounded-lg text-sm font-bold transition-all duration-300 ease-out select-none
                                 ${isActive

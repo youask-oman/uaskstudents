@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 
 interface Plan {
     id: number;
@@ -16,13 +15,6 @@ interface Plan {
     multipliers: Record<string, number>;
     system_prompt_template_id?: number | null;
     schema_prompt_template_id?: number | null;
-}
-
-interface Prompt {
-    id: number;
-    name: string;
-    slug: string;
-    description: string;
 }
 
 interface PromptAsset {
@@ -45,29 +37,22 @@ interface PlanLinks {
 
 export default function AdminSubscriptionsPage() {
     const [plans, setPlans] = useState<Plan[]>([]);
-    const [prompts, setPrompts] = useState<Prompt[]>([]);
     const [promptAssets, setPromptAssets] = useState<PromptAsset[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
     const [currentLinks, setCurrentLinks] = useState<PlanLinks>({ minimal: {}, detailed: {} });
-    const router = useRouter();
-
     const fetchPlansAndPrompts = async () => {
         try {
             const token = localStorage.getItem("token");
             const headers = { Authorization: `Bearer ${token}` };
 
-            const [plansRes, promptsRes, assetsRes] = await Promise.all([
+            const [plansRes, assetsRes] = await Promise.all([
                 fetch("http://localhost:8000/api/v1/admin/plans", { headers }),
-                fetch("http://localhost:8000/api/v1/admin/prompts", { headers }),
                 fetch("http://localhost:8000/api/v1/admin/prompt-assets", { headers })
             ]);
 
             if (plansRes.ok) {
                 setPlans(await plansRes.json());
-            }
-            if (promptsRes.ok) {
-                setPrompts(await promptsRes.json());
             }
             if (assetsRes.ok) {
                 setPromptAssets(await assetsRes.json());

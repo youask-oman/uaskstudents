@@ -116,7 +116,7 @@ export async function getCroppedImageBlob({
     });
 }
 
-export function loadCache(): Record<string, any> {
+export function loadCache(): Record<string, unknown> {
     try {
         const raw = localStorage.getItem("snapSolveV2Cache");
         return raw ? JSON.parse(raw) : {};
@@ -125,7 +125,7 @@ export function loadCache(): Record<string, any> {
     }
 }
 
-export function saveCache(cache: Record<string, any>) {
+export function saveCache(cache: Record<string, unknown>) {
     try {
         localStorage.setItem("snapSolveV2Cache", JSON.stringify(cache));
     } catch {

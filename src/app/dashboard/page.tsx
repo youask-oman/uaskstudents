@@ -20,17 +20,41 @@ interface ChatSession {
     };
 }
 
+interface UserUsage {
+    questions_count: number;
+    scans_count: number;
+}
 
+interface UserProfile {
+    full_name?: string;
+    usage?: UserUsage;
+    is_public?: boolean;
+    learning_interests?: string[];
+}
+
+interface StatCard {
+    label: string;
+    value: string;
+    icon: string;
+    color: string;
+    trend: string;
+}
+
+type ProfileUpdate = {
+    is_public?: boolean;
+    learning_interests?: string[];
+};
 
 export default function DashboardPage() {
-    const [stats, setStats] = useState([
+    const initialStats: StatCard[] = [
         { label: "Problems Solved", value: "...", icon: "analytics", color: "blue", trend: "..." },
         { label: "Token Usage", value: "...", icon: "offline_bolt", color: "amber", trend: "Monthly" },
         { label: "Scans", value: "...", icon: "document_scanner", color: "purple", trend: "Total" },
-    ]);
+    ];
+    const [stats, setStats] = useState<StatCard[]>(initialStats);
     const [history, setHistory] = useState<ChatSession[]>([]);
     const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<any>(null);
+    const [user, setUser] = useState<UserProfile | null>(null);
     const [activeTab, setActiveTab] = useState("history"); // history, bookmarked
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -49,7 +73,7 @@ export default function DashboardPage() {
     const historyPerPage = 10;
     const [historySearch, setHistorySearch] = useState("");
 
-    const updateProfile = async (updates: any) => {
+    const updateProfile = async (updates: ProfileUpdate) => {
         const userId = localStorage.getItem("user_id");
         if (!userId) return;
         try {
@@ -94,9 +118,9 @@ export default function DashboardPage() {
         const storedUser = localStorage.getItem("user");
         if (storedUser) {
             try {
-                setUser(JSON.parse(storedUser));
+                setUser(JSON.parse(storedUser) as UserProfile);
             } catch (e) {
-                console.error("Error parsing user data");
+                console.error("Error parsing user data", e);
             }
         }
 
@@ -118,29 +142,33 @@ export default function DashboardPage() {
                 // Fetch Profile Stats
                 const profileRes = await fetch(`/api/v1/user/profile?user_id=${userId}`);
                 if (profileRes.ok) {
-                    const profile = await profileRes.json();
-                    setIsPublic(profile.is_public);
+                    const profile = (await profileRes.json()) as UserProfile;
+                    setIsPublic(Boolean(profile.is_public));
                     setInterests(profile.learning_interests || []);
+                    const usage = profile.usage ?? { questions_count: 0, scans_count: 0 };
+                    const problemsValue = usage.questions_count.toString();
+                    const scansValue = usage.scans_count.toString();
+                    const tokenValue = monthlyTokensUsed !== null
+                        ? monthlyTokensUsed.toLocaleString()
+                        : `${(usage.questions_count * 500 / 1000).toFixed(1)}k`;
                     setStats([
                         {
                             label: "Problems Solved",
-                            value: profile.usage.questions_count.toString(),
+                            value: problemsValue,
                             icon: "analytics",
                             color: "blue",
                             trend: "Total"
                         },
                         {
                             label: "Token Usage",
-                            value: monthlyTokensUsed !== null
-                                ? monthlyTokensUsed.toLocaleString()
-                                : `${(profile.usage.questions_count * 500 / 1000).toFixed(1)}k`,
+                            value: tokenValue,
                             icon: "offline_bolt",
                             color: "amber",
                             trend: "Monthly"
                         },
                         {
                             label: "Scans",
-                            value: profile.usage.scans_count.toString(),
+                            value: scansValue,
                             icon: "document_scanner",
                             color: "purple",
                             trend: "Total"

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Image from "next/image";
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -71,11 +72,17 @@ export default function PaymentPage() {
         }
     };
 
+    const paymentLabel = paymentMethod === 'gpay'
+        ? 'Google Pay'
+        : paymentMethod === 'paypal'
+            ? 'PayPal'
+            : 'Card';
+
     return (
         <div className="min-h-screen bg-white dark:bg-[#101622] flex flex-col font-sans text-slate-900 dark:text-white">
             <header className="flex items-center justify-between border-b border-solid border-slate-200 dark:border-[#282e39] px-6 md:px-10 py-4 bg-white dark:bg-[#101622] sticky top-0 z-50">
                 <div className="flex items-center gap-4 text-[#135bec] dark:text-white">
-                    <img src={isDark ? "/logo-dark.png" : "/logo.png"} alt="uask.ai" className="h-6 w-auto" />
+                    <Image src={isDark ? "/logo-dark.png" : "/logo.png"} alt="uask.ai" width={96} height={24} className="h-6 w-auto" priority />
                     <h2 className="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">uask.ai</h2>
                 </div>
                 <div className="flex items-center gap-4">
@@ -241,11 +248,11 @@ export default function PaymentPage() {
 
                             {paymentMethod === 'paypal' && (
                                 <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-6 text-center border border-slate-200 dark:border-slate-700">
-                                    <p className="font-medium text-slate-700 dark:text-slate-300 mb-2">Click 'Subscribe' to checkout with PayPal</p>
+                                    <p className="font-medium text-slate-700 dark:text-slate-300 mb-2">Click &apos;Subscribe&apos; to checkout with PayPal</p>
                                     <div className="flex justify-center my-4">
                                         <span className="material-symbols-outlined text-4xl text-slate-400">output</span>
                                     </div>
-                                    <p className="text-sm text-slate-500">After submission, you’ll be guided through completing next steps with PayPal.</p>
+                                    <p className="text-sm text-slate-500">After submission, you&rsquo;ll be guided through completing next steps with PayPal.</p>
                                 </div>
                             )}
 
@@ -259,7 +266,7 @@ export default function PaymentPage() {
                             {/* Footer Text */}
                             <div className="text-xs text-slate-500 dark:text-slate-400 space-y-4">
                                 <p>
-                                    By continuing, you allow youask.ai Vancouver Island, BC Canada to charge your {paymentMethod === 'gpay' ? 'Google Pay' : paymentMethod === 'paypal' ? 'PayPal' : 'Card'} account for this payment and future payments in accordance with their terms.
+                                    By continuing, you allow youask.ai Vancouver Island, BC Canada to charge your {paymentLabel} account for this payment and future payments in accordance with their terms.
                                 </p>
                                 <p>
                                     By continuing I agree that my subscription will automatically renew, and authorize the automatic charges for the above subscription fees.

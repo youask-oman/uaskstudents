@@ -4,6 +4,28 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+type AdminProfile = {
+    name: string;
+    role: string;
+    avatar?: string;
+    authorized: boolean;
+};
+
+const getInitialAdminProfile = (): AdminProfile => {
+    if (typeof window === "undefined") {
+        return { name: "Admin User", role: "", avatar: "", authorized: false };
+    }
+    const role = localStorage.getItem("user_role") ?? "";
+    const name = localStorage.getItem("user_name") ?? "Admin User";
+    const avatar = localStorage.getItem("user_avatar") ?? "";
+    return {
+        name,
+        role,
+        avatar,
+        authorized: role === "admin",
+    };
+};
+
 export default function AdminLayout({
     children,
 }: {
@@ -11,27 +33,17 @@ export default function AdminLayout({
 }) {
     const pathname = usePathname();
     const router = useRouter();
-    const [adminName, setAdminName] = useState("Admin User");
-    const [adminRole, setAdminRole] = useState("Super Admin");
-    const [adminAvatar, setAdminAvatar] = useState("");
-    const [isAuthorized, setIsAuthorized] = useState(false);
+    const [adminProfile] = useState<AdminProfile>(getInitialAdminProfile);
 
     useEffect(() => {
-        const role = localStorage.getItem("user_role");
-        const name = localStorage.getItem("user_name");
-        const avatar = localStorage.getItem("user_avatar");
-
-        if (role !== "admin") {
+        if (!adminProfile.authorized) {
             router.push("/login");
-        } else {
-            setIsAuthorized(true);
-            if (name) setAdminName(name);
-            setAdminRole("Platform Administrator");
-            if (avatar) setAdminAvatar(avatar);
         }
-    }, [router]);
+    }, [adminProfile.authorized, router]);
 
-    if (!isAuthorized) return null;
+    if (!adminProfile.authorized) return null;
+
+    const adminRoleLabel = adminProfile.authorized ? "Platform Administrator" : "Super Admin";
 
     const navItems = [
         { label: "Overview", href: "/admin/dashboard", icon: "dashboard" },
@@ -49,6 +61,7 @@ export default function AdminLayout({
             <aside className="w-64 flex-shrink-0 bg-white dark:bg-[#0c1222] border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between p-4 transition-colors">
                 <div className="flex flex-col gap-8">
                     <div className="flex items-center gap-3 px-2">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src="/logo-dark.png" alt="uask.ai" className="h-8 w-auto" />
                         <div className="flex flex-col">
                             <h1 className="text-slate-900 dark:text-white text-base font-bold leading-none">uask.ai</h1>
@@ -80,15 +93,18 @@ export default function AdminLayout({
                     </button>
                     <div className="flex items-center gap-3 px-2 py-2 border-t border-slate-200 dark:border-slate-800 pt-4">
                         <div className="size-8 rounded-full bg-slate-200 dark:bg-slate-700 bg-cover bg-center overflow-hidden flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm">
-                            {adminAvatar ? (
-                                <img src={adminAvatar} alt={adminName} className="w-full h-full object-cover" />
+                            {adminProfile.avatar ? (
+                                <>
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={adminProfile.avatar} alt={adminProfile.name} className="w-full h-full object-cover" />
+                                </>
                             ) : (
-                                <span className="text-[10px] font-bold text-admin-primary">{adminName.split(' ').map(n => n[0]).join('')}</span>
+                                <span className="text-[10px] font-bold text-admin-primary">{adminProfile.name.split(' ').map(n => n[0]).join('')}</span>
                             )}
                         </div>
                         <div className="flex flex-col">
-                            <p className="text-slate-900 dark:text-white text-xs font-bold truncate max-w-[120px]">{adminName}</p>
-                            <p className="text-slate-500 text-[10px]">{adminRole}</p>
+                            <p className="text-slate-900 dark:text-white text-xs font-bold truncate max-w-[120px]">{adminProfile.name}</p>
+                            <p className="text-slate-500 text-[10px]">{adminRoleLabel}</p>
                         </div>
                     </div>
                 </div>

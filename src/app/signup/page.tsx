@@ -1,8 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import Image from "next/image";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+
+interface AuthResponse {
+    access_token: string;
+    user_id: number;
+    full_name: string;
+    role: string;
+    avatar_url?: string;
+    session_token?: string;
+}
 
 export default function SignupPage() {
     const [fullName, setFullName] = useState("");
@@ -12,7 +22,7 @@ export default function SignupPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState(false);
-    const [isDark, setIsDark] = useState(false);
+    const isDark = typeof window !== "undefined" && document.documentElement.classList.contains("dark");
     const router = useRouter();
 
     useEffect(() => {
@@ -53,7 +63,7 @@ export default function SignupPage() {
             });
 
             if (loginResponse.ok) {
-                const loginData = await loginResponse.json();
+                const loginData = (await loginResponse.json()) as AuthResponse;
 
                 // Store Auth Data
                 localStorage.setItem("token", loginData.access_token);
@@ -70,8 +80,9 @@ export default function SignupPage() {
                 setSuccess(true);
             }
 
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Signup failed";
+            setError(message);
         } finally {
             setLoading(false);
         }
@@ -81,7 +92,14 @@ export default function SignupPage() {
             {/* Top Navigation Bar */}
             <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-gray-200 dark:border-gray-800 px-6 py-4 md:px-10 bg-white dark:bg-background-dark">
                 <Link href="/" className="flex items-center gap-3">
-                    <img src={isDark ? "/logo-dark.png" : "/logo.png"} alt="uask.ai" className="h-8 w-auto" />
+                    <Image
+                        src={isDark ? "/logo-dark.png" : "/logo.png"}
+                        alt="uask.ai"
+                        width={96}
+                        height={24}
+                        className="h-8 w-auto"
+                        priority
+                    />
                     <h2 className="text-[#111318] dark:text-white text-xl font-bold leading-tight tracking-tight">uask.ai</h2>
                 </Link>
                 <div className="flex items-center gap-4">
@@ -111,7 +129,7 @@ export default function SignupPage() {
                                 </div>
                                 <h3 className="text-xl font-bold text-[#111318] dark:text-white mb-2">Check your email</h3>
                                 <p className="text-gray-600 dark:text-gray-400 mb-6">
-                                    We've sent a verification link to <strong>{email}</strong>. Please click the link to verify your account and log in.
+                                    We have sent a verification link to <strong>{email}</strong>. Please click the link to verify your account and log in.
                                 </p>
                                 <Link href="/login">
                                     <button className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-lg transition-colors">

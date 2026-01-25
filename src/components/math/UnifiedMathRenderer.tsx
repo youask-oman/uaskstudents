@@ -155,15 +155,15 @@ const MathSegment = ({
     inline: boolean;
     dynamic?: boolean;
 }) => {
+    const startRef = React.useRef<number | null>(null);
     if (!value.trim()) {
         return <span />;
     }
-    if (isLikelyMalformed(value)) {
-        markMalformedLatex(value);
-        return renderFallback(value);
-    }
 
-    const startRef = React.useRef<number | null>(null);
+      if (isLikelyMalformed(value)) {
+          markMalformedLatex(value);
+          return renderFallback(value);
+      }
     const wrapped = inline ? `\\(${value}\\)` : `\\[${value}\\]`;
     const Wrapper: React.ElementType = inline ? "span" : "div";
 

@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { CUSTOM_KEYBOARD_LAYOUT } from '@/lib/math-layout';
 import 'mathlive/static.css';
+import type { MathfieldElement } from 'mathlive';
 
 interface MathInputProps {
     value: string;
@@ -22,7 +23,7 @@ export interface MathInputRef {
 }
 
 const MathInput = forwardRef<MathInputRef, MathInputProps>(({ value, onChange, placeholder, onEnter, className = "", maxLength, onPaste }, ref) => {
-    const mfRef = useRef<HTMLElement>(null);
+    const mfRef = useRef<MathfieldElement | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const isInternalChange = useRef(false);
 
@@ -30,7 +31,7 @@ const MathInput = forwardRef<MathInputRef, MathInputProps>(({ value, onChange, p
 
     useEffect(() => {
         // Dynamically import mathlive to avoid SSR issues
-        import('mathlive').then((m) => {
+        import('mathlive').then(() => {
             // Apply custom keyboard layout
             // Apply custom keyboard layout
             if (window.mathVirtualKeyboard) {
@@ -56,7 +57,7 @@ const MathInput = forwardRef<MathInputRef, MathInputProps>(({ value, onChange, p
         });
     }, []);
 
-    const readMathFieldValue = (target: any): string => {
+    const readMathFieldValue = (target: MathfieldElement | null): string => {
         if (target && typeof target.getValue === "function") {
             const latex = target.getValue();
             if (typeof latex === "string") return latex;
@@ -67,23 +68,26 @@ const MathInput = forwardRef<MathInputRef, MathInputProps>(({ value, onChange, p
 
     useImperativeHandle(ref, () => ({
         insert: (latex: string) => {
-            if (mfRef.current) {
-                (mfRef.current as any).executeCommand(['insert', latex]);
-                (mfRef.current as any).focus();
+            const mf = mfRef.current;
+            if (mf) {
+                mf.executeCommand(['insert', latex]);
+                mf.focus();
             }
         },
         focus: () => {
-            if (mfRef.current) {
-                (mfRef.current as any).focus();
+            const mf = mfRef.current;
+            if (mf) {
+                mf.focus();
             }
         },
         setValue: (latex: string) => {
-            if (mfRef.current) {
-                (mfRef.current as any).setValue(latex);
+            const mf = mfRef.current;
+            if (mf) {
+                mf.setValue(latex);
             }
         },
         getValue: () => {
-            return readMathFieldValue(mfRef.current as any);
+            return readMathFieldValue(mfRef.current);
         }
     }));
 
@@ -93,7 +97,7 @@ const MathInput = forwardRef<MathInputRef, MathInputProps>(({ value, onChange, p
 
         const handleInput = (e: Event) => {
             isInternalChange.current = true;
-            const nextValue = readMathFieldValue(e.target as any);
+            const nextValue = readMathFieldValue(e.target as MathfieldElement | null);
             onChange(nextValue);
             isInternalChange.current = false;
         };
@@ -114,7 +118,7 @@ const MathInput = forwardRef<MathInputRef, MathInputProps>(({ value, onChange, p
             if (maxLength && pastedText.length > maxLength) {
                 e.preventDefault();
                 const truncated = pastedText.slice(0, maxLength);
-                (mf as any).setValue(truncated);
+                mf.setValue(truncated);
                 onChange(truncated);
             }
 
@@ -123,20 +127,21 @@ const MathInput = forwardRef<MathInputRef, MathInputProps>(({ value, onChange, p
         };
 
         mf.addEventListener('input', handleInput);
-        mf.addEventListener('keydown', handleKeyDown as any);
-        mf.addEventListener('paste', handlePaste as any);
+        mf.addEventListener('keydown', handleKeyDown);
+        mf.addEventListener('paste', handlePaste);
 
         return () => {
             mf.removeEventListener('input', handleInput);
-            mf.removeEventListener('keydown', handleKeyDown as any);
-            mf.removeEventListener('paste', handlePaste as any);
+            mf.removeEventListener('keydown', handleKeyDown);
+            mf.removeEventListener('paste', handlePaste);
         };
     }, [onChange, onEnter, maxLength, onPaste]);
 
     // Sync external value changes
     useEffect(() => {
-        if (mfRef.current && (mfRef.current as any).value !== value && !isInternalChange.current) {
-            (mfRef.current as any).value = value;
+        const mf = mfRef.current;
+        if (mf && mf.value !== value && !isInternalChange.current) {
+            mf.value = value;
         }
     }, [value]);
 
@@ -243,14 +248,14 @@ const MathInput = forwardRef<MathInputRef, MathInputProps>(({ value, onChange, p
                 }
             `}</style>
 
-            {/* @ts-ignore - math-field is a custom element */}
+            {/* @ts-expect-error - math-field is a custom element */}
             <math-field
                 ref={mfRef}
                 math-virtual-keyboard-policy="auto"
                 placeholder={placeholder}
                 onInput={(evt: Event) => {
                     isInternalChange.current = true;
-                    const nextValue = readMathFieldValue(evt.target as any);
+                    const nextValue = readMathFieldValue(evt.target as MathfieldElement | null);
                     onChange(nextValue);
                     isInternalChange.current = false;
                 }}
@@ -265,7 +270,7 @@ const MathInput = forwardRef<MathInputRef, MathInputProps>(({ value, onChange, p
                 }}
             >
                 {value}
-            {/* @ts-ignore - math-field is a custom element */}
+            {/* @ts-expect-error - math-field is a custom element */}
             </math-field>
         </div>
     );

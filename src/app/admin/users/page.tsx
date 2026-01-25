@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
-import Link from "next/link";
+import { useMemo, useState, useEffect, useCallback } from "react";
 
 interface UserListItem {
     id: number;
@@ -66,11 +65,41 @@ export default function AdminUsersPage() {
         return headers;
     };
 
+    const fetchUsers = useCallback(async (pageToFetch: number, signal?: AbortSignal) => {
+        setLoading(true);
+        try {
+            setErrorMessage(null);
+            const params = new URLSearchParams();
+            if (search) params.append("q", search);
+            if (roleFilter) params.append("role", roleFilter);
+            if (planFilter) params.append("plan", planFilter);
+            params.append("offset", ((pageToFetch - 1) * limit).toString());
+            params.append("limit", limit.toString());
+
+            const res = await fetch(`${baseUrl}/api/v1/admin/users?${params.toString()}`, {
+                headers: getAuthHeaders(),
+                signal
+            });
+            if (!res.ok) {
+                throw new Error("Failed to load user list.");
+            }
+            const data = await res.json();
+            setUsers(data.users);
+            setTotalCount(data.total_count);
+        } catch (error) {
+            if ((error as Error).name === "AbortError") return;
+            console.error("Failed to load user list", error);
+            setErrorMessage("Unable to load users. Please refresh.");
+        } finally {
+            setLoading(false);
+        }
+    }, [baseUrl, limit, search, roleFilter, planFilter]);
+
     useEffect(() => {
         const controller = new AbortController();
-        fetchUsers(controller.signal);
+        fetchUsers(page, controller.signal);
         return () => controller.abort();
-    }, [search, roleFilter, planFilter, page]);
+    }, [fetchUsers, page]);
 
     const roleOptions = useMemo(() => {
         const roles = new Set<string>();
@@ -98,38 +127,6 @@ export default function AdminUsersPage() {
         return () => controller.abort();
     }, [baseUrl]);
 
-    const fetchUsers = async (signal?: AbortSignal) => {
-        setLoading(true);
-        try {
-            setErrorMessage(null);
-            const params = new URLSearchParams();
-            if (search) params.append("q", search);
-            if (roleFilter) params.append("role", roleFilter);
-            if (planFilter) params.append("plan", planFilter);
-            params.append("offset", ((page - 1) * limit).toString());
-            params.append("limit", limit.toString());
-
-            const res = await fetch(`${baseUrl}/api/v1/admin/users?${params.toString()}`, {
-                headers: getAuthHeaders(),
-                signal
-            });
-            if (!res.ok) {
-                throw new Error("Failed to load user list.");
-            }
-            const data = await res.json();
-            setUsers(data.users);
-            setTotalCount(data.total_count);
-        } catch (error) {
-            if ((error as Error).name === "AbortError") {
-                return;
-            }
-            console.error("Failed to fetch users:", error);
-            setErrorMessage("Unable to load users. Please refresh.");
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const handleInvite = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
@@ -141,7 +138,7 @@ export default function AdminUsersPage() {
             });
             if (res.ok) {
                 setShowInviteModal(false);
-                fetchUsers();
+                fetchUsers(page);
             } else {
                 throw new Error("Invite failed.");
             }
@@ -180,7 +177,7 @@ export default function AdminUsersPage() {
                 headers: getAuthHeaders(true),
                 body: JSON.stringify({ role: newRole.toLowerCase() }),
             });
-            if (res.ok) fetchUsers();
+            if (res.ok) fetchUsers(page);
             else throw new Error("Role update failed.");
         } catch (error) {
             console.error("Role update failed:", error);
@@ -199,7 +196,7 @@ export default function AdminUsersPage() {
                 if (!confirm("Are you sure you want to delete this user?")) return;
                 res = await fetch(`${baseUrl}/api/v1/admin/users/${userId}`, { method: "DELETE", headers: getAuthHeaders() });
             }
-            if (res?.ok) fetchUsers();
+            if (res?.ok) fetchUsers(page);
             else if (res) throw new Error("Action failed.");
         } catch (error) {
             console.error("Action failed:", error);

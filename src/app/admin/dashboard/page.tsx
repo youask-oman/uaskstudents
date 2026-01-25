@@ -30,18 +30,103 @@ const buildQuery = (params: Record<string, string | number | undefined>) => {
 };
 
 const formatNumber = (value: number | null | undefined, fallback = "0") => {
-    if (!Number.isFinite(value)) return fallback;
+    if (!Number.isFinite(Number(value))) return fallback;
     return Number(value).toLocaleString();
 };
 
 const formatPercent = (value: number | null | undefined) => {
-    if (!Number.isFinite(value)) return "0.0%";
+    if (!Number.isFinite(Number(value))) return "0.0%";
     return `${Number(value).toFixed(1)}%`;
 };
 
 const formatCurrency = (value: number | null | undefined) => {
-    if (!Number.isFinite(value)) return "$0.00";
+    if (!Number.isFinite(Number(value))) return "$0.00";
     return `$${Number(value).toFixed(4)}`;
+};
+
+type DashboardStats = {
+    daily_requests?: number;
+    ocr_success_rate?: number;
+    llm_cost_est?: number;
+    cache_hit_rate?: number;
+};
+
+type RoutingSeriesEntry = {
+    day?: string;
+    volume?: number;
+};
+
+type RoutingData = {
+    series?: RoutingSeriesEntry[];
+};
+
+type KPIEntry = {
+    value?: number;
+    delta_pct?: number;
+};
+
+type TrendItem = {
+    total?: number;
+    p95?: number;
+};
+
+type BreakdownItem = {
+    subject?: string;
+    grade?: string;
+    count?: number;
+    model?: string;
+    share?: number;
+};
+
+type OverviewBreakdowns = {
+    subjects?: BreakdownItem[];
+    grades?: BreakdownItem[];
+    model_routing?: BreakdownItem[];
+};
+
+type OverviewQuality = {
+    verified_rate?: number;
+    schema_violation_rate?: number;
+};
+
+type OverviewHealth = {
+    providers?: Array<{ provider?: string; error_rate?: number }>;
+    streaming?: { disconnect_rate?: number; truncated_rate?: number };
+};
+
+type DashboardOverview = {
+    kpis?: Record<string, KPIEntry>;
+    trends?: {
+        questions?: TrendItem[];
+        cost?: TrendItem[];
+        latency?: TrendItem[];
+    };
+    breakdowns?: OverviewBreakdowns;
+    quality?: OverviewQuality;
+    health?: OverviewHealth;
+};
+
+type SolveTraceEntry = {
+    request_id?: string;
+    user_id?: number;
+    ui_goal?: string;
+    ui_style?: string;
+    resolved_profile_key?: string;
+    input_tokens?: number;
+    output_tokens?: number;
+    deduct_committed?: boolean;
+};
+
+type ErrorEntry = {
+    request_id?: string;
+    error_type?: string;
+    endpoint?: string;
+};
+
+type AnomalyData = {
+    top_cost_users?: Array<{ user_id?: number; cost_usd?: number }>;
+    token_spike_requests?: Array<{ request_id?: string; tokens_total?: number }>;
+    ocr_failures?: Array<{ reason?: string; count?: number }>;
 };
 
 const TrendBars = ({ series, color }: { series: number[]; color: string }) => {
@@ -61,13 +146,13 @@ const TrendBars = ({ series, color }: { series: number[]; color: string }) => {
 };
 
 export default function AdminDashboardPage() {
-    const [stats, setStats] = useState<any>(null);
-    const [routing, setRouting] = useState<any>(null);
-    const [solveTraces, setSolveTraces] = useState<any[]>([]);
-    const [selectedTrace, setSelectedTrace] = useState<any | null>(null);
-    const [overview, setOverview] = useState<any>(null);
-    const [errors, setErrors] = useState<any[]>([]);
-    const [anomalies, setAnomalies] = useState<any>(null);
+    const [stats, setStats] = useState<DashboardStats | null>(null);
+    const [routing, setRouting] = useState<RoutingData | null>(null);
+    const [solveTraces, setSolveTraces] = useState<SolveTraceEntry[]>([]);
+    const [selectedTrace, setSelectedTrace] = useState<SolveTraceEntry | null>(null);
+    const [overview, setOverview] = useState<DashboardOverview | null>(null);
+    const [errors, setErrors] = useState<ErrorEntry[]>([]);
+    const [anomalies, setAnomalies] = useState<AnomalyData | null>(null);
     const [range, setRange] = useState("7d");
     const [filters, setFilters] = useState<FilterState>(defaultFilters);
     const [isLoading, setIsLoading] = useState(true);
@@ -133,10 +218,10 @@ export default function AdminDashboardPage() {
                 if (!statsRes.ok || !routingRes.ok || !tracesRes.ok) {
                     throw new Error("Failed to load admin metrics.");
                 }
-                setStats(await statsRes.json());
-                setRouting(await routingRes.json());
+                setStats(await statsRes.json() as DashboardStats);
+                setRouting(await routingRes.json() as RoutingData);
                 const tracesData = await tracesRes.json();
-                setSolveTraces(Array.isArray(tracesData) ? tracesData : []);
+                setSolveTraces(Array.isArray(tracesData) ? (tracesData as SolveTraceEntry[]) : []);
             } catch (err) {
                 if ((err as Error).name === "AbortError") {
                     return;
@@ -166,9 +251,9 @@ export default function AdminDashboardPage() {
                 if (!overviewRes.ok || !errorsRes.ok || !anomaliesRes.ok) {
                     throw new Error("Failed to load analytics data.");
                 }
-                setOverview(await overviewRes.json());
-                setErrors(await errorsRes.json());
-                setAnomalies(await anomaliesRes.json());
+                setOverview(await overviewRes.json() as DashboardOverview);
+                setErrors(await errorsRes.json() as ErrorEntry[]);
+                setAnomalies(await anomaliesRes.json() as AnomalyData);
             } catch (err) {
                 if ((err as Error).name === "AbortError") {
                     return;
@@ -182,22 +267,22 @@ export default function AdminDashboardPage() {
 
     const routingSeries = Array.isArray(routing?.series) ? routing.series : [];
     const maxVolume = routingSeries.length > 0
-        ? Math.max(...routingSeries.map((x: any) => x.volume || 0), 1)
+        ? Math.max(...routingSeries.map((x) => x.volume ?? 0), 1)
         : 1;
 
     const questionTrendSeries = useMemo(() => {
-        const trend = overview?.trends?.questions || [];
-        return trend.map((item: any) => item.total || 0);
+        const trend = overview?.trends?.questions ?? [];
+        return trend.map((item) => item.total ?? 0);
     }, [overview]);
 
     const costTrendSeries = useMemo(() => {
-        const trend = overview?.trends?.cost || [];
-        return trend.map((item: any) => item.total || 0);
+        const trend = overview?.trends?.cost ?? [];
+        return trend.map((item) => item.total ?? 0);
     }, [overview]);
 
     const latencyTrendSeries = useMemo(() => {
-        const trend = overview?.trends?.latency || [];
-        return trend.map((item: any) => item.p95 || 0);
+        const trend = overview?.trends?.latency ?? [];
+        return trend.map((item) => item.p95 ?? 0);
     }, [overview]);
 
     if (isLoading) {
@@ -401,40 +486,40 @@ export default function AdminDashboardPage() {
                 </section>
 
                 <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-6">
-                        <h4 className="text-base font-bold text-slate-900 dark:text-white">Breakdowns</h4>
-                        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-slate-300">
-                            <div>
-                                <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Top Subjects</p>
-                                {(overview?.breakdowns?.subjects || []).map((item: any) => (
-                                    <div key={item.subject} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 py-1">
-                                        <span>{item.subject}</span>
-                                        <span className="text-slate-400">{item.count}</span>
+                            <div className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-6">
+                                <h4 className="text-base font-bold text-slate-900 dark:text-white">Breakdowns</h4>
+                                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-slate-300">
+                                    <div>
+                                        <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Top Subjects</p>
+                                        {(overview?.breakdowns?.subjects ?? []).map((item, index) => (
+                                            <div key={`${item.subject ?? "subject"}-${index}`} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 py-1">
+                                                <span>{item.subject}</span>
+                                                <span className="text-slate-400">{item.count}</span>
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
-                            <div>
-                                <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Grades</p>
-                                {(overview?.breakdowns?.grades || []).map((item: any) => (
-                                    <div key={item.grade} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 py-1">
-                                        <span>{item.grade}</span>
-                                        <span className="text-slate-400">{item.count}</span>
+                                    <div>
+                                        <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Grades</p>
+                                        {(overview?.breakdowns?.grades ?? []).map((item, index) => (
+                                            <div key={`${item.grade ?? "grade"}-${index}`} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 py-1">
+                                                <span>{item.grade}</span>
+                                                <span className="text-slate-400">{item.count}</span>
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                    <div className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-6">
-                        <h4 className="text-base font-bold text-slate-900 dark:text-white">Model Routing Share</h4>
-                        <div className="mt-4 space-y-2 text-sm text-slate-300">
-                            {(overview?.breakdowns?.model_routing || []).slice(0, 6).map((item: any) => (
-                                <div key={item.model} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-1">
-                                    <span>{item.model}</span>
-                                    <span className="text-slate-400">{item.share}%</span>
                                 </div>
-                            ))}
-                        </div>
-                    </div>
+                            </div>
+                            <div className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-6">
+                                <h4 className="text-base font-bold text-slate-900 dark:text-white">Model Routing Share</h4>
+                                <div className="mt-4 space-y-2 text-sm text-slate-300">
+                                    {(overview?.breakdowns?.model_routing ?? []).slice(0, 6).map((item, index) => (
+                                        <div key={`${item.model ?? "model"}-${index}`} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-1">
+                                            <span>{item.model}</span>
+                                            <span className="text-slate-400">{item.share}%</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                 </section>
 
                 <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -451,15 +536,15 @@ export default function AdminDashboardPage() {
                             </div>
                         </div>
                     </div>
-                    <div className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-6">
-                        <h4 className="text-base font-bold text-slate-900 dark:text-white">Operational Health</h4>
-                        <div className="mt-4 text-sm text-slate-300 space-y-2">
-                            {(overview?.health?.providers || []).map((item: any) => (
-                                <div key={item.provider} className="flex items-center justify-between">
-                                    <span>{item.provider}</span>
-                                    <span>{formatPercent(item.error_rate)}</span>
-                                </div>
-                            ))}
+                            <div className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-6">
+                                <h4 className="text-base font-bold text-slate-900 dark:text-white">Operational Health</h4>
+                                <div className="mt-4 text-sm text-slate-300 space-y-2">
+                                    {(overview?.health?.providers ?? []).map((item, index) => (
+                                        <div key={`${item.provider ?? "provider"}-${index}`} className="flex items-center justify-between">
+                                            <span>{item.provider}</span>
+                                            <span>{formatPercent(item.error_rate)}</span>
+                                        </div>
+                                    ))}
                             <div className="flex items-center justify-between">
                                 <span>Stream disconnects</span>
                                 <span>{formatPercent(overview?.health?.streaming?.disconnect_rate)}</span>
@@ -474,7 +559,7 @@ export default function AdminDashboardPage() {
                         <h4 className="text-base font-bold text-slate-900 dark:text-white">Recent Errors Inbox</h4>
                         <div className="mt-4 text-xs text-slate-400 space-y-2">
                             {errors.length === 0 && <div>No errors in the selected window.</div>}
-                            {errors.slice(0, 6).map((item: any, index: number) => (
+                            {errors.slice(0, 6).map((item, index) => (
                                 <div key={item.request_id || index} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-1">
                                     <span>{item.error_type}</span>
                                     <span className="text-slate-500">{item.endpoint || "unknown"}</span>
@@ -491,8 +576,8 @@ export default function AdminDashboardPage() {
                         <div className="mt-4 text-sm text-slate-300 space-y-4">
                             <div>
                                 <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Top Cost Users</p>
-                                {(anomalies?.top_cost_users || []).map((item: any) => (
-                                    <div key={item.user_id} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 py-1">
+                                {(anomalies?.top_cost_users ?? []).map((item, index) => (
+                                    <div key={`${item.user_id ?? "user"}-${index}`} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 py-1">
                                         <span>User {item.user_id}</span>
                                         <span className="text-slate-400">{formatCurrency(item.cost_usd)}</span>
                                     </div>
@@ -500,8 +585,8 @@ export default function AdminDashboardPage() {
                             </div>
                             <div>
                                 <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Token Spike Requests</p>
-                                {(anomalies?.token_spike_requests || []).map((item: any) => (
-                                    <div key={item.request_id} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 py-1">
+                                {(anomalies?.token_spike_requests ?? []).map((item, index) => (
+                                    <div key={`${item.request_id ?? "token"}-${index}`} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 py-1">
                                         <span>{item.request_id?.slice(0, 6)}</span>
                                         <span className="text-slate-400">{formatNumber(item.tokens_total)}</span>
                                     </div>
@@ -512,8 +597,8 @@ export default function AdminDashboardPage() {
                     <div className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-6">
                         <h4 className="text-base font-bold text-slate-900 dark:text-white">OCR Failure Reasons</h4>
                         <div className="mt-4 text-sm text-slate-300 space-y-2">
-                            {(anomalies?.ocr_failures || []).map((item: any, index: number) => (
-                                <div key={`${item.reason}-${index}`} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 py-1">
+                            {(anomalies?.ocr_failures ?? []).map((item, index) => (
+                                <div key={`${item.reason ?? "reason"}-${index}`} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 py-1">
                                     <span>{item.reason}</span>
                                     <span className="text-slate-400">{item.count}</span>
                                 </div>
@@ -551,8 +636,8 @@ export default function AdminDashboardPage() {
                     <div className="p-6">
                         <div className="relative h-[240px] w-full flex flex-col justify-end bg-slate-800/10 rounded-lg p-2">
                             <div className="flex items-end justify-between h-48 px-4 gap-2">
-                                {routingSeries.map((s: any) => {
-                                    const h = (Number(s.volume || 0) / maxVolume) * 100;
+                                {routingSeries.map((s) => {
+                                    const h = (Number(s.volume ?? 0) / maxVolume) * 100;
                                     return (
                                         <div key={s.day} className="flex-1 flex flex-col items-center gap-2 group">
                                             <div

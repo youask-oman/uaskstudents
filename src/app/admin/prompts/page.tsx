@@ -1,26 +1,46 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+interface PromptTemplate {
+    id: number;
+    slug: string;
+    name: string;
+    is_active?: boolean;
+    [key: string]: unknown;
+}
+
+interface PromptVersion {
+    id: number;
+    version?: string;
+    created_at?: string;
+    author?: string;
+    content: string;
+    is_production?: boolean;
+    [key: string]: unknown;
+}
+
+const DEFAULT_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
 
 export default function AdminPromptsPage() {
-    const [templates, setTemplates] = useState<any[]>([]);
-    const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
-    const [versions, setVersions] = useState<any[]>([]);
-    const [selectedVersion, setSelectedVersion] = useState<any>(null);
+    const [templates, setTemplates] = useState<PromptTemplate[]>([]);
+    const [selectedTemplate, setSelectedTemplate] = useState<PromptTemplate | null>(null);
+    const [versions, setVersions] = useState<PromptVersion[]>([]);
+    const [selectedVersion, setSelectedVersion] = useState<PromptVersion | null>(null);
     const [editedContent, setEditedContent] = useState("");
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const [testVariables, setTestVariables] = useState<Record<string, string>>({
-        "problem_text": "Find the derivative of f(x) = x^2",
-        "subject": "Mathematics",
-        "level": "High School"
+        problem_text: "Find the derivative of f(x) = x^2",
+        subject: "Mathematics",
+        level: "High School",
     });
     const [testResponse, setTestResponse] = useState<string | null>(null);
     const [isTesting, setIsTesting] = useState(false);
     const [activeTab, setActiveTab] = useState<"editor" | "test">("editor");
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+    const baseUrl = useMemo(() => DEFAULT_API_BASE_URL, []);
     const getAuthHeaders = (includeJson = false) => {
         const token = localStorage.getItem("token");
         const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
@@ -40,9 +60,10 @@ export default function AdminPromptsPage() {
                     throw new Error("Unable to load prompt templates.");
                 }
                 const data = await res.json();
-                setTemplates(data);
-                if (data.length > 0) {
-                    setSelectedTemplate(data[0]);
+                const parsed: PromptTemplate[] = Array.isArray(data) ? data : [];
+                setTemplates(parsed);
+                if (parsed.length > 0) {
+                    setSelectedTemplate(parsed[0]);
                 }
             } catch (err) {
                 if ((err as Error).name === "AbortError") {
@@ -56,7 +77,7 @@ export default function AdminPromptsPage() {
         };
         fetchTemplates();
         return () => controller.abort();
-    }, []);
+    }, [baseUrl]);
 
     useEffect(() => {
         if (!selectedTemplate) return;
@@ -69,10 +90,12 @@ export default function AdminPromptsPage() {
                     throw new Error("Unable to load prompt versions.");
                 }
                 const data = await res.json();
-                setVersions(data);
-                const prod = data.find((v: any) => v.is_production);
-                setSelectedVersion(prod || data[0]);
-                setEditedContent(prod ? prod.content : (data[0] ? data[0].content : ""));
+                const parsed: PromptVersion[] = Array.isArray(data) ? data : [];
+                setVersions(parsed);
+                const prod = parsed.find((v) => v.is_production);
+                const initialVersion = prod || parsed[0] || null;
+                setSelectedVersion(initialVersion);
+                setEditedContent(initialVersion?.content || "");
             } catch (err) {
                 if ((err as Error).name === "AbortError") {
                     return;
@@ -85,7 +108,7 @@ export default function AdminPromptsPage() {
         setTestResponse(null);
         setActiveTab("editor");
         return () => controller.abort();
-    }, [selectedTemplate]);
+    }, [selectedTemplate, baseUrl]);
 
     const handleSaveVersion = async () => {
         if (!selectedTemplate) return;
@@ -102,9 +125,9 @@ export default function AdminPromptsPage() {
                 if (!vRes.ok) {
                     throw new Error("Unable to refresh versions.");
                 }
-                const vData = await vRes.json();
+                const vData = (await vRes.json()) as PromptVersion[];
                 setVersions(vData);
-                setSelectedVersion(vData[0]);
+                setSelectedVersion(vData[0] || null);
                 alert("Version saved as draft");
             } else {
                 throw new Error("Failed to save prompt version.");
@@ -131,8 +154,10 @@ export default function AdminPromptsPage() {
                 if (!templatesRes.ok || !versionsRes.ok) {
                     throw new Error("Unable to refresh prompt data.");
                 }
-                setTemplates(await templatesRes.json());
-                setVersions(await versionsRes.json());
+                const refreshedTemplates = (await templatesRes.json()) as PromptTemplate[];
+                const refreshedVersions = (await versionsRes.json()) as PromptVersion[];
+                setTemplates(refreshedTemplates);
+                setVersions(refreshedVersions);
                 alert("Version deployed to production!");
             } else {
                 throw new Error("Failed to deploy prompt version.");
@@ -235,12 +260,13 @@ export default function AdminPromptsPage() {
                         <div className="flex gap-2">
                             <select
                                 onChange={(e) => {
-                                    const v = versions.find(v => v.id === parseInt(e.target.value));
+                                    const versionId = parseInt(e.target.value, 10);
+                                    const v = versions.find((candidate) => candidate.id === versionId) ?? null;
                                     setSelectedVersion(v);
-                                    setEditedContent(v.content);
+                                    setEditedContent(v?.content ?? "");
                                     setTestResponse(null);
                                 }}
-                                value={selectedVersion?.id}
+                                value={selectedVersion?.id || ""}
                                 className="h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold text-slate-300 px-3 focus:ring-1 focus:ring-admin-primary outline-none">
                                 {versions.map(v => (
                                     <option key={v.id} value={v.id}>{v.version} {v.is_production ? '(Current)' : ''}</option>

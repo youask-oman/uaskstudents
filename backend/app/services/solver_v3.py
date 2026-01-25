@@ -19,6 +19,7 @@ from app.utils.schema_deref import deref_json_schema, validate_no_refs
 from app.llm_profiles.profiles import get_prompt_profile
 from app.services.response_mapper import map_minimal_to_canonical
 from app.utils.token_limits import get_effective_max_tokens
+from app.services.token_policy import get_token_policy, TokenPolicy
 
 class SolverV3:
     """
@@ -55,7 +56,8 @@ class SolverV3:
         # Tier-aware payload fields (normalized at frontend)
         trusted_context: Optional[Dict[str, Any]] = None,
         learning_mode: Optional[str] = None,  # "solve" | "study"
-        image_url: Optional[str] = None
+        image_url: Optional[str] = None,
+        max_output_tokens: Optional[int] = None
     ) -> Dict[str, Any]:
         
         start_time_perf = time.perf_counter()
@@ -93,6 +95,7 @@ class SolverV3:
 
         profile = None
         debit_result = None
+        token_policy: Optional[TokenPolicy] = None
 
         try:
             # Step 1: Resolve Profile
@@ -115,6 +118,7 @@ class SolverV3:
                     )
                     telemetry["mode_resolved"] = profile.mode
                     telemetry["tier_effective"] = profile.tier
+                    token_policy = get_token_policy(db_session)
                     
                     if trace:
                         print(f"[SOLVER_V3] Resolved Profile: Tier={profile.tier}, Mode={profile.mode}")
@@ -179,7 +183,14 @@ class SolverV3:
                     trusted_context["learning_mode"] = "solve"
 
             effective_learning_mode = trusted_context.get("learning_mode") if trusted_context else learning_mode
-            effective_max_tokens = get_effective_max_tokens(profile.mode, effective_learning_mode)
+            if max_output_tokens and max_output_tokens > 0:
+                effective_max_tokens = max_output_tokens
+            else:
+                if db_session and not token_policy:
+                    token_policy = get_token_policy(db_session)
+                if not token_policy:
+                    raise ValueError("Token policy unavailable")
+                effective_max_tokens = get_effective_max_tokens(profile.mode, effective_learning_mode, token_policy)
             
             # Telemetry for effective max
             telemetry["max_output_tokens_effective"] = effective_max_tokens
@@ -448,7 +459,10 @@ class SolverV3:
                      trusted_context["learning_mode"] = "solve"
                 effective_learning_mode_stream = trusted_context.get("learning_mode")
 
-            effective_max_tokens = get_effective_max_tokens(requested_mode, effective_learning_mode_stream)
+            if max_output_tokens and max_output_tokens > 0:
+                effective_max_tokens = max_output_tokens
+            else:
+                raise ValueError("max_output_tokens must be provided for streaming solves")
             telemetry["max_output_tokens_effective"] = effective_max_tokens
 
             telemetry["openai_payload"] = {

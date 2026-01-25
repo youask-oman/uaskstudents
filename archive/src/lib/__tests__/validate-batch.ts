@@ -59,7 +59,7 @@ const MULTI_PATTERNS = [
 // ============================================================================
 
 function generateDataset() {
-    let dataset: { id: number, text: string, type: string }[] = [];
+    const dataset: { id: number, text: string, type: string }[] = [];
     let id = 1;
 
     // A. Single Math (100 variants)

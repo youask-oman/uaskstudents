@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import logoLight from "@/app/logo/logo-01.png";
 import logoDark from "@/app/logo/logo-13.png";
@@ -11,56 +11,67 @@ interface StudentLayoutProps {
     children: React.ReactNode;
 }
 
+type StudentUser = {
+    full_name: string;
+    subscription_tier: string;
+    avatar_url: string;
+};
+
+const DEFAULT_STUDENT_USER: StudentUser = {
+    full_name: "Alex Johnson",
+    subscription_tier: "Pro",
+    avatar_url: "https://lh3.googleusercontent.com/aida-public/AB6AXuD_gpHP7vJM1mkTxszlDYSYslefzDpqT7kS3EUblVETFcyH2Sl2xHETdTN_AcqdawcLn0mOa7LR69Ol1T3hAFSvpJss7LzshfwXBbhjMZqOGSH9S1nVdhEO1aeexaHXJAn_VqN1tFoPVazJP1aq1rARcjsg7F4-pStNL1jl7KEpohReYVX52pfbq3YO6IKCX71lAo42c76k2H4WrKWI5r79xsjqMPNL1zZPzcajFKkIs40bZTGM732P1j_aCdcr67zOQ2bNSaRrATQz"
+};
+
+const getInitialUser = (): StudentUser => {
+    if (typeof window === "undefined") {
+        return DEFAULT_STUDENT_USER;
+    }
+    const storedUser = localStorage.getItem("user");
+    if (!storedUser) {
+        return {
+            ...DEFAULT_STUDENT_USER,
+            full_name: localStorage.getItem("user_name") || DEFAULT_STUDENT_USER.full_name,
+        };
+    }
+    try {
+        const parsed = JSON.parse(storedUser);
+        return {
+            full_name: parsed.full_name || localStorage.getItem("user_name") || DEFAULT_STUDENT_USER.full_name,
+            subscription_tier: parsed.subscription_tier || DEFAULT_STUDENT_USER.subscription_tier,
+            avatar_url: parsed.avatar_url || localStorage.getItem("user_avatar") || DEFAULT_STUDENT_USER.avatar_url,
+        };
+    } catch {
+        return DEFAULT_STUDENT_USER;
+    }
+};
+
 export default function StudentLayout({ children }: StudentLayoutProps) {
     const pathname = usePathname();
     const router = useRouter();
-    const [isDark, setIsDark] = useState(false);
-
-    // User State
-    const [user, setUser] = useState<any>(null);
-    const [energy, setEnergy] = useState(128); // Mock for now
+    const [user] = useState<StudentUser>(getInitialUser);
+    const [energy] = useState(128); // Mock for now
 
     // Logout Refs & Timer
     const logoutTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-    const handleLogout = () => {
+    const handleLogout = useCallback(() => {
         localStorage.removeItem("user");
         localStorage.removeItem("user_id");
         localStorage.removeItem("token");
         localStorage.removeItem("session_token");
         router.push("/login");
-    };
+    }, [router]);
 
-    const resetIdleTimer = () => {
+    const resetIdleTimer = useCallback(() => {
         if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
         logoutTimerRef.current = setTimeout(() => {
             handleLogout();
         }, 10 * 60 * 1000); // 10 minutes
-    };
+    }, [handleLogout]);
 
     useEffect(() => {
-        // 1. Restore User
-        const storedUser = localStorage.getItem("user");
-        if (storedUser) {
-            try {
-                setUser(JSON.parse(storedUser));
-            } catch (e) {
-                console.error("Error parsing user data");
-            }
-        } else {
-            // Mock data if missing
-            setUser({
-                full_name: localStorage.getItem("user_name") || "Alex Johnson",
-                subscription_tier: "Pro",
-                avatar_url: "https://lh3.googleusercontent.com/aida-public/AB6AXuD_gpHP7vJM1mkTxszlDYSYslefzDpqT7kS3EUblVETFcyH2Sl2xHETdTN_AcqdawcLn0mOa7LR69Ol1T3hAFSvpJss7LzshfwXBbhjMZqOGSH9S1nVdhEO1aeexaHXJAn_VqN1tFoPVazJP1aq1rARcjsg7F4-pStNL1jl7KEpohReYVX52pfbq3YO6IKCX71lAo42c76k2H4WrKWI5r79xsjqMPNL1zZPzcajFKkIs40bZTGM732P1j_aCdcr67zOQ2bNSaRrATQz"
-            });
-        }
-
-        if (document.documentElement.classList.contains("dark")) {
-            setIsDark(true);
-        }
-
-        // 2. Heartbeat (Every 2 mins)
+        // Heartbeat (Every 2 mins)
         const heartbeatInterval = setInterval(async () => {
             const userId = localStorage.getItem("user_id");
             const sessionToken = localStorage.getItem("session_token");
@@ -78,7 +89,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                         // Session Invalid/Expired -> Force Logout
                         handleLogout();
                     }
-                } catch (e) {
+                } catch {
                     // console.error("Heartbeat failed", e); // Silently fail
                 }
             }
@@ -95,7 +106,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
             if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
             events.forEach(event => window.removeEventListener(event, activityHandler));
         };
-    }, []);
+    }, [handleLogout, resetIdleTimer]);
 
     const navItems = [
         { label: "Dashboard", icon: "grid_view", href: "/dashboard", id: "dashboard" },

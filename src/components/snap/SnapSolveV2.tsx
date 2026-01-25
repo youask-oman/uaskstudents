@@ -47,9 +47,9 @@ type ExtractResponse = {
 type SolveResult = {
     question_id: string;
     ok: boolean;
-    solve_response_json?: Record<string, any>;
+    solve_response_json?: Record<string, unknown>;
     error?: string;
-    telemetry?: Record<string, any>;
+    telemetry?: Record<string, unknown>;
     credits_reserved?: number;
     credits_final?: number;
     credits_refunded?: number;
@@ -82,6 +82,12 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
     const [figureCrops, setFigureCrops] = React.useState<Record<string, string>>({});
     const [cropResetToken, setCropResetToken] = React.useState(0);
     const [viewportSize, setViewportSize] = React.useState<{ width: number; height: number } | null>(null);
+    const [ocrMetadata, setOcrMetadata] = React.useState({
+        ocr_confidence: 0,
+        ocr_warnings: [] as string[],
+        ocr_source: "image",
+        ocr_engine: "snap_v2",
+    });
 
     const abortRef = React.useRef<AbortController | null>(null);
 
@@ -165,7 +171,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
             abortRef.current = null;
             setIsBusy(false);
         }
-    }, [file, pageNumber, cropPixels, rotation, fullPage]);
+    }, [file, pageNumber, cropPixels, rotation, fullPage, isBusy]);
 
     const handleExtract = async () => {
         if (!file || !imageSrc) return;
@@ -255,6 +261,20 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
 
             const data = await res.json();
             setExtractResult(data);
+            if (data?.questions?.length) {
+                const confidences = data.questions.map((q) => q.confidence ?? 0);
+                const avgConfidence = confidences.reduce((sum, v) => sum + v, 0) / confidences.length;
+                const warnings = data.questions
+                    .filter((q) => q.reason_if_invalid && !q.is_valid_math)
+                    .map((q) => q.reason_if_invalid)
+                    .filter(Boolean);
+                setOcrMetadata({
+                    ocr_confidence: avgConfidence,
+                    ocr_warnings: warnings,
+                    ocr_source: fileType === "pdf" ? "pdf" : "image",
+                    ocr_engine: "snap_v2",
+                });
+            }
             cache[requestHash] = data;
             saveCache(cache);
             setStatus("ready");
@@ -345,7 +365,16 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
             const res = await fetch(`/api/v1/solve_questions_batch?user_id=${userId}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ items, features_used: { ocr_used: true } }),
+                body: JSON.stringify({
+                    items,
+                    features_used: {
+                        ocr_used: true,
+                        ocr_confidence: ocrMetadata.ocr_confidence,
+                        ocr_warnings: ocrMetadata.ocr_warnings,
+                        ocr_source: ocrMetadata.ocr_source,
+                        ocr_engine: ocrMetadata.ocr_engine,
+                    },
+                }),
                 signal: controller.signal,
             });
             if (!res.ok) {

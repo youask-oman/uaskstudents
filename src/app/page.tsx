@@ -104,7 +104,7 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-bold mb-3 font-display text-[#111318] dark:text-white">3. Solve</h3>
                 <p className="text-sm text-[#616f89] dark:text-gray-400 leading-relaxed">
-                  Don't just get the answer. Our Socratic AI guides you through the logic, asking the right questions to ensure you learn.
+                  Do not just get the answer. Our Socratic AI guides you through the logic, asking the right questions to ensure you learn.
                 </p>
               </div>
             </div>
@@ -120,7 +120,7 @@ export default function Home() {
                   Engineered for Academic Excellence
                 </h2>
                 <p className="text-lg text-[#616f89] dark:text-gray-400">
-                  Beyond a calculator. We built tools to help you understand the 'why' behind every solution.
+                  Beyond a calculator. We built tools to help you understand the &lsquo;why&rsquo; behind every solution.
                 </p>
               </div>
               <div className="flex items-center gap-2 text-primary font-bold cursor-pointer hover:underline">

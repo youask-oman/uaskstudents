@@ -1,22 +1,86 @@
 
-import React from 'react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 
+type PlanStep = {
+    step: string;
+    summary: string;
+    why: string;
+};
+
+type MathLine = {
+    latex_lines: string[];
+};
+
+type SolutionStep = {
+    index: number | string;
+    title: string;
+    step_type: string;
+    explanation: string;
+    math: MathLine;
+    common_pitfalls?: string[];
+};
+
+type SolutionResult = {
+    final_answer_latex?: string;
+    final_answer_exact?: string;
+    extraneous_solutions_removed: string[];
+};
+
+type VerificationMethod = {
+    description: string;
+    work: MathLine;
+    conclusion: string;
+};
+
+type Visualization = {
+    included: boolean;
+    plots: {
+        title: string;
+        interpretation: string;
+    }[];
+};
+
+type SolutionData = {
+    meta: {
+        problem_type: string;
+        difficulty_estimate: string;
+    };
+    problem: {
+        goal: string;
+        latex?: string;
+        normalized_text?: string;
+    };
+    plan: PlanStep[];
+    solution: {
+        steps: SolutionStep[];
+        result: SolutionResult;
+    };
+    verification: {
+        methods_used: VerificationMethod[];
+    };
+    visualization: Visualization;
+};
+
 interface SolutionRendererProps {
-    data: any; // Using any for flexibility with the complex schema, or we could define the full interface
+    data: SolutionData;
 }
 
-const Latex = ({ children, block = false }: { children: string; block?: boolean }) => {
+const renderLatex = (value: string, block: boolean) => {
     try {
-        const html = katex.renderToString(children, {
+        return katex.renderToString(value, {
             throwOnError: false,
             displayMode: block
         });
-        return <span dangerouslySetInnerHTML={{ __html: html }} />;
-    } catch (e) {
-        return <span>{children}</span>;
+    } catch {
+        return null;
     }
+};
+
+const Latex = ({ children, block = false }: { children: string; block?: boolean }) => {
+    const html = renderLatex(children, block);
+    if (!html) return <span>{children}</span>;
+    return <span dangerouslySetInnerHTML={{ __html: html }} />;
 };
 
 export default function SolutionRenderer({ data }: SolutionRendererProps) {
@@ -57,7 +121,7 @@ export default function SolutionRenderer({ data }: SolutionRendererProps) {
                     Solution Plan
                 </h3>
                 <ol className="space-y-2">
-                    {data.plan.map((step: any) => (
+                    {data.plan.map((step) => (
                         <li key={step.step} className="flex gap-3 text-sm text-blue-900 dark:text-blue-200">
                             <span className="font-bold text-blue-400">{step.step}.</span>
                             <span>{step.summary} <span className="opacity-50 mx-1">—</span> <span className="italic opacity-70">{step.why}</span></span>
@@ -76,7 +140,7 @@ export default function SolutionRenderer({ data }: SolutionRendererProps) {
                 </div>
 
                 <div className="space-y-4">
-                    {solution.steps.map((step: any, idx: number) => (
+                    {solution.steps.map((step, idx) => (
                         <div key={idx} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
                             <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
                                 <h4 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-3">
@@ -145,7 +209,7 @@ export default function SolutionRenderer({ data }: SolutionRendererProps) {
                         <span className="material-symbols-outlined text-green-500">verified_user</span>
                         Verification
                     </h3>
-                    {verification.methods_used.map((method: any, idx: number) => (
+                    {verification.methods_used.map((method, idx) => (
                         <div key={idx} className="space-y-3">
                             <p className="text-sm text-slate-500 font-medium">{method.description}</p>
                             <div className="bg-slate-50 dark:bg-black/20 rounded p-3 text-sm text-slate-700 dark:text-slate-300 font-mono">

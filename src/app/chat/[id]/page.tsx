@@ -15,7 +15,7 @@ interface ChatMessage {
     structured_data?: Record<string, unknown> | null;
     model_used?: string;
     tokens_used?: number;
-    telemetry?: any; // Added telemetry
+    telemetry?: TelemetryPayload;
 }
 
 
@@ -25,42 +25,97 @@ interface ChatSession {
     subject?: string;
     created_at: string;
     messages: ChatMessage[];
-    is_saved?: boolean; // Added is_saved
+    is_saved?: boolean;
 }
+
+interface VisualSeriesPoint {
+    x?: number;
+    y?: number;
+}
+
+interface VisualSeries {
+    name?: string;
+    points?: VisualSeriesPoint[];
+}
+
+interface VisualPlot {
+    plot_id?: string;
+    plot_type?: string;
+    name?: string;
+    title?: string;
+    x_label?: string;
+    y_label?: string;
+    x_min?: number | string;
+    x_max?: number | string;
+    series?: VisualSeries[];
+    key_points?: Array<{
+        label?: string;
+        x?: number;
+        y?: number;
+    }>;
+}
+
+interface TelemetryPayload {
+    request_id?: string;
+    model?: string;
+    total_tokens?: number;
+    input_tokens?: number;
+    output_tokens?: number;
+    latency_ms_openai?: number;
+    latency_ms_total?: number;
+    cached_tokens?: number;
+    learning_mode?: string;
+    requested_mode?: string;
+    solve_tier?: string;
+}
+
+type SolveStep = NonNullable<SolveResponseV3["steps"]>[number];
+type SolvePlan = NonNullable<SolveResponseV3["plan"]>[number];
 
 interface SolveResponseV3 {
     problem: {
-        original_text: string;
-        normalized_text: string;
+        original_text?: string;
+        normalized_text?: string;
     };
-    classification: {
-        topic: string;
-        difficulty: string;
+    classification?: {
+        topic?: string;
+        difficulty?: string;
+        detected_tasks?: string[];
     };
-    steps: {
+    steps?: Array<{
         index: number;
-        title: string;
-        explanation: string;
-        math_latex: string;
-        rules_used: string[];
-    }[];
-    final_answer: {
-        answer_text: string;
+        title?: string;
+        explanation?: string;
+        math_latex?: string;
+        rules_used?: string[];
+        checkpoint?: {
+            question?: string;
+            answer?: string;
+        };
+    }>;
+    final_answer?: {
+        answer_text?: string;
+        answer_latex?: string;
     };
-    verification: {
-        method: string;
-        work_latex: string;
-        conclusion: string;
+    verification?: {
+        method?: string;
+        work_latex?: string;
+        conclusion?: string;
     };
-    visuals: {
-        plots: any[];
+    visuals?: {
+        plots?: VisualPlot[];
     };
-    quality: {
-        confidence: number;
-        common_mistakes: string[];
-        next_practice: string[];
+    quality?: {
+        confidence?: number;
     };
-    assumptions: string[];
+    assumptions?: string[];
+    plan?: Array<{ summary?: string; title?: string }>;
+    telemetry?: TelemetryPayload;
+    _telemetry?: TelemetryPayload;
+    _truncated?: boolean;
+    validation_errors?: string[];
+    message?: string;
+    error?: string;
 }
 
 export default function ChatPage({ params }: { params: Promise<{ id: string }> }) {
@@ -178,39 +233,39 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     const rawData = id === 'demo-1' ? DEMO_SOLUTION : (assistantMsg?.structured_data || null);
 
     // Type-safe(ish) casting for V3 Schema
-    const solutionData = rawData as any;
+    const solutionData = (rawData || null) as SolveResponseV3 | null;
 
     const sessionTokensUsed = session.messages.reduce((sum, message) => sum + (message.tokens_used ?? 0), 0);
     const totalTokensUsed = (monthlyTokensUsed ?? sessionTokensUsed) + 6000;
 
     // Helper to map V3 Visuals to Visual Component Props
-    const mapVisuals = (plots: any[]) => {
-        if (!plots) return [];
-        return plots.map(p => ({
-            id: p.plot_id || "plot_0",
-            type: "function_plot", // Force compatible type for now, or map p.plot_type
+    const mapVisuals = (plots: VisualPlot[]) => {
+        return plots.map((p, index) => ({
+            id: p.plot_id || `plot_${index}`,
+            type: "function_plot",
             title: p.title,
             axes: { x_label: p.x_label, y_label: p.y_label },
-            domain: { x_min_latex: String(p.x_min), x_max_latex: String(p.x_max) },
-            series: p.series?.map((s: any) => ({
+            domain: { x_min_latex: String(p.x_min ?? ""), x_max_latex: String(p.x_max ?? "") },
+            series: p.series?.map((s) => ({
                 label: s.name,
-                points: s.points?.map((pt: any) => ({ x: pt.x, y: pt.y })) || []
-            })) || [],
-            markers: p.key_points?.map((kp: any) => ({
+                points: s.points?.map((pt) => ({ x: pt.x ?? 0, y: pt.y ?? 0 })) ?? []
+            })) ?? [],
+            markers: p.key_points?.map((kp) => ({
                 label: kp.label,
                 x: kp.x,
                 y: kp.y
-            }))
+            })) ?? []
         }));
     };
 
-    const visualsData = solutionData?.visuals;
-    const plotsList = Array.isArray(visualsData) ? visualsData : (visualsData?.plots || []);
+    const visualsData = solutionData?.visuals?.plots ?? [];
     console.log("[DEBUG] solutionData:", solutionData);
     console.log("[DEBUG] visualsData:", visualsData);
-    console.log("[DEBUG] plotsList:", plotsList);
-    const visuals = mapVisuals(plotsList);
+    const visuals = mapVisuals(visualsData);
     console.log("[DEBUG] Mapped visuals:", visuals);
+    const planSummaries = (solutionData?.plan as SolvePlan[] | undefined)?.map((p) => p.summary || p.title).filter(Boolean) ?? [];
+    const fallbackPlan = (solutionData?.steps ?? []).map((s) => s.title).filter(Boolean);
+    const analysisPlanEntries = planSummaries.length > 0 ? planSummaries : fallbackPlan;
 
     const renderContent = () => {
         if (!solutionData) return <div className="p-8 text-center text-slate-500">No solution details found in this session.</div>;
@@ -242,9 +297,9 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         ) : null;
 
         // Extract Common Props
-        const steps = solutionData.steps || [];
+        const steps = (solutionData?.steps as SolveStep[]) || [];
         // Map steps to match StepsTab expectation (work array)
-        const mappedSteps = steps.map((s: any) => ({
+        const mappedSteps = steps.map((s) => ({
             ...s,
             work: s.math_latex ? [s.math_latex] : [], // Only math equations for right-side card
             rules_used: s.rules_used || [],
@@ -308,10 +363,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             }}
             stepsCount={(solutionData?.steps || []).length}
             // Map the high-level plan from the AI if available, otherwise fall back to step titles
-            analysisPlan={(
-                solutionData?.plan?.map((p: any) => p.summary || p.title) ||
-                (solutionData?.steps || []).map((s: any) => s.title)
-            ).filter(Boolean)}
+            analysisPlan={analysisPlanEntries}
             finalAnswer={finalAnswerValue}
             finalAnswerMode={finalAnswerMode as "inline" | "prose"}
             confidence={solutionData?.quality?.confidence ? Math.round(solutionData.quality.confidence * 100) : 99}

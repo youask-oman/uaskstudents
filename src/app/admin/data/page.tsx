@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 export default function AdminDataPage() {
     const [tables, setTables] = useState<string[]>([]);
     const [selectedTable, setSelectedTable] = useState<string>("");
-    const [rows, setRows] = useState<any[]>([]);
+    const [rows, setRows] = useState<Record<string, unknown>[]>([]);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [filter, setFilter] = useState("");

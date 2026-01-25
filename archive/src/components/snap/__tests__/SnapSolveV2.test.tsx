@@ -1,21 +1,30 @@
 import React from "react";
 import { render, fireEvent, waitFor } from "@testing-library/react";
 import SnapSolveV2 from "../SnapSolveV2";
+import type { CropArea } from "../snapSolveUtils";
 
 jest.mock("@/components/math/UnifiedMathRenderer", () => ({
     __esModule: true,
     default: ({ content }: { content: string }) => <span>{content}</span>,
 }));
 
-jest.mock("../CropWorkspace", () => ({
-    __esModule: true,
-    default: ({ onCropComplete }: { onCropComplete: (area: any) => void }) => {
+jest.mock("../CropWorkspace", () => {
+    type CropWorkspaceProps = {
+        onCropComplete: (area: CropArea) => void;
+    };
+
+    const CropWorkspaceMock = ({ onCropComplete }: CropWorkspaceProps) => {
         React.useEffect(() => {
             onCropComplete({ x: 0, y: 0, width: 100, height: 50 });
         }, [onCropComplete]);
         return <div data-testid="crop-workspace" />;
-    },
-}));
+    };
+
+    return {
+        __esModule: true,
+        default: CropWorkspaceMock,
+    };
+});
 
 jest.mock("../snapSolveUtils", () => ({
     ...jest.requireActual("../snapSolveUtils"),
@@ -28,7 +37,7 @@ jest.mock("../snapSolveUtils", () => ({
 
 describe("SnapSolveV2", () => {
     beforeEach(() => {
-        global.fetch = jest.fn().mockResolvedValue({
+        const fetchResponse = {
             ok: true,
             json: async () => ({
                 ok: true,
@@ -39,7 +48,8 @@ describe("SnapSolveV2", () => {
                 ],
                 cache_hit: false
             }),
-        }) as any;
+        };
+        global.fetch = jest.fn().mockResolvedValue(fetchResponse) as jest.MockedFunction<typeof global.fetch>;
         global.URL.createObjectURL = jest.fn().mockReturnValue("blob:preview");
         global.URL.revokeObjectURL = jest.fn();
     });

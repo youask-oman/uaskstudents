@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import dynamicLoader from "next/dynamic";
 import UnifiedMathRenderer, { UnifiedMathMode } from "./UnifiedMathRenderer";
 import { setRenderEngineUsed } from "./mathTelemetry";
 
@@ -40,12 +41,10 @@ export default function MathRendererSwitch({
     }
 
     if (engine === "katex") {
-        const LegacyMathRenderer = require("../MathRenderer").default as React.ComponentType<{
-            content?: string | number;
-            inline?: boolean;
-            className?: string;
-            forceMath?: boolean;
-        }>;
+        const LegacyMathRenderer = dynamicLoader(
+            () => import("../MathRenderer").then((mod) => mod.default),
+            { ssr: false }
+        );
         const inline = mode === "inline";
         const forceMath = mode !== "prose";
         return (

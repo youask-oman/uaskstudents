@@ -2,10 +2,25 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+interface SolveTrace {
+    request_id?: string;
+    user_id?: string;
+    ui_goal?: string;
+    ui_style?: string;
+    schema_name?: string;
+    input_tokens?: number;
+    output_tokens?: number;
+    deduct_committed?: boolean;
+    problem_text?: string;
+    [key: string]: unknown;
+}
+
+type UserData = Record<string, unknown> | null;
+
 export default function AdminLogsPage() {
-    const [traces, setTraces] = useState<any[]>([]);
-    const [selectedTrace, setSelectedTrace] = useState<any | null>(null);
-    const [relatedUserData, setRelatedUserData] = useState<any | null>(null);
+    const [traces, setTraces] = useState<SolveTrace[]>([]);
+    const [selectedTrace, setSelectedTrace] = useState<SolveTrace | null>(null);
+    const [relatedUserData, setRelatedUserData] = useState<UserData>(null);
     const [isLoadingUserData, setIsLoadingUserData] = useState(false);
     const [filter, setFilter] = useState("");
     const [errorMessage, setErrorMessage] = useState<string | null>(null);

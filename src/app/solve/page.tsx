@@ -9,9 +9,9 @@ import { MODES, ModeId, Suggestion } from "@/lib/modes";
 import SnapSolveV2 from "@/components/snap/SnapSolveV2";
 
 // Token validation imports
-import { estimateTokens, TokenEstimate } from "@/lib/tokenEstimator";
-import { detectMultiQuestion, MultiQuestionResult, autoSplitQuestions } from "@/lib/multiQuestionDetector";
-import { MAX_INPUT_CHARS, MAX_INPUT_TOKENS, willRequestFit } from "@/lib/tokenBudget";
+import { estimateTokens } from "@/lib/tokenEstimator";
+import { detectMultiQuestion, autoSplitQuestions } from "@/lib/multiQuestionDetector";
+import { TokenBudgetPolicy, willRequestFit } from "@/lib/tokenBudget";
 import InputStatus from "@/components/InputStatus";
 import SplitModal from "@/components/SplitModal";
 
@@ -26,6 +26,8 @@ import SegmentedControl from "@/components/ui/SegmentedControl";
 import UsageMeter from "@/components/ui/UsageMeter";
 import CostPreview from "@/components/solve/CostPreview";
 import { SubscriptionResponse, fetchSubscription, calculateSolveCost } from "@/lib/subscription";
+import { TokenPolicy, fetchTokenPolicy } from "@/lib/tokenPolicy";
+import ThemeToggle from "@/components/ThemeToggle";
 
 interface ChatSession {
     id: number;
@@ -33,12 +35,67 @@ interface ChatSession {
     created_at: string;
 }
 
+interface ActiveUser {
+    id: number;
+    avatar_url?: string;
+    full_name: string;
+    learning_interests?: string[];
+}
+
+interface ClarifierOption {
+    label: string;
+    value: string;
+}
+
+interface ClarifierQuestion {
+    question: string;
+    options: ClarifierOption[];
+}
+
+interface VoiceArtifact {
+    id: number;
+    transcript_raw?: string;
+    normalized_math_text?: string;
+    clarifier_question?: ClarifierQuestion;
+}
+
+interface StreamingTelemetry {
+    model?: string;
+    total_tokens?: number;
+    latency_ms_openai?: number;
+    truncated?: boolean;
+}
+
+interface OcrMetadata {
+    ocr_confidence: number;
+    ocr_warnings: string[];
+    ocr_source: string;
+    ocr_engine: string;
+}
+
+interface VoiceFeatures {
+    voice_confirmed: boolean;
+    voice_used?: boolean;
+    voice_ambiguity_flags?: string[];
+    voice_clarifier_question?: string;
+    voice_stt_provider?: string;
+    voice_transcript_confidence?: number;
+}
+
+type FeaturesUsed = Partial<OcrMetadata & VoiceFeatures> & {
+    ocr_used?: boolean;
+    ocr_engine?: string;
+    ocr_source?: string;
+    ocr_warnings?: string[];
+    voice_used?: boolean;
+};
+
 export default function DashboardPage() {
     const [activeTab, setActiveTab] = useState<'text' | 'snap' | 'voice'>('text');
     const [history, setHistory] = useState<ChatSession[]>([]);
     const [query, setQuery] = useState("sqrt(x+5) = x - 1");
     const [isSolving, setIsSolving] = useState(false);
-    const [onlineUsers, setOnlineUsers] = useState<any[]>([]);
+    const [onlineUsers, setOnlineUsers] = useState<ActiveUser[]>([]);
     const [isPublic, setIsPublic] = useState(false);
 
     const [activeMode, setActiveMode] = useState<ModeId | null>(null);
@@ -50,12 +107,9 @@ export default function DashboardPage() {
     // Voice State
     const [voiceStage, setVoiceStage] = useState<'idle' | 'recording' | 'processing' | 'review' | 'error'>('idle');
     const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-    const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
-    const [voiceSessionId, setVoiceSessionId] = useState<number | null>(null);
-    const [voiceArtifact, setVoiceArtifact] = useState<any>(null);
+    const [voiceArtifact, setVoiceArtifact] = useState<VoiceArtifact | null>(null);
     const [recordingTime, setRecordingTime] = useState(0);
-    const [voiceSubject, setVoiceSubject] = useState("Mathematics");
-    const [voiceDifficulty, setVoiceDifficulty] = useState("High School / AP");
+    const voiceSubject = "Mathematics";
     const [formattingEnabled, setFormattingEnabled] = useState(true);
     const [solveProgress, setSolveProgress] = useState(0);
 
@@ -70,32 +124,63 @@ export default function DashboardPage() {
     // Streaming Solve States (Part F1)
     const [streamingContent, setStreamingContent] = useState("");
     const [currentStage, setCurrentStage] = useState("");
-    const [streamingTelemetry, setStreamingTelemetry] = useState<any>(null);
+    const [streamingTelemetry, setStreamingTelemetry] = useState<StreamingTelemetry | null>(null);
     const [solveStartTime, setSolveStartTime] = useState<number | null>(null);
 
     // Tier-Aware Solve State
-    const [selectedGoal, setSelectedGoal] = useState<'solve' | 'study'>('solve');
+    const selectedGoal = 'solve';
     const [selectedAnswerStyle, setSelectedAnswerStyle] = useState<'quick' | 'tutor'>('quick');
     const [subscription, setSubscription] = useState<SubscriptionResponse | null>(null);
     const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
     const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
+    const [tokenPolicy, setTokenPolicy] = useState<TokenPolicy | null>(null);
+    const [tokenPolicyLoaded, setTokenPolicyLoaded] = useState(false);
+    const [tokenPolicyError, setTokenPolicyError] = useState<string | null>(null);
+    const ocrMetadata: OcrMetadata = {
+        ocr_confidence: 0,
+        ocr_warnings: [],
+        ocr_source: "image",
+        ocr_engine: "snap_v2",
+    };
+    const [voiceFeatures, setVoiceFeatures] = useState<VoiceFeatures>({
+        voice_confirmed: false,
+    });
 
     // Compute token estimate and multi-question detection
     const tokenEstimate = useMemo(() => estimateTokens(query), [query]);
     const multiQuestionResult = useMemo(() => detectMultiQuestion(query), [query]);
-    const requestFit = useMemo(() => willRequestFit(tokenEstimate.tokens), [tokenEstimate.tokens]);
+    const tokenPolicyReady = tokenPolicyLoaded && !tokenPolicyError && !!tokenPolicy;
+    const textInputMaxTokens = tokenPolicy?.text.input_max ?? 1;
+    const textInputMaxChars = tokenPolicy?.text.input_max_chars ?? 1;
+    const requestBudget: TokenBudgetPolicy | null = useMemo(() => {
+        if (!tokenPolicyReady || !tokenPolicy) return null;
+        return {
+            textInputMax: tokenPolicy.text.input_max,
+            textInputMaxChars: tokenPolicy.text.input_max_chars,
+            systemAndSchemaBudget: tokenPolicy.request.system_and_schema_budget,
+            expectedOutputBudget: tokenPolicy.request.expected_output_budget,
+        };
+    }, [tokenPolicyReady, tokenPolicy]);
+    const requestFit = useMemo(
+        () => (requestBudget ? willRequestFit(tokenEstimate.tokens, requestBudget) : { fits: false, estimatedTotal: 0, limit: 0, headroom: 0 }),
+        [tokenEstimate.tokens, requestBudget]
+    );
 
     // Determine if solve should be blocked
-    const isInputTooLong = tokenEstimate.tokens > MAX_INPUT_TOKENS || query.length > MAX_INPUT_CHARS;
+    const isInputTooLong = tokenPolicyReady
+        ? tokenEstimate.tokens > textInputMaxTokens || query.length > textInputMaxChars
+        : true;
     const isRequestTooLarge = !requestFit.fits;
     const hasMultipleQuestions = multiQuestionResult.isMultiple && multiQuestionResult.confidence !== 'low';
-    const tokenBlockReason = isInputTooLong
-        ? "Input too long. Please split into smaller parts."
-        : isRequestTooLarge
-            ? "Request too large for AI context. Please shorten."
-            : hasMultipleQuestions
-                ? "Multiple questions detected. One at a time please."
-                : null;
+    const tokenBlockReason = !tokenPolicyReady
+        ? "Token policy unavailable. Please refresh."
+        : isInputTooLong
+            ? "Input too long. Please split into smaller parts."
+            : isRequestTooLarge
+                ? "Request too large for AI context. Please shorten."
+                : hasMultipleQuestions
+                    ? "Multiple questions detected. One at a time please."
+                    : null;
 
     const router = useRouter();
     const subscriptionReady = subscriptionLoaded && !subscriptionError && !!subscription;
@@ -153,10 +238,24 @@ export default function DashboardPage() {
                 setSubscriptionLoaded(true);
             }
         };
+        const loadTokenPolicy = async () => {
+            try {
+                const policy = await fetchTokenPolicy();
+                setTokenPolicy(policy);
+                setTokenPolicyError(null);
+                setTokenPolicyLoaded(true);
+            } catch (e) {
+                const message = e instanceof Error ? e.message : "Token policy unavailable";
+                console.warn("Failed to load token policy:", message);
+                setTokenPolicyError("Unable to load token policy. Please refresh or contact support.");
+                setTokenPolicyLoaded(true);
+            }
+        };
 
         fetchHistory();
         fetchOnline();
         loadSubscription();
+        loadTokenPolicy();
         const interval = setInterval(fetchOnline, 30000);
         return () => clearInterval(interval);
     }, [router]);
@@ -198,11 +297,15 @@ export default function DashboardPage() {
     };
 
     useEffect(() => {
-        let timer: any;
+        let timer: ReturnType<typeof setInterval> | undefined;
         if (voiceStage === 'recording') {
             timer = setInterval(() => setRecordingTime(prev => prev + 1), 1000);
         }
-        return () => clearInterval(timer);
+        return () => {
+            if (timer) {
+                clearInterval(timer);
+            }
+        };
     }, [voiceStage]);
 
     const startRecording = async () => {
@@ -220,7 +323,6 @@ export default function DashboardPage() {
                 await handleAudioUpload(audioBlob);
             };
 
-            setAudioChunks(chunks);
             setMediaRecorder(recorder);
             recorder.start();
             setVoiceStage('recording');
@@ -290,6 +392,7 @@ export default function DashboardPage() {
                     setVoiceStage('error');
                 }
             } catch (err) {
+                console.error(err);
                 clearInterval(interval);
                 setVoiceStage('error');
             }
@@ -305,6 +408,7 @@ export default function DashboardPage() {
             if (mathInputRef.current) mathInputRef.current.setValue(data.normalized_math_text);
             setVoiceStage('review');
         } catch (err) {
+            console.error(err);
             setVoiceStage('error');
         }
     };
@@ -318,6 +422,11 @@ export default function DashboardPage() {
             return;
         }
         setIsSolving(true);
+        setVoiceFeatures((prev) => ({
+            ...prev,
+            voice_confirmed: true,
+            voice_used: true,
+        }));
         try {
             await fetch(`/api/v1/voice/artifacts/${voiceArtifact.id}/confirm`, {
                 method: 'POST',
@@ -327,15 +436,19 @@ export default function DashboardPage() {
                     confirmed_normalized_math_text: query
                 })
             });
-            await handleSolve();
+            await handleSolve(undefined, { voice_confirmed: true, voice_used: true });
         } catch (err) {
             console.error(err);
             setIsSolving(false);
         }
     };
 
-    const handleSolve = async (overrideText?: string) => {
+    const handleSolve = async (overrideText?: string, featureOverrides?: FeaturesUsed) => {
         if (isSolving) return;
+        if (!tokenPolicyReady) {
+            setInputError("Token policy unavailable. Please refresh.");
+            return;
+        }
 
         const userId = localStorage.getItem("user_id") || "1";
         const mathFieldValue = mathModeEnabled && mathInputRef.current?.getValue
@@ -362,6 +475,13 @@ export default function DashboardPage() {
                 : '';
 
             console.log(`[SOLVER_STREAM] Host: ${window.location.hostname}, Port: ${window.location.port} -> Fetching from ${baseUrl}/api/v1/solve_v3_stream`);
+            const featuresUsed: FeaturesUsed = {
+                ocr_used: activeTab === 'snap',
+                voice_used: activeTab === 'voice',
+                ...(activeTab === 'snap' ? ocrMetadata : {}),
+                ...(activeTab === 'voice' ? voiceFeatures : {}),
+                ...featureOverrides,
+            };
             const response = await fetch(`${baseUrl}/api/v1/solve_v3_stream?user_id=${encodeURIComponent(userId)}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -381,10 +501,7 @@ export default function DashboardPage() {
                         region_state_province: trustedProfile?.region_state_province || undefined
                     },
                     // Feature flags for accounting (not sent to OpenAI)
-                    features_used: {
-                        ocr_used: activeTab === 'snap',
-                        voice_used: activeTab === 'voice'
-                    }
+                    features_used: featuresUsed
                 })
             });
 
@@ -498,12 +615,9 @@ export default function DashboardPage() {
                                 {/* Goal Toggle */}
                                 <SegmentedControl
                                     label="Goal"
-                                    options={[
-                                        { value: "solve", label: "Solve", icon: "bolt" },
-                                        { value: "study", label: "Study", icon: "school", tooltip: "Breaks steps into smaller chunks with check-ins" }
-                                    ]}
-                                    value={selectedGoal}
-                                    onChange={(v) => setSelectedGoal(v as 'solve' | 'study')}
+                                    options={[{ value: "solve", label: "Solve", icon: "bolt" }]}
+                                    value="solve"
+                                    onChange={() => {}}
                                     size="sm"
                                     className="solve-segmented"
                                 />
@@ -732,15 +846,15 @@ export default function DashboardPage() {
                                                         value={query}
                                                         onChange={(value) => {
                                                             // Enforce character limit
-                                                            if (value.length <= MAX_INPUT_CHARS) {
+                                                            if (textInputMaxChars <= 0 || value.length <= textInputMaxChars) {
                                                                 setQuery(value);
                                                                 if (inputError) setInputError(null);
                                                             }
                                                         }}
-                                                        maxLength={MAX_INPUT_CHARS}
+                                                        maxLength={textInputMaxChars || undefined}
                                                         onPaste={(pastedText) => {
-                                                            if (pastedText.length > MAX_INPUT_CHARS) {
-                                                                setInputError(`Pasted text was truncated to ${MAX_INPUT_CHARS} characters.`);
+                                                            if (textInputMaxChars > 0 && pastedText.length > textInputMaxChars) {
+                                                                setInputError(`Pasted text was truncated to ${textInputMaxChars} characters.`);
                                                             }
                                                             // Check for multi-question on paste
                                                             const checkResult = detectMultiQuestion(pastedText);
@@ -757,18 +871,18 @@ export default function DashboardPage() {
                                                         onChange={(event) => {
                                                             const value = event.target.value;
                                                             // Enforce character limit
-                                                            if (value.length <= MAX_INPUT_CHARS) {
+                                                            if (textInputMaxChars <= 0 || value.length <= textInputMaxChars) {
                                                                 setQuery(value);
                                                                 if (inputError) setInputError(null);
                                                             }
                                                         }}
                                                         onPaste={(event) => {
                                                             const pastedText = event.clipboardData.getData('text');
-                                                            if (pastedText.length > MAX_INPUT_CHARS) {
+                                                            if (textInputMaxChars > 0 && pastedText.length > textInputMaxChars) {
                                                                 event.preventDefault();
-                                                                const truncated = pastedText.slice(0, MAX_INPUT_CHARS);
+                                                                const truncated = pastedText.slice(0, textInputMaxChars);
                                                                 setQuery(truncated);
-                                                                setInputError(`Pasted text was truncated to ${MAX_INPUT_CHARS} characters.`);
+                                                                setInputError(`Pasted text was truncated to ${textInputMaxChars} characters.`);
                                                             }
                                                             // Check for multi-question on paste
                                                             const checkResult = detectMultiQuestion(pastedText);
@@ -777,7 +891,7 @@ export default function DashboardPage() {
                                                                 setTimeout(() => setShowSplitModal(true), 500);
                                                             }
                                                         }}
-                                                        maxLength={MAX_INPUT_CHARS}
+                                                        maxLength={textInputMaxChars || undefined}
                                                         className="flex-1 p-4 bg-transparent outline-none text-slate-700 dark:text-slate-200 text-lg leading-relaxed resize-none min-h-[180px]"
                                                         style={{
                                                             whiteSpace: 'pre-wrap',
@@ -794,6 +908,8 @@ export default function DashboardPage() {
                                                     <InputStatus
                                                         text={query}
                                                         tokenEstimate={tokenEstimate}
+                                                        maxInputTokens={textInputMaxTokens}
+                                                        maxInputChars={textInputMaxChars}
                                                         multiQuestionResult={multiQuestionResult}
                                                         onSplitClick={() => {
                                                             setSuggestedSplits(autoSplitQuestions(query));
@@ -873,7 +989,7 @@ export default function DashboardPage() {
                                                 </div>
                                                 <div>
                                                     <h3 className="text-lg font-bold">Tap to Start</h3>
-                                                    <p className="text-sm text-slate-500">I'll transcribe your math speech into LaTeX.</p>
+                                                    <p className="text-sm text-slate-500">I&apos;ll transcribe your math speech into LaTeX.</p>
                                                     <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mt-2">
                                                         Using YouAsk voice AI to script
                                                     </p>
@@ -941,7 +1057,7 @@ export default function DashboardPage() {
                                                             </div>
                                                         </div>
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 ml-14">
-                                                            {voiceArtifact.clarifier_question.options.map((opt: any, idx: number) => {
+                                                            {voiceArtifact.clarifier_question.options.map((opt: ClarifierOption, idx: number) => {
                                                                 const isSelected = query === opt.value;
                                                                 return (
                                                                     <button
@@ -1076,7 +1192,7 @@ export default function DashboardPage() {
                                                 </div>
                                                 <div>
                                                     <h3 className="text-lg font-bold">Something went wrong</h3>
-                                                    <p className="text-sm text-slate-500">I couldn't process your audio right now.</p>
+                                                    <p className="text-sm text-slate-500">I couldn&apos;t process your audio right now.</p>
                                                 </div>
                                                 <button onClick={() => setVoiceStage('idle')} className="text-primary font-bold hover:underline">Try Again</button>
                                             </div>
@@ -1157,7 +1273,7 @@ export default function DashboardPage() {
                                 </li>
                                 <li className="flex gap-3">
                                     <span className="w-5 h-5 bg-primary text-white text-[10px] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
-                                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed"><strong>Include diagrams.</strong> If the problem references a graph, make sure it's in the shot.</p>
+                                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed"><strong>Include diagrams.</strong> If the problem references a graph, make sure it&apos;s in the shot.</p>
                                 </li>
                             </ul>
                         </div>
@@ -1320,13 +1436,14 @@ export default function DashboardPage() {
             <SplitModal
                 isOpen={showSplitModal}
                 onClose={() => setShowSplitModal(false)}
-                originalText={query}
                 splits={suggestedSplits}
-                onSelectQuestion={(question, _index) => {
+                onSelectQuestion={(question) => {
                     setQuery(question);
                     setShowSplitModal(false);
                 }}
             />
+
+            <ThemeToggle />
         </div>
     );
 }

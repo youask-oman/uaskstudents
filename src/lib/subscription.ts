@@ -14,7 +14,7 @@ export interface SubscriptionPlan {
         ocr_add: number;
         voice_add: number;
     };
-    features: Record<string, any>;
+    features: Record<string, unknown>;
 }
 
 export interface SubscriptionUsage {

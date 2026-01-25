@@ -1,45 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useTheme } from "@/hooks/useTheme";
 
 export default function TopNavBar() {
-    const [isDark, setIsDark] = useState(false);
-    const [user, setUser] = useState<{ name: string, avatar: string } | null>(null);
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-    useEffect(() => {
-        // Check initial preference
-        if (document.documentElement.classList.contains("dark") ||
-            (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            setIsDark(true);
-            document.documentElement.classList.add('dark');
-        } else {
-            setIsDark(false);
-            document.documentElement.classList.remove('dark');
-        }
-
-        // Check Auth
+    const { isDark, toggleTheme } = useTheme();
+    const getInitialUser = () => {
+        if (typeof window === "undefined") return null;
         const token = localStorage.getItem("token");
-        if (token) {
-            setUser({
-                name: localStorage.getItem("user_name") || "User",
-                avatar: localStorage.getItem("user_avatar") || ""
-            });
-        }
-    }, []);
-
-    const toggleTheme = () => {
-        if (isDark) {
-            document.documentElement.classList.remove("dark");
-            localStorage.theme = 'light';
-            setIsDark(false);
-        } else {
-            document.documentElement.classList.add("dark");
-            localStorage.theme = 'dark';
-            setIsDark(true);
-        }
+        if (!token) return null;
+        return {
+            name: localStorage.getItem("user_name") || "User",
+            avatar: localStorage.getItem("user_avatar") || ""
+        };
     };
+    const [user, setUser] = useState<{ name: string, avatar: string } | null>(getInitialUser);
 
     const handleLogout = () => {
         localStorage.removeItem("token");
@@ -57,6 +33,7 @@ export default function TopNavBar() {
         <header className="sticky top-0 z-50 w-full border-b border-[#f0f2f4] dark:border-slate-800 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md px-4 md:px-10 py-3 transition-colors duration-200">
             <div className="max-w-[1200px] mx-auto flex items-center justify-between">
                 <Link href="/" className="flex items-center gap-3 text-primary">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={isDark ? "/logo-dark.png" : "/logo.png"} alt="uask.ai" className="h-8 w-auto" />
                     <h2 className="text-[#111318] dark:text-white text-xl font-bold leading-tight tracking-tight font-display">
                         uask.ai
@@ -82,17 +59,24 @@ export default function TopNavBar() {
 
                     {user ? (
                         <div className="flex items-center gap-3">
-                            <Link href="/solve">
-                                <button className="hidden sm:flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary text-sm font-bold hover:bg-primary/20 rounded-lg transition-colors">
-                                    <span className="material-symbols-outlined text-[18px]">dashboard</span>
-                                    Workspace
-                                </button>
-                            </Link>
+                                    <Link href="/solve">
+                                        <button className="hidden sm:flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary text-sm font-bold hover:bg-primary/20 rounded-lg transition-colors">
+                                            <span className="material-symbols-outlined text-[18px]">dashboard</span>
+                                            Workspace
+                                        </button>
+                                    </Link>
 
-                            <div className="relative group">
-                                <button className="h-9 w-9 rounded-full bg-gradient-to-tr from-primary to-purple-500 text-white flex items-center justify-center font-bold text-sm border-2 border-white dark:border-slate-800">
-                                    {user.avatar ? <img src={user.avatar} className="rounded-full w-full h-full object-cover" /> : user.name.charAt(0)}
-                                </button>
+                                    <div className="relative group">
+                                        <button className="h-9 w-9 rounded-full bg-gradient-to-tr from-primary to-purple-500 text-white flex items-center justify-center font-bold text-sm border-2 border-white dark:border-slate-800">
+                                            {user.avatar ? (
+                                                <>
+                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                    <img src={user.avatar} className="rounded-full w-full h-full object-cover" alt="User Avatar" />
+                                                </>
+                                            ) : (
+                                                user.name.charAt(0)
+                                            )}
+                                        </button>
                                 {/* Dropdown */}
                                 <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right z-50">
                                     <div className="p-3 border-b border-gray-100 dark:border-slate-800">

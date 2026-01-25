@@ -162,7 +162,7 @@ function countEquationLines(text: string): number {
 /**
  * Quick check if input exceeds token limit
  */
-export function isInputTooLong(text: string, maxTokens: number = 1000): boolean {
+export function isInputTooLong(text: string, maxTokens: number): boolean {
     const estimate = estimateTokens(text);
     return estimate.tokens > maxTokens;
 }
@@ -170,11 +170,18 @@ export function isInputTooLong(text: string, maxTokens: number = 1000): boolean 
 /**
  * Get a user-friendly status message for token estimate
  */
-export function getTokenStatus(estimate: TokenEstimate, maxTokens: number = 1000): {
+export function getTokenStatus(estimate: TokenEstimate, maxTokens: number): {
     status: 'ok' | 'warning' | 'error';
     message: string;
     percentage: number;
 } {
+    if (!maxTokens || maxTokens <= 0) {
+        return {
+            status: 'error',
+            message: 'Token policy unavailable.',
+            percentage: 0,
+        };
+    }
     const percentage = Math.round((estimate.tokens / maxTokens) * 100);
 
     if (estimate.tokens > maxTokens) {

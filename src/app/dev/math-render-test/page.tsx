@@ -79,16 +79,18 @@ const CASES: CaseItem[] = [
 
 export default function MathRenderTestPage() {
     const router = useRouter();
-    const [isAuthorized, setIsAuthorized] = useState(false);
+    const [isAuthorized] = useState(() => {
+        if (typeof window === "undefined") return false;
+        return localStorage.getItem("user_role") === "admin";
+    });
 
     useEffect(() => {
+        if (isAuthorized) return;
         const role = localStorage.getItem("user_role");
         if (role !== "admin") {
             router.push("/login");
-            return;
         }
-        setIsAuthorized(true);
-    }, [router]);
+    }, [isAuthorized, router]);
 
     if (!isAuthorized) return null;
 

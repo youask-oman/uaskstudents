@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Image from "next/image";
 import Link from 'next/link';
 import MathRenderer from '../math/MathRendererSwitch';
 import WorkspaceTabs from './WorkspaceTabs';
@@ -76,10 +77,10 @@ export default function WorkspaceLayout({
     initialSaved = false,
     telemetry
 }: WorkspaceLayoutProps) {
-    const [isPlanOpen, setIsPlanOpen] = React.useState(true);
     const [isSaved, setIsSaved] = React.useState(initialSaved);
     const [isBookmarked, setIsBookmarked] = React.useState(false);
     const [isMetricsOpen, setIsMetricsOpen] = React.useState(false);
+    const messageCount = messages.length;
 
     const handleSave = async () => {
         // Optimistic toggle
@@ -100,12 +101,12 @@ export default function WorkspaceLayout({
     return (
         <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background-light dark:bg-background-dark font-display text-[#111318] dark:text-white transition-colors duration-200">
             {/* ... (Header Omitted) ... */}
-            <header className="sticky top-0 z-50 flex items-center justify-between whitespace-nowrap border-b border-solid border-[#e5e7eb] dark:border-[#2a303c] bg-white dark:bg-[#0d1117] px-6 lg:px-10 py-3">
+            <header data-message-count={messageCount} className="sticky top-0 z-50 flex items-center justify-between whitespace-nowrap border-b border-solid border-[#e5e7eb] dark:border-[#2a303c] bg-white dark:bg-[#0d1117] px-6 lg:px-10 py-3">
                 {/* Left: Logo + Nav */}
                 <div className="flex items-center gap-8">
                     {/* Logo */}
                     <Link href="/dashboard" className="flex items-center gap-2">
-                        <img src="/logo.png" alt="uask.ai" className="h-8 w-auto" />
+                        <Image src="/logo.png" alt="uask.ai" width={160} height={40} className="h-8 w-auto" priority />
                         <span className="text-lg font-bold tracking-tight text-[#111318] dark:text-white">uask.ai</span>
                     </Link>
 

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
+import Image from "next/image";
 
 interface AdminNote {
     id: number;
@@ -41,34 +42,36 @@ interface ActivityItem {
     timestamp: string;
 }
 
+type GenericRecord = Record<string, unknown>;
+
 interface FullUserData {
-    user: Record<string, any>;
-    subscription: Record<string, any>;
-    plan: Record<string, any>;
-    usage_ledger: any[];
-    usage_logs: any[];
-    payments: any[];
-    quota_overrides: any[];
-    admin_notes: any[];
-    sessions: any[];
-    messages: any[];
-    uploads: any[];
-    crops: any[];
-    ocr_jobs: any[];
-    ocr_artifacts: any[];
-    ocr_questions: any[];
-    ocr_choices: any[];
-    ocr_figures: any[];
-    ocr_confirmations: any[];
-    ocr_audit_events: any[];
-    voice_sessions: any[];
-    voice_audios: any[];
-    voice_jobs: any[];
-    voice_artifacts: any[];
-    voice_confirmations: any[];
-    saved_solutions: any[];
-    request_events: any[];
-    device_signup_logs: any[];
+    user: GenericRecord;
+    subscription: GenericRecord;
+    plan: GenericRecord;
+    usage_ledger: GenericRecord[];
+    usage_logs: GenericRecord[];
+    payments: GenericRecord[];
+    quota_overrides: GenericRecord[];
+    admin_notes: GenericRecord[];
+    sessions: GenericRecord[];
+    messages: GenericRecord[];
+    uploads: GenericRecord[];
+    crops: GenericRecord[];
+    ocr_jobs: GenericRecord[];
+    ocr_artifacts: GenericRecord[];
+    ocr_questions: GenericRecord[];
+    ocr_choices: GenericRecord[];
+    ocr_figures: GenericRecord[];
+    ocr_confirmations: GenericRecord[];
+    ocr_audit_events: GenericRecord[];
+    voice_sessions: GenericRecord[];
+    voice_audios: GenericRecord[];
+    voice_jobs: GenericRecord[];
+    voice_artifacts: GenericRecord[];
+    voice_confirmations: GenericRecord[];
+    saved_solutions: GenericRecord[];
+    request_events: GenericRecord[];
+    device_signup_logs: GenericRecord[];
 }
 
 const formatDateTime = (value?: string) => {
@@ -78,14 +81,14 @@ const formatDateTime = (value?: string) => {
     return date.toLocaleString();
 };
 
-const renderFieldValue = (value: any) => {
+const renderFieldValue = (value: unknown) => {
     if (value === null || value === undefined || value === "") return "n/a";
     if (typeof value === "boolean") return value ? "true" : "false";
     if (typeof value === "object") return JSON.stringify(value);
     return String(value);
 };
 
-const renderShortText = (value: any, maxLength = 240) => {
+const renderShortText = (value: unknown, maxLength = 240) => {
     const text = renderFieldValue(value);
     if (text === "n/a") return text;
     if (text.length <= maxLength) return text;
@@ -114,7 +117,7 @@ const formatCreditsLabel = (credits?: number) => {
     return `${credits.toLocaleString()} credits / mo`;
 };
 
-const FieldGrid = ({ data, title }: { data: Record<string, any> | undefined; title: string }) => {
+const FieldGrid = ({ data, title }: { data: GenericRecord | undefined; title: string }) => {
     const entries = Object.entries(data || {});
     return (
         <section className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl">
@@ -132,14 +135,16 @@ const FieldGrid = ({ data, title }: { data: Record<string, any> | undefined; tit
     );
 };
 
+type TableRow = GenericRecord & { id?: string | number };
+
 const DataTable = ({
     title,
     rows,
     columns
 }: {
     title: string;
-    rows: any[];
-    columns: { key: string; label: string; render?: (value: any, row: any) => string }[];
+    rows: TableRow[];
+    columns: { key: string; label: string; render?: (value: unknown, row: TableRow) => string }[];
 }) => (
     <section className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl">
         <div className="flex items-center justify-between mb-4">
@@ -161,15 +166,18 @@ const DataTable = ({
                             <td colSpan={columns.length} className="py-4 text-slate-500">No records.</td>
                         </tr>
                     )}
-                    {rows.map((row, index) => (
-                        <tr key={row.id ?? index} className="border-b border-slate-200 dark:border-slate-800">
-                            {columns.map((col) => (
-                                <td key={col.key} className="py-2 pr-4">
-                                    {col.render ? col.render(row[col.key], row) : renderFieldValue(row[col.key])}
-                                </td>
-                            ))}
-                        </tr>
-                    ))}
+                    {rows.map((row, index) => {
+                        const rowKey = typeof row.id === "string" || typeof row.id === "number" ? row.id : index;
+                        return (
+                            <tr key={rowKey} className="border-b border-slate-200 dark:border-slate-800">
+                                {columns.map((col) => (
+                                    <td key={col.key} className="py-2 pr-4">
+                                        {col.render ? col.render(row[col.key], row) : renderFieldValue(row[col.key])}
+                                    </td>
+                                ))}
+                            </tr>
+                        );
+                    })}
                 </tbody>
             </table>
         </div>
@@ -180,9 +188,9 @@ export default function UserDetailPage() {
     const { id } = useParams();
     const [user, setUser] = useState<UserDetail | null>(null);
     const [activity, setActivity] = useState<ActivityItem[]>([]);
-    const [sessions, setSessions] = useState<any[]>([]);
-    const [payments, setPayments] = useState<any[]>([]);
-    const [questionHistory, setQuestionHistory] = useState<any[]>([]);
+    const [sessions, setSessions] = useState<GenericRecord[]>([]);
+    const [payments, setPayments] = useState<GenericRecord[]>([]);
+    const [questionHistory, setQuestionHistory] = useState<GenericRecord[]>([]);
     const [fullData, setFullData] = useState<FullUserData | null>(null);
     const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);
     const [activeTab, setActiveTab] = useState("Profile Detail");
@@ -192,14 +200,14 @@ export default function UserDetailPage() {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [isSavingProfile, setIsSavingProfile] = useState(false);
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
-    const getAuthHeaders = (includeJson = false) => {
-        const token = localStorage.getItem("token");
+    const getAuthHeaders = useCallback((includeJson = false) => {
+        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
         const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
         if (includeJson) {
             (headers as Record<string, string>)["Content-Type"] = "application/json";
         }
         return headers;
-    };
+    }, []);
 
     // Form states for updates
     const [newQuotaQuestions, setNewQuotaQuestions] = useState(0);
@@ -215,18 +223,7 @@ export default function UserDetailPage() {
     const [editGradeLevel, setEditGradeLevel] = useState("");
     const [editSchoolId, setEditSchoolId] = useState("");
 
-    useEffect(() => {
-        if (!id) return;
-        const controller = new AbortController();
-        fetchUserDetail(controller.signal);
-        fetchActivity(controller.signal);
-        fetchFullUserData(controller.signal);
-        fetchQuestionHistory(controller.signal);
-        fetchPlans(controller.signal);
-        return () => controller.abort();
-    }, [id]);
-
-    const fetchPlans = async (signal?: AbortSignal) => {
+    const fetchPlans = useCallback(async (signal?: AbortSignal) => {
         try {
             const res = await fetch(`${baseUrl}/api/v1/admin/plans`, { headers: getAuthHeaders(), signal });
             if (res.ok) {
@@ -237,9 +234,10 @@ export default function UserDetailPage() {
             if ((error as Error).name === "AbortError") return;
             console.error("Failed to fetch plans:", error);
         }
-    };
+    }, [baseUrl, getAuthHeaders]);
 
-    const fetchUserDetail = async (signal?: AbortSignal) => {
+    const fetchUserDetail = useCallback(async (signal?: AbortSignal) => {
+        if (!id) return;
         try {
             setErrorMessage(null);
             const res = await fetch(`${baseUrl}/api/v1/admin/users/${id}`, { headers: getAuthHeaders(), signal });
@@ -264,9 +262,10 @@ export default function UserDetailPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id, baseUrl, getAuthHeaders]);
 
-    const fetchActivity = async (signal?: AbortSignal) => {
+    const fetchActivity = useCallback(async (signal?: AbortSignal) => {
+        if (!id) return;
         try {
             const res = await fetch(`${baseUrl}/api/v1/admin/users/${id}/activity`, { headers: getAuthHeaders(), signal });
             if (res.ok) {
@@ -280,21 +279,10 @@ export default function UserDetailPage() {
             console.error("Failed to fetch activity:", error);
             setErrorMessage("Unable to load activity logs.");
         }
-    };
+    }, [id, baseUrl, getAuthHeaders]);
 
-    const fetchSessions = async (signal?: AbortSignal) => {
-        try {
-            if (signal?.aborted) return;
-        } catch (error) {
-            if ((error as Error).name === "AbortError") {
-                return;
-            }
-            console.error("Failed to fetch sessions:", error);
-            setErrorMessage("Unable to load session history.");
-        }
-    };
-
-    const fetchQuestionHistory = async (signal?: AbortSignal) => {
+    const fetchQuestionHistory = useCallback(async (signal?: AbortSignal) => {
+        if (!id) return;
         try {
             const res = await fetch(`${baseUrl}/api/v1/admin/users/${id}/question-history`, { headers: getAuthHeaders(), signal });
             if (res.ok) {
@@ -315,21 +303,10 @@ export default function UserDetailPage() {
             console.error("Failed to fetch question history:", error);
             setErrorMessage("Unable to load question history.");
         }
-    };
+    }, [id, baseUrl, getAuthHeaders]);
 
-    const fetchPayments = async (signal?: AbortSignal) => {
-        try {
-            if (signal?.aborted) return;
-        } catch (error) {
-            if ((error as Error).name === "AbortError") {
-                return;
-            }
-            console.error("Failed to fetch payments:", error);
-            setErrorMessage("Unable to load billing history.");
-        }
-    };
-
-    const fetchFullUserData = async (signal?: AbortSignal) => {
+    const fetchFullUserData = useCallback(async (signal?: AbortSignal) => {
+        if (!id) return;
         try {
             const headers = getAuthHeaders();
             const baseUrls = [baseUrl, "http://localhost:8000", "http://127.0.0.1:8000"];
@@ -370,7 +347,18 @@ export default function UserDetailPage() {
             console.error("Failed to fetch full user data:", error);
             setErrorMessage(`Unable to load full user data: ${(error as Error).message}`);
         }
-    };
+    }, [id, baseUrl, getAuthHeaders, selectedSessionId]);
+
+    useEffect(() => {
+        if (!id) return;
+        const controller = new AbortController();
+        fetchUserDetail(controller.signal);
+        fetchActivity(controller.signal);
+        fetchFullUserData(controller.signal);
+        fetchQuestionHistory(controller.signal);
+        fetchPlans(controller.signal);
+        return () => controller.abort();
+    }, [id, fetchUserDetail, fetchActivity, fetchFullUserData, fetchQuestionHistory, fetchPlans]);
 
     const handleQuickAction = async (action: string) => {
         try {
@@ -521,12 +509,23 @@ export default function UserDetailPage() {
                     )}
                     <div className="flex justify-between items-start">
                         <div className="flex items-center gap-6">
-                            <div className="relative group">
-                                <div className="size-20 rounded-2xl bg-slate-800 flex items-center justify-center text-3xl font-bold text-admin-primary border border-slate-700 shadow-xl overflow-hidden">
-                                    {user.avatar_url ? <img src={user.avatar_url} className="w-full h-full object-cover" /> : user.full_name[0]}
+                                <div className="relative group">
+                                    <div className="size-20 rounded-2xl bg-slate-800 flex items-center justify-center text-3xl font-bold text-admin-primary border border-slate-700 shadow-xl overflow-hidden">
+                                        {user.avatar_url ? (
+                                            <Image
+                                                src={user.avatar_url}
+                                                alt={`${user.full_name} avatar`}
+                                                width={80}
+                                                height={80}
+                                                className="w-full h-full object-cover"
+                                                unoptimized
+                                            />
+                                        ) : (
+                                            <span>{user.full_name[0]}</span>
+                                        )}
+                                    </div>
+                                    <div className="absolute -bottom-1 -right-1 size-5 bg-emerald-500 rounded-full border-4 border-[#0F172A]"></div>
                                 </div>
-                                <div className="absolute -bottom-1 -right-1 size-5 bg-emerald-500 rounded-full border-4 border-[#0F172A]"></div>
-                            </div>
                             <div className="flex flex-col gap-1">
                                 <div className="flex items-center gap-3">
                                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{user.full_name}</h1>

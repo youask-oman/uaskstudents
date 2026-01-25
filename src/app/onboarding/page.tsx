@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -138,7 +139,7 @@ export default function OnboardingPage() {
                 const data = await res.json();
                 setError(data.detail || "Failed to save profile.");
             }
-        } catch (err) {
+        } catch {
             setError("Something went wrong. Please try again.");
         } finally {
             setSaving(false);
@@ -155,7 +156,14 @@ export default function OnboardingPage() {
             {/* Header */}
             <header className="flex items-center justify-between px-6 py-4 md:px-10">
                 <Link href="/" className="flex items-center gap-3">
-                    <img src={isDark ? "/logo-dark.png" : "/logo.png"} alt="uask.ai" className="h-8 w-auto" />
+                    <Image
+                        src={isDark ? "/logo-dark.png" : "/logo.png"}
+                        alt="uask.ai"
+                        width={96}
+                        height={24}
+                        className="h-8 w-auto"
+                        priority
+                    />
                     <h2 className="text-[#111318] dark:text-white text-xl font-bold tracking-tight">uask.ai</h2>
                 </Link>
             </header>

@@ -9,11 +9,12 @@
 // INPUT LIMITS
 // ============================================================================
 
-/** Maximum characters allowed in input textbox */
-export const MAX_INPUT_CHARS = 3000;
-
-/** Maximum estimated tokens allowed for user input */
-export const MAX_INPUT_TOKENS = 1000;
+export interface TokenBudgetPolicy {
+    textInputMax: number;
+    textInputMaxChars: number;
+    systemAndSchemaBudget: number;
+    expectedOutputBudget: number;
+}
 
 // ============================================================================
 // REQUEST BUDGET
@@ -23,13 +24,10 @@ export const MAX_INPUT_TOKENS = 1000;
  * Estimated tokens used by system prompt + JSON schema
  * This includes the solver system prompt and structured output schema
  */
-export const SYSTEM_AND_SCHEMA_BUDGET_TOKENS = 3500;
-
 /**
  * Expected output tokens for a typical solution
  * Solutions can include steps, explanations, visuals, etc.
  */
-export const EXPECTED_OUTPUT_BUDGET_TOKENS = 1200;
 
 // ============================================================================
 // MODEL CONTEXT LIMITS
@@ -69,7 +67,7 @@ export const CONTEXT_SAFETY_MARGIN = 0.9;
 /**
  * Calculate if a request will fit within the model's context
  */
-export function willRequestFit(inputTokens: number): {
+export function willRequestFit(inputTokens: number, policy: TokenBudgetPolicy): {
     fits: boolean;
     estimatedTotal: number;
     limit: number;
@@ -77,7 +75,7 @@ export function willRequestFit(inputTokens: number): {
 } {
     const limit = getModelContextLimit();
     const safeLimit = Math.floor(limit * CONTEXT_SAFETY_MARGIN);
-    const estimatedTotal = SYSTEM_AND_SCHEMA_BUDGET_TOKENS + inputTokens + EXPECTED_OUTPUT_BUDGET_TOKENS;
+    const estimatedTotal = policy.systemAndSchemaBudget + inputTokens + policy.expectedOutputBudget;
 
     return {
         fits: estimatedTotal <= safeLimit,

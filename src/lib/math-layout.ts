@@ -1,6 +1,15 @@
 
+interface KeyCap {
+    class?: string;
+    command?: string[];
+    label?: string;
+    latex?: string;
+    insert?: string;
+    gap?: string;
+}
+
 // Helper to apply default class to keys
-const k = (items: any[]) => items.map(item => ({ class: "key-cap", ...item }));
+const k = (items: KeyCap[]) => items.map(item => ({ class: "key-cap", ...item }));
 
 // Common Navigation Row (Layer Switchers)
 const NAV_ROW = [

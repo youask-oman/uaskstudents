@@ -26,8 +26,10 @@ export default function ImageCropper({ imageSrc, onCancel, onConfirm }: ImageCro
 
     // Initial load
     useEffect(() => {
-        // Reset selection on new image
-        setSelection({ x: 15, y: 30, w: 70, h: 40 });
+        const handle = window.requestAnimationFrame(() => {
+            setSelection({ x: 15, y: 30, w: 70, h: 40 });
+        });
+        return () => window.cancelAnimationFrame(handle);
     }, [imageSrc]);
 
     const handlePointerDown = (e: React.PointerEvent, handle: string | null = null) => {
@@ -57,7 +59,7 @@ export default function ImageCropper({ imageSrc, onCancel, onConfirm }: ImageCro
         const deltaXPercent = ((e.clientX - state.startX) / rect.width) * 100;
         const deltaYPercent = ((e.clientY - state.startY) / rect.height) * 100;
 
-        let newSel = { ...state.initialSelection };
+        const newSel = { ...state.initialSelection };
 
         if (!state.handle) {
             // Moving the box

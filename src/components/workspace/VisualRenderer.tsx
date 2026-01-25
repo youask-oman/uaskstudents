@@ -3,6 +3,7 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 import MathRenderer from '../math/MathRendererSwitch';
+import type { Data } from 'plotly.js';
 
 // Dynamically import Plot with no SSR
 const Plot = dynamic(() => import('react-plotly.js'), { ssr: false });
@@ -46,7 +47,7 @@ export default function VisualRenderer({ visual, height = 350 }: VisualRendererP
     if (visual.type !== 'function_plot' && visual.type !== 'line_plot' && visual.type !== 'graph') return null;
 
     // Prepare Plotly traces
-    const traces: any[] = [];
+    const traces: Data[] = [];
 
     // 1. Render Series (Lines)
     if (visual.series) {
