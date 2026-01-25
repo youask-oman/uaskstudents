@@ -155,7 +155,7 @@
         },
         "steps": {
             "type": "array",
-            "maxItems": 5,
+            "maxItems": 2,
             "items": {
                 "type": "object",
                 "additionalProperties": false,
@@ -174,26 +174,26 @@
                     },
                     "title": {
                         "type": "string",
-                        "maxLength": 60
+                        "maxLength": 40
                     },
                     "explanation": {
                         "type": "string",
-                        "maxLength": 220
+                        "maxLength": 160
                     },
                     "math_latex": {
                         "type": "array",
-                        "maxItems": 3,
+                        "maxItems": 1,
                         "items": {
                             "type": "string",
-                            "maxLength": 250
+                            "maxLength": 200
                         }
                     },
                     "rules_used": {
                         "type": "array",
-                        "maxItems": 3,
+                        "maxItems": 1,
                         "items": {
                             "type": "string",
-                            "maxLength": 60
+                            "maxLength": 40
                         }
                     },
                     "checkpoint": {
@@ -229,15 +229,15 @@
             "properties": {
                 "answer_text": {
                     "type": "string",
-                    "maxLength": 300
+                    "maxLength": 160
                 },
                 "answer_latex": {
                     "type": "string",
-                    "maxLength": 250
+                    "maxLength": 160
                 },
                 "values": {
                     "type": "array",
-                    "maxItems": 3,
+                    "maxItems": 1,
                     "items": {
                         "type": "object",
                         "additionalProperties": false,
@@ -249,7 +249,7 @@
                         "properties": {
                             "label": {
                                 "type": "string",
-                                "maxLength": 60
+                                "maxLength": 40
                             },
                             "value": {
                                 "type": [
@@ -260,7 +260,7 @@
                             },
                             "value_latex": {
                                 "type": "string",
-                                "maxLength": 150
+                                "maxLength": 120
                             }
                         }
                     }

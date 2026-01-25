@@ -5,16 +5,20 @@
         "type": "object",
         "properties": {
             "final_answer": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 200
             },
             "steps": {
                 "type": "array",
+                "maxItems": 2,
                 "items": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 200
                 }
             },
             "topic": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 50
             },
             "confidence_score": {
                 "type": "number"

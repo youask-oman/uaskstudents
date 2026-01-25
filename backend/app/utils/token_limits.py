@@ -5,8 +5,8 @@ def get_effective_max_tokens(mode: str, learning_mode: Optional[str]) -> int:
     Returns a deterministic max_output_tokens cap based on mode and learning_mode.
     
     Caps:
-      - minimal + solve: 900
-      - minimal + study: 1600 (though study is usually disabled in minimal)
+      - minimal + solve: 4000
+      - minimal + study: 5000 (though study is usually disabled in minimal)
       - detailed + solve: 6000
       - detailed + study: 12000
       - default: 1000
@@ -16,8 +16,8 @@ def get_effective_max_tokens(mode: str, learning_mode: Optional[str]) -> int:
     
     if normalized_mode == "minimal":
         if normalized_learning == "study":
-            return 1600
-        return 1200
+            return 5000
+        return 4000
     elif normalized_mode == "detailed":
         if normalized_learning == "study":
             return 12000

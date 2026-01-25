@@ -398,23 +398,34 @@ class SolverV3:
 
         try:
             resolved_system_prompt = system_prompt or get_prompt("solver_system", "v3")
-            if isinstance(json_schema_config, dict):
+            def load_stream_schema(config_schema: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+                candidate = config_schema if isinstance(config_schema, dict) else None
+                if not candidate:
+                    candidate = get_json_schema_for_openai_v3()
+
                 # Check for "wrapped" schema style (used in free/schema.json)
-                target_schema = json_schema_config
-                if "schema" in json_schema_config and isinstance(json_schema_config["schema"], dict):
-                     target_schema = json_schema_config["schema"]
-                
-                schema_wrapper = {
-                    "name": "solve_response_v3",
-                    "strict": True,
-                    "schema": enforce_strict(deref_json_schema(target_schema))
-                }
-            else:
-                schema_wrapper = {
-                    "name": "solve_response_v3",
-                    "strict": True,
-                    "schema": enforce_strict(deref_json_schema(get_json_schema_for_openai_v3()))
-                }
+                if isinstance(candidate, dict) and "schema" in candidate and isinstance(candidate["schema"], dict):
+                    candidate = candidate["schema"]
+
+                try:
+                    deref = deref_json_schema(candidate)
+                except Exception as exc:
+                    print(f"[SOLVER_V3_STREAM] Schema dereference failed: {exc}")
+                    deref = deref_json_schema(get_json_schema_for_openai_v3())
+
+                if not isinstance(deref, dict) or deref.get("type") is None:
+                    deref = deref_json_schema(get_json_schema_for_openai_v3())
+
+                deref = enforce_strict(deref)
+                if deref.get("type") is None:
+                    deref["type"] = "object"
+                return deref
+
+            schema_wrapper = {
+                "name": "solve_response_v3",
+                "strict": True,
+                "schema": load_stream_schema(json_schema_config)
+            }
 
             user_message = self._build_user_message(
                 problem_text,

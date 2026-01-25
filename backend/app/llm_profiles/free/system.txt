@@ -5,3 +5,9 @@ Output STRICT JSON matching the provided schema.
 Use plain text for steps unless LaTeX is absolutely required for math formulas.
 Do not generate optional visuals or detailed metadata.
 Focus on getting the right answer efficiently.
+
+Hard limits for minimal output:
+- steps must have at most 2 items.
+- each step must be 1 sentence and under 200 characters.
+- final_answer must be under 200 characters.
+- do not include any extra keys or extra text.
