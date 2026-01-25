@@ -2,12 +2,31 @@ export const normalizeProseMath = (content: string): string => {
     if (!content) return "";
     let text = content;
 
+    // Check if entire content is raw LaTeX (no delimiters but has LaTeX commands)
+    // This handles cases like "\text{Solve for } x, \frac{x + 1}{x - 2} = 3"
+    if (isRawLatex(text)) {
+        return `\\(${text.trim()}\\)`;
+    }
+
     text = convertLatexFences(text);
     text = convertDisplayMath(text);
 
     const lines = text.split("\n");
     const normalized = lines.map((line) => normalizeInlineDollars(line));
     return normalized.join("\n");
+};
+
+// Detect if content is raw LaTeX without delimiters
+const isRawLatex = (text: string): boolean => {
+    const trimmed = text.trim();
+    // Skip if already has delimiters
+    if (trimmed.startsWith("\\(") || trimmed.startsWith("\\[") ||
+        trimmed.startsWith("$") || trimmed.startsWith("$$")) {
+        return false;
+    }
+    // Check for common LaTeX commands
+    const latexCommandPattern = /\\(text|frac|sqrt|sum|int|lim|sin|cos|tan|log|ln|alpha|beta|gamma|delta|theta|pi|infty|cdot|times|div|pm|mp|leq|geq|neq|approx|equiv|subset|supset|in|notin|forall|exists|partial|nabla|left|right|begin|end)\b/;
+    return latexCommandPattern.test(trimmed);
 };
 
 const isEscaped = (text: string, index: number) => {

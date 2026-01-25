@@ -6,6 +6,7 @@ import logoLight from "@/app/logo/logo-01.png";
 import logoDark from "@/app/logo/logo-13.png";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import ThemeToggle from "@/components/ThemeToggle";
 
 interface StudentLayoutProps {
     children: React.ReactNode;
@@ -49,8 +50,13 @@ const getInitialUser = (): StudentUser => {
 export default function StudentLayout({ children }: StudentLayoutProps) {
     const pathname = usePathname();
     const router = useRouter();
-    const [user] = useState<StudentUser>(getInitialUser);
-    const [energy] = useState(128); // Mock for now
+    // Initialize with default to match server
+    const [user, setUser] = useState<StudentUser>(DEFAULT_STUDENT_USER);
+    useEffect(() => {
+        // Hydrate from local storage on mount
+        const storedUser = getInitialUser();
+        setUser(storedUser);
+    }, []);
 
     // Logout Refs & Timer
     const logoutTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -221,9 +227,8 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                         {pathname === '/dashboard' ? 'Student Dashboard' : pathname === '/solve' ? 'New Solve' : pathname === '/profile' ? 'Settings' : 'Dashboard'}
                     </h2>
                     <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-200 dark:border-slate-700">
-                            <span className="material-symbols-outlined text-sm text-amber-500" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
-                            <span className="text-xs font-bold">{energy} Energy</span>
+                        <div className="flex items-center justify-center w-10 h-10">
+                            <ThemeToggle className="static shadow-none border-none bg-transparent dark:bg-transparent w-full h-full hover:bg-slate-100 dark:hover:bg-slate-800" />
                         </div>
                         <button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                             <span className="material-symbols-outlined text-slate-500">notifications</span>
