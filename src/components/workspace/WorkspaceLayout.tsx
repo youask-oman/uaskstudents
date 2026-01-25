@@ -30,8 +30,8 @@ interface WorkspaceProblem {
 interface WorkspaceLayoutProps {
     children: React.ReactNode;
     messages: WorkspaceMessage[];
-    activeTab: "steps" | "verification" | "practice";
-    onSelectTab: (tab: "steps" | "verification" | "practice") => void;
+    activeTab: "steps";
+    onSelectTab: (tab: "steps") => void;
     problem?: WorkspaceProblem;
     stepsCount?: number;
     analysisPlan?: string[];
@@ -189,7 +189,7 @@ export default function WorkspaceLayout({
                             </div>
                             <h1 className="text-xl font-bold tracking-tight mb-2 text-[#111318] dark:text-white">{problem?.goal || "Solve"}</h1>
                             <div className="text-sm text-emerald-800 dark:text-emerald-300 font-medium leading-relaxed max-w-2xl">
-                            <MathRenderer content={problem?.input || "Expression"} mode="inline" />
+                                <MathRenderer content={problem?.input || "Expression"} mode="inline" />
                             </div>
                         </div>
 

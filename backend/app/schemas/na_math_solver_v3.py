@@ -167,11 +167,7 @@ class AlternativeMethodV3(BaseModel):
     name: str
     summary: str
 
-class VerificationV3(BaseModel):
-    method: str
-    work_latex: str
-    conclusion: str
-    alternative_method: Optional[AlternativeMethodV3] = None
+# VerificationV3 removed in v1.1
 
 class VisualDataPointV3(BaseModel):
     label: str
@@ -192,7 +188,6 @@ class VisualsV3(BaseModel):
 class QualityV3(BaseModel):
     confidence: float = Field(..., ge=0.0, le=1.0)
     common_mistakes: List[str]
-    next_practice: List[str]
 
 # ============================================================================
 # Root Response
@@ -210,7 +205,7 @@ class SolveResponseV3(BaseModel):
     assumptions: List[str]
     steps: List[StepV3]
     final_answer: FinalAnswerV3
-    verification: VerificationV3
+    # verification removed
     visuals: VisualsV3
     quality: QualityV3
 

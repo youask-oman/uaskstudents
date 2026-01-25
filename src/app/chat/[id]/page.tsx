@@ -3,8 +3,8 @@
 import { useState, useEffect, use } from "react";
 import WorkspaceLayout from "@/components/workspace/WorkspaceLayout";
 import StepsTab from "@/components/workspace/StepsTab";
-import VerificationTab from "@/components/workspace/VerificationTab";
-import PracticeTab from "@/components/workspace/PracticeTab";
+
+
 import { DEMO_SOLUTION } from "@/lib/mock-response";
 
 interface ChatMessage {
@@ -204,7 +204,13 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         }));
     };
 
-    const visuals = solutionData?.visuals?.plots ? mapVisuals(solutionData.visuals.plots) : [];
+    const visualsData = solutionData?.visuals;
+    const plotsList = Array.isArray(visualsData) ? visualsData : (visualsData?.plots || []);
+    console.log("[DEBUG] solutionData:", solutionData);
+    console.log("[DEBUG] visualsData:", visualsData);
+    console.log("[DEBUG] plotsList:", plotsList);
+    const visuals = mapVisuals(plotsList);
+    console.log("[DEBUG] Mapped visuals:", visuals);
 
     const renderContent = () => {
         if (!solutionData) return <div className="p-8 text-center text-slate-500">No solution details found in this session.</div>;
@@ -266,42 +272,12 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
                         }}
                         analysisPlan={[]}
                         finalAnswer={solutionData.final_answer?.answer_text}
-                        activeTab={activeTab as "steps" | "verification" | "practice"}
+                        activeTab={activeTab as "steps"}
                         onSelectTab={setActiveTab}
                     />
                 </>;
-            case 'verification':
-                // Map single verification object to list
-                const verifObj = solutionData.verification;
-                const methods = verifObj ? [{
-                    method: verifObj.method,
-                    why_it_works: "Standard verification procedure",
-                    steps: [verifObj.work_latex],
-                    conclusion: verifObj.conclusion
-                }] : [];
 
-                return <VerificationTab
-                    methods={methods}
-                    finalAnswer={solutionData.final_answer?.answer_text}
-                    finalAnswerLatex={solutionData.final_answer?.answer_latex}
-                    confidence={solutionData.quality?.confidence}
-                    commonMistakes={solutionData.quality?.common_mistakes || []}
-                />;
-            case 'practice':
-                const practiceItems = (solutionData.quality?.next_practice || []).map((p: string) => ({
-                    problem: p,
-                    key_idea: "Practice matches current topic",
-                    short_solution: "Tap to solve"
-                }));
 
-                return <PracticeTab
-                    similarExamples={practiceItems}
-                    level={solutionData.classification?.difficulty || "Standard"}
-                    topic={solutionData.classification?.topic}
-                    activeTab={activeTab as "steps" | "verification" | "practice"}
-                    onSelectTab={setActiveTab}
-                    stepsCount={steps.length}
-                />;
             default:
                 return null;
         }
@@ -318,7 +294,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     return (
         <WorkspaceLayout
             messages={session.messages}
-            activeTab={activeTab as "steps" | "verification" | "practice"}
+            activeTab={activeTab as "steps"}
             onSelectTab={setActiveTab}
             problem={{
                 ...solutionData?.problem,

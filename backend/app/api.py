@@ -119,7 +119,8 @@ def _transform_v3_to_v1_format(v3_data: Dict[str, Any]) -> Dict[str, Any]:
                     "steps": steps_text
                 })
 
-        transformed["verification"] = {"methods": methods_v1}
+        # Verification removed in v1.1
+        # transformed["verification"] = {"methods": methods_v1}
         
         # Transform V3 visuals (object) -> V1 visuals (list of plots)
         if "visuals" in transformed and isinstance(transformed["visuals"], dict):
@@ -233,7 +234,7 @@ class SolveResponse(BaseModel):
     solution: Dict[str, Any]
     concepts: Optional[List[Any]] = []
     visuals: Optional[List[Any]] = []
-    verification: Optional[Dict[str, Any]] = None
+    # verification removed in v1.1
     model_used: Optional[str] = "OpenAI GPT-4o Mini"
     tokens_used: Optional[int] = 500
     has_image: Optional[bool] = False
@@ -324,14 +325,7 @@ def validate_math_query(text: str) -> None:
     # Frontend handles math-likeness with mode/template data; keep backend permissive.
 
 
-def _verification_passed(result: Dict[str, Any]) -> bool:
-    verification = result.get("verification")
-    if not isinstance(verification, dict):
-        return False
-    conclusion = (verification.get("conclusion") or "").lower()
-    if "verified" in conclusion or "valid" in conclusion:
-        return True
-    return False
+# _verification_passed removed in v1.1
 
 
 def _sqlmodel_to_dict(obj: Any) -> Dict[str, Any]:
@@ -4174,6 +4168,14 @@ async def solve_v3_stream_endpoint(
                     except Exception as e:
                         print(f"[SOLVER_V3_STREAM] Warning: Mapping failed: {e}")
 
+                # Robustness: Strip deprecated fields that might cause schema validation failure
+                if "verification" in final_data:
+                    del final_data["verification"]
+                if "quick_check" in final_data:
+                    del final_data["quick_check"]
+                if "quality" in final_data and "next_practice" in final_data["quality"]:
+                    del final_data["quality"]["next_practice"]
+
                 final_data = solver.normalize_solver_response(final_data)
                 if is_truncated:
                     final_data["_truncated"] = True
@@ -4190,9 +4192,9 @@ async def solve_v3_stream_endpoint(
                     "classification": {"topic": "Unknown", "difficulty": "Unknown"},
                     "steps": [],
                     "final_answer": {"answer_text": "Solution generation failed - response was truncated or malformed", "answer_latex": "\\text{Error}"},
-                    "verification": {"method": "N/A", "work_latex": "", "conclusion": "Unable to verify"},
+                    # verification removed
                     "visuals": {"should_visualize": False, "plots": []},
-                    "quality": {"confidence": 0.0, "common_mistakes": [], "next_practice": []},
+                    "quality": {"confidence": 0.0, "common_mistakes": [] },
                     "assumptions": [],
                     "refusal": {"is_refusal": False, "reason": "", "safe_alternative": ""},
                     "_truncated": True,
@@ -4299,7 +4301,7 @@ async def solve_v3_stream_endpoint(
                 "status": "ok",
                 "error_type": None,
                 "schema_valid": not final_data.get("_parse_error"),
-                "verification_pass": _verification_passed(final_data),
+                "verification_pass": None,
                 "is_stream": True,
                 "is_cached": False,
                 "credit_deducted": deduct_committed,

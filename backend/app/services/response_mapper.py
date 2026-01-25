@@ -1,7 +1,7 @@
 from typing import Dict, Any, List, Optional
 from app.schemas.na_math_solver_v3 import (
     SolveResponseV3, ProblemDefinitionV3, ClassificationV3, RefusalV3, 
-    StepV3, CheckpointV3, FinalAnswerV3, VerificationV3, VisualsV3, 
+    StepV3, CheckpointV3, FinalAnswerV3, VisualsV3, 
     QualityV3, TaskEnum, GradeBandEnum, DomainEnum, DifficultyEnum, 
     VisualKindEnum, FinalValueV3, AlternativeMethodV3, AlternativeVisualV3
 )
@@ -94,14 +94,9 @@ def map_minimal_to_canonical(
         units=units
     )
     
-    # 6. Verification
-    qc_data = minimal_data.get("quick_check", {})
-    verification = VerificationV3(
-        method=qc_data.get("method", "Basic Check"),
-        work_latex=qc_data.get("work_latex", ""),
-        conclusion=qc_data.get("conclusion", "Verified"),
-        alternative_method=AlternativeMethodV3(name="None", summary="N/A")
-    )
+    # 6. Verification - Removed in v1.1
+    # qc_data = minimal_data.get("quick_check", {})
+    # verification = ...
     
     # 7. Visuals
     needs_visual = minimal_data.get("needs_visual", False)
@@ -161,20 +156,19 @@ def map_minimal_to_canonical(
         
     quality = QualityV3(
         confidence=float(conf_val),
-        common_mistakes=q_data.get("common_mistakes", []),
-        next_practice=q_data.get("next_practice", [])
+        common_mistakes=q_data.get("common_mistakes", [])
     )
     
     # Construct Root Object
     response = SolveResponseV3(
-        schema_version="v1.0",
+        schema_version="v1.1",
         problem=problem,
         classification=classification,
         refusal=refusal,
         assumptions=minimal_data.get("assumptions", []),
         steps=canonical_steps,
         final_answer=final_answer,
-        verification=verification,
+        # verification removed
         visuals=visuals,
         quality=quality
     )

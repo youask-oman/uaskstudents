@@ -142,10 +142,7 @@ class SchemaValidator:
 3. **Visuals Logic**:
    - If `visuals.should_visualize` is true, you MUST provide `plots` array.
    - If `visuals.should_visualize` is false, provide `alternative_visual` (or empty object if strictly allowed, but prefer providing data).
-4. **Verification**: 
-   - This is an OBJECT, not an array. 
-   - Required fields: `method`, `work_latex`, `conclusion`, `alternative_method`.
-5. **Refusal**:
+4. **Refusal**:
    - Must be an object with `is_refusal` boolean.
    
 6. **Return the complete corrected JSON** matching the schema exactly.

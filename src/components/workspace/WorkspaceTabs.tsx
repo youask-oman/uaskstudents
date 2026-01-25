@@ -3,7 +3,7 @@
 import React from "react";
 
 interface WorkspaceTabsProps {
-    activeTab: "steps" | "verification" | "practice";
+    activeTab: "steps";
     onSelectTab: (tab: WorkspaceTabsProps["activeTab"]) => void;
     stepsCount?: number;
 }
@@ -11,9 +11,7 @@ interface WorkspaceTabsProps {
 
 export default function WorkspaceTabs({ activeTab, onSelectTab, stepsCount = 0 }: WorkspaceTabsProps) {
     const tabs = [
-        { id: "steps", label: "Steps", icon: "format_list_numbered" },
-        { id: "verification", label: "Verification", icon: "verified_user" },
-        { id: "practice", label: "Practice", icon: "fitness_center" }
+        { id: "steps", label: "Steps", icon: "format_list_numbered" }
     ] as const;
 
     return (
