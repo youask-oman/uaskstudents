@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import React, { useEffect, useRef, useImperativeHandle, forwardRef, useState } from 'react';
 import { CUSTOM_KEYBOARD_LAYOUT } from '@/lib/math-layout';
 import 'mathlive/static.css';
 import type { MathfieldElement } from 'mathlive';
+import { useTheme } from '@/hooks/useTheme';
 
 interface MathInputProps {
     value: string;
@@ -27,9 +28,13 @@ const MathInput = forwardRef<MathInputRef, MathInputProps>(({ value, onChange, p
     const containerRef = useRef<HTMLDivElement>(null);
     const isInternalChange = useRef(false);
 
+    const { isDark } = useTheme();
+    const [mounted, setMounted] = useState(false);
+
     const kbBg: string = '#ffffff';
 
     useEffect(() => {
+        setMounted(true);
         // Dynamically import mathlive to avoid SSR issues
         import('mathlive').then(() => {
             // Apply custom keyboard layout
@@ -266,11 +271,12 @@ const MathInput = forwardRef<MathInputRef, MathInputProps>(({ value, onChange, p
                     whiteSpace: 'pre-wrap',
                     wordBreak: 'break-word',
                     overflowWrap: 'anywhere',
-                    overflowX: 'hidden'
+                    overflowX: 'hidden',
+                    color: mounted && isDark ? "white" : "inherit"
                 }}
             >
                 {value}
-            {/* @ts-expect-error - math-field is a custom element */}
+                {/* @ts-expect-error - math-field is a custom element */}
             </math-field>
         </div>
     );

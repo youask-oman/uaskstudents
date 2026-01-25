@@ -1,9 +1,15 @@
 "use client";
 
 import { useTheme } from "@/hooks/useTheme";
+import { useEffect, useState } from "react";
 
 export default function ThemeToggle() {
     const { isDark, toggleTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     return (
         <button
@@ -13,7 +19,7 @@ export default function ThemeToggle() {
             type="button"
         >
             <span className="material-symbols-outlined text-[20px]">
-                {isDark ? "light_mode" : "dark_mode"}
+                {mounted && isDark ? "light_mode" : "dark_mode"}
             </span>
         </button>
     );

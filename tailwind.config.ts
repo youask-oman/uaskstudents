@@ -11,15 +11,35 @@ const config: Config = {
     theme: {
         extend: {
             colors: {
-                "primary": "#135bec",
+                "primary": "#2563EB",
                 "background-light": "#f6f6f8",
                 "background-dark": "#101622",
-                "electric-blue": "#135bec",
-                "navy": "#111318",
+                "electric-blue": "#2563EB",
+                "navy": "#1E293B",
+                // Ported from layout.tsx script
+                "off-white": "#FAFAFA",
+                "light-gray": "#F8FAFC",
+                "math-blue": "#1E293B",
+                "accent": "#0ea5e9",
+                "surface-dark": "#1a1d23",
+                "card-dark": "#121212",
+                "border-dark": "#2d333b",
+                "latex-cyan": "#a5f3fc",
+                "admin-primary": "#0ea5e9",
+                "admin-bg-dark": "#0F172A",
+                "panel-dark": "#1E293B",
+                "accent-cyan": "#22d3ee",
+                "accent-emerald": "#10b981",
+                "accent-purple": "#a855f7",
+                "accent-amber": "#f59e0b",
+                "primary-hover": "#2563eb",
+                "neon-green": "#22c55e",
+                "neon-amber": "#f59e0b"
             },
             fontFamily: {
-                "display": ["Lexend", "sans-serif"],
+                "display": ["var(--font-space-grotesk)", "sans-serif"],
                 "math": ["Times New Roman", "serif"],
+                "admin": ["var(--font-lexend)", "sans-serif"]
             },
         },
     },

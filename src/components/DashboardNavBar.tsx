@@ -27,6 +27,7 @@ const getStoredUser = (): StoredUser | null => {
 
 export default function DashboardNavBar() {
     const { isDark, toggleTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [userName, setUserName] = useState("Guest");
     const [userEmail, setUserEmail] = useState("");
@@ -38,6 +39,7 @@ export default function DashboardNavBar() {
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        setMounted(true);
         const refreshUserInfo = () => {
             if (typeof window === "undefined") return;
             const storedUser = getStoredUser();
@@ -83,7 +85,8 @@ export default function DashboardNavBar() {
                 <div className="flex justify-between items-center h-16">
                     <Link href="/dashboard" className="flex items-center gap-3">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={isDark ? "/logo-dark.png" : "/logo.png"} alt="uask.ai" className="h-8 w-auto" />
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={mounted && isDark ? "/logo-dark.png" : "/logo.png"} alt="uask.ai" className="h-8 w-auto" />
                         <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">uask.ai</span>
                     </Link>
                     <nav className="hidden md:flex space-x-8">
@@ -98,7 +101,7 @@ export default function DashboardNavBar() {
                             className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors flex items-center"
                             aria-label="Toggle Dark Mode"
                         >
-                            <span className="material-symbols-outlined">{isDark ? 'light_mode' : 'dark_mode'}</span>
+                            <span className="material-symbols-outlined">{mounted && isDark ? 'light_mode' : 'dark_mode'}</span>
                         </button>
                         <button className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors flex items-center">
                             <span className="material-symbols-outlined">notifications</span>

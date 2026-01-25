@@ -122,7 +122,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     return (
         <div className="flex h-screen w-full overflow-hidden bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased fixed inset-0">
             {/* Sidebar Navigation */}
-            <aside className="w-64 flex flex-col bg-[#111827] h-full border-r border-slate-800/50 flex-shrink-0">
+            <aside className="w-64 flex flex-col bg-white dark:bg-[#111827] h-full border-r border-slate-200 dark:border-slate-800/50 flex-shrink-0 transition-colors duration-200">
                 <div className="p-6 flex items-center gap-3">
                     <Image src={logoLight} alt="uask.ai" className="h-8 w-auto dark:hidden" />
                     <Image src={logoDark} alt="uask.ai" className="h-8 w-auto hidden dark:block" />
@@ -141,10 +141,10 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                                 key={item.id}
                                 href={item.href}
                                 className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group relative ${isActive && !item.highlight
-                                    ? "text-white bg-white/5 nav-item-active"
+                                    ? "text-primary bg-primary/10 dark:text-white dark:bg-white/5 nav-item-active"
                                     : item.highlight
                                         ? "text-white bg-primary shadow-[0_0_15px_rgba(13,89,242,0.35)] hover:bg-primary/90 mt-2"
-                                        : "text-slate-400 hover:text-white hover:bg-white/5"
+                                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5"
                                     }`}
                             >
                                 {isActive && !item.highlight && (
@@ -195,7 +195,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                     </div>
 
                     {/* User Profile Snippet */}
-                    <div className="bg-slate-900/50 rounded-xl p-3 flex items-center gap-3 border border-slate-800/50">
+                    <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 flex items-center gap-3 border border-slate-200 dark:border-slate-800/50">
                         <div className="relative">
                             <div
                                 className="w-10 h-10 rounded-full bg-cover bg-center border-2 border-primary/30"

@@ -56,9 +56,9 @@ export default function AdminLayout({
     ];
 
     return (
-        <div className="font-admin bg-slate-50 text-slate-900 dark:bg-[#0F172A] dark:text-slate-200 min-h-screen flex overflow-hidden transition-colors">
+        <div className="font-admin bg-background-light text-slate-900 dark:bg-background-dark dark:text-slate-200 min-h-screen flex overflow-hidden transition-colors">
             {/* Sidebar */}
-            <aside className="w-64 flex-shrink-0 bg-white dark:bg-[#0c1222] border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between p-4 transition-colors">
+            <aside className="w-64 flex-shrink-0 bg-white dark:bg-[#111827] border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between p-4 transition-colors">
                 <div className="flex flex-col gap-8">
                     <div className="flex items-center gap-3 px-2">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
