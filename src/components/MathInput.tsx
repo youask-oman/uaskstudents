@@ -18,6 +18,7 @@ export interface MathInputRef {
     insert: (latex: string) => void;
     focus: () => void;
     setValue: (latex: string) => void;
+    getValue: () => string;
 }
 
 const MathInput = forwardRef<MathInputRef, MathInputProps>(({ value, onChange, placeholder, onEnter, className = "", maxLength, onPaste }, ref) => {
@@ -55,6 +56,15 @@ const MathInput = forwardRef<MathInputRef, MathInputProps>(({ value, onChange, p
         });
     }, []);
 
+    const readMathFieldValue = (target: any): string => {
+        if (target && typeof target.getValue === "function") {
+            const latex = target.getValue();
+            if (typeof latex === "string") return latex;
+        }
+        if (typeof target?.value === "string") return target.value;
+        return String(target?.value ?? "");
+    };
+
     useImperativeHandle(ref, () => ({
         insert: (latex: string) => {
             if (mfRef.current) {
@@ -71,6 +81,9 @@ const MathInput = forwardRef<MathInputRef, MathInputProps>(({ value, onChange, p
             if (mfRef.current) {
                 (mfRef.current as any).setValue(latex);
             }
+        },
+        getValue: () => {
+            return readMathFieldValue(mfRef.current as any);
         }
     }));
 
@@ -80,7 +93,8 @@ const MathInput = forwardRef<MathInputRef, MathInputProps>(({ value, onChange, p
 
         const handleInput = (e: Event) => {
             isInternalChange.current = true;
-            onChange((e.target as any).value);
+            const nextValue = readMathFieldValue(e.target as any);
+            onChange(nextValue);
             isInternalChange.current = false;
         };
 
@@ -236,7 +250,8 @@ const MathInput = forwardRef<MathInputRef, MathInputProps>(({ value, onChange, p
                 placeholder={placeholder}
                 onInput={(evt: Event) => {
                     isInternalChange.current = true;
-                    onChange((evt.target as any).value);
+                    const nextValue = readMathFieldValue(evt.target as any);
+                    onChange(nextValue);
                     isInternalChange.current = false;
                 }}
                 style={{

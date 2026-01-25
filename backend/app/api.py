@@ -321,14 +321,7 @@ def validate_math_query(text: str) -> None:
     if any(re.search(pattern, normalized) for pattern in forbidden_patterns):
         raise HTTPException(status_code=400, detail="Input blocked. Please enter a valid math question.")
 
-    math_hints = [
-        r"\d",
-        r"[=<>+\-*/^]",
-        r"\\(frac|sqrt|int|sum|lim|log|sin|cos|tan|theta|pi|alpha|beta|gamma|cdot|times)",
-        r"\b(solve|simplify|factor|expand|evaluate|derivative|integral|integrate|limit|graph|plot|domain|range|root|roots|intercept|slope|equation|function|probability|matrix|vector|geometry|algebra|calculus)\b",
-    ]
-    if not any(re.search(pattern, normalized) for pattern in math_hints):
-        raise HTTPException(status_code=400, detail="Input must be a math question.")
+    # Frontend handles math-likeness with mode/template data; keep backend permissive.
 
 
 def _verification_passed(result: Dict[str, Any]) -> bool:

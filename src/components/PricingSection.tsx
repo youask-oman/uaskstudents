@@ -19,12 +19,17 @@ export default function PricingSection() {
     useEffect(() => {
         const fetchPlans = async () => {
             try {
-                // Fetch public plans
-                const res = await fetch("http://localhost:8000/api/v1/public/plans");
+                const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+                const plansUrl = apiBaseUrl
+                    ? `${apiBaseUrl.replace(/\/$/, "")}/api/v1/public/plans`
+                    : "/api/v1/public/plans";
+                const res = await fetch(plansUrl);
                 if (res.ok) {
                     const data = await res.json();
                     // Sort by price to ensure logical order
                     setPlans(data.sort((a: Plan, b: Plan) => a.price_monthly_cents - b.price_monthly_cents));
+                } else {
+                    console.error("Failed to fetch plans", res.status, res.statusText);
                 }
             } catch (error) {
                 console.error("Failed to fetch plans", error);

@@ -19,6 +19,7 @@ import SplitModal from "@/components/SplitModal";
 import InputModeSelector from "@/components/InputModeSelector";
 import LiveMathPreview from "@/components/LiveMathPreview";
 import { InputModeId, INPUT_MODES, GraphingOptions, DEFAULT_GRAPHING_OPTIONS } from "@/lib/inputModes";
+import { validateMathQuery, isBlockingInputError, isInputTooShort } from "@/lib/mathValidation";
 
 // Tier-aware solve imports
 import SegmentedControl from "@/components/ui/SegmentedControl";
@@ -333,106 +334,14 @@ export default function DashboardPage() {
         }
     };
 
-        const validateMathQuery = (value: string) => {
-        const normalized = value.trim().toLowerCase();
-        if (!normalized) return "Please enter a math question.";
-        if (normalized.length < 3) return "Please enter at least 3 characters.";
-
-        const badWords = [
-            "fuck",
-            "fucking",
-            "shit",
-            "shitty",
-            "bitch",
-            "asshole",
-            "bastard",
-            "dick",
-            "cock",
-            "pussy",
-            "cunt",
-            "nigger",
-            "faggot",
-            "slut",
-            "whore",
-            "motherfucker",
-            "sex",
-            "sexual",
-            "porn",
-            "porno",
-            "pornography",
-            "rape",
-            "rapist",
-            "cum",
-            "ejaculate",
-            "orgasm",
-            "blowjob",
-            "handjob",
-            "anal",
-            "penis",
-            "vagina",
-            "boobs",
-            "tits",
-            "nude",
-            "nudes",
-            "naked"
-        ];
-        if (badWords.some(word => new RegExp(`\\b${word}\\b`, "i").test(normalized))) {
-            return "Inappropriate language detected. Please rephrase.";
-        }
-
-        const forbiddenPatterns = [
-            /<script/i,
-            /<\/\w/i,
-            /\bimport\s+\w+/i,
-            /\bfrom\s+[\w\.]+\s+import\b/i,
-            /require\(/i,
-            /eval\(/i,
-            /exec\(/i,
-            /subprocess/i,
-            /system\(/i,
-            /\bcat\s/i,
-            /\bls\s/i,
-            /\bdir\s/i,
-            /\bchmod\s/i,
-            /\bchown\s/i,
-            /curl\s/i,
-            /wget\s/i,
-            /powershell/i,
-            /cmd\.exe/i,
-            /rm\s/i,
-            /del\s/i,
-            /drop\s+table/i,
-            /insert\s+into/i,
-            /update\s+\w+/i,
-            /delete\s+from/i,
-            /\bselect\s+.*\bfrom\b/i,
-            /union\s+select/i,
-            /https?:\/\//i,
-            /\$\{/i,
-            /\{\{/i
-        ];
-        if (forbiddenPatterns.some(pattern => pattern.test(normalized))) {
-            return "Input blocked. Please enter a valid math question.";
-        }
-
-        const mathHints = [
-            /\d/,
-            /[=<>+\-*/^]/,
-            /\\(frac|sqrt|int|sum|lim|log|sin|cos|tan|theta|pi|alpha|beta|gamma|cdot|times)/i,
-            /\b(solve|simplify|factor|expand|evaluate|derivative|integral|integrate|limit|graph|plot|domain|range|root|roots|intercept|slope|equation|function|probability|matrix|vector|geometry|algebra|calculus)\b/i
-        ];
-        if (!mathHints.some(pattern => pattern.test(normalized))) {
-            return "Input must be a math question.";
-        }
-
-        return null;
-    };
-
     const handleSolve = async (overrideText?: string) => {
         if (isSolving) return;
 
         const userId = localStorage.getItem("user_id") || "1";
-        const textToSolve = overrideText ?? query;
+        const mathFieldValue = mathModeEnabled && mathInputRef.current?.getValue
+            ? mathInputRef.current.getValue()
+            : "";
+        const textToSolve = overrideText ?? (mathFieldValue.trim() ? mathFieldValue : query);
         const validationError = validateMathQuery(textToSolve);
         if (validationError) {
             setInputError(validationError);
@@ -928,7 +837,7 @@ export default function DashboardPage() {
                                                         </button>
                                                         <button
                                                             onClick={handleSolve}
-                                                            disabled={isSolving || query.trim().length < 3 || !!tokenBlockReason || inputError === "Inappropriate language detected. Please rephrase."}
+                                                            disabled={isSolving || isInputTooShort(query) || !!tokenBlockReason || isBlockingInputError(inputError)}
                                                             title={tokenBlockReason || undefined}
                                                             className="relative flex items-center gap-2 bg-primary hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-bold transition-all shadow-lg shadow-primary/25 text-sm overflow-hidden"
                                                         >
@@ -1130,7 +1039,7 @@ export default function DashboardPage() {
                                                     </button>
                                                     <button
                                                         onClick={handleConfirmVoice}
-                                                        disabled={isSolving || inputError === "Inappropriate language detected. Please rephrase."}
+                                                        disabled={isSolving || isBlockingInputError(inputError)}
                                                         className="relative flex-[2] px-8 py-5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-2xl font-black text-xl shadow-[0_10px_40px_-10px_rgba(37,99,235,0.4)] flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-50 overflow-hidden"
                                                     >
                                                         {isSolving && (

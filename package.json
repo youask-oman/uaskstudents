@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "validate:templates": "powershell -ExecutionPolicy Bypass -File scripts/validate-templates.ps1"
   },
   "dependencies": {
     "@types/react-plotly.js": "^2.6.4",
