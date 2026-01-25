@@ -342,6 +342,7 @@ export default function DashboardPage() {
             ? mathInputRef.current.getValue()
             : "";
         const textToSolve = overrideText ?? (mathFieldValue.trim() ? mathFieldValue : query);
+
         const validationError = validateMathQuery(textToSolve);
         if (validationError) {
             setInputError(validationError);
@@ -836,7 +837,7 @@ export default function DashboardPage() {
                                                             Clear
                                                         </button>
                                                         <button
-                                                            onClick={handleSolve}
+                                                            onClick={() => handleSolve()}
                                                             disabled={isSolving || isInputTooShort(query) || !!tokenBlockReason || isBlockingInputError(inputError)}
                                                             title={tokenBlockReason || undefined}
                                                             className="relative flex items-center gap-2 bg-primary hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-bold transition-all shadow-lg shadow-primary/25 text-sm overflow-hidden"
@@ -954,9 +955,9 @@ export default function DashboardPage() {
                                                                             : 'bg-white dark:bg-slate-900 border-amber-200 dark:border-amber-800/50 text-amber-700 dark:text-amber-300 hover:border-amber-400'
                                                                             }`}
                                                                     >
-                                                                    <span className="text-base">
-                                                                        <MathRenderer content={opt.label} mode="inline" />
-                                                                    </span>
+                                                                        <span className="text-base">
+                                                                            <MathRenderer content={opt.label} mode="inline" />
+                                                                        </span>
                                                                         <span className="text-[9px] uppercase tracking-widest opacity-60">
                                                                             {isSelected ? 'Selected' : 'Use this interpretation'}
                                                                         </span>

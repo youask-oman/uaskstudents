@@ -1,7 +1,7 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://uask.ai/schemas/minimal_solve_response.schema.json",
-    "title": "MinimalSolveResponse",
+    "title": "MinimalSolveResponseV1_1",
     "type": "object",
     "additionalProperties": false,
     "required": [
@@ -12,7 +12,6 @@
         "classification",
         "steps",
         "final_answer",
-        "quick_check",
         "needs_visual",
         "plot_suggestion",
         "quality"
@@ -20,7 +19,7 @@
     "properties": {
         "schema_version": {
             "type": "string",
-            "const": "min_v1"
+            "const": "min_v1.1"
         },
         "refusal": {
             "type": "object",
@@ -140,14 +139,15 @@
                     ]
                 },
                 "topic": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 60
                 },
                 "difficulty": {
                     "type": "string",
                     "enum": [
                         "easy",
-                        "standard",
-                        "challenging",
+                        "medium",
+                        "hard",
                         "unknown"
                     ]
                 }
@@ -155,8 +155,7 @@
         },
         "steps": {
             "type": "array",
-            "minItems": 1,
-            "maxItems": 2,
+            "maxItems": 5,
             "items": {
                 "type": "object",
                 "additionalProperties": false,
@@ -164,7 +163,9 @@
                     "index",
                     "title",
                     "explanation",
-                    "math_latex"
+                    "math_latex",
+                    "rules_used",
+                    "checkpoint"
                 ],
                 "properties": {
                     "index": {
@@ -172,14 +173,28 @@
                         "minimum": 1
                     },
                     "title": {
-                        "type": "string"
+                        "type": "string",
+                        "maxLength": 60
                     },
                     "explanation": {
                         "type": "string",
-                        "maxLength": 240
+                        "maxLength": 220
                     },
                     "math_latex": {
-                        "type": "string"
+                        "type": "array",
+                        "maxItems": 3,
+                        "items": {
+                            "type": "string",
+                            "maxLength": 250
+                        }
+                    },
+                    "rules_used": {
+                        "type": "array",
+                        "maxItems": 3,
+                        "items": {
+                            "type": "string",
+                            "maxLength": 60
+                        }
                     },
                     "checkpoint": {
                         "type": "object",
@@ -191,11 +206,11 @@
                         "properties": {
                             "question": {
                                 "type": "string",
-                                "maxLength": 150
+                                "maxLength": 120
                             },
                             "answer": {
                                 "type": "string",
-                                "maxLength": 100
+                                "maxLength": 120
                             }
                         }
                     }
@@ -208,42 +223,53 @@
             "required": [
                 "answer_text",
                 "answer_latex",
+                "values",
                 "units"
             ],
             "properties": {
                 "answer_text": {
                     "type": "string",
-                    "maxLength": 200
+                    "maxLength": 300
                 },
                 "answer_latex": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 250
+                },
+                "values": {
+                    "type": "array",
+                    "maxItems": 3,
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                            "label",
+                            "value",
+                            "value_latex"
+                        ],
+                        "properties": {
+                            "label": {
+                                "type": "string",
+                                "maxLength": 60
+                            },
+                            "value": {
+                                "type": [
+                                    "number",
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "value_latex": {
+                                "type": "string",
+                                "maxLength": 150
+                            }
+                        }
+                    }
                 },
                 "units": {
                     "type": [
                         "string",
                         "null"
                     ]
-                }
-            }
-        },
-        "quick_check": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-                "method",
-                "work_latex",
-                "conclusion"
-            ],
-            "properties": {
-                "method": {
-                    "type": "string"
-                },
-                "work_latex": {
-                    "type": "string",
-                    "maxLength": 400
-                },
-                "conclusion": {
-                    "type": "string"
                 }
             }
         },
@@ -315,8 +341,7 @@
             "additionalProperties": false,
             "required": [
                 "confidence",
-                "common_mistakes",
-                "next_practice"
+                "common_mistakes"
             ],
             "properties": {
                 "confidence": {
@@ -325,13 +350,6 @@
                     "maximum": 1
                 },
                 "common_mistakes": {
-                    "type": "array",
-                    "maxItems": 1,
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "next_practice": {
                     "type": "array",
                     "maxItems": 1,
                     "items": {

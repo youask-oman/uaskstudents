@@ -1,25 +1,56 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://uask.ai/schemas/math_tutor_response.schema.json",
-    "title": "MathTutorResponse",
+    "$id": "https://uask.ai/schemas/math_tutor_response_v1.schema.json",
+    "title": "MathTutorResponseV1_1",
     "type": "object",
     "additionalProperties": false,
     "required": [
         "schema_version",
-        "problem",
-        "classification",
         "refusal",
         "assumptions",
+        "problem",
+        "classification",
         "steps",
         "final_answer",
-        "verification",
         "visuals",
         "quality"
     ],
     "properties": {
         "schema_version": {
             "type": "string",
-            "const": "v1.0"
+            "const": "v1.1"
+        },
+        "refusal": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "is_refusal",
+                "reason",
+                "safe_alternative"
+            ],
+            "properties": {
+                "is_refusal": {
+                    "type": "boolean"
+                },
+                "reason": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "safe_alternative": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                }
+            }
+        },
+        "assumptions": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
         },
         "problem": {
             "type": "object",
@@ -38,6 +69,7 @@
                 },
                 "detected_tasks": {
                     "type": "array",
+                    "maxItems": 6,
                     "items": {
                         "type": "string",
                         "enum": [
@@ -111,43 +143,11 @@
                     "type": "string",
                     "enum": [
                         "easy",
-                        "standard",
-                        "challenging",
+                        "medium",
+                        "hard",
                         "unknown"
                     ]
                 }
-            }
-        },
-        "refusal": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-                "is_refusal",
-                "reason",
-                "safe_alternative"
-            ],
-            "properties": {
-                "is_refusal": {
-                    "type": "boolean"
-                },
-                "reason": {
-                    "type": [
-                        "string",
-                        "null"
-                    ]
-                },
-                "safe_alternative": {
-                    "type": [
-                        "string",
-                        "null"
-                    ]
-                }
-            }
-        },
-        "assumptions": {
-            "type": "array",
-            "items": {
-                "type": "string"
             }
         },
         "steps": {
@@ -175,7 +175,10 @@
                         "type": "string"
                     },
                     "math_latex": {
-                        "type": "string"
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     },
                     "rules_used": {
                         "type": "array",
@@ -250,43 +253,6 @@
                         "string",
                         "null"
                     ]
-                }
-            }
-        },
-        "verification": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-                "method",
-                "work_latex",
-                "conclusion",
-                "alternative_method"
-            ],
-            "properties": {
-                "method": {
-                    "type": "string"
-                },
-                "work_latex": {
-                    "type": "string"
-                },
-                "conclusion": {
-                    "type": "string"
-                },
-                "alternative_method": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                        "name",
-                        "summary"
-                    ],
-                    "properties": {
-                        "name": {
-                            "type": "string"
-                        },
-                        "summary": {
-                            "type": "string"
-                        }
-                    }
                 }
             }
         },
@@ -371,8 +337,7 @@
             "additionalProperties": false,
             "required": [
                 "confidence",
-                "common_mistakes",
-                "next_practice"
+                "common_mistakes"
             ],
             "properties": {
                 "confidence": {
@@ -381,12 +346,6 @@
                     "maximum": 1
                 },
                 "common_mistakes": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "next_practice": {
                     "type": "array",
                     "items": {
                         "type": "string"
