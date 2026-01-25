@@ -1,0 +1,22 @@
+{
+  "status": "error",
+  "finish_reason": null,
+  "incomplete_details": "IncompleteDetails(reason='max_output_tokens')",
+  "error": {
+    "type": "TypeError",
+    "message": "asdict() should be called on dataclass instances"
+  },
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "total_tokens": 0,
+  "cached_tokens": 0,
+  "raw_content": "",
+  "content_length": 456,
+  "content_preview_head": "{\n  \"schema_version\": \"v1.0\",\n  \"problem\": {\n    \"original_text\": \"x^2 - 5x + 6 = 0\",\n    \"normalized_text\": \"x^2 - 5x + 6 = 0\",\n    \"detected_tasks\": [\n      \"solve_equation\"\n    ]\n  },\n  \"classification\": {\n    \"grade_band\": \"9-10\",\n    \"domain\": \"algebra\",\n    \"topic\": \"quadratic equation (factoring)\",\n    \"difficulty\": \"easy\"\n  },\n  \"refusal\": {\n    \"is_refusal\": false,\n    \"reason\": \"\",\n    \"safe_alternative\": \"\"\n  },\n  \"assumptions\": [],\n  \"steps",
+  "content_preview_tail": "",
+  "request_id": null,
+  "rate_limit_remaining": null,
+  "full_response_dict": {},
+  "latency_ms": 9924,
+  "timestamp": "2026-01-25T21:50:21.856180"
+}

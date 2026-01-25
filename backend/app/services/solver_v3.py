@@ -459,11 +459,23 @@ class SolverV3:
                      trusted_context["learning_mode"] = "solve"
                 effective_learning_mode_stream = trusted_context.get("learning_mode")
 
+            user_message = self._build_user_message(
+                problem_text,
+                context,
+                trusted_context=trusted_context,
+                requested_mode=requested_mode
+            )
             if max_output_tokens and max_output_tokens > 0:
                 effective_max_tokens = max_output_tokens
             else:
                 raise ValueError("max_output_tokens must be provided for streaming solves")
+
             telemetry["max_output_tokens_effective"] = effective_max_tokens
+            # Trace logs
+            print(f"[SOLVER_TRACE] Mode: {requested_mode}, Learning: {effective_learning_mode_stream}")
+            print(f"[SOLVER_TRACE] Effective Max Output Tokens: {effective_max_tokens}")
+            print(f"[SOLVER_TRACE] System Prompt Length: {len(resolved_system_prompt or '')}")
+            print(f"[SOLVER_TRACE] User Message Length: {len(user_message or '')}")
 
             telemetry["openai_payload"] = {
                 "response_format_schema_name": schema_wrapper.get("name", "solve_response_v3"),

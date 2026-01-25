@@ -54,7 +54,8 @@ const renderFallback = (value: string) => (
     </span>
 );
 
-const stripOuterDelimiters = (content: string) => {
+const stripOuterDelimiters = (content: any) => {
+    if (typeof content !== "string") return String(content || "");
     const trimmed = content.trim();
     if ((trimmed.startsWith("\\(") && trimmed.endsWith("\\)")) ||
         (trimmed.startsWith("\\[") && trimmed.endsWith("\\]"))) {
@@ -156,20 +157,31 @@ const MathSegment = ({
     dynamic?: boolean;
 }) => {
     const startRef = React.useRef<number | null>(null);
-    if (!value.trim()) {
+    if (!value || (typeof value === "string" && !value.trim())) {
         return <span />;
     }
 
-      if (isLikelyMalformed(value)) {
-          markMalformedLatex(value);
-          return renderFallback(value);
-      }
-    const wrapped = inline ? `\\(${value}\\)` : `\\[${value}\\]`;
+    // Double check if value is still an array/object-like string that needs cleaning before render
+    let cleanValue = value;
+    if (typeof value === "string" && value.trim().startsWith("[") && value.trim().endsWith("]")) {
+        try {
+            const parsed = JSON.parse(value);
+            if (Array.isArray(parsed)) cleanValue = parsed.join(" \\\\ ");
+        } catch (e) {
+            // Not valid JSON array, treat as text
+        }
+    }
+
+    if (isLikelyMalformed(cleanValue)) {
+        markMalformedLatex(cleanValue);
+        return renderFallback(cleanValue);
+    }
+
     const Wrapper: React.ElementType = inline ? "span" : "div";
 
     return (
         <Wrapper suppressHydrationWarning>
-            <MathErrorBoundary fallback={renderFallback(value)} onError={markTypesetFailure}>
+            <MathErrorBoundary fallback={renderFallback(cleanValue)} onError={markTypesetFailure}>
                 <MathJax
                     inline={inline}
                     dynamic={dynamic}
@@ -185,7 +197,7 @@ const MathSegment = ({
                         }
                     }}
                 >
-                    {wrapped}
+                    {inline ? `\\(${cleanValue}\\)` : `\\[${cleanValue}\\]`}
                 </MathJax>
             </MathErrorBoundary>
         </Wrapper>
@@ -199,7 +211,7 @@ export default function UnifiedMathRenderer({
     dynamic = false,
     idKey,
 }: UnifiedMathRendererProps) {
-    const raw = content ?? "";
+    const raw = typeof content === "string" ? content : (content ? JSON.stringify(content) : "");
     const [isMounted, setIsMounted] = React.useState(false);
 
     React.useEffect(() => {

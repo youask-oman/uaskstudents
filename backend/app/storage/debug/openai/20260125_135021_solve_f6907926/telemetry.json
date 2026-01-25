@@ -1,0 +1,19 @@
+{
+  "run_id": "20260125_135021_solve_f6907926",
+  "mode": "solve",
+  "detail": "minimal",
+  "learning": "solve",
+  "model": "gpt-5-mini",
+  "max_output_tokens": 700,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "total_tokens": 0,
+  "cached_tokens": 0,
+  "latency_ms": 9924,
+  "content_length": 456,
+  "json_parse_success": false,
+  "schema_valid": false,
+  "retry_performed": true,
+  "final_status": "success_after_retry",
+  "timestamp": "2026-01-25T21:50:52.200567"
+}

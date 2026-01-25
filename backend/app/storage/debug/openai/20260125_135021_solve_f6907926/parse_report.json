@@ -1,0 +1,16 @@
+{
+  "extracted_content_length": 0,
+  "content_head_500": "",
+  "content_tail_500": "",
+  "json_loads_success": false,
+  "json_loads_error": "Empty content",
+  "json_error_position": null,
+  "json_error_context": null,
+  "schema_validation_success": false,
+  "schema_validation_errors": [],
+  "retry_performed": true,
+  "retry_reason": "JSON parse error: Empty content",
+  "retry_success": true,
+  "final_status": "success_after_retry",
+  "summary": "Request succeeded after retry. Initial failure: JSON parse error: Empty content"
+}

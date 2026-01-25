@@ -152,16 +152,38 @@ RULES:
             # Simple template replacement
             system_prompt = system_prompt_template.replace("{{goal}}", str(session_context.get('problem', {}).get('goal'))).replace("{{latex}}", str(session_context.get('problem', {}).get('latex')))
         else:
-            system_prompt = f"""You are an expert tutor. The current problem being discussed is:
-            Goal: {session_context.get('problem', {}).get('goal')}
-            Math: {session_context.get('problem', {}).get('latex')}
+            # Extract problem context from various potential sources
+            problem_text = (
+                session_context.get('original_problem') or 
+                session_context.get('problem', {}).get('original_text') or
+                session_context.get('problem', {}).get('normalized_text') or
+                session_context.get('problem', {}).get('goal') or 
+                "Unknown Problem"
+            )
             
-            RULES:
-            1. Determine if the student's question is related to this math/physics problem or tutoring in general.
-            2. If NOT related (e.g. asking about celebrities, general trivia, unrelated tasks), set "relevant" to false and briefly explain why you can only help with the current problem.
-            3. If related, set "relevant" to true and provide a clear, encouraging answer using LaTeX for math.
-            4. Return ONLY JSON: {{"relevant": boolean, "content": "string"}}
+            topic = (
+                session_context.get('classification', {}).get('topic') or 
+                session_context.get('problem', {}).get('topic') or 
+                "Math"
+            )
+
+            system_prompt = f"""You are an expert math tutor helpers the student with a specific problem.
+            
+            CURRENT PROBLEM CONTEXT:
+            Problem: {problem_text}
+            Topic: {topic}
+            
+            STRICT TOPIC RESTRICTION INSTRUCTIONS:
+            1. You generally ONLY answer questions related to the specific problem above, its underlying concepts, or similar examples.
+            2. If the user asks a question about a different math problem, you may answer it ONLY IF it related to the current topic ({topic}).
+            3. If the user asks about something completely unrelated (e.g., "Write a poem", "Who is the president"), you MUST REJECT it politely.
+               - Example Rejection: "I can only help you with questions related to this math problem or topic."
+            4. Keep answers concise, encouraging, and helpful. 
+            5. Use LaTeX for all math expressions (wrapped in single backticks or standard delimiters).
+            
+            Return ONLY JSON: {{"relevant": boolean, "content": "string"}}
             """
+
 
         try:
             model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini")

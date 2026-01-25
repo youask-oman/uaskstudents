@@ -29,14 +29,19 @@ interface ChatSession {
 }
 
 interface VisualSeriesPoint {
-    x?: number;
-    y?: number;
+    x: number;
+    y: number;
+    label?: string;
 }
 
 interface VisualSeries {
     name?: string;
+    kind?: string;
+    expression_latex?: string;
     points?: VisualSeriesPoint[];
+    style_hint?: string;
 }
+
 
 interface VisualPlot {
     plot_id?: string;
@@ -45,15 +50,23 @@ interface VisualPlot {
     title?: string;
     x_label?: string;
     y_label?: string;
-    x_min?: number | string;
-    x_max?: number | string;
+    x_min?: number;
+    x_max?: number;
+    y_min?: number;
+    y_max?: number;
     series?: VisualSeries[];
     key_points?: Array<{
         label?: string;
         x?: number;
         y?: number;
     }>;
+    annotations?: Array<{
+        text?: string;
+        x?: number;
+        y?: number;
+    }>;
 }
+
 
 interface TelemetryPayload {
     request_id?: string;
@@ -76,8 +89,11 @@ interface SolveResponseV3 {
     problem: {
         original_text?: string;
         normalized_text?: string;
+        detected_tasks?: string[];
     };
     classification?: {
+        grade_band?: string;
+        domain?: string;
         topic?: string;
         difficulty?: string;
         detected_tasks?: string[];
@@ -96,6 +112,8 @@ interface SolveResponseV3 {
     final_answer?: {
         answer_text?: string;
         answer_latex?: string;
+        values?: Array<{ label: string; value: number | string; value_latex: string }>;
+        units?: string;
     };
     verification?: {
         method?: string;
@@ -103,10 +121,23 @@ interface SolveResponseV3 {
         conclusion?: string;
     };
     visuals?: {
+        should_visualize?: boolean;
+        decision_reason?: string;
         plots?: VisualPlot[];
+        alternative_visual?: {
+            kind?: string;
+            description?: string;
+            data?: Array<{ label: string; x?: number; y?: number }>;
+        };
     };
     quality?: {
         confidence?: number;
+        common_mistakes?: string[];
+    };
+    refusal?: {
+        is_refusal?: boolean;
+        reason?: string;
+        safe_alternative?: string;
     };
     assumptions?: string[];
     plan?: Array<{ summary?: string; title?: string }>;
@@ -117,6 +148,7 @@ interface SolveResponseV3 {
     message?: string;
     error?: string;
 }
+
 
 export default function ChatPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
@@ -247,16 +279,17 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             axes: { x_label: p.x_label, y_label: p.y_label },
             domain: { x_min_latex: String(p.x_min ?? ""), x_max_latex: String(p.x_max ?? "") },
             series: p.series?.map((s) => ({
-                label: s.name,
-                points: s.points?.map((pt) => ({ x: pt.x ?? 0, y: pt.y ?? 0 })) ?? []
+                label: s.name || '',
+                points: s.points?.map((pt) => ({ x: pt.x, y: pt.y })) ?? []
             })) ?? [],
             markers: p.key_points?.map((kp) => ({
-                label: kp.label,
-                x: kp.x,
-                y: kp.y
+                label: kp.label || '',
+                x: kp.x ?? 0,
+                y: kp.y ?? 0
             })) ?? []
         }));
     };
+
 
     const visualsData = solutionData?.visuals?.plots ?? [];
     console.log("[DEBUG] solutionData:", solutionData);
@@ -299,15 +332,19 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         // Extract Common Props
         const steps = (solutionData?.steps as SolveStep[]) || [];
         // Map steps to match StepsTab expectation (work array)
-        const mappedSteps = steps.map((s) => ({
+        const mappedSteps = steps.map((s, idx) => ({
             ...s,
-            work: s.math_latex ? [s.math_latex] : [], // Only math equations for right-side card
+            title: s.title || `Step ${idx + 1}`,
+            explanation: s.explanation || '',
+            work: s.math_latex ? [s.math_latex] : [],
             rules_used: s.rules_used || [],
             checkpoint: s.checkpoint ? {
-                question: s.checkpoint.question,
-                expected_answer: s.checkpoint.answer
+                question: s.checkpoint.question || '',
+                expected_answer: s.checkpoint.answer || '',
+                answer: s.checkpoint.answer || ''
             } : undefined
         }));
+
 
         const problem = solutionData.problem || {};
         const problemLatex = problem.normalized_text || problem.original_text;
@@ -353,18 +390,16 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             onSelectTab={setActiveTab}
             problem={{
                 ...solutionData?.problem,
-                // Map V3 fields to WorkspaceProblem interface
                 topic: solutionData?.classification?.topic,
                 goal: solutionData?.classification?.detected_tasks?.[0] || "Solve",
                 input: solutionData?.problem?.normalized_text || solutionData?.problem?.original_text,
-                given_data: [solutionData?.problem?.original_text], // Use original text as Given context
+                given_data: solutionData?.problem?.original_text ? [solutionData.problem.original_text] : [],
                 unknowns: solutionData?.classification?.detected_tasks,
                 assumptions: solutionData?.assumptions
             }}
             stepsCount={(solutionData?.steps || []).length}
-            // Map the high-level plan from the AI if available, otherwise fall back to step titles
-            analysisPlan={analysisPlanEntries}
-            finalAnswer={finalAnswerValue}
+            analysisPlan={analysisPlanEntries.filter((s): s is string => !!s)}
+            finalAnswer={typeof finalAnswerValue === 'string' ? finalAnswerValue : finalAnswerText || undefined}
             finalAnswerMode={finalAnswerMode as "inline" | "prose"}
             confidence={solutionData?.quality?.confidence ? Math.round(solutionData.quality.confidence * 100) : 99}
             llmUsed="YouAsk AI"
@@ -375,8 +410,22 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             sessionId={typeof id === 'string' ? id : (Array.isArray(id) ? id[0] : id)}
             initialSaved={session?.is_saved}
             telemetry={telemetry}
+            // NEW: Classification data
+            classification={solutionData?.classification}
+            // NEW: Quality insights - common mistakes
+            commonMistakes={solutionData?.quality?.common_mistakes}
+            // NEW: Visuals/Plots
+            visuals={solutionData?.visuals as never}
+            // NEW: Original problem text for chat context
+            originalProblemText={solutionData?.problem?.original_text}
+            // NEW: Steps for chat context
+            steps={(solutionData?.steps || []).map((s, i) => ({
+                title: s.title || `Step ${i + 1}`,
+                index: s.index || i + 1
+            }))}
         >
             {renderContent()}
         </WorkspaceLayout>
     );
 }
+

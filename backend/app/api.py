@@ -3944,6 +3944,14 @@ async def solve_v3_endpoint(
             detail=f"Solver V3 failed: {str(e)}"
         )
     
+@api_router.get("/solve_v3_stream")
+async def solve_v3_stream_info():
+    """Helper for developers testing the URL in browser."""
+    return {
+        "status": "online", 
+        "message": "This endpoint is active but requires a POST request with a JSON body. Please use the 'Solve' button in the application."
+    }
+
 @api_router.post("/solve_v3_stream")
 async def solve_v3_stream_endpoint(
     request: Request,
@@ -4408,8 +4416,21 @@ async def solve_v3_stream_endpoint(
                         print(f"[SOLVER_V3_STREAM] ✅ JSON recovered successfully")
                         is_truncated = True  # Mark as truncated since we had to recover
                     except Exception as recovery_err:
-                        print(f"[SOLVER_V3_STREAM] ⚠️ Recovery failed: {recovery_err}")
-                        raise parse_err
+                        print(f"[SOLVER_V3_STREAM] ⚠️ Recovery failed: {recovery_err}. Fallback to plain text.")
+                        # Emergency Fallback: Treat content as plain text final answer
+                        final_data = {
+                            "problem": {"original_text": problem_text, "normalized_text": problem_text},
+                            "classification": {"topic": "General", "difficulty": "Standard"},
+                            "steps": [],
+                            "final_answer": {"answer_text": full_content, "answer_latex": ""},
+                            "visuals": {"should_visualize": False, "plots": []},
+                            "quality": {"confidence": 0.5, "common_mistakes": []},
+                            "assumptions": [],
+                            "refusal": {"is_refusal": False},
+                            "_truncated": False
+                        }
+                        # We don't raise parse_err anymore, ensuring the user sees something
+
                 
                 if profile.mode == "minimal":
                     from app.services.response_mapper import map_minimal_to_canonical
@@ -4441,7 +4462,10 @@ async def solve_v3_stream_endpoint(
                     "problem": {"original_text": problem_text, "normalized_text": problem_text},
                     "classification": {"topic": "Unknown", "difficulty": "Unknown"},
                     "steps": [],
-                    "final_answer": {"answer_text": "Solution generation failed - response was truncated or malformed", "answer_latex": "\\text{Error}"},
+                    "final_answer": {
+                        "answer_text": full_content if full_content and len(full_content.strip()) > 0 else "Solution generation failed - response was truncated or malformed", 
+                        "answer_latex": "" if full_content and len(full_content.strip()) > 0 else "\\text{Error}"
+                    },
                     # verification removed
                     "visuals": {"should_visualize": False, "plots": []},
                     "quality": {"confidence": 0.0, "common_mistakes": [] },
@@ -5062,6 +5086,7 @@ class QuestionRequest(BaseModel):
     session_id: int
     user_id: int
     query: str
+    context: Optional[dict] = None
 
 @api_router.post("/ask-question")
 async def ask_question(request: QuestionRequest, db: Session = Depends(get_session)):
@@ -5070,7 +5095,7 @@ async def ask_question(request: QuestionRequest, db: Session = Depends(get_sessi
     if not chat_session:
         raise HTTPException(status_code=404, detail="Session not found")
     
-    # Get the last assistant message structure for context
+    # Get the last assistant message structure for fallback context
     last_assistant_msg = db.exec(
         select(ChatMessage)
         .where(ChatMessage.session_id == request.session_id)
@@ -5078,7 +5103,10 @@ async def ask_question(request: QuestionRequest, db: Session = Depends(get_sessi
         .order_by(ChatMessage.created_at.desc())
     ).first()
     
-    context = last_assistant_msg.structured_data if last_assistant_msg else {}
+    # Merge or prioritize request context
+    context = request.context or {}
+    if not context and last_assistant_msg:
+         context = last_assistant_msg.structured_data or {}
     
     # 2. Get Response from SolverService
     result = await solver_service.get_chat_response(request.query, context)

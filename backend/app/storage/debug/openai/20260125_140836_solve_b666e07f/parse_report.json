@@ -1,0 +1,16 @@
+{
+  "extracted_content_length": 2438,
+  "content_head_500": "{\n  \"schema_version\": \"v1.0\",\n  \"problem\": {\n    \"original_text\": \"Solve for x: 3(x - 2) = 15\",\n    \"normalized_text\": \"Solve for x: 3(x - 2) = 15\",\n    \"detected_tasks\": [\n      \"solve_equation\"\n    ]\n  },\n  \"classification\": {\n    \"grade_band\": \"6-8\",\n    \"domain\": \"algebra\",\n    \"topic\": \"linear equation (one-step/ two-step)\",\n    \"difficulty\": \"easy\"\n  },\n  \"refusal\": {\n    \"is_refusal\": false,\n    \"reason\": \"\",\n    \"safe_alternative\": \"\"\n  },\n  \"assumptions\": [],\n  \"steps\": [\n    {\n      \"i",
+  "content_tail_500": "ion_reason\": \"This is a simple linear equation that does not require a plot or diagram.\",\n    \"plots\": []\n  ,\n    \"alternative_visual\": {\n      \"kind\": \"none\",\n      \"description\": \"\",\n      \"data\": []\n    }\n  },\n  \"quality\": {\n    \"confidence\": 0.96,\n    \"common_mistakes\": [\n      \"Forgetting to distribute the 3 and writing 3x - 2 instead of 3x - 6.\",\n      \"Adding or subtracting the wrong sign when moving constants.\",\n      \"Dividing by the wrong number or dividing the wrong side.\"\n    ]\n  }\n}",
+  "json_loads_success": true,
+  "json_loads_error": null,
+  "json_error_position": null,
+  "json_error_context": null,
+  "schema_validation_success": true,
+  "schema_validation_errors": [],
+  "retry_performed": false,
+  "retry_reason": null,
+  "retry_success": false,
+  "final_status": "success",
+  "summary": "Request completed successfully. Response parsed and validated."
+}

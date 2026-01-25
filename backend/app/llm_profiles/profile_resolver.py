@@ -28,15 +28,10 @@ class ProfileResolver:
         tier_slug = "free"
         
         if force_tier:
-             # Admin override logic if needed, or mapping string to a plan?
-             # For now, just logging or simplistic fallback if we supported dynamic tiers by string alone.
-             # We really need a Plan object to get links.
-             # If force_tier is passed, we might need to fetch that plan by slug.
              plan = session.exec(select(Plan).where(Plan.slug == force_tier)).first()
              if plan:
                  tier_slug = plan.slug
         elif user and user.subscription and user.subscription.status == "active":
-             # Eager load plan if not present? Usually accessing user.subscription.plan triggers lazy load if session active.
              plan = user.subscription.plan
              if plan:
                  tier_slug = plan.slug
@@ -53,14 +48,7 @@ class ProfileResolver:
             return get_profile_free()
 
         # 2. Determine Effective Mode
-        # - Free tier: force minimal unless specific override?
-        # - Standard/Family: respect requested_mode
-        # - Study mode: might force detailed if plan allows
-        
         effective_mode = requested_mode
-        
-        # Logic: If requested 'detailed' but plan doesn't support it (e.g. Free), fallback to minimal?
-        # Or check if link exists.
         
         # 3. Fetch Link
         # Optimization: We could join, but simple select is fine.
@@ -70,14 +58,9 @@ class ProfileResolver:
             .where(PlanPromptLink.mode == effective_mode)
         ).first()
         
-        if not link and effective_mode == "detailed":
-            # Fallback to minimal if detailed not configured
-            effective_mode = "minimal"
-            link = session.exec(
-                select(PlanPromptLink)
-                .where(PlanPromptLink.plan_id == plan.id)
-                .where(PlanPromptLink.mode == "minimal")
-            ).first()
+        # DOWNGRADE LOGIC REMOVED to allow valid fallback.
+        # Previously we forced minimal if detailed link was missing.
+        # Now we proceed to _fallback_profile which can find shared defaults.
             
         if not link:
             fallback_profile = ProfileResolver._fallback_profile(session, tier_slug, effective_mode)
@@ -105,12 +88,7 @@ class ProfileResolver:
             raise ProfileResolutionError(f"Failed to load assets: {e}")
 
         # 5. Construct Profile
-        # We need to decide max output tokens and steps based on Plan or Mode.
-        # Currently stored in python profile logic or plan features?
-        # Plan model has `features` dict. We can store `max_tokens` there.
-        # Or hardcode defaults based on mode/tier.
-        
-        # 5. Construct Profile - STRICT Token Caps for Minimal Mode
+        # STRICT caps logic for fallback/safety
         max_tokens = 800
         max_steps = 5
         
@@ -119,8 +97,6 @@ class ProfileResolver:
                 max_tokens = 12000
                 max_steps = 25
             else:
-                # STRICT CAP for Paid Minimal: 600 tokens
-                # Enough for 2 steps + JSON overhead, but forces brevity.
                 max_tokens = 600
                 max_steps = 2
         elif effective_mode == "detailed":
@@ -158,6 +134,7 @@ class ProfileResolver:
 
     @staticmethod
     def _fallback_profile(session: Session, tier_slug: str, effective_mode: str) -> Optional[PromptProfile]:
+        # Fallback to shared assets (hardcoded keys point to DB entries)
         key_map = {
             "minimal": ("shared:minimal_system", "shared:minimal_schema"),
             "detailed": ("shared:detailed_system", "shared:canonical_schema"),
@@ -166,16 +143,20 @@ class ProfileResolver:
         tier_for_profile = "standard" if ("standard" in tier_slug or "family" in tier_slug) else tier_slug
         profile_defaults = get_prompt_profile(tier_for_profile)
 
+        # Look up assets by Key
         sys_asset = session.exec(select(PromptAsset).where(PromptAsset.key == system_key)).first()
         schema_asset = session.exec(select(PromptAsset).where(PromptAsset.key == schema_key)).first()
+        
         if not sys_asset or not schema_asset:
             return None
+            
         try:
             system_content = AssetLoader.get_asset_content(sys_asset)
             schema_content = AssetLoader.get_asset_content(schema_asset)
         except Exception:
             return None
 
+        # Return profile using defaults from profiles.py but content from DB assets
         return PromptProfile(
             tier=tier_slug,
             system_prompt_content=system_content if isinstance(system_content, str) else str(system_content),

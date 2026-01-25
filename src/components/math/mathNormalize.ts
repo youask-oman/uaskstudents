@@ -1,9 +1,20 @@
-export const normalizeProseMath = (content: string): string => {
+export const normalizeProseMath = (content: any): string => {
     if (!content) return "";
-    let text = content;
+    let text = typeof content === 'string' ? content : JSON.stringify(content);
+
+    // Check if it's a JSON array string ["...", "..."]
+    if (text.trim().startsWith("[") && text.trim().endsWith("]")) {
+        try {
+            const parsed = JSON.parse(text);
+            if (Array.isArray(parsed)) {
+                text = parsed.join("\n");
+            }
+        } catch (e) {
+            // Not valid JSON array, treat as text
+        }
+    }
 
     // Check if entire content is raw LaTeX (no delimiters but has LaTeX commands)
-    // This handles cases like "\text{Solve for } x, \frac{x + 1}{x - 2} = 3"
     if (isRawLatex(text)) {
         return `\\(${text.trim()}\\)`;
     }
@@ -132,10 +143,20 @@ const escapeAllDollars = (text: string) => {
 const isSafeInlinePair = (inner: string) => {
     const trimmed = inner.trim();
     if (!trimmed) return false;
-    if (/^[\d.,]+$/.test(trimmed)) return false;
-    if (/\\[a-zA-Z]+/.test(trimmed)) return true;
-    if (/[=+\-*/^_<>]/.test(trimmed)) return true;
-    if (/\\begin\{/.test(trimmed)) return true;
-    if (/^[a-zA-Z]$/.test(trimmed)) return true;
+
+    // Double check if value is still an array/object-like string that needs cleaning before render
+    let cleanValue = trimmed;
+    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+        try {
+            const parsed = JSON.parse(trimmed);
+            if (Array.isArray(parsed)) cleanValue = parsed.join(" \\\\ ");
+        } catch (e) { }
+    }
+
+    if (/^[\d.,]+$/.test(cleanValue)) return false;
+    if (/\\[a-zA-Z]+/.test(cleanValue)) return true;
+    if (/[=+\-*/^_<>]/.test(cleanValue)) return true;
+    if (/\\begin\{/.test(cleanValue)) return true;
+    if (/^[a-zA-Z]$/.test(cleanValue)) return true;
     return false;
 };

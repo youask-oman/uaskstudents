@@ -1,0 +1,22 @@
+{
+  "status": "error",
+  "finish_reason": null,
+  "incomplete_details": null,
+  "error": {
+    "type": "BadRequestError",
+    "message": "Error code: 400 - {'error': {'message': \"Missing required parameter: 'text.format.name'.\", 'type': 'invalid_request_error', 'param': 'text.format.name', 'code': 'missing_required_parameter'}}"
+  },
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "total_tokens": 0,
+  "cached_tokens": 0,
+  "raw_content": "",
+  "content_length": 0,
+  "content_preview_head": "",
+  "content_preview_tail": "",
+  "request_id": null,
+  "rate_limit_remaining": null,
+  "full_response_dict": {},
+  "latency_ms": 1087,
+  "timestamp": "2026-01-25T21:49:02.284588"
+}
