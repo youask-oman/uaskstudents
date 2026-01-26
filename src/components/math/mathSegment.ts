@@ -12,7 +12,21 @@ export const segmentMath = (content: string): MathSegment[] => {
     while (cursor < content.length) {
         const nextInline = findDelimiter(content, "\\(", cursor);
         const nextBlock = findDelimiter(content, "\\[", cursor);
-        const next = pickNext(nextInline, nextBlock);
+
+        // Also look for naked backslash commands (e.g. \sqrt)
+        // We look for a backslash followed by a letter, not preceded by a delimiter trigger
+        let nakedBackslash = -1;
+        const bsRegex = /\\([a-zA-Z]+)/g;
+        bsRegex.lastIndex = cursor;
+        const match = bsRegex.exec(content);
+        if (match && !isEscaped(content, match.index)) {
+            // Ensure this backslash isn't the start of \( or \[ (already handled)
+            if (content[match.index + 1] !== '(' && content[match.index + 1] !== '[') {
+                nakedBackslash = match.index;
+            }
+        }
+
+        const next = pickNext(nextInline, nextBlock, nakedBackslash);
 
         if (next.index === -1) {
             segments.push({ type: "text", value: content.slice(cursor) });
@@ -23,35 +37,45 @@ export const segmentMath = (content: string): MathSegment[] => {
             segments.push({ type: "text", value: content.slice(cursor, next.index) });
         }
 
+        if (next.type === "naked_command") {
+            const rest = content.slice(next.index);
+            // Match the command (\sqrt) plus optional trailing brackets: {}, [], ()
+            const fullMatch = rest.match(/^\\([a-zA-Z]+)(?:\{[^{}]*\}|\[[^[\]]*\]|\([^()]*\))*/);
+            const cmdLen = fullMatch ? fullMatch[0].length : 1;
+            segments.push({ type: "inline_math", value: content.slice(next.index, next.index + cmdLen) });
+            cursor = next.index + cmdLen;
+            continue;
+        }
+
         const closeDelim = next.type === "block_math" ? "\\]" : "\\)";
         const closeIndex = findDelimiter(content, closeDelim, next.index + 2);
         if (closeIndex === -1) {
-            segments.push({ type: "text", value: content.slice(next.index) });
+            segments.push({ type: next.type === "block_math" ? "block_math" : "inline_math", value: content.slice(next.index + 2) });
             break;
         }
 
         const value = content.slice(next.index + 2, closeIndex);
-        segments.push({ type: next.type, value });
+        segments.push({ type: next.type === "block_math" ? "block_math" : "inline_math", value });
         cursor = closeIndex + 2;
     }
 
     return segments;
 };
 
-const pickNext = (inlineIndex: number, blockIndex: number) => {
-    if (inlineIndex === -1 && blockIndex === -1) {
-        return { index: -1, type: "text" as const };
-    }
-    if (inlineIndex === -1) {
-        return { index: blockIndex, type: "block_math" as const };
-    }
-    if (blockIndex === -1) {
-        return { index: inlineIndex, type: "inline_math" as const };
-    }
-    if (blockIndex <= inlineIndex) {
-        return { index: blockIndex, type: "block_math" as const };
-    }
-    return { index: inlineIndex, type: "inline_math" as const };
+const pickNext = (inlineIndex: number, blockIndex: number, nakedIndex: number) => {
+    let best = { index: -1, type: "text" as "text" | "inline_math" | "block_math" | "naked_command" };
+
+    const update = (idx: number, type: "inline_math" | "block_math" | "naked_command") => {
+        if (idx !== -1 && (best.index === -1 || idx < best.index)) {
+            best = { index: idx, type };
+        }
+    };
+
+    update(inlineIndex, "inline_math");
+    update(blockIndex, "block_math");
+    update(nakedIndex, "naked_command");
+
+    return best;
 };
 
 const isEscaped = (text: string, index: number) => {

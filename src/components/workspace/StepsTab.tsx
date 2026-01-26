@@ -46,7 +46,7 @@ const getMathContent = (step: Step): string => {
     }
     // Fallback to work array (legacy)
     if (step.work && Array.isArray(step.work) && step.work.length > 0) {
-        return step.work.join('\n');
+        return step.work.join(' ');
     }
     return '';
 };
@@ -277,10 +277,10 @@ export default function StepsTab({ steps, visuals }: StepsTabProps) {
                                 {/* Step Content (Expandable) */}
                                 {isExpanded && (
                                     <div className="px-5 pb-5 pt-0 border-t border-slate-100 dark:border-slate-700 animate-in slide-in-from-top-2 duration-300">
-                                        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 pt-5">
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-5">
 
-                                            {/* Left: Explanation (60%) */}
-                                            <div className="lg:col-span-3 space-y-4">
+                                            {/* Left: Explanation (Equal) */}
+                                            <div className="lg:col-span-1 space-y-4">
                                                 {/* Explanation Text */}
                                                 <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
                                                     <ExplanationRenderer content={explanationText} mode="prose" />
@@ -311,19 +311,23 @@ export default function StepsTab({ steps, visuals }: StepsTabProps) {
                                                 )}
                                             </div>
 
-                                            {/* Right: Math Work (40%) */}
-                                            <div className="lg:col-span-2">
+                                            {/* Right: Math Work (Equal) */}
+                                            <div className="lg:col-span-1">
                                                 {mathContent && (
                                                     <div className="bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner">
                                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Mathematical Work</p>
                                                         <div className="text-slate-900 dark:text-white font-medium">
                                                             <style>{`
                                                                 .math-work-content .katex-display {
-                                                                    text-align: left !important;
-                                                                    margin: 0.5em 0 !important;
+                                                                    text-align: center !important;
+                                                                    margin: 1em 0 !important;
                                                                 }
                                                                 .math-work-content .katex {
-                                                                    font-size: 1.1em;
+                                                                    font-size: 1.6em;
+                                                                }
+                                                                .math-work-content mjx-container {
+                                                                    font-size: 160% !important;
+                                                                    margin: 1em auto !important;
                                                                 }
                                                             `}</style>
                                                             <div className="math-work-content">

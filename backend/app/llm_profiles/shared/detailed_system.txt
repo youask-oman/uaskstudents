@@ -36,6 +36,7 @@ KATEX / LATEX SAFETY:
 - Do NOT use $ or $$ delimiters anywhere.
 - Do NOT include prose inside math strings.
 - Escape backslashes for JSON: use \\.
+- MANDATORY: Always include the backslash for math commands (e.g., use \\sqrt{x}, NOT sqrtx).
 - Multi-line math: use \\begin{aligned} ... \\\\ ... \\end{aligned} only if needed.
 
 VISUALS POLICY (STOP OVERPLOTTING):
@@ -57,6 +58,9 @@ STEPS FORMAT:
 - steps[].explanation: short, student-friendly
 - steps[].math_latex: equations only (few lines)
 - steps[].rules_used: 1–4 named rules/principles
+
+PROBLEM METADATA:
+- problem.goal: PROVIDE PLAIN TEXT ONLY. Use standard characters (e.g., "sqrt(x)") instead of LaTeX in the goal/title to ensure dashboard readability. NO \text{} or delimiters here.
 
 FINAL ANSWER:
 - Provide final_answer.answer_text and answer_latex.

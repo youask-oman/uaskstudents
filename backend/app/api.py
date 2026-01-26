@@ -3138,6 +3138,56 @@ async def solve_problem(
     telemetry_data["learning_mode"] = new_chat.learning_mode
     telemetry_data["requested_mode"] = new_chat.requested_mode
     telemetry_data["solve_tier"] = new_chat.solve_tier
+    
+    assistant_msg = ChatMessage(
+        session_id=new_chat.id,
+        role="assistant",
+        content=assistant_content or "",
+        structured_data=solution_data,
+        model_used=model_name,
+        tokens_used=telemetry_data.get("total_tokens", 0),
+        telemetry=telemetry_data
+    )
+    session.add(assistant_msg)
+    
+    # 6. Finalize Analytics Event
+    from app.services.admin.analytics_service import record_request_event
+    
+    # Commit session and messages
+    session.commit()
+    
+    # Record telemetry for admin dashboard
+    event_payload = {
+        "request_id": request_id,
+        "user_id": user_id,
+        "mode": requested_mode,
+        "learning_mode": new_chat.learning_mode,
+        "subject": body.subject,
+        "grade_level": user.grade_level if user else None,
+        "model": model_name,
+        "provider": "openai",
+        "route": "solve_question",
+        "tokens_in": telemetry_data.get("input_tokens"),
+        "tokens_out": telemetry_data.get("output_tokens"),
+        "tokens_total": telemetry_data.get("total_tokens"),
+        "cost_usd": 0.0, # Will be calc'd inside record_request_event or legacy helper
+        "latency_ms": telemetry_data.get("latency_ms_total"),
+        "status": "success"
+    }
+    record_request_event(session, event_payload)
+    session.commit()
+
+    # Transformation complete, visuals handled at runtime in frontend
+    return SolveResponse(
+        session_id=new_chat.id,
+        solution=solution_data,
+        concepts=solution_data.get("concepts") or [],
+        model_used=model_name,
+        tokens_used=telemetry_data.get("total_tokens", 0),
+        telemetry=telemetry_data,
+        has_image=is_image
+    )
+
 # --- Admin Prompt Asset & Link Management ---
 
 class PromptAssetResponse(BaseModel):

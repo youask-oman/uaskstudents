@@ -2,7 +2,7 @@
 
 import React from "react";
 import { MathJax } from "better-react-mathjax";
-import { normalizeProseMath } from "./mathNormalize";
+import { normalizeProseMath, autoFixMath } from "./mathNormalize";
 import { segmentMath } from "./mathSegment";
 import {
     markMalformedLatex,
@@ -162,11 +162,11 @@ const MathSegment = ({
     }
 
     // Double check if value is still an array/object-like string that needs cleaning before render
-    let cleanValue = value;
-    if (typeof value === "string" && value.trim().startsWith("[") && value.trim().endsWith("]")) {
+    let cleanValue = typeof value === "string" ? autoFixMath(value) : value;
+    if (typeof cleanValue === "string" && cleanValue.trim().startsWith("[") && cleanValue.trim().endsWith("]")) {
         try {
-            const parsed = JSON.parse(value);
-            if (Array.isArray(parsed)) cleanValue = parsed.join(" \\\\ ");
+            const parsed = JSON.parse(cleanValue);
+            if (Array.isArray(parsed)) cleanValue = parsed.join(" \\quad ");
         } catch (e) {
             // Not valid JSON array, treat as text
         }

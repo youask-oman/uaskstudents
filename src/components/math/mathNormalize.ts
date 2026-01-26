@@ -23,8 +23,35 @@ export const normalizeProseMath = (content: any): string => {
     text = convertDisplayMath(text);
 
     const lines = text.split("\n");
-    const normalized = lines.map((line) => normalizeInlineDollars(line));
+    const normalized = lines.map((line) => {
+        const n = normalizeInlineDollars(line);
+        return autoFixMath(n);
+    });
     return normalized.join("\n");
+};
+
+// Automatically prepend backslashes to known math commands if missing
+export const autoFixMath = (text: string): string => {
+    if (!text) return text;
+    // Common terms that should be math commands if they look like standalone words or prefixes
+    let commands = ["frac", "tfrac", "sqrt", "sin", "cos", "tan", "log", "ln", "pm", "mp", "le", "ge", "leq", "geq", "neq", "approx", "alpha", "beta", "gamma", "delta", "theta", "pi", "infty", "left", "right", "begin", "end", "times", "div", "cdot"];
+
+    // Sort by length descending to match longest commands first
+    commands.sort((a, b) => b.length - a.length);
+
+    let repaired = text;
+    commands.forEach(cmd => {
+        // Matches "sqrt" but not "\sqrt"
+        // Lookbehind: Not preceded by \ or a letter.
+        // We now allow characters to follow (e.g., sqrtx)
+        const regex = new RegExp(`(?<![\\\\a-zA-Z])${cmd}`, "g");
+        repaired = repaired.replace(regex, `\\${cmd}`);
+    });
+
+    // Handle common non-standard parentheses for square roots (e.g. \sqrt(x) -> \sqrt{x})
+    repaired = repaired.replace(/\\sqrt\(([^)]+)\)/g, "\\sqrt{$1}");
+
+    return repaired;
 };
 
 // Detect if content is raw LaTeX without delimiters
@@ -35,8 +62,22 @@ const isRawLatex = (text: string): boolean => {
         trimmed.startsWith("$") || trimmed.startsWith("$$")) {
         return false;
     }
-    // Check for common LaTeX commands
-    const latexCommandPattern = /\\(text|frac|sqrt|sum|int|lim|sin|cos|tan|log|ln|alpha|beta|gamma|delta|theta|pi|infty|cdot|times|div|pm|mp|leq|geq|neq|approx|equiv|subset|supset|in|notin|forall|exists|partial|nabla|left|right|begin|end)\b/;
+
+    // Heuristic: If it has more than 3 spaces, it's likely prose and should NOT be wrapped 
+    // entirely in math mode (prevents the "italics prose" bug).
+    // EXCEPTIONS:
+    // 1. Strings starting with \text{ (likely AI-generated session titles)
+    // 2. Strings containing a backslash (likely intended as LaTeX)
+    // 3. JSON arrays (common for multi-step math blocks)
+    const spaceCount = (trimmed.match(/\s+/g) || []).length;
+    const hasBackslash = trimmed.includes("\\");
+    const isJsonArray = trimmed.startsWith("[");
+    const startsWithText = trimmed.startsWith("\\text{");
+
+    if (spaceCount > 3 && !isJsonArray && !hasBackslash && !startsWithText) return false;
+
+    // Check for common LaTeX commands, permitting missing backslashes for common math terms
+    const latexCommandPattern = /\\?(frac|tfrac|sqrt|sum|int|lim|sin|cos|tan|log|ln|alpha|beta|gamma|delta|theta|pi|infty|cdot|times|div|pm|mp|le|ge|leq|geq|neq|approx|equiv|subset|supset|in|notin|forall|exists|partial|nabla|left|right|begin|end|to|Rightarrow|rightarrow|leftrightarrow)(?![a-zA-Z])/;
     return latexCommandPattern.test(trimmed);
 };
 
