@@ -608,6 +608,14 @@ class TokenPolicyResponse(BaseModel):
     policy: Dict[str, Any]
     source: str
 
+class SystemConfigEntry(BaseModel):
+    key: str
+    value: str
+    description: Optional[str] = None
+
+class SystemConfigUpdateRequest(BaseModel):
+    entries: List[SystemConfigEntry]
+
 class AdminUserUpdateRequest(BaseModel):
     full_name: Optional[str] = None
     email: Optional[str] = None
@@ -6070,6 +6078,31 @@ async def admin_apply_quota_override(req: QuotaOverrideRequest, db: Session = De
     db.add(override)
     db.commit()
     return {"status": "ok", "expires_at": expires_at.isoformat() if expires_at else None}
+
+
+@api_router.get("/admin/system-config", response_model=List[SystemConfigEntry])
+async def admin_list_system_config(session: Session = Depends(get_session)):
+    """Admin only: fetch the entire system configuration table."""
+    rows = session.exec(select(SystemConfig)).all()
+    return [SystemConfigEntry(key=row.key, value=row.value, description=row.description) for row in rows]
+
+
+@api_router.post("/admin/system-config")
+async def admin_update_system_config(req: SystemConfigUpdateRequest, session: Session = Depends(get_session)):
+    """Admin only: persist updated system configuration entries."""
+    updated = 0
+    for entry in req.entries:
+        row = session.get(SystemConfig, entry.key)
+        if row:
+            row.value = entry.value
+            if entry.description is not None:
+                row.description = entry.description
+        else:
+            row = SystemConfig(key=entry.key, value=entry.value, description=entry.description)
+            session.add(row)
+        updated += 1
+    session.commit()
+    return {"ok": True, "updated": updated}
 
 @api_router.get("/admin/users/{user_id}/activity", response_model=List[AdminActivityItem])
 async def admin_get_user_activity(user_id: int, db: Session = Depends(get_session)):

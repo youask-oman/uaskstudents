@@ -20,7 +20,9 @@ import {
     normalizeAndFixColors,
     escapeAllDollars,
     convertStrictToLibFormat,
-    autoWrapEnvironments
+    autoWrapEnvironments,
+    normalizePlainSqrt,
+    escapeUnmatchedRightDelimiters
 } from './MathUtils';
 
 // =============================================================================
@@ -46,7 +48,11 @@ export default function MathRenderer({ content, className = "", inline = false, 
     // Step 5: Normalize LaTeX breaks/commands outside math regions
     text = normalizeLatexBreaksOutsideMath(text);
 
-    // Step 6: STRICT: Escape ALL dollars in prose to prevent accidental math mode.
+    // Step 6: Normalize bare sqrt expressions and stray delimiters
+    text = normalizePlainSqrt(text);
+    text = escapeUnmatchedRightDelimiters(text);
+
+    // Step 7: STRICT: Escape ALL dollars in prose to prevent accidental math mode.
     // This effectively disables $...$ delimiters.
     text = escapeAllDollars(text);
 

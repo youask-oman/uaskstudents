@@ -4,6 +4,7 @@ import DashboardNavBar from "@/components/DashboardNavBar";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import MathRenderer from "@/components/math/MathRendererSwitch";
+import MathRendererMJX from "@/components/MathRendererMJX";
 import MathInput, { MathInputRef } from "@/components/MathInput";
 import { MODES, ModeId, Suggestion } from "@/lib/modes";
 import SnapSolveV2 from "@/components/snap/SnapSolveV2";
@@ -129,7 +130,7 @@ export default function DashboardPage() {
 
     // Tier-Aware Solve State
     const selectedGoal = 'solve';
-    const [selectedAnswerStyle, setSelectedAnswerStyle] = useState<'quick' | 'tutor'>('quick');
+    const [selectedAnswerStyle, setSelectedAnswerStyle] = useState<'quick' | 'tutor'>('tutor');
     const [subscription, setSubscription] = useState<SubscriptionResponse | null>(null);
     const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
     const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
@@ -186,6 +187,16 @@ export default function DashboardPage() {
     const subscriptionReady = subscriptionLoaded && !subscriptionError && !!subscription;
     const readySubscription = subscriptionReady ? subscription : null;
     const allowDetailed = readySubscription?.allow_detailed ?? false;
+
+    useEffect(() => {
+        if (allowDetailed && selectedAnswerStyle !== "tutor") {
+            setSelectedAnswerStyle("tutor");
+            return;
+        }
+        if (!allowDetailed && selectedAnswerStyle === "tutor") {
+            setSelectedAnswerStyle("quick");
+        }
+    }, [allowDetailed, selectedAnswerStyle]);
     const trustedProfile = readySubscription?.profile ?? null;
 
     useEffect(() => {
@@ -829,7 +840,7 @@ export default function DashboardPage() {
                                                                         TeX
                                                                     </span>
                                                                     <div className="flex-1 font-medium text-slate-700 dark:text-slate-200">
-                                                                        <MathRenderer content={suggestion.title} mode="inline" className="pointer-events-none" />
+                                                                        <MathRendererMJX content={`\\(${suggestion.title}\\)`} inline className="pointer-events-none" />
                                                                     </div>
                                                                     <span className="material-symbols-outlined text-slate-300 group-hover/item:text-primary text-sm opacity-0 group-hover/item:opacity-100 transition-all">
                                                                         arrow_forward

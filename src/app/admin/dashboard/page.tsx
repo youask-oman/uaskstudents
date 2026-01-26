@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import SystemConfigPanel from "@/components/admin/SystemConfigPanel";
 
 type FilterState = {
     mode: string;
@@ -157,7 +158,6 @@ export default function AdminDashboardPage() {
     const [filters, setFilters] = useState<FilterState>(defaultFilters);
     const [isLoading, setIsLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
     const router = useRouter();
     const settingsPanelRef = useRef<HTMLDivElement | null>(null);
@@ -202,6 +202,49 @@ export default function AdminDashboardPage() {
         clearSessionData();
         setIsSettingsOpen(false);
         router.push("/login");
+    };
+
+    const handleConfigFieldChange = (key: string, newValue: string) => {
+        setConfigDraft((prev) => ({ ...prev, [key]: newValue }));
+        setConfigSaveError(null);
+        setConfigSaveSuccess(null);
+    };
+
+    const handleSaveSystemSettings = async () => {
+        if (systemConfig.length === 0) {
+            return;
+        }
+        setIsSavingConfig(true);
+        setConfigSaveError(null);
+        setConfigSaveSuccess(null);
+        try {
+            const token = localStorage.getItem("token");
+            const headers: HeadersInit = {
+                "Content-Type": "application/json",
+                ...(token ? { Authorization: `Bearer ${token}` } : {})
+            };
+            const payload = {
+                entries: systemConfig.map((entry) => ({
+                    key: entry.key,
+                    value: configDraft[entry.key] ?? entry.value,
+                    description: entry.description
+                }))
+            };
+            const response = await fetch(`${baseUrl}/api/v1/admin/system-config`, {
+                method: "POST",
+                headers,
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) {
+                throw new Error("Failed to persist system settings.");
+            }
+            await loadSystemSettings();
+            setConfigSaveSuccess("System settings updated.");
+        } catch (err) {
+            setConfigSaveError((err as Error).message ?? "Unable to save settings.");
+        } finally {
+            setIsSavingConfig(false);
+        }
     };
 
     useEffect(() => {
@@ -653,6 +696,8 @@ export default function AdminDashboardPage() {
                         </div>
                     </div>
                 </section>
+
+                <SystemConfigPanel baseUrl={baseUrl} />
 
                 <section className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl">
                     <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-800/20">

@@ -103,7 +103,7 @@ export function normalizeLatexBreaksOutsideMath(input: string): string {
                 part.startsWith("`") ||
                 part.startsWith("\\[") ||
                 part.startsWith("\\(") ||
-                part.toLowerCase().startsWith("\\begin")
+                part.toLowerCase().includes("\\begin")
             ) return part;
 
             // Outside math:
@@ -192,6 +192,99 @@ export function convertStrictToLibFormat(input: string): string {
 
         return s;
     }).join('');
+}
+
+const parseGroup = (text: string, start: number, openChar: string, closeChar: string) => {
+    let depth = 0;
+    let cursor = start;
+    while (cursor < text.length) {
+        const ch = text[cursor];
+        if (ch === openChar) depth += 1;
+        if (ch === closeChar) {
+            depth -= 1;
+            if (depth === 0) {
+                return cursor + 1;
+            }
+        }
+        cursor += 1;
+    }
+    return -1;
+};
+
+export function normalizePlainSqrt(text: string): string {
+    const sanitized = text.replace(/sqrt\s*([a-zA-Z0-9]+)/g, (match, expr, offset) => {
+        if (offset > 0) {
+            const prevChar = text[offset - 1];
+            if (prevChar === "\\" || /[a-zA-Z0-9]/.test(prevChar)) {
+                return match;
+            }
+        }
+        return `\\sqrt{${expr}}`;
+    });
+
+    const parts = sanitized.split(/(```[\s\S]*?```|`[^`]*`|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\))/g);
+
+    return parts
+        .map((part) => {
+            if (
+                part.startsWith("```") ||
+                part.startsWith("`") ||
+                part.startsWith("\\[") ||
+                part.startsWith("\\(")
+            ) {
+                return part;
+            }
+
+            let output = "";
+            let cursor = 0;
+            while (cursor < part.length) {
+                const match = part.slice(cursor).match(/\bsqrt\s*\(/);
+                if (!match || match.index === undefined) {
+                    output += part.slice(cursor);
+                    break;
+                }
+
+                const start = cursor + match.index;
+                output += part.slice(cursor, start);
+
+                const openParen = part.indexOf("(", start);
+                if (openParen === -1) {
+                    output += part.slice(start);
+                    break;
+                }
+
+                const closeParen = parseGroup(part, openParen, "(", ")");
+                if (closeParen === -1) {
+                    output += part.slice(start);
+                    break;
+                }
+
+                const inner = part.slice(openParen + 1, closeParen - 1);
+                output += `\\sqrt{${inner}}`;
+                cursor = closeParen;
+            }
+
+            return output;
+        })
+        .join("");
+}
+
+export function escapeUnmatchedRightDelimiters(text: string): string {
+    let leftStack = 0;
+    return text.replace(/\\(left|right)/g, (match, direction) => {
+        if (direction === "left") {
+            leftStack += 1;
+            return match;
+        }
+        if (direction === "right") {
+            if (leftStack > 0) {
+                leftStack -= 1;
+                return match;
+            }
+            return `\\text{\\char92${direction}}`;
+        }
+        return match;
+    });
 }
 
 export function splitSolutionIntoLines(input: string) {

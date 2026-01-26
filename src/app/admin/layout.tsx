@@ -11,21 +11,6 @@ type AdminProfile = {
     authorized: boolean;
 };
 
-const getInitialAdminProfile = (): AdminProfile => {
-    if (typeof window === "undefined") {
-        return { name: "Admin User", role: "", avatar: "", authorized: false };
-    }
-    const role = localStorage.getItem("user_role") ?? "";
-    const name = localStorage.getItem("user_name") ?? "Admin User";
-    const avatar = localStorage.getItem("user_avatar") ?? "";
-    return {
-        name,
-        role,
-        avatar,
-        authorized: role === "admin",
-    };
-};
-
 export default function AdminLayout({
     children,
 }: {
@@ -33,14 +18,30 @@ export default function AdminLayout({
 }) {
     const pathname = usePathname();
     const router = useRouter();
-    const [adminProfile] = useState<AdminProfile>(getInitialAdminProfile);
+    const [adminProfile, setAdminProfile] = useState<AdminProfile>({
+        name: "Admin User",
+        role: "",
+        avatar: "",
+        authorized: false,
+    });
 
     useEffect(() => {
-        if (!adminProfile.authorized) {
+        if (typeof window === "undefined") {
+            router.push("/login");
+            return;
+        }
+        const role = localStorage.getItem("user_role") ?? "";
+        const profile = {
+            name: localStorage.getItem("user_name") ?? "Admin User",
+            role,
+            avatar: localStorage.getItem("user_avatar") ?? "",
+            authorized: role === "admin",
+        };
+        setAdminProfile(profile);
+        if (!profile.authorized) {
             router.push("/login");
         }
-    }, [adminProfile.authorized, router]);
-
+    }, [router]);
     if (!adminProfile.authorized) return null;
 
     const adminRoleLabel = adminProfile.authorized ? "Platform Administrator" : "Super Admin";
@@ -53,10 +54,14 @@ export default function AdminLayout({
         { label: "Prompts", href: "/admin/prompts", icon: "terminal" },
         { label: "Logs", href: "/admin/logs", icon: "receipt_long" },
         { label: "Data", href: "/admin/data", icon: "table_view" },
+        { label: "System Config", href: "/admin/system-config", icon: "tune" },
     ];
 
     return (
-        <div className="font-admin bg-background-light text-slate-900 dark:bg-background-dark dark:text-slate-200 min-h-screen flex overflow-hidden transition-colors">
+        <div
+            suppressHydrationWarning
+            className="font-admin bg-background-light text-slate-900 dark:bg-background-dark dark:text-slate-200 min-h-screen flex overflow-hidden transition-colors"
+        >
             {/* Sidebar */}
             <aside className="w-64 flex-shrink-0 bg-white dark:bg-[#111827] border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between p-4 transition-colors">
                 <div className="flex flex-col gap-8">

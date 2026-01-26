@@ -8,6 +8,7 @@ import time
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.api import limiter
+from pathlib import Path
 
 load_dotenv()
 
@@ -45,25 +46,44 @@ async def log_requests(request: Request, call_next):
 def on_startup():
     # Configure Structured Logging
     root_logger = logging.getLogger()
+    json_logging = os.environ.get("USE_JSON_LOGGING") == "true"
+
+    class JsonFormatter(logging.Formatter):
+        def format(self, record):
+            log_record = {
+                "timestamp": self.formatTime(record, self.datefmt),
+                "level": record.levelname,
+                "message": record.getMessage(),
+                "module": record.module,
+            }
+            if record.exc_info:
+                log_record["exception"] = self.formatException(record.exc_info)
+            return json.dumps(log_record)
+
+    formatter = JsonFormatter() if json_logging else None
+
+    root_logger.setLevel(logging.INFO)
     if not root_logger.handlers:
         handler = logging.StreamHandler()
-        class JsonFormatter(logging.Formatter):
-            def format(self, record):
-                log_record = {
-                    "timestamp": self.formatTime(record, self.datefmt),
-                    "level": record.levelname,
-                    "message": record.getMessage(),
-                    "module": record.module,
-                }
-                if record.exc_info:
-                    log_record["exception"] = self.formatException(record.exc_info)
-                return json.dumps(log_record)
-        
-        # Only use JSON in production/docker environments
-        if os.environ.get("USE_JSON_LOGGING") == "true":
-            handler.setFormatter(JsonFormatter())
+        if formatter:
+            handler.setFormatter(formatter)
         root_logger.addHandler(handler)
-    
+
+    log_to_file = os.environ.get("ENABLE_DEBUG_LOGS", "true").lower() in {"1", "true", "yes"}
+    log_path = Path(os.environ.get("DEBUG_LOG_PATH", "backend/debug_logs.txt"))
+    if log_to_file:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        existing_file_handler = any(
+            isinstance(handler, logging.FileHandler)
+            and Path(getattr(handler, "baseFilename", "")).resolve() == log_path.resolve()
+            for handler in root_logger.handlers
+        )
+        if not existing_file_handler:
+            file_handler = logging.FileHandler(log_path, encoding="utf-8")
+            if formatter:
+                file_handler.setFormatter(formatter)
+            root_logger.addHandler(file_handler)
+
     create_db_and_tables()
     
     # Initialize Plans

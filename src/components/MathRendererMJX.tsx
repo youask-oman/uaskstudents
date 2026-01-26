@@ -2,7 +2,7 @@
 
 import React from "react";
 import { MathJax } from "better-react-mathjax";
-import { convertLatexFencesToMath } from "./MathUtils";
+import { convertLatexFencesToMath, normalizePlainSqrt, escapeUnmatchedRightDelimiters } from "./MathUtils";
 
 export interface MathRendererMJXProps {
   content?: string | number;
@@ -342,54 +342,6 @@ const wrapBareLatexFragments = (text: string) => {
     .join("");
 };
 
-const normalizePlainSqrt = (text: string) => {
-  const parts = text.split(/(```[\s\S]*?```|`[^`]*`|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\))/g);
-
-  return parts
-    .map((part) => {
-      if (
-        part.startsWith("```") ||
-        part.startsWith("`") ||
-        part.startsWith("\\[") ||
-        part.startsWith("\\(")
-      ) {
-        return part;
-      }
-
-      let output = "";
-      let cursor = 0;
-      while (cursor < part.length) {
-        const match = part.slice(cursor).match(/\bsqrt\s*\(/);
-        if (!match || match.index === undefined) {
-          output += part.slice(cursor);
-          break;
-        }
-
-        const start = cursor + match.index;
-        output += part.slice(cursor, start);
-
-        const openParen = part.indexOf("(", start);
-        if (openParen === -1) {
-          output += part.slice(start);
-          break;
-        }
-
-        const closeParen = parseGroup(part, openParen, "(", ")");
-        if (closeParen === -1) {
-          output += part.slice(start);
-          break;
-        }
-
-        const inner = part.slice(openParen + 1, closeParen - 1);
-        output += `\\sqrt{${inner}}`;
-        cursor = closeParen;
-      }
-
-      return output;
-    })
-    .join("");
-};
-
 /**
  * Auto-detect and wrap bare math expressions that lack LaTeX delimiters.
  * Uses a single-pass approach to avoid double-wrapping.
@@ -468,6 +420,7 @@ export const prepareMathJaxContent = (content?: string | number) => {
   text = normalizePlainSqrt(text);
   text = wrapBareMathExpressions(text);
   text = wrapBareLatexFragments(text);
+  text = escapeUnmatchedRightDelimiters(text);
   return text;
 };
 
