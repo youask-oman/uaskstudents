@@ -83,18 +83,16 @@ class SolverV3:
             "debit_status": "none",
             "repair_attempted": False,
             "openai_calls_count": 0,
-            "openai_payload": None
+            "openai_payload": None,
+            "fallback_triggered": False,
+            "status_checks": []
         }
-        
-        # If no DB session provided (backwards compat[ERROR]), we can't do advanced resolution/accounting.
-        # But for V3 strict we expect db_session.
         
         if trace:
             print(f"\n[SOLVER_V3] ==================== START ====================")
             print(f"[SOLVER_V3] Request ID: {request_id}")
 
         profile = None
-        debit_result = None
         token_policy: Optional[TokenPolicy] = None
 
         try:
@@ -106,7 +104,6 @@ class SolverV3:
                 # Load user object if needed
                 user_obj = None
                 if user_id:
-                     from sqlmodel import select
                      user_obj = db_session.get(User, user_id)
 
                 try:
@@ -134,20 +131,18 @@ class SolverV3:
             # Step 1.5: Accounting (Debit Pending) - MOVED TO API LAYER
             if db_session and user_id:
                 # API layer (api.py) handles check_entitlement_and_debit before calling solve().
-                # We do NOT debit here to avoid double-charging.
                 pass
 
             # Step 2: Prepare LLM Args
-            system_prompt = profile.system_prompt_content
-            # Ensure schema is dereferenced if dict
+            base_system_prompt = profile.system_prompt_content
             json_schema_config = profile.json_schema_content
-            # Wrap for OpenAI structured output strict mode
-            def load_schema(config_schema: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+            
+            # Helper to wrap/deref schema
+            def prepare_schema(config_schema: Optional[Dict[str, Any]]) -> Dict[str, Any]:
                 candidate = config_schema
                 if not isinstance(candidate, dict) or not candidate:
                     candidate = get_json_schema_for_openai_v3()
                 
-                # Check for "wrapped" schema style
                 if "schema" in candidate and isinstance(candidate["schema"], dict):
                      candidate = candidate["schema"]
 
@@ -159,84 +154,120 @@ class SolverV3:
                 if not isinstance(deref, dict):
                     deref = deref_json_schema(get_json_schema_for_openai_v3())
 
-                # Apply strict cleaning
                 deref = enforce_strict(deref)
-
                 if deref.get("type") is None:
                     deref["type"] = "object"
-                return deref
+                    
+                return {
+                     "name": "solve_response_v3",
+                     "strict": True,
+                     "schema": deref
+                }
 
-            deref_schema = load_schema(json_schema_config if isinstance(json_schema_config, dict) else None)
+            openai_schema_wrapper = prepare_schema(json_schema_config)
 
-            openai_schema_wrapper = {
-                 "name": "solve_response_v3",
-                 "strict": True,
-                 "schema": deref_schema
-            }
-
-            # Step 3: Call LLM
-            # Enforce deterministic token caps (Part A2)
-            # FORCE learning_mode="solve" if mode="minimal" to prevent token blowout (Part A3)
-            if profile.mode == "minimal":
-                learning_mode = "solve"
-                if trusted_context:
-                    trusted_context["learning_mode"] = "solve"
-
-            effective_learning_mode = trusted_context.get("learning_mode") if trusted_context else learning_mode
-            if max_output_tokens and max_output_tokens > 0:
-                effective_max_tokens = max_output_tokens
-            else:
-                if db_session and not token_policy:
-                    token_policy = get_token_policy(db_session)
-                if not token_policy:
-                    raise ValueError("Token policy unavailable")
-                effective_max_tokens = get_effective_max_tokens(profile.mode, effective_learning_mode, token_policy)
+            # Two-Pass Strategy
+            passes = [requested_mode]
+            if requested_mode != "minimal":
+                passes.append("minimal")
             
-            # Telemetry for effective max
-            telemetry["max_output_tokens_effective"] = effective_max_tokens
+            final_response_data = None
+            successful_mode = None
+            last_error = None
             
-            llm_start_perf = time.perf_counter()
-            try:
-                response_data, llm_tokens = await self._call_llm_with_schema(
-                    problem_text, 
-                    context, 
-                    system_prompt, 
-                    json_schema_config=openai_schema_wrapper, 
-                    max_output_tokens=effective_max_tokens,
-                    trace=trace,
-                    trusted_context=trusted_context,
-                    requested_mode=requested_mode,
-                    image_url=image_url
-                )
-                
-                llm_end_perf = time.perf_counter()
-                telemetry["latency_ms_openai"] = int((llm_end_perf - llm_start_perf) * 1000)
-                
-                telemetry["input_tokens"] = llm_tokens.get("input", 0)
-                telemetry["output_tokens"] = llm_tokens.get("output", 0)
-                telemetry["total_tokens"] = llm_tokens.get("total", 0)
-                telemetry["cached_tokens"] = llm_tokens.get("cached", None)
-                telemetry["openai_payload"] = llm_tokens.get("payload")
-                telemetry["openai_calls_count"] = llm_tokens.get("openai_calls", 1)
+            for pass_idx, current_mode in enumerate(passes):
+                is_fallback = (pass_idx > 0)
+                if is_fallback:
+                    telemetry["fallback_triggered"] = True
+                    if trace: print(f"[SOLVER_V3] Triggering Fallback to mode={current_mode}")
 
-            except Exception as e:
-                # Refund logic - HANDLED BY API LAYER
-                return self._handle_error(problem_text, f"LLM Call failed: {e}", "llm_error", telemetry, start_time_perf)
+                if current_mode == "minimal":
+                    effective_learning_mode = "solve"
+                else:
+                    effective_learning_mode = trusted_context.get("learning_mode") if trusted_context else learning_mode
 
+                if max_output_tokens and max_output_tokens > 0:
+                    effective_max_tokens = max_output_tokens
+                else:
+                    if db_session and not token_policy:
+                        token_policy = get_token_policy(db_session)
+                    
+                    if token_policy:
+                        effective_max_tokens = get_effective_max_tokens(current_mode, effective_learning_mode, token_policy)
+                    else:
+                        effective_max_tokens = 4096
+                
+                telemetry[f"pass_{pass_idx+1}_max_tokens"] = effective_max_tokens
+
+                llm_start_perf = time.perf_counter()
+                try:
+                    # Pass the current_mode as requested_mode to control verbosity param
+                    response_data, llm_tokens, status_info = await self._call_llm_with_schema(
+                        problem_text, 
+                        context, 
+                        base_system_prompt, 
+                        json_schema_config=openai_schema_wrapper, 
+                        max_output_tokens=effective_max_tokens,
+                        trace=trace,
+                        trusted_context=trusted_context,
+                        requested_mode=current_mode,
+                        image_url=image_url
+                    )
+                    
+                    llm_end_perf = time.perf_counter()
+                    
+                    # Accumulate/Update telemetry
+                    telemetry["latency_ms_openai"] = int((llm_end_perf - llm_start_perf) * 1000)
+                    telemetry["input_tokens"] = llm_tokens.get("input", 0)
+                    telemetry["output_tokens"] = llm_tokens.get("output", 0)
+                    telemetry["total_tokens"] = llm_tokens.get("total", 0)
+                    telemetry["cached_tokens"] = llm_tokens.get("cached", None)
+                    telemetry["openai_payload"] = llm_tokens.get("payload")
+                    telemetry["openai_calls_count"] += 1
+                    
+                    # VALIDATION
+                    validation_success, validation_error, validated_data = self._check_status_and_validate(
+                        response_data, status_info, openai_schema_wrapper["schema"]
+                    )
+                    
+                    telemetry["status_checks"].append({
+                        "pass": pass_idx + 1,
+                        "mode": current_mode,
+                        "status": status_info.get("status", "unknown"),
+                        "finish_reason": status_info.get("finish_reason", "unknown"),
+                        "valid": validation_success,
+                        "error": validation_error
+                    })
+
+                    if validation_success:
+                        final_response_data = validated_data
+                        successful_mode = current_mode
+                        telemetry["validated"] = True
+                        break # Success!
+                    else:
+                        print(f"[SOLVER_V3] Pass {pass_idx+1} Failed: {validation_error}")
+                        last_error = validation_error
+                        continue # Try next pass
+
+                except Exception as e:
+                    print(f"[SOLVER_V3] Pass {pass_idx+1} Exception: {e}")
+                    last_error = str(e)
+                    continue
+
+            # End of loops
+            if not final_response_data:
+                # All passes failed
+                return self._handle_error(problem_text, f"All attempts failed. Last error: {last_error}", "exhausted_retries", telemetry, start_time_perf)
+
+            # --- Success Processing ---
+            response_data = final_response_data
+            
             # Step 4: Map Minimal Response (if needed)
-            # The ProfileResolver should tell us if mapping is needed, or we rely on mode="minimal"
-            # AND the fact that the schema used was minimal.
-            # Minimal schema usually doesn't match canonical V3 fully[ERROR] 
-            # Or does minimal schema match V3 structure but with missing fields[ERROR]
-            # Our `map_minimal_to_canonical` takes `MinimalSolveResponse` and makes `SolveResponseV3`.
-            # We assume if mode="minimal", we must map.
-            
-            if profile.mode == "minimal":
+            if successful_mode == "minimal":
                  try:
                     response_data = map_minimal_to_canonical(response_data, problem_text)
                  except Exception as e:
                     return self._handle_error(problem_text, f"Response Mapping failed: {e}", "mapping_error", telemetry, start_time_perf)
-
 
             # Step 2.5: Normalize Response (Inject Defaults)
             if "refusal" not in response_data:
@@ -253,43 +284,6 @@ class SolverV3:
             # Step 2.6: Normalize with Defaults (Part C1)
             response_data = self.normalize_solver_response(response_data)
 
-            # Step 3: Validate
-            _model_temp = response_data.pop("_model", None)
-            validation = validate_response(response_data, strict=True)
-            if _model_temp:
-                 response_data["_model"] = _model_temp
-
-            if not validation.valid:
-                telemetry["validation_failures_count"] += 1
-                if trace:
-                    print(f"[SOLVER_V3] [WARN] Validation failed ({len(validation.errors)} errors)")
-                
-                # Step 4: Repair Loop
-                telemetry["repair_reason"] = f"{len(validation.errors)} validation errors"
-                telemetry["repair_attempted"] = True
-                telemetry["openai_calls_count"] = telemetry.get("openai_calls_count", 0) + 1
-                response_data = await self._repair_response(
-                    problem_text,
-                    context,
-                    system_prompt,
-                    response_data,
-                    validation,
-                    json_schema_config=openai_schema_wrapper,
-                    max_output_tokens=effective_max_tokens,
-                    requested_mode=requested_mode,
-                    trace=trace
-                )
-                telemetry["repaired"] = response_data.get("_repaired", False)
-                
-                # Re-validate
-                validation = validate_response(response_data, strict=True)
-                if not validation.valid:
-                    if trace:
-                        print(f"[SOLVER_V3] [ERROR] Repair failed")
-                    return self._handle_error(problem_text, validation.errors, "validation_failed_after_repair", telemetry, start_time_perf)
-
-            telemetry["validated"] = True
-            
             # Step 5: Visuals Telemetry
             visuals = response_data.get("visuals", {})
             if visuals.get("should_visualize", False):
@@ -589,6 +583,35 @@ class SolverV3:
         return err_resp
 
 
+    def _check_status_and_validate(self, data: Any, status_info: Dict, schema: Dict) -> Tuple[bool, Optional[str], Optional[Dict]]:
+        """
+        Check upstream status/finish_reason AND validate against schema.
+        Returns: (success, error_msg, validated_data)
+        """
+        # 1. Check Upstream Status
+        status = status_info.get("status") # gpt-5
+        finish_reason = status_info.get("finish_reason") # gpt-4
+        
+        # Responses API "incomplete"
+        if status == "incomplete":
+            return False, f"Upstream Incomplete (reason={status_info.get('incomplete_reason')})", None
+        
+        # Chat Completions "length"
+        if finish_reason == "length":
+            return False, "Upstream Truncated (length)", None
+            
+        # 2. Check Data Existence
+        if not data:
+             return False, "Empty Data", None
+
+        # 3. Schema Validation
+        validation = validate_response(data, strict=True)
+        if not validation.valid:
+            return False, f"Schema Validation Failed: {validation.errors}", None
+            
+        return True, None, data
+
+
     async def _call_llm_with_schema(
         self, 
         problem_text, 
@@ -600,7 +623,7 @@ class SolverV3:
         trusted_context: dict = None,
         requested_mode: str = "minimal",
         image_url: Optional[str] = None
-    ):
+    ) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
         # Build compact JSON user message with normalized trusted_context
         if trace:
             print(f"[SOLVER_DEBUG] _call_llm_with_schema requested_mode={requested_mode}")
@@ -615,22 +638,24 @@ class SolverV3:
         if trace:
             print(f"[SOLVER_DEBUG] _call_llm_with_schema user_message[:100]: {user_message[:100]}...")
         tokens = {"input": 0, "output": 0, "total": 0, "cached": None}
-        schema_name = None
+        status_info = {"status": "unknown", "finish_reason": "unknown"}
+        
         schema_payload = json_schema_config
         if isinstance(json_schema_config, dict):
-            schema_name = json_schema_config.get("name")
             if "schema" in json_schema_config:
                 schema_payload = json_schema_config["schema"]
-        payload_type = schema_payload.get("type") if isinstance(schema_payload, dict) else None
-        if payload_type is None:
-            print(f"[SOLVER_V3] WARNING: schema_payload missing type -> {schema_payload.get('$id', 'no-id')}? forcing object")
-            if isinstance(schema_payload, dict):
-                schema_payload["type"] = "object"
+        
+        if isinstance(schema_payload, dict) and schema_payload.get("type") is None:
+             schema_payload["type"] = "object"
         
         # Check model type for API method
         if "gpt-5" in self._model.lower():
             # Use client.responses.create for gpt-5 access
             verbosity = "low" if requested_mode == "minimal" else "high"
+            
+            # SAFEGUARD: Effort Control
+            reasoning_effort = "low"
+            
             user_content = [{"type": "input_text", "text": user_message}]
             if image_url:
                 user_content.append({"type": "input_image", "image_url": image_url})
@@ -644,12 +669,20 @@ class SolverV3:
                     "verbosity": verbosity,
                     "format": {
                         "type": "json_schema",
-                    "json_schema": schema_payload
-                }
-            },
-                "max_output_tokens": max_output_tokens
+                        "json_schema": schema_payload
+                    }
+                },
+                "max_output_tokens": max_output_tokens,
+                "reasoning": {"effort": reasoning_effort}
             }
+            
             response = await self.client.responses.create(**params)
+
+            if hasattr(response, "status"):
+                 status_info["status"] = response.status
+                 if response.status == "incomplete":
+                     details = getattr(response, "incomplete_details", None) or {}
+                     status_info["incomplete_reason"] = details.get("reason", "unknown")
 
             if hasattr(response, "usage"):
                 if hasattr(response.usage, "prompt_tokens"):
@@ -672,17 +705,22 @@ class SolverV3:
                     if hasattr(item, "content") and item.content:
                         content = item.content[0].text
                         break
-            if not content:
-                raise ValueError("Empty gpt-5 output")
+            
+            if os.environ.get("OPENAI_DEBUG_CAPTURE") == "1":
+                 print(f"[DEBUG_CAPTURE] Status: {status_info['status']}")
+
+            data = None
+            if content:
+                try:
+                    data = json.loads(content)
+                except Exception:
+                    pass
 
             tokens["payload"] = {
-                "response_format_schema_name": schema_name or "solve_response_v3",
                 "max_output_tokens": max_output_tokens,
-                "system_message_length": len(system_prompt or ""),
-                "user_message_length": len(user_message or "")
+                "reasoning_effort": reasoning_effort
             }
-            tokens["openai_calls"] = 1
-            return json.loads(content), tokens
+            return data, tokens, status_info
 
         else:
             # Standard Chat Completions for gpt-4o
@@ -703,6 +741,11 @@ class SolverV3:
             }
             
             response = await self.client.chat.completions.create(**params)
+            
+            finish_reason = response.choices[0].finish_reason
+            status_info["finish_reason"] = finish_reason
+            status_info["status"] = "completed"
+
             content = response.choices[0].message.content
             
             if hasattr(response, 'usage'):
@@ -710,21 +753,22 @@ class SolverV3:
                 tokens["output"] = response.usage.completion_tokens
                 tokens["total"] = response.usage.total_tokens
                 
-                # Check for cached tokens in prompt_tokens_details
                 if hasattr(response.usage, 'prompt_tokens_details') and response.usage.prompt_tokens_details:
                     tokens["cached"] = getattr(response.usage.prompt_tokens_details, 'cached_tokens', 0)
-                # Or sometimes top level logic depending on library version
                 if tokens["cached"] is None and hasattr(response.usage, 'cached_tokens'):
                      tokens["cached"] = response.usage.cached_tokens
 
+            data = None
+            if content:
+                try:
+                    data = json.loads(content)
+                except Exception:
+                     pass
+
             tokens["payload"] = {
-                "response_format_schema_name": schema_name or "solve_response_v3",
-                "max_output_tokens": max_output_tokens,
-                "system_message_length": len(system_prompt or ""),
-                "user_message_length": len(user_message or "")
+                "max_output_tokens": max_output_tokens
             }
-            tokens["openai_calls"] = 1
-            return json.loads(content), tokens
+            return data, tokens, status_info
 
     async def _repair_response(
         self,
