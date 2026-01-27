@@ -82,6 +82,131 @@ interface TelemetryPayload {
     solve_tier?: string;
 }
 
+// V2-lite Schema Interfaces (from canonical_schema.json)
+interface V2LiteOutputBlock {
+    id: string;
+    type: 'explanation' | 'math' | 'worked_step' | 'hint' | 'table' | 'plot' | 'quiz';
+    // worked_step fields
+    title?: string;
+    explanation?: string;
+    before_latex?: string;
+    after_latex?: string;
+    rule_tags?: string[];
+    // explanation/hint fields
+    text?: string;
+    tier?: number;
+    // plot
+    x_min?: number;
+    x_max?: number;
+    y_min?: number | null;
+    y_max?: number | null;
+    series?: Array<{ kind: 'y_of_x' | 'implicit' | 'points'; expr_latex: string; label: string }>;
+    key_points?: Array<{ x: number; y: number; label: string }>;
+    // table
+    headers?: string[];
+    rows?: string[][];
+    // quiz
+    questions?: any[];
+}
+
+interface V2LiteAnswer {
+    status: 'final' | 'pending_student_step' | 'needs_clarification';
+    final_latex: string;
+    final_text: string;
+    values: Array<{ symbol: string; value: number | string | null; value_latex?: string }>;
+    constraints: string[];
+}
+
+interface V2LiteMeta {
+    mode: 'study' | 'solve';
+    grade_band: string;
+    locale: string;
+    subject: string;
+    ui_intent?: { verbosity?: string };
+}
+
+interface V2LiteProblem {
+    original_text: string;
+    normalized_latex: string;
+    task_tags: string[];
+}
+
+interface V2LiteResponse {
+    schema_version: string;
+    refusal: { is_refusal: boolean; reason?: string; safe_alternative?: string };
+    meta: V2LiteMeta;
+    problem: V2LiteProblem;
+    output: V2LiteOutputBlock[];
+    answer: V2LiteAnswer;
+    telemetry?: { model?: string; token_budget?: { max_output_tokens?: number } };
+}
+
+// Utility: Detect if response is V2-lite format
+function isV2LiteSchema(data: unknown): data is V2LiteResponse {
+    if (!data || typeof data !== 'object') return false;
+    const d = data as Record<string, unknown>;
+    return typeof d.schema_version === 'string' && d.schema_version.startsWith('v2');
+}
+
+// Utility: Map V2-lite to V3-compatible format
+function mapV2LiteToV3(v2: V2LiteResponse): SolveResponseV3 {
+    // Extract worked_step blocks as steps
+    const workedSteps = v2.output.filter(b => b.type === 'worked_step');
+    const steps = workedSteps.map((block, idx) => ({
+        index: idx + 1,
+        title: block.title || `Step ${idx + 1}`,
+        explanation: block.explanation || '',
+        math_latex: [block.before_latex, block.after_latex].filter(Boolean).join(' \\Rightarrow '),
+        rules_used: block.rule_tags || []
+    }));
+
+    // Extract plots and map to V3 visuals structure
+    const plots = v2.output
+        .filter(b => b.type === 'plot')
+        .map(b => ({
+            plot_id: b.id,
+            title: b.title,
+            x_min: (b as any).x_min,
+            x_max: (b as any).x_max,
+            y_min: (b as any).y_min,
+            y_max: (b as any).y_max,
+            series: (b as any).series?.map((s: any) => ({
+                name: s.label,
+                kind: s.kind,
+                latex: s.expr_latex
+            })),
+            key_points: (b as any).key_points
+        })) as any[];
+
+    return {
+        problem: {
+            original_text: v2.problem.original_text,
+            normalized_text: v2.problem.normalized_latex
+        },
+        classification: {
+            grade_band: v2.meta.grade_band,
+            domain: v2.meta.subject,
+            topic: v2.problem.task_tags?.[0],
+            difficulty: v2.meta.ui_intent?.verbosity
+        },
+        steps,
+        final_answer: {
+            answer_text: v2.answer.final_text,
+            answer_latex: v2.answer.final_latex,
+            values: v2.answer.values.map(v => ({
+                label: v.symbol,
+                value: v.value ?? '',
+                value_latex: v.value_latex || String(v.value ?? '')
+            }))
+        },
+        visuals: {
+            plots: plots
+        },
+        refusal: v2.refusal,
+        telemetry: v2.telemetry as any
+    };
+}
+
 type SolveStep = NonNullable<SolveResponseV3["steps"]>[number];
 type SolvePlan = NonNullable<SolveResponseV3["plan"]>[number];
 
@@ -264,8 +389,15 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     const assistantMsg = session.messages.find(m => m.role === 'assistant' && (m.structured_data || m.model_used));
     const rawData = id === 'demo-1' ? DEMO_SOLUTION : (assistantMsg?.structured_data || null);
 
-    // Type-safe(ish) casting for V3 Schema
-    const solutionData = (rawData || null) as SolveResponseV3 | null;
+    // Type-safe(ish) detection and mapping
+    let solutionData: SolveResponseV3 | null = null;
+    if (rawData) {
+        if (isV2LiteSchema(rawData)) {
+            solutionData = mapV2LiteToV3(rawData);
+        } else {
+            solutionData = rawData as SolveResponseV3;
+        }
+    }
 
     const sessionTokensUsed = session.messages.reduce((sum, message) => sum + (message.tokens_used ?? 0), 0);
     const totalTokensUsed = (monthlyTokensUsed ?? sessionTokensUsed) + 6000;
@@ -302,6 +434,26 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
 
     const renderContent = () => {
         if (!solutionData) return <div className="p-8 text-center text-slate-500">No solution details found in this session.</div>;
+
+        if (solutionData.refusal?.is_refusal) {
+            return (
+                <div className="max-w-2xl mx-auto mt-10 p-8 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-center">
+                    <div className="size-16 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mx-auto mb-6">
+                        <span className="material-symbols-outlined text-3xl text-amber-500">security_update_warning</span>
+                    </div>
+                    <h3 className="text-xl font-bold mb-3 text-slate-800 dark:text-white">Safety Refusal</h3>
+                    <p className="text-slate-600 dark:text-slate-400 mb-6 leading-relaxed">
+                        {solutionData.refusal.reason || "This content was refused by the safety policy."}
+                    </p>
+                    {solutionData.refusal.safe_alternative && (
+                        <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 text-left">
+                            <p className="text-xs font-bold text-primary uppercase mb-2">Safe Alternative</p>
+                            <p className="text-sm text-slate-700 dark:text-slate-300">{solutionData.refusal.safe_alternative}</p>
+                        </div>
+                    )}
+                </div>
+            );
+        }
 
         if (solutionData.error && !solutionData._truncated) {
             return (

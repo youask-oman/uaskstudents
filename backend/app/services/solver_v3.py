@@ -125,8 +125,35 @@ class SolverV3:
             else:
                 # Fallback purely for unit tests without DB
                 from app.llm_profiles.profiles import get_prompt_profile
+                from app.prompts import get_prompt
+                from app.schemas.na_math_solver_v3 import get_json_schema_for_openai_v3
                 profile = get_prompt_profile(user_tier)
                 profile.mode = "minimal" if user_tier == "free" else "detailed" # Mock
+                
+                # Hydrate content if missing
+                if not profile.system_prompt_content:
+                    if profile.tier == "free":
+                        # Load from file relative to profiles.py? Or just use default prompts?
+                        # For manual testing, we want the REAL prompt if possible.
+                        # But simpler is to use get_prompt("solver_system") if standard.
+                         try:
+                             # Try to load using the relative path defined in profile
+                             full_path = profile.system_full_path
+                             if os.path.exists(full_path):
+                                 with open(full_path, "r", encoding="utf-8") as f:
+                                     profile.system_prompt_content = f.read()
+                             else:
+                                 # Fallback to default v3 prompt
+                                 profile.system_prompt_content = get_prompt("solver_system")
+                         except Exception:
+                             profile.system_prompt_content = get_prompt("solver_system")
+
+                    else:
+                        profile.system_prompt_content = get_prompt("solver_system")
+
+                if not profile.json_schema_content:
+                    # Always use canonical v3 schema for fallback
+                    profile.json_schema_content = get_json_schema_for_openai_v3()
 
             # Step 1.5: Accounting (Debit Pending) - MOVED TO API LAYER
             if db_session and user_id:
@@ -641,12 +668,15 @@ class SolverV3:
         status_info = {"status": "unknown", "finish_reason": "unknown"}
         
         schema_payload = json_schema_config
-        if isinstance(json_schema_config, dict):
-            if "schema" in json_schema_config:
-                schema_payload = json_schema_config["schema"]
+        # If the schema is already wrapped (has 'name' and 'schema'), use it as is.
+        # Otherwise if it's raw schema, we might need to wrap it or let it fail?
+        # Current fix relies on get_json_schema_for_openai_v3 return wrapper.
         
-        if isinstance(schema_payload, dict) and schema_payload.get("type") is None:
-             schema_payload["type"] = "object"
+        # Ensure 'type' is present in the inner schema or wrapper? response_format uses {type: json_schema, json_schema: ...}
+        # The 'json_schema' field needs 'name' and 'schema'.
+        
+        # We assume json_schema_config is correct.
+        pass
         
         # Check model type for API method
         if "gpt-5" in self._model.lower():
@@ -669,7 +699,9 @@ class SolverV3:
                     "verbosity": verbosity,
                     "format": {
                         "type": "json_schema",
-                        "json_schema": schema_payload
+                        "name": schema_payload.get("name", "math_schema"),
+                        "schema": schema_payload.get("schema", schema_payload),
+                        "strict": schema_payload.get("strict", True)
                     }
                 },
                 "max_output_tokens": max_output_tokens,

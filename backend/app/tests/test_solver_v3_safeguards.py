@@ -67,15 +67,28 @@ async def test_solve_success_pass_1(mock_solver, valid_json_content):
 @pytest.mark.asyncio
 async def test_solve_fallback_incomplete(mock_solver, valid_json_content):
     """Test that 'incomplete' status triggers fallback to minimal."""
-    # Setup mock: First call incomplete, Second call success
+    # Minimal JSON for second pass (simple structure for mapper)
+    minimal_content = json.dumps({
+        "problem": {"original_text": "1+1", "normalized_text": "1+1", "detected_tasks": ["solve_equation"]},
+        "classification": {"grade_band": "3-5", "domain": "arithmetic", "topic": "addition", "difficulty": "easy"},
+        "steps": [{"index":1, "title":"Add", "explanation":"Add numbers.", "checkpoint":{"question":"?", "answer":"?"}}],
+        "final_answer": {"answer_text": "2", "answer_latex": "2", "units": ""},
+        "needs_visual": False,
+        "quality": {"confidence": 1.0, "common_mistakes": []}
+    })
+
+    # Setup mock: First call incomplete, Second call success (minimal)
     response_fail = MockResponse(content=None, status="incomplete", incomplete_reason="max_tokens")
-    response_success = MockResponse(content=valid_json_content, status="completed")
+    response_success = MockResponse(content=minimal_content, status="completed")
     
     mock_solver.client.responses.create.side_effect = [response_fail, response_success]
     
     # Execute
     result = await mock_solver.solve("1+1", requested_mode="detailed", max_output_tokens=100)
     
+    if result.get("error"):
+        pytest.fail(f"Solver returned error: {result.get('message')} | Validation: {result.get('validation_errors')}")
+
     # Verify
     assert result["final_answer"]["answer_text"] == "2"
     assert result["telemetry"]["openai_calls_count"] == 2

@@ -230,8 +230,13 @@ def get_json_schema_for_openai_v3() -> dict:
     Generate JSON schema strictly compatible with OpenAI Structured Outputs.
     """
     schema = SolveResponseV3.model_json_schema()
+    strict_schema = enforce_strict(schema)
     
-    return enforce_strict(schema)
+    return {
+        "name": "math_solver_response",
+        "strict": True,
+        "schema": strict_schema
+    }
 
 if __name__ == "__main__":
     import json

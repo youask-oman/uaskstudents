@@ -43,6 +43,11 @@ class SchemaValidator:
         # But to be consistent with what OpenAI sees, we use the dereferenced strictly-typed schema.
         try:
             raw_schema = get_json_schema_for_openai_v3()
+            
+            # Unwrap OpenAI wrapper if present
+            if isinstance(raw_schema, dict) and "schema" in raw_schema and "name" in raw_schema:
+                raw_schema = raw_schema["schema"]
+
             self.schema = deref_json_schema(raw_schema)
         except Exception as e:
             # Fallback (log error)

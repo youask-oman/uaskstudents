@@ -23,7 +23,7 @@ DEFAULT_CONFIG = {
     "tokens.text.input_max_chars": (3000, "Max input characters for text solve"),
     "tokens.text.output_max_minimal_solve": (700, "Max output tokens for minimal solve"),
     "tokens.text.output_max_minimal_study": (1200, "Max output tokens for minimal study"),
-    "tokens.text.output_max_detailed_solve": (3000, "Max output tokens for detailed solve"),
+    "tokens.text.output_max_detailed_solve": (4500, "Max output tokens for detailed solve"),
     "tokens.text.output_max_detailed_study": (3500, "Max output tokens for detailed study"),
     "tokens.text.output_retry_cap_detailed_solve": (3200, "Retry max output tokens for detailed solve"),
     "tokens.text.output_retry_cap_detailed_study": (3600, "Retry max output tokens for detailed study"),

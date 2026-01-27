@@ -1,0 +1,172 @@
+{
+  "schema_version": "v1.0",
+  "problem": {
+    "original_text": "A random sample of size 725 is drawn from a large population. The population standard deviation is 1.2. The sample mean is 10.6. Find a 99% confidence interval for the population mean, \u03bc. Round your answers to the nearest tenth.",
+    "normalized_text": "n=725, sigma=1.2, xbar=10.6, find 99% CI for mu, round to nearest tenth.",
+    "detected_tasks": [
+      "statistics"
+    ]
+  },
+  "classification": {
+    "grade_band": "college_intro",
+    "domain": "statistics",
+    "topic": "confidence_interval_mean_known_sigma",
+    "difficulty": "standard"
+  },
+  "refusal": {
+    "is_refusal": false,
+    "reason": "",
+    "safe_alternative": "",
+    "refusal_reason": null
+  },
+  "assumptions": [
+    "Sample size large so CLT applies and sampling distribution of mean is approximately normal",
+    "Population standard deviation known and equal to 1.2"
+  ],
+  "steps": [
+    {
+      "index": 1,
+      "title": "Compute standard error and z*",
+      "explanation": "SE = 1.2/sqrt(725) \u2248 0.0446 and z* for 99% \u2248 2.576.",
+      "math_latex": "SE=1.2/\\sqrt{725}\\approx0.0446,\\ z^*=2.576",
+      "rules_used": [
+        "Standard error formula",
+        "Use z critical value for known sigma"
+      ],
+      "checkpoint": {
+        "question": "What are SE and z*?",
+        "answer": "SE \u2248 0.0446, z* \u2248 2.576"
+      }
+    },
+    {
+      "index": 2,
+      "title": "Compute CI and round",
+      "explanation": "Margin = 2.576*0.0446 \u2248 0.115 so CI = 10.6 \u00b1 0.115 \u21d2 (10.485,10.715) \u21d2 rounded to tenths (10.5,10.7).",
+      "math_latex": "\\text{ME}=2.576(0.0446)\\approx0.115,\\ CI=(10.6\\pm0.115)",
+      "rules_used": [
+        "CI formula: x\u0304 \u00b1 z*SE",
+        "Round to nearest tenth"
+      ],
+      "checkpoint": {
+        "question": "What is the rounded 99% CI?",
+        "answer": "(10.5, 10.7)"
+      }
+    }
+  ],
+  "final_answer": {
+    "answer_text": "The 99% confidence interval is (10.5, 10.7).",
+    "answer_latex": "(10.5,\\;10.7)",
+    "values": [
+      {
+        "label": "lower",
+        "value": 10.5,
+        "value_latex": "10.5"
+      },
+      {
+        "label": "upper",
+        "value": 10.7,
+        "value_latex": "10.7"
+      }
+    ],
+    "units": ""
+  },
+  "visuals": {
+    "should_visualize": false,
+    "decision_reason": "Not required for a simple numeric CI",
+    "plots": [],
+    "alternative_visual": {
+      "kind": "none",
+      "description": "",
+      "data": []
+    }
+  },
+  "quality": {
+    "confidence": 0.77,
+    "common_mistakes": [
+      "Using t critical value instead of z when sigma is known",
+      "Rounding endpoints before final rounding"
+    ],
+    "next_practice": []
+  },
+  "verification": {
+    "method": "Self-Consistency",
+    "work_latex": "Verified internally",
+    "conclusion": "Stable",
+    "alternative_method": null
+  },
+  "_telemetry": {
+    "request_id": null,
+    "model": "gpt-5-mini",
+    "input_tokens": 1080,
+    "output_tokens": 1429,
+    "total_tokens": 2509,
+    "cached_tokens": null,
+    "latency_ms_openai": 30369,
+    "latency_ms_total": 30382,
+    "mode_resolved": "unknown",
+    "tier_effective": "experienced_student",
+    "validated": true,
+    "repaired": false,
+    "repair_reason": null,
+    "validation_failures_count": 0,
+    "plot_attempted": false,
+    "plot_generated": false,
+    "debit_status": "none",
+    "repair_attempted": false,
+    "openai_calls_count": 1,
+    "openai_payload": {
+      "max_output_tokens": 4096,
+      "reasoning_effort": "low"
+    },
+    "fallback_triggered": false,
+    "status_checks": [
+      {
+        "pass": 1,
+        "mode": "detailed",
+        "status": "completed",
+        "finish_reason": "unknown",
+        "valid": true,
+        "error": null
+      }
+    ],
+    "pass_1_max_tokens": 4096
+  },
+  "telemetry": {
+    "request_id": null,
+    "model": "gpt-5-mini",
+    "input_tokens": 1080,
+    "output_tokens": 1429,
+    "total_tokens": 2509,
+    "cached_tokens": null,
+    "latency_ms_openai": 30369,
+    "latency_ms_total": 30382,
+    "mode_resolved": "unknown",
+    "tier_effective": "experienced_student",
+    "validated": true,
+    "repaired": false,
+    "repair_reason": null,
+    "validation_failures_count": 0,
+    "plot_attempted": false,
+    "plot_generated": false,
+    "debit_status": "none",
+    "repair_attempted": false,
+    "openai_calls_count": 1,
+    "openai_payload": {
+      "max_output_tokens": 4096,
+      "reasoning_effort": "low"
+    },
+    "fallback_triggered": false,
+    "status_checks": [
+      {
+        "pass": 1,
+        "mode": "detailed",
+        "status": "completed",
+        "finish_reason": "unknown",
+        "valid": true,
+        "error": null
+      }
+    ],
+    "pass_1_max_tokens": 4096
+  },
+  "_timestamp": "2026-01-27T18:29:12.246587"
+}
