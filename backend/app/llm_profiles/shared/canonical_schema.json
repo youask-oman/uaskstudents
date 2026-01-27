@@ -1,531 +1,737 @@
 {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://uask.ai/schemas/math_tutor_response_v1_1.schema.json",
-    "title": "MathTutorResponseV1_1",
-    "type": "object",
-    "additionalProperties": false,
-    "required": [
-        "schema_version",
-        "refusal",
-        "assumptions",
-        "problem",
-        "classification",
-        "steps",
-        "final_answer",
-        "visuals",
-        "quality"
-    ],
-    "properties": {
-        "schema_version": {
-            "type": "string",
-            "const": "v1.1"
-        },
-        "refusal": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-                "is_refusal",
-                "reason",
-                "safe_alternative"
-            ],
-            "properties": {
-                "is_refusal": {
-                    "type": "boolean"
-                },
-                "reason": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "maxLength": 400
-                },
-                "safe_alternative": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "maxLength": 800
-                }
-            }
-        },
-        "assumptions": {
-            "type": "array",
-            "maxItems": 4,
-            "items": {
+    "type": "json_schema",
+    "name": "math_tutor_response_v2_lite",
+    "strict": true,
+    "schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+            "schema_version",
+            "refusal",
+            "meta",
+            "problem",
+            "output",
+            "answer",
+            "telemetry"
+        ],
+        "properties": {
+            "schema_version": {
                 "type": "string",
-                "maxLength": 160
-            }
-        },
-        "problem": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-                "original_text",
-                "normalized_text",
-                "detected_tasks"
-            ],
-            "properties": {
-                "original_text": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 6000
-                },
-                "normalized_text": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 6000
-                },
-                "detected_tasks": {
-                    "type": "array",
-                    "minItems": 1,
-                    "maxItems": 6,
-                    "items": {
-                        "type": "string",
-                        "enum": [
-                            "solve_equation",
-                            "solve_inequality",
-                            "simplify",
-                            "factor",
-                            "expand",
-                            "evaluate",
-                            "graph",
-                            "find_intercepts",
-                            "find_vertex",
-                            "find_extrema",
-                            "find_roots",
-                            "system_solve",
-                            "word_problem",
-                            "geometry",
-                            "trigonometry",
-                            "calculus_derivative",
-                            "calculus_integral",
-                            "statistics",
-                            "probability",
-                            "sequence_series",
-                            "other"
-                        ]
-                    }
-                }
-            }
-        },
-        "classification": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-                "grade_band",
-                "domain",
-                "topic",
-                "difficulty"
-            ],
-            "properties": {
-                "grade_band": {
-                    "type": "string",
-                    "enum": [
-                        "K-2",
-                        "3-5",
-                        "6-8",
-                        "9-10",
-                        "11-12",
-                        "college_intro",
-                        "unknown"
-                    ]
-                },
-                "domain": {
-                    "type": "string",
-                    "enum": [
-                        "arithmetic",
-                        "algebra",
-                        "geometry",
-                        "trigonometry",
-                        "calculus",
-                        "statistics",
-                        "probability",
-                        "discrete",
-                        "mixed",
-                        "unknown"
-                    ]
-                },
-                "topic": {
-                    "type": "string",
-                    "maxLength": 80
-                },
-                "difficulty": {
-                    "type": "string",
-                    "enum": [
-                        "easy",
-                        "medium",
-                        "hard",
-                        "unknown"
-                    ]
-                }
-            }
-        },
-        "steps": {
-            "type": "array",
-            "maxItems": 6,
-            "items": {
+                "enum": [
+                    "v2.0-lite"
+                ]
+            },
+            "refusal": {
                 "type": "object",
                 "additionalProperties": false,
                 "required": [
-                    "index",
-                    "title",
-                    "explanation",
-                    "math_latex",
-                    "rules_used"
+                    "is_refusal",
+                    "reason",
+                    "safe_alternative"
                 ],
                 "properties": {
-                    "index": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 50
+                    "is_refusal": {
+                        "type": "boolean"
                     },
-                    "title": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 80
+                    "reason": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 240
                     },
-                    "explanation": {
-                        "type": "string",
-                        "maxLength": 350
-                    },
-                    "math_latex": {
-                        "type": "array",
-                        "maxItems": 5,
-                        "items": {
-                            "type": "string",
-                            "maxLength": 220
-                        }
-                    },
-                    "rules_used": {
-                        "type": "array",
-                        "maxItems": 4,
-                        "items": {
-                            "type": "string",
-                            "maxLength": 60
-                        }
+                    "safe_alternative": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 400
                     }
                 }
-            }
-        },
-        "final_answer": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-                "answer_text",
-                "answer_latex",
-                "values",
-                "units"
-            ],
-            "properties": {
-                "answer_text": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 260
-                },
-                "answer_latex": {
-                    "type": "string",
-                    "maxLength": 180
-                },
-                "values": {
-                    "type": "array",
-                    "maxItems": 4,
-                    "items": {
+            },
+            "meta": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "mode",
+                    "grade_band",
+                    "locale",
+                    "subject",
+                    "language",
+                    "latex_policy",
+                    "ui_intent"
+                ],
+                "properties": {
+                    "mode": {
+                        "type": "string",
+                        "enum": [
+                            "study",
+                            "solve"
+                        ]
+                    },
+                    "grade_band": {
+                        "type": "string",
+                        "enum": [
+                            "4-5",
+                            "6-8",
+                            "9-10",
+                            "11-12",
+                            "college",
+                            "university"
+                        ]
+                    },
+                    "locale": {
+                        "type": "string",
+                        "enum": [
+                            "CA-BC",
+                            "CA",
+                            "US",
+                            "NA"
+                        ]
+                    },
+                    "subject": {
+                        "type": "string",
+                        "enum": [
+                            "math"
+                        ]
+                    },
+                    "language": {
+                        "type": "string",
+                        "enum": [
+                            "en"
+                        ]
+                    },
+                    "latex_policy": {
                         "type": "object",
                         "additionalProperties": false,
                         "required": [
-                            "label",
-                            "value",
-                            "value_latex"
+                            "engine",
+                            "delimiters_included",
+                            "default_mode",
+                            "allow_environments",
+                            "allow_macros"
                         ],
                         "properties": {
-                            "label": {
+                            "engine": {
                                 "type": "string",
-                                "maxLength": 40
-                            },
-                            "value": {
-                                "type": [
-                                    "number",
-                                    "string",
-                                    "null"
+                                "enum": [
+                                    "mathjax"
                                 ]
                             },
-                            "value_latex": {
+                            "delimiters_included": {
+                                "type": "boolean",
+                                "enum": [
+                                    false
+                                ]
+                            },
+                            "default_mode": {
                                 "type": "string",
-                                "maxLength": 120
+                                "enum": [
+                                    "inline",
+                                    "display"
+                                ]
+                            },
+                            "allow_environments": {
+                                "type": "boolean"
+                            },
+                            "allow_macros": {
+                                "type": "boolean"
+                            }
+                        }
+                    },
+                    "ui_intent": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                            "layout",
+                            "verbosity",
+                            "allow_graphs"
+                        ],
+                        "properties": {
+                            "layout": {
+                                "type": "string",
+                                "enum": [
+                                    "blocks"
+                                ]
+                            },
+                            "verbosity": {
+                                "type": "string",
+                                "enum": [
+                                    "minimal",
+                                    "standard",
+                                    "detailed"
+                                ]
+                            },
+                            "allow_graphs": {
+                                "type": "boolean"
+                            }
+                        }
+                    },
+                    "accessibility": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                            "reading_level",
+                            "avoid_jargon"
+                        ],
+                        "properties": {
+                            "reading_level": {
+                                "type": "string",
+                                "enum": [
+                                    "simple",
+                                    "standard",
+                                    "advanced"
+                                ]
+                            },
+                            "avoid_jargon": {
+                                "type": "boolean"
                             }
                         }
                     }
-                },
-                "units": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "maxLength": 30
                 }
-            }
-        },
-        "visuals": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-                "should_visualize",
-                "decision_reason",
-                "plots",
-                "alternative_visual"
-            ],
-            "properties": {
-                "should_visualize": {
-                    "type": "boolean"
-                },
-                "decision_reason": {
-                    "type": "string",
-                    "maxLength": 140
-                },
-                "plots": {
-                    "type": "array",
-                    "maxItems": 1,
-                    "items": {
-                        "$ref": "#/$defs/plot_spec"
+            },
+            "problem": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "original_text",
+                    "normalized_latex",
+                    "task_tags",
+                    "input_context"
+                ],
+                "properties": {
+                    "original_text": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 600
+                    },
+                    "normalized_latex": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 260
+                    },
+                    "task_tags": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 12,
+                        "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 40
+                        }
+                    },
+                    "input_context": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                            "input_type",
+                            "question_count"
+                        ],
+                        "properties": {
+                            "input_type": {
+                                "type": "string",
+                                "enum": [
+                                    "text",
+                                    "ocr_image",
+                                    "ocr_pdf",
+                                    "voice"
+                                ]
+                            },
+                            "question_count": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 25
+                            }
+                        }
                     }
-                },
-                "alternative_visual": {
+                }
+            },
+            "output": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 30,
+                "items": {
                     "type": "object",
                     "additionalProperties": false,
                     "required": [
-                        "kind",
-                        "description",
-                        "data"
+                        "id",
+                        "type"
                     ],
                     "properties": {
-                        "kind": {
+                        "id": {
+                            "type": "string",
+                            "pattern": "^[a-zA-Z0-9_\\-]{4,32}$"
+                        },
+                        "type": {
                             "type": "string",
                             "enum": [
-                                "none",
-                                "number_line",
+                                "explanation",
+                                "math",
+                                "worked_step",
+                                "hint",
                                 "table",
-                                "diagram"
+                                "plot",
+                                "quiz"
                             ]
+                        }
+                    },
+                    "anyOf": [
+                        {
+                            "required": [
+                                "id",
+                                "type",
+                                "text"
+                            ],
+                            "properties": {
+                                "type": {
+                                    "enum": [
+                                        "explanation"
+                                    ]
+                                },
+                                "text": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 900
+                                }
+                            }
                         },
-                        "description": {
-                            "type": "string",
-                            "maxLength": 160
-                        },
-                        "data": {
-                            "type": "array",
-                            "maxItems": 12,
-                            "items": {
-                                "type": "object",
-                                "additionalProperties": false,
-                                "required": [
-                                    "label",
-                                    "x",
-                                    "y"
-                                ],
-                                "properties": {
-                                    "label": {
+                        {
+                            "required": [
+                                "id",
+                                "type",
+                                "mode",
+                                "latex_lines"
+                            ],
+                            "properties": {
+                                "type": {
+                                    "enum": [
+                                        "math"
+                                    ]
+                                },
+                                "mode": {
+                                    "type": "string",
+                                    "enum": [
+                                        "inline",
+                                        "display"
+                                    ]
+                                },
+                                "latex_lines": {
+                                    "type": "array",
+                                    "minItems": 1,
+                                    "maxItems": 14,
+                                    "items": {
                                         "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 240,
+                                        "pattern": "^(?!.*\\$)(?!.*\\\\\\[)(?!.*\\\\\\])(?!.*\\\\\\()(?!.*\\\\\\)).+"
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "required": [
+                                "id",
+                                "type",
+                                "title",
+                                "explanation",
+                                "before_latex",
+                                "after_latex"
+                            ],
+                            "properties": {
+                                "type": {
+                                    "enum": [
+                                        "worked_step"
+                                    ]
+                                },
+                                "title": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 80
+                                },
+                                "explanation": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 500
+                                },
+                                "before_latex": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 260,
+                                    "pattern": "^(?!.*\\$)(?!.*\\\\\\[)(?!.*\\\\\\])(?!.*\\\\\\()(?!.*\\\\\\)).+"
+                                },
+                                "after_latex": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 260,
+                                    "pattern": "^(?!.*\\$)(?!.*\\\\\\[)(?!.*\\\\\\])(?!.*\\\\\\()(?!.*\\\\\\)).+"
+                                },
+                                "rule_tags": {
+                                    "type": "array",
+                                    "minItems": 0,
+                                    "maxItems": 6,
+                                    "items": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 30
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "required": [
+                                "id",
+                                "type",
+                                "tier",
+                                "text"
+                            ],
+                            "properties": {
+                                "type": {
+                                    "enum": [
+                                        "hint"
+                                    ]
+                                },
+                                "tier": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 3
+                                },
+                                "text": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 220
+                                }
+                            }
+                        },
+                        {
+                            "required": [
+                                "id",
+                                "type",
+                                "headers",
+                                "rows"
+                            ],
+                            "properties": {
+                                "type": {
+                                    "enum": [
+                                        "table"
+                                    ]
+                                },
+                                "headers": {
+                                    "type": "array",
+                                    "minItems": 1,
+                                    "maxItems": 8,
+                                    "items": {
+                                        "type": "string",
+                                        "minLength": 1,
                                         "maxLength": 40
-                                    },
-                                    "x": {
-                                        "type": [
-                                            "number",
-                                            "null"
-                                        ]
-                                    },
-                                    "y": {
-                                        "type": [
-                                            "number",
-                                            "null"
-                                        ]
+                                    }
+                                },
+                                "rows": {
+                                    "type": "array",
+                                    "minItems": 1,
+                                    "maxItems": 15,
+                                    "items": {
+                                        "type": "array",
+                                        "minItems": 1,
+                                        "maxItems": 8,
+                                        "items": {
+                                            "type": "string",
+                                            "minLength": 0,
+                                            "maxLength": 60
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "required": [
+                                "id",
+                                "type",
+                                "title",
+                                "x_min",
+                                "x_max",
+                                "series"
+                            ],
+                            "properties": {
+                                "type": {
+                                    "enum": [
+                                        "plot"
+                                    ]
+                                },
+                                "title": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 80
+                                },
+                                "x_min": {
+                                    "type": "number"
+                                },
+                                "x_max": {
+                                    "type": "number"
+                                },
+                                "y_min": {
+                                    "type": [
+                                        "number",
+                                        "null"
+                                    ]
+                                },
+                                "y_max": {
+                                    "type": [
+                                        "number",
+                                        "null"
+                                    ]
+                                },
+                                "series": {
+                                    "type": "array",
+                                    "minItems": 1,
+                                    "maxItems": 6,
+                                    "items": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "required": [
+                                            "kind",
+                                            "expr_latex",
+                                            "label"
+                                        ],
+                                        "properties": {
+                                            "kind": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "y_of_x",
+                                                    "implicit",
+                                                    "points"
+                                                ]
+                                            },
+                                            "expr_latex": {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "maxLength": 240,
+                                                "pattern": "^(?!.*\\$)(?!.*\\\\\\[)(?!.*\\\\\\])(?!.*\\\\\\()(?!.*\\\\\\)).+"
+                                            },
+                                            "label": {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "maxLength": 40
+                                            }
+                                        }
+                                    }
+                                },
+                                "key_points": {
+                                    "type": "array",
+                                    "minItems": 0,
+                                    "maxItems": 10,
+                                    "items": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "required": [
+                                            "x",
+                                            "y",
+                                            "label"
+                                        ],
+                                        "properties": {
+                                            "x": {
+                                                "type": "number"
+                                            },
+                                            "y": {
+                                                "type": "number"
+                                            },
+                                            "label": {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "maxLength": 40
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "required": [
+                                "id",
+                                "type",
+                                "questions"
+                            ],
+                            "properties": {
+                                "type": {
+                                    "enum": [
+                                        "quiz"
+                                    ]
+                                },
+                                "questions": {
+                                    "type": "array",
+                                    "minItems": 1,
+                                    "maxItems": 4,
+                                    "items": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "required": [
+                                            "prompt",
+                                            "kind",
+                                            "choices"
+                                        ],
+                                        "properties": {
+                                            "prompt": {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "maxLength": 220
+                                            },
+                                            "kind": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "multiple_choice",
+                                                    "short_answer"
+                                                ]
+                                            },
+                                            "choices": {
+                                                "type": [
+                                                    "array",
+                                                    "null"
+                                                ],
+                                                "minItems": 2,
+                                                "maxItems": 6,
+                                                "items": {
+                                                    "type": "string",
+                                                    "minLength": 1,
+                                                    "maxLength": 80
+                                                }
+                                            },
+                                            "answer_key": {
+                                                "type": [
+                                                    "object",
+                                                    "null"
+                                                ],
+                                                "additionalProperties": false,
+                                                "required": [
+                                                    "revealed",
+                                                    "value"
+                                                ],
+                                                "properties": {
+                                                    "revealed": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "value": {
+                                                        "type": [
+                                                            "string",
+                                                            "number",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "explanation": {
+                                                "type": [
+                                                    "string",
+                                                    "null"
+                                                ],
+                                                "maxLength": 240
+                                            }
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
+                    ]
                 }
-            }
-        },
-        "quality": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-                "confidence",
-                "common_mistakes"
-            ],
-            "properties": {
-                "confidence": {
-                    "type": "number",
-                    "minimum": 0,
-                    "maximum": 1
-                },
-                "common_mistakes": {
-                    "type": "array",
-                    "maxItems": 3,
-                    "items": {
+            },
+            "answer": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "status",
+                    "final_latex",
+                    "final_text",
+                    "values",
+                    "constraints"
+                ],
+                "properties": {
+                    "status": {
                         "type": "string",
-                        "maxLength": 140
+                        "enum": [
+                            "final",
+                            "pending_student_step",
+                            "needs_clarification"
+                        ]
+                    },
+                    "final_latex": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 260,
+                        "pattern": "^(?!.*\\$)(?!.*\\\\\\[)(?!.*\\\\\\])(?!.*\\\\\\()(?!.*\\\\\\)).+"
+                    },
+                    "final_text": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 240
+                    },
+                    "values": {
+                        "type": "array",
+                        "minItems": 0,
+                        "maxItems": 12,
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                                "symbol",
+                                "value"
+                            ],
+                            "properties": {
+                                "symbol": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 10
+                                },
+                                "value": {
+                                    "type": [
+                                        "number",
+                                        "string",
+                                        "null"
+                                    ]
+                                },
+                                "value_latex": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "maxLength": 120
+                                }
+                            }
+                        }
+                    },
+                    "constraints": {
+                        "type": "array",
+                        "minItems": 0,
+                        "maxItems": 12,
+                        "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                        }
                     }
                 }
-            }
-        }
-    },
-    "$defs": {
-        "point": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-                "x",
-                "y",
-                "label"
-            ],
-            "properties": {
-                "x": {
-                    "type": "number"
-                },
-                "y": {
-                    "type": "number"
-                },
-                "label": {
-                    "type": "string",
-                    "maxLength": 40
-                }
-            }
-        },
-        "series": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-                "name",
-                "kind",
-                "expression_latex",
-                "points",
-                "style_hint"
-            ],
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "maxLength": 60
-                },
-                "kind": {
-                    "type": "string",
-                    "enum": [
-                        "function_y_of_x",
-                        "implicit",
-                        "parametric",
-                        "scatter",
-                        "line_segments",
-                        "histogram",
-                        "bar"
-                    ]
-                },
-                "expression_latex": {
-                    "type": "string",
-                    "maxLength": 180
-                },
-                "points": {
-                    "type": "array",
-                    "maxItems": 15,
-                    "items": {
-                        "$ref": "#/$defs/point"
-                    }
-                },
-                "style_hint": {
-                    "type": "string",
-                    "maxLength": 30
-                }
-            }
-        },
-        "plot_spec": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-                "plot_id",
-                "plot_type",
-                "title",
-                "x_label",
-                "y_label",
-                "x_min",
-                "x_max",
-                "y_min",
-                "y_max",
-                "series",
-                "key_points",
-                "annotations"
-            ],
-            "properties": {
-                "plot_id": {
-                    "type": "string",
-                    "maxLength": 30
-                },
-                "plot_type": {
-                    "type": "string",
-                    "enum": [
-                        "cartesian_2d",
-                        "number_line_1d",
-                        "coordinate_geometry_2d",
-                        "statistics_chart"
-                    ]
-                },
-                "title": {
-                    "type": "string",
-                    "maxLength": 80
-                },
-                "x_label": {
-                    "type": "string",
-                    "maxLength": 20
-                },
-                "y_label": {
-                    "type": "string",
-                    "maxLength": 20
-                },
-                "x_min": {
-                    "type": "number"
-                },
-                "x_max": {
-                    "type": "number"
-                },
-                "y_min": {
-                    "type": "number"
-                },
-                "y_max": {
-                    "type": "number"
-                },
-                "series": {
-                    "type": "array",
-                    "maxItems": 2,
-                    "items": {
-                        "$ref": "#/$defs/series"
-                    }
-                },
-                "key_points": {
-                    "type": "array",
-                    "maxItems": 10,
-                    "items": {
-                        "$ref": "#/$defs/point"
-                    }
-                },
-                "annotations": {
-                    "type": "array",
-                    "maxItems": 10,
-                    "items": {
+            },
+            "telemetry": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "model",
+                    "token_budget"
+                ],
+                "properties": {
+                    "model": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 40
+                    },
+                    "token_budget": {
                         "type": "object",
                         "additionalProperties": false,
                         "required": [
-                            "text",
-                            "x",
-                            "y"
+                            "max_output_tokens"
                         ],
                         "properties": {
-                            "text": {
-                                "type": "string",
-                                "maxLength": 120
-                            },
-                            "x": {
-                                "type": "number"
-                            },
-                            "y": {
-                                "type": "number"
+                            "max_output_tokens": {
+                                "type": "integer",
+                                "minimum": 256,
+                                "maximum": 4500
                             }
                         }
                     }
