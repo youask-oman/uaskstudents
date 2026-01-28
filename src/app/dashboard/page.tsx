@@ -10,6 +10,9 @@ interface ChatSession {
     title: string;
     subject?: string;
     topic?: string;
+    grade_level?: string;
+    difficulty?: string;
+    topics?: string[];
     input?: string;
     created_at: string;
     is_saved?: boolean;
@@ -380,11 +383,9 @@ export default function DashboardPage() {
                                                         />
                                                     </div>
                                                 </div>
-                                                <div className="px-6 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 grid grid-cols-[1.2fr_0.8fr_1.2fr_0.8fr_0.6fr] gap-4">
-                                                    <div>Session</div>
-                                                    <div>Topic</div>
+                                                <div className="px-6 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 grid grid-cols-[2fr_1fr_0.8fr] gap-4">
                                                     <div>Input</div>
-                                                    <div className="text-right">Stats</div>
+                                                    <div>Topic</div>
                                                     <div className="text-right">Date</div>
                                                 </div>
                                                 {pagedHistory.map((session) => (
@@ -393,38 +394,49 @@ export default function DashboardPage() {
                                                         onClick={() => router.push(`/chat/${session.id}`)}
                                                         className="p-4 flex items-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group px-6"
                                                     >
-                                                        <div className="grid grid-cols-[1.2fr_0.8fr_1.2fr_0.8fr_0.6fr] gap-4 items-center w-full">
+                                                        <div className="grid grid-cols-[2fr_1fr_0.8fr] gap-4 items-center w-full">
                                                             <div className="flex items-center gap-3 min-w-0">
-                                                                <div className="w-9 h-9 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                                                                <div className="w-9 h-9 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 group-hover:bg-primary/10 group-hover:text-primary transition-colors flex-shrink-0">
                                                                     <span className="material-symbols-outlined">
                                                                         {session.subject === 'Physics' ? 'science' : 'functions'}
                                                                     </span>
                                                                 </div>
-                                                                <div className="min-w-0">
-                                                                    <h4 className="text-sm font-semibold truncate" title={session.title}>
-                                                                        <MathRenderer content={session.title} mode="prose" />
-                                                                    </h4>
+                                                                <div className="min-w-0 flex-1">
+                                                                    <div className="text-sm font-semibold truncate text-slate-700 dark:text-slate-200" title={session.input}>
+                                                                        <MathRenderer content={session.input || "No input"} mode="prose" />
+                                                                    </div>
                                                                     {session.is_saved && (
                                                                         <span className="mt-1 inline-flex px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-[10px] font-bold rounded">Saved</span>
                                                                     )}
                                                                 </div>
                                                             </div>
-                                                            <div className="text-xs text-slate-500 font-medium truncate">
-                                                                {session.topic || session.subject || "Math"}
+
+                                                            <div className="flex flex-col gap-1 min-w-0 pr-2">
+                                                                <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">
+                                                                    {session.subject || "Math"}
+                                                                </div>
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {session.topic && (
+                                                                        <span className="text-[10px] text-slate-500 truncate max-w-full">
+                                                                            {session.topic}
+                                                                        </span>
+                                                                    )}
+                                                                    {session.grade_level && (
+                                                                        <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-500 border border-slate-200 dark:border-slate-700 whitespace-nowrap">
+                                                                            {session.grade_level}
+                                                                        </span>
+                                                                    )}
+                                                                    {session.difficulty && (
+                                                                        <span className={`px-1.5 py-0.5 rounded text-[10px] border whitespace-nowrap ${session.difficulty.toLowerCase().includes('hard') ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border-red-100 dark:border-red-900/30' :
+                                                                                session.difficulty.toLowerCase().includes('medium') ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/30' :
+                                                                                    'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30'
+                                                                            }`}>
+                                                                            {session.difficulty}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                             </div>
-                                                            <div className="text-xs text-slate-500 truncate" title={session.input}>
-                                                                <MathRenderer content={session.input || "-"} mode="prose" />
-                                                            </div>
-                                                            <div className="text-xs text-slate-500 text-right font-mono">
-                                                                {session.telemetry ? (
-                                                                    <div className="flex flex-col gap-0.5">
-                                                                        <span title="Total Latency">{(session.telemetry.latency_ms_total / 1000).toFixed(1)}s</span>
-                                                                        <span title="Total Tokens">{session.telemetry.total_tokens}t</span>
-                                                                    </div>
-                                                                ) : (
-                                                                    <span className="opacity-50">-</span>
-                                                                )}
-                                                            </div>
+
                                                             <div className="text-xs text-slate-500 text-right">
                                                                 {new Date(session.created_at).toLocaleDateString()}
                                                             </div>

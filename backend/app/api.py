@@ -488,6 +488,9 @@ class ChatHistoryItem(BaseModel):
     created_at: str
     subject: Optional[str] = None
     topic: Optional[str] = None
+    grade_level: Optional[str] = None
+    difficulty: Optional[str] = None
+    topics: Optional[List[str]] = None
     input: Optional[str] = None
     is_saved: Optional[bool] = None
     telemetry: Optional[Dict[str, Any]] = None
@@ -4638,6 +4641,18 @@ async def solve_v3_stream_endpoint(
                 placeholder_msg.telemetry = openai_telemetry
                 placeholder_msg.tokens_used = openai_telemetry.get("total_tokens", 0)
                 
+                # Populate Metadata Columns (New)
+                classification = final_data.get("classification", {})
+                placeholder_msg.subject = classification.get("subject") or classification.get("topic") or body.subject
+                placeholder_msg.grade_level = classification.get("grade_level") or (user_obj.grade_level if user_obj else None)
+                placeholder_msg.difficulty = classification.get("difficulty")
+                # Normalize tags/topics
+                raw_tags = classification.get("tags") or classification.get("topics")
+                if isinstance(raw_tags, list):
+                     placeholder_msg.topics = [str(t) for t in raw_tags]
+                elif isinstance(raw_tags, str):
+                     placeholder_msg.topics = [raw_tags]
+                
                 # Token Tracking (Part D3)
                 tokens = openai_telemetry.get("total_tokens", 0)
                 if tokens > 0:
@@ -5135,27 +5150,61 @@ async def get_history(
     history_items = []
     for chat in results:
         # Extract user input
-        user_input = next((msg.content for msg in chat.messages if msg.role == "user"), None)
+        user_input = None
+        for msg in chat.messages:
+            if msg.role == "user" and not user_input:
+                user_input = msg.content
+                break
         
-        # Extract telemetry from any assistant message (prefer most recent)
+        # Extract metadata from any assistant message (prefer most recent)
         telemetry = None
+        grade_level = None
+        difficulty = None
+        topics_list = []
+        msg_subject = None
+
         for msg in reversed(chat.messages):
             if msg.role == "assistant":
+                # Telemetry
                 if msg.telemetry:
                     telemetry = msg.telemetry
-                    break
-                # Fallback to structured_data telemetry (legacy/migration support)
                 elif msg.structured_data and isinstance(msg.structured_data, dict):
                     telemetry = msg.structured_data.get("telemetry") or msg.structured_data.get("_telemetry")
-                    if telemetry: 
-                        break
+                
+                # Metadata (New fields)
+                if getattr(msg, "grade_level", None):
+                    grade_level = msg.grade_level
+                if getattr(msg, "difficulty", None):
+                    difficulty = msg.difficulty
+                if getattr(msg, "subject", None):
+                    msg_subject = msg.subject
+                
+                # Topics parsing
+                raw_topics = getattr(msg, "topics", None)
+                if raw_topics:
+                    try:
+                        # Try JSON first
+                        if raw_topics.startswith("["):
+                            import json
+                            topics_list = json.loads(raw_topics)
+                        else:
+                            # Comma separated
+                            topics_list = [t.strip() for t in raw_topics.split(",") if t.strip()]
+                    except:
+                        topics_list = [raw_topics]
+                
+                if telemetry: 
+                    break
         
         history_items.append(ChatHistoryItem(
             id=chat.id, 
             title=chat.title, 
             created_at=chat.created_at.isoformat(),
-            subject=chat.subject or "Math",
+            subject=msg_subject or chat.subject or "Math",
             topic=chat.topic,
+            grade_level=grade_level,
+            difficulty=difficulty,
+            topics=topics_list,
             input=user_input,
             is_saved=chat.is_saved,
             telemetry=telemetry

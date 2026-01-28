@@ -2,7 +2,10 @@
 
 import React from 'react';
 import MathRenderer from '../math/MathRendererSwitch';
-import VisualRenderer, { Visual } from './VisualRenderer';
+import VisualRenderer from './VisualRenderer';
+
+// Define Visual type locally since it's not exported
+type Visual = any;
 
 interface Checkpoint {
     question: string;

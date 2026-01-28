@@ -96,26 +96,27 @@ class ChatMessage(SQLModel, table=True):
     role: str # user, assistant, system
     content: str
     
-    # For multimedia (images, voice urls)
-    media_url: Optional[str] = None 
-    
-    # Structure for rich responses (steps, verification, etc) - stored as JSON
+    # Structured Data & Telemetry
     structured_data: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    telemetry: Optional[dict] = Field(default=None, sa_column=Column(JSON))
     
     # Metadata for tracking
     model_used: Optional[str] = None
     tokens_used: int = Field(default=0)
     
-    # Detailed Telemetry (Latency, detailed tokens, cached status)
-    telemetry: Optional[dict] = Field(default=None, sa_column=Column(JSON))
-    
+    # Content Metadata (Requested by user)
+    subject: Optional[str] = None
+    grade_level: Optional[str] = None
+    difficulty: Optional[str] = None
+    topics: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
+
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     session: ChatSession = Relationship(back_populates="messages")
 
 class UsageLog(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="user.id")
+    user_id: int = Field(foreign_key="user.id", index=True)
     action_type: str # ocr_scan, solve_request, generating_image
     tokens_used: int = 0
     timestamp: datetime = Field(default_factory=datetime.utcnow)
