@@ -149,3 +149,7 @@ export function blobToBase64(blob: Blob): Promise<string> {
         reader.readAsDataURL(blob);
     });
 }
+
+export function decodeUnicodeEscapes(value: string): string {
+    return value.replace(/\\u([\dA-Fa-f]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+}

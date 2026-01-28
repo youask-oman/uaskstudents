@@ -15,6 +15,7 @@ import {
     saveCache,
     blobToBase64,
     getRotatedSize,
+    decodeUnicodeEscapes,
 } from "./snapSolveUtils";
 
 type SnapSolveV2Props = {
@@ -57,6 +58,36 @@ type SolveResult = {
     credits_refunded?: number;
 };
 
+type EngineChoice = "pix2text" | "lmm";
+
+type EngineStat = {
+    latencyMs?: number;
+    confidence?: number;
+    warnings?: string[];
+    updatedAt?: number;
+};
+
+const ENGINE_OPTIONS: EngineChoice[] = ["pix2text", "lmm"];
+const ENGINE_LABELS: Record<EngineChoice, string> = {
+    pix2text: "Pix2Text",
+    lmm: "LMM (Uask AI)",
+};
+
+function normalizeExtractResponse(response: ExtractResponse): ExtractResponse {
+    const decodedNotes = response.notes?.map((note) =>
+        note ? decodeUnicodeEscapes(note) : note
+    );
+    const decodedQuestions = response.questions?.map((question) => ({
+        ...question,
+        text: decodeUnicodeEscapes(question.text),
+    }));
+    return {
+        ...response,
+        notes: decodedNotes ?? response.notes,
+        questions: decodedQuestions ?? response.questions,
+    };
+}
+
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 
 const MAX_MB = parseInt(process.env.NEXT_PUBLIC_SNAP_MAX_MB || "10", 10);
@@ -94,6 +125,12 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
         ocr_warnings: [] as string[],
         ocr_source: "image",
         ocr_engine: "snap_v2",
+    });
+
+    const [ocrEngineChoice, setOcrEngineChoice] = React.useState<EngineChoice>("pix2text");
+    const [engineStats, setEngineStats] = React.useState<Record<EngineChoice, EngineStat>>({
+        pix2text: {},
+        lmm: {},
     });
 
     // Voice & Selection State
@@ -248,7 +285,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                     // 2. Upload to GPT-4o Vision endpoint
                     const errForm = new FormData();
                     errForm.append("file", blob, "selection.jpg");
-                    errForm.append("transcript", transcript);
+                    errForm.append("transcript", voiceTranscript || "");
 
                     const errRes = await fetch("/api/v1/find_error", { method: "POST", body: errForm });
                     const errData = await errRes.json();
@@ -413,10 +450,10 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
             const requestHash = await buildRequestHash(fileBytes, meta);
             const cache = loadCache();
             if (cache[requestHash]) {
-                const data = cache[requestHash] as ExtractResponse;
-                setExtractResult(data);
-                setStatus(data.ok ? "ready" : "error");
-                if (!data.ok) setError(data.error || "Cached extraction error.");
+                const cachedResponse = normalizeExtractResponse(cache[requestHash] as ExtractResponse);
+                setExtractResult(cachedResponse);
+                setStatus(cachedResponse.ok ? "ready" : "error");
+                if (!cachedResponse.ok) setError(cachedResponse.error || "Cached extraction error.");
                 setIsBusy(false);
                 return;
             }
@@ -437,6 +474,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
             form.append("source", fileType === "pdf" ? "pdf_page" : "image");
             form.append("user_selection", fullPage ? "whole_page" : "crop");
             form.append("rotation", String(rotation));
+            form.append("ocr_engine_choice", ocrEngineChoice);
             if (imageSize) {
                 form.append("preview_w", String(imageSize.width));
                 form.append("preview_h", String(imageSize.height));
@@ -452,6 +490,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                 form.append("crop_h", String(normalizedCrop.height));
             }
 
+            const startTime = Date.now();
             const userId = localStorage.getItem("user_id") || "1";
             const res = await fetch(`/api/v1/extract_questions?user_id=${userId}`, {
                 method: "POST",
@@ -464,14 +503,16 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
             }
 
             const data = await res.json();
-            setExtractResult(data);
+            const normalizedData = normalizeExtractResponse(data as ExtractResponse);
+            setExtractResult(normalizedData);
 
-            if (data?.questions && data.questions.length > 0) {
-                const confidences = data.questions.map((q: any) => q.confidence ?? 0);
-                const avgConfidence = confidences.reduce((sum: number, v: number) => sum + v, 0) / confidences.length;
-                const warnings = data.questions
-                    .filter((q: any) => q.reason_if_invalid && !q.is_valid_math)
-                    .map((q: any) => q.reason_if_invalid)
+            const questions = normalizedData.questions || [];
+            if (questions.length > 0) {
+                const confidences = questions.map((q) => q.confidence ?? 0);
+                const avgConfidence = confidences.reduce((sum, v) => sum + v, 0) / confidences.length;
+                const warnings = questions
+                    .filter((q) => q.reason_if_invalid && !q.is_valid_math)
+                    .map((q) => q.reason_if_invalid)
                     .filter(Boolean);
                 setOcrMetadata({
                     ocr_confidence: avgConfidence,
@@ -479,11 +520,26 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                     ocr_source: fileType === "pdf" ? "pdf" : "image",
                     ocr_engine: "snap_v2",
                 });
+
+                const telemetry = (data as any)?.telemetry;
+                const telemetryLatency =
+                    telemetry?.latency_ms_total ?? telemetry?.latency_ms ?? telemetry?.latency_ms_openai;
+                const measuredLatency = telemetryLatency ?? (Date.now() - startTime);
+                setEngineStats((prev) => ({
+                    ...prev,
+                    [ocrEngineChoice]: {
+                        latencyMs: measuredLatency,
+                        confidence: avgConfidence,
+                        warnings,
+                        updatedAt: Date.now(),
+                    },
+                }));
             }
-            cache[requestHash] = data;
+
+            cache[requestHash] = normalizedData;
             saveCache(cache);
-            setStatus(data.ok ? "ready" : "error");
-            if (!data.ok) setError(data.error || "Extraction returned error state.");
+            setStatus(normalizedData.ok ? "ready" : "error");
+            if (!normalizedData.ok) setError(normalizedData.error || "Extraction returned error state.");
         } catch (err) {
             if (!(err instanceof DOMException && err.name === "AbortError")) {
                 const message = err instanceof Error ? err.message : "Extract failed";

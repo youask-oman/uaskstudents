@@ -1107,7 +1107,7 @@ EXTRACT_SCHEMA = {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "additionalProperties": False,
-        "required": ["ok", "error"],
+        "required": ["ok", "error", "is_math_page", "notes", "questions"],
         "properties": {
             "ok": {"type": "boolean"},
             "error": {"type": ["string", "null"], "minLength": 1, "maxLength": 200},
@@ -1401,6 +1401,12 @@ class SolveBatchItem(BaseModel):
 class SolveBatchRequest(BaseModel):
     items: List[SolveBatchItem]
     features_used: Optional[Dict[str, Any]] = None
+    input_modality: Optional[str] = None
+    verification_level: Optional[str] = None
+    token_policy: Optional[str] = None
+    image_url: Optional[str] = None
+    artifact_id: Optional[int] = None
+    has_voice: Optional[bool] = False
 
 
 class SolveBatchItemResult(BaseModel):

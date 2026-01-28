@@ -936,3 +936,47 @@ Local OCR result poor/empty/non-math. Falling back to VLM for region...
 LiteLLM completion() model= gpt-4o; provider = openai
 Wrapper: Completed Call, calling success_handler
 VlmEngine processed image in 3082ms (attempt 1)
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+extract_questions input metrics: size=391x312 stddev=106.38 white=0.735
+extract_questions OpenAI request failed
+Traceback (most recent call last):
+  File "C:\uaskstudents\backend\app\api.py", line 1984, in extract_questions
+    extract_data = await _call_extract_questions(image_bytes, max_extract_tokens)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\uaskstudents\backend\app\api.py", line 1507, in _call_extract_questions
+    response = await _build_responses_request(max_output_tokens)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\resources\responses\responses.py", line 2480, in create
+    return await self._post(
+           ^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1797, in post
+    return await self.request(cast_to, opts, stream=stream, stream_cls=stream_cls)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1597, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.BadRequestError: Error code: 400 - {'error': {'message': "Invalid schema for response_format 'extract_questions_v1': In context=(), 'required' is required to be supplied and to be an array including every key in properties. Missing 'is_math_page'.", 'type': 'invalid_request_error', 'param': 'text.format.schema', 'code': 'invalid_json_schema'}}
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+extract_questions input metrics: size=391x312 stddev=106.38 white=0.735
+extract_questions OpenAI request failed
+Traceback (most recent call last):
+  File "C:\uaskstudents\backend\app\api.py", line 1984, in extract_questions
+    extract_data = await _call_extract_questions(image_bytes, max_extract_tokens)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\uaskstudents\backend\app\api.py", line 1507, in _call_extract_questions
+    response = await _build_responses_request(max_output_tokens)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\resources\responses\responses.py", line 2480, in create
+    return await self._post(
+           ^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1797, in post
+    return await self.request(cast_to, opts, stream=stream, stream_cls=stream_cls)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1597, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.BadRequestError: Error code: 400 - {'error': {'message': "Invalid schema for response_format 'extract_questions_v1': In context=(), 'required' is required to be supplied and to be an array including every key in properties. Missing 'notes'.", 'type': 'invalid_request_error', 'param': 'text.format.schema', 'code': 'invalid_json_schema'}}
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+extract_questions input metrics: size=391x312 stddev=106.38 white=0.735
+extract_questions response raw content: '{\n  "ok": true,\n  "error": null,\n  "is_math_page": true,\n  "notes": [\n    "Extracted five mathematical expressions from the image."\n  ],\n  "questions": [\n    {\n      "id": "q1",\n      "text": "1 / sec(x - \\\\u03c0/2)",\n      "confidence": 0.9,\n      "is_valid_math": true,\n      "reason_if_invalid": "OK",\n      "type": "other",\n      "bbox": {\n        "x": 0.12,\n        "y": 0.05,\n        "w": 0.76,...(truncated)' (len=2526)

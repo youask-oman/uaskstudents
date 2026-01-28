@@ -5,8 +5,9 @@ from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
 from app.api import api_router
+from app.constants.token_policy_defaults import TOKEN_POLICY_DEFAULTS
 from app.database import get_session
-from app.models import User
+from app.models import SystemConfig, User
 import app.api as api_module
 
 PNG_BYTES = base64.b64decode(
@@ -27,6 +28,7 @@ def session_fixture():
     )
     SQLModel.metadata.create_all(engine)
     with Session(engine) as session:
+        _seed_token_policy_defaults(session)
         yield session
 
 
@@ -45,7 +47,7 @@ def test_extract_questions_caches(client, session, monkeypatch):
     session.add(user)
     session.commit()
 
-    async def fake_extract(_bytes):
+    async def fake_extract(_bytes, _max_output_tokens):
         return {
             "payload": {
                 "is_math_page": True,
@@ -114,3 +116,9 @@ def test_solve_questions_batch_basic(client, session, monkeypatch):
     data = resp.json()
     assert data["ok"] is True
     assert data["results"][0]["ok"] is True
+
+
+def _seed_token_policy_defaults(session: Session) -> None:
+    for key, (value, description) in TOKEN_POLICY_DEFAULTS.items():
+        session.add(SystemConfig(key=key, value=str(value), description=description))
+    session.commit()
