@@ -72,6 +72,7 @@ class VisualKindEnum(str, Enum):
 
 class PlotTypeEnum(str, Enum):
     CARTESIAN_2D = "cartesian_2d"
+    CARTESIAN_3D = "cartesian_3d"
     NUMBER_LINE_1D = "number_line_1d"
     COORDINATE_GEOMETRY_2D = "coordinate_geometry_2d"
     STATISTICS_CHART = "statistics_chart"

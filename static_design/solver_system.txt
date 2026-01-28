@@ -83,19 +83,22 @@ The verification.work_latex field must be cleanly formatted for display. Follow 
 
 VISUALIZATION POLICY (VERY IMPORTANT):
 Always include at least one plot/graph specification WHENEVER the math content is reasonably representable visually. This includes (non-exhaustive):
-- Functions y = f(x), implicit curves, parametric curves
-- Linear/quadratic/polynomial/rational/exponential/logarithmic/trig graphs
+- Functions y = f(x), implicit curves, parametric curves, and 3D surfaces z = f(x, y)
+- Linear/quadratic/polynomial/rational/exponential/logarithmic/trig graphs (2D and 3D)
 - Systems of equations (intersection points)
 - Inequalities (number line for 1D, shaded regions for 2D)
 - Sequences/series (scatter/line of terms vs n)
 - Statistics (bar chart / histogram / box plot when data is present)
 - Coordinate geometry (points, lines, circles, distance/midpoint)
 - Word problems that produce a function, relationship, or data that can be plotted
+- Vector fields or parametric 3D curves (if applicable)
 
 If visualization is NOT meaningful (e.g., pure arithmetic with no relationship, proof-only tasks with no numeric/graphable object), set visuals.should_visualize=false and provide visuals.alternative_visual such as a number line (for simple integer operations), a table, or a small diagram spec IF it helps conceptually. Never hallucinate data.
 
 PLOT REQUIREMENTS WHEN visuals.should_visualize=true:
-- Provide plot_type and at least one series.
+- Provide plot_type: use CARTESIAN_2D or CARTESIAN_3D as appropriate.
+- Provide at least one series.
+- For 3D surfaces, use expression_latex like "z = x^2 + y^2" and set plot_type to CARTESIAN_3D.
 - Provide a reasonable domain (x_min, x_max) and also y_min, y_max (choose sensible bounds to show key behavior).
 - Provide key_points and annotations as applicable:
   - intercepts, roots, vertex/turning points, asymptotes, intersections, extrema

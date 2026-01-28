@@ -1,281 +1,364 @@
 import math
+import re
+from typing import List, Optional, Dict, Any, Tuple
+from ..schemas.graph_spec import GraphSpec, GraphType, GraphTrace, TraceKind, KeyPoint, GraphAxes
 
-def safe_eval_math(expression: str, x: float) -> float | None:
-    """
-    Safely evaluates simple mathematical expressions for a given x.
-    Supports: sin, cos, tan, sqrt, pi, e, +, -, *, /, ^
-    """
+# --- Core Math Helpers ---
+
+def cbrt(x: float) -> float:
+    """Real-valued cube root that handles negative numbers."""
+    if x >= 0:
+        return x ** (1/3)
+    else:
+        return -(abs(x) ** (1/3))
+
+def root(n: float, x: float) -> float | None:
+    """Real-valued nth root for general cases."""
+    if n == 0: return None
+    if x == 0: return 0.0
+    
+    # If n is even, x must be non-negative for real result
+    if abs(n % 2) < 1e-9: # Even-ish
+        if x < 0: return None
+        return x ** (1/n)
+    
+    # If n is odd, handle negative x
+    if abs(n % 2 - 1) < 1e-9: # Odd-ish
+        if x >= 0:
+            return x ** (1/n)
+        else:
+            return -(abs(x) ** (1/n))
+            
+    # Fractional or other n
+    if x < 0: return None
+    return x ** (1/n)
+
+def safe_eval_math(expression: str, locals_dict: Dict[str, Any]) -> float | None:
+    """Evaluates a normalized expression within a restricted scope."""
     try:
-        # 1. Basic normalization & Character fixed
-        expr = expression.strip()
-        # Handle U+F070 and other weird pi representations
-        expr = expr.replace("\u03c0", "pi") # Greek pi
-        expr = expr.replace("\uf070", "pi") # Private use pi
-        expr = expr.replace("\u1d70a", "pi") 
-        
-        expr = expr.lower()
-        
-        # 2. Cleanup LaTeX function wrappers (\text{sin} -> sin)
-        import re
-        # Handle cases where \t might be interpreted as tab if not raw
-        expr = expr.replace("\t", " t") 
-        
-        # Handle \root{n}\of{x} or \root{n}{x} or \root n \of {x} -> (x)**(1/n)
-        # 1. Full version with \of
-        expr = re.sub(r'\\root\s*\{?([^}\s]+)\}?\s*\\of\s*\{([^}]+)\}', r'((\2)**(1/(\1)))', expr)
-        # 2. Shorthand version without \of: \root{n}{x}
-        expr = re.sub(r'\\root\s*\{([^}]+)\}\s*\{([^}]+)\}', r'((\2)**(1/(\1)))', expr)
-        # 3. Very sparse version: \root n {x}
-        expr = re.sub(r'\\root\s+([0-9a-z]+)\s+\{([^}]+)\}', r'((\2)**(1/(\1)))', expr)
-        
-        # Handle \sqrt[n]{x} -> (x)**(1/n)
-        expr = re.sub(r'\\sqrt\s*\[([^\]]+)\]\s*\{([^}]+)\}', r'((\2)**(1/(\1)))', expr)
-        # Handle \sqrt{x} -> (x)**0.5
-        expr = re.sub(r'\\sqrt\s*\{([^}]+)\}', r'((\1)**0.5)', expr)
-
-        # Remove text{...}, mathrm{...}, operatorname{...} but keep content
-        expr = re.sub(r'\\?(text|mathrm|operatorname|mathtxt)\s*\{([^}]+)\}', r'\2', expr)
-        # Remove remaining backslashes for standard functions (latex \sin -> sin)
-        expr = expr.replace("\\", "")
-        # Remove spaces
-        expr = expr.replace(" ", "")
-        
-        # 3. Strip LHS (y=, f(x)=, etc)
-        if "=" in expr:
-            expr = expr.split("=")[-1]
-            
-        # 4. Replace constants
-        expr = expr.replace("pi", str(math.pi))
-        expr = expr.replace("e", str(math.e))
-        
-        # 5. Handle operators
-        expr = expr.replace("^", "**")
-        
-        # 6. Handle implicit multiplication (2x -> 2*x)
-        # Ensure x is not inside an identifier (though x is our only one)
-        expr = re.sub(r'(\d)([a-z\(])', r'\1*\2', expr)
-        
-        # 7. Prepare local scope - restrict to math functions
-        allowed_names = {
-            "x": x,
-            "sin": math.sin,
-            "cos": math.cos,
-            "tan": math.tan,
-            "sqrt": math.sqrt,
-            "abs": abs,
-            "pow": pow,
-            "log": math.log,
-            "exp": math.exp
-        }
-        
-        # 5. Clean expression mapping
-        # Map latex 'y=' to empty
-        if "=" in expr:
-            expr = expr.split("=")[-1]
-            
-        # Remove backslashes for standard functions (latex \sin -> sin)
-        expr = expr.replace("\\", "")
-        
-        # 6. Evaluate
-        # WARNING: eval is generally unsafe. In production, use AST parsing or libraries like 'simpleeval'.
-        # Here we rely on the restricted scope somewhat, but it's not sandbox-proof.
-        return eval(expr, {"__builtins__": {}}, allowed_names)
-        
+        # Restriction: __builtins__ is empty, only allowed math functions
+        res = eval(expression, {"__builtins__": {}}, locals_dict)
+        return res
     except Exception:
         return None
 
-def generate_points(
-    expression: str, 
-    x_min: float = -10.0, 
-    x_max: float = 10.0, 
-    num_points: int = 400
-) -> list[dict]:
-    """
-    Generates a list of {x, y} points for a given expression.
-    """
-    points = []
+def normalize_latex_for_eval(latex: str, is_implicit: bool = False) -> str:
+    """Converts LaTeX math to Python-evaluatable string."""
+    expr = latex.strip()
     
-    if x_max <= x_min:
-        x_max = x_min + 10.0
-        
-    step = (x_max - x_min) / num_points
+    # 1. Root variations -> safe functions
+    expr = re.sub(r'\\root\s*\{?([^}\s]+)\}?\s*\\of\s*\{([^}]+)\}', r'root(\1, \2)', expr)
+    expr = re.sub(r'\\root\s*\{([^}]+)\}\s*\{([^}]+)\}', r'root(\1, \2)', expr)
+    expr = re.sub(r'\\root\s+([0-9a-z]+)\s+\{([^}]+)\}', r'root(\1, \2)', expr)
+    expr = re.sub(r'\\sqrt\s*\[([^\]]+)\]\s*\{([^}]+)\}', r'root(\1, \2)', expr)
+    expr = re.sub(r'\\sqrt\s*\{([^}]+)\}', r'root(2, \1)', expr)
     
-    x = x_min
-    for _ in range(num_points + 1):
-        y = safe_eval_math(expression, x)
+    # 2. Basic replacements
+    expr = expr.replace("\u03c0", "pi").replace("\uf070", "pi").replace("\u1d70a", "pi")
+    
+    # 3. Handle common LaTeX math commands
+    expr = re.sub(r'\\(sin|cos|tan|asin|acos|atan|sqrt|log|exp|abs|pi|e)\b', r'\1', expr)
+    
+    # 4. Standard cleanups
+    expr = re.sub(r'\\?(text|mathrm|operatorname|mathtxt)\s*\{([^}]+)\}', r'\2', expr)
+    expr = expr.replace("\\", "") # Clean up remaining slashes
+    
+    if "=" in expr:
+        if is_implicit:
+            # Rewrite f(x,y) = g(x,y) as (f(x,y)) - (g(x,y))
+            lhs, rhs = expr.split("=", 1)
+            expr = f"({lhs.strip()}) - ({rhs.strip()})"
+        else:
+            expr = expr.split("=")[-1]
         
-        # Filter undefined or infinite values (e.g. tan(pi/2))
-        if y is not None and not math.isnan(y) and not math.isinf(y):
-            # Clamp extremely large values for rendering sanity
-            if abs(y) < 1e6:
-                points.append({"x": x, "y": y})
-        
-        x += step
-        
-    return points
+    expr = expr.replace("^", "**")
+    
+    # Implicit multiplication (2x -> 2*x)
+    expr = re.sub(r'(\d)([a-z\(])', r'\1*\2', expr)
+    
+    return expr.strip()
 
-def parse_domain(domain_str: str | None) -> float | None:
-    """Parses domain strings like '-2\\pi' into floats."""
-    if not domain_str:
-        return None
-    
-    s = domain_str.lower().replace("\\pi", str(math.pi)).replace("pi", str(math.pi))
-    try:
-        return float(eval(s, {"__builtins__": {}}))
-    except:
-        return None
+def get_math_scope(vars_dict: Dict[str, float]) -> Dict[str, Any]:
+    """Returns the scope with allowed math functions."""
+    scope = {
+        "pi": math.pi,
+        "e": math.e,
+        "sin": math.sin,
+        "cos": math.cos,
+        "tan": math.tan,
+        "asin": math.asin,
+        "acos": math.acos,
+        "atan": math.atan,
+        "sqrt": math.sqrt,
+        "abs": abs,
+        "pow": pow,
+        "log": math.log,
+        "exp": math.exp,
+        "root": root,
+        "cbrt": cbrt,
+    }
+    scope.update(vars_dict)
+    return scope
 
-def process_visuals(visuals: list[dict]) -> list[dict]:
+# --- Sampling Engine ---
+
+def is_valid(y: Any) -> bool:
+    """Checks if a value is a finite real number."""
+    return isinstance(y, (int, float)) and not math.isnan(y) and not math.isinf(y)
+
+def sample_2d_function(
+    expr: str, 
+    x_min: float, 
+    x_max: float
+) -> Tuple[List[List[float]], List[List[float]], List[str]]:
     """
-    Hydrates visual requests or incomplete visuals with actual plot data.
+    Performs adaptive sampling for a 2D function.
+    Returns: list of x_segments, list of y_segments, list of warnings
+    """
+    x_segments = []
+    y_segments = []
+    current_x_seg = []
+    current_y_seg = []
+    warnings = []
     
-    Supports:
-    - function_plot_request/function_plot: Single function plots
-    - line_plot: Line through two points
-    - multi_plot_request: Multiple functions (for systems)
-    - number_line: For inequalities (V2)
-    """
+    py_expr = normalize_latex_for_eval(expr)
+    
+    def eval_at(x_val):
+        return safe_eval_math(py_expr, get_math_scope({"x": x_val}))
+
+    # Uniform base grid
+    base_n = 400
+    xs = [x_min + i * (x_max - x_min) / base_n for i in range(base_n + 1)]
+    
+    # Simple discontinuity-aware collection
+    for x in xs:
+        y = eval_at(x)
+        if is_valid(y):
+            # Asymptote/Jump detection
+            if current_y_seg:
+                dy = abs(y - current_y_seg[-1])
+                # Sensitive jump detection for splitting tan(x) etc.
+                if dy > 15:
+                    if current_x_seg:
+                        x_segments.append(current_x_seg)
+                        y_segments.append(current_y_seg)
+                    current_x_seg = [x]
+                    current_y_seg = [y]
+                    continue
+                    
+            current_x_seg.append(x)
+            current_y_seg.append(y)
+        else:
+            if current_x_seg:
+                x_segments.append(current_x_seg)
+                y_segments.append(current_y_seg)
+            current_x_seg = []
+            current_y_seg = []
+            
+    if current_x_seg:
+        x_segments.append(current_x_seg)
+        y_segments.append(current_y_seg)
+        
+    return x_segments, y_segments, warnings
+
+def sample_2d_implicit(
+    expr: str,
+    x_range: Tuple[float, float],
+    y_range: Tuple[float, float]
+) -> Tuple[List[float], List[float], List[List[Optional[float]]]]:
+    """Generates a grid of points for a 2D implicit plot (contour)."""
+    # Force implicit normalization (keeps '=' as subtraction)
+    py_expr = normalize_latex_for_eval(expr, is_implicit=True)
+    n = 100 # Improved resolution for contours
+    
+    xs = [x_range[0] + i * (x_range[1] - x_range[0]) / n for i in range(n + 1)]
+    ys = [y_range[0] + i * (y_range[1] - y_range[0]) / n for i in range(n + 1)]
+    z_matrix = []
+    
+    for y_val in ys:
+        row = []
+        for x_val in xs:
+            scope = get_math_scope({"x": x_val, "y": y_val})
+            z = safe_eval_math(py_expr, scope)
+            if is_valid(z):
+                row.append(round(float(z), 6))
+            else:
+                row.append(None)
+        z_matrix.append(row)
+        
+    return xs, ys, z_matrix
+
+def sample_3d_surface(
+    expr: str,
+    x_range: Tuple[float, float],
+    y_range: Tuple[float, float]
+) -> Tuple[List[float], List[float], List[List[Optional[float]]]]:
+    """Generates a grid of points for a 3D surface."""
+    py_expr = normalize_latex_for_eval(expr)
+    n = 60 # Grid resolution
+    
+    xs = [x_range[0] + i * (x_range[1] - x_range[0]) / n for i in range(n + 1)]
+    ys = [y_range[0] + i * (y_range[1] - y_range[0]) / n for i in range(n + 1)]
+    z_matrix = []
+    
+    for y_val in ys:
+        row = []
+        for x_val in xs:
+            scope = get_math_scope({"x": x_val, "y": y_val})
+            z = safe_eval_math(py_expr, scope)
+            if is_valid(z):
+                row.append(round(float(z), 4))
+            else:
+                row.append(None)
+        z_matrix.append(row)
+        
+    return xs, ys, z_matrix
+
+def extract_key_points_2d(expr: str, x_min: float, x_max: float) -> List[KeyPoint]:
+    """Basic extraction of intercepts."""
+    py_expr = normalize_latex_for_eval(expr)
+    def eval_at(x_val):
+        return safe_eval_math(py_expr, get_math_scope({"x": x_val}))
+    
+    keys = []
+    # Y-intercept
+    if x_min <= 0 <= x_max:
+        y0 = eval_at(0)
+        if is_valid(y0):
+            keys.append(KeyPoint(label="y-intercept", x=0, y=round(float(y0), 3)))
+    
+    # Rough x-intercept search
+    n = 100
+    for i in range(n):
+        xa = x_min + i * (x_max - x_min) / n
+        xb = x_min + (i+1) * (x_max - x_min) / n
+        ya, yb = eval_at(xa), eval_at(xb)
+        if is_valid(ya) and is_valid(yb) and ya * yb <= 0:
+            keys.append(KeyPoint(label="x-intercept", x=round((xa+xb)/2, 3), y=0))
+            
+    return keys
+
+# --- Main Entry Point ---
+
+def process_visuals(visuals: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Hydrates visuals using the new GraphSpec format, mapping from PlotSpecV3."""
     processed = []
     
     for v in visuals:
-        v_type = v.get("type")
-        has_series = bool(v.get("series") and len(v.get("series", [{}])[0].get("points", [])) > 0)
-        
-        # 1. If it already has data, pass through
-        if has_series:
-            processed.append(v)
-            continue
+        try:
+            # v follows PlotSpecV3 from na_math_solver_v3.py
+            plot_type = v.get("plot_type", "cartesian_2d")
+            title = v.get("title") or "Graph"
             
-        # 2. Handle function_plot_request/function_plot
-        func_data = v.get("function") or {}
-        latex = func_data.get("latex")
-        
-        if (v_type in ["function_plot_request", "function_plot", "graph"]) and latex:
-            domain = v.get("domain", {})
-            x_min = parse_domain(str(domain.get("x_min_latex") or "")) or -10.0
-            x_max = parse_domain(str(domain.get("x_max_latex") or "")) or 10.0
+            # 1. Initialize GraphSpec
+            graph_type = GraphType.TWO_D_FUNCTION
+            if plot_type == "cartesian_3d":
+                graph_type = GraphType.THREE_D_SURFACE
             
-            # Generate Points
-            pts = generate_points(latex, x_min, x_max)
+            x_min = float(v.get("x_min", -10.0))
+            x_max = float(v.get("x_max", 10.0))
+            y_min = float(v.get("y_min", -10.0))
+            y_max = float(v.get("y_max", 10.0))
             
-            if pts:
-                new_visual = {
-                    "id": v.get("id"),
-                    "type": "function_plot",
-                    "title": v.get("title"),
-                    "axes": v.get("axes") or {"x_label": "x", "y_label": "y"},
-                    "series": [
-                        {
-                            "label": latex,
-                            "points": pts
-                        }
-                    ],
-                    "markers": v.get("markers") or []
-                }
-                processed.append(new_visual)
-                continue
-            else:
-                print(f"DEBUG: Failed to generate points for latex: {latex}")
+            axes = GraphAxes(
+                x_label=v.get("x_label", "x"),
+                y_label=v.get("y_label", "y"),
+                z_label="z" if graph_type == GraphType.THREE_D_SURFACE else None,
+                x_range=[x_min, x_max],
+                y_range=[y_min, y_max]
+            )
+            
+            spec = GraphSpec(
+                graph_type=graph_type,
+                title=title,
+                axes=axes
+            )
+            
+            # 2. Process Series
+            raw_series = v.get("series") or []
+            if not raw_series and v.get("function"):
+                # Handle legacy/simple "function" key
+                raw_series = [{"expression_latex": v["function"].get("latex"), "name": title}]
 
-        # 3. Handle multi_plot_request (V2) - Systems of equations
-        if v_type == "multi_plot_request" and not has_series:
-            functions = v.get("functions", [])
-            domain = v.get("domain_multi", {})
-            x_min = parse_domain(str(domain.get("x_min_latex") or "")) or -10.0
-            x_max = parse_domain(str(domain.get("x_max_latex") or "")) or 10.0
-            
-            series_list = []
-            for func in functions:
-                latex_expr = func.get("latex")
-                label = func.get("label", latex_expr)
-                if latex_expr:
-                    pts = generate_points(latex_expr, x_min, x_max)
-                    if pts:
-                        series_list.append({
-                            "label": label,
-                            "points": pts
-                        })
-            
-            if series_list:
-                new_visual = {
-                    "id": v.get("id"),
-                    "type": "function_plot",  # Convert to function_plot with multiple series
-                    "title": v.get("title", "System of Equations"),
-                    "axes": {"x_label": "x", "y_label": "y"},
-                    "series": series_list,
-                    "markers": v.get("markers", [])
-                }
-                processed.append(new_visual)
-                continue
-
-        # 4. Handle line_plot without series
-        if v_type == "line_plot" and not has_series:
-            # V2: Check for points array
-            points_array = v.get("points", [])
-            if len(points_array) >= 2:
-                try:
-                    p1 = {"x": float(points_array[0].get("x", 0)), "y": float(points_array[0].get("y", 0))}
-                    p2 = {"x": float(points_array[1].get("x", 0)), "y": float(points_array[1].get("y", 0))}
-                    
-                    dx = p2["x"] - p1["x"]
-                    x_min = min(p1["x"], p2["x"]) - 5
-                    x_max = max(p1["x"], p2["x"]) + 5
-                    
-                    if abs(dx) < 1e-9:  # Vertical
-                        line_pts = [
-                            {"x": p1["x"], "y": min(p1["y"], p2["y"]) - 5},
-                            {"x": p1["x"], "y": max(p1["y"], p2["y"]) + 5}
-                        ]
+            for s in raw_series:
+                expr = s.get("expression_latex") or s.get("label") or s.get("name")
+                if not expr: continue
+                
+                # Check for 3D if not already set (fallback detection)
+                if "z" in expr.lower() or "z=" in expr.lower():
+                    spec.graph_type = GraphType.THREE_D_SURFACE
+                    spec.axes.z_label = "z"
+                
+                if spec.graph_type == GraphType.THREE_D_SURFACE:
+                    xs, ys, zm = sample_3d_surface(expr, (x_min, x_max), (y_min, y_max))
+                    spec.traces.append(GraphTrace(
+                        name=s.get("name") or expr,
+                        kind=TraceKind.SURFACE,
+                        x=xs,
+                        y=ys,
+                        z_matrix=zm
+                    ))
+                else:
+                    # 2D case: Check if implicit (contains y or an equals sign that isn't y=...)
+                    is_implicit = False
+                    if "y" in expr.lower():
+                        # If it has 'y' but isn't a simple 'y = ...' or 'f(x) = ...'
+                        # Actually, any equation with 'y' that isn't just the output variable is implicit.
+                        normalized_lower = expr.lower().replace(" ", "")
+                        if "=" in normalized_lower:
+                            lhs = normalized_lower.split("=")[0]
+                            if lhs != "y" and lhs != "f(x)":
+                                is_implicit = True
+                        else:
+                            is_implicit = True # No equals but has y? e.g. x^2 + y^2
+                            
+                    if is_implicit:
+                        xs, ys, zm = sample_2d_implicit(expr, (x_min, x_max), (y_min, y_max))
+                        spec.traces.append(GraphTrace(
+                            name=s.get("name") or expr,
+                            kind=TraceKind.CONTOUR,
+                            x=xs,
+                            y=ys,
+                            z_matrix=zm
+                        ))
                     else:
-                        slope = (p2["y"] - p1["y"]) / dx
-                        y_start = p1["y"] + slope * (x_min - p1["x"])
-                        y_end = p1["y"] + slope * (x_max - p1["x"])
-                        line_pts = [{"x": x_min, "y": y_start}, {"x": x_max, "y": y_end}]
-                    
-                    v["series"] = [{"label": "Line", "points": line_pts}]
-                    v["type"] = "line_plot"
-                    v["markers"] = [p1, p2]  # Keep original points as markers
-                    processed.append(v)
-                    continue
-                except Exception as e:
-                    print(f"DEBUG: Line plot (points array) generation failed: {e}")
+                        x_segs, y_segs, warnings = sample_2d_function(expr, x_min, x_max)
+                        spec.warnings.extend(warnings)
+                        for i, (xs, ys) in enumerate(zip(x_segs, y_segs)):
+                            spec.traces.append(GraphTrace(
+                                name=s.get("name") or expr,
+                                kind=TraceKind.SCATTER,
+                                x=xs,
+                                y=ys,
+                                show_legend=(i == 0)
+                            ))
             
-            # Fallback: try markers array (old format)
-            markers = v.get("markers", [])
-            if len(markers) >= 2:
+            # 3. Map Key Points provided by LLM
+            llm_points = v.get("key_points") or []
+            for kp in llm_points:
                 try:
-                    p1, p2 = markers[0], markers[1]
-                    dx = p2["x"] - p1["x"]
-                    
-                    x_min = min(p1["x"], p2["x"]) - 5
-                    x_max = max(p1["x"], p2["x"]) + 5
-                    
-                    if abs(dx) < 1e-9:  # Vertical
-                        line_pts = [
-                            {"x": p1["x"], "y": min(p1["y"], p2["y"]) - 5},
-                            {"x": p1["x"], "y": max(p1["y"], p2["y"]) + 5}
-                        ]
-                    else:
-                        slope = (p2["y"] - p1["y"]) / dx
-                        y_start = p1["y"] + slope * (x_min - p1["x"])
-                        y_end = p1["y"] + slope * (x_max - p1["x"])
-                        line_pts = [{"x": x_min, "y": y_start}, {"x": x_max, "y": y_end}]
-                    
-                    v["series"] = [{"label": "Line", "points": line_pts}]
-                    v["type"] = "line_plot"
-                    processed.append(v)
-                    continue
-                except Exception as e:
-                    print(f"DEBUG: Line plot generation failed: {e}")
-
-        # 5. Handle number_line (V2) - For inequalities
-        if v_type == "number_line":
-            # Number line doesn't need point generation - pass through as-is
-            # Frontend will render based on intervals
+                    spec.key_points.append(KeyPoint(
+                        label=kp.get("label", "Point"),
+                        x=float(kp.get("x", 0.0)),
+                        y=float(kp.get("y", 0.0)),
+                        z=float(kp.get("z", 0.0)) if kp.get("z") is not None else None
+                    ))
+                except: pass
+            
+            # 4. Auto-extract key points if 2D
+            if spec.graph_type == GraphType.TWO_D_FUNCTION and raw_series:
+                primary_expr = raw_series[0].get("expression_latex") or raw_series[0].get("label")
+                if primary_expr:
+                    auto_keys = extract_key_points_2d(primary_expr, x_min, x_max)
+                    # Merge (avoid duplicates if close)
+                    for ak in auto_keys:
+                        if not any(abs(ak.x - lk.x) < 0.1 and abs(ak.y - lk.y) < 0.1 for lk in spec.key_points):
+                            spec.key_points.append(ak)
+            
+            processed.append(spec.dict())
+            
+        except Exception as e:
+            v["warnings"] = [f"Graphing hydration error: {str(e)}"]
             processed.append(v)
-            continue
-
-        # Fallback: keep as is if we can't do anything better
-        processed.append(v)
             
     return processed
