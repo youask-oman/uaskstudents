@@ -317,7 +317,7 @@ export default function WorkspaceLayout({
                                         </span>
                                     </div>
                                     <div className="text-lg font-bold text-slate-900 dark:text-white leading-relaxed">
-                                        <MathRenderer content={problem?.input || originalProblemText || "Problem"} mode="inline" />
+                                        <MathRenderer content={problem?.input || originalProblemText || "Problem"} mode="prose" />
                                     </div>
 
                                     {/* Assumptions List */}

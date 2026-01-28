@@ -71,8 +71,8 @@ const isRawLatex = (text: string): boolean => {
     const isJsonArray = trimmed.startsWith("[");
     const startsWithText = trimmed.startsWith("\\text{");
 
-    // Heuristic: If it has more than 3 spaces, it's very likely prose.
-    if (spaceCount > 3 && !isJsonArray && !startsWithText) return false;
+    // Heuristic: If it has any spaces, it's very likely prose or contains prose.
+    if (spaceCount > 0 && !isJsonArray && !startsWithText) return false;
 
     // Check for common LaTeX commands. 
     // We split into two: those that MUST have a backslash, and those that can be raw.
