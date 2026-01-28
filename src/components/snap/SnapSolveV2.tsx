@@ -38,6 +38,8 @@ type ExtractQuestion = {
 };
 
 type ExtractResponse = {
+    ok: boolean;
+    error?: string | null;
     is_math_page: boolean;
     notes: string[];
     questions: ExtractQuestion[];
@@ -411,8 +413,10 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
             const requestHash = await buildRequestHash(fileBytes, meta);
             const cache = loadCache();
             if (cache[requestHash]) {
-                setExtractResult(cache[requestHash] as ExtractResponse);
-                setStatus("ready");
+                const data = cache[requestHash] as ExtractResponse;
+                setExtractResult(data);
+                setStatus(data.ok ? "ready" : "error");
+                if (!data.ok) setError(data.error || "Cached extraction error.");
                 setIsBusy(false);
                 return;
             }
@@ -674,16 +678,27 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
 
             const data = await res.json();
 
-            if (data.ok && data.analysis) {
-                setVoiceIntent(data.analysis.first_wrong_line_index !== null ? "Error Found (Local)" : "No Error Found");
+            if (data.ok && data.analysis && data.analysis.first_wrong_line_index !== null) {
+                setVoiceIntent("Error Found (Local)");
                 setErrorDiagnosis({
                     what_is_wrong: data.analysis.what_is_wrong,
                     minimal_fix: data.analysis.minimal_fix,
                     confidence: data.analysis.confidence
                 });
                 setLocalSteps(data.local_steps || null);
+            } else if (data.ok && data.analysis) {
+                // No error found, but success
+                setVoiceIntent("Correct (Local)");
+                setErrorDiagnosis({
+                    what_is_wrong: data.analysis.what_is_wrong || "No definite error found in the selected region.",
+                    minimal_fix: data.analysis.minimal_fix || "If you expected an error, expand the selection to include the full step (including '=')",
+                    confidence: data.analysis.confidence
+                });
+                setLocalSteps(data.local_steps || null);
             } else {
-                setError(data.error?.message || "No error detected local");
+                setError(data.error?.message || data.error || "No error detected local");
+                setLocalSteps(null);
+                setErrorDiagnosis(null);
             }
         } catch (e: any) {
             setError(e.name === 'AbortError' ? "Request timed out. Please try again." : e.message);

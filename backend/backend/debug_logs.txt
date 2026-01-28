@@ -883,3 +883,56 @@ HTTP Request: POST https://api.openai.com/v1/responses "HTTP/1.1 200 OK"
 extract_questions response raw content: '{"ok":true,"error":null,"is_math_page":true,"notes":["Extracted 4 questions visible on page"],"questions":[{"id":"q1","text":"Gloria and Bob and five other people walk through a doorway one at a time. In how many ways can the seven people go through the doorway if Bob goes through the doorway after Gloria? (Options: A 240, B 2520, C 720, D 5040)","confidence":0.9,"is_valid_math":true,"reason_if_in...(truncated)' (len=1946)
 HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
 [QUESTION_CACHE] Stored: b561bcbb90a68968...
+Initializing Local Pix2Text engine...
+Use DocLayout-YOLO model for Layout Analysis: C:\Users\loaia\AppData\Roaming\pix2text\1.1\layout-docyolo\doclayout_yolo_docstructbench_imgsz1024.pt
+use model: C:\Users\loaia\AppData\Roaming\cnocr\2.3\densenet_lite_136-gru\cnocr-v2.3-densenet_lite_136-gru-epoch=004-ft-model.onnx
+use model: C:\Users\loaia\AppData\Roaming\cnstd\1.2\ppocr\ch_PP-OCRv5_det\ch_PP-OCRv5_det_infer.onnx
+Use model path for MFD: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfd-1.5-onnx\pix2text-mfd-1.5.onnx
+Use model dir for LatexOCR: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfr-1.5-onnx
+Loaded Pix2Text MFR model mfr-1.5 to: backend-onnx, device-cpu
+Pix2Text initialized successfully
+LocalEngine processed image in 3980ms
+LocalEngine processed image in 1586ms
+Local OCR result poor/empty. Falling back to VLM for region...
+Region recognition failed: litellm is not installed. VLM engine requires litellm.
+LocalEngine processed image in 1021ms
+Local OCR result poor/empty. Falling back to VLM for region...
+Region recognition failed: litellm is not installed. VLM engine requires litellm.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Initializing Local Pix2Text engine...
+Use DocLayout-YOLO model for Layout Analysis: C:\Users\loaia\AppData\Roaming\pix2text\1.1\layout-docyolo\doclayout_yolo_docstructbench_imgsz1024.pt
+Attempting to connect to database (Attempt 1/10)...
+use model: C:\Users\loaia\AppData\Roaming\cnocr\2.3\densenet_lite_136-gru\cnocr-v2.3-densenet_lite_136-gru-epoch=004-ft-model.onnx
+Database connection successful and tables created.
+use model: C:\Users\loaia\AppData\Roaming\cnstd\1.2\ppocr\ch_PP-OCRv5_det\ch_PP-OCRv5_det_infer.onnx
+Use model path for MFD: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfd-1.5-onnx\pix2text-mfd-1.5.onnx
+Use model dir for LatexOCR: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfr-1.5-onnx
+Loaded Pix2Text MFR model mfr-1.5 to: backend-onnx, device-cpu
+Pix2Text initialized successfully
+LocalEngine processed image in 3735ms
+Local OCR result poor/empty. Falling back to VLM for region...
+
+LiteLLM completion() model= gpt-4o; provider = openai
+Wrapper: Completed Call, calling success_handler
+VlmEngine processed image in 2645ms (attempt 1)
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Initializing Local Pix2Text engine...
+Use DocLayout-YOLO model for Layout Analysis: C:\Users\loaia\AppData\Roaming\pix2text\1.1\layout-docyolo\doclayout_yolo_docstructbench_imgsz1024.pt
+use model: C:\Users\loaia\AppData\Roaming\cnocr\2.3\densenet_lite_136-gru\cnocr-v2.3-densenet_lite_136-gru-epoch=004-ft-model.onnx
+use model: C:\Users\loaia\AppData\Roaming\cnstd\1.2\ppocr\ch_PP-OCRv5_det\ch_PP-OCRv5_det_infer.onnx
+Use model path for MFD: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfd-1.5-onnx\pix2text-mfd-1.5.onnx
+Use model dir for LatexOCR: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfr-1.5-onnx
+Loaded Pix2Text MFR model mfr-1.5 to: backend-onnx, device-cpu
+Pix2Text initialized successfully
+LocalEngine processed image in 3847ms
+Local OCR result poor/empty/non-math. Falling back to VLM for region...
+
+LiteLLM completion() model= gpt-4o; provider = openai
+Wrapper: Completed Call, calling success_handler
+VlmEngine processed image in 3082ms (attempt 1)

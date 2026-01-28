@@ -13,19 +13,23 @@ def generate_local_steps(expr_str: str) -> List[str]:
     steps = []
     expr_str = expr_str.strip().lower()
 
+    # Normalize placeholders (underscores or multiple dots) to 'x'
+    expr_str = re.sub(r'_{2,}', 'x', expr_str)
+    expr_str = re.sub(r'\.{3,}', 'x', expr_str)
+
     # 0. Handle Equations (Solve for x)
-    # Example: "4x-3/5 - 2x-3/2 = -2"
-    if "=" in expr_str or "solve for" in expr_str:
+    # Example: "4x-3/5 - 2x-3/2 = -2" or "50 + 60 = ___"
+    if "=" in expr_str or "solve" in expr_str or ("x" in expr_str and any(c in expr_str for c in "+-*/")):
         return _handle_equations(expr_str)
 
     # 1. Handle "Write X as a decimal/percent"
-    # Example: "Write 12 1/2% as a decimal"
     if "as a decimal" in expr_str or "as a percent" in expr_str:
         return _handle_conversions(expr_str)
 
-    # 2. Handle Algebraic Expressions (Simplify)
-    # Example: "Simplify 2A^2 (2A)^2"
-    if "simplify" in expr_str or any(c in expr_str for c in "^*+"):
+    # 2. Handle Algebraic Expressions (Simplify/Evaluate)
+    # Catch-all for any string with numbers and math operators
+    has_math = any(c.isdigit() for c in expr_str) and any(c in expr_str for c in "+-*/^")
+    if "simplify" in expr_str or has_math:
         return _handle_simplification(expr_str)
 
     return ["No specific local solving rule matched for this query."]

@@ -1084,32 +1084,21 @@ EXTRACT_MODEL = os.getenv("EXTRACT_MODEL", "gpt-5-mini")
 EXTRACT_MAX_MB = int(os.getenv("EXTRACT_MAX_MB", "10"))
 
 EXTRACT_SYSTEM_PROMPT = (
-    "You are a STRICT JSON OCR EXTRACTOR.\n\n"
-    "Your ONLY task is to extract structured data from the image and return it as JSON "
-    "that EXACTLY matches the provided JSON schema in text.format.\n\n"
+    "You are a robust Math JSON OCR EXTRACTOR.\n\n"
+    "Your task is to extract mathematical questions and expressions from the image and return them as JSON.\n\n"
     "ABSOLUTE RULES:\n"
-    "- DO NOT explain.\n"
-    "- DO NOT reason.\n"
-    "- DO NOT summarize.\n"
-    "- DO NOT add commentary.\n"
-    "- DO NOT include markdown, bullet points, or code fences.\n"
-    "- DO NOT include any text outside the JSON object.\n"
-    "- DO NOT invent missing fields or values.\n\n"
-    "If the image cannot be read or the task cannot be completed:\n"
-    "Return EXACTLY this JSON object and nothing else:\n"
-    "{\"ok\": false, \"error\": \"<short reason>\"}\n\n"
-    "If extraction is successful:\n"
-    "Return ONLY a JSON object that fully conforms to the schema.\n\n"
-    "This is a machine-to-machine contract. Any extra text is a failure."
+    "- Even if the image is a SMALL CROP or ONLY ONE LINE, extract it as a question if it contains math.\n"
+    "- Match the provided JSON schema in text.format.\n"
+    "- DO NOT explain or add commentary.\n"
+    "- If the image is truly blank or completely unreadable, return:\n"
+    "  {\"ok\": false, \"error\": \"Unreadable image\"}\n"
+    "- Otherwise, TRY YOUR BEST to extract any visible mathematical text."
 )
 
 EXTRACT_USER_PROMPT = (
-    "Extract the requested information from the image.\n\n"
-    "Return ONLY valid JSON.\n"
-    "Match the provided schema EXACTLY.\n"
-    "No sentences. No explanations. No formatting.\n\n"
-    "If the image is unreadable or no valid data exists, return:\n"
-    "{\"ok\": false, \"error\": \"Could not read text\"}"
+    "Extract all math questions from the image. If only one line is present, treat it as a single question.\n"
+    "Return ONLY valid JSON. Match the schema exactly.\n\n"
+    "If unreadable, return: {\"ok\": false, \"error\": \"Unreadable\"}"
 )
 
 EXTRACT_SCHEMA = {
@@ -1118,7 +1107,7 @@ EXTRACT_SCHEMA = {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "additionalProperties": False,
-        "required": ["ok", "error", "is_math_page", "notes", "questions"],
+        "required": ["ok", "error"],
         "properties": {
             "ok": {"type": "boolean"},
             "error": {"type": ["string", "null"], "minLength": 1, "maxLength": 200},

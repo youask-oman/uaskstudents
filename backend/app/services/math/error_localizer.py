@@ -160,9 +160,9 @@ def normalize_ocr_text(s: str) -> str:
     # Apply symbol aliases
     for k, v in MATH_ALIASES.items():
         s = s.replace(k, v)
-    # Fix OCR patterns
-    for pat, rep in OCR_FIXES:
-        s = re.sub(pat, rep, s)
+    # Normalize placeholders (underscores or multiple dots) to 'x'
+    s = re.sub(r'_{2,}', 'x', s)
+    s = re.sub(r'\.{3,}', 'x', s)
     # Trim
     s = s.strip()
     return s

@@ -429,19 +429,15 @@ class OCRService:
             # Load image
             img = Image.open(io.BytesIO(image_bytes))
             
-            # Pre-processing for better OCR
-            # 1. Convert to grayscale and normalize
-            if img.mode != 'L':
-                img = img.convert('L')
-            img = ImageOps.autocontrast(img)
-            
-            # 2. Enhance contrast significantly for handwriting
+            # 2. Enhance contrast and sharpen
+            from PIL import ImageFilter
             enhancer = ImageEnhance.Contrast(img)
-            img = enhancer.enhance(2.0)
+            img = enhancer.enhance(1.8)
+            img = img.filter(ImageFilter.SHARPEN)
             
-            # 3. Upscale if too small (crucial for handwriting accuracy)
-            if img.width < 400 or img.height < 200:
-                scale = 2
+            # 3. Upscale significantly for small crops (crucial for handwriting/math)
+            if img.width < 800 or img.height < 400:
+                scale = 3 if (img.width < 300) else 2
                 img = img.resize((img.width * scale, img.height * scale), Image.Resampling.LANCZOS)
             
             # Save to temp file for OCR engine
@@ -457,11 +453,18 @@ class OCRService:
                 raw_text = result.get("markdown", "") or result.get("text", "")
                 confidence = result.get("confidence", 0.5)
                 
-                # Check if result is poor (empty or extremely short for a mathematical region)
-                is_poor = not raw_text.strip() or (len(raw_text.strip()) < 2 and engine_name == "local")
+                # Check if result is poor (empty or missing math structure)
+                stripped = raw_text.strip()
+                has_numbers = any(c.isdigit() for c in stripped)
+                has_math_ops = any(c in stripped for c in "+-*/=")
+                
+                # If we have numbers but no operators and we're in local mode, it might have missed them
+                is_poor = not stripped or (len(stripped) < 3 and engine_name == "local")
+                if has_numbers and not has_math_ops and engine_name == "local":
+                    is_poor = True
 
                 if is_poor and fallback_to_vlm and engine_name != "vlm":
-                    logger.warning(f"Local OCR result poor/empty. Falling back to VLM for region...")
+                    logger.warning(f"Local OCR result poor/empty/non-math. Falling back to VLM for region...")
                     vlm_result = self.vlm_engine.process(tmp_path)
                     raw_text = vlm_result.get("markdown", "")
                     confidence = vlm_result.get("confidence", 0.9)
