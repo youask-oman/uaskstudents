@@ -1,6 +1,6 @@
 ﻿{
     "type": "json_schema",
-    "name": "math_tutor_response_v2_lite",
+    "name": "math_tutor_response_v2_1_lite",
     "strict": true,
     "schema": {
         "type": "object",
@@ -18,7 +18,7 @@
             "schema_version": {
                 "type": "string",
                 "enum": [
-                    "v2.0-lite"
+                    "v2.1-lite"
                 ]
             },
             "refusal": {
@@ -35,11 +35,11 @@
                     },
                     "reason": {
                         "type": "string",
-                        "maxLength": 240
+                        "maxLength": 200
                     },
                     "safe_alternative": {
                         "type": "string",
-                        "maxLength": 400
+                        "maxLength": 280
                     }
                 }
             },
@@ -198,21 +198,21 @@
                     "original_text": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 600
+                        "maxLength": 520
                     },
                     "normalized_latex": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 260
+                        "maxLength": 220
                     },
                     "task_tags": {
                         "type": "array",
                         "minItems": 1,
-                        "maxItems": 12,
+                        "maxItems": 8,
                         "items": {
                             "type": "string",
                             "minLength": 1,
-                            "maxLength": 40
+                            "maxLength": 32
                         }
                     },
                     "input_context": {
@@ -244,7 +244,7 @@
             "output": {
                 "type": "array",
                 "minItems": 1,
-                "maxItems": 30,
+                "maxItems": 24,
                 "items": {
                     "type": "object",
                     "additionalProperties": false,
@@ -270,7 +270,7 @@
                                 "text": {
                                     "type": "string",
                                     "minLength": 1,
-                                    "maxLength": 900
+                                    "maxLength": 780
                                 }
                             }
                         },
@@ -303,11 +303,11 @@
                                 "latex_lines": {
                                     "type": "array",
                                     "minItems": 1,
-                                    "maxItems": 14,
+                                    "maxItems": 10,
                                     "items": {
                                         "type": "string",
                                         "minLength": 1,
-                                        "maxLength": 240,
+                                        "maxLength": 200,
                                         "pattern": "^(?!.*\\$)(?!.*\\\\\\[)(?!.*\\\\\\])(?!.*\\\\\\()(?!.*\\\\\\)).+"
                                     }
                                 }
@@ -338,33 +338,33 @@
                                 "title": {
                                     "type": "string",
                                     "minLength": 1,
-                                    "maxLength": 80
+                                    "maxLength": 70
                                 },
                                 "explanation": {
                                     "type": "string",
                                     "minLength": 1,
-                                    "maxLength": 500
+                                    "maxLength": 420
                                 },
                                 "before_latex": {
                                     "type": "string",
                                     "minLength": 1,
-                                    "maxLength": 260,
+                                    "maxLength": 220,
                                     "pattern": "^(?!.*\\$)(?!.*\\\\\\[)(?!.*\\\\\\])(?!.*\\\\\\()(?!.*\\\\\\)).+"
                                 },
                                 "after_latex": {
                                     "type": "string",
                                     "minLength": 1,
-                                    "maxLength": 260,
+                                    "maxLength": 220,
                                     "pattern": "^(?!.*\\$)(?!.*\\\\\\[)(?!.*\\\\\\])(?!.*\\\\\\()(?!.*\\\\\\)).+"
                                 },
                                 "rule_tags": {
                                     "type": "array",
                                     "minItems": 0,
-                                    "maxItems": 6,
+                                    "maxItems": 4,
                                     "items": {
                                         "type": "string",
                                         "minLength": 1,
-                                        "maxLength": 30
+                                        "maxLength": 22
                                     }
                                 }
                             }
@@ -396,7 +396,7 @@
                                 "text": {
                                     "type": "string",
                                     "minLength": 1,
-                                    "maxLength": 220
+                                    "maxLength": 200
                                 }
                             }
                         },
@@ -422,25 +422,25 @@
                                 "headers": {
                                     "type": "array",
                                     "minItems": 1,
-                                    "maxItems": 8,
+                                    "maxItems": 6,
                                     "items": {
                                         "type": "string",
                                         "minLength": 1,
-                                        "maxLength": 40
+                                        "maxLength": 30
                                     }
                                 },
                                 "rows": {
                                     "type": "array",
                                     "minItems": 1,
-                                    "maxItems": 15,
+                                    "maxItems": 12,
                                     "items": {
                                         "type": "array",
                                         "minItems": 1,
-                                        "maxItems": 8,
+                                        "maxItems": 6,
                                         "items": {
                                             "type": "string",
                                             "minLength": 0,
-                                            "maxLength": 60
+                                            "maxLength": 48
                                         }
                                     }
                                 }
@@ -455,9 +455,9 @@
                                 "title",
                                 "x_min",
                                 "x_max",
-                                "series",
                                 "y_min",
                                 "y_max",
+                                "series",
                                 "key_points"
                             ],
                             "properties": {
@@ -473,7 +473,7 @@
                                 "title": {
                                     "type": "string",
                                     "minLength": 1,
-                                    "maxLength": 80
+                                    "maxLength": 70
                                 },
                                 "x_min": {
                                     "type": "number"
@@ -482,70 +482,126 @@
                                     "type": "number"
                                 },
                                 "y_min": {
-                                    "type": "number"
+                                    "type": [
+                                        "number",
+                                        "null"
+                                    ]
                                 },
                                 "y_max": {
-                                    "type": "number"
+                                    "type": [
+                                        "number",
+                                        "null"
+                                    ]
                                 },
                                 "series": {
                                     "type": "array",
                                     "minItems": 1,
-                                    "maxItems": 6,
+                                    "maxItems": 2,
                                     "items": {
                                         "type": "object",
                                         "additionalProperties": false,
-                                        "required": [
-                                            "kind",
-                                            "expr_latex",
-                                            "label",
-                                            "points"
-                                        ],
-                                        "properties": {
-                                            "kind": {
-                                                "type": "string",
-                                                "enum": [
-                                                    "y_of_x",
-                                                    "implicit",
+                                        "anyOf": [
+                                            {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "required": [
+                                                    "kind",
+                                                    "expr_latex",
+                                                    "label",
                                                     "points"
-                                                ]
+                                                ],
+                                                "properties": {
+                                                    "kind": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "y_of_x",
+                                                            "implicit"
+                                                        ]
+                                                    },
+                                                    "expr_latex": {
+                                                        "type": "string",
+                                                        "minLength": 1,
+                                                        "maxLength": 200,
+                                                        "pattern": "^(?!.*\\$)(?!.*\\\\\\[)(?!.*\\\\\\])(?!.*\\\\\\()(?!.*\\\\\\)).+"
+                                                    },
+                                                    "label": {
+                                                        "type": "string",
+                                                        "minLength": 1,
+                                                        "maxLength": 32
+                                                    },
+                                                    "points": {
+                                                        "type": "array",
+                                                        "minItems": 0,
+                                                        "maxItems": 6,
+                                                        "items": {
+                                                            "type": "object",
+                                                            "additionalProperties": false,
+                                                            "required": [
+                                                                "x",
+                                                                "y"
+                                                            ],
+                                                            "properties": {
+                                                                "x": {
+                                                                    "type": "number"
+                                                                },
+                                                                "y": {
+                                                                    "type": "number"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
                                             },
-                                            "expr_latex": {
-                                                "type": "string",
-                                                "minLength": 1,
-                                                "maxLength": 240,
-                                                "pattern": "^(?!.*\\$)(?!.*\\\\\\[)(?!.*\\\\\\])(?!.*\\\\\\()(?!.*\\\\\\)).+"
-                                            },
-                                            "label": {
-                                                "type": "string",
-                                                "minLength": 1,
-                                                "maxLength": 40
-                                            },
-                                            "points": {
-                                                "type": "array",
-                                                "items": {
-                                                    "type": "object",
-                                                    "additionalProperties": false,
-                                                    "required": [
-                                                        "x",
-                                                        "y"
-                                                    ],
-                                                    "properties": {
-                                                        "x": {
-                                                            "type": "number"
-                                                        },
-                                                        "y": {
-                                                            "type": "number"
+                                            {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "required": [
+                                                    "kind",
+                                                    "label",
+                                                    "points"
+                                                ],
+                                                "properties": {
+                                                    "kind": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "points"
+                                                        ]
+                                                    },
+                                                    "label": {
+                                                        "type": "string",
+                                                        "minLength": 1,
+                                                        "maxLength": 32
+                                                    },
+                                                    "points": {
+                                                        "type": "array",
+                                                        "minItems": 1,
+                                                        "maxItems": 12,
+                                                        "items": {
+                                                            "type": "object",
+                                                            "additionalProperties": false,
+                                                            "required": [
+                                                                "x",
+                                                                "y"
+                                                            ],
+                                                            "properties": {
+                                                                "x": {
+                                                                    "type": "number"
+                                                                },
+                                                                "y": {
+                                                                    "type": "number"
+                                                                }
+                                                            }
                                                         }
                                                     }
                                                 }
                                             }
-                                        }
+                                        ]
                                     }
                                 },
                                 "key_points": {
                                     "type": "array",
                                     "minItems": 0,
-                                    "maxItems": 10,
+                                    "maxItems": 6,
                                     "items": {
                                         "type": "object",
                                         "additionalProperties": false,
@@ -564,7 +620,7 @@
                                             "label": {
                                                 "type": "string",
                                                 "minLength": 1,
-                                                "maxLength": 40
+                                                "maxLength": 32
                                             }
                                         }
                                     }
@@ -592,7 +648,7 @@
                                 "questions": {
                                     "type": "array",
                                     "minItems": 1,
-                                    "maxItems": 4,
+                                    "maxItems": 3,
                                     "items": {
                                         "type": "object",
                                         "additionalProperties": false,
@@ -607,7 +663,7 @@
                                             "prompt": {
                                                 "type": "string",
                                                 "minLength": 1,
-                                                "maxLength": 220
+                                                "maxLength": 200
                                             },
                                             "kind": {
                                                 "type": "string",
@@ -619,11 +675,11 @@
                                             "choices": {
                                                 "type": "array",
                                                 "minItems": 2,
-                                                "maxItems": 6,
+                                                "maxItems": 5,
                                                 "items": {
                                                     "type": "string",
                                                     "minLength": 1,
-                                                    "maxLength": 80
+                                                    "maxLength": 70
                                                 }
                                             },
                                             "answer_key": {
@@ -638,13 +694,14 @@
                                                         "type": "boolean"
                                                     },
                                                     "value": {
-                                                        "type": "string"
+                                                        "type": "string",
+                                                        "maxLength": 80
                                                     }
                                                 }
                                             },
                                             "explanation": {
                                                 "type": "string",
-                                                "maxLength": 240
+                                                "maxLength": 180
                                             }
                                         }
                                     }
@@ -676,18 +733,18 @@
                     "final_latex": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 260,
+                        "maxLength": 220,
                         "pattern": "^(?!.*\\$)(?!.*\\\\\\[)(?!.*\\\\\\])(?!.*\\\\\\()(?!.*\\\\\\)).+"
                     },
                     "final_text": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 240
+                        "maxLength": 200
                     },
                     "values": {
                         "type": "array",
                         "minItems": 0,
-                        "maxItems": 12,
+                        "maxItems": 6,
                         "items": {
                             "type": "object",
                             "additionalProperties": false,
@@ -703,11 +760,18 @@
                                     "maxLength": 10
                                 },
                                 "value": {
-                                    "type": "number"
+                                    "type": [
+                                        "number",
+                                        "string",
+                                        "null"
+                                    ]
                                 },
                                 "value_latex": {
-                                    "type": "string",
-                                    "maxLength": 120
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "maxLength": 110
                                 }
                             }
                         }
@@ -715,11 +779,11 @@
                     "constraints": {
                         "type": "array",
                         "minItems": 0,
-                        "maxItems": 12,
+                        "maxItems": 8,
                         "items": {
                             "type": "string",
                             "minLength": 1,
-                            "maxLength": 80
+                            "maxLength": 70
                         }
                     }
                 }

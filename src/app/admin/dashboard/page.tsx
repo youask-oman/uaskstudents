@@ -204,48 +204,6 @@ export default function AdminDashboardPage() {
         router.push("/login");
     };
 
-    const handleConfigFieldChange = (key: string, newValue: string) => {
-        setConfigDraft((prev) => ({ ...prev, [key]: newValue }));
-        setConfigSaveError(null);
-        setConfigSaveSuccess(null);
-    };
-
-    const handleSaveSystemSettings = async () => {
-        if (systemConfig.length === 0) {
-            return;
-        }
-        setIsSavingConfig(true);
-        setConfigSaveError(null);
-        setConfigSaveSuccess(null);
-        try {
-            const token = localStorage.getItem("token");
-            const headers: HeadersInit = {
-                "Content-Type": "application/json",
-                ...(token ? { Authorization: `Bearer ${token}` } : {})
-            };
-            const payload = {
-                entries: systemConfig.map((entry) => ({
-                    key: entry.key,
-                    value: configDraft[entry.key] ?? entry.value,
-                    description: entry.description
-                }))
-            };
-            const response = await fetch(`${baseUrl}/api/v1/admin/system-config`, {
-                method: "POST",
-                headers,
-                body: JSON.stringify(payload)
-            });
-            if (!response.ok) {
-                throw new Error("Failed to persist system settings.");
-            }
-            await loadSystemSettings();
-            setConfigSaveSuccess("System settings updated.");
-        } catch (err) {
-            setConfigSaveError((err as Error).message ?? "Unable to save settings.");
-        } finally {
-            setIsSavingConfig(false);
-        }
-    };
 
     useEffect(() => {
         const controller = new AbortController();
@@ -529,40 +487,40 @@ export default function AdminDashboardPage() {
                 </section>
 
                 <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            <div className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-6">
-                                <h4 className="text-base font-bold text-slate-900 dark:text-white">Breakdowns</h4>
-                                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-slate-300">
-                                    <div>
-                                        <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Top Subjects</p>
-                                        {(overview?.breakdowns?.subjects ?? []).map((item, index) => (
-                                            <div key={`${item.subject ?? "subject"}-${index}`} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 py-1">
-                                                <span>{item.subject}</span>
-                                                <span className="text-slate-400">{item.count}</span>
-                                            </div>
-                                        ))}
+                    <div className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-6">
+                        <h4 className="text-base font-bold text-slate-900 dark:text-white">Breakdowns</h4>
+                        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-slate-300">
+                            <div>
+                                <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Top Subjects</p>
+                                {(overview?.breakdowns?.subjects ?? []).map((item, index) => (
+                                    <div key={`${item.subject ?? "subject"}-${index}`} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 py-1">
+                                        <span>{item.subject}</span>
+                                        <span className="text-slate-400">{item.count}</span>
                                     </div>
-                                    <div>
-                                        <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Grades</p>
-                                        {(overview?.breakdowns?.grades ?? []).map((item, index) => (
-                                            <div key={`${item.grade ?? "grade"}-${index}`} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 py-1">
-                                                <span>{item.grade}</span>
-                                                <span className="text-slate-400">{item.count}</span>
-                                            </div>
-                                        ))}
+                                ))}
+                            </div>
+                            <div>
+                                <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Grades</p>
+                                {(overview?.breakdowns?.grades ?? []).map((item, index) => (
+                                    <div key={`${item.grade ?? "grade"}-${index}`} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 py-1">
+                                        <span>{item.grade}</span>
+                                        <span className="text-slate-400">{item.count}</span>
                                     </div>
-                                </div>
+                                ))}
                             </div>
-                            <div className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-6">
-                                <h4 className="text-base font-bold text-slate-900 dark:text-white">Model Routing Share</h4>
-                                <div className="mt-4 space-y-2 text-sm text-slate-300">
-                                    {(overview?.breakdowns?.model_routing ?? []).slice(0, 6).map((item, index) => (
-                                        <div key={`${item.model ?? "model"}-${index}`} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-1">
-                                            <span>{item.model}</span>
-                                            <span className="text-slate-400">{item.share}%</span>
-                                        </div>
-                                    ))}
+                        </div>
+                    </div>
+                    <div className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-6">
+                        <h4 className="text-base font-bold text-slate-900 dark:text-white">Model Routing Share</h4>
+                        <div className="mt-4 space-y-2 text-sm text-slate-300">
+                            {(overview?.breakdowns?.model_routing ?? []).slice(0, 6).map((item, index) => (
+                                <div key={`${item.model ?? "model"}-${index}`} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-1">
+                                    <span>{item.model}</span>
+                                    <span className="text-slate-400">{item.share}%</span>
                                 </div>
-                            </div>
+                            ))}
+                        </div>
+                    </div>
                 </section>
 
                 <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -579,15 +537,15 @@ export default function AdminDashboardPage() {
                             </div>
                         </div>
                     </div>
-                            <div className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-6">
-                                <h4 className="text-base font-bold text-slate-900 dark:text-white">Operational Health</h4>
-                                <div className="mt-4 text-sm text-slate-300 space-y-2">
-                                    {(overview?.health?.providers ?? []).map((item, index) => (
-                                        <div key={`${item.provider ?? "provider"}-${index}`} className="flex items-center justify-between">
-                                            <span>{item.provider}</span>
-                                            <span>{formatPercent(item.error_rate)}</span>
-                                        </div>
-                                    ))}
+                    <div className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-6">
+                        <h4 className="text-base font-bold text-slate-900 dark:text-white">Operational Health</h4>
+                        <div className="mt-4 text-sm text-slate-300 space-y-2">
+                            {(overview?.health?.providers ?? []).map((item, index) => (
+                                <div key={`${item.provider ?? "provider"}-${index}`} className="flex items-center justify-between">
+                                    <span>{item.provider}</span>
+                                    <span>{formatPercent(item.error_rate)}</span>
+                                </div>
+                            ))}
                             <div className="flex items-center justify-between">
                                 <span>Stream disconnects</span>
                                 <span>{formatPercent(overview?.health?.streaming?.disconnect_rate)}</span>

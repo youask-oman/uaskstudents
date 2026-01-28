@@ -4,7 +4,6 @@ import React from 'react';
 import Image from "next/image";
 import Link from 'next/link';
 import MathRenderer from '../math/MathRendererSwitch';
-import WorkspaceTabs from './WorkspaceTabs';
 import ContextualChatPanel from './ContextualChatPanel';
 import VisualRenderer, { Visual } from './VisualRenderer';
 
@@ -86,6 +85,8 @@ interface WorkspaceLayoutProps {
     tokenUsage?: number;
     sessionId?: string | number;
     initialSaved?: boolean;
+    finalAnswerValues?: Array<{ label: string; value: number | string; value_latex: string }>;
+    finalAnswerUnits?: string | null;
     telemetry?: {
         request_id?: string;
         model?: string;
@@ -129,6 +130,8 @@ export default function WorkspaceLayout({
     sessionId,
     initialSaved = false,
     telemetry,
+    finalAnswerValues,
+    finalAnswerUnits,
     classification,
     commonMistakes,
     visuals,
@@ -316,6 +319,24 @@ export default function WorkspaceLayout({
                                     <div className="text-lg font-bold text-slate-900 dark:text-white leading-relaxed">
                                         <MathRenderer content={problem?.input || originalProblemText || "Problem"} mode="inline" />
                                     </div>
+
+                                    {/* Assumptions List */}
+                                    {problem?.assumptions && problem.assumptions.length > 0 && (
+                                        <div className="mt-4 flex flex-col gap-2 animate-in fade-in slide-in-from-left-2 duration-500">
+                                            <div className="flex items-center gap-1.5 text-emerald-800 dark:text-emerald-400">
+                                                <span className="material-symbols-outlined text-[14px]">info</span>
+                                                <span className="text-[10px] font-black uppercase tracking-wider">Assumptions Made:</span>
+                                            </div>
+                                            <ul className="space-y-1">
+                                                {problem.assumptions.map((asm, i) => (
+                                                    <li key={i} className="text-xs text-slate-600 dark:text-slate-400 flex gap-2 items-start bg-white/40 dark:bg-emerald-500/5 px-2 py-1 rounded-lg border border-emerald-200/30 dark:border-emerald-500/10">
+                                                        <span className="text-emerald-500 shrink-0 select-none">•</span>
+                                                        <MathRenderer content={asm} mode="prose" />
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Action Buttons */}
@@ -352,7 +373,7 @@ export default function WorkspaceLayout({
                         </section>
 
                         {/* Final Answer Banner */}
-                        {finalAnswer && (
+                        {(finalAnswer || (finalAnswerValues && finalAnswerValues.length > 0)) && (
                             <section className="bg-gradient-to-r from-primary via-emerald-500 to-teal-500 text-white rounded-2xl p-6 mb-6 shadow-xl shadow-primary/30 relative overflow-hidden">
                                 <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-10"></div>
 
@@ -362,35 +383,51 @@ export default function WorkspaceLayout({
                                             <span className="material-symbols-outlined text-[28px]">check_circle</span>
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div className="flex flex-wrap items-center gap-2 mb-2">
-                                                <span className="bg-white text-primary text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide shadow-md">
-                                                    ✓ Verified Solution
-                                                </span>
-                                                <span className="flex items-center gap-1 text-[11px] font-medium text-white/90">
-                                                    <span className="material-symbols-outlined text-[14px]">verified</span>
-                                                    AI Confidence: {confidence}%
-                                                </span>
+                                            <div className="flex flex-wrap items-center gap-3 mb-3">
+                                                <div className="flex items-center gap-2 bg-white/25 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/30 shadow-sm">
+                                                    <span className="material-symbols-outlined text-[16px] text-white">verified</span>
+                                                    <span className="text-[10px] font-black uppercase tracking-wider text-white">Verified Solution</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 bg-black/10 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/10">
+                                                    <span className="material-symbols-outlined text-[14px] text-emerald-300">psychology</span>
+                                                    <span className="text-[11px] font-bold text-white/95">
+                                                        AI Confidence: {confidence}%
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <div className="text-xl md:text-2xl font-bold tracking-tight">
-                                                <MathRenderer content={finalAnswer} mode={finalAnswerMode} />
-                                            </div>
+
+                                            {finalAnswer && (
+                                                <div className="text-xl md:text-2xl font-bold tracking-tight">
+                                                    <MathRenderer content={finalAnswer} mode={finalAnswerMode} />
+                                                </div>
+                                            )}
+
+                                            {/* Final Answer Units */}
+                                            {finalAnswerUnits && (
+                                                <div className="mt-1 text-sm font-medium text-white/80">
+                                                    Units: {finalAnswerUnits}
+                                                </div>
+                                            )}
+
+                                            {/* Final Answer Values */}
+                                            {finalAnswerValues && finalAnswerValues.length > 0 && (
+                                                <div className="mt-4 flex flex-wrap gap-4 pt-4 border-t border-white/20">
+                                                    {finalAnswerValues.map((v, i) => (
+                                                        <div key={i} className="flex flex-col">
+                                                            <span className="text-[10px] font-black uppercase tracking-tighter text-white/70">{v.label}</span>
+                                                            <span className="text-sm font-black whitespace-nowrap">
+                                                                <MathRenderer content={v.value_latex || String(v.value)} mode="inline" />
+                                                                {v.value_latex && v.value !== undefined && v.value !== null && String(v.value) !== '' &&
+                                                                    v.value_latex.replace(/[\\{} ]/g, '') !== String(v.value).replace(/ /g, '') && (
+                                                                        <span className="ml-1.5 text-white/60 font-medium whitespace-nowrap">({v.value})</span>
+                                                                    )}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
-                                </div>
-                            </section>
-                        )}
-
-                        {/* Graph/Visualization Section */}
-                        {visuals?.should_visualize && mappedVisuals.length > 0 && (
-                            <section className="mb-6">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <span className="material-symbols-outlined text-primary text-[24px]">monitoring</span>
-                                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">Visualization</h2>
-                                </div>
-                                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-lg">
-                                    {mappedVisuals.map((visual) => (
-                                        <VisualRenderer key={visual.id} visual={visual} />
-                                    ))}
                                 </div>
                             </section>
                         )}
@@ -441,10 +478,9 @@ export default function WorkspaceLayout({
                             </section>
                         )}
 
-                        {/* Steps Tab Content */}
+                        {/* Steps Content */}
                         <section className="mb-6">
-                            <WorkspaceTabs activeTab={activeTab} onSelectTab={onSelectTab} stepsCount={stepsCount} />
-                            <div className="mt-6">{children}</div>
+                            <div>{children}</div>
                         </section>
 
                         {/* Common Mistakes Section */}
@@ -465,7 +501,9 @@ export default function WorkspaceLayout({
                                     {commonMistakes.map((mistake, i) => (
                                         <li key={i} className="flex gap-3 text-sm text-amber-900 dark:text-amber-200 bg-white/50 dark:bg-amber-500/10 p-3 rounded-xl border border-amber-200/50 dark:border-amber-500/20">
                                             <span className="text-amber-500 shrink-0 font-bold">⚠</span>
-                                            <span>{mistake}</span>
+                                            <div className="flex-1">
+                                                <MathRenderer content={mistake} mode="prose" />
+                                            </div>
                                         </li>
                                     ))}
                                 </ul>

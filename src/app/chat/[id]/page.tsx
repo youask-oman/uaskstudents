@@ -138,10 +138,42 @@ interface V2LiteProblem {
 interface V2LiteResponse {
     schema_version: string;
     refusal: { is_refusal: boolean; reason?: string; safe_alternative?: string };
-    meta: V2LiteMeta;
-    problem: V2LiteProblem;
-    output: V2LiteOutputBlock[];
-    answer: V2LiteAnswer;
+    problem: V2LiteProblem; // Always required since v2.0
+    // Old fields (v2.0-lite)
+    meta?: V2LiteMeta;
+    output?: V2LiteOutputBlock[];
+    answer?: V2LiteAnswer;
+    // New fields (v2.1-lite)
+    assumptions?: string[];
+    classification?: {
+        grade_band?: string;
+        domain?: string;
+        topic?: string;
+        difficulty?: string;
+    };
+    steps?: Array<{
+        index: number;
+        title: string;
+        explanation: string;
+        math_latex: string | string[];
+        rules_used: string[];
+    }>;
+    final_answer?: {
+        answer_text: string;
+        answer_latex: string;
+        values?: Array<{ symbol: string; value: number | string | null; value_latex?: string }>;
+        units?: string | null;
+    };
+    visuals?: {
+        should_visualize: boolean;
+        decision_reason: string;
+        plots: any[];
+        alternative_visual?: any;
+    };
+    quality?: {
+        confidence: number;
+        common_mistakes: string[];
+    };
     telemetry?: { model?: string; token_budget?: { max_output_tokens?: number } };
 }
 
@@ -154,76 +186,113 @@ function isV2LiteSchema(data: unknown): data is V2LiteResponse {
 
 // Utility: Map V2-lite to V3-compatible format
 function mapV2LiteToV3(v2: V2LiteResponse): SolveResponseV3 {
-    // We map worked_steps to steps
-    // Other blocks like explanations and plots go into visuals or help text
-    const steps = v2.output
-        .filter(b => b.type === 'worked_step')
-        .map((block, idx) => ({
-            index: idx + 1,
-            title: block.title || `Step ${idx + 1}`,
-            explanation: block.explanation || '',
-            math_latex: [block.before_latex, block.after_latex].filter(Boolean).join(' \\Rightarrow '),
-            rules_used: block.rule_tags || []
+    // 1. Map Steps
+    let steps: any[] = [];
+    if (v2.steps && v2.steps.length > 0) {
+        // Direct mapping for v2.1-lite
+        steps = v2.steps.map(s => ({
+            ...s,
+            math_latex: Array.isArray(s.math_latex) ? s.math_latex.join(' \\\\ ') : s.math_latex
         }));
-
-    // If there's an explanation block but no worked steps, maybe we should treat it as a step
-    if (steps.length === 0) {
-        const explanations = v2.output.filter(b => b.type === 'explanation');
-        explanations.forEach((b, idx) => {
-            steps.push({
+    } else if (v2.output) {
+        // Map from v2.0-lite block structure
+        steps = v2.output
+            .filter(b => b.type === 'worked_step')
+            .map((block, idx) => ({
                 index: idx + 1,
-                title: "Explanation",
-                explanation: b.text || '',
-                math_latex: '',
-                rules_used: []
-            });
-        });
+                title: block.title || `Step ${idx + 1}`,
+                explanation: block.explanation || '',
+                math_latex: [block.before_latex, block.after_latex].filter(Boolean).join(' \\Rightarrow '),
+                rules_used: block.rule_tags || []
+            }));
+
+        // If no worked steps, use explanation blocks
+        if (steps.length === 0) {
+            v2.output
+                .filter(b => b.type === 'explanation')
+                .forEach((b, idx) => {
+                    steps.push({
+                        index: idx + 1,
+                        title: "Explanation",
+                        explanation: b.text || '',
+                        math_latex: '',
+                        rules_used: []
+                    });
+                });
+        }
     }
 
-    // Extract plots and map to V3 visuals structure
-    const plots = v2.output
-        .filter(b => b.type === 'plot')
-        .map(b => ({
-            plot_id: b.id,
-            title: b.title,
-            x_min: (b as any).x_min,
-            x_max: (b as any).x_max,
-            y_min: (b as any).y_min,
-            y_max: (b as any).y_max,
-            // V2 lite uses expr_latex. Frontend expects points.
-            // We now support 'points' field in V2-lite series.
-            series: (b as any).series?.map((s: any) => ({
-                name: s.label || s.expr_latex,
-                points: s.points || []
-            })),
-            key_points: (b as any).key_points
-        })) as any[];
+    // 2. Map Answer
+    let final_answer: any = {};
+    if (v2.final_answer) {
+        final_answer = {
+            ...v2.final_answer,
+            values: v2.final_answer.values?.map((v: any) => ({
+                label: v.label || v.symbol || '',
+                value: v.value ?? '',
+                value_latex: v.value_latex || String(v.value ?? '')
+            }))
+        };
+    } else if (v2.answer) {
+        final_answer = {
+            answer_text: v2.answer.final_text,
+            answer_latex: v2.answer.final_latex,
+            values: v2.answer.values?.map((v: any) => ({
+                label: v.label || v.symbol || '',
+                value: v.value ?? '',
+                value_latex: v.value_latex || String(v.value ?? '')
+            }))
+        };
+    }
+
+    // 3. Map Visuals
+    let visuals: any = { plots: [] };
+    if (v2.visuals) {
+        visuals = v2.visuals;
+    } else if (v2.output) {
+        visuals.plots = v2.output
+            .filter(b => b.type === 'plot')
+            .map(b => ({
+                plot_id: b.id,
+                title: b.title,
+                x_min: b.x_min,
+                x_max: b.x_max,
+                y_min: b.y_min,
+                y_max: b.y_max,
+                series: b.series?.map(s => ({
+                    name: s.label || s.expr_latex,
+                    points: s.points || []
+                })),
+                key_points: b.key_points
+            })) as any[];
+        visuals.should_visualize = visuals.plots.length > 0;
+    }
+
+    // 4. Map Classification
+    let classification: any = {};
+    if (v2.classification) {
+        classification = v2.classification;
+    } else if (v2.meta) {
+        classification = {
+            grade_band: v2.meta.grade_band,
+            domain: v2.meta.subject,
+            topic: v2.problem?.task_tags?.[0],
+            difficulty: v2.meta.ui_intent?.verbosity
+        };
+    }
 
     return {
         schema_version: v2.schema_version,
         problem: {
-            original_text: v2.problem.original_text,
-            normalized_text: v2.problem.normalized_latex
+            original_text: v2.problem?.original_text,
+            normalized_text: v2.problem?.normalized_latex
         },
-        classification: {
-            grade_band: v2.meta.grade_band,
-            domain: v2.meta.subject,
-            topic: v2.problem.task_tags?.[0],
-            difficulty: v2.meta.ui_intent?.verbosity
-        },
+        classification,
         steps,
-        final_answer: {
-            answer_text: v2.answer.final_text,
-            answer_latex: v2.answer.final_latex,
-            values: v2.answer.values.map(v => ({
-                label: v.symbol,
-                value: v.value ?? '',
-                value_latex: v.value_latex || String(v.value ?? '')
-            }))
-        },
-        visuals: {
-            plots: plots
-        },
+        final_answer,
+        visuals,
+        quality: v2.quality,
+        assumptions: v2.assumptions,
         refusal: v2.refusal,
         telemetry: v2.telemetry as any
     };
@@ -250,7 +319,7 @@ interface SolveResponseV3 {
         index: number;
         title?: string;
         explanation?: string;
-        math_latex?: string;
+        math_latex?: string | string[];
         rules_used?: string[];
         checkpoint?: {
             question?: string;
@@ -511,12 +580,12 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             ...s,
             title: s.title || `Step ${idx + 1}`,
             explanation: s.explanation || '',
-            work: s.math_latex ? [s.math_latex] : [],
+            work: Array.isArray(s.math_latex) ? s.math_latex : (s.math_latex ? [s.math_latex] : []),
             rules_used: s.rules_used || [],
             checkpoint: s.checkpoint ? {
                 question: s.checkpoint.question || '',
-                expected_answer: s.checkpoint.answer || '',
-                answer: s.checkpoint.answer || ''
+                expected_answer: typeof s.checkpoint.answer === 'string' ? s.checkpoint.answer : '',
+                answer: typeof s.checkpoint.answer === 'string' ? s.checkpoint.answer : ''
             } : undefined
         }));
 
@@ -531,6 +600,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
                     <StepsTab
                         steps={mappedSteps}
                         visuals={visuals}
+                        decisionReason={solutionData.visuals?.decision_reason}
                         problemLatex={problemLatex}
                         problem={{
                             goal: problem.original_text,
@@ -576,6 +646,8 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             analysisPlan={analysisPlanEntries.filter((s): s is string => !!s)}
             finalAnswer={typeof finalAnswerValue === 'string' ? finalAnswerValue : finalAnswerText || undefined}
             finalAnswerMode={finalAnswerMode as "inline" | "prose"}
+            finalAnswerValues={solutionData?.final_answer?.values}
+            finalAnswerUnits={solutionData?.final_answer?.units}
             confidence={solutionData?.quality?.confidence ? Math.round(solutionData.quality.confidence * 100) : 99}
             llmUsed="YouAsk AI"
             totalTokensUsed={totalTokensUsed}

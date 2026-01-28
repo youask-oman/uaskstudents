@@ -16,7 +16,7 @@ interface Step {
     title: string;
     explanation: string;
     work?: string[];           // Legacy field
-    math_latex?: string;       // V3 schema field
+    math_latex?: string | string[];       // V3 schema field
     checkpoint?: Checkpoint;
     rules_used?: string[];
 }
@@ -32,6 +32,7 @@ interface StepsTabProps {
     };
     analysisPlan?: string[];
     finalAnswer?: string;
+    decisionReason?: string;
     activeTab?: "steps" | "verification" | "practice";
     onSelectTab?: (tab: "steps" | "verification" | "practice") => void;
 }
@@ -42,11 +43,14 @@ const ExplanationRenderer = MathRenderer;
 const getMathContent = (step: Step): string => {
     // Prefer math_latex (V3 schema)
     if (step.math_latex) {
-        return typeof step.math_latex === 'string' ? step.math_latex : JSON.stringify(step.math_latex);
+        if (Array.isArray(step.math_latex)) {
+            return step.math_latex.join(' \\\\ ');
+        }
+        return String(step.math_latex);
     }
     // Fallback to work array (legacy)
     if (step.work && Array.isArray(step.work) && step.work.length > 0) {
-        return step.work.join(' ');
+        return step.work.join(' \\\\ ');
     }
     return '';
 };
@@ -152,7 +156,7 @@ function CheckpointInteraction({ question, answer }: { question: string; answer:
     );
 }
 
-export default function StepsTab({ steps, visuals }: StepsTabProps) {
+export default function StepsTab({ steps, visuals, decisionReason }: StepsTabProps) {
     const [expandedSteps, setExpandedSteps] = React.useState<Set<number>>(new Set([0])); // First step expanded by default
 
     const toggleStep = (index: number) => {
@@ -351,12 +355,23 @@ export default function StepsTab({ steps, visuals }: StepsTabProps) {
             </div>
 
             {/* Visualizations Section */}
-            {visuals && visuals.length > 0 && (
+            {((visuals && visuals.length > 0) || decisionReason) && (
                 <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
                     <div className="flex items-center gap-2 mb-6">
                         <span className="material-symbols-outlined text-primary text-[24px]">monitoring</span>
                         <h3 className="text-lg font-bold text-slate-900 dark:text-white">Visualizations</h3>
                     </div>
+
+                    {decisionReason && (
+                        <div className="mb-6 text-sm font-medium text-slate-700 dark:text-slate-300 bg-primary/5 dark:bg-primary/10 p-5 rounded-2xl border border-primary/10 dark:border-primary/20 leading-relaxed shadow-sm">
+                            <div className="flex items-center gap-2 mb-2 text-primary text-[10px] font-black uppercase tracking-wider">
+                                <span className="material-symbols-outlined text-[16px]">psychology</span>
+                                Visualization Reasoning
+                            </div>
+                            “{decisionReason}”
+                        </div>
+                    )}
+
                     <div className="space-y-4">
                         {visuals.map(visual => (
                             <VisualRenderer key={visual.id} visual={visual} />

@@ -569,7 +569,7 @@ class SolverV3:
                                     "response_format_schema_name": schema_wrapper.get("name", "solve_response_v3"),
                                     "max_output_tokens": effective_max_tokens,
                                     "full_input": params.get("messages", []),
-                                    "full_output": full_output_data
+                                    "full_output": full_output_data or full_content # Fallback to raw string if JSON parsing failed
                                 }
                                 
                                 yield {"type": "telemetry", "telemetry": telemetry}
