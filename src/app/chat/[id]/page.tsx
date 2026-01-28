@@ -80,6 +80,10 @@ interface TelemetryPayload {
     learning_mode?: string;
     requested_mode?: string;
     solve_tier?: string;
+    openai_payload?: {
+        full_input?: any[];
+        full_output?: any;
+    };
 }
 
 // V2-lite Schema Interfaces (from canonical_schema.json)
@@ -100,7 +104,7 @@ interface V2LiteOutputBlock {
     x_max?: number;
     y_min?: number | null;
     y_max?: number | null;
-    series?: Array<{ kind: 'y_of_x' | 'implicit' | 'points'; expr_latex: string; label: string }>;
+    series?: Array<{ kind: 'y_of_x' | 'implicit' | 'points'; expr_latex: string; label: string; points?: Array<{ x: number; y: number }> }>;
     key_points?: Array<{ x: number; y: number; label: string }>;
     // table
     headers?: string[];
@@ -150,15 +154,31 @@ function isV2LiteSchema(data: unknown): data is V2LiteResponse {
 
 // Utility: Map V2-lite to V3-compatible format
 function mapV2LiteToV3(v2: V2LiteResponse): SolveResponseV3 {
-    // Extract worked_step blocks as steps
-    const workedSteps = v2.output.filter(b => b.type === 'worked_step');
-    const steps = workedSteps.map((block, idx) => ({
-        index: idx + 1,
-        title: block.title || `Step ${idx + 1}`,
-        explanation: block.explanation || '',
-        math_latex: [block.before_latex, block.after_latex].filter(Boolean).join(' \\Rightarrow '),
-        rules_used: block.rule_tags || []
-    }));
+    // We map worked_steps to steps
+    // Other blocks like explanations and plots go into visuals or help text
+    const steps = v2.output
+        .filter(b => b.type === 'worked_step')
+        .map((block, idx) => ({
+            index: idx + 1,
+            title: block.title || `Step ${idx + 1}`,
+            explanation: block.explanation || '',
+            math_latex: [block.before_latex, block.after_latex].filter(Boolean).join(' \\Rightarrow '),
+            rules_used: block.rule_tags || []
+        }));
+
+    // If there's an explanation block but no worked steps, maybe we should treat it as a step
+    if (steps.length === 0) {
+        const explanations = v2.output.filter(b => b.type === 'explanation');
+        explanations.forEach((b, idx) => {
+            steps.push({
+                index: idx + 1,
+                title: "Explanation",
+                explanation: b.text || '',
+                math_latex: '',
+                rules_used: []
+            });
+        });
+    }
 
     // Extract plots and map to V3 visuals structure
     const plots = v2.output
@@ -170,15 +190,17 @@ function mapV2LiteToV3(v2: V2LiteResponse): SolveResponseV3 {
             x_max: (b as any).x_max,
             y_min: (b as any).y_min,
             y_max: (b as any).y_max,
+            // V2 lite uses expr_latex. Frontend expects points.
+            // We now support 'points' field in V2-lite series.
             series: (b as any).series?.map((s: any) => ({
-                name: s.label,
-                kind: s.kind,
-                latex: s.expr_latex
+                name: s.label || s.expr_latex,
+                points: s.points || []
             })),
             key_points: (b as any).key_points
         })) as any[];
 
     return {
+        schema_version: v2.schema_version,
         problem: {
             original_text: v2.problem.original_text,
             normalized_text: v2.problem.normalized_latex
@@ -211,6 +233,7 @@ type SolveStep = NonNullable<SolveResponseV3["steps"]>[number];
 type SolvePlan = NonNullable<SolveResponseV3["plan"]>[number];
 
 interface SolveResponseV3 {
+    schema_version?: string;
     problem: {
         original_text?: string;
         normalized_text?: string;

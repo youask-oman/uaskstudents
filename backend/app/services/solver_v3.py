@@ -29,8 +29,8 @@ class SolverV3:
     def __init__(self):
         """Initialize solver with OpenAI client."""
         self._client = None
-        self._model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini")
-        self._fallback_model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini")
+        self._model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-4o-mini")
+        self._fallback_model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-4o-mini")
         print(f"[SOLVER_V3_INIT] Initialized with model: {self._model}")
 
     @property
@@ -425,7 +425,9 @@ class SolverV3:
             "validated": False,
             "repaired": False,
             "openai_calls_count": 0,
-            "openai_payload": None
+            "openai_payload": None,
+            "requested_mode": requested_mode,
+            "learning_mode": (trusted_context or {}).get("learning_mode") or "solve"
         }
 
         try:
@@ -530,9 +532,20 @@ class SolverV3:
                         "max_completion_tokens": effective_max_tokens # Part A2
                     }
 
+                    if trace:
+                        print(f"[SOLVER_V3_STREAM] Calling OpenAI with params: model={params.get('model')}, max_tokens={params.get('max_completion_tokens')}, messages_count={len(params.get('messages', []))}")
+
                     response = await self.client.chat.completions.create(**params)
                     
+                    full_content = ""
+                    
+                    first_chunk = True
                     async for chunk in response:
+                        if first_chunk:
+                            if trace:
+                                print(f"[SOLVER_V3_STREAM] First chunk: {chunk.model_dump_json()}")
+                            first_chunk = False
+                        
                         if not chunk.choices:
                             # Usage chunk (last one in stream_options: include_usage)
                             if chunk.usage:
@@ -543,18 +556,44 @@ class SolverV3:
                                     telemetry["cached_tokens"] = getattr(chunk.usage.prompt_tokens_details, 'cached_tokens', 0)
                                 
                                 telemetry["latency_ms_openai"] = int((time.perf_counter() - llm_start_perf) * 1000)
+                                
+                                # Capture final content as full_output
+                                full_output_data = None
+                                if full_content:
+                                    try:
+                                        full_output_data = json.loads(full_content)
+                                    except:
+                                        pass
+                                        
+                                telemetry["openai_payload"] = {
+                                    "response_format_schema_name": schema_wrapper.get("name", "solve_response_v3"),
+                                    "max_output_tokens": effective_max_tokens,
+                                    "full_input": params.get("messages", []),
+                                    "full_output": full_output_data
+                                }
+                                
                                 yield {"type": "telemetry", "telemetry": telemetry}
                             continue
                             
                         delta = chunk.choices[0].delta
+                        if hasattr(delta, "refusal") and delta.refusal:
+                            if trace:
+                                print(f"[SOLVER_V3_STREAM] ❌ OpenAI Refusal: {delta.refusal}")
+                            yield {"type": "delta", "text": f"Refusal: {delta.refusal}"}
+                                
                         if delta.content:
+                            full_content += delta.content
                             yield {"type": "delta", "text": delta.content}
                         
                         if chunk.choices[0].finish_reason == "length":
                             telemetry["truncated"] = True
+                            if trace:
+                                print(f"[SOLVER_V3_STREAM] ⚠️ Truncated (length): output length exceeded {effective_max_tokens}")
                             # We yield truncation info in telemetry at the end, but can also notify here
                             yield {"type": "meta", "truncated": True}
                         elif chunk.choices[0].finish_reason == "content_filter":
+                            if trace:
+                                print(f"[SOLVER_V3_STREAM] ❌ Truncated (content_filter)")
                             yield {"type": "error", "error": {"code": "content_filter", "message": "Content filtered."}}
 
                     return # Success
@@ -750,7 +789,9 @@ class SolverV3:
 
             tokens["payload"] = {
                 "max_output_tokens": max_output_tokens,
-                "reasoning_effort": reasoning_effort
+                "reasoning_effort": reasoning_effort,
+                "full_input": params.get("input", []),
+                "full_output": data
             }
             return data, tokens, status_info
 
@@ -798,7 +839,9 @@ class SolverV3:
                      pass
 
             tokens["payload"] = {
-                "max_output_tokens": max_output_tokens
+                "max_output_tokens": max_output_tokens,
+                "full_input": params.get("messages", []),
+                "full_output": data
             }
             return data, tokens, status_info
 

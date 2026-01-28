@@ -3852,7 +3852,7 @@ async def solve_v3_endpoint(
         effective_max_tokens = None
         if resolved_profile:
             from app.utils.token_limits import get_effective_max_tokens
-            effective_max_tokens = get_effective_max_tokens(resolved_profile.mode, learning_mode, token_policy)
+            effective_max_tokens = get_effective_max_tokens(requested_mode, learning_mode, token_policy)
         trace_payload = {
             "request_id": request_id,
             "user_id": user_id,
@@ -4038,7 +4038,9 @@ async def solve_v3_stream_endpoint(
         deduct_attempted = {"credits": False, "ocr": False, "voice": False}
         deduct_committed = False
         features_used = body.features_used or {}
+        print(f"[API] Solve Request Body: {body.model_dump_json(indent=2)}")
         token_policy = get_token_policy(session)
+        print(f"[API] Loaded TokenPolicy: {json.dumps(serialize_token_policy(token_policy), indent=2)}")
 
         # Resolve profile for correct prompt/schema/tokens
         from app.llm_profiles.profile_resolver import ProfileResolver
@@ -4057,7 +4059,7 @@ async def solve_v3_stream_endpoint(
         else:
             plan_key = profile.tier
 
-        effective_max_tokens = get_effective_max_tokens(profile.mode, learning_mode, token_policy)
+        effective_max_tokens = get_effective_max_tokens(requested_mode, learning_mode, token_policy)
 
         problem_text = (
             body.confirmed_text or

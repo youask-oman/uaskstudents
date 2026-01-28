@@ -45,8 +45,8 @@ def get_profile_free() -> PromptProfile:
         schema_asset_path="llm_profiles/free/schema.json",
         system_asset_key="free:system",
         schema_asset_key="free:schema",
-        max_output_tokens=800,  # Strict limit for cost control
-        max_steps=5,            # Limit reasoning depth
+        max_output_tokens=450,  # Legacy fallback, resolver should override
+        max_steps=2,            # Legacy fallback
         allow_visuals_only_if_asked=True,
         allow_detailed=False
     )

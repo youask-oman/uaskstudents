@@ -18,6 +18,10 @@ class TokenPolicy:
     text_output_detailed_study: int
     text_output_retry_cap_detailed_solve: int
     text_output_retry_cap_detailed_study: int
+    text_steps_minimal_solve: int
+    text_steps_minimal_study: int
+    text_steps_detailed_solve: int
+    text_steps_detailed_study: int
     request_system_schema_budget: int
     request_expected_output_budget: int
     ocr_v5_output_max: int
@@ -41,6 +45,10 @@ REQUIRED_CONFIG_KEYS = [
     "tokens.text.output_max_detailed_study",
     "tokens.text.output_retry_cap_detailed_solve",
     "tokens.text.output_retry_cap_detailed_study",
+    "tokens.text.steps_minimal_solve",
+    "tokens.text.steps_minimal_study",
+    "tokens.text.steps_detailed_solve",
+    "tokens.text.steps_detailed_study",
     "tokens.request.system_and_schema_budget",
     "tokens.request.expected_output_budget",
     "tokens.ocr_v5.output_max",
@@ -74,7 +82,9 @@ def get_token_policy(session: Session) -> TokenPolicy:
     # helper: fetch from config_map with 0 as hard fallback if DB missing (to check for missing seeds)
     def get_val(key: str) -> int:
         val = config_map.get(key, "0")
-        return _coerce_int(val, 0)
+        coerced = _coerce_int(val, 0)
+        print(f"[TOKEN_POLICY] Loaded {key} = {coerced} (Raw: {val})")
+        return coerced
 
     # Log warning if keys are completely missing
     missing = set(REQUIRED_CONFIG_KEYS) - set(config_map.keys())
@@ -90,6 +100,10 @@ def get_token_policy(session: Session) -> TokenPolicy:
         text_output_detailed_study=get_val("tokens.text.output_max_detailed_study"),
         text_output_retry_cap_detailed_solve=get_val("tokens.text.output_retry_cap_detailed_solve"),
         text_output_retry_cap_detailed_study=get_val("tokens.text.output_retry_cap_detailed_study"),
+        text_steps_minimal_solve=get_val("tokens.text.steps_minimal_solve"),
+        text_steps_minimal_study=get_val("tokens.text.steps_minimal_study"),
+        text_steps_detailed_solve=get_val("tokens.text.steps_detailed_solve"),
+        text_steps_detailed_study=get_val("tokens.text.steps_detailed_study"),
         request_system_schema_budget=get_val("tokens.request.system_and_schema_budget"),
         request_expected_output_budget=get_val("tokens.request.expected_output_budget"),
         ocr_v5_output_max=get_val("tokens.ocr_v5.output_max"),

@@ -1,4 +1,4 @@
-{
+﻿{
     "type": "json_schema",
     "name": "math_tutor_response_v2_lite",
     "strict": true,
@@ -34,17 +34,11 @@
                         "type": "boolean"
                     },
                     "reason": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
+                        "type": "string",
                         "maxLength": 240
                     },
                     "safe_alternative": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
+                        "type": "string",
                         "maxLength": 400
                     }
                 }
@@ -59,7 +53,8 @@
                     "subject",
                     "language",
                     "latex_policy",
-                    "ui_intent"
+                    "ui_intent",
+                    "accessibility"
                 ],
                 "properties": {
                     "mode": {
@@ -253,36 +248,20 @@
                 "items": {
                     "type": "object",
                     "additionalProperties": false,
-                    "required": [
-                        "id",
-                        "type"
-                    ],
-                    "properties": {
-                        "id": {
-                            "type": "string",
-                            "pattern": "^[a-zA-Z0-9_\\-]{4,32}$"
-                        },
-                        "type": {
-                            "type": "string",
-                            "enum": [
-                                "explanation",
-                                "math",
-                                "worked_step",
-                                "hint",
-                                "table",
-                                "plot",
-                                "quiz"
-                            ]
-                        }
-                    },
                     "anyOf": [
                         {
+                            "type": "object",
+                            "additionalProperties": false,
                             "required": [
                                 "id",
                                 "type",
                                 "text"
                             ],
                             "properties": {
+                                "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-zA-Z0-9_\\-]{4,32}$"
+                                },
                                 "type": {
                                     "enum": [
                                         "explanation"
@@ -296,6 +275,8 @@
                             }
                         },
                         {
+                            "type": "object",
+                            "additionalProperties": false,
                             "required": [
                                 "id",
                                 "type",
@@ -303,6 +284,10 @@
                                 "latex_lines"
                             ],
                             "properties": {
+                                "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-zA-Z0-9_\\-]{4,32}$"
+                                },
                                 "type": {
                                     "enum": [
                                         "math"
@@ -329,15 +314,22 @@
                             }
                         },
                         {
+                            "type": "object",
+                            "additionalProperties": false,
                             "required": [
                                 "id",
                                 "type",
                                 "title",
                                 "explanation",
                                 "before_latex",
-                                "after_latex"
+                                "after_latex",
+                                "rule_tags"
                             ],
                             "properties": {
+                                "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-zA-Z0-9_\\-]{4,32}$"
+                                },
                                 "type": {
                                     "enum": [
                                         "worked_step"
@@ -378,6 +370,8 @@
                             }
                         },
                         {
+                            "type": "object",
+                            "additionalProperties": false,
                             "required": [
                                 "id",
                                 "type",
@@ -385,6 +379,10 @@
                                 "text"
                             ],
                             "properties": {
+                                "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-zA-Z0-9_\\-]{4,32}$"
+                                },
                                 "type": {
                                     "enum": [
                                         "hint"
@@ -403,6 +401,8 @@
                             }
                         },
                         {
+                            "type": "object",
+                            "additionalProperties": false,
                             "required": [
                                 "id",
                                 "type",
@@ -410,6 +410,10 @@
                                 "rows"
                             ],
                             "properties": {
+                                "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-zA-Z0-9_\\-]{4,32}$"
+                                },
                                 "type": {
                                     "enum": [
                                         "table"
@@ -443,15 +447,24 @@
                             }
                         },
                         {
+                            "type": "object",
+                            "additionalProperties": false,
                             "required": [
                                 "id",
                                 "type",
                                 "title",
                                 "x_min",
                                 "x_max",
-                                "series"
+                                "series",
+                                "y_min",
+                                "y_max",
+                                "key_points"
                             ],
                             "properties": {
+                                "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-zA-Z0-9_\\-]{4,32}$"
+                                },
                                 "type": {
                                     "enum": [
                                         "plot"
@@ -469,16 +482,10 @@
                                     "type": "number"
                                 },
                                 "y_min": {
-                                    "type": [
-                                        "number",
-                                        "null"
-                                    ]
+                                    "type": "number"
                                 },
                                 "y_max": {
-                                    "type": [
-                                        "number",
-                                        "null"
-                                    ]
+                                    "type": "number"
                                 },
                                 "series": {
                                     "type": "array",
@@ -490,7 +497,8 @@
                                         "required": [
                                             "kind",
                                             "expr_latex",
-                                            "label"
+                                            "label",
+                                            "points"
                                         ],
                                         "properties": {
                                             "kind": {
@@ -511,6 +519,25 @@
                                                 "type": "string",
                                                 "minLength": 1,
                                                 "maxLength": 40
+                                            },
+                                            "points": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "additionalProperties": false,
+                                                    "required": [
+                                                        "x",
+                                                        "y"
+                                                    ],
+                                                    "properties": {
+                                                        "x": {
+                                                            "type": "number"
+                                                        },
+                                                        "y": {
+                                                            "type": "number"
+                                                        }
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -545,12 +572,18 @@
                             }
                         },
                         {
+                            "type": "object",
+                            "additionalProperties": false,
                             "required": [
                                 "id",
                                 "type",
                                 "questions"
                             ],
                             "properties": {
+                                "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-zA-Z0-9_\\-]{4,32}$"
+                                },
                                 "type": {
                                     "enum": [
                                         "quiz"
@@ -566,7 +599,9 @@
                                         "required": [
                                             "prompt",
                                             "kind",
-                                            "choices"
+                                            "choices",
+                                            "answer_key",
+                                            "explanation"
                                         ],
                                         "properties": {
                                             "prompt": {
@@ -582,10 +617,7 @@
                                                 ]
                                             },
                                             "choices": {
-                                                "type": [
-                                                    "array",
-                                                    "null"
-                                                ],
+                                                "type": "array",
                                                 "minItems": 2,
                                                 "maxItems": 6,
                                                 "items": {
@@ -595,10 +627,7 @@
                                                 }
                                             },
                                             "answer_key": {
-                                                "type": [
-                                                    "object",
-                                                    "null"
-                                                ],
+                                                "type": "object",
                                                 "additionalProperties": false,
                                                 "required": [
                                                     "revealed",
@@ -609,19 +638,12 @@
                                                         "type": "boolean"
                                                     },
                                                     "value": {
-                                                        "type": [
-                                                            "string",
-                                                            "number",
-                                                            "null"
-                                                        ]
+                                                        "type": "string"
                                                     }
                                                 }
                                             },
                                             "explanation": {
-                                                "type": [
-                                                    "string",
-                                                    "null"
-                                                ],
+                                                "type": "string",
                                                 "maxLength": 240
                                             }
                                         }
@@ -671,7 +693,8 @@
                             "additionalProperties": false,
                             "required": [
                                 "symbol",
-                                "value"
+                                "value",
+                                "value_latex"
                             ],
                             "properties": {
                                 "symbol": {
@@ -680,17 +703,10 @@
                                     "maxLength": 10
                                 },
                                 "value": {
-                                    "type": [
-                                        "number",
-                                        "string",
-                                        "null"
-                                    ]
+                                    "type": "number"
                                 },
                                 "value_latex": {
-                                    "type": [
-                                        "string",
-                                        "null"
-                                    ],
+                                    "type": "string",
                                     "maxLength": 120
                                 }
                             }

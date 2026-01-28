@@ -8,17 +8,37 @@ def get_effective_max_tokens(mode: str, learning_mode: Optional[str], policy: To
     normalized_learning = (learning_mode or "solve").lower()
     
     print(f"[LIMITS_DEBUG] Mode: {mode} -> {normalized_mode}, Learning: {learning_mode} -> {normalized_learning}")
-    print(f"[LIMITS_DEBUG] Policy Detailed Solve: {policy.text_output_detailed_solve}")
-
-    if normalized_mode == "minimal":
+    
+    res = policy.text_output_minimal_solve
+    if normalized_mode in ("minimal", "concise"):
         if normalized_learning == "study":
-            return policy.text_output_minimal_study
-        return policy.text_output_minimal_solve
-    if normalized_mode == "detailed":
+            res = policy.text_output_minimal_study
+        else:
+            res = policy.text_output_minimal_solve
+    elif normalized_mode in ("detailed", "tutor"):
         if normalized_learning == "study":
-             print(f"[LIMITS_DEBUG] Returning Detailed Study: {policy.text_output_detailed_study}")
-             return policy.text_output_detailed_study
-        print(f"[LIMITS_DEBUG] Returning Detailed Solve: {policy.text_output_detailed_solve}")
-        return policy.text_output_detailed_solve
+            res = policy.text_output_detailed_study
+        else:
+            res = policy.text_output_detailed_solve
+    
+    print(f"[LIMITS_DEBUG] Returning {res} for mode={normalized_mode}, learning={normalized_learning}")
+    return res
 
-    return policy.text_output_minimal_solve
+def get_effective_max_steps(mode: str, learning_mode: Optional[str], policy: TokenPolicy) -> int:
+    normalized_mode = (mode or "minimal").lower()
+    normalized_learning = (learning_mode or "solve").lower()
+    
+    res = policy.text_steps_minimal_solve
+    if normalized_mode in ("minimal", "concise"):
+        if normalized_learning == "study":
+            res = policy.text_steps_minimal_study
+        else:
+            res = policy.text_steps_minimal_solve
+    elif normalized_mode in ("detailed", "tutor"):
+        if normalized_learning == "study":
+            res = policy.text_steps_detailed_study
+        else:
+            res = policy.text_steps_detailed_solve
+
+    print(f"[LIMITS_DEBUG] Returning {res} steps for mode={normalized_mode}, learning={normalized_learning}")
+    return res

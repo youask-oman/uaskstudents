@@ -3,6 +3,8 @@ from sqlmodel import Session, select
 from app.models import User, Plan, PlanPromptLink, PromptAsset, Subscription
 from app.llm_profiles.asset_loader import AssetLoader
 from app.llm_profiles.profiles import PromptProfile, get_profile_free, get_prompt_profile
+from app.services.token_policy import get_token_policy
+from app.utils.token_limits import get_effective_max_tokens, get_effective_max_steps
 
 class ProfileResolutionError(Exception):
     """Raised when a profile cannot be resolved (e.g. missing links)."""
@@ -88,33 +90,14 @@ class ProfileResolver:
             raise ProfileResolutionError(f"Failed to load assets: {e}")
 
         # 5. Construct Profile
-        # STRICT caps logic for fallback/safety
-        max_tokens = 800
-        max_steps = 5
-        
-        if "standard" in tier_slug or "family" in tier_slug:
-            if effective_mode == "detailed":
-                max_tokens = 12000
-                max_steps = 25
-            else:
-                max_tokens = 600
-                max_steps = 2
-        elif effective_mode == "detailed":
-            # Free tier detailed (fallback/mock)
-            max_tokens = 2000
-            max_steps = 8
-        else:
-            # Free Minimal: STRICT CAP 450 tokens
-            max_tokens = 450
-            max_steps = 2
+        policy = get_token_policy(session)
+        max_tokens = get_effective_max_tokens(effective_mode, learning_mode, policy)
+        max_steps = get_effective_max_steps(effective_mode, learning_mode, policy)
             
-        # Overrides from Plan features if present (handle with care)
+        # Optional: Plan level override for max_tokens ONLY if it is stricter
         if plan.features and "max_tokens" in plan.features:
             plan_max = int(plan.features["max_tokens"])
-            if effective_mode == "minimal":
-                # Hard cap minimal mode to avoid runaway outputs.
-                max_tokens = min(max_tokens, 700, plan_max)
-            elif plan_max > max_tokens:
+            if plan_max < max_tokens:
                 max_tokens = plan_max
 
         return PromptProfile(
@@ -156,7 +139,11 @@ class ProfileResolver:
         except Exception:
             return None
 
-        # Return profile using defaults from profiles.py but content from DB assets
+        # Return profile using dynamic limits from SystemConfig
+        policy = get_token_policy(session)
+        max_tokens = get_effective_max_tokens(effective_mode, "solve", policy) # Default to 'solve' for fallback
+        max_steps = get_effective_max_steps(effective_mode, "solve", policy)
+
         return PromptProfile(
             tier=tier_slug,
             system_prompt_content=system_content if isinstance(system_content, str) else str(system_content),
@@ -165,8 +152,8 @@ class ProfileResolver:
             schema_asset_path=schema_asset.path if schema_asset else None,
             system_asset_key=sys_asset.key if sys_asset else None,
             schema_asset_key=schema_asset.key if schema_asset else None,
-            max_output_tokens=profile_defaults.max_output_tokens,
-            max_steps=profile_defaults.max_steps,
+            max_output_tokens=max_tokens,
+            max_steps=max_steps,
             mode=effective_mode,
             allow_detailed=(effective_mode == "detailed"),
             allow_visuals_only_if_asked=profile_defaults.allow_visuals_only_if_asked,

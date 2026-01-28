@@ -98,6 +98,10 @@ interface WorkspaceLayoutProps {
         learning_mode?: string;
         requested_mode?: string;
         solve_tier?: string;
+        openai_payload?: {
+            full_input?: any[];
+            full_output?: any;
+        };
     };
     // NEW: Classification data
     classification?: Classification;
@@ -494,6 +498,29 @@ export default function WorkspaceLayout({
                                                 <div className="flex justify-between text-emerald-600"><span className="opacity-70">Cached:</span><span>{telemetry.cached_tokens}</span></div>
                                             )}
                                         </div>
+
+                                        {/* OpenAI Raw Payload Debugger */}
+                                        {telemetry.openai_payload && (
+                                            <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
+                                                <h4 className="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest">Debug: Raw OpenAI Interaction</h4>
+
+                                                <div className="space-y-4">
+                                                    <div>
+                                                        <div className="text-[10px] text-emerald-600 mb-1 font-bold">RAW INPUT (PROMPTS)</div>
+                                                        <pre className="p-3 bg-white dark:bg-black rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto whitespace-pre-wrap max-h-60 overflow-y-auto custom-scrollbar">
+                                                            {JSON.stringify(telemetry.openai_payload.full_input, null, 2)}
+                                                        </pre>
+                                                    </div>
+
+                                                    <div>
+                                                        <div className="text-[10px] text-blue-600 mb-1 font-bold">RAW OUTPUT (JSON)</div>
+                                                        <pre className="p-3 bg-white dark:bg-black rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto whitespace-pre-wrap max-h-96 overflow-y-auto custom-scrollbar">
+                                                            {JSON.stringify(telemetry.openai_payload.full_output, null, 2)}
+                                                        </pre>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </section>
