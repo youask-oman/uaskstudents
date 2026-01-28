@@ -19,6 +19,9 @@ type CropWorkspaceProps = {
     onViewportSize?: (size: { width: number; height: number }) => void;
     fullPage: boolean;
     resetToken?: number;
+    // New props for Selection Mode
+    selectionMode?: boolean;
+    onSelectionChange?: (bbox: { x: number; y: number; w: number; h: number } | null) => void;
 };
 
 const DEFAULT_WIDTH_SCALE = 0.65;
@@ -39,12 +42,20 @@ export default function CropWorkspace({
     onViewportSize,
     fullPage,
     resetToken,
+    selectionMode = false,
+    onSelectionChange,
 }: CropWorkspaceProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const [workspaceSize, setWorkspaceSize] = useState({ width: 0, height: 0 });
     const [cropWidthScale, setCropWidthScale] = useState(DEFAULT_WIDTH_SCALE);
     const [cropHeightScale, setCropHeightScale] = useState(DEFAULT_HEIGHT_SCALE);
     const [lockRatio, setLockRatio] = useState(false);
+
+    // Selection State
+    const [isSelecting, setIsSelecting] = useState(false);
+    const [selectionStart, setSelectionStart] = useState<{ x: number, y: number } | null>(null);
+    const [currentSelection, setCurrentSelection] = useState<{ x: number, y: number, w: number, h: number } | null>(null);
+
     const prevFullPage = useRef(fullPage);
     const prevReset = useRef(resetToken);
 
@@ -71,6 +82,15 @@ export default function CropWorkspace({
     React.useEffect(() => {
         updateSize();
     }, [imageSrc, updateSize]);
+
+    // Cleanup selection when mode changes
+    React.useEffect(() => {
+        if (!selectionMode) {
+            setCurrentSelection(null);
+            setIsSelecting(false);
+            onSelectionChange?.(null);
+        }
+    }, [selectionMode, onSelectionChange]);
 
     const clampScale = (value: number) => {
         return Math.min(MAX_SCALE, Math.max(MIN_SCALE, value));
@@ -135,16 +155,71 @@ export default function CropWorkspace({
         }
     };
 
+    // Selection Handlers
+    const handlePointerDown = (e: React.PointerEvent) => {
+        if (!selectionMode || !containerRef.current) return;
+        e.preventDefault();
+        const rect = containerRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        setSelectionStart({ x, y });
+        setIsSelecting(true);
+        setCurrentSelection({ x, y, w: 0, h: 0 });
+    };
+
+    const handlePointerMove = (e: React.PointerEvent) => {
+        if (!isSelecting || !selectionStart || !containerRef.current) return;
+        e.preventDefault();
+        const rect = containerRef.current.getBoundingClientRect();
+        const currentX = clamp(e.clientX - rect.left, 0, rect.width);
+        const currentY = clamp(e.clientY - rect.top, 0, rect.height);
+
+        const x = Math.min(selectionStart.x, currentX);
+        const y = Math.min(selectionStart.y, currentY);
+        const w = Math.abs(currentX - selectionStart.x);
+        const h = Math.abs(currentY - selectionStart.y);
+
+        setCurrentSelection({ x, y, w, h });
+    };
+
+    const handlePointerUp = (e: React.PointerEvent) => {
+        if (!isSelecting) return;
+        setIsSelecting(false);
+        if (currentSelection && workspaceSize.width > 0 && workspaceSize.height > 0) {
+            // Normalize
+            const normalized = {
+                x: currentSelection.x / workspaceSize.width,
+                y: currentSelection.y / workspaceSize.height,
+                w: currentSelection.w / workspaceSize.width,
+                h: currentSelection.h / workspaceSize.height
+            };
+            // Only fire if significant size
+            if (normalized.w > 0.01 && normalized.h > 0.01) {
+                onSelectionChange?.(normalized);
+            } else {
+                setCurrentSelection(null);
+                onSelectionChange?.(null);
+            }
+        }
+    };
+
     return (
-        <div ref={containerRef} className="relative w-full min-h-[520px] bg-slate-900 rounded-xl overflow-hidden">
+        <div
+            ref={containerRef}
+            className="relative w-full min-h-[520px] bg-slate-900 rounded-xl overflow-hidden select-none touch-none"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerLeave={handlePointerUp}
+        >
             <Cropper
                 key={cropperKey}
                 image={imageSrc}
                 crop={crop}
                 zoom={zoom}
                 rotation={rotation}
-                onCropChange={onCropChange}
-                onZoomChange={onZoomChange}
+                onCropChange={selectionMode ? () => { } : onCropChange} // Disable crop move in selection mode
+                onZoomChange={selectionMode ? () => { } : onZoomChange}
                 onRotationChange={onRotationChange}
                 onCropComplete={handleCropComplete}
                 onMediaLoaded={(media) => {
@@ -155,9 +230,35 @@ export default function CropWorkspace({
                 cropSize={cropSize}
                 restrictPosition={false}
                 objectFit="contain"
-                showGrid={true}
+                showGrid={!selectionMode} // Hide grid in selection mode to reduce noise
+                classes={{
+                    containerClassName: selectionMode ? "opacity-50 pointer-events-none" : ""
+                }}
             />
-            <div className="absolute bottom-0 left-0 right-0 px-4 py-3 bg-white/95 border-t border-slate-200 flex flex-col gap-3 text-[11px]">
+
+            {/* Selection Overlay */}
+            {selectionMode && currentSelection && (
+                <div
+                    className="absolute border-2 border-red-500 bg-red-500/20 pointer-events-none z-10"
+                    style={{
+                        left: currentSelection.x,
+                        top: currentSelection.y,
+                        width: currentSelection.w,
+                        height: currentSelection.h,
+                    }}
+                />
+            )}
+
+            {/* Instruction Overlay when in Selection Mode */}
+            {selectionMode && !currentSelection && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                    <div className="bg-black/60 text-white px-4 py-2 rounded-full text-sm font-medium backdrop-blur-sm">
+                        Draw a box to select error region
+                    </div>
+                </div>
+            )}
+
+            <div className={`absolute bottom-0 left-0 right-0 px-4 py-3 bg-white/95 border-t border-slate-200 flex flex-col gap-3 text-[11px] transition-opacity ${selectionMode ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
                 <div className="flex flex-wrap gap-3">
                     <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
                         Zoom

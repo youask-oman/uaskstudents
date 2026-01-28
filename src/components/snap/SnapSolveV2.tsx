@@ -55,6 +55,8 @@ type SolveResult = {
     credits_refunded?: number;
 };
 
+import { useAudioRecorder } from "@/hooks/useAudioRecorder";
+
 const MAX_MB = parseInt(process.env.NEXT_PUBLIC_SNAP_MAX_MB || "10", 10);
 const MAX_BYTES = MAX_MB * 1024 * 1024;
 const MAX_EDGE = 2000;
@@ -72,7 +74,10 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
     const [rotation, setRotation] = React.useState(0);
     const [cropPixels, setCropPixels] = React.useState<CropArea | null>(null);
     const [fullPage, setFullPage] = React.useState(false);
-    const [status, setStatus] = React.useState<"idle" | "uploading" | "rendering" | "cropping" | "extracting" | "ready" | "solving" | "done" | "error">("idle");
+    const [status, setStatus] = React.useState<
+        "idle" | "uploading" | "rendering" | "cropping" | "extracting" | "ready" | "solving" | "done" | "error" |
+        "transcribing" | "resolving_intent" | "executing"
+    >("idle");
     const [error, setError] = React.useState<string | null>(null);
     const [extractResult, setExtractResult] = React.useState<ExtractResponse | null>(null);
     const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
@@ -89,7 +94,168 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
         ocr_engine: "snap_v2",
     });
 
+    // Voice & Selection State
+    const [voiceMode, setVoiceMode] = React.useState(false);
+    const [selectionBBox, setSelectionBBox] = React.useState<{ x: number, y: number, w: number, h: number } | null>(null);
+    const [voiceTranscript, setVoiceTranscript] = React.useState<string | null>(null);
+    const [voiceIntent, setVoiceIntent] = React.useState<string | null>(null);
+
+    // Import hook (assuming it's available as per plan)
+    const {
+        state: recorderState,
+        startRecording,
+        stopRecording,
+        durationMs,
+        error: recorderError
+    } = useAudioRecorder();
+
     const abortRef = React.useRef<AbortController | null>(null);
+
+    const handleVoiceCommand = async (audioBlob: Blob) => {
+        setVoiceTranscript(null);
+        setVoiceIntent(null);
+        if (!audioBlob) {
+            console.error("No audio recorded");
+            return;
+        }
+        setStatus("transcribing" as any);
+        setIsBusy(true);
+
+        try {
+            console.log("Audio blob type:", audioBlob.type); // Debugging
+
+            // Determine extension from blob type (e.g. "audio/mp4" -> "mp4", "audio/webm;codecs=opus" -> "webm")
+            // Default to "webm" if parsing fails, but browser usually gives valid mime.
+            // Common types: audio/webm, audio/mp4, audio/ogg, audio/wav
+            let ext = "webm";
+            if (audioBlob.type.includes("mp4")) ext = "mp4";
+            else if (audioBlob.type.includes("wav")) ext = "wav";
+            else if (audioBlob.type.includes("ogg")) ext = "ogg";
+            else if (audioBlob.type.includes("id3")) ext = "mp3"; // rare recording format
+            else if (audioBlob.type.includes("mpeg")) ext = "mp3";
+
+            // 1. Transcribe
+            const formData = new FormData();
+            formData.append("file", audioBlob, `audio.${ext}`);
+            const transcribeRes = await fetch("/api/v1/audio/transcribe", { method: "POST", body: formData });
+            if (!transcribeRes.ok) throw new Error("Transcription failed");
+            const transcribeData = await transcribeRes.json();
+            if (!transcribeData.ok) throw new Error(transcribeData.error);
+
+            const transcript = transcribeData.transcript;
+            setVoiceTranscript(transcript);
+            setStatus("resolving_intent" as any); // Custom status for UI
+
+            // 2. Resolve Intent
+            const commandPayload = {
+                transcript,
+                selection_bbox: selectionBBox,
+                page_context: {
+                    source: fileType === "pdf" ? "pdf_page" : "image",
+                    page_number: pageNumber,
+                    // Note: We might want real crop bbox if available, but selectionBBox is key
+                }
+            };
+
+            const commandRes = await fetch("/api/v1/voice/command", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(commandPayload)
+            });
+            const commandData = await commandRes.json();
+
+            if (!commandData.ok) throw new Error(commandData.error?.message || "Intent resolution failed");
+
+            const intent = commandData.command;
+            setVoiceIntent(intent.intent);
+            setStatus("executing" as any); // Custom status
+
+            // 3. Execute Intent
+            switch (intent.intent) {
+                case "EXTRACT_QUESTIONS":
+                    await handleExtract();
+                    break;
+                case "FINAL_ANSWER_ONLY":
+                case "NEXT_STEP_ONLY":
+                case "DETAILED_SOLUTION":
+                    // If we have text ready (extracted), solve it.
+                    // If not, we might need to extract first (or solve the crop directly if supported)
+                    // For Phase 1, let's assume we solve the crop directly if supported, or error if no questions extracted.
+                    // TODO: Logic to solve crop directly if backend supports it vs extracting first.
+                    // Falling back to extract -> solve flow or alerting user.
+                    if (extractResult && selectedIds.size > 0) {
+                        // Solve selected with override
+                        // NOTE: We need to modify handleSolveSelected to accept overrides, or just implement a custom call here.
+                        // For now, let's just trigger extract if no questions, or user must select.
+                        alert(`Intent: ${intent.intent} - Please select questions to apply this.`);
+                    } else {
+                        await handleExtract(); // Default action to get started
+                    }
+                    break;
+                case "FIND_FIRST_ERROR":
+                    if (!selectionBBox || !imageSrc || !imageSize) {
+                        alert("Please select the region with the error first.");
+                        break;
+                    }
+                    setStatus("executing" as any);
+                    // 1. Get blob of selection
+                    const activeCrop = {
+                        x: selectionBBox.x * imageSize.width,
+                        y: selectionBBox.y * imageSize.height,
+                        width: selectionBBox.w * imageSize.width,
+                        height: selectionBBox.h * imageSize.height
+                    };
+
+                    const blob = await getCroppedImageBlob({
+                        imageSrc,
+                        crop: activeCrop,
+                        rotation: rotation,
+                        maxEdge: 1000,
+                        quality: 0.85,
+                        fullPage: false,
+                    });
+
+                    // 2. Upload
+                    const errForm = new FormData();
+                    errForm.append("file", blob, "selection.jpg");
+                    errForm.append("transcript", transcript);
+
+                    const errRes = await fetch("/api/v1/find_error", { method: "POST", body: errForm });
+                    const errData = await errRes.json();
+
+                    if (errData.ok && errData.what_is_wrong) {
+                        setVoiceIntent(`Error Found: ${errData.what_is_wrong}`);
+                        alert(`Diagnose: ${errData.what_is_wrong}\n\nFix: ${errData.minimal_fix}`);
+                    } else if (errData.ok) {
+                        setVoiceIntent("No error found.");
+                        alert("No specific error was identified in this region.");
+                    } else {
+                        throw new Error(errData.error || "Failed to analyze error");
+                    }
+                    break;
+                default:
+                    console.log("Unhandled intent:", intent);
+            }
+            setStatus("ready");
+
+        } catch (err: any) {
+            setError(err.message);
+            setStatus("error");
+        } finally {
+            setIsBusy(false);
+        }
+    };
+
+    const handleMicDown = async () => {
+        await startRecording();
+    };
+
+    const handleMicUp = async () => {
+        const blob = await stopRecording();
+        if (blob) {
+            handleVoiceCommand(blob);
+        }
+    };
 
     const handleResetCropControls = React.useCallback(() => {
         setCropResetToken((prev) => prev + 1);
@@ -97,6 +263,11 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
         setZoom(1);
         setRotation(0);
         setCropPixels(null);
+        // Reset Voice
+        setVoiceMode(false);
+        setSelectionBBox(null);
+        setVoiceTranscript(null);
+        setVoiceIntent(null);
     }, [setCrop, setZoom, setRotation, setCropPixels]);
 
     const resetAll = React.useCallback(() => {
@@ -472,6 +643,58 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
 
                     {imageSrc && (
                         <div className="flex flex-col gap-3">
+                            {/* Voice Control Toolbar */}
+                            <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                                <div className="flex items-center gap-3">
+                                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 cursor-pointer select-none">
+                                        <div className={`w-10 h-6 flex items-center bg-slate-300 rounded-full p-1 duration-300 ${voiceMode ? 'bg-indigo-500' : ''}`}>
+                                            <div className={`bg-white w-4 h-4 rounded-full shadow-md transform duration-300 ${voiceMode ? 'translate-x-4' : ''}`}></div>
+                                        </div>
+                                        <input
+                                            type="checkbox"
+                                            checked={voiceMode}
+                                            onChange={(e) => {
+                                                setVoiceMode(e.target.checked);
+                                                if (!e.target.checked) setSelectionBBox(null);
+                                            }}
+                                            className="hidden"
+                                        />
+                                        <span>Circle & Speak Mode</span>
+                                    </label>
+
+                                    {voiceMode && (
+                                        <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-4">
+                                            <button
+                                                className={`px-4 py-1.5 rounded-full font-bold text-xs flex items-center gap-2 transition-all ${recorderState === "recording"
+                                                    ? "bg-rose-500 text-white scale-105 shadow-lg shadow-rose-500/30"
+                                                    : "bg-white border border-slate-300 text-slate-700 hover:border-indigo-400"
+                                                    }`}
+                                                onMouseDown={handleMicDown}
+                                                onMouseUp={handleMicUp}
+                                                onMouseLeave={() => { if (recorderState === "recording") handleMicUp(); }}
+                                                onTouchStart={(e) => { e.preventDefault(); handleMicDown(); }}
+                                                onTouchEnd={(e) => { e.preventDefault(); handleMicUp(); }}
+                                            >
+                                                <span className={`w-2 h-2 rounded-full ${recorderState === "recording" ? "bg-white animate-pulse" : "bg-slate-400"}`} />
+                                                {recorderState === "recording" ? `Release to Send (${(durationMs / 1000).toFixed(1)}s)` : "Hold Space or Click to Speak"}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {voiceMode && (
+                                    <div className="flex-1 text-right text-xs">
+                                        {status === "transcribing" && <span className="text-indigo-600 font-medium animate-pulse">Transcribing...</span>}
+                                        {status === "resolving_intent" && <span className="text-indigo-600 font-medium animate-pulse">Analyzing Command...</span>}
+                                        {status === "executing" && <span className="text-emerald-600 font-bold">Executing: {voiceIntent}</span>}
+                                        {voiceTranscript && status !== "transcribing" && (
+                                            <span className="text-slate-600 italic">"{voiceTranscript}"</span>
+                                        )}
+                                        {recorderError && <span className="text-rose-500 font-bold">Error: {recorderError}</span>}
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="flex flex-wrap items-center gap-3">
                                 <label className="text-xs font-semibold text-slate-500 flex items-center gap-2">
                                     <input
@@ -496,20 +719,22 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                                     Rotate Right
                                 </button>
                             </div>
-                        <CropWorkspace
-                            imageSrc={imageSrc}
-                            crop={crop}
-                            zoom={zoom}
-                            rotation={rotation}
-                            onCropChange={setCrop}
-                            onZoomChange={setZoom}
-                            onRotationChange={setRotation}
-                            onCropComplete={setCropPixels}
-                            onImageSize={setImageSize}
-                            onViewportSize={setViewportSize}
-                            fullPage={fullPage}
-                            resetToken={cropResetToken}
-                        />
+                            <CropWorkspace
+                                imageSrc={imageSrc}
+                                crop={crop}
+                                zoom={zoom}
+                                rotation={rotation}
+                                onCropChange={setCrop}
+                                onZoomChange={setZoom}
+                                onRotationChange={setRotation}
+                                onCropComplete={setCropPixels}
+                                onImageSize={setImageSize}
+                                onViewportSize={setViewportSize}
+                                fullPage={fullPage}
+                                resetToken={cropResetToken}
+                                selectionMode={voiceMode}
+                                onSelectionChange={setSelectionBBox}
+                            />
                         </div>
                     )}
 
