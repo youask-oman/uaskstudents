@@ -379,3 +379,413 @@ Attempting to connect to database (Attempt 1/10)...
 Database connection successful and tables created.
 Attempting to connect to database (Attempt 1/10)...
 Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+HTTP Request: POST https://api.openai.com/v1/audio/transcriptions "HTTP/1.1 400 Bad Request"
+Transcription failed: Error code: 400 - {'error': {'message': "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']", 'type': 'invalid_request_error', 'param': None, 'code': None}, 'usage': {'type': 'duration', 'seconds': 0}}
+Transcription endpoint failed
+Traceback (most recent call last):
+  File "C:\uaskstudents\backend\app\bg_routers\voice_router.py", line 58, in transcribe_audio
+    transcript = await voice_service.transcribe_audio(file_obj, filename=file_obj.name)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\uaskstudents\backend\app\services\voice\voice_service.py", line 56, in transcribe_audio
+    resp = await self.client.audio.transcriptions.create(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\resources\audio\transcriptions.py", line 915, in create
+    return await self._post(
+           ^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1797, in post
+    return await self.request(cast_to, opts, stream=stream, stream_cls=stream_cls)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1597, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.BadRequestError: Error code: 400 - {'error': {'message': "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']", 'type': 'invalid_request_error', 'param': None, 'code': None}, 'usage': {'type': 'duration', 'seconds': 0}}
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Audio upload: filename=audio.webm, content_type=audio/webm;codecs=opus, detected_ext=.webm, size=7904
+HTTP Request: POST https://api.openai.com/v1/audio/transcriptions "HTTP/1.1 200 OK"
+Transcription completed in 1.77s
+Audio upload: filename=audio.webm, content_type=audio/webm;codecs=opus, detected_ext=.webm, size=24406
+HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Intent resolution took 3.58s: EXTRACT_QUESTIONS
+extract_questions input metrics: size=962x768 stddev=26.50 white=0.000
+HTTP Request: POST https://api.openai.com/v1/audio/transcriptions "HTTP/1.1 200 OK"
+Transcription completed in 2.26s
+HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Intent resolution took 1.72s: FIND_FIRST_ERROR
+Audio upload: filename=audio.webm, content_type=audio/webm;codecs=opus, detected_ext=.webm, size=37012
+HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+HTTP Request: POST https://api.openai.com/v1/audio/transcriptions "HTTP/1.1 200 OK"
+Transcription completed in 0.81s
+HTTP Request: POST https://api.openai.com/v1/responses "HTTP/1.1 200 OK"
+extract_questions response raw content: '{"ok":true,"error":null,"is_math_page":true,"notes":null,"questions":[{"id":"q1","text":"33 + 4 - 9 = 17","confidence":0.85,"is_valid_math":true,"reason_if_invalid":"OK","type":"algebra","bbox":{"x":0.03,"y":0.02,"w":0.94,"h":0.14},"requires_figure":false,"figure_type":null,"figure_bbox":{ "x":0,"y":0,"w":0.00000000000000001,"h":0.00000000000000001},"figure_role":null},{"id":"q2","text":"93 + 43 +...(truncated)' (len=995)
+HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Intent resolution took 1.45s: FIND_FIRST_ERROR
+HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Audio upload: filename=audio.webm, content_type=audio/webm;codecs=opus, detected_ext=.webm, size=7904
+HTTP Request: POST https://api.openai.com/v1/audio/transcriptions "HTTP/1.1 200 OK"
+Transcription completed in 0.99s
+HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Intent resolution took 1.41s: FIND_FIRST_ERROR
+Audio upload: filename=audio.webm, content_type=audio/webm;codecs=opus, detected_ext=.webm, size=32166
+HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+HTTP Request: POST https://api.openai.com/v1/audio/transcriptions "HTTP/1.1 200 OK"
+Transcription completed in 0.83s
+HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Intent resolution took 1.33s: FIND_FIRST_ERROR
+HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Audio upload: filename=audio.webm, content_type=audio/webm;codecs=opus, detected_ext=.webm, size=37012
+HTTP Request: POST https://api.openai.com/v1/audio/transcriptions "HTTP/1.1 200 OK"
+Transcription completed in 1.19s
+HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Intent resolution took 1.69s: FIND_FIRST_ERROR
+HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Audio upload: filename=audio.webm, content_type=audio/webm;codecs=opus, detected_ext=.webm, size=24406
+HTTP Request: POST https://api.openai.com/v1/audio/transcriptions "HTTP/1.1 200 OK"
+Transcription completed in 1.15s
+HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Intent resolution took 1.14s: FIND_FIRST_ERROR
+HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Audio upload: filename=audio.webm, content_type=audio/webm;codecs=opus, detected_ext=.webm, size=17612
+HTTP Request: POST https://api.openai.com/v1/audio/transcriptions "HTTP/1.1 400 Bad Request"
+Transcription failed: Error code: 400 - {'error': {'message': "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']", 'type': 'invalid_request_error', 'param': None, 'code': None}, 'usage': {'type': 'duration', 'seconds': 0}}
+Transcription endpoint failed
+Traceback (most recent call last):
+  File "C:\uaskstudents\backend\app\bg_routers\voice_router.py", line 61, in transcribe_audio
+    transcript = await voice_service.transcribe_audio(file_obj, filename=file_obj.name)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\uaskstudents\backend\app\services\voice\voice_service.py", line 56, in transcribe_audio
+    resp = await self.client.audio.transcriptions.create(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\resources\audio\transcriptions.py", line 915, in create
+    return await self._post(
+           ^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1797, in post
+    return await self.request(cast_to, opts, stream=stream, stream_cls=stream_cls)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1597, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.BadRequestError: Error code: 400 - {'error': {'message': "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']", 'type': 'invalid_request_error', 'param': None, 'code': None}, 'usage': {'type': 'duration', 'seconds': 0}}
+Audio upload: filename=audio.webm, content_type=audio/webm;codecs=opus, detected_ext=.webm, size=56412
+HTTP Request: POST https://api.openai.com/v1/audio/transcriptions "HTTP/1.1 400 Bad Request"
+Transcription failed: Error code: 400 - {'error': {'message': "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']", 'type': 'invalid_request_error', 'param': None, 'code': None}, 'usage': {'type': 'duration', 'seconds': 0}}
+Transcription endpoint failed
+Traceback (most recent call last):
+  File "C:\uaskstudents\backend\app\bg_routers\voice_router.py", line 61, in transcribe_audio
+    transcript = await voice_service.transcribe_audio(file_obj, filename=file_obj.name)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\uaskstudents\backend\app\services\voice\voice_service.py", line 56, in transcribe_audio
+    resp = await self.client.audio.transcriptions.create(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\resources\audio\transcriptions.py", line 915, in create
+    return await self._post(
+           ^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1797, in post
+    return await self.request(cast_to, opts, stream=stream, stream_cls=stream_cls)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1597, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.BadRequestError: Error code: 400 - {'error': {'message': "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']", 'type': 'invalid_request_error', 'param': None, 'code': None}, 'usage': {'type': 'duration', 'seconds': 0}}
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Audio upload: filename=audio.webm, content_type=audio/webm;codecs=opus, detected_ext=.webm, size=25372
+HTTP Request: POST https://api.openai.com/v1/audio/transcriptions "HTTP/1.1 200 OK"
+Transcription completed in 1.84s
+HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Intent resolution took 1.12s: FIND_FIRST_ERROR
+Initializing Local Pix2Text engine...
+Use DocLayout-YOLO model for Layout Analysis: C:\Users\loaia\AppData\Roaming\pix2text\1.1\layout-docyolo\doclayout_yolo_docstructbench_imgsz1024.pt
+no onnx file is found in C:\Users\loaia\AppData\Roaming\cnocr\2.3\densenet_lite_136-gru
+Downloading C:\Users\loaia\AppData\Roaming\cnocr\2.3\densenet_lite_136-gru-onnx.zip from HF Repo https://huggingface.co/breezedeus/cnstd-cnocr-models...
+Xet Storage is enabled for this repo, but the 'hf_xet' package is not installed. Falling back to regular HTTP download. For better performance, install the package with: `pip install huggingface_hub[hf_xet]` or `pip install hf_xet`
+C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\huggingface_hub\file_download.py:143: UserWarning: `huggingface_hub` cache-system uses symlinks by default to efficiently store duplicated files but your machine does not support them in C:\Users\loaia\AppData\Local\Temp\tmp0reu_cm0\models--breezedeus--cnstd-cnocr-models. Caching files will still work but in a degraded version that might require more space on your disk. This warning can be disabled by setting the `HF_HUB_DISABLE_SYMLINKS_WARNING` environment variable. For more details, see https://huggingface.co/docs/huggingface_hub/how-to-cache#limitations.
+To support symlinks on Windows, you either need to activate Developer Mode or to run Python as an administrator. In order to activate developer mode, see this article: https://docs.microsoft.com/en-us/windows/apps/get-started/enable-your-device-for-development
+  warnings.warn(message)
+
+use model: C:\Users\loaia\AppData\Roaming\cnocr\2.3\densenet_lite_136-gru\cnocr-v2.3-densenet_lite_136-gru-epoch=004-ft-model.onnx
+can not find model file C:\Users\loaia\AppData\Roaming\cnstd\1.2\ppocr\ch_PP-OCRv5_det\ch_PP-OCRv5_det_infer.onnx
+use model: C:\Users\loaia\AppData\Roaming\cnstd\1.2\ppocr\ch_PP-OCRv5_det\ch_PP-OCRv5_det_infer.onnx
+Use model path for MFD: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfd-1.5-onnx\pix2text-mfd-1.5.onnx
+Use model dir for LatexOCR: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfr-1.5-onnx
+Loaded Pix2Text MFR model mfr-1.5 to: backend-onnx, device-cpu
+Pix2Text initialized successfully
+LocalEngine processed image in 44971ms
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Audio upload: filename=audio.webm, content_type=audio/webm;codecs=opus, detected_ext=.webm, size=35064
+HTTP Request: POST https://api.openai.com/v1/audio/transcriptions "HTTP/1.1 200 OK"
+Transcription completed in 1.35s
+HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Intent resolution took 4.47s: FIND_FIRST_ERROR
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Audio upload: filename=audio.webm, content_type=audio/webm;codecs=opus, detected_ext=.webm, size=21492
+HTTP Request: POST https://api.openai.com/v1/audio/transcriptions "HTTP/1.1 400 Bad Request"
+Transcription failed: Error code: 400 - {'error': {'message': "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']", 'type': 'invalid_request_error', 'param': None, 'code': None}, 'usage': {'type': 'duration', 'seconds': 0}}
+Transcription endpoint failed
+Traceback (most recent call last):
+  File "C:\uaskstudents\backend\app\bg_routers\voice_router.py", line 61, in transcribe_audio
+    transcript = await voice_service.transcribe_audio(file_obj, filename=file_obj.name)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\uaskstudents\backend\app\services\voice\voice_service.py", line 56, in transcribe_audio
+    resp = await self.client.audio.transcriptions.create(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\resources\audio\transcriptions.py", line 915, in create
+    return await self._post(
+           ^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1797, in post
+    return await self.request(cast_to, opts, stream=stream, stream_cls=stream_cls)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1597, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.BadRequestError: Error code: 400 - {'error': {'message': "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']", 'type': 'invalid_request_error', 'param': None, 'code': None}, 'usage': {'type': 'duration', 'seconds': 0}}
+Audio upload: filename=audio.webm, content_type=audio/webm;codecs=opus, detected_ext=.webm, size=70966
+HTTP Request: POST https://api.openai.com/v1/audio/transcriptions "HTTP/1.1 200 OK"
+Transcription completed in 1.30s
+HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Intent resolution took 1.62s: FIND_FIRST_ERROR
+HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Audio upload: filename=audio.webm, content_type=audio/webm;codecs=opus, detected_ext=.webm, size=17612
+HTTP Request: POST https://api.openai.com/v1/audio/transcriptions "HTTP/1.1 400 Bad Request"
+Transcription failed: Error code: 400 - {'error': {'message': "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']", 'type': 'invalid_request_error', 'param': None, 'code': None}, 'usage': {'type': 'duration', 'seconds': 0}}
+Transcription endpoint failed
+Traceback (most recent call last):
+  File "C:\uaskstudents\backend\app\bg_routers\voice_router.py", line 68, in transcribe_audio
+    transcript = await voice_service.transcribe_audio(file_obj, filename=filename_with_ext)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\uaskstudents\backend\app\services\voice\voice_service.py", line 56, in transcribe_audio
+    resp = await self.client.audio.transcriptions.create(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\resources\audio\transcriptions.py", line 915, in create
+    return await self._post(
+           ^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1797, in post
+    return await self.request(cast_to, opts, stream=stream, stream_cls=stream_cls)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1597, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.BadRequestError: Error code: 400 - {'error': {'message': "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']", 'type': 'invalid_request_error', 'param': None, 'code': None}, 'usage': {'type': 'duration', 'seconds': 0}}
+Audio upload: filename=audio.webm, content_type=audio/webm;codecs=opus, detected_ext=.webm, size=21492
+HTTP Request: POST https://api.openai.com/v1/audio/transcriptions "HTTP/1.1 400 Bad Request"
+Transcription failed: Error code: 400 - {'error': {'message': "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']", 'type': 'invalid_request_error', 'param': None, 'code': None}, 'usage': {'type': 'duration', 'seconds': 0}}
+Transcription endpoint failed
+Traceback (most recent call last):
+  File "C:\uaskstudents\backend\app\bg_routers\voice_router.py", line 68, in transcribe_audio
+    transcript = await voice_service.transcribe_audio(file_obj, filename=filename_with_ext)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\uaskstudents\backend\app\services\voice\voice_service.py", line 56, in transcribe_audio
+    resp = await self.client.audio.transcriptions.create(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\resources\audio\transcriptions.py", line 915, in create
+    return await self._post(
+           ^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1797, in post
+    return await self.request(cast_to, opts, stream=stream, stream_cls=stream_cls)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1597, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.BadRequestError: Error code: 400 - {'error': {'message': "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']", 'type': 'invalid_request_error', 'param': None, 'code': None}, 'usage': {'type': 'duration', 'seconds': 0}}
+Audio upload: filename=audio.webm, content_type=audio/webm;codecs=opus, detected_ext=.webm, size=21492
+HTTP Request: POST https://api.openai.com/v1/audio/transcriptions "HTTP/1.1 400 Bad Request"
+Transcription failed: Error code: 400 - {'error': {'message': "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']", 'type': 'invalid_request_error', 'param': None, 'code': None}, 'usage': {'type': 'duration', 'seconds': 0}}
+Transcription endpoint failed
+Traceback (most recent call last):
+  File "C:\uaskstudents\backend\app\bg_routers\voice_router.py", line 68, in transcribe_audio
+    transcript = await voice_service.transcribe_audio(file_obj, filename=filename_with_ext)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\uaskstudents\backend\app\services\voice\voice_service.py", line 56, in transcribe_audio
+    resp = await self.client.audio.transcriptions.create(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\resources\audio\transcriptions.py", line 915, in create
+    return await self._post(
+           ^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1797, in post
+    return await self.request(cast_to, opts, stream=stream, stream_cls=stream_cls)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1597, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.BadRequestError: Error code: 400 - {'error': {'message': "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']", 'type': 'invalid_request_error', 'param': None, 'code': None}, 'usage': {'type': 'duration', 'seconds': 0}}
+Audio upload: filename=audio.webm, content_type=audio/webm;codecs=opus, detected_ext=.webm, size=77744
+HTTP Request: POST https://api.openai.com/v1/audio/transcriptions "HTTP/1.1 400 Bad Request"
+Transcription failed: Error code: 400 - {'error': {'message': "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']", 'type': 'invalid_request_error', 'param': None, 'code': None}, 'usage': {'type': 'duration', 'seconds': 0}}
+Transcription endpoint failed
+Traceback (most recent call last):
+  File "C:\uaskstudents\backend\app\bg_routers\voice_router.py", line 68, in transcribe_audio
+    transcript = await voice_service.transcribe_audio(file_obj, filename=filename_with_ext)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\uaskstudents\backend\app\services\voice\voice_service.py", line 56, in transcribe_audio
+    resp = await self.client.audio.transcriptions.create(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\resources\audio\transcriptions.py", line 915, in create
+    return await self._post(
+           ^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1797, in post
+    return await self.request(cast_to, opts, stream=stream, stream_cls=stream_cls)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1597, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.BadRequestError: Error code: 400 - {'error': {'message': "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']", 'type': 'invalid_request_error', 'param': None, 'code': None}, 'usage': {'type': 'duration', 'seconds': 0}}
+Audio upload: filename=audio.webm, content_type=audio/webm;codecs=opus, detected_ext=.webm, size=49618
+HTTP Request: POST https://api.openai.com/v1/audio/transcriptions "HTTP/1.1 400 Bad Request"
+Transcription failed: Error code: 400 - {'error': {'message': "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']", 'type': 'invalid_request_error', 'param': None, 'code': None}, 'usage': {'type': 'duration', 'seconds': 0}}
+Transcription endpoint failed
+Traceback (most recent call last):
+  File "C:\uaskstudents\backend\app\bg_routers\voice_router.py", line 68, in transcribe_audio
+    transcript = await voice_service.transcribe_audio(file_obj, filename=filename_with_ext)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\uaskstudents\backend\app\services\voice\voice_service.py", line 56, in transcribe_audio
+    resp = await self.client.audio.transcriptions.create(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\resources\audio\transcriptions.py", line 915, in create
+    return await self._post(
+           ^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1797, in post
+    return await self.request(cast_to, opts, stream=stream, stream_cls=stream_cls)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1597, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.BadRequestError: Error code: 400 - {'error': {'message': "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']", 'type': 'invalid_request_error', 'param': None, 'code': None}, 'usage': {'type': 'duration', 'seconds': 0}}
+Audio upload: filename=audio.webm, content_type=audio/webm;codecs=opus, detected_ext=.webm, size=40892
+HTTP Request: POST https://api.openai.com/v1/audio/transcriptions "HTTP/1.1 200 OK"
+Transcription completed in 1.86s
+HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Intent resolution took 1.48s: FIND_FIRST_ERROR
+HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Audio upload: filename=audio.webm, content_type=audio/webm;codecs=opus, detected_ext=.webm, size=21492
+HTTP Request: POST https://api.openai.com/v1/audio/transcriptions "HTTP/1.1 400 Bad Request"
+Transcription failed: Error code: 400 - {'error': {'message': "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']", 'type': 'invalid_request_error', 'param': None, 'code': None}, 'usage': {'type': 'duration', 'seconds': 0}}
+Transcription endpoint failed
+Traceback (most recent call last):
+  File "C:\uaskstudents\backend\app\bg_routers\voice_router.py", line 69, in transcribe_audio
+    transcript = await voice_service.transcribe_audio(file_obj, filename=filename_with_ext)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\uaskstudents\backend\app\services\voice\voice_service.py", line 56, in transcribe_audio
+    resp = await self.client.audio.transcriptions.create(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\resources\audio\transcriptions.py", line 915, in create
+    return await self._post(
+           ^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1797, in post
+    return await self.request(cast_to, opts, stream=stream, stream_cls=stream_cls)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1597, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.BadRequestError: Error code: 400 - {'error': {'message': "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']", 'type': 'invalid_request_error', 'param': None, 'code': None}, 'usage': {'type': 'duration', 'seconds': 0}}
+Audio upload: filename=audio.webm, content_type=audio/webm;codecs=opus, detected_ext=.webm, size=61258
+HTTP Request: POST https://api.openai.com/v1/audio/transcriptions "HTTP/1.1 400 Bad Request"
+Transcription failed: Error code: 400 - {'error': {'message': "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']", 'type': 'invalid_request_error', 'param': None, 'code': None}, 'usage': {'type': 'duration', 'seconds': 0}}
+Transcription endpoint failed
+Traceback (most recent call last):
+  File "C:\uaskstudents\backend\app\bg_routers\voice_router.py", line 69, in transcribe_audio
+    transcript = await voice_service.transcribe_audio(file_obj, filename=filename_with_ext)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\uaskstudents\backend\app\services\voice\voice_service.py", line 56, in transcribe_audio
+    resp = await self.client.audio.transcriptions.create(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\resources\audio\transcriptions.py", line 915, in create
+    return await self._post(
+           ^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1797, in post
+    return await self.request(cast_to, opts, stream=stream, stream_cls=stream_cls)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1597, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.BadRequestError: Error code: 400 - {'error': {'message': "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']", 'type': 'invalid_request_error', 'param': None, 'code': None}, 'usage': {'type': 'duration', 'seconds': 0}}
+Audio upload: filename=audio.webm, content_type=audio/webm;codecs=opus, detected_ext=.webm, size=40892
+HTTP Request: POST https://api.openai.com/v1/audio/transcriptions "HTTP/1.1 200 OK"
+Transcription completed in 0.97s
+HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Intent resolution took 1.50s: DETAILED_SOLUTION
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+[QUESTION_CACHE] Stored: f74bb74bf59798f0...
+Audio upload: filename=audio.webm, content_type=audio/webm;codecs=opus, detected_ext=.webm, size=50583
+HTTP Request: POST https://api.openai.com/v1/audio/transcriptions "HTTP/1.1 400 Bad Request"
+Transcription failed: Error code: 400 - {'error': {'message': "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']", 'type': 'invalid_request_error', 'param': None, 'code': None}, 'usage': {'type': 'duration', 'seconds': 0}}
+Transcription endpoint failed
+Traceback (most recent call last):
+  File "C:\uaskstudents\backend\app\bg_routers\voice_router.py", line 69, in transcribe_audio
+    transcript = await voice_service.transcribe_audio(file_obj, filename=filename_with_ext)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\uaskstudents\backend\app\services\voice\voice_service.py", line 56, in transcribe_audio
+    resp = await self.client.audio.transcriptions.create(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\resources\audio\transcriptions.py", line 915, in create
+    return await self._post(
+           ^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1797, in post
+    return await self.request(cast_to, opts, stream=stream, stream_cls=stream_cls)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1597, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.BadRequestError: Error code: 400 - {'error': {'message': "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']", 'type': 'invalid_request_error', 'param': None, 'code': None}, 'usage': {'type': 'duration', 'seconds': 0}}
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Audio upload: filename=audio.webm, content_type=audio/webm;codecs=opus, detected_ext=.webm, size=21492
+HTTP Request: POST https://api.openai.com/v1/audio/transcriptions "HTTP/1.1 400 Bad Request"
+Transcription failed: Error code: 400 - {'error': {'message': "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']", 'type': 'invalid_request_error', 'param': None, 'code': None}, 'usage': {'type': 'duration', 'seconds': 0}}
+Transcription endpoint failed
+Traceback (most recent call last):
+  File "C:\uaskstudents\backend\app\bg_routers\voice_router.py", line 69, in transcribe_audio
+    transcript = await voice_service.transcribe_audio(file_obj, filename=filename_with_ext)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\uaskstudents\backend\app\services\voice\voice_service.py", line 56, in transcribe_audio
+    resp = await self.client.audio.transcriptions.create(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\resources\audio\transcriptions.py", line 915, in create
+    return await self._post(
+           ^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1797, in post
+    return await self.request(cast_to, opts, stream=stream, stream_cls=stream_cls)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\openai\_base_client.py", line 1597, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.BadRequestError: Error code: 400 - {'error': {'message': "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']", 'type': 'invalid_request_error', 'param': None, 'code': None}, 'usage': {'type': 'duration', 'seconds': 0}}
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.

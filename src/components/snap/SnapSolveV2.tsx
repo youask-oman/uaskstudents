@@ -99,6 +99,11 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
     const [selectionBBox, setSelectionBBox] = React.useState<{ x: number, y: number, w: number, h: number } | null>(null);
     const [voiceTranscript, setVoiceTranscript] = React.useState<string | null>(null);
     const [voiceIntent, setVoiceIntent] = React.useState<string | null>(null);
+    const [errorDiagnosis, setErrorDiagnosis] = React.useState<{
+        what_is_wrong: string;
+        minimal_fix: string;
+        confidence?: number;
+    } | null>(null);
 
     // Import hook (assuming it's available as per plan)
     const {
@@ -193,29 +198,41 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                     }
                     break;
                 case "FIND_FIRST_ERROR":
-                    if (!selectionBBox || !imageSrc || !imageSize) {
+                    if (!selectionBBox || !imageSrc || !imageSize || !cropPixels) {
                         alert("Please select the region with the error first.");
                         break;
                     }
                     setStatus("executing" as any);
-                    // 1. Get blob of selection
+
+                    // Map selection coordinates from viewport to actual image coordinates
+                    // selectionBBox is normalized (0-1) relative to viewport
+                    // cropPixels is the current visible area in actual image pixels
+                    // We need to map the selection through the crop area
+
+                    const selectionInCrop = {
+                        x: selectionBBox.x * cropPixels.width,
+                        y: selectionBBox.y * cropPixels.height,
+                        width: selectionBBox.w * cropPixels.width,
+                        height: selectionBBox.h * cropPixels.height
+                    };
+
                     const activeCrop = {
-                        x: selectionBBox.x * imageSize.width,
-                        y: selectionBBox.y * imageSize.height,
-                        width: selectionBBox.w * imageSize.width,
-                        height: selectionBBox.h * imageSize.height
+                        x: cropPixels.x + selectionInCrop.x,
+                        y: cropPixels.y + selectionInCrop.y,
+                        width: selectionInCrop.width,
+                        height: selectionInCrop.height
                     };
 
                     const blob = await getCroppedImageBlob({
                         imageSrc,
                         crop: activeCrop,
                         rotation: rotation,
-                        maxEdge: 1000,
-                        quality: 0.85,
+                        maxEdge: 1500,  // Higher resolution for better OCR
+                        quality: 0.95,  // Higher quality to preserve text clarity
                         fullPage: false,
                     });
 
-                    // 2. Upload
+                    // 2. Upload to GPT-4o Vision endpoint
                     const errForm = new FormData();
                     errForm.append("file", blob, "selection.jpg");
                     errForm.append("transcript", transcript);
@@ -225,10 +242,17 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
 
                     if (errData.ok && errData.what_is_wrong) {
                         setVoiceIntent(`Error Found: ${errData.what_is_wrong}`);
-                        alert(`Diagnose: ${errData.what_is_wrong}\n\nFix: ${errData.minimal_fix}`);
+                        setErrorDiagnosis({
+                            what_is_wrong: errData.what_is_wrong,
+                            minimal_fix: errData.minimal_fix,
+                            confidence: errData.confidence
+                        });
                     } else if (errData.ok) {
                         setVoiceIntent("No error found.");
-                        alert("No specific error was identified in this region.");
+                        setErrorDiagnosis({
+                            what_is_wrong: "No errors detected",
+                            minimal_fix: "Your work appears correct!"
+                        });
                     } else {
                         throw new Error(errData.error || "Failed to analyze error");
                     }
@@ -686,14 +710,27 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                                     <div className="flex-1 text-right text-xs">
                                         {status === "transcribing" && <span className="text-indigo-600 font-medium animate-pulse">Transcribing...</span>}
                                         {status === "resolving_intent" && <span className="text-indigo-600 font-medium animate-pulse">Analyzing Command...</span>}
-                                        {status === "executing" && <span className="text-emerald-600 font-bold">Executing: {voiceIntent}</span>}
-                                        {voiceTranscript && status !== "transcribing" && (
+                                        {voiceTranscript && status !== "transcribing" && status !== "executing" && (
                                             <span className="text-slate-600 italic">"{voiceTranscript}"</span>
                                         )}
                                         {recorderError && <span className="text-rose-500 font-bold">Error: {recorderError}</span>}
                                     </div>
                                 )}
                             </div>
+
+                            {/* Voice Intent Display - Separate Section */}
+                            {voiceMode && status === "executing" && voiceIntent && (
+                                <div className="mt-3 p-3 bg-emerald-50 border-2 border-emerald-200 rounded-lg">
+                                    <div className="text-sm font-bold text-emerald-700 mb-1">
+                                        Executing: {voiceIntent}
+                                    </div>
+                                    {voiceTranscript && (
+                                        <div className="text-xs text-slate-600 italic">
+                                            "{voiceTranscript}"
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             <div className="flex flex-wrap items-center gap-3">
                                 <label className="text-xs font-semibold text-slate-500 flex items-center gap-2">
@@ -862,36 +899,69 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                 </div>
             )}
 
-            {solveResults.length > 0 && (
-                <div className="flex flex-col gap-4">
-                    <h4 className="text-sm font-bold text-slate-700">Solve Results</h4>
-                    {solveResults.map((res) => {
-                        const finalAnswer = res.solve_response_json?.final_answer?.answer_text
-                            || res.solve_response_json?.final_answer?.answer_latex
-                            || res.solve_response_json?.final_answer?.answer
-                            || res.solve_response_json?.final_answer;
-                        return (
-                            <div key={res.question_id} className="border border-slate-200 rounded-lg p-3">
-                                {!res.ok && (
-                                    <div className="text-xs text-rose-500 font-semibold">
-                                        {res.error || "Solve failed"}
-                                    </div>
-                                )}
-                                {res.ok && (
-                                    <div className="space-y-2">
-                                        <div className="text-xs text-slate-500">Question: {res.question_id}</div>
-                                        {typeof finalAnswer === "string" ? (
-                                            <UnifiedMathRenderer mode="prose" content={finalAnswer} />
-                                        ) : (
-                                            <div className="text-xs text-slate-500">Answer available in details.</div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
+            {errorDiagnosis && (
+                <div className="flex flex-col gap-4 mb-4">
+                    <h4 className="text-sm font-bold text-slate-700">Error Diagnosis</h4>
+
+                    {/* Diagnose section - Light Red */}
+                    <div className="border-2 border-rose-200 bg-rose-50 rounded-lg p-4">
+                        <div className="text-xs font-semibold text-rose-700 mb-1">Diagnose:</div>
+                        <UnifiedMathRenderer mode="prose" content={errorDiagnosis.what_is_wrong} />
+                    </div>
+
+                    {/* Fix section - Light Green */}
+                    <div className="border-2 border-emerald-200 bg-emerald-50 rounded-lg p-4">
+                        <div className="text-xs font-semibold text-emerald-700 mb-1">Fix:</div>
+                        <UnifiedMathRenderer mode="prose" content={errorDiagnosis.minimal_fix} />
+                    </div>
+
+                    {errorDiagnosis.confidence !== undefined && (
+                        <div className="text-xs text-slate-500">
+                            Confidence: {(errorDiagnosis.confidence * 100).toFixed(0)}%
+                        </div>
+                    )}
+                    <button
+                        onClick={() => setErrorDiagnosis(null)}
+                        className="text-xs text-slate-500 hover:text-slate-700 underline"
+                    >
+                        Dismiss
+                    </button>
                 </div>
-            )}
-        </div>
+            )
+            }
+
+            {
+                solveResults.length > 0 && (
+                    <div className="flex flex-col gap-4">
+                        <h4 className="text-sm font-bold text-slate-700">Solve Results</h4>
+                        {solveResults.map((res) => {
+                            const finalAnswer = res.solve_response_json?.final_answer?.answer_text
+                                || res.solve_response_json?.final_answer?.answer_latex
+                                || res.solve_response_json?.final_answer?.answer
+                                || res.solve_response_json?.final_answer;
+                            return (
+                                <div key={res.question_id} className="border border-slate-200 rounded-lg p-3">
+                                    {!res.ok && (
+                                        <div className="text-xs text-rose-500 font-semibold">
+                                            {res.error || "Solve failed"}
+                                        </div>
+                                    )}
+                                    {res.ok && (
+                                        <div className="space-y-2">
+                                            <div className="text-xs text-slate-500">Question: {res.question_id}</div>
+                                            {typeof finalAnswer === "string" ? (
+                                                <UnifiedMathRenderer mode="prose" content={finalAnswer} />
+                                            ) : (
+                                                <div className="text-xs text-slate-500">Answer available in details.</div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )
+            }
+        </div >
     );
 }

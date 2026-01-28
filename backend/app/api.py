@@ -6518,3 +6518,155 @@ async def list_public_plans(session: Session = Depends(get_session)):
     """Public endpoint to list active subscription plans for the pricing page"""
     return session.exec(select(Plan).where(Plan.is_active == True)).all()
 
+
+# ========================================================================
+# LOCAL FIND ERROR ENDPOINT (NO LLM)
+# ========================================================================
+
+@api_router.post("/find_error_local")
+@limiter.limit("20/minute")
+async def find_error_local(
+    request: Request,
+    file: UploadFile = File(...),
+    selection_bbox_json: str = Form(...),
+    max_lines: int = Form(6),
+    user_id: int = Query(...),
+    session: Session = Depends(get_session)
+):
+    """
+    Local error detection using Pix2Text + SymPy (NO OpenAI).
+    
+    Feature flag: FEATURE_LOCAL_FIND_ERROR (default: false)
+    """
+    from app.schemas.find_error_local_schemas import (
+        FindErrorLocalResponse, SelectionBBox, OCRResult, AnalysisResult, TimingsMs
+    )
+    from app.services.math.error_localizer import analyze_error
+    
+    request_id = str(uuid.uuid4())
+    start_time = time.time()
+    timings = {"crop": 0, "ocr": 0, "parse": 0, "check": 0, "total": 0}
+    
+    # Feature flag check
+    if not os.getenv("FEATURE_LOCAL_FIND_ERROR", "false").lower() == "true":
+        return FindErrorLocalResponse(
+            ok=False,
+            request_id=request_id,
+            error={"code": "DISABLED", "message": "Local find error feature is disabled"},
+            timings_ms=TimingsMs(**timings)
+        )
+    
+    try:
+        # Parse selection bbox
+        selection_bbox = SelectionBBox(**json.loads(selection_bbox_json))
+        
+        # Read image
+        t0 = time.time()
+        image_bytes = await file.read()
+        
+        # Validate size
+        if len(image_bytes) > 10 * 1024 * 1024:  # 10MB
+            return FindErrorLocalResponse(
+                ok=False,
+                request_id=request_id,
+                error={"code": "FILE_TOO_LARGE", "message": "Image exceeds 10MB"},
+                timings_ms=TimingsMs(**timings)
+            )
+        
+        # Load image and crop to selection
+        img = Image.open(io.BytesIO(image_bytes))
+        img_width, img_height = img.size
+        
+        # Convert normalized bbox to pixels
+        x_px = int(selection_bbox.x * img_width)
+        y_px = int(selection_bbox.y * img_height)
+        w_px = int(selection_bbox.w * img_width)
+        h_px = int(selection_bbox.h * img_height)
+        
+        # Clamp to image bounds
+        x_px = max(0, min(x_px, img_width))
+        y_px = max(0, min(y_px, img_height))
+        w_px = max(1, min(w_px, img_width - x_px))
+        h_px = max(1, min(h_px, img_height - y_px))
+        
+        # Check minimum size
+        if w_px < 25 or h_px < 25:
+            return FindErrorLocalResponse(
+                ok=False,
+                request_id=request_id,
+                selection_bbox=selection_bbox,
+                error={"code": "BBOX_TOO_SMALL", "message": "Selection too small (min 25x25 pixels)"},
+                timings_ms=TimingsMs(**timings)
+            )
+        
+        # Crop region
+        cropped = img.crop((x_px, y_px, x_px + w_px, y_px + h_px))
+        
+        # Convert to bytes
+        crop_buffer = io.BytesIO()
+        cropped.save(crop_buffer, format='PNG')
+        crop_bytes = crop_buffer.getvalue()
+        
+        timings["crop"] = int((time.time() - t0) * 1000)
+        
+        # OCR
+        t1 = time.time()
+        ocr_result = ocr_service.recognize_region(crop_bytes, engine_name="local")
+        timings["ocr"] = int((time.time() - t1) * 1000)
+        
+        if not ocr_result.get("text"):
+            return FindErrorLocalResponse(
+                ok=False,
+                request_id=request_id,
+                selection_bbox=selection_bbox,
+                ocr=OCRResult(**ocr_result),
+                error={"code": "NO_TEXT", "message": "No text detected in selection"},
+                timings_ms=TimingsMs(**timings)
+            )
+        
+        # Analyze
+        t2 = time.time()
+        analysis = analyze_error(ocr_result["text"], max_lines=max_lines)
+        timings["check"] = int((time.time() - t2) * 1000)
+        timings["total"] = int((time.time() - start_time) * 1000)
+        
+        # Check confidence threshold
+        if analysis["confidence"] < 0.3:
+            return FindErrorLocalResponse(
+                ok=False,
+                request_id=request_id,
+                selection_bbox=selection_bbox,
+                ocr=OCRResult(**ocr_result),
+                error={
+                    "code": "LOW_CONFIDENCE",
+                    "message": "Could not reliably parse the selection. Try re-selecting or typing manually."
+                },
+                timings_ms=TimingsMs(**timings)
+            )
+        
+        return FindErrorLocalResponse(
+            ok=True,
+            request_id=request_id,
+            selection_bbox=selection_bbox,
+            ocr=OCRResult(**ocr_result),
+            analysis=AnalysisResult(**analysis),
+            timings_ms=TimingsMs(**timings)
+        )
+        
+    except json.JSONDecodeError:
+        return FindErrorLocalResponse(
+            ok=False,
+            request_id=request_id,
+            error={"code": "INVALID_BBOX", "message": "Invalid selection_bbox JSON"},
+            timings_ms=TimingsMs(**timings)
+        )
+    except Exception as e:
+        logging.exception("Local find error failed")
+        timings["total"] = int((time.time() - start_time) * 1000)
+        return FindErrorLocalResponse(
+            ok=False,
+            request_id=request_id,
+            error={"code": "INTERNAL_ERROR", "message": str(e)},
+            timings_ms=TimingsMs(**timings)
+        )
+

@@ -48,14 +48,25 @@ async def transcribe_audio(
         _, ext = os.path.splitext(file.filename or "")
         if not ext:
             # Fallback based on content type
-            if file.content_type == "audio/wav": ext = ".wav"
-            elif file.content_type == "audio/mp4": ext = ".mp4"
-            elif file.content_type == "audio/mpeg": ext = ".mp3"
+            # Handle complex MIME types like "audio/webm;codecs=opus"
+            content_type = (file.content_type or "").split(";")[0].strip()
+            if "wav" in content_type: ext = ".wav"
+            elif "mp4" in content_type or "m4a" in content_type: ext = ".m4a"
+            elif "mpeg" in content_type or "mp3" in content_type: ext = ".mp3"
+            elif "ogg" in content_type: ext = ".ogg"
+            elif "webm" in content_type: ext = ".webm"
+            elif "flac" in content_type: ext = ".flac"
             else: ext = ".webm" # Default safe bet for web audio
-            
-        file_obj.name = f"audio{ext}" # Hint for Whisper
         
-        transcript = await voice_service.transcribe_audio(file_obj, filename=file_obj.name)
+        # Diagnostic logging
+        logger.info(f"Audio upload: filename={file.filename}, content_type={file.content_type}, detected_ext={ext}, size={len(audio_bytes)}")
+        
+        # Create a proper file-like object with name attribute
+        # OpenAI's library uses the filename to determine format
+        filename_with_ext = f"audio{ext}"
+        file_obj.name = filename_with_ext  # Set the name attribute on BytesIO
+        
+        transcript = await voice_service.transcribe_audio(file_obj, filename=filename_with_ext)
         
         return TranscribeResponse(
             ok=True, 

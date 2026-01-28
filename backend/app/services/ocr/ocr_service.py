@@ -403,6 +403,83 @@ class OCRService:
         except Exception as e:
             logger.error(f"Unexpected OCR error: {e}")
             raise OCREngineError(f"OCR processing failed: {e}", engine=engine_name)
+    
+    def recognize_region(self, image_bytes: bytes, engine_name: str = "local") -> Dict[str, Any]:
+        """
+        Recognize text in an image region (for local find error feature).
+        
+        Args:
+            image_bytes: Raw image bytes
+            engine_name: Engine to use (default: "local" for privacy)
+            
+        Returns:
+            {
+                "text": str,  # Normalized text
+                "raw": str,   # Raw OCR output
+                "confidence": float
+            }
+        """
+        import tempfile
+        from PIL import Image, ImageEnhance
+        import io
+        
+        try:
+            # Load image
+            img = Image.open(io.BytesIO(image_bytes))
+            
+            # Pre-processing for better OCR
+            # Convert to grayscale
+            if img.mode != 'L':
+                img = img.convert('L')
+            
+            # Auto-contrast
+            enhancer = ImageEnhance.Contrast(img)
+            img = enhancer.enhance(1.5)
+            
+            # Upscale if too small (helps with tiny handwriting)
+            if img.width < 100 or img.height < 50:
+                scale = 2
+                img = img.resize((img.width * scale, img.height * scale), Image.Resampling.LANCZOS)
+            
+            # Save to temp file for OCR engine
+            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp:
+                img.save(tmp.name, 'PNG')
+                tmp_path = tmp.name
+            
+            try:
+                # Use local engine for privacy
+                engine = self.get_engine(engine_name)
+                result = engine.process(tmp_path)
+                
+                raw_text = result.get("markdown", "")
+                
+                # Basic normalization
+                normalized = raw_text.strip()
+                
+                # Cap length
+                if len(raw_text) > 500:
+                    raw_text = raw_text[:500] + "..."
+                
+                return {
+                    "text": normalized,
+                    "raw": raw_text,
+                    "confidence": result.get("confidence", 0.5)
+                }
+            finally:
+                # Cleanup temp file
+                import os
+                try:
+                    os.unlink(tmp_path)
+                except:
+                    pass
+                    
+        except Exception as e:
+            logger.error(f"Region recognition failed: {e}")
+            return {
+                "text": "",
+                "raw": "",
+                "confidence": 0.0
+            }
 
 
 # Singleton instance

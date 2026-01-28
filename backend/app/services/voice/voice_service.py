@@ -52,12 +52,20 @@ class VoiceService:
         try:
             # Note: 'whisper-1' is the standard model identifier for audio transcriptions
             # The user requested 'gpt-4o-mini-transcribe', but standard endpoint uses whisper-1.
-            # We will use whisper-1 as it's the current production standard.
+            # Use explicit tuple format (filename, file_content, content_type) for maximum robustness
+            # This avoids issues with BytesIO .name attribute or missing MIME types
+            mime_type = "audio/webm"
+            if filename.endswith(".wav"): mime_type = "audio/wav"
+            elif filename.endswith(".mp3"): mime_type = "audio/mpeg"
+            elif filename.endswith(".m4a"): mime_type = "audio/mp4"
+            
             resp = await self.client.audio.transcriptions.create(
                 model="whisper-1", 
-                file=(filename, file_obj),
+                file=(filename, file_obj.read(), mime_type),
                 response_format="json"
             )
+            file_obj.seek(0) # Reset pointer just in case
+            
             duration = time.time() - start
             logger.info(f"Transcription completed in {duration:.2f}s")
             return resp.text
@@ -124,6 +132,19 @@ class VoiceService:
                 normalized_transcript=transcript
             )
 
+    def _fix_latex(self, text: Optional[str]) -> Optional[str]:
+        """Ensures LaTeX backslashes are properly escaped."""
+        if not text:
+            return text
+        # If we see 'ext{' instead of '\text{', restore the backslash
+        # This handles the case where \t was cleaned or stripped
+        fixed = text.replace("ext{", "\\text{")
+        
+        # Ensure 'text{' commands are prefixed with backslash if missing
+        import re
+        fixed = re.sub(r'(?<!\\)text\{', r'\\text{', fixed)
+        
+        return fixed
 
     async def find_error(self, image_bytes: bytes, transcript: str = "") -> FindErrorResponse:
         """Analyze image crop for mathematical errors."""
@@ -132,18 +153,33 @@ class VoiceService:
         
         b64_image = base64.b64encode(image_bytes).decode("utf-8")
         
-        system_prompt = """You are an expert math tutor. 
-        Analyze the provided image snippet, which contains a mathematical step or derivation.
-        Determine if there is a mistake in this specific step.
-        If there is a mistake, explain what is wrong and provide a minimal fix.
-        If it seems correct or incomplete, state that.
-        """
+        system_prompt = """You are an expert math tutor analyzing handwritten mathematical work.
+
+CRITICAL: Read ALL text in the image VERY CAREFULLY. Pay special attention to:
+- Every digit in every number (don't skip digits)
+- All mathematical operators (+, -, ×, ÷, =)
+- The complete equation from start to finish
+
+Your task:
+1. First, transcribe EXACTLY what you see written in the image
+2. Then check if the mathematical statement is correct
+3. If incorrect, explain what's wrong and provide the correct answer
+
+Formatting Rules:
+- Use LaTeX for all mathematical expressions
+- CRITICAL: Use DOUBLE BACKSLASHES for all LaTeX commands to ensure validity in JSON.
+  - Example: Use \\text{...} instead of \text{...}
+  - Example: Use \\frac{...} instead of \frac{...}
+- Keep explanations concise and helpful
+
+Be extremely precise with numbers - if you see "93", don't read it as "43" or "3".
+"""
         
-        user_text = f"User asked: '{transcript or 'Find my mistake'}'"
+        user_text = f"User asked: '{transcript or 'Find my mistake'}'\n\nPlease analyze this mathematical work carefully."
         
         try:
             completion = await self.client.beta.chat.completions.parse(
-                model="gpt-4o", # Vision capable
+                model="gpt-5",  # Latest GPT-5 with vision
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": [
@@ -154,6 +190,11 @@ class VoiceService:
                 response_format=FindErrorResponse,
             )
             result = completion.choices[0].message.parsed
+            
+            # Post-process to fix LaTeX escaping issues
+            result.what_is_wrong = self._fix_latex(result.what_is_wrong)
+            result.minimal_fix = self._fix_latex(result.minimal_fix)
+            
             # API level success, regardless of math correctness
             result.ok = True 
             return result
