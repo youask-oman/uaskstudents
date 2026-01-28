@@ -104,6 +104,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
         minimal_fix: string;
         confidence?: number;
     } | null>(null);
+    const [localSteps, setLocalSteps] = React.useState<string[] | null>(null);
 
     // Import hook (assuming it's available as per plan)
     const {
@@ -139,13 +140,23 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
             else if (audioBlob.type.includes("id3")) ext = "mp3"; // rare recording format
             else if (audioBlob.type.includes("mpeg")) ext = "mp3";
 
-            // 1. Transcribe
+            // 1. Transcribe with timeout
             const formData = new FormData();
             formData.append("file", audioBlob, `audio.${ext}`);
-            const transcribeRes = await fetch("/api/v1/audio/transcribe", { method: "POST", body: formData });
-            if (!transcribeRes.ok) throw new Error("Transcription failed");
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout for transcription
+
+            const transcribeRes = await fetch("/api/v1/audio/transcribe", {
+                method: "POST",
+                body: formData,
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
+            if (!transcribeRes.ok) throw new Error(`Transcription failed: ${transcribeRes.status}`);
             const transcribeData = await transcribeRes.json();
-            if (!transcribeData.ok) throw new Error(transcribeData.error);
+            if (!transcribeData.ok) throw new Error(transcribeData.error || "Unknown transcription error");
 
             const transcript = transcribeData.transcript;
             setVoiceTranscript(transcript);
@@ -360,13 +371,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
         }
     }, [imageSrc, status]);
 
-    React.useEffect(() => {
-        if (isBusy && abortRef.current) {
-            abortRef.current.abort();
-            abortRef.current = null;
-            setIsBusy(false);
-        }
-    }, [file, pageNumber, cropPixels, rotation, fullPage, isBusy]);
+
 
     const handleExtract = async () => {
         if (!file || !imageSrc) return;
@@ -406,7 +411,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
             const requestHash = await buildRequestHash(fileBytes, meta);
             const cache = loadCache();
             if (cache[requestHash]) {
-                setExtractResult(cache[requestHash]);
+                setExtractResult(cache[requestHash] as ExtractResponse);
                 setStatus("ready");
                 setIsBusy(false);
                 return;
@@ -456,12 +461,13 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
 
             const data = await res.json();
             setExtractResult(data);
-            if (data?.questions?.length) {
-                const confidences = data.questions.map((q) => q.confidence ?? 0);
-                const avgConfidence = confidences.reduce((sum, v) => sum + v, 0) / confidences.length;
+
+            if (data?.questions && data.questions.length > 0) {
+                const confidences = data.questions.map((q: any) => q.confidence ?? 0);
+                const avgConfidence = confidences.reduce((sum: number, v: number) => sum + v, 0) / confidences.length;
                 const warnings = data.questions
-                    .filter((q) => q.reason_if_invalid && !q.is_valid_math)
-                    .map((q) => q.reason_if_invalid)
+                    .filter((q: any) => q.reason_if_invalid && !q.is_valid_math)
+                    .map((q: any) => q.reason_if_invalid)
                     .filter(Boolean);
                 setOcrMetadata({
                     ocr_confidence: avgConfidence,
@@ -472,7 +478,8 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
             }
             cache[requestHash] = data;
             saveCache(cache);
-            setStatus("ready");
+            setStatus(data.ok ? "ready" : "error");
+            if (!data.ok) setError(data.error || "Extraction returned error state.");
         } catch (err) {
             if (!(err instanceof DOMException && err.name === "AbortError")) {
                 const message = err instanceof Error ? err.message : "Extract failed";
@@ -605,9 +612,14 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
     }, [extractResult, selectedIds, requestedMode]);
 
     const handleFindErrorLocal = async () => {
-        if (!selectionBBox || !imageSrc || !imageSize || !cropPixels) return;
+        if (!selectionBBox || !imageSrc || !imageSize || !cropPixels) {
+            setError("Selection data incomplete. Please re-circle.");
+            return;
+        }
 
         setStatus("executing" as any);
+        setIsBusy(true);
+        setError(null);
         try {
             // 1. Calculate selection coordinates in image space
             const selectionInCrop = {
@@ -634,42 +646,50 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
             });
 
             // 3. Convert blob to base64
-            const reader = new FileReader();
-            reader.readAsDataURL(blob);
-            reader.onloadend = async () => {
-                const base64data = reader.result?.toString().split(',')[1];
+            const base64data = await blobToBase64(blob);
 
-                // 4. Call API
-                const payload = {
-                    selection_bbox: selectionBBox,
-                    image_data: base64data,
-                    ocr_hint: "math",
-                    max_lines: 6
-                };
+            // 4. Call API with timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
 
-                const res = await fetch("/api/v1/find_error_local", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-
-                if (data.ok && data.analysis) {
-                    setVoiceIntent("Error Found (Local)");
-                    setErrorDiagnosis({
-                        what_is_wrong: data.analysis.what_is_wrong,
-                        minimal_fix: data.analysis.minimal_fix,
-                        confidence: data.analysis.confidence
-                    });
-                } else {
-                    setError(data.error?.message || "No error detected local");
-                }
-
-                setStatus("idle" as any);
+            const payload = {
+                selection_bbox: selectionBBox,
+                image_data: base64data,
+                ocr_hint: "math",
+                max_lines: 6
             };
+
+            const res = await fetch("/api/v1/find_error_local", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
+            if (!res.ok) {
+                const errText = await res.text();
+                throw new Error(errText || `Server error: ${res.status}`);
+            }
+
+            const data = await res.json();
+
+            if (data.ok && data.analysis) {
+                setVoiceIntent(data.analysis.first_wrong_line_index !== null ? "Error Found (Local)" : "No Error Found");
+                setErrorDiagnosis({
+                    what_is_wrong: data.analysis.what_is_wrong,
+                    minimal_fix: data.analysis.minimal_fix,
+                    confidence: data.analysis.confidence
+                });
+                setLocalSteps(data.local_steps || null);
+            } else {
+                setError(data.error?.message || "No error detected local");
+            }
         } catch (e: any) {
-            setError(e.message);
+            setError(e.name === 'AbortError' ? "Request timed out. Please try again." : e.message);
+        } finally {
             setStatus("idle" as any);
+            setIsBusy(false);
         }
     };
 
@@ -848,30 +868,22 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                                     <button
                                         type="button"
                                         onClick={handleFindErrorLocal}
-                                        disabled={status === "executing"}
-                                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-full shadow-lg flex items-center gap-2 transition-all animate-in fade-in slide-in-from-bottom-2"
+                                        disabled={status === "executing" || isBusy}
+                                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-full shadow-lg flex items-center gap-2 transition-all animate-in fade-in slide-in-from-bottom-2 disabled:opacity-50"
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                        </svg>
-                                        Find Error (Local)
-                                    </button>
-                                </div>
-                            )}
-
-                            {/* Local Find Error Trigger */}
-                            {voiceMode && selectionBBox && (
-                                <div className="mt-2 flex justify-center">
-                                    <button
-                                        type="button"
-                                        onClick={handleFindErrorLocal}
-                                        disabled={status === "executing"}
-                                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-full shadow-lg flex items-center gap-2 transition-all animate-in fade-in slide-in-from-bottom-2"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                        </svg>
-                                        Find Error (Local)
+                                        {status === "executing" ? (
+                                            <>
+                                                <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                Analyzing...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                                </svg>
+                                                Find Error (Local)
+                                            </>
+                                        )}
                                     </button>
                                 </div>
                             )}
@@ -901,7 +913,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
 
             {error && <div className="text-xs text-rose-500 font-semibold">{error}</div>}
 
-            {extractResult && (
+            {extractResult && extractResult.questions && extractResult.questions.length > 0 && (
                 <div className="flex flex-col gap-4">
                     <div className="flex items-center justify-between">
                         <h4 className="text-sm font-bold text-slate-700">Detected Questions</h4>
@@ -909,7 +921,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                             Select all valid
                         </button>
                     </div>
-                    {extractResult.notes?.length > 0 && (
+                    {extractResult.notes && extractResult.notes.length > 0 && (
                         <div className="text-xs text-slate-500">
                             Notes: {extractResult.notes.join(" - ")}
                         </div>
@@ -1002,6 +1014,19 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                 </div>
             )}
 
+            {localSteps && localSteps.length > 0 && (
+                <div className="flex flex-col gap-4 mb-4">
+                    <h4 className="text-sm font-bold text-slate-700">Official Solution (Local)</h4>
+                    <div className="border-2 border-indigo-200 bg-indigo-50 rounded-lg p-4 space-y-2">
+                        {localSteps.map((step, idx) => (
+                            <div key={idx} className="text-sm">
+                                <UnifiedMathRenderer mode="prose" content={step} />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {errorDiagnosis && (
                 <div className="flex flex-col gap-4 mb-4">
                     <h4 className="text-sm font-bold text-slate-700">Error Diagnosis</h4>
@@ -1038,10 +1063,11 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                     <div className="flex flex-col gap-4">
                         <h4 className="text-sm font-bold text-slate-700">Solve Results</h4>
                         {solveResults.map((res) => {
-                            const finalAnswer = res.solve_response_json?.final_answer?.answer_text
-                                || res.solve_response_json?.final_answer?.answer_latex
-                                || res.solve_response_json?.final_answer?.answer
-                                || res.solve_response_json?.final_answer;
+                            const solveData = res.solve_response_json as any;
+                            const finalAnswer = solveData?.final_answer?.answer_text
+                                || solveData?.final_answer?.answer_latex
+                                || solveData?.final_answer?.answer
+                                || solveData?.final_answer;
                             return (
                                 <div key={res.question_id} className="border border-slate-200 rounded-lg p-3">
                                     {!res.ok && (

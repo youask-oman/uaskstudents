@@ -404,23 +404,25 @@ class OCRService:
             logger.error(f"Unexpected OCR error: {e}")
             raise OCREngineError(f"OCR processing failed: {e}", engine=engine_name)
     
-    def recognize_region(self, image_bytes: bytes, engine_name: str = "local") -> Dict[str, Any]:
+    def recognize_region(self, image_bytes: bytes, engine_name: str = "local", fallback_to_vlm: bool = True) -> Dict[str, Any]:
         """
         Recognize text in an image region (for local find error feature).
         
         Args:
             image_bytes: Raw image bytes
             engine_name: Engine to use (default: "local" for privacy)
+            fallback_to_vlm: If true, falls back to VLM if local engine fails or yields low confidence
             
         Returns:
             {
                 "text": str,  # Normalized text
                 "raw": str,   # Raw OCR output
-                "confidence": float
+                "confidence": float,
+                "engine_used": str
             }
         """
         import tempfile
-        from PIL import Image, ImageEnhance
+        from PIL import Image, ImageEnhance, ImageOps
         import io
         
         try:
@@ -428,16 +430,17 @@ class OCRService:
             img = Image.open(io.BytesIO(image_bytes))
             
             # Pre-processing for better OCR
-            # Convert to grayscale
+            # 1. Convert to grayscale and normalize
             if img.mode != 'L':
                 img = img.convert('L')
+            img = ImageOps.autocontrast(img)
             
-            # Auto-contrast
+            # 2. Enhance contrast significantly for handwriting
             enhancer = ImageEnhance.Contrast(img)
-            img = enhancer.enhance(1.5)
+            img = enhancer.enhance(2.0)
             
-            # Upscale if too small (helps with tiny handwriting)
-            if img.width < 100 or img.height < 50:
+            # 3. Upscale if too small (crucial for handwriting accuracy)
+            if img.width < 400 or img.height < 200:
                 scale = 2
                 img = img.resize((img.width * scale, img.height * scale), Image.Resampling.LANCZOS)
             
@@ -447,23 +450,36 @@ class OCRService:
                 tmp_path = tmp.name
             
             try:
-                # Use local engine for privacy
+                # Attempt with preferred engine
                 engine = self.get_engine(engine_name)
                 result = engine.process(tmp_path)
                 
-                raw_text = result.get("markdown", "")
+                raw_text = result.get("markdown", "") or result.get("text", "")
+                confidence = result.get("confidence", 0.5)
+                
+                # Check if result is poor (empty or extremely short for a mathematical region)
+                is_poor = not raw_text.strip() or (len(raw_text.strip()) < 2 and engine_name == "local")
+
+                if is_poor and fallback_to_vlm and engine_name != "vlm":
+                    logger.warning(f"Local OCR result poor/empty. Falling back to VLM for region...")
+                    vlm_result = self.vlm_engine.process(tmp_path)
+                    raw_text = vlm_result.get("markdown", "")
+                    confidence = vlm_result.get("confidence", 0.9)
+                    engine_name = "vlm"
                 
                 # Basic normalization
                 normalized = raw_text.strip()
                 
-                # Cap length
-                if len(raw_text) > 500:
-                    raw_text = raw_text[:500] + "..."
+                # Cap length for logs/payload
+                display_raw = raw_text
+                if len(display_raw) > 500:
+                    display_raw = display_raw[:500] + "..."
                 
                 return {
                     "text": normalized,
-                    "raw": raw_text,
-                    "confidence": result.get("confidence", 0.5)
+                    "raw": display_raw,
+                    "confidence": confidence,
+                    "engine_used": engine_name
                 }
             finally:
                 # Cleanup temp file
@@ -478,7 +494,8 @@ class OCRService:
             return {
                 "text": "",
                 "raw": "",
-                "confidence": 0.0
+                "confidence": 0.0,
+                "engine_used": engine_name
             }
 
 

@@ -16,6 +16,7 @@ from app.services.ocr.crop_service import STORAGE_DIR
 from app.services.math.error_localizer import (
     OCRPayload, Budget, find_first_error_from_ocr
 )
+from app.services.math.step_generator import generate_local_steps
 
 router = APIRouter()
 
@@ -38,6 +39,7 @@ class FindErrorLocalResponse(BaseModel):
     selection_bbox: BBox
     ocr: Optional[Dict[str, Any]] = None
     analysis: Optional[Dict[str, Any]] = None
+    local_steps: Optional[List[str]] = None
     error: Optional[Dict[str, str]] = None
     timings_ms: Dict[str, int]
 
@@ -136,7 +138,14 @@ def find_error_local(req: FindErrorLocalRequest, session: Session = Depends(get_
             )
 
         t_crop0 = time.perf_counter()
-        region, crop_err = crop_region(img, req.selection_bbox)
+        if req.image_data:
+            # If base64 is provided, the frontend already cropped to the selection
+            region = img
+            crop_err = None
+        else:
+            # Hash-based lookup requires cropping relative to the source image
+            region, crop_err = crop_region(img, req.selection_bbox)
+        
         crop_ms = int((time.perf_counter()-t_crop0)*1000)
         if crop_err:
             return FindErrorLocalResponse(
@@ -166,6 +175,12 @@ def find_error_local(req: FindErrorLocalRequest, session: Session = Depends(get_
         result = find_first_error_from_ocr(ocr_payload, transcript_hint="find_error", max_lines=req.max_lines, budget=budget)
         chk_ms = int((time.perf_counter()-t_chk0)*1000)
 
+        # Generate local steps if no definite error or if solving a prompt
+        local_steps = []
+        if not result.first_wrong_line_index or result.confidence < 0.3:
+            local_steps = generate_local_steps(norm_text)
+
+
         return FindErrorLocalResponse(
             ok=True,
             request_id=request_id,
@@ -190,6 +205,7 @@ def find_error_local(req: FindErrorLocalRequest, session: Session = Depends(get_
                     } for r in result.per_line
                 ]
             },
+            local_steps=local_steps,
             timings_ms={
                 "crop": crop_ms,
                 "ocr": ocr_ms,

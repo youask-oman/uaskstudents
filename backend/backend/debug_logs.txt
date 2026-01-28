@@ -797,3 +797,88 @@ Database connection successful and tables created.
 Database connection successful and tables created.
 Attempting to connect to database (Attempt 1/10)...
 Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Initializing Local Pix2Text engine...
+Use DocLayout-YOLO model for Layout Analysis: C:\Users\loaia\AppData\Roaming\pix2text\1.1\layout-docyolo\doclayout_yolo_docstructbench_imgsz1024.pt
+use model: C:\Users\loaia\AppData\Roaming\cnocr\2.3\densenet_lite_136-gru\cnocr-v2.3-densenet_lite_136-gru-epoch=004-ft-model.onnx
+use model: C:\Users\loaia\AppData\Roaming\cnstd\1.2\ppocr\ch_PP-OCRv5_det\ch_PP-OCRv5_det_infer.onnx
+Use model path for MFD: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfd-1.5-onnx\pix2text-mfd-1.5.onnx
+Use model dir for LatexOCR: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfr-1.5-onnx
+Loaded Pix2Text MFR model mfr-1.5 to: backend-onnx, device-cpu
+Pix2Text initialized successfully
+LocalEngine processed image in 5398ms
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Initializing Local Pix2Text engine...
+Use DocLayout-YOLO model for Layout Analysis: C:\Users\loaia\AppData\Roaming\pix2text\1.1\layout-docyolo\doclayout_yolo_docstructbench_imgsz1024.pt
+use model: C:\Users\loaia\AppData\Roaming\cnocr\2.3\densenet_lite_136-gru\cnocr-v2.3-densenet_lite_136-gru-epoch=004-ft-model.onnx
+use model: C:\Users\loaia\AppData\Roaming\cnstd\1.2\ppocr\ch_PP-OCRv5_det\ch_PP-OCRv5_det_infer.onnx
+Use model path for MFD: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfd-1.5-onnx\pix2text-mfd-1.5.onnx
+Use model dir for LatexOCR: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfr-1.5-onnx
+Loaded Pix2Text MFR model mfr-1.5 to: backend-onnx, device-cpu
+Pix2Text initialized successfully
+LocalEngine processed image in 5343ms
+LocalEngine processed image in 1666ms
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Initializing Local Pix2Text engine...
+Use DocLayout-YOLO model for Layout Analysis: C:\Users\loaia\AppData\Roaming\pix2text\1.1\layout-docyolo\doclayout_yolo_docstructbench_imgsz1024.pt
+use model: C:\Users\loaia\AppData\Roaming\cnocr\2.3\densenet_lite_136-gru\cnocr-v2.3-densenet_lite_136-gru-epoch=004-ft-model.onnx
+use model: C:\Users\loaia\AppData\Roaming\cnstd\1.2\ppocr\ch_PP-OCRv5_det\ch_PP-OCRv5_det_infer.onnx
+Use model path for MFD: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfd-1.5-onnx\pix2text-mfd-1.5.onnx
+Use model dir for LatexOCR: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfr-1.5-onnx
+Loaded Pix2Text MFR model mfr-1.5 to: backend-onnx, device-cpu
+Pix2Text initialized successfully
+LocalEngine processed image in 4496ms
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Initializing Local Pix2Text engine...
+Use DocLayout-YOLO model for Layout Analysis: C:\Users\loaia\AppData\Roaming\pix2text\1.1\layout-docyolo\doclayout_yolo_docstructbench_imgsz1024.pt
+use model: C:\Users\loaia\AppData\Roaming\cnocr\2.3\densenet_lite_136-gru\cnocr-v2.3-densenet_lite_136-gru-epoch=004-ft-model.onnx
+use model: C:\Users\loaia\AppData\Roaming\cnstd\1.2\ppocr\ch_PP-OCRv5_det\ch_PP-OCRv5_det_infer.onnx
+Use model path for MFD: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfd-1.5-onnx\pix2text-mfd-1.5.onnx
+Use model dir for LatexOCR: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfr-1.5-onnx
+Loaded Pix2Text MFR model mfr-1.5 to: backend-onnx, device-cpu
+Pix2Text initialized successfully
+LocalEngine processed image in 4175ms
+LocalEngine processed image in 898ms
+LocalEngine processed image in 2741ms
+LocalEngine processed image in 2161ms
+LocalEngine processed image in 1226ms
+Local OCR result poor/empty. Falling back to VLM for region...
+Region recognition failed: litellm is not installed. VLM engine requires litellm.
+LocalEngine processed image in 3051ms
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+extract_questions input metrics: size=959x765 stddev=67.00 white=0.901
+HTTP Request: POST https://api.openai.com/v1/responses "HTTP/1.1 200 OK"
+extract_questions response raw content: '{"ok":true,"error":null,"is_math_page":true,"notes":["Extracted four questions: 14-17"],"questions":[{"id":"q14","text":"How many students studied for more than 8 hours in the week? A: 22   B: 29   C: 42   D: 50   E: None of these","confidence":0.92,"is_valid_math":true,"reason_if_invalid":"OK","type":"statistics","bbox":{"x":0.05,"y":0.05,"w":0.9,"h":0.16},"requires_figure":false,"figure_type":nu...(truncated)' (len=1620)
+HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+[QUESTION_CACHE] Stored: bdb505d475743144...
+extract_questions input metrics: size=391x312 stddev=73.07 white=0.842
+HTTP Request: POST https://api.openai.com/v1/responses "HTTP/1.1 200 OK"
+extract_questions response raw content: '{"ok":false,"error":"Could not read text","is_math_page":null,"notes":null,"questions":null}' (len=92)
+extract_questions input metrics: size=391x312 stddev=72.62 white=0.845
+HTTP Request: POST https://api.openai.com/v1/responses "HTTP/1.1 200 OK"
+extract_questions incomplete response; status=incomplete reason=max_output_tokens
+extract_questions input metrics: size=844x674 stddev=67.14 white=0.867
+HTTP Request: POST https://api.openai.com/v1/responses "HTTP/1.1 200 OK"
+extract_questions incomplete response; status=incomplete reason=max_output_tokens
+HTTP Request: POST https://api.openai.com/v1/responses "HTTP/1.1 200 OK"
+extract_questions response raw content: '{"ok":true,"error":null,"is_math_page":true,"notes":["20 addition problems detected"],"questions":[{"id":"q1","text":"1) 80 + 80 = ________","confidence":0.9,"is_valid_math":true,"reason_if_invalid":"OK","type":"algebra","bbox":{"x":0,"y":0,"w":1,"h":0.05},"requires_figure":false,"figure_type":null,"figure_bbox":{"x":0,"y":0,"w":0.008,"h":0.001},"figure_role":null},{"id":"q2","text":"2) 80 + 60 = ...(truncated)' (len=5560)
+HTTP Request: POST https://api.openai.com/v1/responses "HTTP/1.1 200 OK"
+extract_questions response raw content: '{"ok":true,"error":null,"is_math_page":true,"notes":["Extracted 4 questions visible on page"],"questions":[{"id":"q1","text":"Gloria and Bob and five other people walk through a doorway one at a time. In how many ways can the seven people go through the doorway if Bob goes through the doorway after Gloria? (Options: A 240, B 2520, C 720, D 5040)","confidence":0.9,"is_valid_math":true,"reason_if_in...(truncated)' (len=1946)
+HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"

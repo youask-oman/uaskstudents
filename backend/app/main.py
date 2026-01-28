@@ -128,7 +128,3 @@ app.mount("/storage", StaticFiles(directory="storage"), name="storage")
 @app.get("/")
 def read_root():
     return {"status": "ok", "service": "UAsk.ai Orchestrator v1"}
-
-@app.get("/health")
-def health_check():
-    return {"status": "healthy", "database": "connected"}
