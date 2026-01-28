@@ -13,9 +13,11 @@ export default function AdminDataPage() {
     const [offset, setOffset] = useState(0);
 
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
-    const getHeaders = () => {
-        const token = localStorage.getItem("token");
-        return token ? { Authorization: `Bearer ${token}` } : {};
+    const getHeaders = (): HeadersInit => {
+        const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        return headers;
     };
 
     useEffect(() => {
