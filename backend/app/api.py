@@ -1085,8 +1085,10 @@ EXTRACT_MAX_MB = int(os.getenv("EXTRACT_MAX_MB", "10"))
 
 EXTRACT_SYSTEM_PROMPT = (
     "You are a robust Math JSON OCR EXTRACTOR.\n\n"
-    "Your task is to extract mathematical questions and expressions from the image and return them as JSON.\n\n"
+    "Your task is to extract mathematical questions and expressions from the image and return them as JSON.\n"
+    "Convert ALL mathematical formulas to perfect LaTeX format.\n\n"
     "ABSOLUTE RULES:\n"
+    "- Use LaTeX for all math content where appropriate ($...$ for inline, $$...$$ for blocks).\n"
     "- Even if the image is a SMALL CROP or ONLY ONE LINE, extract it as a question if it contains math.\n"
     "- Match the provided JSON schema in text.format.\n"
     "- DO NOT explain or add commentary.\n"
@@ -1097,7 +1099,7 @@ EXTRACT_SYSTEM_PROMPT = (
 
 EXTRACT_USER_PROMPT = (
     "Extract all math questions from the image. If only one line is present, treat it as a single question.\n"
-    "Return ONLY valid JSON. Match the schema exactly.\n\n"
+    "Ensure all math is in perfect LaTeX. Return ONLY valid JSON matching the schema exactly.\n\n"
     "If unreadable, return: {\"ok\": false, \"error\": \"Unreadable\"}"
 )
 
@@ -1443,7 +1445,40 @@ def _estimate_credits(
     return float(base_cost + extra_cost)
 
 
-async def _call_extract_questions(image_bytes: bytes, max_output_tokens: int) -> Dict[str, Any]:
+async def _call_extract_questions(image_bytes: bytes, max_output_tokens: int, engine_choice: str = "lmm") -> Dict[str, Any]:
+    if engine_choice == "pix2text":
+        from app.services.ocr.ocr_service import ocr_service
+        import tempfile
+        import os
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
+                f.write(image_bytes)
+                tmp_path = f.name
+            result = ocr_service.process_job(tmp_path, engine_name="local")
+            markdown = result.get("markdown", "")
+            return {
+                "payload": {
+                    "ok": True,
+                    "error": None,
+                    "is_math_page": True,
+                    "notes": ["Extracted using Pix2Text (Local)"],
+                    "questions": [{
+                        "id": "q1",
+                        "text": markdown,
+                        "confidence": result.get("confidence", 0.8),
+                        "is_valid_math": True,
+                        "type": "math"
+                    }]
+                },
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "cached_tokens": 0
+            }
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                os.unlink(tmp_path)
+
     if not os.environ.get("OPENAI_API_KEY"):
         raise ValueError("OPENAI_API_KEY not set")
 
@@ -1873,6 +1908,7 @@ async def extract_questions(
     render_scale: Optional[float] = Form(None),
     source: str = Form("image"),
     user_selection: str = Form("crop"),
+    ocr_engine_choice: str = Form("lmm"),
     user_id: int = Query(...),
     session: Session = Depends(get_session)
 ):
@@ -1912,6 +1948,7 @@ async def extract_questions(
         "render_scale": render_scale,
         "source": source,
         "user_selection": user_selection,
+        "ocr_engine_choice": ocr_engine_choice,
     }
     hash_input = raw + json.dumps(meta, sort_keys=True).encode("utf-8")
     cache_key = hashlib.sha256(hash_input).hexdigest()
@@ -1981,7 +2018,7 @@ async def extract_questions(
         max_extract_tokens = token_policy.ocr_pdf_extract_max if is_pdf_source else token_policy.ocr_image_extract_max
         if max_extract_tokens <= 0:
             raise HTTPException(status_code=500, detail="Extract token policy misconfigured")
-        extract_data = await _call_extract_questions(image_bytes, max_extract_tokens)
+        extract_data = await _call_extract_questions(image_bytes, max_extract_tokens, engine_choice=ocr_engine_choice)
     except BadRequestError as exc:
         logging.exception("extract_questions OpenAI request failed")
         raise HTTPException(status_code=400, detail=f"Extract engine error: {str(exc)}") from exc

@@ -513,7 +513,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                 const warnings = questions
                     .filter((q) => q.reason_if_invalid && !q.is_valid_math)
                     .map((q) => q.reason_if_invalid)
-                    .filter(Boolean);
+                    .filter((v): v is string => Boolean(v));
                 setOcrMetadata({
                     ocr_confidence: avgConfidence,
                     ocr_warnings: warnings,
@@ -539,7 +539,15 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
             cache[requestHash] = normalizedData;
             saveCache(cache);
             setStatus(normalizedData.ok ? "ready" : "error");
-            if (!normalizedData.ok) setError(normalizedData.error || "Extraction returned error state.");
+            if (!normalizedData.ok) {
+                setError(normalizedData.error || "Extraction returned error state.");
+            } else if (normalizedData.questions && normalizedData.questions.length > 0) {
+                // Auto-select the first valid question for convenience
+                const firstValid = normalizedData.questions.find(q => q.is_valid_math);
+                if (firstValid) {
+                    setSelectedIds(new Set([firstValid.id]));
+                }
+            }
         } catch (err) {
             if (!(err instanceof DOMException && err.name === "AbortError")) {
                 const message = err instanceof Error ? err.message : "Extract failed";
@@ -916,6 +924,31 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                                     Rotate Right
                                 </button>
                             </div>
+
+                            {/* OCR Engine Selection */}
+                            <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                <span className="text-[10px] uppercase font-bold text-slate-400 ml-1">OCR Engine:</span>
+                                <div className="flex border border-slate-200 rounded-md overflow-hidden">
+                                    {ENGINE_OPTIONS.map((choice) => (
+                                        <button
+                                            key={choice}
+                                            type="button"
+                                            onClick={() => setOcrEngineChoice(choice)}
+                                            className={`px-3 py-1 text-[11px] font-bold transition-colors ${ocrEngineChoice === choice
+                                                ? "bg-primary text-white"
+                                                : "bg-white text-slate-600 hover:bg-slate-50"
+                                                }`}
+                                        >
+                                            {ENGINE_LABELS[choice]}
+                                        </button>
+                                    ))}
+                                </div>
+                                {engineStats[ocrEngineChoice].latencyMs && (
+                                    <span className="text-[10px] text-slate-400 italic">
+                                        Last: {engineStats[ocrEngineChoice].latencyMs}ms
+                                    </span>
+                                )}
+                            </div>
                             <CropWorkspace
                                 imageSrc={imageSrc}
                                 crop={crop}
@@ -962,14 +995,42 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                     )}
 
                     <div className="flex flex-wrap items-center gap-3">
-                        <button
-                            type="button"
-                            onClick={handleExtract}
-                            disabled={!canExtract}
-                            className="px-4 py-2 text-sm font-bold rounded-lg bg-primary text-white disabled:opacity-50"
-                        >
-                            {isBusy && status === "extracting" ? "Extracting..." : "Send to AI"}
-                        </button>
+                        {!extractResult ? (
+                            <button
+                                type="button"
+                                onClick={handleExtract}
+                                disabled={!canExtract}
+                                className="px-5 py-2.5 text-sm font-bold rounded-xl bg-primary text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:hover:scale-100"
+                            >
+                                {isBusy && status === "extracting" ? (
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        Extracting...
+                                    </div>
+                                ) : "Extract"}
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={handleSolveSelected}
+                                disabled={selectedCount === 0 || isBusy}
+                                className="px-5 py-2.5 text-sm font-bold rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:hover:scale-100"
+                            >
+                                {isBusy && status === "solving" ? (
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        Solving...
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                        </svg>
+                                        Solve with Uask AI Math
+                                    </div>
+                                )}
+                            </button>
+                        )}
                         <button
                             type="button"
                             onClick={handleResetCropControls}
