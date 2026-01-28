@@ -9,7 +9,7 @@ import base64
 import io
 from PIL import Image
 
-from app.db import get_session
+from app.database import get_session
 from app.models import Crop
 from app.services.ocr.ocr_service import ocr_service
 from app.services.ocr.crop_service import STORAGE_DIR
