@@ -14,6 +14,8 @@ export const normalizeProseMath = (content: any): string => {
         }
     }
 
+    text = autoFixMath(text);
+
     // Check if entire content is raw LaTeX (no delimiters but has LaTeX commands)
     if (isRawLatex(text)) {
         return `\\(${text.trim()}\\)`;
@@ -49,6 +51,14 @@ export const autoFixMath = (text: string): string => {
     // Handle common non-standard parentheses for square roots (e.g. \sqrt(x) -> \sqrt{x})
     repaired = repaired.replace(/\\sqrt\(([^)]+)\)/g, "\\sqrt{$1}");
 
+    // Handle non-standard \root variations
+    // 1. \root{n}\of{x} or \root n \of {x} -> \sqrt[n]{x}
+    repaired = repaired.replace(/\\root\s*\{?([^}\s]+)\}?\s*\\of\s*\{([^}]+)\}/g, "\\sqrt[$1]{$2}");
+    // 2. \root{n}{x} -> \sqrt[n]{x}
+    repaired = repaired.replace(/\\root\s*\{([^}]+)\}\s*\{([^}]+)\}/g, "\\sqrt[$1]{$2}");
+    // 3. \root n {x} -> \sqrt[n]{x}
+    repaired = repaired.replace(/\\root\s+([0-9a-z]+)\s+\{([^}]+)\}/g, "\\sqrt[$1]{$2}");
+
     // Surgical Fix for left/right: Only prefix if followed by a delimiter character they actually need
     // e.g. "left(" -> "\left(", "right]" -> "\right]"
     // But NOT "on the right," -> "on the \right,"
@@ -76,7 +86,7 @@ const isRawLatex = (text: string): boolean => {
 
     // Check for common LaTeX commands. 
     // We split into two: those that MUST have a backslash, and those that can be raw.
-    const strictLatexPattern = /\\(frac|tfrac|sqrt|sum|int|lim|sin|cos|tan|log|ln|alpha|beta|gamma|delta|theta|pi|infty|cdot|times|div|pm|mp|le|ge|leq|geq|neq|approx|equiv|subset|supset|notin|forall|exists|partial|nabla|left|right|begin|end|to|Rightarrow|rightarrow|leftrightarrow|in)(?![a-zA-Z])/;
+    const strictLatexPattern = /\\(frac|tfrac|sqrt|root|sum|int|lim|sin|cos|tan|log|ln|alpha|beta|gamma|delta|theta|pi|infty|cdot|times|div|pm|mp|le|ge|leq|geq|neq|approx|equiv|subset|supset|notin|forall|exists|partial|nabla|left|right|begin|end|to|Rightarrow|rightarrow|leftrightarrow|in)(?![a-zA-Z])/;
     const permissiveLatexPattern = /(?<![a-zA-Z])(Rightarrow|rightarrow|leftrightarrow|neq|approx|equiv)(?![a-zA-Z])/;
 
     return strictLatexPattern.test(trimmed) || permissiveLatexPattern.test(trimmed);

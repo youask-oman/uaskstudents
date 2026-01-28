@@ -20,6 +20,19 @@ def safe_eval_math(expression: str, x: float) -> float | None:
         # Handle cases where \t might be interpreted as tab if not raw
         expr = expr.replace("\t", " t") 
         
+        # Handle \root{n}\of{x} or \root{n}{x} or \root n \of {x} -> (x)**(1/n)
+        # 1. Full version with \of
+        expr = re.sub(r'\\root\s*\{?([^}\s]+)\}?\s*\\of\s*\{([^}]+)\}', r'((\2)**(1/(\1)))', expr)
+        # 2. Shorthand version without \of: \root{n}{x}
+        expr = re.sub(r'\\root\s*\{([^}]+)\}\s*\{([^}]+)\}', r'((\2)**(1/(\1)))', expr)
+        # 3. Very sparse version: \root n {x}
+        expr = re.sub(r'\\root\s+([0-9a-z]+)\s+\{([^}]+)\}', r'((\2)**(1/(\1)))', expr)
+        
+        # Handle \sqrt[n]{x} -> (x)**(1/n)
+        expr = re.sub(r'\\sqrt\s*\[([^\]]+)\]\s*\{([^}]+)\}', r'((\2)**(1/(\1)))', expr)
+        # Handle \sqrt{x} -> (x)**0.5
+        expr = re.sub(r'\\sqrt\s*\{([^}]+)\}', r'((\1)**0.5)', expr)
+
         # Remove text{...}, mathrm{...}, operatorname{...} but keep content
         expr = re.sub(r'\\?(text|mathrm|operatorname|mathtxt)\s*\{([^}]+)\}', r'\2', expr)
         # Remove remaining backslashes for standard functions (latex \sin -> sin)
