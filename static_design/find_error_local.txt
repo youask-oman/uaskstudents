@@ -1,0 +1,150 @@
+# backend/app/api.py (add near your existing endpoints)
+from pydantic import BaseModel, Field, conlist, confloat
+from typing import Optional, Dict, Any
+import time
+import uuid
+
+from backend.app.services.math.error_localizer import (
+    OCRPayload, Budget, find_first_error_from_ocr
+)
+
+class BBox(BaseModel):
+    x: confloat(ge=0.0, le=1.0)
+    y: confloat(ge=0.0, le=1.0)
+    w: confloat(gt=0.0, le=1.0)
+    h: confloat(gt=0.0, le=1.0)
+
+class FindErrorLocalRequest(BaseModel):
+    crop_hash: str = Field(min_length=8, max_length=128)
+    selection_bbox: BBox
+    ocr_hint: Optional[str] = Field(default="math")
+    max_lines: int = Field(default=6, ge=1, le=12)
+
+class FindErrorLocalResponse(BaseModel):
+    ok: bool
+    request_id: str
+    selection_bbox: BBox
+    ocr: Optional[Dict[str, Any]] = None
+    analysis: Optional[Dict[str, Any]] = None
+    error: Optional[Dict[str, str]] = None
+    timings_ms: Dict[str, int]
+
+# You must implement these using your existing cache/storage:
+def load_cropped_image_by_hash(crop_hash: str):
+    """
+    Return PIL image (or numpy array) for the cropped image already cached in your pipeline.
+    Must NOT log bytes.
+    """
+    raise NotImplementedError
+
+def crop_region(pil_img, bbox: BBox):
+    """
+    Convert normalized bbox to pixel box and crop safely with clamping.
+    """
+    W, H = pil_img.size
+    x0 = int(max(0, min(W-1, bbox.x * W)))
+    y0 = int(max(0, min(H-1, bbox.y * H)))
+    x1 = int(max(0, min(W, (bbox.x + bbox.w) * W)))
+    y1 = int(max(0, min(H, (bbox.y + bbox.h) * H)))
+
+    if (x1 - x0) < 25 or (y1 - y0) < 25:
+        return None, {"code": "BBOX_TOO_SMALL", "message": "Selection too small. Re-circle a larger area."}
+
+    return pil_img.crop((x0, y0, x1, y1)), None
+
+def ocr_region_with_pix2text(pil_region):
+    """
+    Use your LocalEngine (Pix2Text) from ocr_service.py.
+    Return (raw_text, normalized_text, confidence).
+    """
+    raise NotImplementedError
+
+
+@router.post("/api/v1/find_error_local", response_model=FindErrorLocalResponse)
+def find_error_local(req: FindErrorLocalRequest):
+    request_id = str(uuid.uuid4())
+    t0 = time.perf_counter()
+
+    # Feature flag
+    if not os.getenv("FEATURE_LOCAL_FIND_ERROR", "false").lower() == "true":
+        return FindErrorLocalResponse(
+            ok=False,
+            request_id=request_id,
+            selection_bbox=req.selection_bbox,
+            error={"code": "DISABLED", "message": "Local find-error is disabled."},
+            timings_ms={"total": int((time.perf_counter()-t0)*1000)}
+        )
+
+    try:
+        img = load_cropped_image_by_hash(req.crop_hash)
+        t_crop0 = time.perf_counter()
+        region, crop_err = crop_region(img, req.selection_bbox)
+        crop_ms = int((time.perf_counter()-t_crop0)*1000)
+        if crop_err:
+            return FindErrorLocalResponse(
+                ok=False,
+                request_id=request_id,
+                selection_bbox=req.selection_bbox,
+                error=crop_err,
+                timings_ms={"crop": crop_ms, "total": int((time.perf_counter()-t0)*1000)}
+            )
+
+        t_ocr0 = time.perf_counter()
+        raw_text, norm_text, ocr_conf = ocr_region_with_pix2text(region)
+        ocr_ms = int((time.perf_counter()-t_ocr0)*1000)
+
+        # Cap raw text to avoid flooding logs/clients
+        raw_text = (raw_text or "")[:500]
+        norm_text = (norm_text or "")[:500]
+
+        # Run local SymPy/SciPy checks
+        t_chk0 = time.perf_counter()
+        ocr_payload = OCRPayload(raw=raw_text, text=norm_text, confidence=float(ocr_conf or 0.0))
+        budget = Budget(
+            total_ms=int(os.getenv("LOCAL_FINDERR_TOTAL_MS", "1500")),
+            sympy_ms=int(os.getenv("LOCAL_FINDERR_SYMPY_MS", "700")),
+            numeric_ms=int(os.getenv("LOCAL_FINDERR_NUMERIC_MS", "700")),
+        )
+        result = find_first_error_from_ocr(ocr_payload, transcript_hint="find_error", max_lines=req.max_lines, budget=budget)
+        chk_ms = int((time.perf_counter()-t_chk0)*1000)
+
+        return FindErrorLocalResponse(
+            ok=True,
+            request_id=request_id,
+            selection_bbox=req.selection_bbox,
+            ocr={
+                "raw": raw_text[:120],          # keep UI readable; do not expose huge raw text
+                "text": norm_text,
+                "confidence": float(ocr_payload.confidence)
+            },
+            analysis={
+                "detected_format": result.detected_format,
+                "first_wrong_line_index": result.first_wrong_line_index,
+                "what_is_wrong": result.what_is_wrong,
+                "minimal_fix": result.minimal_fix,
+                "confidence": float(result.confidence),
+                "per_line": [
+                    {
+                        "ok": r.ok,
+                        "confidence": float(r.confidence),
+                        "reason": r.reason,
+                        "minimal_fix": r.minimal_fix
+                    } for r in result.per_line
+                ]
+            },
+            timings_ms={
+                "crop": crop_ms,
+                "ocr": ocr_ms,
+                "check": chk_ms,
+                "total": int((time.perf_counter()-t0)*1000)
+            }
+        )
+
+    except Exception as e:
+        return FindErrorLocalResponse(
+            ok=False,
+            request_id=request_id,
+            selection_bbox=req.selection_bbox,
+            error={"code": "INTERNAL_ERROR", "message": "Failed to analyze selection."},
+            timings_ms={"total": int((time.perf_counter()-t0)*1000)}
+        )

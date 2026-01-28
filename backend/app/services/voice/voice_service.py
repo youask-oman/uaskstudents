@@ -43,28 +43,41 @@ class VoiceService:
     def client(self) -> AsyncOpenAI:
         return AsyncOpenAI(api_key=self.api_key)
 
-    async def transcribe_audio(self, file_obj, filename: str = "audio.webm") -> str:
-        """Transcribe audio file using OpenAI Whisper (gpt-4o-mini-transcribe equivalent)."""
+    async def transcribe_audio(self, file_input, filename: str = "audio.webm") -> str:
+        """Transcribe audio file using OpenAI Whisper."""
         if not self.api_key:
              raise ValueError("OpenAI API key missing")
         
         start = time.time()
         try:
-            # Note: 'whisper-1' is the standard model identifier for audio transcriptions
-            # The user requested 'gpt-4o-mini-transcribe', but standard endpoint uses whisper-1.
-            # Use explicit tuple format (filename, file_content, content_type) for maximum robustness
-            # This avoids issues with BytesIO .name attribute or missing MIME types
+            # Handle both bytes and file-like objects
+            if isinstance(file_input, bytes):
+                audio_data = file_input
+            elif hasattr(file_input, "read"):
+                if hasattr(file_input, "seek"):
+                    file_input.seek(0)
+                audio_data = file_input.read()
+            else:
+                audio_data = file_input
+
+            logger.info(f"Transcribing audio: filename={filename}, size={len(audio_data)} bytes")
+            
+            if len(audio_data) == 0:
+                raise ValueError("Audio file is empty (0 bytes)")
+
+            # Explicit MIME type mapping
             mime_type = "audio/webm"
             if filename.endswith(".wav"): mime_type = "audio/wav"
             elif filename.endswith(".mp3"): mime_type = "audio/mpeg"
             elif filename.endswith(".m4a"): mime_type = "audio/mp4"
+            elif filename.endswith(".ogg"): mime_type = "audio/ogg"
             
             resp = await self.client.audio.transcriptions.create(
                 model="whisper-1", 
-                file=(filename, file_obj.read(), mime_type),
+                file=(filename, audio_data, mime_type),
                 response_format="json"
             )
-            file_obj.seek(0) # Reset pointer just in case
+            # No need to reset pointer as we read into memory
             
             duration = time.time() - start
             logger.info(f"Transcription completed in {duration:.2f}s")

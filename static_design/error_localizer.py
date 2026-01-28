@@ -12,12 +12,6 @@ import contextlib
 import numpy as np
 import sympy as sp
 from sympy.core.sympify import SympifyError
-from sympy.parsing.sympy_parser import (
-    parse_expr,
-    standard_transformations,
-    implicit_multiplication_application,
-    convert_xor
-)
 
 # Optional SciPy (for root finding, optimization etc.)
 try:
@@ -41,9 +35,6 @@ SAFE_FUNCS: Dict[str, Any] = {
     "sinh": sp.sinh, "cosh": sp.cosh, "tanh": sp.tanh,
     # exp/log/sqrt
     "exp": sp.exp, "ln": sp.log, "log": sp.log, "sqrt": sp.sqrt,
-    # calculus limits
-    "limit": sp.limit, "lim": sp.limit,
-    "inf": sp.oo, "oo": sp.oo,
     # abs
     "abs": sp.Abs,
 }
@@ -124,16 +115,6 @@ def time_limit(seconds: float):
     def handler(signum, frame):
         raise TimeBudgetExceeded("time limit exceeded")
 
-    # Only works on main thread, usually fine (FastAPI runs w/ threadpool for certain things, check validity)
-    # Windows does NOT support signal.ITIMER_REAL/SIGALRM.
-    # We need a fallback or skip for Windows. 
-    # Current user OS is Windows. So this block WILL FAIL on Windows.
-    # We must modify to just yield if on Windows.
-    import platform
-    if platform.system() == "Windows":
-        yield
-        return
-
     old = signal.signal(signal.SIGALRM, handler)
     try:
         signal.setitimer(signal.ITIMER_REAL, seconds)
@@ -145,13 +126,7 @@ def time_limit(seconds: float):
 
 def _contains_banned(s: str) -> bool:
     low = s.lower()
-    # Check word boundaries so "cos" doesn't trigger "os"
-    for tok in BANNED_TOKENS:
-        # Simple regex check for \btoken\b or just token if it's symbol
-        # Escape token just in case (though they are simple strings)
-        if re.search(r"(?<![a-z0-9_])" + re.escape(tok) + r"(?![a-z0-9_])", low):
-            return True
-    return False
+    return any(tok in low for tok in BANNED_TOKENS)
 
 
 def normalize_ocr_text(s: str) -> str:
@@ -184,18 +159,12 @@ def split_into_lines(s: str, max_lines: int = 6) -> List[str]:
 def safe_sympify(expr: str) -> sp.Expr:
     if _contains_banned(expr):
         raise SympifyError("banned token present")
-    
-    # Use SymPy's robust parsing with implicit multiplication (e.g. 2x -> 2*x)
-    # and xor conversion (^ -> **)
-    transformations = (standard_transformations + 
-                       (implicit_multiplication_application, convert_xor))
-    
-    try:
-        return parse_expr(expr, local_dict=SAFE_FUNCS, transformations=transformations, evaluate=False)
-    except Exception as e:
-        # Fallback for very simple cases or if parse_expr fails (though unlikely)
-        # Try raw sympify but be careful
-        raise SympifyError(f"Parse failed: {e}")
+    # Replace common implicit multiplication patterns cautiously:
+    # "2x" -> "2*x" , "x(" -> "x*("
+    expr = re.sub(r"(\d)([a-zA-Z])", r"\1*\2", expr)
+    expr = re.sub(r"([a-zA-Z])\(", r"\1*(", expr)
+    # Avoid creating symbols for weird tokens
+    return sp.sympify(expr, locals=SAFE_FUNCS, evaluate=False)
 
 
 def parse_statement(line: str) -> Tuple[str, Union[Tuple[sp.Expr, sp.Expr], sp.Expr]]:
@@ -387,106 +356,6 @@ def check_derivative_statement(line: str, budget: Budget, deadline: float) -> Op
         )
 
 
-def check_integral_statement(line: str, budget: Budget, deadline: float) -> Optional[LineCheckResult]:
-    """
-    Supports patterns like:
-      int(f(x) dx) = ...
-      integral(f(x)) = ...
-    """
-    s = normalize_ocr_text(line).lower()
-    if "int" not in s and "integral" not in s and "∫" not in line:
-        return None
-    
-    # Try common integral patterns
-    # int(f(x) dx) = rhs
-    m = re.search(r"(?:int|integral|∫)\s*\((.+?)\s*d([a-z])\)\s*=\s*(.+)", s)
-    # simpler: int(f(x)) = rhs (assume dx)
-    if not m:
-        m = re.search(r"(?:int|integral|∫)\s*\((.+)\)\s*=\s*(.+)", s)
-        var_char = "x"
-    else:
-        var_char = m.group(2)
-
-    if not m:
-        return None
-
-    f_str = m.group(1)
-    rhs_str = m.group(3) if len(m.groups()) == 3 else m.group(2)
-
-    try:
-        x = sp.Symbol(var_char)
-        f = safe_sympify(f_str)
-        rhs = safe_sympify(rhs_str)
-        
-        # compare integrate(f,x) == rhs
-        # Note: Indefinite integrals have +C constant. SymPy returns one antiderivative.
-        # So we check diff(rhs, x) == f. Fundamental theorem of calculus (easier to differentiation).
-        
-        # Check 1: Differentiate RHS and see if it equals f
-        diff_rhs = sp.diff(rhs, x)
-        res = prove_equation(diff_rhs, f, budget, deadline)
-        
-        if res.ok:
-            return res
-        
-        # Check 2: Integrate f and compare to rhs (ignoring constant C)
-        lhs = sp.integrate(f, x)
-        # Check lhs - rhs = constant?
-        diff = sp.simplify(lhs - rhs)
-        if diff.is_constant():
-             return LineCheckResult(
-                ok=True, confidence=0.90,
-                reason="Integral correct (up to constant).",
-                minimal_fix="No change needed.",
-                debug={"method": "integral_check_constant"}
-            )
-            
-        return res # Return the initial differentiation check result (likely false)
-
-    except Exception:
-         return LineCheckResult(
-            ok=None, confidence=0.35,
-            reason="Could not parse integral statement.",
-            minimal_fix="Check integral notation.",
-            debug={"method": "integral_parse_failed"}
-        )
-
-def check_limit_statement(line: str, budget: Budget, deadline: float) -> Optional[LineCheckResult]:
-    """
-    Supports: lim(x->0) f(x) = ...
-    """
-    s = normalize_ocr_text(line).lower()
-    if "lim" not in s: 
-        return None
-        
-    # lim(x->a) f(x) = rhs
-    # Regex: lim \s* \( ([a-z]) \s* -> \s* (.*?) \) \s* (.*?) \s* = \s* (.+)
-    m = re.search(r"lim\s*\(\s*([a-z])\s*(?:->|to)\s*(.*?)\)\s*(.*?)\s*=\s*(.+)", s)
-    if not m:
-        return None
-    
-    var_char = m.group(1)
-    target_str = m.group(2)
-    f_str = m.group(3)
-    rhs_str = m.group(4)
-    
-    try:
-        x = sp.Symbol(var_char)
-        target = safe_sympify(target_str)
-        f = safe_sympify(f_str)
-        rhs = safe_sympify(rhs_str)
-        
-        lhs = sp.limit(f, x, target)
-        return prove_equation(lhs, rhs, budget, deadline)
-    except Exception:
-        return LineCheckResult(
-            ok=None, confidence=0.35,
-            reason="Could not parse limit statement.",
-            minimal_fix="Check limit notation.",
-            debug={"method": "limit_parse_failed"}
-        )
-
-
 def check_matrix_equation(line: str, budget: Budget, deadline: float) -> Optional[LineCheckResult]:
     """
     Very limited: detects bracketed matrices and checks equality numerically.
@@ -551,36 +420,6 @@ def find_first_error_from_ocr(
                     per_line=per_line
                 )
             continue
-
-        # Specialized integral checker
-        int_res = check_integral_statement(line, budget, deadline)
-        if int_res is not None:
-             per_line.append(int_res)
-             if int_res.ok is False:
-                return FindErrorResult(
-                    first_wrong_line_index=idx,
-                    what_is_wrong=int_res.reason,
-                    minimal_fix=int_res.minimal_fix,
-                    confidence=min(1.0, max(int_res.confidence, ocr.confidence)),
-                    detected_format="equation",
-                    per_line=per_line
-                )
-             continue
-
-        # Specialized limit checker
-        lim_res = check_limit_statement(line, budget, deadline)
-        if lim_res is not None:
-             per_line.append(lim_res)
-             if lim_res.ok is False:
-                return FindErrorResult(
-                    first_wrong_line_index=idx,
-                    what_is_wrong=lim_res.reason,
-                    minimal_fix=lim_res.minimal_fix,
-                    confidence=min(1.0, max(lim_res.confidence, ocr.confidence)),
-                    detected_format="equation",
-                    per_line=per_line
-                )
-             continue
 
         try:
             kind, parsed = parse_statement(line)

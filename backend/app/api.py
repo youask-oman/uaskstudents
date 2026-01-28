@@ -58,11 +58,13 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from app.bg_routers.voice_router import router as voice_router
+from app.bg_routers.local_router import router as local_router
 
 limiter = Limiter(key_func=get_remote_address)
 api_router = APIRouter()
 
 api_router.include_router(voice_router, tags=["voice"])
+api_router.include_router(local_router, tags=["local_math"])
 
 
 # --- Helper Functions ---

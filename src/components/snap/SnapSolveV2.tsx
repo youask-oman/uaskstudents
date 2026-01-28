@@ -604,6 +604,75 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
         return total;
     }, [extractResult, selectedIds, requestedMode]);
 
+    const handleFindErrorLocal = async () => {
+        if (!selectionBBox || !imageSrc || !imageSize || !cropPixels) return;
+
+        setStatus("executing" as any);
+        try {
+            // 1. Calculate selection coordinates in image space
+            const selectionInCrop = {
+                x: selectionBBox.x * cropPixels.width,
+                y: selectionBBox.y * cropPixels.height,
+                width: selectionBBox.w * cropPixels.width,
+                height: selectionBBox.h * cropPixels.height
+            };
+            const activeCrop = {
+                x: cropPixels.x + selectionInCrop.x,
+                y: cropPixels.y + selectionInCrop.y,
+                width: selectionInCrop.width,
+                height: selectionInCrop.height
+            };
+
+            // 2. Get blob
+            const blob = await getCroppedImageBlob({
+                imageSrc,
+                crop: activeCrop,
+                rotation: rotation,
+                maxEdge: 1500,
+                quality: 0.95,
+                fullPage: false
+            });
+
+            // 3. Convert blob to base64
+            const reader = new FileReader();
+            reader.readAsDataURL(blob);
+            reader.onloadend = async () => {
+                const base64data = reader.result?.toString().split(',')[1];
+
+                // 4. Call API
+                const payload = {
+                    selection_bbox: selectionBBox,
+                    image_data: base64data,
+                    ocr_hint: "math",
+                    max_lines: 6
+                };
+
+                const res = await fetch("/api/v1/find_error_local", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (data.ok && data.analysis) {
+                    setVoiceIntent("Error Found (Local)");
+                    setErrorDiagnosis({
+                        what_is_wrong: data.analysis.what_is_wrong,
+                        minimal_fix: data.analysis.minimal_fix,
+                        confidence: data.analysis.confidence
+                    });
+                } else {
+                    setError(data.error?.message || "No error detected local");
+                }
+
+                setStatus("idle" as any);
+            };
+        } catch (e: any) {
+            setError(e.message);
+            setStatus("idle" as any);
+        }
+    };
+
     return (
         <div className="flex flex-col gap-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -772,6 +841,40 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                                 selectionMode={voiceMode}
                                 onSelectionChange={setSelectionBBox}
                             />
+
+                            {/* Local Find Error Trigger */}
+                            {voiceMode && selectionBBox && (
+                                <div className="mt-2 flex justify-center">
+                                    <button
+                                        type="button"
+                                        onClick={handleFindErrorLocal}
+                                        disabled={status === "executing"}
+                                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-full shadow-lg flex items-center gap-2 transition-all animate-in fade-in slide-in-from-bottom-2"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                        </svg>
+                                        Find Error (Local)
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Local Find Error Trigger */}
+                            {voiceMode && selectionBBox && (
+                                <div className="mt-2 flex justify-center">
+                                    <button
+                                        type="button"
+                                        onClick={handleFindErrorLocal}
+                                        disabled={status === "executing"}
+                                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-full shadow-lg flex items-center gap-2 transition-all animate-in fade-in slide-in-from-bottom-2"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                        </svg>
+                                        Find Error (Local)
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
 
