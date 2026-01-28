@@ -2,15 +2,15 @@
 
 import React from 'react';
 import dynamic from 'next/dynamic';
-import MathRenderer from '../math/MathRendererSwitch';
-import { GraphSpec, GraphTrace } from './graph_spec';
-import type { Layout, Config, Data } from 'plotly.js';
+
+import { GraphSpec } from './graph_spec';
+import { Config, Data, Layout } from 'plotly.js';
 
 // Dynamically import Plot with no SSR
 const Plot = dynamic(() => import('react-plotly.js'), { ssr: false });
 
 interface VisualRendererProps {
-    visual: GraphSpec | any; // Support legacy or new GraphSpec
+    visual: GraphSpec | Record<string, unknown>; // Support legacy or new GraphSpec
     height?: number;
 }
 
@@ -18,11 +18,12 @@ export default function VisualRenderer({ visual, height = 400 }: VisualRendererP
     // If it's the new GraphSpec format (directly from backend hydration)
     const isHydrated = (visual as GraphSpec).graph_type !== undefined;
     // If it's the "legacy" mapped format from WorkspaceLayout, we still want to render it if it has trace-like data
-    const isMapped = visual.axes !== undefined && (visual.series !== undefined || visual.traces !== undefined);
+    const legacyVisual = visual as Record<string, unknown>;
+    const isMapped = legacyVisual.axes !== undefined && (legacyVisual.series !== undefined || legacyVisual.traces !== undefined);
 
     if (!isHydrated && !isMapped) {
         // Simple fallback for any truly legacy structures
-        if (visual.type !== 'function_plot' && visual.type !== 'graph') return null;
+        if (legacyVisual.type !== 'function_plot' && legacyVisual.type !== 'graph') return null;
         return (
             <div className="p-4 bg-slate-50 dark:bg-card-dark text-slate-500 text-sm border border-slate-200 dark:border-border-dark rounded-xl">
                 Legacy graph format detected. Please re-solve to view.
@@ -31,37 +32,49 @@ export default function VisualRenderer({ visual, height = 400 }: VisualRendererP
     }
 
     // Normalized spec for rendering
-    const spec: GraphSpec = isHydrated ? (visual as GraphSpec) : {
-        version: "1.0",
-        graph_type: '2d_function',
-        title: visual.title || '',
-        axes: {
-            x_label: visual.axes?.x_label || 'x',
-            y_label: visual.axes?.y_label || 'y',
-            x_range: [
-                parseFloat(visual.domain?.x_min_latex || '-10'),
-                parseFloat(visual.domain?.x_max_latex || '10')
-            ],
-            y_range: visual.axes?.y_range || [-10, 10]
-        },
-        traces: visual.traces || visual.series?.map((s: any) => ({
-            name: s.label || '',
-            kind: 'scatter',
-            x: s.points?.map((p: any) => p.x) || [],
-            y: s.points?.map((p: any) => p.y) || [],
-            show_legend: true
-        })) || [],
-        key_points: visual.key_points || visual.markers?.map((m: any) => ({
-            label: m.label || '',
-            x: m.x,
-            y: m.y
-        })) || [],
-        warnings: []
-    };
+    let spec: GraphSpec;
+
+    if (isHydrated) {
+        spec = visual as GraphSpec;
+    } else {
+        const legacy = visual as Record<string, unknown>;
+        const axes = legacy.axes as Record<string, unknown> | undefined;
+        const domain = legacy.domain as Record<string, unknown> | undefined;
+        const traces = (legacy.traces || legacy.series) as Array<Record<string, unknown>> | undefined;
+        const markers = (legacy.markers || legacy.key_points) as Array<Record<string, unknown>> | undefined;
+
+        spec = {
+            version: "1.0",
+            graph_type: '2d_function',
+            title: (legacy.title as string) || '',
+            axes: {
+                x_label: (axes?.x_label as string) || 'x',
+                y_label: (axes?.y_label as string) || 'y',
+                x_range: [
+                    parseFloat((domain?.x_min_latex as string) || '-10'),
+                    parseFloat((domain?.x_max_latex as string) || '10')
+                ],
+                y_range: (axes?.y_range as [number, number]) || [-10, 10]
+            },
+            traces: traces?.map((s) => ({
+                name: (s.label as string) || '',
+                kind: 'scatter',
+                x: ((s.points as Array<Record<string, unknown>>)?.map(p => p.x) as number[]) || [],
+                y: ((s.points as Array<Record<string, unknown>>)?.map(p => p.y) as number[]) || [],
+                show_legend: true
+            })) || [],
+            key_points: markers?.map((m) => ({
+                label: (m.label as string) || '',
+                x: Number(m.x),
+                y: Number(m.y)
+            })) || [],
+            warnings: []
+        };
+    }
 
     // 1. Prepare Plotly traces
-    const data: any[] = spec.traces.map(t => {
-        const trace: any = {
+    const data: Data[] = spec.traces.map(t => {
+        const trace: Record<string, unknown> = {
             name: t.name,
             showlegend: t.show_legend ?? true,
         };
@@ -104,7 +117,7 @@ export default function VisualRenderer({ visual, height = 400 }: VisualRendererP
             trace.line = { width: 4, ...t.line_style };
         }
 
-        return trace;
+        return trace as unknown as Data;
     });
 
     // 2. Add Key Points markers
@@ -114,17 +127,18 @@ export default function VisualRenderer({ visual, height = 400 }: VisualRendererP
             x: spec.key_points.map(p => p.x),
             y: spec.key_points.map(p => p.y),
             z: spec.key_points.map(p => p.z),
-            mode: 'markers+text',
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            mode: 'markers+text' as any, // Plotly types are strict, 'markers+text' is valid at runtime
             name: 'Key Points',
             text: spec.key_points.map(p => p.label),
             textposition: 'top center',
             marker: { size: 8, color: '#ef4444' },
             showlegend: false
-        } as any);
+        } as Data);
     }
 
     // 3. Layout (Premium Math Theme)
-    const layout: any = {
+    const layout: Partial<Layout> = {
         autosize: true,
         height,
         title: {

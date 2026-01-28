@@ -25,7 +25,6 @@ interface ContextualChatPanelProps {
 export default function ContextualChatPanel({
     sessionId,
     originalProblem,
-    finalAnswer,
     steps = [],
     classification,
     disabled = false
@@ -150,8 +149,8 @@ export default function ContextualChatPanel({
                     >
                         <div
                             className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${msg.role === 'user'
-                                    ? 'bg-gradient-to-r from-primary to-emerald-500 text-white rounded-br-md shadow-lg shadow-primary/20'
-                                    : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-bl-md shadow-sm'
+                                ? 'bg-gradient-to-r from-primary to-emerald-500 text-white rounded-br-md shadow-lg shadow-primary/20'
+                                : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-bl-md shadow-sm'
                                 }`}
                         >
                             <MathRenderer content={msg.content} mode="prose" />

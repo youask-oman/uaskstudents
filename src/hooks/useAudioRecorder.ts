@@ -22,6 +22,44 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
     const timerRef = useRef<NodeJS.Timeout | null>(null);
     const startTimeRef = useRef<number>(0);
 
+    const cleanup = useCallback(() => {
+        if (timerRef.current) clearInterval(timerRef.current);
+        const stream = mediaRecorderRef.current?.stream;
+        stream?.getTracks().forEach(track => track.stop());
+        mediaRecorderRef.current = null;
+        setState("idle");
+        setDurationMs(0);
+    }, []);
+
+    const stopRecording = useCallback(async (): Promise<Blob | null> => {
+        const recorder = mediaRecorderRef.current;
+        if (!recorder || recorder.state === "inactive") {
+            return null;
+        }
+
+        const elapsed = Date.now() - startTimeRef.current;
+        const MIN_DURATION = 600; // 0.6s minimum
+
+        if (elapsed < MIN_DURATION) {
+            await new Promise(r => setTimeout(r, MIN_DURATION - elapsed));
+        }
+
+        return new Promise((resolve) => {
+            recorder.onstop = () => {
+                const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
+                cleanup();
+                if (blob.size < 100) {
+                    // Empty or malformed
+                    resolve(null);
+                } else {
+                    resolve(blob);
+                }
+            };
+            recorder.stop();
+            setState("processing");
+        });
+    }, [cleanup]);
+
     const startRecording = useCallback(async () => {
         try {
             setError(null);
@@ -53,40 +91,12 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
                 }
             }, 100);
 
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Microphone access denied";
             console.error("Failed to start recording:", err);
-            setError(err.message || "Microphone access denied");
+            setError(message);
         }
-    }, []);
-
-    const stopRecording = useCallback(async (): Promise<Blob | null> => {
-        const recorder = mediaRecorderRef.current;
-        if (!recorder || recorder.state === "inactive") {
-            return null;
-        }
-
-        const elapsed = Date.now() - startTimeRef.current;
-        const MIN_DURATION = 600; // 0.6s minimum
-
-        if (elapsed < MIN_DURATION) {
-            await new Promise(r => setTimeout(r, MIN_DURATION - elapsed));
-        }
-
-        return new Promise((resolve) => {
-            recorder.onstop = () => {
-                const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
-                cleanup();
-                if (blob.size < 100) {
-                    // Empty or malformed
-                    resolve(null);
-                } else {
-                    resolve(blob);
-                }
-            };
-            recorder.stop();
-            setState("processing");
-        });
-    }, []);
+    }, [stopRecording]);
 
     const cancelRecording = useCallback(() => {
         const recorder = mediaRecorderRef.current;
@@ -95,16 +105,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
         }
         cleanup();
         setError("Cancelled");
-    }, []);
-
-    const cleanup = () => {
-        if (timerRef.current) clearInterval(timerRef.current);
-        const stream = mediaRecorderRef.current?.stream;
-        stream?.getTracks().forEach(track => track.stop());
-        mediaRecorderRef.current = null;
-        setState("idle");
-        setDurationMs(0);
-    };
+    }, [cleanup]);
 
     return {
         state,

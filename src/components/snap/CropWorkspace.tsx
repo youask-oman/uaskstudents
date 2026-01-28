@@ -182,7 +182,7 @@ export default function CropWorkspace({
         setCurrentSelection({ x, y, w, h });
     };
 
-    const handlePointerUp = (e: React.PointerEvent) => {
+    const handlePointerUp = () => {
         if (!isSelecting) return;
         setIsSelecting(false);
         if (currentSelection && workspaceSize.width > 0 && workspaceSize.height > 0) {

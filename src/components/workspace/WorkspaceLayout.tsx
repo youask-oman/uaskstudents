@@ -5,7 +5,8 @@ import Image from "next/image";
 import Link from 'next/link';
 import MathRenderer from '../math/MathRendererSwitch';
 import ContextualChatPanel from './ContextualChatPanel';
-import VisualRenderer, { Visual } from './VisualRenderer';
+
+
 
 interface WorkspaceMessage {
     role: string;
@@ -100,8 +101,8 @@ interface WorkspaceLayoutProps {
         requested_mode?: string;
         solve_tier?: string;
         openai_payload?: {
-            full_input?: any[];
-            full_output?: any;
+            full_input?: unknown[];
+            full_output?: unknown;
         };
     };
     // NEW: Classification data
@@ -119,10 +120,9 @@ interface WorkspaceLayoutProps {
 export default function WorkspaceLayout({
     children,
     messages,
-    activeTab,
+    // activeTab, // Unused
     onSelectTab,
     problem,
-    stepsCount,
     analysisPlan = [],
     finalAnswer,
     finalAnswerMode = "prose",
@@ -134,7 +134,7 @@ export default function WorkspaceLayout({
     finalAnswerUnits,
     classification,
     commonMistakes,
-    visuals,
+    // visuals, // Unused
     originalProblemText,
     steps = []
 }: WorkspaceLayoutProps) {
@@ -171,7 +171,8 @@ export default function WorkspaceLayout({
         }
     };
 
-    // Map visuals for VisualRenderer
+    // Map visuals removed as VisualRenderer is unused in this file currently
+    /* 
     const mappedVisuals: Visual[] = React.useMemo(() => {
         if (!visuals?.plots || visuals.plots.length === 0) return [];
         return visuals.plots.map((plot, idx) => ({
@@ -196,7 +197,8 @@ export default function WorkspaceLayout({
                 y: kp.y ?? 0
             }))
         }));
-    }, [visuals]);
+    }, [visuals]); 
+    */
 
 
     return (

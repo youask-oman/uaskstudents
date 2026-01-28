@@ -54,7 +54,7 @@ const renderFallback = (value: string) => (
     </span>
 );
 
-const stripOuterDelimiters = (content: any) => {
+const stripOuterDelimiters = (content: unknown) => {
     if (typeof content !== "string") return String(content || "");
     const trimmed = content.trim();
     if ((trimmed.startsWith("\\(") && trimmed.endsWith("\\)")) ||
@@ -167,7 +167,7 @@ const MathSegment = ({
         try {
             const parsed = JSON.parse(cleanValue);
             if (Array.isArray(parsed)) cleanValue = parsed.join(" \\quad ");
-        } catch (e) {
+        } catch {
             // Not valid JSON array, treat as text
         }
     }

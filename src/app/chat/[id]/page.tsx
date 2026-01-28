@@ -81,8 +81,8 @@ interface TelemetryPayload {
     requested_mode?: string;
     solve_tier?: string;
     openai_payload?: {
-        full_input?: any[];
-        full_output?: any;
+        full_input?: unknown[];
+        full_output?: unknown;
     };
 }
 
@@ -110,7 +110,7 @@ interface V2LiteOutputBlock {
     headers?: string[];
     rows?: string[][];
     // quiz
-    questions?: any[];
+    questions?: unknown[];
 }
 
 interface V2LiteAnswer {
@@ -167,8 +167,8 @@ interface V2LiteResponse {
     visuals?: {
         should_visualize: boolean;
         decision_reason: string;
-        plots: any[];
-        alternative_visual?: any;
+        plots: VisualPlot[];
+        alternative_visual?: unknown;
     };
     quality?: {
         confidence: number;
@@ -187,7 +187,7 @@ function isV2LiteSchema(data: unknown): data is V2LiteResponse {
 // Utility: Map V2-lite to V3-compatible format
 function mapV2LiteToV3(v2: V2LiteResponse): SolveResponseV3 {
     // 1. Map Steps
-    let steps: any[] = [];
+    let steps: SolveStep[] = [];
     if (v2.steps && v2.steps.length > 0) {
         // Direct mapping for v2.1-lite
         steps = v2.steps.map(s => ({
@@ -223,22 +223,23 @@ function mapV2LiteToV3(v2: V2LiteResponse): SolveResponseV3 {
     }
 
     // 2. Map Answer
-    let final_answer: any = {};
+    let final_answer: NonNullable<SolveResponseV3["final_answer"]> = {};
     if (v2.final_answer) {
         final_answer = {
             ...v2.final_answer,
-            values: v2.final_answer.values?.map((v: any) => ({
-                label: v.label || v.symbol || '',
+            values: v2.final_answer.values?.map((v) => ({
+                label: (v as { label?: string; symbol?: string }).label || (v as { label?: string; symbol?: string }).symbol || '',
                 value: v.value ?? '',
                 value_latex: v.value_latex || String(v.value ?? '')
-            }))
+            })),
+            units: v2.final_answer.units ?? undefined
         };
     } else if (v2.answer) {
         final_answer = {
             answer_text: v2.answer.final_text,
             answer_latex: v2.answer.final_latex,
-            values: v2.answer.values?.map((v: any) => ({
-                label: v.label || v.symbol || '',
+            values: v2.answer.values?.map((v) => ({
+                label: (v as { label?: string; symbol?: string }).label || (v as { label?: string; symbol?: string }).symbol || '',
                 value: v.value ?? '',
                 value_latex: v.value_latex || String(v.value ?? '')
             }))
@@ -246,9 +247,17 @@ function mapV2LiteToV3(v2: V2LiteResponse): SolveResponseV3 {
     }
 
     // 3. Map Visuals
-    let visuals: any = { plots: [] };
+    let visuals: NonNullable<SolveResponseV3["visuals"]> = { plots: [] };
     if (v2.visuals) {
-        visuals = v2.visuals;
+        visuals = {
+            ...v2.visuals,
+            plots: (v2.visuals.plots || []).map(p => ({
+                ...p,
+                y_min: p.y_min ?? undefined,
+                y_max: p.y_max ?? undefined
+            })),
+            alternative_visual: v2.visuals.alternative_visual as { kind?: string; description?: string; data?: Array<{ label: string; x?: number; y?: number }> } | undefined
+        };
     } else if (v2.output) {
         visuals.plots = v2.output
             .filter(b => b.type === 'plot')
@@ -257,19 +266,19 @@ function mapV2LiteToV3(v2: V2LiteResponse): SolveResponseV3 {
                 title: b.title,
                 x_min: b.x_min,
                 x_max: b.x_max,
-                y_min: b.y_min,
-                y_max: b.y_max,
+                y_min: b.y_min ?? undefined,
+                y_max: b.y_max ?? undefined,
                 series: b.series?.map(s => ({
                     name: s.label || s.expr_latex,
                     points: s.points || []
                 })),
                 key_points: b.key_points
-            })) as any[];
-        visuals.should_visualize = visuals.plots.length > 0;
+            }));
+        visuals.should_visualize = (visuals.plots?.length ?? 0) > 0;
     }
 
     // 4. Map Classification
-    let classification: any = {};
+    let classification: NonNullable<SolveResponseV3["classification"]> = {};
     if (v2.classification) {
         classification = v2.classification;
     } else if (v2.meta) {
@@ -294,7 +303,7 @@ function mapV2LiteToV3(v2: V2LiteResponse): SolveResponseV3 {
         quality: v2.quality,
         assumptions: v2.assumptions,
         refusal: v2.refusal,
-        telemetry: v2.telemetry as any
+        telemetry: v2.telemetry as TelemetryPayload
     };
 }
 

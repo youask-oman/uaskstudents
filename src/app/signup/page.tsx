@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -22,7 +22,7 @@ export default function SignupPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState(false);
-    const isDark = typeof window !== "undefined" && document.documentElement.classList.contains("dark");
+    const [isDark, setIsDark] = useState(false);
     const router = useRouter();
 
     useEffect(() => {

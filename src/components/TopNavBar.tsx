@@ -10,6 +10,7 @@ export default function TopNavBar() {
     const [user, setUser] = useState<{ name: string, avatar: string } | null>(null);
 
     useEffect(() => {
+        // eslint-disable-next-line
         setMounted(true);
         if (typeof window !== "undefined") {
             const token = localStorage.getItem("token");
@@ -38,7 +39,6 @@ export default function TopNavBar() {
         <header className="sticky top-0 z-50 w-full border-b border-[#f0f2f4] dark:border-slate-800 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md px-4 md:px-10 py-3 transition-colors duration-200">
             <div className="max-w-[1200px] mx-auto flex items-center justify-between">
                 <Link href="/" className="flex items-center gap-3 text-primary">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={mounted && isDark ? "/logo-dark.png" : "/logo.png"} alt="uask.ai" className="h-8 w-auto" />
                     <h2 className="text-[#111318] dark:text-white text-xl font-bold leading-tight tracking-tight font-display">

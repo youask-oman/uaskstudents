@@ -5,7 +5,7 @@ import MathRenderer from '../math/MathRendererSwitch';
 import VisualRenderer from './VisualRenderer';
 
 // Define Visual type locally since it's not exported
-type Visual = any;
+type Visual = Record<string, unknown>;
 
 interface Checkpoint {
     question: string;
@@ -59,7 +59,7 @@ const getMathContent = (step: Step): string => {
 };
 
 // Helper to clean explanation text
-const cleanExplanation = (text?: any): string => {
+const cleanExplanation = (text?: unknown): string => {
     if (!text) return "Follow the procedure on the right.";
     if (typeof text !== "string") return JSON.stringify(text);
     let cleaned = text.trim();
@@ -377,7 +377,7 @@ export default function StepsTab({ steps, visuals, decisionReason }: StepsTabPro
 
                     <div className="space-y-4">
                         {visuals.map(visual => (
-                            <VisualRenderer key={visual.id} visual={visual} />
+                            <VisualRenderer key={visual.id as string} visual={visual} />
                         ))}
                     </div>
                 </div>

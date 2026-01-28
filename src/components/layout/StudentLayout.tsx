@@ -55,6 +55,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     useEffect(() => {
         // Hydrate from local storage on mount
         const storedUser = getInitialUser();
+        // eslint-disable-next-line
         setUser(storedUser);
     }, []);
 

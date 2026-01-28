@@ -183,7 +183,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
             console.error("No audio recorded");
             return;
         }
-        setStatus("transcribing" as any);
+        setStatus("transcribing" as typeof status);
         setIsBusy(true);
 
         try {
@@ -219,7 +219,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
 
             const transcript = transcribeData.transcript;
             setVoiceTranscript(transcript);
-            setStatus("resolving_intent" as any); // Custom status for UI
+            setStatus("resolving_intent" as typeof status); // Custom status for UI
 
             // 2. Resolve Intent
             const commandPayload = {
@@ -243,7 +243,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
 
             const intent = commandData.command;
             setVoiceIntent(intent.intent);
-            setStatus("executing" as any); // Custom status
+            setStatus("executing" as typeof status); // Custom status
 
             // 3. Execute Intent
             switch (intent.intent) {
@@ -272,7 +272,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                         alert("Please select the region with the error first.");
                         break;
                     }
-                    setStatus("executing" as any);
+                    setStatus("executing");
 
                     // Map selection coordinates from viewport to actual image coordinates
                     // selectionBBox is normalized (0-1) relative to viewport
@@ -332,8 +332,9 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
             }
             setStatus("ready");
 
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Unknown error";
+            setError(message);
             setStatus("error");
         } finally {
             setIsBusy(false);
@@ -544,7 +545,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                     ocr_engine: ocrEngineChoice,
                 });
 
-                const telemetry = (data as any)?.telemetry;
+                const telemetry = (data as { telemetry?: Record<string, number> })?.telemetry;
                 const telemetryLatency =
                     telemetry?.latency_ms_total ?? telemetry?.latency_ms ?? telemetry?.latency_ms_openai;
                 const measuredLatency = telemetryLatency ?? (Date.now() - startTime);
@@ -708,7 +709,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
             return;
         }
 
-        setStatus("executing" as any);
+        setStatus("executing" as typeof status);
         setIsBusy(true);
         setError(null);
         try {
@@ -787,10 +788,11 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                 setLocalSteps(null);
                 setErrorDiagnosis(null);
             }
-        } catch (e: any) {
-            setError(e.name === 'AbortError' ? "Request timed out. Please try again." : e.message);
+        } catch (e: unknown) {
+            const error = e as Error;
+            setError(error.name === 'AbortError' ? "Request timed out. Please try again." : error.message);
         } finally {
-            setStatus("idle" as any);
+            setStatus("idle");
             setIsBusy(false);
         }
     };
@@ -867,9 +869,9 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                                         Executing: {voiceIntent}
                                     </div>
                                     {voiceTranscript && (
-                                        <div className="text-xs text-slate-600 italic">
-                                            "{voiceTranscript}"
-                                        </div>
+                                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                            &quot;{voiceTranscript}&quot;
+                                        </p>
                                     )}
                                 </div>
                             )}
@@ -1012,7 +1014,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                                 {status === "transcribing" && <span className="text-indigo-600 font-medium animate-pulse">Transcribing...</span>}
                                 {status === "resolving_intent" && <span className="text-indigo-600 font-medium animate-pulse">Analyzing Command...</span>}
                                 {voiceTranscript && status !== "transcribing" && status !== "executing" && (
-                                    <span className="text-slate-600 italic">"{voiceTranscript}"</span>
+                                    <span className="text-slate-600 italic">&quot;{voiceTranscript}&quot;</span>
                                 )}
                                 {recorderError && <span className="text-rose-500 font-bold">Error: {recorderError}</span>}
                             </div>
@@ -1220,7 +1222,8 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                     <div className="flex flex-col gap-4">
                         <h4 className="text-sm font-bold text-slate-700">Solve Results</h4>
                         {solveResults.map((res) => {
-                            const solveData = res.solve_response_json as any;
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const solveData = res.solve_response_json as Record<string, any>;
                             const finalAnswer = solveData?.final_answer?.answer_text
                                 || solveData?.final_answer?.answer_latex
                                 || solveData?.final_answer?.answer

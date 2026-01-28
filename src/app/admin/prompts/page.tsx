@@ -141,7 +141,7 @@ export default function AdminPromptsPage() {
     };
 
     const handleDeploy = async () => {
-        if (!selectedVersion) return;
+        if (!selectedVersion || !selectedTemplate) return;
         try {
             setErrorMessage(null);
             const res = await fetch(`${baseUrl}/api/v1/admin/prompts/versions/${selectedVersion.id}/deploy`, {
@@ -254,7 +254,7 @@ export default function AdminPromptsPage() {
                                 </span>
                             </div>
                             <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">
-                                {selectedVersion?.version} — Last edited {new Date(selectedVersion?.created_at).toLocaleString()} by <span className="text-slate-900 dark:text-white">{selectedVersion?.author}</span>
+                                {selectedVersion?.version} — Last edited {new Date(selectedVersion?.created_at || Date.now()).toLocaleString()} by <span className="text-slate-900 dark:text-white">{selectedVersion?.author}</span>
                             </p>
                         </div>
                         <div className="flex gap-2">

@@ -35,11 +35,12 @@ export default function PdfPageViewer({
     }, []);
 
     React.useEffect(() => {
-      let renderTask: RenderTask | null = null;
+        let renderTask: RenderTask | null = null;
         let cancelled = false;
 
         const renderPage = async () => {
             try {
+                // @ts-expect-error - pdfjs-dist types not resolved in build environment
                 const pdfjsLib = await import("pdfjs-dist/build/pdf");
                 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
                     "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -66,14 +67,17 @@ export default function PdfPageViewer({
 
                 canvas.width = scaledViewport.width;
                 canvas.height = scaledViewport.height;
+                canvas.height = scaledViewport.height;
                 renderTask = page.render({ canvasContext: context, viewport: scaledViewport });
-                await renderTask.promise;
+                if (renderTask) {
+                    await renderTask.promise;
+                }
                 if (cancelled) return;
 
                 const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
                 onRendered(dataUrl, { width: canvas.width, height: canvas.height });
             } catch (err) {
-                if (cancelled && err?.name === "RenderingCancelledException") return;
+                if (cancelled && (err as { name?: string })?.name === "RenderingCancelledException") return;
                 const message = err instanceof Error ? err.message : "Failed to render PDF";
                 onError(message);
             }

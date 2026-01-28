@@ -31,17 +31,27 @@ export default function AdminLayout({
             return;
         }
         const role = localStorage.getItem("user_role") ?? "";
-        const profile = {
+        const profile: AdminProfile = {
             name: localStorage.getItem("user_name") ?? "Admin User",
-            role,
+            role: role,
             avatar: localStorage.getItem("user_avatar") ?? "",
             authorized: role === "admin",
         };
-        setAdminProfile(profile);
+
+        // Defer update to avoid synchronous state update warning
+        setTimeout(() => {
+            setAdminProfile(prev => {
+                if (JSON.stringify(prev) !== JSON.stringify(profile)) {
+                    return profile;
+                }
+                return prev;
+            });
+        }, 0);
+
         if (!profile.authorized) {
             router.push("/login");
         }
-    }, [router]);
+    }, [pathname, router]);
     if (!adminProfile.authorized) return null;
 
     const adminRoleLabel = adminProfile.authorized ? "Platform Administrator" : "Super Admin";

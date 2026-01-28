@@ -74,16 +74,14 @@ interface FullUserData {
     device_signup_logs: GenericRecord[];
 }
 
-const formatDateTime = (value?: string) => {
+const formatDateTime = (value: unknown) => {
     if (!value) return "n/a";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return value;
+    const date = new Date(value as string | number | Date);
+    if (Number.isNaN(date.getTime())) return String(value);
     return date.toLocaleString();
 };
 
 const renderFieldValue = (value: unknown) => {
-    if (value === null || value === undefined || value === "") return "n/a";
-    if (typeof value === "boolean") return value ? "true" : "false";
     if (typeof value === "object") return JSON.stringify(value);
     return String(value);
 };
@@ -509,23 +507,23 @@ export default function UserDetailPage() {
                     )}
                     <div className="flex justify-between items-start">
                         <div className="flex items-center gap-6">
-                                <div className="relative group">
-                                    <div className="size-20 rounded-2xl bg-slate-800 flex items-center justify-center text-3xl font-bold text-admin-primary border border-slate-700 shadow-xl overflow-hidden">
-                                        {user.avatar_url ? (
-                                            <Image
-                                                src={user.avatar_url}
-                                                alt={`${user.full_name} avatar`}
-                                                width={80}
-                                                height={80}
-                                                className="w-full h-full object-cover"
-                                                unoptimized
-                                            />
-                                        ) : (
-                                            <span>{user.full_name[0]}</span>
-                                        )}
-                                    </div>
-                                    <div className="absolute -bottom-1 -right-1 size-5 bg-emerald-500 rounded-full border-4 border-[#0F172A]"></div>
+                            <div className="relative group">
+                                <div className="size-20 rounded-2xl bg-slate-800 flex items-center justify-center text-3xl font-bold text-admin-primary border border-slate-700 shadow-xl overflow-hidden">
+                                    {user.avatar_url ? (
+                                        <Image
+                                            src={user.avatar_url}
+                                            alt={`${user.full_name} avatar`}
+                                            width={80}
+                                            height={80}
+                                            className="w-full h-full object-cover"
+                                            unoptimized
+                                        />
+                                    ) : (
+                                        <span>{user.full_name[0]}</span>
+                                    )}
                                 </div>
+                                <div className="absolute -bottom-1 -right-1 size-5 bg-emerald-500 rounded-full border-4 border-[#0F172A]"></div>
+                            </div>
                             <div className="flex flex-col gap-1">
                                 <div className="flex items-center gap-3">
                                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{user.full_name}</h1>
@@ -1078,16 +1076,16 @@ export default function UserDetailPage() {
                                 <div className="max-h-[520px] overflow-y-auto divide-y divide-slate-800">
                                     {sessions.map((sessionItem) => (
                                         <button
-                                            key={sessionItem.id}
-                                            onClick={() => setSelectedSessionId(sessionItem.id)}
+                                            key={sessionItem.id as number}
+                                            onClick={() => setSelectedSessionId(sessionItem.id as number)}
                                             className={`w-full text-left px-5 py-4 hover:bg-slate-800/40 transition-colors ${selectedSessionId === sessionItem.id ? "bg-slate-800/40" : ""}`}
                                         >
                                             <div className="flex items-center justify-between gap-4">
                                                 <div className="flex flex-col">
-                                                    <span className="text-xs font-bold text-slate-900 dark:text-white">{sessionItem.title || "Untitled"}</span>
-                                                    <span className="text-[10px] text-slate-500">{sessionItem.subject || "General"}</span>
+                                                    <span className="text-xs font-bold text-slate-900 dark:text-white">{(sessionItem.title as string) || "Untitled"}</span>
+                                                    <span className="text-[10px] text-slate-500">{(sessionItem.subject as string) || "General"}</span>
                                                 </div>
-                                                <span className="text-[10px] text-slate-500">{sessionItem.created_at ? new Date(sessionItem.created_at).toLocaleDateString() : "n/a"}</span>
+                                                <span className="text-[10px] text-slate-500">{sessionItem.created_at ? new Date(sessionItem.created_at as string).toLocaleDateString() : "n/a"}</span>
                                             </div>
                                         </button>
                                     ))}
@@ -1104,17 +1102,17 @@ export default function UserDetailPage() {
                                     {(fullData?.messages || [])
                                         .filter((message) => !selectedSessionId || message.session_id === selectedSessionId)
                                         .map((message) => (
-                                            <div key={message.id} className="px-6 py-4">
+                                            <div key={message.id as string} className="px-6 py-4">
                                                 <div className="flex items-center justify-between">
                                                     <span className={`text-[10px] font-bold uppercase tracking-widest ${message.role === "assistant" ? "text-emerald-400" : "text-slate-400"}`}>
-                                                        {message.role}
+                                                        {message.role as string}
                                                     </span>
                                                     <span className="text-[10px] text-slate-500">
-                                                        {message.created_at ? new Date(message.created_at).toLocaleString() : "n/a"}
+                                                        {message.created_at ? new Date(message.created_at as string).toLocaleString() : "n/a"}
                                                     </span>
                                                 </div>
                                                 <p className="text-xs text-slate-300 mt-2 whitespace-pre-wrap break-words">
-                                                    {message.content}
+                                                    {message.content as string}
                                                 </p>
                                             </div>
                                         ))}

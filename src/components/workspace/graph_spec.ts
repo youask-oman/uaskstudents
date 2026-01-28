@@ -16,8 +16,8 @@ export interface GraphTrace {
     z?: (number | null)[];
     z_matrix?: (number | null)[][];
     mode?: "lines" | "markers" | "lines+markers";
-    line_style?: Record<string, any>;
-    marker_style?: Record<string, any>;
+    line_style?: Record<string, unknown>;
+    marker_style?: Record<string, unknown>;
     show_legend?: boolean;
 }
 
@@ -46,6 +46,6 @@ export interface GraphSpec {
     axes: GraphAxes;
     traces: GraphTrace[];
     key_points: KeyPoint[];
-    sampling_info?: Record<string, any>;
+    sampling_info?: Record<string, unknown>;
     warnings: string[];
 }

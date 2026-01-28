@@ -1,4 +1,4 @@
-export const normalizeProseMath = (content: any): string => {
+export const normalizeProseMath = (content: unknown): string => {
     if (!content) return "";
     let text = typeof content === 'string' ? content : JSON.stringify(content);
 
@@ -9,7 +9,7 @@ export const normalizeProseMath = (content: any): string => {
             if (Array.isArray(parsed)) {
                 text = parsed.join("\n");
             }
-        } catch (e) {
+        } catch {
             // Not valid JSON array, treat as text
         }
     }
@@ -36,7 +36,7 @@ export const normalizeProseMath = (content: any): string => {
 export const autoFixMath = (text: string): string => {
     if (!text) return text;
     // Common terms that should be math commands if they look like standalone words or prefixes
-    let commands = ["frac", "tfrac", "sqrt", "sin", "cos", "tan", "log", "ln", "pm", "mp", "le", "ge", "leq", "geq", "neq", "approx", "alpha", "beta", "gamma", "delta", "theta", "pi", "infty", "begin", "end", "times", "div", "cdot"];
+    const commands = ["frac", "tfrac", "sqrt", "sin", "cos", "tan", "log", "ln", "pm", "mp", "le", "ge", "leq", "geq", "neq", "approx", "alpha", "beta", "gamma", "delta", "theta", "pi", "infty", "begin", "end", "times", "div", "cdot"];
 
     // Sort by length descending to match longest commands first
     commands.sort((a, b) => b.length - a.length);
@@ -202,7 +202,7 @@ const isSafeInlinePair = (inner: string) => {
         try {
             const parsed = JSON.parse(trimmed);
             if (Array.isArray(parsed)) cleanValue = parsed.join(" \\\\ ");
-        } catch (e) { }
+        } catch { }
     }
 
     if (/^[\d.,]+$/.test(cleanValue)) return false;

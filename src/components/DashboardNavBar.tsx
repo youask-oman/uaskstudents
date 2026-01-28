@@ -39,6 +39,7 @@ export default function DashboardNavBar() {
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setMounted(true);
         const refreshUserInfo = () => {
             if (typeof window === "undefined") return;
@@ -84,7 +85,6 @@ export default function DashboardNavBar() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-16">
                     <Link href="/dashboard" className="flex items-center gap-3">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={mounted && isDark ? "/logo-dark.png" : "/logo.png"} alt="uask.ai" className="h-8 w-auto" />
                         <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">uask.ai</span>

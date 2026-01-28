@@ -2,7 +2,7 @@
 import "katex/dist/katex.min.css";
 import type { Metadata } from "next";
 import { Space_Grotesk, Lexend } from "next/font/google"; // For Student & Admin
-import Script from "next/script";
+
 import "./globals.css";
 import { MathJaxContext } from "better-react-mathjax";
 import { ThemeProvider } from "@/hooks/useTheme";

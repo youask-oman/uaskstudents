@@ -110,6 +110,7 @@ export default function DashboardPage() {
     const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
     const [voiceArtifact, setVoiceArtifact] = useState<VoiceArtifact | null>(null);
     const [recordingTime, setRecordingTime] = useState(0);
+    // const [voiceSessionId, setVoiceSessionId] = useState<number | null>(null);
     const voiceSubject = "Mathematics";
     const [formattingEnabled, setFormattingEnabled] = useState(true);
     const [solveProgress, setSolveProgress] = useState(0);
@@ -363,7 +364,7 @@ export default function DashboardPage() {
             });
             const sessData = await sessionRes.json();
             const vsid = sessData.voice_session_id;
-            setVoiceSessionId(vsid);
+            // setVoiceSessionId(vsid);
 
             // 2. Upload Audio
             const formData = new FormData();
@@ -628,7 +629,7 @@ export default function DashboardPage() {
                                     label="Goal"
                                     options={[{ value: "solve", label: "Solve", icon: "bolt" }]}
                                     value="solve"
-                                    onChange={() => {}}
+                                    onChange={() => { }}
                                     size="sm"
                                     className="solve-segmented"
                                 />

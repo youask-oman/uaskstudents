@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import StudentLayout from "@/components/layout/StudentLayout";
 import MathRenderer from "@/components/math/MathRendererSwitch";
@@ -48,7 +48,7 @@ type ProfileUpdate = {
     learning_interests?: string[];
 };
 
-export default function DashboardPage() {
+function DashboardContent() {
     const initialStats: StatCard[] = [
         { label: "Problems Solved", value: "...", icon: "analytics", color: "blue", trend: "..." },
         { label: "Token Usage", value: "...", icon: "offline_bolt", color: "amber", trend: "Monthly" },
@@ -428,8 +428,8 @@ export default function DashboardPage() {
                                                                     )}
                                                                     {session.difficulty && (
                                                                         <span className={`px-1.5 py-0.5 rounded text-[10px] border whitespace-nowrap ${session.difficulty.toLowerCase().includes('hard') ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border-red-100 dark:border-red-900/30' :
-                                                                                session.difficulty.toLowerCase().includes('medium') ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/30' :
-                                                                                    'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30'
+                                                                            session.difficulty.toLowerCase().includes('medium') ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/30' :
+                                                                                'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30'
                                                                             }`}>
                                                                             {session.difficulty}
                                                                         </span>
@@ -509,5 +509,13 @@ export default function DashboardPage() {
                 </div>
             </section>
         </StudentLayout>
+    );
+}
+
+export default function DashboardPage() {
+    return (
+        <Suspense fallback={<div>Loading dashboard...</div>}>
+            <DashboardContent />
+        </Suspense>
     );
 }
