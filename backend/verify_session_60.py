@@ -18,10 +18,11 @@ def check_session_60():
         # Check ChatSession table first
         print(f"Checking session with ID 60 in {DATABASE_URL}")
         
+
         # We can use raw SQL to avoid model import issues if models are complex
         # But let's try to query chat_session table directly
         try:
-            result = session.exec(text("SELECT * FROM chat_session WHERE id = 60")).mappings().one_or_none()
+            result = session.exec(text("SELECT * FROM chatsession WHERE id = 60")).mappings().one_or_none()
             if not result:
                 print("Session 60 NOT FOUND in database.")
                 return
@@ -29,7 +30,7 @@ def check_session_60():
             print(f"Found Session 60: Title='{result.get('title')}'")
             
             # Now check messages for this session
-            msgs = session.exec(text("SELECT * FROM chat_message WHERE session_id = 60 ORDER BY id")).mappings().all()
+            msgs = session.exec(text("SELECT * FROM chatmessage WHERE session_id = 60 ORDER BY id")).mappings().all()
             print(f"Found {len(msgs)} messages for session 60.")
             
             for msg in msgs:

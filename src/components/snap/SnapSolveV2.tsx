@@ -858,56 +858,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
 
                     {imageSrc && (
                         <div className="flex flex-col gap-3">
-                            {/* Voice Control Toolbar */}
-                            <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
-                                <div className="flex items-center gap-3">
-                                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 cursor-pointer select-none">
-                                        <div className={`w-10 h-6 flex items-center bg-slate-300 rounded-full p-1 duration-300 ${voiceMode ? 'bg-indigo-500' : ''}`}>
-                                            <div className={`bg-white w-4 h-4 rounded-full shadow-md transform duration-300 ${voiceMode ? 'translate-x-4' : ''}`}></div>
-                                        </div>
-                                        <input
-                                            type="checkbox"
-                                            checked={voiceMode}
-                                            onChange={(e) => {
-                                                setVoiceMode(e.target.checked);
-                                                if (!e.target.checked) setSelectionBBox(null);
-                                            }}
-                                            className="hidden"
-                                        />
-                                        <span>Circle & Speak Mode</span>
-                                    </label>
 
-                                    {voiceMode && (
-                                        <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-4">
-                                            <button
-                                                className={`px-4 py-1.5 rounded-full font-bold text-xs flex items-center gap-2 transition-all ${recorderState === "recording"
-                                                    ? "bg-rose-500 text-white scale-105 shadow-lg shadow-rose-500/30"
-                                                    : "bg-white border border-slate-300 text-slate-700 hover:border-indigo-400"
-                                                    }`}
-                                                onMouseDown={handleMicDown}
-                                                onMouseUp={handleMicUp}
-                                                onMouseLeave={() => { if (recorderState === "recording") handleMicUp(); }}
-                                                onTouchStart={(e) => { e.preventDefault(); handleMicDown(); }}
-                                                onTouchEnd={(e) => { e.preventDefault(); handleMicUp(); }}
-                                            >
-                                                <span className={`w-2 h-2 rounded-full ${recorderState === "recording" ? "bg-white animate-pulse" : "bg-slate-400"}`} />
-                                                {recorderState === "recording" ? `Release to Send (${(durationMs / 1000).toFixed(1)}s)` : "Hold Space or Click to Speak"}
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {voiceMode && (
-                                    <div className="flex-1 text-right text-xs">
-                                        {status === "transcribing" && <span className="text-indigo-600 font-medium animate-pulse">Transcribing...</span>}
-                                        {status === "resolving_intent" && <span className="text-indigo-600 font-medium animate-pulse">Analyzing Command...</span>}
-                                        {voiceTranscript && status !== "transcribing" && status !== "executing" && (
-                                            <span className="text-slate-600 italic">"{voiceTranscript}"</span>
-                                        )}
-                                        {recorderError && <span className="text-rose-500 font-bold">Error: {recorderError}</span>}
-                                    </div>
-                                )}
-                            </div>
 
                             {/* Voice Intent Display - Separate Section */}
                             {voiceMode && status === "executing" && voiceIntent && (
@@ -1016,6 +967,57 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                             )}
                         </div>
                     )}
+
+                    {/* Voice Control Toolbar */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <div className="flex items-center gap-3">
+                            <label className="flex items-center gap-2 text-sm font-bold text-slate-700 cursor-pointer select-none">
+                                <div className={`w-10 h-6 flex items-center bg-slate-300 rounded-full p-1 duration-300 ${voiceMode ? 'bg-indigo-500' : ''}`}>
+                                    <div className={`bg-white w-4 h-4 rounded-full shadow-md transform duration-300 ${voiceMode ? 'translate-x-4' : ''}`}></div>
+                                </div>
+                                <input
+                                    type="checkbox"
+                                    checked={voiceMode}
+                                    onChange={(e) => {
+                                        setVoiceMode(e.target.checked);
+                                        if (!e.target.checked) setSelectionBBox(null);
+                                    }}
+                                    className="hidden"
+                                />
+                                <span>Circle & Speak Mode</span>
+                            </label>
+
+                            {voiceMode && (
+                                <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-4">
+                                    <button
+                                        className={`px-4 py-1.5 rounded-full font-bold text-xs flex items-center gap-2 transition-all ${recorderState === "recording"
+                                            ? "bg-rose-500 text-white scale-105 shadow-lg shadow-rose-500/30"
+                                            : "bg-white border border-slate-300 text-slate-700 hover:border-indigo-400"
+                                            }`}
+                                        onMouseDown={handleMicDown}
+                                        onMouseUp={handleMicUp}
+                                        onMouseLeave={() => { if (recorderState === "recording") handleMicUp(); }}
+                                        onTouchStart={(e) => { e.preventDefault(); handleMicDown(); }}
+                                        onTouchEnd={(e) => { e.preventDefault(); handleMicUp(); }}
+                                    >
+                                        <span className={`w-2 h-2 rounded-full ${recorderState === "recording" ? "bg-white animate-pulse" : "bg-slate-400"}`} />
+                                        {recorderState === "recording" ? `Release to Send (${(durationMs / 1000).toFixed(1)}s)` : "Hold Space or Click to Speak"}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {voiceMode && (
+                            <div className="flex-1 text-right text-xs">
+                                {status === "transcribing" && <span className="text-indigo-600 font-medium animate-pulse">Transcribing...</span>}
+                                {status === "resolving_intent" && <span className="text-indigo-600 font-medium animate-pulse">Analyzing Command...</span>}
+                                {voiceTranscript && status !== "transcribing" && status !== "executing" && (
+                                    <span className="text-slate-600 italic">"{voiceTranscript}"</span>
+                                )}
+                                {recorderError && <span className="text-rose-500 font-bold">Error: {recorderError}</span>}
+                            </div>
+                        )}
+                    </div>
 
                     <div className="flex flex-wrap items-center gap-3">
                         {!extractResult ? (

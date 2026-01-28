@@ -46,6 +46,7 @@ from app.services.ocr.ocr_router_service import ocr_router_service
 from app.services.ocr.audit_log_service import audit_log_service
 from app.services.ocr.ocr_service import ocr_service
 from app.services.solve.canonicalization_service import canonicalization_service
+from app.services.admin.analytics_service import record_request_event
 from app.services.solve.cache_service import cache_service
 from app.services.token_policy import get_token_policy, serialize_token_policy
 from app.config import get_settings

@@ -49,14 +49,18 @@ async def transcribe_audio(
         if not ext:
             # Fallback based on content type
             # Handle complex MIME types like "audio/webm;codecs=opus"
-            content_type = (file.content_type or "").split(";")[0].strip()
+            content_type = (file.content_type or "").lower().split(";")[0].strip()
             if "wav" in content_type: ext = ".wav"
             elif "mp4" in content_type or "m4a" in content_type: ext = ".m4a"
             elif "mpeg" in content_type or "mp3" in content_type: ext = ".mp3"
             elif "ogg" in content_type: ext = ".ogg"
             elif "webm" in content_type: ext = ".webm"
             elif "flac" in content_type: ext = ".flac"
-            else: ext = ".webm" # Default safe bet for web audio
+            else: 
+                # If content_type is generic application/octet-stream or unknown, check if filename had one
+                # If not, default to .webm (most common for browser audio blobs)
+                ext = ".webm"
+
         
         # Diagnostic logging
         logger.info(f"Audio upload: filename={file.filename}, content_type={file.content_type}, detected_ext={ext}, size={len(audio_bytes)}")

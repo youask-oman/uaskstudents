@@ -334,7 +334,7 @@ export default function StepsTab({ steps, visuals, decisionReason }: StepsTabPro
                                                                     margin: 1em auto !important;
                                                                 }
                                                             `}</style>
-                                                            <div className="math-work-content">
+                                                            <div className="math-work-content overflow-x-auto max-w-full">
                                                                 <MathRenderer
                                                                     content={mathContent}
                                                                     mode="block"
