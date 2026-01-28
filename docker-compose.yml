@@ -85,8 +85,8 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: "2m"
+        max-file: "2"
     read_only: true
     tmpfs:
       - /tmp

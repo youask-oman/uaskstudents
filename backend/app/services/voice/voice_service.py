@@ -45,12 +45,25 @@ class VoiceService:
 
     async def transcribe_audio(self, file_input, filename: str = "audio.webm") -> str:
         """Transcribe audio file using OpenAI Whisper."""
+        
+        # Debug file for tracing
+        def debug_log(msg):
+            import datetime
+            with open("voice_debug.log", "a") as f:
+                f.write(f"[{datetime.datetime.now()}] {msg}\n")
+            logger.info(f"[VOICE_DEBUG] {msg}")
+        
+        debug_log(f"=== transcribe_audio called ===")
+        debug_log(f"API key present: {bool(self.api_key)}")
+        debug_log(f"API key prefix: {self.api_key[:10] if self.api_key else 'None'}...")
+        
         if not self.api_key:
              raise ValueError("OpenAI API key missing")
         
         start = time.time()
         try:
             # Handle both bytes and file-like objects
+            debug_log(f"file_input type: {type(file_input)}")
             if isinstance(file_input, bytes):
                 audio_data = file_input
             elif hasattr(file_input, "read"):
@@ -60,7 +73,8 @@ class VoiceService:
             else:
                 audio_data = file_input
 
-            logger.info(f"Transcribing audio: filename={filename}, size={len(audio_data)} bytes")
+            debug_log(f"Transcribing audio: filename={filename}, size={len(audio_data)} bytes")
+            debug_log(f"First 20 bytes (hex): {audio_data[:20].hex() if len(audio_data) >= 20 else audio_data.hex()}")
             
             if len(audio_data) == 0:
                 raise ValueError("Audio file is empty (0 bytes)")
@@ -72,17 +86,44 @@ class VoiceService:
             elif filename.endswith(".m4a"): mime_type = "audio/mp4"
             elif filename.endswith(".ogg"): mime_type = "audio/ogg"
             
-            resp = await self.client.audio.transcriptions.create(
-                model="whisper-1", 
-                file=(filename, audio_data, mime_type),
-                response_format="json"
-            )
-            # No need to reset pointer as we read into memory
+            debug_log(f"Using MIME type: {mime_type}")
+            
+            # Use direct httpx POST for more control over the multipart upload
+            import httpx
+            
+            debug_log("Creating httpx client...")
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                # OpenAI API requires form-data with 'file' field
+                files = {"file": (filename, audio_data, mime_type)}
+                data = {"model": "whisper-1", "response_format": "text"}
+                headers = {"Authorization": f"Bearer {self.api_key}"}
+                
+                debug_log(f"Sending POST to OpenAI Whisper API...")
+                response = await client.post(
+                    "https://api.openai.com/v1/audio/transcriptions",
+                    files=files,
+                    data=data,
+                    headers=headers
+                )
+                
+                debug_log(f"Response status: {response.status_code}")
+                debug_log(f"Response headers: {dict(response.headers)}")
+                
+                if response.status_code != 200:
+                    error_detail = response.text
+                    debug_log(f"ERROR: Whisper API error: {response.status_code} - {error_detail}")
+                    raise ValueError(f"Whisper API error: {error_detail}")
+                
+                transcript = response.text
+                debug_log(f"Transcript received: {transcript[:100] if transcript else 'EMPTY'}...")
             
             duration = time.time() - start
-            logger.info(f"Transcription completed in {duration:.2f}s")
-            return resp.text
+            debug_log(f"Transcription completed in {duration:.2f}s")
+            return transcript
         except Exception as e:
+            debug_log(f"EXCEPTION: {type(e).__name__}: {e}")
+            import traceback
+            debug_log(f"Traceback: {traceback.format_exc()}")
             logger.error(f"Transcription failed: {e}")
             raise
 
@@ -214,6 +255,113 @@ Be extremely precise with numbers - if you see "93", don't read it as "43" or "3
         except Exception as e:
             logger.error(f"Find error failed: {e}")
             return FindErrorResponse(ok=False, error=str(e))
+
+    def run_voice_job(self, session, job_id: int):
+        """
+        Synchronous job runner for voice transcription.
+        Called from Celery worker or threading fallback.
+        """
+        from app.models import VoiceJob, VoiceAudio, VoiceArtifact, VoiceSession
+        from app.services.voice.normalizer import MathSpeechNormalizer
+        from datetime import datetime
+        import time
+        
+        job = session.get(VoiceJob, job_id)
+        if not job:
+            logger.error(f"Voice job {job_id} not found")
+            return
+        
+        job.status = "running"
+        job.started_at = datetime.utcnow()
+        job.attempts += 1
+        session.add(job)
+        session.commit()
+        
+        try:
+            # 1. Get audio file
+            audio = session.get(VoiceAudio, job.audio_id)
+            if not audio:
+                raise ValueError("Audio not found for job")
+            
+            audio_path = audio.storage_url
+            logger.info(f"Processing voice job {job_id}: audio={audio_path}")
+            
+            # 2. Read audio file
+            with open(audio_path, "rb") as f:
+                audio_bytes = f.read()
+            
+            if len(audio_bytes) == 0:
+                raise ValueError("Audio file is empty")
+            
+            # 3. Transcribe using OpenAI Whisper
+            start_time = time.time()
+            
+            # Run async transcription in sync context
+            import asyncio
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                transcript = loop.run_until_complete(
+                    self.transcribe_audio(audio_bytes, filename=audio_path.split("/")[-1])
+                )
+            finally:
+                loop.close()
+            
+            transcription_time = time.time() - start_time
+            logger.info(f"Transcription completed in {transcription_time:.2f}s: {transcript[:100]}...")
+            
+            # 4. Normalize transcript (convert spoken math to symbols)
+            normalizer = MathSpeechNormalizer()
+            norm_result = normalizer.normalize(transcript)
+            
+            normalized_text = norm_result["normalized_text"]
+            ambiguity_flags = norm_result.get("ambiguity_flags", [])
+            clarifier = norm_result.get("clarifier")
+            
+            # 5. Create artifact
+            artifact = VoiceArtifact(
+                job_id=job.id,
+                transcript_raw=transcript,
+                transcript_confidence=0.95,  # Whisper doesn't return confidence, assume high
+                normalized_math_text=normalized_text,
+                ambiguity_flags=ambiguity_flags if ambiguity_flags else None,
+                clarifier_question=clarifier,
+                stt_provider="openai",
+                stt_model="whisper-1",
+                timings_json={"transcription_ms": int(transcription_time * 1000)}
+            )
+            session.add(artifact)
+            
+            # 6. Update job status
+            job.status = "done"
+            job.finished_at = datetime.utcnow()
+            session.add(job)
+            
+            # 7. Update session status
+            voice_session = session.get(VoiceSession, job.voice_session_id)
+            if voice_session:
+                voice_session.status = "done"
+                session.add(voice_session)
+            
+            session.commit()
+            logger.info(f"Voice job {job_id} completed successfully")
+            
+        except Exception as e:
+            logger.error(f"Voice job {job_id} failed: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            job.status = "failed"
+            job.error_message = str(e)
+            job.finished_at = datetime.utcnow()
+            session.add(job)
+            
+            voice_session = session.get(VoiceSession, job.voice_session_id)
+            if voice_session:
+                voice_session.status = "failed"
+                session.add(voice_session)
+            
+            session.commit()
 
 # Singleton
 voice_service = VoiceService()
