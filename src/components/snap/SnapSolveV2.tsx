@@ -145,6 +145,26 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
     } | null>(null);
     const [localSteps, setLocalSteps] = React.useState<string[] | null>(null);
 
+    // Auto-fit zoom for large images
+    React.useEffect(() => {
+        if (imageSize && viewportSize) {
+            const containerW = viewportSize.width;
+            const containerH = viewportSize.height;
+            const imgW = imageSize.width;
+            const imgH = imageSize.height;
+
+            if (imgW > containerW || imgH > containerH) {
+                const fitScaleW = containerW / imgW;
+                const fitScaleH = containerH / imgH;
+                const fitScale = Math.min(fitScaleW, fitScaleH) * 0.9; // 90% zoom for padding
+                setZoom(Math.max(0.1, Math.min(fitScale, 1)));
+                console.log(`Auto-fit zoom applied: ${fitScale}`);
+            } else {
+                setZoom(1);
+            }
+        }
+    }, [imageSize, viewportSize]);
+
     // Import hook (assuming it's available as per plan)
     const {
         state: recorderState,
@@ -446,6 +466,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                 pageNumber,
                 crop: fullPage ? null : normalizedCrop,
                 rotation,
+                ocr_engine_choice: ocrEngineChoice,
             };
             const requestHash = await buildRequestHash(fileBytes, meta);
             const cache = loadCache();
@@ -458,17 +479,19 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                 return;
             }
 
+            const isPix2Text = ocrEngineChoice === "pix2text";
             const blob = await getCroppedImageBlob({
                 imageSrc,
                 crop: fullPage ? null : cropPixels,
                 rotation,
                 maxEdge: MAX_EDGE,
-                quality: JPEG_QUALITY,
+                quality: isPix2Text ? 1.0 : JPEG_QUALITY,
+                mimeType: isPix2Text ? "image/png" : "image/jpeg",
                 fullPage,
             });
 
             const form = new FormData();
-            form.append("file", blob, "extract.jpg");
+            form.append("file", blob, isPix2Text ? "extract.png" : "extract.jpg");
             form.append("page_number", String(pageNumber));
             form.append("file_hash", fileHash);
             form.append("source", fileType === "pdf" ? "pdf_page" : "image");
@@ -518,7 +541,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                     ocr_confidence: avgConfidence,
                     ocr_warnings: warnings,
                     ocr_source: fileType === "pdf" ? "pdf" : "image",
-                    ocr_engine: "snap_v2",
+                    ocr_engine: ocrEngineChoice,
                 });
 
                 const telemetry = (data as any)?.telemetry;

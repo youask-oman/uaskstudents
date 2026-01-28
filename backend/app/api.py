@@ -1445,17 +1445,27 @@ def _estimate_credits(
     return float(base_cost + extra_cost)
 
 
-async def _call_extract_questions(image_bytes: bytes, max_output_tokens: int, engine_choice: str = "lmm") -> Dict[str, Any]:
+async def _call_extract_questions(
+    image_bytes: bytes, 
+    max_output_tokens: int, 
+    engine_choice: str = "lmm",
+    crop_meta: Optional[Dict[str, Any]] = None,
+    debug: bool = False
+) -> Dict[str, Any]:
     if engine_choice == "pix2text":
         from app.services.ocr.ocr_service import ocr_service
         import tempfile
-        import os
         tmp_path = None
         try:
-            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
                 f.write(image_bytes)
                 tmp_path = f.name
-            result = ocr_service.process_job(tmp_path, engine_name="local")
+            result = ocr_service.process_job(
+                tmp_path, 
+                engine_name="local",
+                crop_meta=crop_meta,
+                debug=debug
+            )
             markdown = result.get("markdown", "")
             return {
                 "payload": {
@@ -1471,6 +1481,7 @@ async def _call_extract_questions(image_bytes: bytes, max_output_tokens: int, en
                         "type": "math"
                     }]
                 },
+                "telemetry": result.get("telemetry"),
                 "input_tokens": 0,
                 "output_tokens": 0,
                 "cached_tokens": 0
@@ -1909,6 +1920,7 @@ async def extract_questions(
     source: str = Form("image"),
     user_selection: str = Form("crop"),
     ocr_engine_choice: str = Form("lmm"),
+    debug: bool = Form(False),
     user_id: int = Query(...),
     session: Session = Depends(get_session)
 ):
@@ -2018,7 +2030,26 @@ async def extract_questions(
         max_extract_tokens = token_policy.ocr_pdf_extract_max if is_pdf_source else token_policy.ocr_image_extract_max
         if max_extract_tokens <= 0:
             raise HTTPException(status_code=500, detail="Extract token policy misconfigured")
-        extract_data = await _call_extract_questions(image_bytes, max_extract_tokens, engine_choice=ocr_engine_choice)
+        crop_meta = {
+            "rotation": rotation,
+            "fullPage": user_selection == "whole_page",
+            "user_selection": user_selection,
+            "source": source,
+            "page_number": page_number,
+            "crop_norm": {
+                "x": crop_x, "y": crop_y, "w": crop_w, "h": crop_h
+            } if crop_x is not None else None,
+            "viewport": {
+                "vw": viewport_w, "vh": viewport_h, "pw": preview_w, "ph": preview_h
+            }
+        }
+        extract_data = await _call_extract_questions(
+            image_bytes, 
+            max_extract_tokens, 
+            engine_choice=ocr_engine_choice,
+            crop_meta=crop_meta,
+            debug=debug
+        )
     except BadRequestError as exc:
         logging.exception("extract_questions OpenAI request failed")
         raise HTTPException(status_code=400, detail=f"Extract engine error: {str(exc)}") from exc

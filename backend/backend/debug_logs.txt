@@ -12,3 +12,76 @@ Attempting to connect to database (Attempt 1/10)...
 Database connection successful and tables created.
 Attempting to connect to database (Attempt 1/10)...
 Database connection successful and tables created.
+extract_questions input metrics: size=866x691 stddev=31.37 white=0.000
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmpza_jyqwt.jpg
+Initializing Local Pix2Text engine...
+Use DocLayout-YOLO model for Layout Analysis: C:\Users\loaia\AppData\Roaming\pix2text\1.1\layout-docyolo\doclayout_yolo_docstructbench_imgsz1024.pt
+use model: C:\Users\loaia\AppData\Roaming\cnocr\2.3\densenet_lite_136-gru\cnocr-v2.3-densenet_lite_136-gru-epoch=004-ft-model.onnx
+use model: C:\Users\loaia\AppData\Roaming\cnstd\1.2\ppocr\ch_PP-OCRv5_det\ch_PP-OCRv5_det_infer.onnx
+Use model path for MFD: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfd-1.5-onnx\pix2text-mfd-1.5.onnx
+Use model dir for LatexOCR: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfr-1.5-onnx
+Loaded Pix2Text MFR model mfr-1.5 to: backend-onnx, device-cpu
+Pix2Text initialized successfully
+LocalEngine processed image in 4015ms
+extract_questions input metrics: size=819x654 stddev=31.57 white=0.000
+extract_questions failed
+Traceback (most recent call last):
+  File "C:\uaskstudents\backend\app\api.py", line 2021, in extract_questions
+    extract_data = await _call_extract_questions(image_bytes, max_extract_tokens, engine_choice=ocr_engine_choice)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\uaskstudents\backend\app\api.py", line 1482, in _call_extract_questions
+    if not os.environ.get("OPENAI_API_KEY"):
+           ^^
+UnboundLocalError: cannot access local variable 'os' where it is not associated with a value
+extract_questions input metrics: size=819x654 stddev=31.57 white=0.000
+extract_questions failed
+Traceback (most recent call last):
+  File "C:\uaskstudents\backend\app\api.py", line 2021, in extract_questions
+    extract_data = await _call_extract_questions(image_bytes, max_extract_tokens, engine_choice=ocr_engine_choice)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\uaskstudents\backend\app\api.py", line 1482, in _call_extract_questions
+    if not os.environ.get("OPENAI_API_KEY"):
+           ^^
+UnboundLocalError: cannot access local variable 'os' where it is not associated with a value
+extract_questions input metrics: size=819x654 stddev=31.57 white=0.000
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmpfuvc87vr.jpg
+LocalEngine processed image in 1353ms
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+extract_questions input metrics: size=892x712 stddev=71.51 white=0.001
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmprxbublsx.png
+Initializing Local Pix2Text engine...
+Use DocLayout-YOLO model for Layout Analysis: C:\Users\loaia\AppData\Roaming\pix2text\1.1\layout-docyolo\doclayout_yolo_docstructbench_imgsz1024.pt
+use model: C:\Users\loaia\AppData\Roaming\cnocr\2.3\densenet_lite_136-gru\cnocr-v2.3-densenet_lite_136-gru-epoch=004-ft-model.onnx
+use model: C:\Users\loaia\AppData\Roaming\cnstd\1.2\ppocr\ch_PP-OCRv5_det\ch_PP-OCRv5_det_infer.onnx
+Use model path for MFD: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfd-1.5-onnx\pix2text-mfd-1.5.onnx
+Use model dir for LatexOCR: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfr-1.5-onnx
+Loaded Pix2Text MFR model mfr-1.5 to: backend-onnx, device-cpu
+Pix2Text initialized successfully
+[QUESTION_CACHE] Stored: 307608be6c85e459...
+extract_questions input metrics: size=784x626 stddev=78.57 white=0.000
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmpq3s95dzr.png
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.

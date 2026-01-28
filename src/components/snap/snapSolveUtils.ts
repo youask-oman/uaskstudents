@@ -54,14 +54,16 @@ export async function getCroppedImageBlob({
     crop,
     rotation,
     maxEdge,
-    quality,
+    quality = 0.83,
+    mimeType = "image/jpeg",
     fullPage,
 }: {
     imageSrc: string;
     crop: CropArea | null;
     rotation: number;
     maxEdge: number;
-    quality: number;
+    quality?: number;
+    mimeType?: string;
     fullPage: boolean;
 }): Promise<Blob> {
     const image = await createImage(imageSrc);
@@ -110,7 +112,7 @@ export async function getCroppedImageBlob({
                 }
                 resolve(blob);
             },
-            "image/jpeg",
+            mimeType,
             quality
         );
     });

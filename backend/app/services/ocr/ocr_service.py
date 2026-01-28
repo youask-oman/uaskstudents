@@ -13,7 +13,7 @@ Configuration via environment variables:
 import os
 import time
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import json
 
 # ============================================================
@@ -57,6 +57,17 @@ except ImportError:
     litellm = None
 
 import base64
+from PIL import Image, ImageOps, ImageEnhance, ImageFilter
+import numpy as np
+import io
+import shutil
+import hashlib
+import re
+
+try:
+    import cv2
+except ImportError:
+    cv2 = None
 
 logger = logging.getLogger(__name__)
 
@@ -128,37 +139,220 @@ class LocalEngine(OCREngine):
             self._p2t = Pix2Text.from_config()
             logger.info("Pix2Text initialized successfully")
         return self._p2t
-
-    def process(self, image_path: str, out_dir: Optional[str] = None) -> Dict[str, Any]:
-        start_time = time.time()
+    
+    def _preprocess_variants(self, image_path: str, debug_dir: Optional[str] = None) -> List[str]:
+        """Creates 2-3 variants of the image for robust OCR (Requirement D)."""
+        variants = []
+        img_orig = cv2.imread(image_path) if cv2 else None
         
-        try:
-            # If out_dir is provided, Pix2Text will save figures there
-            kwargs = {}
-            if out_dir:
-                kwargs['save_dir'] = out_dir
+        if img_orig is None:
+            return [image_path]
+
+        def add_padding(img):
+            # Pad borders for radicals/integrals (Requirement 4)
+            return cv2.copyMakeBorder(img, 15, 15, 15, 15, cv2.BORDER_CONSTANT, value=[255, 255, 255])
+
+        # v0: Padded Original
+        v0_path = image_path.replace(".png", "_v0.png").replace(".jpg", "_v0.png")
+        cv2.imwrite(v0_path, add_padding(img_orig))
+        variants.append(v0_path)
+
+        # v1: Grayscale + CLAHE + Denoise + Unsharp
+        gray = cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        cl1 = clahe.apply(gray)
+        denoised = cv2.fastNlMeansDenoising(cl1, None, 10, 7, 21)
+        # Unsharp
+        blurred = cv2.GaussianBlur(denoised, (0, 0), 3)
+        unsharp = cv2.addWeighted(denoised, 1.5, blurred, -0.5, 0)
+        
+        v1_path = image_path.replace(".png", "_v1.png").replace(".jpg", "_v1.png")
+        cv2.imwrite(v1_path, add_padding(unsharp))
+        variants.append(v1_path)
+
+        # v2: Adaptive Threshold (Chalkboard/Low Contrast)
+        thresh = cv2.adaptiveThreshold(denoised, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+        v2_path = image_path.replace(".png", "_v2.png").replace(".jpg", "_v2.png")
+        cv2.imwrite(v2_path, add_padding(thresh))
+        variants.append(v2_path)
+        
+        if debug_dir:
+            for i, p in enumerate(variants):
+                shutil.copy(p, os.path.join(debug_dir, f"variant_v{i}.png"))
+        return variants
+
+    def _select_ocr_mode(self, width: int, height: int, crop_meta: Optional[Dict[str, Any]] = None) -> str:
+        """Deterministic router for Pix2Text mode selection."""
+        full_page = crop_meta.get("fullPage", False) if crop_meta else False
+        aspect_ratio = height / width if width > 0 else 0
+        
+        # 1. Page Mode
+        if full_page or aspect_ratio > 0.9 or (width > 2000 and height > 2000):
+            return "recognize_page"
+        
+        # 2. Formula Mode (tight/line-like)
+        if (width / height >= 3.0) or (height < 100):
+            return "recognize_formula"
+        
+        # 3. Text-Formula Mode (paragraph-like)
+        return "recognize_text_formula"
+
+    def is_figure_only(self, markdown: str) -> bool:
+        """Requirement 3: Detect if output is only a figure placeholder (even multi-line)."""
+        s = markdown.strip()
+        if not s: return True
+        
+        # Remove all figure placeholders: ![](figures/...)
+        # We use a non-greedy match for the content between parentheses
+        clean = re.sub(r'!\[\]\(figures\/.*?\)', '', s).strip()
+        
+        # If after removing figures, there's no math and very little alphanumeric signal
+        if not clean: return True
+        
+        if not self.looks_like_math(clean):
+            # Check if remaining text is just fluff/noise
+            if len(clean) < 5 or not any(c.isalnum() for c in clean):
+                return True
                 
-            result = self.p2t.recognize_page(image_path, **kwargs)
+        return False
+
+    def looks_like_math(self, text: str) -> bool:
+        """Requirement 3: Heuristic for math presence."""
+        math_tokens = [r"\\", r"\^", r"_", r"=", r"\+", r"\-", r"\*", r"\/", r"\(", r"\)", r"\[", r"\]"]
+        if any(re.search(t, text) for t in math_tokens): return True
+        if any(c.isdigit() for c in text): return True
+        return False
+
+    def _format_output(self, text: str, mode: str) -> str:
+        """Standardized formatting rules."""
+        s = text.strip()
+        if not s: return s
+        
+        if mode == "recognize_formula":
+            # Always wrap formula mode output
+            if not (s.startswith("$$") and s.endswith("$$")):
+                s = s.replace("$", "") # Remove single $ if present
+                return f"$${s}$$"
+            return s
             
-            # Result typically has to_markdown() and other attributes
-            # Use /tmp fallback to ensure writability in Docker
-            markdown = result.to_markdown(out_dir or "/tmp/p2t_output") if hasattr(result, "to_markdown") else str(result)
+        if mode == "recognize_text_formula":
+            # Heuristic: if it's purely a latex string and no surrounding text, wrap it
+            if "\\" in s and len(s.split()) == 1 and not (s.startswith("$") or s.startswith("$$")):
+                return f"$${s}$$"
+            return s
             
-            latency_ms = int((time.time() - start_time) * 1000)
-            logger.info(f"LocalEngine processed image in {latency_ms}ms")
+        return s
+
+    def process(self, image_path: str, out_dir: Optional[str] = None, crop_meta: Optional[Dict[str, Any]] = None, debug: bool = False) -> Dict[str, Any]:
+        overall_start = time.time()
+        fallback_chain = []
+        debug_dir = None
+        user_selection = crop_meta.get("user_selection", "crop") if crop_meta else "crop"
+        
+        # Determine image stats
+        try:
+            with Image.open(image_path) as img_stat:
+                width, height = img_stat.size
+                img_bytes_count = os.path.getsize(image_path)
+        except:
+            width, height, img_bytes_count = 0, 0, 0
+
+        if debug:
+            request_id = hashlib.md5(f"{image_path}{time.time()}".encode()).hexdigest()[:8]
+            debug_dir = f"/tmp/ocr_debug/{request_id}"
+            os.makedirs(debug_dir, exist_ok=True)
+            shutil.copy(image_path, os.path.join(debug_dir, "input.png"))
+            logger.info(f"Debug telemetry enabled at {debug_dir}")
+
+        try:
+            # 1. Generate Preprocessing Variants (Requirement D/4)
+            variant_paths = self._preprocess_variants(image_path, debug_dir)
             
-            return {
-                "markdown": markdown,
-                "plain_text": markdown,
-                "latex_blocks": [],
-                "confidence": 0.85,
+            # 2. Determine APIs to try based on user_selection (Requirement 2/B)
+            if user_selection == "crop":
+                api_order = ["recognize_text_formula", "recognize_formula", "recognize"]
+            else: # whole_page
+                api_order = ["recognize_page", "recognize_text_formula"]
+
+            winning_markdown = ""
+            method_used = ""
+            
+            # Fallback Ladder: Variant x API
+            for v_path in variant_paths:
+                for api_name in api_order:
+                    step_start = time.time()
+                    try:
+                        if api_name == "recognize_page":
+                            res = self.p2t.recognize_page(v_path, save_dir=out_dir)
+                            raw = res.to_markdown(out_dir or "/tmp/p2t_output") if hasattr(res, "to_markdown") else str(res)
+                        elif api_name == "recognize_text_formula":
+                            raw = self.p2t.recognize_text_formula(v_path, return_text=True)
+                        elif api_name == "recognize_formula":
+                            raw = self.p2t.recognize_formula(v_path)
+                        else: # recognize
+                            raw = self.p2t.recognize(v_path)
+                        
+                        candidate = self._format_output(str(raw), api_name)
+                        is_weak = self.is_figure_only(candidate)
+                        
+                        fallback_chain.append({
+                            "variant": os.path.basename(v_path),
+                            "method": api_name,
+                            "is_weak": is_weak,
+                            "len": len(candidate),
+                            "ms": int((time.time() - step_start) * 1000)
+                        })
+
+                        if not is_weak:
+                            winning_markdown = candidate
+                            method_used = api_name
+                            break
+                    except Exception as step_err:
+                        logger.warning(f"Pix2Text step {api_name} failed: {step_err}")
+                
+                if winning_markdown: break
+
+            # Cleanup variants
+            for p in variant_paths:
+                if p != image_path:
+                    try: os.unlink(p)
+                    except: pass
+
+            latency_ms = int((time.time() - overall_start) * 1000)
+            
+            # Requirement E: Return full telemetry
+            telemetry = {
+                "ocr_engine_choice": "pix2text",
+                "user_selection": user_selection,
+                "method_used": method_used,
+                "fallback_chain": fallback_chain,
+                "input_mime": "image/png",
+                "bytes": img_bytes_count,
+                "width": width,
+                "height": height,
+                "preprocessing_steps": ["padding", "clahe", "denoise", "unsharp", "adaptive_threshold"],
+                "time_ms": latency_ms,
+                "output_type": "markdown/latex"
+            }
+
+            res = {
+                "markdown": winning_markdown,
+                "plain_text": winning_markdown,
+                "confidence": 0.9 if winning_markdown else 0.0,
                 "engine": "local",
                 "provider": "pix2text",
-                "timings": {"ocr_ms": latency_ms}
+                "telemetry": telemetry
             }
+            
+            if debug and debug_dir:
+                with open(os.path.join(debug_dir, "telemetry.json"), "w") as f:
+                    json.dump(res, f, indent=2)
+            
+            return res
+            
         except Exception as e:
             logger.error(f"LocalEngine failed: {e}")
-            raise OCREngineError(f"Pix2Text processing failed: {e}", engine="local")
+            raise OCREngineError(f"Pix2Text pipeline failed: {e}", engine="local")
 
 
 class VlmEngine(OCREngine):
@@ -353,13 +547,15 @@ class OCRService:
             # Default to VLM
             return self.vlm_engine
 
-    def process_job(self, image_path: str, engine_name: str = "auto", **kwargs) -> Dict[str, Any]:
+    def process_job(self, image_path: str, engine_name: str = "auto", crop_meta: Optional[Dict[str, Any]] = None, debug: bool = False, **kwargs) -> Dict[str, Any]:
         """
         Process an image with the specified or default engine.
         
         Args:
             image_path: Path to the image file
             engine_name: Engine to use ("vlm", "local", "auto")
+            crop_meta: Metadata about the crop (rotation, fullPage, etc.)
+            debug: Whether to save debug artifacts
             **kwargs: Additional arguments passed to the engine
             
         Returns:
@@ -376,29 +572,45 @@ class OCRService:
         
         try:
             engine = self.get_engine(engine_name)
-            result = engine.process(image_path, **kwargs)
+            process_kwargs = {**kwargs}
+            if engine_name == "local":
+                process_kwargs["crop_meta"] = crop_meta
+                process_kwargs["debug"] = debug
+            
+            result = engine.process(image_path, **process_kwargs)
             result["engine_used"] = engine.engine_name
             return result
             
         except OCREngineError as e:
             logger.error(f"OCR engine '{e.engine}' failed: {e}")
             
-            # Attempt fallback to local if configured for auto mode
+            # Fallback Logic (Requirement G/7)
+            # 1. auto mode (vlm -> local)
             if use_fallback and e.engine == "vlm":
                 logger.warning("VLM failed, falling back to local Pix2Text engine...")
                 try:
-                    result = self.local_engine.process(image_path, **kwargs)
+                    result = self.local_engine.process(image_path, crop_meta=crop_meta, debug=debug, **kwargs)
                     result["engine_used"] = "local"
                     result["fallback_reason"] = str(e)
                     return result
                 except Exception as fallback_error:
                     logger.error(f"Fallback to local engine also failed: {fallback_error}")
-                    raise OCREngineError(
-                        f"Both VLM and local engines failed. VLM: {e}. Local: {fallback_error}",
-                        engine="auto"
-                    )
-            else:
-                raise
+                    raise OCREngineError(f"Both VLM and local engines failed. VLM: {e}. Local: {fallback_error}", engine="auto")
+            
+            # 2. explicit local with LMM fallback (Requirement G)
+            enable_lmm_fallback = os.getenv("ENABLE_LMM_FALLBACK", "true").lower() == "true"
+            if engine_name == "local" and enable_lmm_fallback:
+                logger.warning("Local engine failed, falling back to LMM (VLM) engine...")
+                try:
+                    vlm_res = self.vlm_engine.process(image_path, **kwargs)
+                    vlm_res["engine_used"] = "vlm"
+                    vlm_res["fallback_from"] = "local"
+                    # Merge telemetry if available
+                    return vlm_res
+                except Exception as lmm_err:
+                    logger.error(f"Fallback to LMM also failed: {lmm_err}")
+            
+            raise
                 
         except Exception as e:
             logger.error(f"Unexpected OCR error: {e}")

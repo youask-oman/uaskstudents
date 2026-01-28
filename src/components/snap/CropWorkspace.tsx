@@ -218,6 +218,8 @@ export default function CropWorkspace({
                 crop={crop}
                 zoom={zoom}
                 rotation={rotation}
+                minZoom={0.1}
+                maxZoom={5}
                 onCropChange={selectionMode ? () => { } : onCropChange} // Disable crop move in selection mode
                 onZoomChange={selectionMode ? () => { } : onZoomChange}
                 onRotationChange={onRotationChange}
@@ -264,9 +266,9 @@ export default function CropWorkspace({
                         Zoom
                         <input
                             type="range"
-                            min={1}
-                            max={3}
-                            step={0.05}
+                            min={0.1}
+                            max={5}
+                            step={0.01}
                             value={zoom}
                             onChange={(e) => onZoomChange(parseFloat(e.target.value))}
                             className="w-28 accent-admin-primary"
