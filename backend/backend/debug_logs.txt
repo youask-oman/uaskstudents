@@ -882,3 +882,4 @@ extract_questions response raw content: '{"ok":true,"error":null,"is_math_page":
 HTTP Request: POST https://api.openai.com/v1/responses "HTTP/1.1 200 OK"
 extract_questions response raw content: '{"ok":true,"error":null,"is_math_page":true,"notes":["Extracted 4 questions visible on page"],"questions":[{"id":"q1","text":"Gloria and Bob and five other people walk through a doorway one at a time. In how many ways can the seven people go through the doorway if Bob goes through the doorway after Gloria? (Options: A 240, B 2520, C 720, D 5040)","confidence":0.9,"is_valid_math":true,"reason_if_in...(truncated)' (len=1946)
 HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+[QUESTION_CACHE] Stored: b561bcbb90a68968...
