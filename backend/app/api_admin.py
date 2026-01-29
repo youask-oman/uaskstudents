@@ -100,6 +100,111 @@ def calculate_transaction(
         delta_credits=delta
     )
 
+@admin_router.get("/diagnostics/credits")
+def get_user_credit_diagnostics(
+    email: str = Query(None),
+    user_id: int = Query(None),
+    session: Session = Depends(get_session),
+    user: User = Depends(get_staff_user)
+):
+    """Check credit status for a user by email or ID"""
+    from app.services.credit_wallet_service import credit_wallet_service
+    from app.models import CreditLot
+    from datetime import datetime
+    
+    # Find user by email or ID
+    target_user = None
+    if email:
+        target_user = session.exec(select(User).where(User.email == email)).first()
+    elif user_id:
+        target_user = session.exec(select(User).where(User.id == user_id)).first()
+    
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    balance = credit_wallet_service.get_balance(session, target_user.id)
+    
+    # Get all credit lots
+    lots = session.exec(
+        select(CreditLot).where(CreditLot.user_id == target_user.id)
+    ).all()
+    
+    now = datetime.utcnow()
+    
+    return {
+        "user_id": target_user.id,
+        "email": target_user.email,
+        "name": target_user.name,
+        "current_balance": balance,
+        "total_lots": len(lots),
+        "lots": [
+            {
+                "id": lot.id,
+                "remaining": lot.credits_remaining,
+                "total": lot.credits_total,
+                "source": lot.source,
+                "expires_at": lot.expires_at.isoformat() if lot.expires_at else None,
+                "is_expired": lot.expires_at < now if lot.expires_at else False,
+                "is_active": lot.is_active
+            }
+            for lot in lots
+        ]
+    }
+
+@admin_router.post("/credits/seed")
+def seed_user_credits(
+    email: str = Query(None),
+    user_id: int = Query(None),
+    amount: float = Query(1000.0),
+    session: Session = Depends(get_session),
+    user: User = Depends(get_admin_user)
+):
+    """Seed credits for testing by email or ID"""
+    from app.services.credit_wallet_service import credit_wallet_service
+    
+    # Find user by email or ID
+    target_user = None
+    if email:
+        target_user = session.exec(select(User).where(User.email == email)).first()
+    elif user_id:
+        target_user = session.exec(select(User).where(User.id == user_id)).first()
+    
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    lot = credit_wallet_service.add_credits(
+        session, target_user.id, amount, "admin_seed", expiry_days=365
+    )
+    
+    new_balance = credit_wallet_service.get_balance(session, target_user.id)
+    
+    return {
+        "success": True,
+        "user_id": target_user.id,
+        "email": target_user.email,
+        "name": target_user.name,
+        "lot_id": lot.id,
+        "amount_added": amount,
+        "new_balance": new_balance
+    }
+
+@admin_router.get("/diagnostics/transactions/{target_user_id}")
+def get_user_transactions(
+    target_user_id: int,
+    limit: int = 20,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_staff_user)
+):
+    """Get recent transactions for a specific user"""
+    results = session.exec(
+        select(BillingLedger)
+        .where(BillingLedger.user_id == target_user_id)
+        .order_by(desc(BillingLedger.created_at))
+        .limit(limit)
+    ).all()
+    
+    return {"user_id": target_user_id, "count": len(results), "transactions": results}
+
 @admin_router.get("/transactions")
 def get_transactions(
     page: int = 1,

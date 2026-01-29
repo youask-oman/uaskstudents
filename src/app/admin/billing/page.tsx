@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-type Tab = "pricing" | "tokens" | "transactions" | "history";
+type Tab = "pricing" | "tokens" | "transactions" | "history" | "diagnostics";
 
 interface ConfigVersion {
     id: number;
@@ -38,6 +38,12 @@ export default function BillingControlCenter() {
     // Calculator state
     const [calcInput, setCalcInput] = useState({ est_input: 500, est_output: 2000, act_input: 500, act_output: 1500, action_type: "solve_quick" });
     const [calcResult, setCalcResult] = useState<{ estimate: { credits: number }; actual: { credits: number }; delta_credits: number } | null>(null);
+
+    // Diagnostics state
+    const [diagUserId, setDiagUserId] = useState("");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [diagResult, setDiagResult] = useState<any>(null);
+    const [seedAmount, setSeedAmount] = useState(1000);
 
     const getToken = () => typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
@@ -128,11 +134,46 @@ export default function BillingControlCenter() {
         else if (activeTab === "history") fetchHistory("pricing");
     }, [activeTab]);
 
+    const checkUserCredits = async () => {
+        if (!diagUserId) return;
+        setLoading(true);
+        try {
+            // Check if input is email (contains @) or user ID
+            const isEmail = diagUserId.includes("@");
+            const param = isEmail ? `email=${encodeURIComponent(diagUserId)}` : `user_id=${diagUserId}`;
+            const res = await fetch(`${API_BASE}/api/admin/diagnostics/credits?${param}`, {
+                headers: { Authorization: `Bearer ${getToken()}` }
+            });
+            const data = await res.json();
+            setDiagResult(data);
+        } catch (e) { console.error(e); }
+        setLoading(false);
+    };
+
+    const seedCredits = async () => {
+        if (!diagUserId) return;
+        setLoading(true);
+        try {
+            // Check if input is email (contains @) or user ID  
+            const isEmail = diagUserId.includes("@");
+            const param = isEmail ? `email=${encodeURIComponent(diagUserId)}` : `user_id=${diagUserId}`;
+            const res = await fetch(`${API_BASE}/api/admin/credits/seed?${param}&amount=${seedAmount}`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${getToken()}` }
+            });
+            const data = await res.json();
+            setDiagResult(data);
+            alert("Credits seeded successfully!");
+        } catch (e) { console.error(e); }
+        setLoading(false);
+    };
+
     const tabs: { key: Tab; label: string }[] = [
         { key: "pricing", label: "Pricing & Fees" },
         { key: "tokens", label: "Token Limits" },
         { key: "transactions", label: "Transactions" },
-        { key: "history", label: "Config History" }
+        { key: "history", label: "Config History" },
+        { key: "diagnostics", label: "Diagnostics" }
     ];
 
     return (
@@ -292,6 +333,42 @@ export default function BillingControlCenter() {
                             </div>
                         ))}
                         {history.length === 0 && <p className="text-slate-500">No history found.</p>}
+                    </div>
+                </div>
+            )}
+
+            {/* Diagnostics Tab */}
+            {activeTab === "diagnostics" && !loading && (
+                <div className="space-y-6">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow">
+                        <h2 className="text-lg font-semibold mb-4">User Credit Diagnostics</h2>
+                        <div className="flex gap-4 mb-4">
+                            <input
+                                type="text"
+                                placeholder="Email or User ID"
+                                value={diagUserId}
+                                onChange={e => setDiagUserId(e.target.value)}
+                                className="px-3 py-2 border rounded dark:bg-slate-700 w-64"
+                            />
+                            <button onClick={checkUserCredits} className="px-4 py-2 bg-blue-600 text-white rounded">
+                                Check Credits
+                            </button>
+                            <input
+                                type="number"
+                                placeholder="Amount"
+                                value={seedAmount}
+                                onChange={e => setSeedAmount(+e.target.value)}
+                                className="px-3 py-2 border rounded dark:bg-slate-700 w-32"
+                            />
+                            <button onClick={seedCredits} className="px-4 py-2 bg-green-600 text-white rounded">
+                                Seed Credits
+                            </button>
+                        </div>
+                        {diagResult && (
+                            <pre className="bg-slate-100 dark:bg-slate-900 p-4 rounded text-sm overflow-auto max-h-96">
+                                {JSON.stringify(diagResult, null, 2)}
+                            </pre>
+                        )}
                     </div>
                 </div>
             )}
