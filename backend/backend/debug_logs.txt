@@ -180,3 +180,104 @@ Worker received signal 2. Closing connections...
 Worker received signal 2. Closing connections...
 Attempting to connect to database (Attempt 1/10)...
 Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Audio upload: filename=audio.webm, content_type=audio/webm;codecs=opus, detected_ext=.webm, size=21492
+[VOICE_DEBUG] === transcribe_audio called ===
+[VOICE_DEBUG] API key present: True
+[VOICE_DEBUG] API key prefix: sk-proj-Bt...
+[VOICE_DEBUG] file_input type: <class '_io.BytesIO'>
+[VOICE_DEBUG] Transcribing audio: filename=audio.webm, size=21492 bytes
+[VOICE_DEBUG] First 20 bytes (hex): 43b67501ffffffffffffffe7820866a343c38100
+[VOICE_DEBUG] Using MIME type: audio/webm
+[VOICE_DEBUG] Creating httpx client...
+[VOICE_DEBUG] Sending POST to OpenAI Whisper API...
+[VOICE_DEBUG] Response status: 400
+[VOICE_DEBUG] Response headers: {'date': 'Thu, 29 Jan 2026 02:15:25 GMT', 'content-type': 'application/json', 'content-length': '226', 'connection': 'keep-alive', 'access-control-expose-headers': 'X-Request-ID', 'openai-organization': 'user-yacbgrjb6nsf3pyihwxlrnej', 'openai-processing-ms': '753', 'openai-project': 'proj_f0eOR3UtUwq4hiQhpePdIrjx', 'openai-version': '2020-10-01', 'strict-transport-security': 'max-age=31536000; includeSubDomains; preload', 'via': 'envoy-router-699b6fc788-7mlqf', 'x-ratelimit-limit-requests': '500', 'x-ratelimit-remaining-requests': '499', 'x-ratelimit-reset-requests': '120ms', 'x-request-id': 'req_d524882689524b509434ece1f11da1fe', 'x-openai-proxy-wasm': 'v0.1', 'cf-cache-status': 'DYNAMIC', 'set-cookie': '__cf_bm=_7PhXiYw.KbE.sabCrBUdfRs9YWOJUpyGaIPIvF_xn4-1769652925-1.0.1.1-He5ms1nz6BLiO2O85E3vwycKa1XULU9d9x.tsvX18FRf5m02GeC5x9C8J5tugakYYmZ04J_9WEO4m3BF2hfFFy3yXSPeWoxC5spjFJBH40E; path=/; expires=Thu, 29-Jan-26 02:45:25 GMT; domain=.api.openai.com; HttpOnly; Secure; SameSite=None, _cfuvid=iRIK_qTUsuu_oZVeKAprRlsIRle1oCg82rMDO8d0qiw-1769652925825-0.0.1.1-604800000; path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None', 'x-content-type-options': 'nosniff', 'server': 'cloudflare', 'cf-ray': '9c5538b7899c7631-YVR', 'alt-svc': 'h3=":443"; ma=86400'}
+[VOICE_DEBUG] ERROR: Whisper API error: 400 - {
+  "error": {
+    "message": "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']",
+    "type": "invalid_request_error",
+    "param": null,
+    "code": null
+  }
+}
+[VOICE_DEBUG] EXCEPTION: ValueError: Whisper API error: {
+  "error": {
+    "message": "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']",
+    "type": "invalid_request_error",
+    "param": null,
+    "code": null
+  }
+}
+[VOICE_DEBUG] Traceback: Traceback (most recent call last):
+  File "C:\uaskstudents\backend\app\services\voice\voice_service.py", line 115, in transcribe_audio
+    raise ValueError(f"Whisper API error: {error_detail}")
+ValueError: Whisper API error: {
+  "error": {
+    "message": "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']",
+    "type": "invalid_request_error",
+    "param": null,
+    "code": null
+  }
+}
+
+Transcription failed: Whisper API error: {
+  "error": {
+    "message": "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']",
+    "type": "invalid_request_error",
+    "param": null,
+    "code": null
+  }
+}
+Transcription endpoint failed
+Traceback (most recent call last):
+  File "C:\uaskstudents\backend\app\bg_routers\voice_router.py", line 73, in transcribe_audio
+    transcript = await voice_service.transcribe_audio(file_obj, filename=filename_with_ext)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\uaskstudents\backend\app\services\voice\voice_service.py", line 115, in transcribe_audio
+    raise ValueError(f"Whisper API error: {error_detail}")
+ValueError: Whisper API error: {
+  "error": {
+    "message": "Invalid file format. Supported formats: ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']",
+    "type": "invalid_request_error",
+    "param": null,
+    "code": null
+  }
+}
+extract_questions input metrics: size=963x558 stddev=69.08 white=0.880
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmp8p9t46h3.png
+Initializing Local Pix2Text engine...
+Use DocLayout-YOLO model for Layout Analysis: C:\Users\loaia\AppData\Roaming\pix2text\1.1\layout-docyolo\doclayout_yolo_docstructbench_imgsz1024.pt
+use model: C:\Users\loaia\AppData\Roaming\cnocr\2.3\densenet_lite_136-gru\cnocr-v2.3-densenet_lite_136-gru-epoch=004-ft-model.onnx
+use model: C:\Users\loaia\AppData\Roaming\cnstd\1.2\ppocr\ch_PP-OCRv5_det\ch_PP-OCRv5_det_infer.onnx
+Use model path for MFD: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfd-1.5-onnx\pix2text-mfd-1.5.onnx
+Use model dir for LatexOCR: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfr-1.5-onnx
+Loaded Pix2Text MFR model mfr-1.5 to: backend-onnx, device-cpu
+Pix2Text initialized successfully
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.

@@ -37,6 +37,7 @@ from openai import AsyncOpenAI, BadRequestError
 from app.services.subscription_service import subscription_service
 from app.services.vision import VisionService, vision_service
 from app.services.solver import solver_service
+from app.services.billing_service import billing_service
 from app.services.intent import should_require_visual
 from app.services.plot_sampling import process_visuals
 from app.services.rag import rag_service
@@ -3646,89 +3647,36 @@ async def solve_v3_endpoint(
         # Call Solver V3 (Logic: Only if not cached)
         if not result:
             # --- ENTITLEMENT CHECK & DEBIT ---
-            action_mode = "detailed" if requested_mode == "detailed" else "concise"
-            action_req = {
-                "mode": action_mode,
-                "has_ocr": bool(body.image_url or body.artifact_id or features_used.get("ocr_used")),
-                "has_voice": bool(body.has_voice or features_used.get("voice_used")),
-                "question_hash": question_key or str(hash(problem_text)),
-                "is_make_it_right": getattr(body, "is_make_it_right", False)
-            }
-            deduct_attempted = {
-                "credits": True,
-                "ocr": action_req["has_ocr"],
-                "voice": action_req["has_voice"]
-            }
+            # --- BILLING: STAGE 1 (ESTIMATE & HOLD) ---
+            action_type = "solve_tutor" if requested_mode == "detailed" else "solve_quick"
+            if bool(body.has_voice or features_used.get("voice_used")):
+                 action_type = "voice_solve"
+
+            # Estimate Tokens (Heuristics)
+            # Input: ~ len(text)/4
+            # Output: minimal=1000, detailed=4000 (roughly)
+            # This is just for holding credits; reconciliation fixes it.
+            est_input = len(problem_text) // 3 + 100
+            est_output = 4000 if requested_mode == "detailed" else 1500
             
-            check_result = subscription_service.check_entitlement_and_debit(session, user_id, action_req)
-            if not check_result["allowed"]:
-                log_solve_trace({
-                    "request_id": request_id,
-                    "user_id": user_id,
-                    "seat_id": None,
-                    "plan_key": resolved_profile.tier if resolved_profile else None,
-                    "ui_goal": learning_mode,
-                    "ui_style": requested_mode,
-                    "resolved_profile_key": f"{resolved_profile.tier.upper().replace('-', '_')}_{resolved_profile.mode.upper()}" if resolved_profile else None,
-                    "resolved_system_file_path": (resolved_profile.system_asset_path if resolved_profile else None) or (resolved_profile.system_relative_path if resolved_profile else None),
-                    "resolved_schema_file_path": (resolved_profile.schema_asset_path if resolved_profile else None) or (resolved_profile.schema_relative_path if resolved_profile else None),
-                    "schema_name": None,
-                    "max_output_tokens_sent": resolved_profile.max_output_tokens if resolved_profile else None,
-                    "model_sent": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
-                    "cache_hit": bool(was_cached or question_cache_hit),
-                    "openai_calls_count": 0,
-                    "repair_attempted": False,
-                    "prompt_tokens_estimate": None,
-                    "input_tokens": None,
-                    "output_tokens": None,
-                    "cached_tokens": None,
-                    "deduct_attempted": deduct_attempted,
-                    "deduct_committed": False,
-                    "openai_payload": None,
-                    "problem_text": problem_text,
-                    "error": f"entitlement_denied: {check_result.get('reason')}"
-                })
-                record_request_event(session, {
-                    "request_id": request_id,
-                    "user_id": user_id,
-                    "mode": requested_mode,
-                    "learning_mode": learning_mode,
-                    "subject": body.subject,
-                    "grade_level": user.grade_level if user else None,
-                    "model": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
-                    "provider": "openai",
-                    "route": "solve_v3",
-                    "tokens_in": None,
-                    "tokens_out": None,
-                    "tokens_total": None,
-                    "cost_usd": 0.0,
-                    "latency_ms": None,
-                    "status": "error",
-                    "error_type": "entitlement_denied",
-                    "schema_valid": None,
-                    "verification_pass": None,
-                    "is_stream": False,
-                    "is_cached": bool(was_cached or question_cache_hit),
-                    "credit_deducted": False,
-                    "credit_amount": None,
-                    "ocr_used": bool(body.image_url or body.artifact_id or features_used.get("ocr_used")),
-                    "voice_used": bool(body.has_voice or features_used.get("voice_used")),
-                    "response_truncated": False
-                })
-                raise HTTPException(status_code=402, detail=f"Entitlement Check Failed: {check_result['reason']}")
-                 
-            # Execute Debit
-            sub_id = check_result["subscription"].id
-            debit_cost = check_result["cost"]
-            subscription_service.execute_debit(
-                session, 
-                check_result["subscription"], 
-                debit_cost, 
-                {"action": "solve_v3", **action_req}, 
-                request_id
+            op_id_raw = f"{user_id}_{action_type}_{question_key}_{requested_mode}_{request_id}"
+            op_id = hashlib.sha256(op_id_raw.encode()).hexdigest()
+
+            ledger = billing_service.create_pending_transaction(
+                 session,
+                 user_id,
+                 action_type,
+                 estimated_input_tokens=est_input,
+                 estimated_output_tokens=est_output,
+                 request_id=request_id, # Using request_id as key for simplicity in logs
+                 question_id=question_key or str(hash(problem_text))
             )
-            session.commit()
-            deduct_committed = True
+            
+            if not ledger.ok:
+                raise HTTPException(status_code=402, detail=f"Insufficient credits for estimate. Status: {ledger.status}")
+                 
+            deduct_committed = True # Flag implies we have an open ledger to settle
+            ledger_id = ledger.id
             
             try:
                 solver = get_solver_v3()
@@ -3745,17 +3693,37 @@ async def solve_v3_endpoint(
                     image_url=body.image_url,
                     max_output_tokens=effective_max_tokens
                 )
+                
+                # --- BILLING: STAGE 2 (SETTLE) ---
+                # Extract actual usage from result
+                telemetry = result.get("telemetry", {})
+                act_in = telemetry.get("input_tokens", 0)
+                act_out = telemetry.get("output_tokens", 0)
+                
+                # If telemetry missing (rare error), fallback to estimate or 0? 
+                # Let's fallback to estimate to avoid free usage exploit if backend glitch.
+                if act_in == 0 and act_out == 0:
+                     act_in, act_out = est_input, est_output
+                
+                billing_service.settle_transaction(
+                    session,
+                    ledger_id,
+                    actual_input_tokens=act_in,
+                    actual_output_tokens=act_out
+                )
+
             except Exception as e:
-                # REFUND ON EXCEPTION
-                subscription_service.refund_credits(session, sub_id, debit_cost, f"System Error: {str(e)}", request_id)
+                # --- BILLING: STAGE 3 (FAIL) ---
+                billing_service.fail_transaction(session, ledger_id, f"System Error: {str(e)}")
                 raise e
+            
+
         
-        # Check if it's an error response - fallback to V2 if V3 fails
         # Check if it's an error response
         if result.get("error", False):
-            # REFUND ON SOLVER ERROR (Policy: refund on technical failures)
-            if not was_cached and 'debit_cost' in locals():
-                 subscription_service.refund_credits(session, sub_id, debit_cost, f"Solver Error: {result.get('error_type')}", request_id)
+            # FAIL ON SOLVER ERROR
+            if not was_cached and 'ledger_id' in locals():
+                 billing_service.fail_transaction(session, ledger_id, f"Solver Error: {result.get('error_type')}")
 
             print(f"[API_V3] Solver V3 returned error: {result.get('error_type')}")
             
@@ -5246,7 +5214,7 @@ async def get_session_details(session_id: int, session: Session = Depends(get_se
             ChatMessageSchema(
                 role=msg.role,
                 content=msg.content,
-                media_url=msg.media_url,
+                media_url=getattr(msg, "media_url", None),
                 structured_data=msg.structured_data,
                 created_at=msg.created_at.isoformat(),
                 model_used=getattr(msg, "model_used", None),
@@ -6784,4 +6752,167 @@ async def find_error_local(
             error={"code": "INTERNAL_ERROR", "message": str(e)},
             timings_ms=TimingsMs(**timings)
         )
+
+
+# ------------------------------------------------------------------
+# Production Billing Endpoints
+# ------------------------------------------------------------------
+
+class ImportRequest(BaseModel):
+    asset_id: int
+    source_type: str = "image" # image | pdf
+
+class SolveSelectedRequest(BaseModel):
+    extraction_id: Optional[int] = None # OCRArtifact ID
+    selected_items: List[SolveBatchItem] # Reuse SolveBatchItem
+    requested_mode: str = "minimal"
+    
+@api_router.post("/import", response_model=Dict[str, Any])
+async def import_asset(
+    req: ImportRequest,
+    user_id: int = Query(..., description="User ID"),
+    session: Session = Depends(get_session)
+):
+    """
+    Import an asset (Image/PDF), charge import credits, and run OCR.
+    """
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    upload = session.get(Upload, req.asset_id)
+    if not upload or upload.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Upload not found or access denied")
+        
+    # 1. Charge Credits
+    action_type = "image_import" if req.source_type == "image" else "pdf_import"
+    
+    # Process transaction (deducts credits)
+    ledger = billing_service.process_transaction(
+        session, 
+        user_id, 
+        action_type, 
+        source_asset_id=str(req.asset_id)
+    )
+    
+    if not ledger.ok:
+        raise HTTPException(
+            status_code=402, 
+            detail=f"Insufficient credits for {req.source_type} import. Cost: {ledger.credits_charged}"
+        )
+        
+    # 2. Run OCR (Optimistic: Refund if fails)
+    try:
+        if not os.path.exists(upload.storage_url):
+             raise ValueError("File not found on disk")
+             
+        # Read file bytes
+        async with aiofiles.open(upload.storage_url, "rb") as f:
+            content = await f.read()
+            
+        # Call extraction
+        result = await _call_extract_questions(
+            content, 
+            max_output_tokens=4000, 
+            engine_choice="lmm" 
+        )
+        
+        # 3. Persist Artifact (Using Cache for now as per plan)
+        extraction_cache = OcrExtractionCache(
+            cache_key=f"import_{user_id}_{req.asset_id}_{datetime.utcnow().timestamp()}",
+            user_id=user_id,
+            result_json=result,
+            meta={"source": "billing_import", "ledger_id": ledger.id}
+        )
+        session.add(extraction_cache)
+        session.commit()
+        session.refresh(extraction_cache)
+        
+        return {
+            "extraction_id": extraction_cache.id,
+            "blocks": result.get("payload", {}).get("questions", []),
+            "cost": ledger.credits_charged,
+            "ledger_id": ledger.id
+        }
+
+    except Exception as e:
+        # Refund on failure
+        billing_service.refund_transaction(session, ledger.id, reason=f"Import failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Import failed: {str(e)}")
+
+
+@api_router.post("/solve_selected", response_model=Dict[str, Any])
+async def solve_selected(
+    req: SolveSelectedRequest,
+    user_id: int = Query(..., description="User ID"),
+    session: Session = Depends(get_session)
+):
+    """
+    Solve specific selected questions, charging per question.
+    """
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    results = []
+    
+    # Iterate and charge
+    for item in req.selected_items:
+        mode = item.requested_mode or req.requested_mode
+        action_type = "solve_tutor" if mode == "detailed" else "solve_quick"
+        
+        # Idempotency Key
+        op_id_raw = f"{user_id}_{req.extraction_id}_{item.question_id}_{mode}"
+        op_id = hashlib.sha256(op_id_raw.encode()).hexdigest()
+        
+        # 1. Charge
+        ledger = billing_service.process_transaction(
+            session,
+            user_id,
+            action_type,
+            question_id=item.question_id,
+            request_id=op_id
+        )
+        
+        if not ledger.ok:
+            results.append({
+                "question_id": item.question_id,
+                "ok": False,
+                "error": "Insufficient credits"
+            })
+            continue
+            
+        # 2. Solve (Call internal solver)
+        try:
+             # Construct minimal context request
+             solve_req = SolveRequest(
+                 text_query=item.text,
+                 requested_mode=mode,
+                 user_id=user_id,
+                 mode="solve"
+             )
+             
+             solve_resp = await solver_service.solve(solve_req, session=session)
+             
+             results.append({
+                 "question_id": item.question_id,
+                 "ok": True,
+                 "solution": solve_resp.solution,
+                 "cost": ledger.credits_charged
+             })
+             
+        except Exception as e:
+            # Refund
+            billing_service.refund_transaction(session, ledger.id, reason=f"Solve failed: {str(e)}")
+            results.append({
+                "question_id": item.question_id,
+                "ok": False,
+                "error": str(e)
+            })
+            
+    return {
+        "ok": True,
+        "results": results,
+        "total_charged": sum(r.get("cost", 0) for r in results if r.get("ok"))
+    }
 

@@ -65,6 +65,7 @@ export default function AdminLayout({
         { label: "Logs", href: "/admin/logs", icon: "receipt_long" },
         { label: "Data", href: "/admin/data", icon: "table_view" },
         { label: "System Config", href: "/admin/system-config", icon: "tune" },
+        { label: "Billing", href: "/admin/billing", icon: "payments" },
     ];
 
     return (

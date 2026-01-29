@@ -190,10 +190,7 @@ export default function DashboardPage() {
     const allowDetailed = readySubscription?.allow_detailed ?? false;
 
     useEffect(() => {
-        if (allowDetailed && selectedAnswerStyle !== "tutor") {
-            setSelectedAnswerStyle("tutor");
-            return;
-        }
+        // If user loses entitlement (e.g. sub expires), fallback to Quick
         if (!allowDetailed && selectedAnswerStyle === "tutor") {
             setSelectedAnswerStyle("quick");
         }

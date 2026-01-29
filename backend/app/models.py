@@ -559,6 +559,17 @@ class SystemConfig(SQLModel, table=True):
     description: Optional[str] = None
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
+class SystemConfigVersion(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    config_type: str = Field(index=True) # pricing, tokens
+    version: int = Field(index=True)
+    value: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    diff_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    check_sum: str
+    created_by: int = Field(foreign_key="user.id", index=True) # User ID of admin
+    change_msg: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
 
 class PromptTemplate(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -717,4 +728,52 @@ class PlanPromptLink(SQLModel, table=True):
     
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class CreditLot(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    credits_total: float
+    credits_remaining: float
+    purchased_at: datetime = Field(default_factory=datetime.utcnow)
+    expires_at: datetime
+    source: str = Field(index=True)  # purchase, promo, admin_adjustment
+    is_active: bool = Field(default=True)
+    
+class BillingLedger(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    action_type: str = Field(index=True) # image_import, pdf_import, solve_quick, solve_tutor, voice_transcribe, etc.
+    request_id: Optional[str] = Field(default=None, index=True)
+    source_asset_id: Optional[str] = None
+    question_id: Optional[str] = None
+    
+    # Status
+    status: str = Field(default="SETTLED", index=True) # PENDING, SETTLED, FAILED_REFUNDED
+    
+    # Financials (Credits)
+    credits_charged: float = 0.0 # Final effective charge (actual)
+    estimated_credits: float = 0.0
+    actual_credits: float = 0.0
+    delta_credits: float = 0.0 # actual - estimate
+    
+    # Balances
+    credits_before: float
+    credits_after: float
+    
+    # Token Usage & Fees
+    fee_tokens_applied: int = 0
+    estimated_usage_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    actual_usage_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    
+    # Legacy/Unified Usage (can mirror actual_usage_json)
+    token_usage_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    
+    pricing_snapshot_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    config_version_id: Optional[int] = Field(default=None, index=True) # Linked SystemConfigVersion
+    
+    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    ok: bool = Field(default=True)
+    error_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
 

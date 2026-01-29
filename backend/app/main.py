@@ -114,7 +114,9 @@ def readiness_check():
         return {"status": "not_ready", "error": str(e)}, 503
 
 from app.api import api_router
+from app.api_admin import admin_router
 app.include_router(api_router, prefix="/api/v1")
+app.include_router(admin_router)
 
 from fastapi.staticfiles import StaticFiles
 import os
