@@ -57,7 +57,10 @@ from app.services.whatsapp.whatsapp_state import (
     set_upload_meta,
     create_upload_id,
     get_upload_meta,
+    log_whatsapp_event,
+    get_whatsapp_events,
 )
+from app.services.whatsapp.whatsapp_state import get_redis
 from app.services.whatsapp.whatsapp_send import send_whatsapp_logo
 from app.services.whatsapp.step_delivery import handle_navigation
 from app.worker import celery_app
@@ -7115,6 +7118,91 @@ async def whatsapp_diag(request: Request):
         "whatsapp_solver_v3_enabled": os.getenv("WHATSAPP_SOLVER_V3_ENABLED", "false"),
     }
 
+@api_router.get("/admin/whatsapp/monitor")
+async def whatsapp_monitor(request: Request, limit: int = 50, phone: Optional[str] = None, direction: Optional[str] = None):
+    """
+    Admin monitor: recent WhatsApp events + Celery queue length.
+    """
+    expected_key = os.environ.get("WHATSAPP_INTERNAL_KEY", "")
+    provided_key = request.headers.get("X-UASK-INTERNAL-KEY", "")
+    if expected_key and provided_key != expected_key:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    queue_len = None
+    queue_len_whatsapp = None
+    try:
+        queue_len = get_redis().llen("celery")
+        queue_len_whatsapp = get_redis().llen("whatsapp")
+    except Exception:
+        queue_len = None
+        queue_len_whatsapp = None
+
+    return {
+        "bot_status": whatsapp_service.get_status(),
+        "queue_length": queue_len,
+        "queue_length_whatsapp": queue_len_whatsapp,
+        "events": get_whatsapp_events(limit=limit, phone=phone, direction=direction),
+        "server_time": datetime.utcnow().isoformat() + "Z",
+    }
+
+@api_router.get("/admin/whatsapp/monitor/export")
+async def whatsapp_monitor_export(request: Request, limit: int = 200, phone: Optional[str] = None, direction: Optional[str] = None):
+    expected_key = os.environ.get("WHATSAPP_INTERNAL_KEY", "")
+    provided_key = request.headers.get("X-UASK-INTERNAL-KEY", "")
+    if expected_key and provided_key != expected_key:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    events = get_whatsapp_events(limit=limit, phone=phone, direction=direction)
+    rows = ["timestamp,direction,type,from,to,message_id,upload_id,ok,text,error"]
+    for e in events:
+        row = [
+            str(e.get("timestamp", "")),
+            str(e.get("direction", "")),
+            str(e.get("type", "")),
+            str(e.get("from", "")),
+            str(e.get("to", "")),
+            str(e.get("message_id", "")),
+            str(e.get("upload_id", "")),
+            str(e.get("ok", "")),
+            str(e.get("text", "")).replace("\\n", " ").replace(",", " "),
+            str(e.get("error", "")).replace("\\n", " ").replace(",", " "),
+        ]
+        rows.append(",".join(row))
+
+    content = "\n".join(rows)
+    return StreamingResponse(
+        io.BytesIO(content.encode("utf-8")),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=whatsapp_monitor.csv"},
+    )
+
+@api_router.get("/admin/whatsapp/monitor/stream")
+async def whatsapp_monitor_stream(request: Request):
+    expected_key = os.environ.get("WHATSAPP_INTERNAL_KEY", "")
+    provided_key = request.headers.get("X-UASK-INTERNAL-KEY", "")
+    if expected_key and provided_key != expected_key:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    async def event_generator():
+        pubsub = get_redis().pubsub()
+        pubsub.subscribe("whatsapp:events:stream")
+        try:
+            while True:
+                message = pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                if message and message.get("data"):
+                    data = message["data"]
+                    if isinstance(data, bytes):
+                        data = data.decode("utf-8")
+                    yield f"data: {data}\n\n"
+                await asyncio.sleep(0.1)
+        finally:
+            try:
+                pubsub.close()
+            except Exception:
+                pass
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
 @api_router.post("/whatsapp/media")
 async def upload_whatsapp_media(
     request: Request,
@@ -7188,6 +7276,15 @@ async def handle_whatsapp_message(
     upload_id = request.upload_id
     whatsapp_ocr_enabled = os.getenv("WHATSAPP_OCR_ENABLED", "false").lower() == "true"
     whatsapp_latex_enabled = os.getenv("WHATSAPP_LATEX_RENDER_ENABLED", "false").lower() == "true"
+
+    log_whatsapp_event({
+        "direction": "in",
+        "type": "image" if has_image else "text",
+        "from": from_number,
+        "text": text,
+        "message_id": message_id,
+        "upload_id": upload_id,
+    })
 
     # Dedupe by message_id to avoid double-processing
     if not mark_dedupe(message_id):

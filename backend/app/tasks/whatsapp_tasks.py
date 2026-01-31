@@ -1,4 +1,5 @@
 import os
+import json
 import asyncio
 import re
 from typing import Optional
@@ -15,7 +16,7 @@ from app.services.whatsapp.whatsapp_state import (
 )
 from app.services.whatsapp.whatsapp_send import send_whatsapp_message, send_whatsapp_logo
 from app.services.whatsapp.step_delivery import build_step_pack, send_step_pack
-from app.models import UsageLog, User
+from app.models import UsageLog, User, ChatSession, ChatMessage
 from app.services.solver import solver_service
 
 
@@ -41,6 +42,44 @@ def _clean_extracted_text(text: str) -> str:
     if len(cleaned) > 800:
         cleaned = cleaned[:797] + "..."
     return cleaned
+
+def _save_whatsapp_history(session: Session, user: User, problem_text: str, answer_text: str) -> None:
+    try:
+        chat = ChatSession(
+            user_id=user.id,
+            title="WhatsApp Solve",
+            subject="Math",
+            is_saved=True,
+            learning_mode="solve",
+            requested_mode="minimal",
+            solve_tier="standard",
+        )
+        session.add(chat)
+        session.flush()
+        session.add(ChatMessage(session_id=chat.id, role="user", content=problem_text))
+        session.add(ChatMessage(
+            session_id=chat.id,
+            role="assistant",
+            content=answer_text,
+            structured_data={"channel": "whatsapp"},
+        ))
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        print(f"[WhatsApp] Failed to save history: {e}")
+
+
+def _format_steps_for_history(steps, final_text: str = "") -> str:
+    lines = ["Solution:"]
+    for i, step in enumerate(steps, 1):
+        title = step.get("title") or f"Step {i}"
+        explanation = step.get("explanation") or ""
+        lines.append(f"{i}. {title}")
+        if explanation:
+            lines.append(explanation)
+    if final_text:
+        lines.append(f"Answer: {final_text}")
+    return "\n".join(lines)
 
 @celery_app.task(
     name="whatsapp_ocr_extract",
@@ -170,6 +209,8 @@ def whatsapp_solve(self, user_id: int, phone: str, text: str, upload_id: Optiona
                 set_step_pack(phone, pack)
                 send_step_pack(phone, pack, 1)
                 send_whatsapp_message(phone, "Reply NEXT/PREV/ALL or a step number to navigate.")
+                history_text = _format_steps_for_history(steps, final_text)
+                _save_whatsapp_history(session, user, text, history_text)
                 session.add(UsageLog(user_id=user.id, action_type="whatsapp_solve_v3", tokens_used=len(text.split())))
                 session.commit()
                 return "ok"
@@ -186,14 +227,15 @@ def whatsapp_solve(self, user_id: int, phone: str, text: str, upload_id: Optiona
                             explanation = explanation[:197] + "..."
                         reply += explanation + "\n"
             if final_text:
-                reply += f"\n✅ *Answer:* {final_text}"
-            reply += "\n\n💡 _Need more help? Visit uask.ai_"
+                reply += f"\n? *Answer:* {final_text}"
+            reply += "\n\n?? _Need more help? Visit uask.ai_"
 
             session.add(UsageLog(user_id=user.id, action_type="whatsapp_solve_v3", tokens_used=len(text.split()) + len(reply.split())))
             session.commit()
 
             send_whatsapp_logo(phone)
             send_whatsapp_message(phone, reply)
+            _save_whatsapp_history(session, user, text, reply)
             return "ok"
 
         # Legacy solver (current WhatsApp text behavior)
@@ -232,6 +274,8 @@ def whatsapp_solve(self, user_id: int, phone: str, text: str, upload_id: Optiona
             set_step_pack(phone, pack)
             send_step_pack(phone, pack, 1)
             send_whatsapp_message(phone, "Reply NEXT/PREV/ALL or a step number to navigate.")
+            history_text = _format_steps_for_history(steps, final_answer)
+            _save_whatsapp_history(session, user, text, history_text)
             session.add(UsageLog(user_id=user.id, action_type="whatsapp_solve", tokens_used=len(text.split())))
             session.commit()
             return "ok"
@@ -248,13 +292,14 @@ def whatsapp_solve(self, user_id: int, phone: str, text: str, upload_id: Optiona
                     reply += explanation + "\n"
 
         if final_answer:
-            reply += f"\n✅ *Answer:* {final_answer}"
+            reply += f"\n? *Answer:* {final_answer}"
 
-        reply += "\n\n💡 _Need more help? Visit uask.ai_"
+        reply += "\n\n?? _Need more help? Visit uask.ai_"
 
         session.add(UsageLog(user_id=user.id, action_type="whatsapp_solve", tokens_used=len(text.split()) + len(reply.split())))
         session.commit()
 
         send_whatsapp_logo(phone)
         send_whatsapp_message(phone, reply)
+        _save_whatsapp_history(session, user, text, reply)
         return "ok"

@@ -1,5 +1,6 @@
 import os
 import uuid
+import re
 from typing import Dict, Any, List, Optional
 
 from app.services.whatsapp.latex_parser import extract_latex, normalize_latex
@@ -20,7 +21,12 @@ def _looks_like_latex(text: str) -> bool:
         return True
     if "^" in text or "_" in text:
         return True
-    return any(tok in lowered for tok in ("sqrt", "frac", "sum", "int", "lim"))
+    return any(tok in lowered for tok in ("sqrt", "frac", "sum", "int", "lim", "pi", "theta"))
+
+
+def _should_keep_text(text: str) -> bool:
+    letters = sum(1 for c in text if c.isalpha())
+    return letters >= max(10, len(text) * 0.3)
 
 
 def build_step_pack(from_jid: str, steps: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -40,7 +46,11 @@ def build_step_pack(from_jid: str, steps: List[Dict[str, Any]]) -> Dict[str, Any
         latex_blocks.extend(extra_blocks)
 
         text_out = plain or explanation
+        if latex_blocks:
+            # Remove equation tokens from description; keep only prose.
+            text_out = re.sub(r"\[EQ_\\d+\\]", "", text_out).strip()
         if not latex_blocks and _looks_like_latex(explanation):
+            # Force image-only for math-like text.
             latex_blocks.append({"type": "inline", "latex": normalize_latex(explanation)})
             text_out = ""
 

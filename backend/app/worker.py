@@ -3,6 +3,7 @@ import time
 import logging
 import traceback
 from celery import Celery
+from kombu import Queue
 from sqlmodel import Session, create_engine
 from app.database import get_session
 from app.models import OCRJob
@@ -48,6 +49,23 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
+    task_default_queue="celery",
+    task_queues=(
+        Queue("celery"),
+        Queue("whatsapp"),
+    ),
+    task_routes={
+        "whatsapp_ocr_extract": {"queue": "whatsapp"},
+        "whatsapp_solve": {"queue": "whatsapp"},
+    },
+    task_annotations={
+        "whatsapp_ocr_extract": {
+            "rate_limit": os.environ.get("WHATSAPP_OCR_RATE_LIMIT", "20/m"),
+        },
+        "whatsapp_solve": {
+            "rate_limit": os.environ.get("WHATSAPP_SOLVE_RATE_LIMIT", "30/m"),
+        },
+    },
 )
 
 # Register additional task modules

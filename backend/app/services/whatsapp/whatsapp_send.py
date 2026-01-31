@@ -3,6 +3,7 @@ import base64
 from typing import Optional
 
 import requests
+from app.services.whatsapp.whatsapp_state import log_whatsapp_event
 
 
 def send_whatsapp_message(to_jid: str, text: str) -> bool:
@@ -23,9 +24,25 @@ def send_whatsapp_message(to_jid: str, text: str) -> bool:
 
     try:
         resp = requests.post(url, json={"to": to_jid, "text": text}, headers=headers, timeout=5)
-        return resp.status_code == 200
+        ok = resp.status_code == 200
+        log_whatsapp_event({
+            "direction": "out",
+            "type": "text",
+            "to": to_jid,
+            "text": text,
+            "ok": ok,
+        })
+        return ok
     except Exception as e:
         print(f"[WhatsApp] Failed to send message via bridge: {e}")
+        log_whatsapp_event({
+            "direction": "out",
+            "type": "text",
+            "to": to_jid,
+            "text": text,
+            "ok": False,
+            "error": str(e),
+        })
         return False
 
 
@@ -66,9 +83,25 @@ def send_whatsapp_logo(to_jid: str) -> bool:
             "caption": caption or "",
         }
         resp = requests.post(url, json=payload, headers=headers, timeout=10)
-        return resp.status_code == 200
+        ok = resp.status_code == 200
+        log_whatsapp_event({
+            "direction": "out",
+            "type": "image",
+            "to": to_jid,
+            "text": caption,
+            "ok": ok,
+        })
+        return ok
     except Exception as e:
         print(f"[WhatsApp] Failed to send image via bridge: {e}")
+        log_whatsapp_event({
+            "direction": "out",
+            "type": "image",
+            "to": to_jid,
+            "text": caption,
+            "ok": False,
+            "error": str(e),
+        })
         return False
 
 

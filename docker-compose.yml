@@ -83,7 +83,50 @@ services:
 
     restart: unless-stopped
     stop_grace_period: 60s
-    command: celery -A app.worker.celery_app worker --loglevel=info --concurrency=4
+    command: celery -A app.worker.celery_app worker --loglevel=info --concurrency=${WORKER_CONCURRENCY:-4}
+    logging:
+      driver: json-file
+      options:
+        max-size: "4m"
+        max-file: "2"
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - storage_data:/app/storage
+    security_opt:
+      - no-new-privileges:true
+    user: "1000:1000"
+
+  worker_whatsapp:
+    image: uask-worker:prod
+    container_name: uask_worker_whatsapp
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://uask_user:uask_password@postgres:5432/uask_db
+      REDIS_URL: redis://redis:6379/0
+      LOCAL_STORAGE_PATH: /app/storage
+      OCR_FAST_MODE: "1"
+      OCR_MAX_FIGURE_REFINEMENTS: "1"
+      HOME: /tmp
+      XDG_CACHE_HOME: /tmp
+      MPLCONFIGDIR: /tmp/matplotlib
+      PIX2TEXT_HOME: /tmp/pix2text
+      YOLO_CONFIG_DIR: /tmp/Ultralytics
+      ULTRALYTICS_CONFIG_DIR: /tmp/Ultralytics
+      YOLO_RUNS_DIR: /tmp/Ultralytics/runs
+      RUNS_DIR: /tmp/Ultralytics/runs
+      OCR_ENGINE: ${OCR_ENGINE:-vlm}
+      VLM_MODEL_OCR: ${VLM_MODEL_OCR:-gpt-4o}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    stop_grace_period: 60s
+    command: celery -A app.worker.celery_app worker --loglevel=info --concurrency=${WHATSAPP_WORKER_CONCURRENCY:-2} -Q whatsapp
     logging:
       driver: json-file
       options:
