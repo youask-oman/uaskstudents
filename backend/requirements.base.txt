@@ -1,7 +1,8 @@
+alembic==1.18.3 # why isnt this in the requirements man? its needed for migrations you may have it installed on your system but on new server bro add everything!
 fastapi==0.109.0
 uvicorn==0.27.0
 sqlmodel==0.0.14
-psycopg2-binary==2.9.9
+psycopg2-binary==2.9.11 # I updated this cause of error on deployment was 2.9.9
 redis==5.0.1
 openai>=1.0.0
 python-dotenv>=1.0.0
@@ -17,3 +18,4 @@ jsonschema>=4.20.0
 matplotlib>=3.7.0
 numpy>=1.24.0
 sympy>=1.12
+filetype>=1.2.0 # for image type detection we replaced imghdr which is deprecated @luai

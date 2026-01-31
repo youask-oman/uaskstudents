@@ -3,7 +3,8 @@
 # ----------------------------
 # Base deps layer (no source code)
 # ----------------------------
-FROM python:3.11-slim AS deps
+# base image update for new dependencies 3.11 to 3.13
+FROM python:3.13-slim AS deps
 
 WORKDIR /app
 
@@ -16,9 +17,21 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpq-dev \
+    curl \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install base Python deps
+# Install Node.js (needed for WhatsApp bot service)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Pre-install WhatsApp dependencies globally to avoid runtime installation issues
+RUN npm config set cache /tmp/.npm && \
+    npm install -g @whiskeysockets/baileys@^6.0.0 @hapi/boom@^10.0.0 qrcode@^1.5.0 pino@^9.0.0
+
+# Install base Python deps added binary version for psycopg2 to avoid build issues
+RUN pip install --only-binary=:all: psycopg2-binary==2.9.11 
 COPY requirements.base.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install -r requirements.base.txt

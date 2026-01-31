@@ -1,6 +1,12 @@
 #!/usr/bin/env pwsh
 # Fresh Start Setup Script for UAsk Application
 # This script sets up everything needed for a clean start
+#Requires -Version 7.0
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8 # Enable UTF-8 output for emojis @luai this is needed not all CLI support UTF-8 by default
+# for this part first:
+# winget search --id Microsoft.PowerShell
+# winget install --id Microsoft.PowerShell --source winget
+# then add it as default powershell in terminal settings in VScode
 
 Write-Host "🚀 UAsk Application - Fresh Start Setup" -ForegroundColor Cyan
 Write-Host "=======================================" -ForegroundColor Cyan
@@ -12,14 +18,14 @@ if (-Not (Test-Path ".env")) {
     Write-Host "❌ .env file not found!" -ForegroundColor Red
     Write-Host "Creating .env file with template..." -ForegroundColor Yellow
     
-    $envContent = @"
+    $envContent = @'
 # CRITICAL: Replace these values with your actual credentials
 
 # OpenAI API Key (REQUIRED)
 OPENAI_API_KEY=your_actual_openai_api_key_here
 
 # JWT Secret (Generate: openssl rand -hex 32)
-JWT_SECRET_KEY=your_very_long_and_random_jwt_secret_key_at_least_32_characters
+JWT_SECRET_KEY=c30b3b96cfd63513ad517d60ecdde8ecf69ac4cc8e389f3b85d29884c0150245
 
 # CORS Allowed Origins
 CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
@@ -41,7 +47,7 @@ QDRANT_URL=http://qdrant:6333
 
 # Storage
 LOCAL_STORAGE_PATH=/app/storage
-"@
+'@
     
     Set-Content -Path ".env" -Value $envContent
     Write-Host "✅ Created .env file" -ForegroundColor Green
@@ -63,7 +69,7 @@ Write-Host "✅ Docker cleaned" -ForegroundColor Green
 
 # Step 3: Build and start containers
 Write-Host ""
-Write-Host "🏗️  Step 3: Building and starting containers (this may take 5-10 minutes)..." -ForegroundColor Yellow
+Write-Host "🏗️  Step 3: Building and starting containers (this may take 5-15 minutes)..." -ForegroundColor Yellow
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 
 if ($LASTEXITCODE -eq 0) {
@@ -77,7 +83,7 @@ else {
 # Step 4: Wait for services to be healthy
 Write-Host ""
 Write-Host "⏳ Step 4: Waiting for services to be ready (30 seconds)..." -ForegroundColor Yellow
-Start-Sleep -Seconds 30
+Start-Sleep -Seconds 36
 
 # Step 5: Run database migrations
 Write-Host ""
@@ -120,7 +126,7 @@ else {
 # Step 8: Verify health
 Write-Host ""
 Write-Host "🏥 Step 8: Verifying application health..." -ForegroundColor Yellow
-Start-Sleep -Seconds 5
+Start-Sleep -Seconds 8
 
 $health = curl -s http://localhost:8000/health 2>$null
 if ($health) {

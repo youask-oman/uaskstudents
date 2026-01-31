@@ -85,7 +85,7 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: "2m"
+        max-size: "4m"
         max-file: "2"
     read_only: true
     tmpfs:
@@ -127,6 +127,17 @@ services:
       interval: 10s
       timeout: 3s
       retries: 20
+
+  watchtower:
+    image: nickfedor/watchtower
+    container_name: watchtower
+    restart: unless-stopped
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=3600  # I added to Check every hour (adjust as needed)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: postgres redis
 
 volumes:
   postgres_data:

@@ -46,11 +46,8 @@ class VoiceService:
     async def transcribe_audio(self, file_input, filename: str = "audio.webm") -> str:
         """Transcribe audio file using OpenAI Whisper."""
         
-        # Debug file for tracing
+        # Debug logging for tracing
         def debug_log(msg):
-            import datetime
-            with open("voice_debug.log", "a") as f:
-                f.write(f"[{datetime.datetime.now()}] {msg}\n")
             logger.info(f"[VOICE_DEBUG] {msg}")
         
         debug_log(f"=== transcribe_audio called ===")
@@ -88,34 +85,28 @@ class VoiceService:
             
             debug_log(f"Using MIME type: {mime_type}")
             
-            # Use direct httpx POST for more control over the multipart upload
-            import httpx
+            # Use the AsyncOpenAI client directly for proper multipart handling
+            from io import BytesIO
             
-            debug_log("Creating httpx client...")
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                # OpenAI API requires form-data with 'file' field
-                files = {"file": (filename, audio_data, mime_type)}
-                data = {"model": "whisper-1", "response_format": "text"}
-                headers = {"Authorization": f"Bearer {self.api_key}"}
-                
-                debug_log(f"Sending POST to OpenAI Whisper API...")
-                response = await client.post(
-                    "https://api.openai.com/v1/audio/transcriptions",
-                    files=files,
-                    data=data,
-                    headers=headers
+            debug_log("Creating file object for OpenAI client...")
+            # Create a proper file-like object with name attribute
+            file_obj = BytesIO(audio_data)
+            file_obj.name = filename
+            
+            debug_log(f"Sending POST to OpenAI Whisper API...")
+            try:
+                response = await self.client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=file_obj,
+                    response_format="text"
                 )
                 
-                debug_log(f"Response status: {response.status_code}")
-                debug_log(f"Response headers: {dict(response.headers)}")
-                
-                if response.status_code != 200:
-                    error_detail = response.text
-                    debug_log(f"ERROR: Whisper API error: {response.status_code} - {error_detail}")
-                    raise ValueError(f"Whisper API error: {error_detail}")
-                
-                transcript = response.text
+                # response is a string with the transcript
+                transcript = response
                 debug_log(f"Transcript received: {transcript[:100] if transcript else 'EMPTY'}...")
+            except Exception as api_error:
+                debug_log(f"ERROR: OpenAI API call failed: {api_error}")
+                raise ValueError(f"Whisper transcription failed: {str(api_error)}")
             
             duration = time.time() - start
             debug_log(f"Transcription completed in {duration:.2f}s")

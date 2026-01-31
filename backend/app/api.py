@@ -9,7 +9,7 @@ import re
 import requests
 import hashlib
 import base64
-import imghdr
+import filetype
 import json
 import os
 import time
@@ -48,6 +48,7 @@ from app.services.ocr.audit_log_service import audit_log_service
 from app.services.ocr.ocr_service import ocr_service
 from app.services.solve.canonicalization_service import canonicalization_service
 from app.services.admin.analytics_service import record_request_event
+from app.services.whatsapp import whatsapp_service
 from app.services.solve.cache_service import cache_service
 from app.services.token_policy import get_token_policy, serialize_token_policy
 from app.config import get_settings
@@ -70,6 +71,21 @@ api_router.include_router(local_router, tags=["local_math"])
 
 
 # --- Helper Functions ---
+def _detect_image_kind(raw: bytes) -> Optional[str]:
+    guessed = filetype.guess(raw)
+    if not guessed:
+        return None
+
+    ext = (getattr(guessed, "extension", None) or "").lower()
+    if ext in ("jpg", "jpeg"):
+        return "jpeg"
+    if ext == "png":
+        return "png"
+    if ext == "webp":
+        return "webp"
+    return None
+
+
 def _transform_v3_to_v1_format(v3_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Transform Solver V3 response format to V1 format for frontend compatibility.
@@ -871,6 +887,10 @@ class UserProfileResponse(BaseModel):
     profile_province_state: Optional[str] = None
     grade_level: Optional[str] = None
     school_id: Optional[int] = None
+    
+    # WhatsApp Integration
+    whatsapp_secret: Optional[str] = None
+    whatsapp_enabled: bool = True
 
     usage: UserUsageStats
 
@@ -889,11 +909,17 @@ async def signup(form_data: SignupRequest, session: Session = Depends(get_sessio
         )
 
     # Create new user
+    import secrets
+    import string
+    whatsapp_secret = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
+    
     new_user = User(
         email=form_data.email,
         full_name=form_data.full_name,
         password_hash=get_password_hash(form_data.password),
         academic_level=form_data.academic_level,
+        whatsapp_secret=whatsapp_secret,
+        whatsapp_enabled=True,
         is_verified=False # Setting to false as frontend mentions a verification link
     )
 
@@ -1832,7 +1858,7 @@ async def ocr_v5(
 
     if raw.startswith(b"%PDF"):
         raise HTTPException(status_code=415, detail="PDF uploads are not accepted")
-    image_kind = imghdr.what(None, raw)
+    image_kind = _detect_image_kind(raw)
     content_type = file.content_type or ""
     if not content_type.startswith("image/") and image_kind not in ("jpeg", "png", "webp"):
         raise HTTPException(status_code=415, detail="Only image uploads are accepted")
@@ -1943,7 +1969,7 @@ async def extract_questions(
 
     if raw.startswith(b"%PDF"):
         raise HTTPException(status_code=415, detail="PDF uploads are not accepted")
-    image_kind = imghdr.what(None, raw)
+    image_kind = _detect_image_kind(raw)
     content_type = file.content_type or ""
     if not content_type.startswith("image/") and image_kind not in ("jpeg", "png", "webp"):
         raise HTTPException(status_code=415, detail="Only image uploads are accepted")
@@ -5289,6 +5315,83 @@ async def ask_question(request: QuestionRequest, db: Session = Depends(get_sessi
         "tokens_used": ai_msg.tokens_used
     }
 
+
+# Session-scoped chat endpoint (for ContextualChatPanel)
+class SessionChatRequest(BaseModel):
+    message: str
+    context: Optional[dict] = None
+
+
+@api_router.post("/sessions/{session_id}/chat")
+async def session_chat(
+    session_id: int,
+    request: SessionChatRequest,
+    db: Session = Depends(get_session)
+):
+    """
+    Chat endpoint for contextual questions about a specific session/solution.
+    Used by the ContextualChatPanel in the frontend.
+    """
+    # 1. Fetch session
+    chat_session = db.get(ChatSession, session_id)
+    if not chat_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    # 2. Build context from request or last assistant message
+    context = request.context or {}
+    
+    # If no context provided, try to get from last assistant message with solution
+    if not context or not context.get('original_problem'):
+        last_assistant_msg = db.exec(
+            select(ChatMessage)
+            .where(ChatMessage.session_id == session_id)
+            .where(ChatMessage.role == "assistant")
+            .order_by(ChatMessage.created_at.desc())
+        ).first()
+        if last_assistant_msg and last_assistant_msg.structured_data:
+            # Merge with existing context
+            full_context = last_assistant_msg.structured_data.copy()
+            full_context.update(context)
+            context = full_context
+    
+    # 3. Get AI response
+    result = await solver_service.get_chat_response(request.message, context, db)
+    
+    # 4. Save user message
+    user_msg = ChatMessage(
+        session_id=session_id,
+        role="user",
+        content=request.message
+    )
+    db.add(user_msg)
+    
+    # 5. Save AI response
+    ai_content = result.get("content", "I'm sorry, I couldn't process that request.")
+    ai_msg = ChatMessage(
+        session_id=session_id,
+        role="assistant",
+        content=ai_content,
+        model_used="OpenAI GPT-4o Mini",
+        tokens_used=100  # Flat rate for chat
+    )
+    db.add(ai_msg)
+    
+    # 6. Charge tokens to user
+    if chat_session.user_id:
+        add_tokens_to_user(chat_session.user_id, 100, db)
+    
+    db.commit()
+    db.refresh(ai_msg)
+    
+    return {
+        "response": ai_content,
+        "relevant": result.get("relevant", True),
+        "created_at": ai_msg.created_at.isoformat(),
+        "model_used": ai_msg.model_used,
+        "tokens_used": ai_msg.tokens_used
+    }
+
+
 # --- Profile & Preferences ---
 
 @api_router.get("/user/profile", response_model=UserProfileResponse)
@@ -5330,6 +5433,10 @@ async def get_user_profile(user_id: int = Query(...), db: Session = Depends(get_
         profile_province_state=user.profile_province_state,
         grade_level=user.grade_level,
         school_id=user.school_id,
+        
+        # WhatsApp Integration
+        whatsapp_secret=user.whatsapp_secret,
+        whatsapp_enabled=user.whatsapp_enabled,
         
         usage=UserUsageStats(
             questions_count=len(questions_count),
@@ -6916,3 +7023,150 @@ async def solve_selected(
         "total_charged": sum(r.get("cost", 0) for r in results if r.get("ok"))
     }
 
+
+# ============================================================================
+# WHATSAPP BOT ENDPOINTS
+# ============================================================================
+
+class WhatsAppMessageRequest(BaseModel):
+    from_number: str = Field(..., alias="from")
+    text: str = ""
+    hasImage: bool = False
+    timestamp: str
+
+@api_router.get("/admin/whatsapp/status")
+async def get_whatsapp_status():
+    """Get current WhatsApp bot status"""
+    return whatsapp_service.get_status()
+
+@api_router.post("/admin/whatsapp/initialize")
+async def initialize_whatsapp_bot():
+    """Initialize WhatsApp bot and generate QR code"""
+    return await whatsapp_service.initialize()
+
+@api_router.post("/admin/whatsapp/disconnect")
+async def disconnect_whatsapp_bot():
+    """Disconnect WhatsApp bot"""
+    return await whatsapp_service.disconnect()
+
+@api_router.post("/whatsapp/message")
+async def handle_whatsapp_message(
+    request: WhatsAppMessageRequest,
+    db: Session = Depends(get_session)
+):
+    """
+    Handle incoming WhatsApp message
+    Verify user, process math problem, and return solution
+    """
+    from_number = request.from_number
+    text = request.text.strip()
+    has_image = request.hasImage
+    
+    # Check if user is verified for this number
+    user = db.exec(
+        select(User).where(User.whatsapp_number == from_number)
+    ).first()
+    
+    if not user:
+        # User not linked - ask for verification code
+        return {
+            "reply": "👋 Welcome to uask.ai Math Tutor!\n\nTo use this service, please send me your WhatsApp verification code.\n\nYou can find your code in:\nSettings → Preferences → WhatsApp Code\n\nFormat: CODE your-code-here"
+        }
+    
+    # Check if this is a verification code
+    if text.upper().startswith("CODE "):
+        code = text[5:].strip()
+        if user.whatsapp_secret == code:
+            # Update the phone number
+            user.whatsapp_number = from_number
+            db.add(user)
+            db.commit()
+            return {
+                "reply": "✅ Verification successful!\n\nYou can now send me your math problems, and I'll help you solve them step by step.\n\nYou can:\n• Send text problems\n• Send photos of math problems\n• Ask follow-up questions"
+            }
+        else:
+            return {
+                "reply": "❌ Invalid verification code. Please check your code in Settings → Preferences and try again."
+            }
+    
+    # Check if user has active subscription
+    if not user.is_active:
+        return {
+            "reply": "⚠️ Your account is not active. Please check your subscription at uask.ai"
+        }
+    
+    subscription = subscription_service.get_active_subscription(user.id, db)
+    if not subscription:
+        return {
+            "reply": "⚠️ You don't have an active subscription. Please subscribe at uask.ai to continue using this service."
+        }
+    
+    # If message has an image, we need to process it with OCR
+    problem_text = text
+    if has_image:
+        # In a real implementation, we would:
+        # 1. Download the image from WhatsApp
+        # 2. Process it with OCR service
+        # 3. Extract the math problem
+        # For now, we'll acknowledge the image and ask for text
+        if not text:
+            return {
+                "reply": "📸 I see you sent an image! Unfortunately, I'm still learning to read images from WhatsApp.\n\nFor now, please:\n1. Type out your math problem, or\n2. Use the web app at uask.ai for full photo support\n\nI'll be able to read photos soon! 🔜"
+            }
+        problem_text = f"[Image received] {text}"
+    
+    # Process the math problem
+    try:
+        # Get WhatsApp-specific prompt
+        from app.utils import get_active_prompt
+        system_prompt = get_active_prompt("whatsapp-solver", db)
+        
+        if not system_prompt:
+            # Fallback prompt
+            system_prompt = """You are a WhatsApp math tutor. Solve the problem step-by-step.
+Keep responses concise and mobile-friendly. Use simple formatting.
+Format: Problem → Steps → Final Answer"""
+        
+        # Use solver service
+        result = await solver_service.solve_problem(problem_text, "", db)
+        
+        # Format response for WhatsApp
+        reply = "📝 *Problem:* " + text + "\n\n"
+        
+        if result.get("steps"):
+            reply += "*Solution:*\n"
+            for i, step in enumerate(result["steps"], 1):
+                title = step.get("title", f"Step {i}")
+                reply += f"\n*{i}. {title}*\n"
+                explanation = step.get("explanation", "")
+                if explanation:
+                    # Truncate long explanations for WhatsApp
+                    if len(explanation) > 200:
+                        explanation = explanation[:197] + "..."
+                    reply += explanation + "\n"
+        
+        if result.get("final_answer"):
+            reply += f"\n✅ *Answer:* {result['final_answer']}"
+        
+        # Add helpful footer
+        reply += "\n\n💡 _Need more help? Visit uask.ai_"
+        
+        # Log usage
+        usage_log = UsageLog(
+            user_id=user.id,
+            endpoint="/whatsapp/message",
+            input_tokens=len(problem_text.split()),
+            output_tokens=len(reply.split()),
+            cost_usd=0.01,  # Simplified cost
+            model_name="whatsapp-bot"
+        )
+        db.add(usage_log)
+        db.commit()
+        
+        return {"reply": reply}
+        
+    except Exception as e:
+        print(f"[WhatsApp] Error processing message: {e}")
+        return {
+            "reply": "❌ Sorry, I encountered an error processing your problem. Please try again or contact support at uask.ai"
+        }

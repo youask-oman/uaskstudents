@@ -62,6 +62,7 @@ export default function AdminLayout({
         { label: "Quotas", href: "/admin/quotas", icon: "speed" },
         { label: "Subscriptions", href: "/admin/subscriptions", icon: "diamond" },
         { label: "Prompts", href: "/admin/prompts", icon: "terminal" },
+        { label: "WhatsApp Bot", href: "/admin/whatsapp-bot", icon: "chat" },
         { label: "Logs", href: "/admin/logs", icon: "receipt_long" },
         { label: "Data", href: "/admin/data", icon: "table_view" },
         { label: "System Config", href: "/admin/system-config", icon: "tune" },

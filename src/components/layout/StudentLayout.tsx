@@ -173,7 +173,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                         <Link
                             key={item.id}
                             href={item.href}
-                            className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200 group"
+                            className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-primary hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-all duration-200 group"
                         >
                             <span className="material-symbols-outlined group-hover:text-primary transition-colors">{item.icon}</span>
                             <span className="text-sm font-medium">{item.label}</span>
@@ -184,11 +184,11 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                 {/* Bottom Section: Tools & Profile */}
                 <div className="px-3 pb-6 border-t border-slate-800">
                     <div className="space-y-1 mb-4 pt-4">
-                        <Link href="#" className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200 group">
-                            <span className="material-symbols-outlined text-[20px]">help</span>
+                        <Link href="#" className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-primary hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-all duration-200 group">
+                            <span className="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">help</span>
                             <span className="text-sm font-medium">Help Center</span>
                         </Link>
-                        <Link href="/profile" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group ${pathname === '/profile' ? 'text-white bg-white/5' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
+                        <Link href="/profile" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group ${pathname === '/profile' ? 'text-primary dark:text-white bg-primary/10 dark:bg-white/5' : 'text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-primary hover:bg-slate-100 dark:hover:bg-white/5'}`}>
                             <span className="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">settings</span>
                             <span className="text-sm font-medium">Settings</span>
                         </Link>

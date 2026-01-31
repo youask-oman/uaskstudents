@@ -12,8 +12,30 @@
                 "type": "array",
                 "maxItems": 2,
                 "items": {
-                    "type": "string",
-                    "maxLength": 200
+                    "type": "object",
+                    "properties": {
+                        "index": {
+                            "type": "integer"
+                        },
+                        "title": {
+                            "type": "string",
+                            "maxLength": 100
+                        },
+                        "explanation": {
+                            "type": "string",
+                            "maxLength": 300
+                        },
+                        "math_latex": {
+                            "type": "string",
+                            "maxLength": 400
+                        }
+                    },
+                    "required": [
+                        "index",
+                        "title",
+                        "explanation"
+                    ],
+                    "additionalProperties": false
                 }
             },
             "topic": {

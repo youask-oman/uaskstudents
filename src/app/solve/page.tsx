@@ -992,7 +992,7 @@ export default function DashboardPage() {
                                             <div className="text-center space-y-6">
                                                 <div
                                                     onClick={startRecording}
-                                                    className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center text-primary cursor-pointer hover:scale-110 transition-all hover:bg-primary/20 group"
+                                                    className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center text-primary cursor-pointer hover:scale-110 transition-all hover:bg-primary/20 group mx-auto"
                                                 >
                                                     <span className="material-symbols-outlined text-4xl group-hover:animate-pulse">mic</span>
                                                 </div>

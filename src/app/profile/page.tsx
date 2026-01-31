@@ -68,6 +68,11 @@ export default function ProfilePage() {
     const [schoolResults, setSchoolResults] = useState<SchoolSearchResult[]>([]);
     const [schoolSearching, setSchoolSearching] = useState(false);
     const [showSchoolDropdown, setShowSchoolDropdown] = useState(false);
+    
+    // WhatsApp integration
+    const [whatsappSecret, setWhatsappSecret] = useState("");
+    const [showWhatsappSecret, setShowWhatsappSecret] = useState(false);
+    const [whatsappEnabled, setWhatsappEnabled] = useState(true);
 
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
@@ -91,6 +96,9 @@ export default function ProfilePage() {
                 setProfileProvinceState(data.profile_province_state || "");
                 setGradeLevel(data.grade_level || "");
                 setSchoolId(data.school_id || null);
+                // WhatsApp
+                setWhatsappSecret(data.whatsapp_secret || "");
+                setWhatsappEnabled(data.whatsapp_enabled !== false);
                 setLoading(false);
             })
             .catch(err => {
@@ -733,6 +741,95 @@ export default function ProfilePage() {
                                                 <p className="text-[11px] text-slate-500 mt-1">{mode.desc}</p>
                                             </div>
                                         ))}
+                                    </div>
+                                </div>
+
+                                {/* WhatsApp Integration Section */}
+                                <div className="space-y-3 pt-6 border-t border-slate-200 dark:border-slate-800">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <span className="material-symbols-outlined text-green-500 text-2xl">whatsapp</span>
+                                        <div>
+                                            <label className="text-sm font-bold">WhatsApp Integration</label>
+                                            <p className="text-xs text-slate-500">Get math help via WhatsApp on your phone</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-xl p-5 space-y-4">
+                                        <div className="flex items-start gap-3">
+                                            <span className="material-symbols-outlined text-green-600 dark:text-green-400 text-xl">info</span>
+                                            <div className="flex-1">
+                                                <p className="text-sm text-green-900 dark:text-green-100 font-semibold mb-1">
+                                                    Your WhatsApp Verification Code
+                                                </p>
+                                                <p className="text-xs text-green-700 dark:text-green-300">
+                                                    Use this code to connect your WhatsApp number to uask.ai. Send it to the bot when you first message it.
+                                                </p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex items-center gap-3 bg-white dark:bg-slate-900 rounded-lg p-4 border border-green-200 dark:border-green-700">
+                                            <div className="flex-1">
+                                                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">
+                                                    Verification Code
+                                                </label>
+                                                <div className="font-mono text-2xl font-bold text-slate-900 dark:text-white tracking-wider">
+                                                    {showWhatsappSecret ? whatsappSecret : "••••••••"}
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => setShowWhatsappSecret(!showWhatsappSecret)}
+                                                className="size-10 flex items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
+                                            >
+                                                <span className="material-symbols-outlined text-green-700 dark:text-green-300">
+                                                    {showWhatsappSecret ? "visibility_off" : "visibility"}
+                                                </span>
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(whatsappSecret);
+                                                    alert("Code copied to clipboard!");
+                                                }}
+                                                className="size-10 flex items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
+                                            >
+                                                <span className="material-symbols-outlined text-green-700 dark:text-green-300">
+                                                    content_copy
+                                                </span>
+                                            </button>
+                                        </div>
+                                        
+                                        <div className="space-y-2">
+                                            <p className="text-xs font-semibold text-green-900 dark:text-green-100">How to connect:</p>
+                                            <ol className="text-xs text-green-800 dark:text-green-200 space-y-1 ml-4 list-decimal">
+                                                <li>Save the WhatsApp bot number (ask admin for the number)</li>
+                                                <li>Send a message: <code className="bg-green-200 dark:bg-green-800 px-2 py-0.5 rounded">CODE {whatsappSecret}</code></li>
+                                                <li>Once verified, send math problems directly!</li>
+                                                <li>You can send text questions or photos of problems</li>
+                                            </ol>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
+                                        <div className="flex items-center gap-3">
+                                            <span className="material-symbols-outlined text-slate-600 dark:text-slate-400">notifications</span>
+                                            <div>
+                                                <p className="text-sm font-semibold">WhatsApp Notifications</p>
+                                                <p className="text-xs text-slate-500">Enable/disable WhatsApp bot responses</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => setWhatsappEnabled(!whatsappEnabled)}
+                                            className={`relative w-14 h-7 rounded-full transition-colors ${
+                                                whatsappEnabled 
+                                                    ? "bg-green-500" 
+                                                    : "bg-slate-300 dark:bg-slate-700"
+                                            }`}
+                                        >
+                                            <div
+                                                className={`absolute top-1 left-1 size-5 bg-white rounded-full transition-transform ${
+                                                    whatsappEnabled ? "translate-x-7" : "translate-x-0"
+                                                }`}
+                                            />
+                                        </button>
                                     </div>
                                 </div>
 

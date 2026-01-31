@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@types/react-plotly.js": "^2.6.4",
+    "baileys": "^7.0.0-rc.9",
     "better-react-mathjax": "^2.4.0-beta-1",
     "clsx": "^2.1.1",
     "katex": "^0.16.27",

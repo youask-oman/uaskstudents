@@ -17,17 +17,20 @@ class SolverService:
             self._client = AsyncOpenAI(api_key=api_key)
         return self._client
     
-    def _build_completion_params(self, model: str, messages: list, temperature: float = None) -> dict:
+    def _build_completion_params(self, model: str, messages: list, temperature: float = None, use_json: bool = True) -> dict:
         """
         Build completion parameters based on model type.
         GPT-5 models don't support temperature parameter.
         """
         params = {
             "model": model,
-            "response_format": {"type": "json_object"},
             "messages": messages,
             "timeout": 30
         }
+        
+        # Only add JSON format if requested
+        if use_json:
+            params["response_format"] = {"type": "json_object"}
         
         # Only add temperature for non-GPT-5 models
         if temperature is not None and "gpt-5" not in model.lower():
@@ -141,59 +144,71 @@ RULES:
         """
         if not self.client:
             return {"relevant": True, "content": "API Key Missing. Check backend config."}
-        if db:
-            system_prompt_template = get_active_prompt("tutor-chat", db)
-        else:
-            from app.database import engine, Session
-            with Session(engine) as session:
-                system_prompt_template = get_active_prompt("tutor-chat", session)
+        
+        # Extract problem context from various potential sources
+        problem_text = (
+            session_context.get('original_problem') or 
+            session_context.get('problem', {}).get('original_text') or
+            session_context.get('problem', {}).get('normalized_text') or
+            session_context.get('problem', {}).get('goal') or 
+            "Unknown Problem"
+        )
+        
+        topic = (
+            session_context.get('classification', {}).get('topic') or 
+            session_context.get('problem', {}).get('topic') or 
+            "Math"
+        )
+        
+        # Extract steps if available
+        steps_info = ""
+        if 'steps' in session_context and session_context['steps']:
+            steps_list = session_context['steps']
+            if isinstance(steps_list, list) and len(steps_list) > 0:
+                steps_info = "\n\nSOLUTION STEPS:\n"
+                for step in steps_list:
+                    if isinstance(step, dict):
+                        step_num = step.get('index', '?')
+                        step_title = step.get('title', 'Step')
+                        steps_info += f"Step {step_num}: {step_title}\n"
+        
+        # Log full context for debugging
+        print(f"[CHAT_DEBUG] Full context keys: {list(session_context.keys())}")
+        print(f"[CHAT_DEBUG] Context: {json.dumps(session_context, indent=2, default=str)[:500]}...")
+        print(f"[CHAT_DEBUG] Problem: {problem_text[:50]}...")
+        print(f"[CHAT_DEBUG] Topic: {topic}")
+        print(f"[CHAT_DEBUG] Steps available: {len(session_context.get('steps', []))}")
+        print(f"[CHAT_DEBUG] Query: {query}")
 
-        if system_prompt_template:
-            # Simple template replacement
-            system_prompt = system_prompt_template.replace("{{goal}}", str(session_context.get('problem', {}).get('goal'))).replace("{{latex}}", str(session_context.get('problem', {}).get('latex')))
-        else:
-            # Extract problem context from various potential sources
-            problem_text = (
-                session_context.get('original_problem') or 
-                session_context.get('problem', {}).get('original_text') or
-                session_context.get('problem', {}).get('normalized_text') or
-                session_context.get('problem', {}).get('goal') or 
-                "Unknown Problem"
-            )
-            
-            topic = (
-                session_context.get('classification', {}).get('topic') or 
-                session_context.get('problem', {}).get('topic') or 
-                "Math"
-            )
+        system_prompt = f"""You are a friendly and helpful math tutor assisting a student who just solved this problem:
 
-            system_prompt = f"""You are an expert math tutor helpers the student with a specific problem.
-            
-            CURRENT PROBLEM CONTEXT:
-            Problem: {problem_text}
-            Topic: {topic}
-            
-            STRICT TOPIC RESTRICTION INSTRUCTIONS:
-            1. You generally ONLY answer questions related to the specific problem above, its underlying concepts, or similar examples.
-            2. If the user asks a question about a different math problem, you may answer it ONLY IF it related to the current topic ({topic}).
-            3. If the user asks about something completely unrelated (e.g., "Write a poem", "Who is the president"), you MUST REJECT it politely.
-               - Example Rejection: "I can only help you with questions related to this math problem or topic."
-            4. Keep answers concise, encouraging, and helpful. 
-            5. Use LaTeX for all math expressions (wrapped in single backticks or standard delimiters).
-            
-            Return ONLY JSON: {{"relevant": boolean, "content": "string"}}
-            """
+Problem: {problem_text}
+Topic: {topic}{steps_info}
+
+The student is asking questions to better understand the solution. Your job is to:
+- Answer their questions clearly and helpfully
+- Explain concepts, steps, or methods used in the solution
+- Provide alternative explanations or approaches when asked
+- Use encouraging language
+- Use LaTeX for math expressions (wrap in $ or $$)
+
+Always answer questions about the problem, steps, concepts, or related topics.
+Only politely decline if asked something completely unrelated (e.g., write a poem, unrelated trivia).
+
+Respond in plain text. Be conversational and helpful."""
 
 
         try:
-            model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini")
+            model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-4o-mini")
             messages = [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": query}
             ]
-            params = self._build_completion_params(model, messages, temperature=0.7)
+            params = self._build_completion_params(model, messages, temperature=0.7, use_json=False)
             response = await self.client.chat.completions.create(**params)
-            return json.loads(response.choices[0].message.content)
+            content = response.choices[0].message.content
+            # Return in expected format
+            return {"relevant": True, "content": content}
         except Exception as e:
             print(f"Chat Response Error: {e}")
             return {"relevant": True, "content": "I'm having trouble thinking right now. Could you ask again?"}

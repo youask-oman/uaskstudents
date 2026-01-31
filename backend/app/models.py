@@ -56,6 +56,11 @@ class User(SQLModel, table=True):
     # Session Security
     session_token: Optional[str] = None
     last_ip: Optional[str] = None
+    
+    # WhatsApp Integration
+    whatsapp_number: Optional[str] = Field(default=None, index=True)  # Verified WhatsApp number
+    whatsapp_secret: Optional[str] = None  # Unique code for verification
+    whatsapp_enabled: bool = Field(default=True)  # Can be disabled by user or admin
 
     # Subscription Relationship
     subscription: Optional["Subscription"] = Relationship(back_populates="user")
