@@ -35,10 +35,9 @@ const P = require('pino');
 
 const AUTH_DIR = path.join(__dirname, 'whatsapp_auth');
 
-// Clear auth state to force QR generation
-if (fs.existsSync(AUTH_DIR)) {
-    fs.rmSync(AUTH_DIR, { recursive: true, force: true });
-}
+// Only clear auth on first run or if explicitly requested
+// This allows reconnection without re-scanning QR code
+// To force new QR, delete the auth directory manually
 
 async function connectToWhatsApp() {
     const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
@@ -101,7 +100,7 @@ async function connectToWhatsApp() {
             
             // Send to backend for processing
             try {
-                const response = await fetch('http://orchestrator:8000/api/whatsapp/message', {
+                const response = await fetch('http://orchestrator:8000/api/v1/whatsapp/message', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(messageData)

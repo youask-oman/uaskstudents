@@ -7062,22 +7062,16 @@ async def handle_whatsapp_message(
     text = request.text.strip()
     has_image = request.hasImage
     
-    # Check if user is verified for this number
-    user = db.exec(
-        select(User).where(User.whatsapp_number == from_number)
-    ).first()
-    
-    if not user:
-        # User not linked - ask for verification code
-        return {
-            "reply": "👋 Welcome to uask.ai Math Tutor!\n\nTo use this service, please send me your WhatsApp verification code.\n\nYou can find your code in:\nSettings → Preferences → WhatsApp Code\n\nFormat: CODE your-code-here"
-        }
-    
-    # Check if this is a verification code
+    # Check if this is a verification code (handle this first, before checking user)
     if text.upper().startswith("CODE "):
-        code = text[5:].strip()
-        if user.whatsapp_secret == code:
-            # Update the phone number
+        code = text[5:].strip().upper()
+        # Find user by verification code
+        user = db.exec(
+            select(User).where(User.whatsapp_secret == code)
+        ).first()
+        
+        if user:
+            # Link the phone number to this user
             user.whatsapp_number = from_number
             db.add(user)
             db.commit()
@@ -7089,16 +7083,30 @@ async def handle_whatsapp_message(
                 "reply": "❌ Invalid verification code. Please check your code in Settings → Preferences and try again."
             }
     
-    # Check if user has active subscription
-    if not user.is_active:
+    # Check if user is already verified for this number
+    user = db.exec(
+        select(User).where(User.whatsapp_number == from_number)
+    ).first()
+    
+    if not user:
+        # User not linked - ask for verification code
+        return {
+            "reply": "👋 Welcome to uask.ai Math Tutor!\n\nTo use this service, please send me your WhatsApp verification code.\n\nYou can find your code in:\nSettings → Preferences → WhatsApp Code\n\nFormat: CODE your-code-here"
+        }
+    
+    # Check if user has active subscription status
+    if user.subscription_status != "active":
         return {
             "reply": "⚠️ Your account is not active. Please check your subscription at uask.ai"
         }
     
-    subscription = subscription_service.get_active_subscription(user.id, db)
-    if not subscription:
+    # Get or create subscription for the user
+    try:
+        subscription = subscription_service.get_or_create_subscription(db, user)
+    except Exception as e:
+        print(f"[WhatsApp] Error getting subscription: {e}")
         return {
-            "reply": "⚠️ You don't have an active subscription. Please subscribe at uask.ai to continue using this service."
+            "reply": "⚠️ There was an error checking your subscription. Please try again or visit uask.ai"
         }
     
     # If message has an image, we need to process it with OCR
@@ -7133,9 +7141,14 @@ Format: Problem → Steps → Final Answer"""
         # Format response for WhatsApp
         reply = "📝 *Problem:* " + text + "\n\n"
         
-        if result.get("steps"):
+        # Extract solution data (solver returns nested structure)
+        solution = result.get("solution", {})
+        steps = solution.get("steps", [])
+        final_answer = solution.get("final_answer", "")
+        
+        if steps:
             reply += "*Solution:*\n"
-            for i, step in enumerate(result["steps"], 1):
+            for i, step in enumerate(steps, 1):
                 title = step.get("title", f"Step {i}")
                 reply += f"\n*{i}. {title}*\n"
                 explanation = step.get("explanation", "")
@@ -7145,8 +7158,8 @@ Format: Problem → Steps → Final Answer"""
                         explanation = explanation[:197] + "..."
                     reply += explanation + "\n"
         
-        if result.get("final_answer"):
-            reply += f"\n✅ *Answer:* {result['final_answer']}"
+        if final_answer:
+            reply += f"\n✅ *Answer:* {final_answer}"
         
         # Add helpful footer
         reply += "\n\n💡 _Need more help? Visit uask.ai_"
@@ -7154,11 +7167,8 @@ Format: Problem → Steps → Final Answer"""
         # Log usage
         usage_log = UsageLog(
             user_id=user.id,
-            endpoint="/whatsapp/message",
-            input_tokens=len(problem_text.split()),
-            output_tokens=len(reply.split()),
-            cost_usd=0.01,  # Simplified cost
-            model_name="whatsapp-bot"
+            action_type="whatsapp_solve",
+            tokens_used=len(problem_text.split()) + len(reply.split())
         )
         db.add(usage_log)
         db.commit()
