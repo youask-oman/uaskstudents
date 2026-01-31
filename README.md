@@ -40,3 +40,12 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 # uaskstudents
 uaskstudents
 >>>>>>> 99777e3a9f0ca4d057f8aed6b72fd2fb5c0f88ed
+
+## WhatsApp Feature Flags
+
+These are OFF by default and must be explicitly enabled:
+
+- `WHATSAPP_OCR_ENABLED=false` (enable image OCR + confirmation flow)
+- `WHATSAPP_SOLVER_V3_ENABLED=false` (use Solver V3 for confirmed OCR text)
+- `WHATSAPP_INTERNAL_KEY=` (shared secret for internal WhatsApp media/send endpoints)
+- `WHATSAPP_INTERNAL_PORT=8791` (internal bridge port for Python -> Node sends)

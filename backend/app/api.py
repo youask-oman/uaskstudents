@@ -16,6 +16,7 @@ import time
 import logging
 import asyncio
 import io
+import aiofiles
 from datetime import datetime, timedelta
 from jsonschema import Draft202012Validator, ValidationError
 from PIL import Image, ImageEnhance, ImageFilter, ImageStat
@@ -49,6 +50,15 @@ from app.services.ocr.ocr_service import ocr_service
 from app.services.solve.canonicalization_service import canonicalization_service
 from app.services.admin.analytics_service import record_request_event
 from app.services.whatsapp import whatsapp_service
+from app.services.whatsapp.whatsapp_state import (
+    mark_dedupe,
+    get_ocr_state,
+    clear_ocr_state,
+    set_upload_meta,
+    create_upload_id,
+    get_upload_meta,
+)
+from app.worker import celery_app
 from app.services.solve.cache_service import cache_service
 from app.services.token_policy import get_token_policy, serialize_token_policy
 from app.config import get_settings
@@ -7033,6 +7043,8 @@ class WhatsAppMessageRequest(BaseModel):
     text: str = ""
     hasImage: bool = False
     timestamp: str
+    message_id: Optional[str] = None
+    upload_id: Optional[str] = None
 
 @api_router.get("/admin/whatsapp/status")
 async def get_whatsapp_status():
@@ -7049,6 +7061,115 @@ async def disconnect_whatsapp_bot():
     """Disconnect WhatsApp bot"""
     return await whatsapp_service.disconnect()
 
+@api_router.get("/admin/whatsapp/ocr-state")
+async def get_whatsapp_ocr_state(
+    request: Request,
+    phone: Optional[str] = None,
+    upload_id: Optional[str] = None,
+):
+    """
+    Internal-only diagnostics endpoint for WhatsApp OCR state.
+    """
+    expected_key = os.environ.get("WHATSAPP_INTERNAL_KEY", "")
+    provided_key = request.headers.get("X-UASK-INTERNAL-KEY", "")
+    if expected_key and provided_key != expected_key:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    state = get_ocr_state(phone) if phone else None
+    upload = get_upload_meta(upload_id) if upload_id else None
+    return {
+        "ocr_state": state,
+        "upload_meta": upload,
+        "whatsapp_ocr_enabled": os.getenv("WHATSAPP_OCR_ENABLED", "false"),
+        "whatsapp_solver_v3_enabled": os.getenv("WHATSAPP_SOLVER_V3_ENABLED", "false"),
+    }
+
+@api_router.get("/admin/whatsapp/diag")
+async def whatsapp_diag(request: Request):
+    """
+    Internal diagnostics for WhatsApp OCR flow.
+    """
+    expected_key = os.environ.get("WHATSAPP_INTERNAL_KEY", "")
+    provided_key = request.headers.get("X-UASK-INTERNAL-KEY", "")
+    if expected_key and provided_key != expected_key:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    send_url = os.environ.get("WHATSAPP_INTERNAL_SEND_URL", "http://orchestrator:8791/send")
+    send_ok = False
+    send_status = None
+    try:
+        resp = requests.get(send_url, timeout=2)
+        send_status = resp.status_code
+        send_ok = resp.status_code in (400, 404, 405)
+    except Exception as e:
+        send_status = str(e)
+
+    return {
+        "bot_status": whatsapp_service.get_status(),
+        "send_url": send_url,
+        "send_reachable": send_ok,
+        "send_status": send_status,
+        "whatsapp_ocr_enabled": os.getenv("WHATSAPP_OCR_ENABLED", "false"),
+        "whatsapp_solver_v3_enabled": os.getenv("WHATSAPP_SOLVER_V3_ENABLED", "false"),
+    }
+
+@api_router.post("/whatsapp/media")
+async def upload_whatsapp_media(
+    request: Request,
+    file: UploadFile = File(...),
+    from_number: str = Form(..., alias="from"),
+    message_id: Optional[str] = Form(None),
+    timestamp: Optional[str] = Form(None),
+    mime_type: Optional[str] = Form(None),
+    caption: Optional[str] = Form(None),
+):
+    """
+    Internal-only media upload for WhatsApp image OCR.
+    Stores bytes to disk and returns an upload_id.
+    """
+    expected_key = os.environ.get("WHATSAPP_INTERNAL_KEY", "")
+    provided_key = request.headers.get("X-UASK-INTERNAL-KEY", "")
+    if expected_key and provided_key != expected_key:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    # Limit to 10MB
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File too large. Maximum size is 10MB.")
+
+    storage_dir = os.path.join("storage", "whatsapp_uploads")
+    os.makedirs(storage_dir, exist_ok=True)
+
+    upload_id = create_upload_id()
+    ext = os.path.splitext(file.filename or "")[1].lower() if file.filename else ""
+    if not ext:
+        if mime_type and "jpeg" in mime_type:
+            ext = ".jpg"
+        elif mime_type and "png" in mime_type:
+            ext = ".png"
+        elif mime_type and "webp" in mime_type:
+            ext = ".webp"
+        else:
+            ext = ".png"
+
+    file_path = os.path.join(storage_dir, f"{upload_id}{ext}")
+    async with aiofiles.open(file_path, "wb") as f:
+        await f.write(content)
+
+    set_upload_meta(
+        upload_id,
+        {
+            "path": file_path,
+            "from": from_number,
+            "message_id": message_id,
+            "timestamp": timestamp,
+            "mime_type": mime_type or file.content_type or "image/png",
+            "caption": caption or "",
+        },
+    )
+
+    return {"upload_id": upload_id}
+
 @api_router.post("/whatsapp/message")
 async def handle_whatsapp_message(
     request: WhatsAppMessageRequest,
@@ -7061,6 +7182,13 @@ async def handle_whatsapp_message(
     from_number = request.from_number
     text = request.text.strip()
     has_image = request.hasImage
+    message_id = request.message_id
+    upload_id = request.upload_id
+    whatsapp_ocr_enabled = os.getenv("WHATSAPP_OCR_ENABLED", "false").lower() == "true"
+
+    # Dedupe by message_id to avoid double-processing
+    if not mark_dedupe(message_id):
+        return {"reply": ""}
     
     # Check if this is a verification code (handle this first, before checking user)
     if text.upper().startswith("CODE "):
@@ -7109,6 +7237,40 @@ async def handle_whatsapp_message(
             "reply": "⚠️ There was an error checking your subscription. Please try again or visit uask.ai"
         }
     
+    # Handle OCR confirmation state if present
+    ocr_state = get_ocr_state(from_number)
+    if ocr_state and ocr_state.get("state") == "OCR_PENDING_CONFIRMATION":
+        normalized = text.strip()
+        upper = normalized.upper()
+
+        if upper == "1":
+            clear_ocr_state(from_number)
+            extracted = ocr_state.get("extracted_text", "")
+            celery_app.send_task("whatsapp_solve", args=[user.id, from_number, extracted, ocr_state.get("upload_id"), message_id])
+            return {"reply": "Got it! Solving now..."}
+        if upper == "2":
+            clear_ocr_state(from_number)
+            return {"reply": "Okay - please resend a clearer photo (crop to the question)."}
+        if upper.startswith("EDIT:"):
+            edited = normalized[5:].strip()
+            if not edited:
+                return {"reply": "Please provide your correction after `EDIT:`."}
+            clear_ocr_state(from_number)
+            celery_app.send_task("whatsapp_solve", args=[user.id, from_number, edited, ocr_state.get("upload_id"), message_id])
+            return {"reply": "Thanks! Solving your corrected question now..."}
+        if upper == "CANCEL":
+            clear_ocr_state(from_number)
+            return {"reply": "Cancelled. Send a new photo any time."}
+
+        return {
+            "reply": "Please reply with:\n1 = Correct\n2 = Not correct (resend photo)\nEDIT: <corrected question>\nCANCEL"
+        }
+
+    # If image upload_id is provided and OCR is enabled, enqueue OCR extraction
+    if upload_id and whatsapp_ocr_enabled:
+        celery_app.send_task("whatsapp_ocr_extract", args=[upload_id, user.id, from_number, message_id])
+        return {"reply": "Received your image. Reading it now..."}
+
     # If message has an image, we need to process it with OCR
     problem_text = text
     if has_image:

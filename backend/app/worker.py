@@ -50,6 +50,9 @@ celery_app.conf.update(
     enable_utc=True,
 )
 
+# Register additional task modules
+import app.tasks.whatsapp_tasks  # noqa: E402,F401
+
 # Register signals
 signal.signal(signal.SIGTERM, handle_exit)
 signal.signal(signal.SIGINT, handle_exit)
