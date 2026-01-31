@@ -11,8 +11,10 @@ from app.services.whatsapp.whatsapp_state import (
     get_upload_meta,
     set_ocr_state,
     clear_ocr_state,
+    set_step_pack,
 )
-from app.services.whatsapp.whatsapp_send import send_whatsapp_message
+from app.services.whatsapp.whatsapp_send import send_whatsapp_message, send_whatsapp_logo
+from app.services.whatsapp.step_delivery import build_step_pack, send_step_pack
 from app.models import UsageLog, User
 from app.services.solver import solver_service
 
@@ -69,10 +71,10 @@ def whatsapp_ocr_extract(self, upload_id: str, user_id: int, phone: str, message
         clear_ocr_state(phone)
         return "ocr_failed"
 
-        if not extracted or len(extracted) < 3:
-            send_whatsapp_message(phone, "I couldn't read that clearly. Please resend a sharper photo (crop to the question).")
-            clear_ocr_state(phone)
-            return "ocr_empty"
+    if not extracted or len(extracted) < 3:
+        send_whatsapp_message(phone, "I couldn't read that clearly. Please resend a sharper photo (crop to the question).")
+        clear_ocr_state(phone)
+        return "ocr_empty"
 
     set_ocr_state(
         phone,
@@ -116,6 +118,7 @@ def whatsapp_solve(self, user_id: int, phone: str, text: str, upload_id: Optiona
     engine = create_engine(DATABASE_URL)
 
     use_v3 = os.getenv("WHATSAPP_SOLVER_V3_ENABLED", "false").lower() == "true"
+    use_latex = os.getenv("WHATSAPP_LATEX_RENDER_ENABLED", "false").lower() == "true"
 
     with Session(engine) as session:
         user = session.get(User, user_id)
@@ -144,7 +147,34 @@ def whatsapp_solve(self, user_id: int, phone: str, text: str, upload_id: Optiona
             final = v3_result.get("final_answer", {})
             final_text = final.get("answer_text") or final.get("answer_latex") or ""
 
-            reply = "📝 *Problem:* " + text + "\n\n"
+            if use_latex and (steps or final_text):
+                normalized_steps = []
+                for i, step in enumerate(steps, 1):
+                    math_latex = step.get("math_latex")
+                    math = step.get("math") or {}
+                    if math_latex and not math:
+                        math = {"latex_lines": [math_latex]}
+                    normalized_steps.append({
+                        "title": step.get("title") or f"Step {i}",
+                        "explanation": step.get("explanation") or "",
+                        "math": math,
+                    })
+                if final_text:
+                    normalized_steps.append({
+                        "title": "Final Answer",
+                        "explanation": final_text,
+                        "math": {},
+                    })
+
+                pack = build_step_pack(phone, normalized_steps)
+                set_step_pack(phone, pack)
+                send_step_pack(phone, pack, 1)
+                send_whatsapp_message(phone, "Reply NEXT/PREV/ALL or a step number to navigate.")
+                session.add(UsageLog(user_id=user.id, action_type="whatsapp_solve_v3", tokens_used=len(text.split())))
+                session.commit()
+                return "ok"
+
+            reply = "*Problem:* " + text + "\n\n"
             if steps:
                 reply += "*Solution:*\n"
                 for i, step in enumerate(steps, 1):
@@ -162,6 +192,7 @@ def whatsapp_solve(self, user_id: int, phone: str, text: str, upload_id: Optiona
             session.add(UsageLog(user_id=user.id, action_type="whatsapp_solve_v3", tokens_used=len(text.split()) + len(reply.split())))
             session.commit()
 
+            send_whatsapp_logo(phone)
             send_whatsapp_message(phone, reply)
             return "ok"
 
@@ -173,10 +204,37 @@ def whatsapp_solve(self, user_id: int, phone: str, text: str, upload_id: Optiona
             send_whatsapp_message(phone, "Sorry, I encountered an error processing your problem. Please try again.")
             return "solve_failed"
 
-        reply = "📝 *Problem:* " + text + "\n\n"
+        reply = "*Problem:* " + text + "\n\n"
         solution = result.get("solution", {})
         steps = solution.get("steps", [])
         final_answer = solution.get("final_answer", "")
+
+        if use_latex and (steps or final_answer):
+            normalized_steps = []
+            for i, step in enumerate(steps, 1):
+                math = step.get("math") or {}
+                math_latex = step.get("math_latex")
+                if math_latex and not math:
+                    math = {"latex_lines": [math_latex]}
+                normalized_steps.append({
+                    "title": step.get("title") or f"Step {i}",
+                    "explanation": step.get("explanation") or "",
+                    "math": math,
+                })
+            if final_answer:
+                normalized_steps.append({
+                    "title": "Final Answer",
+                    "explanation": final_answer,
+                    "math": {},
+                })
+
+            pack = build_step_pack(phone, normalized_steps)
+            set_step_pack(phone, pack)
+            send_step_pack(phone, pack, 1)
+            send_whatsapp_message(phone, "Reply NEXT/PREV/ALL or a step number to navigate.")
+            session.add(UsageLog(user_id=user.id, action_type="whatsapp_solve", tokens_used=len(text.split())))
+            session.commit()
+            return "ok"
 
         if steps:
             reply += "*Solution:*\n"
@@ -197,5 +255,6 @@ def whatsapp_solve(self, user_id: int, phone: str, text: str, upload_id: Optiona
         session.add(UsageLog(user_id=user.id, action_type="whatsapp_solve", tokens_used=len(text.split()) + len(reply.split())))
         session.commit()
 
+        send_whatsapp_logo(phone)
         send_whatsapp_message(phone, reply)
         return "ok"

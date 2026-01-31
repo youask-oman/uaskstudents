@@ -1,5 +1,6 @@
-﻿import os
+import os
 import json
+import asyncio
 from app.utils import get_active_prompt
 from openai import AsyncOpenAI
 
@@ -22,10 +23,11 @@ class SolverService:
         Build completion parameters based on model type.
         GPT-5 models don't support temperature parameter.
         """
+        timeout = int(os.environ.get("OPENAI_TIMEOUT_SECONDS", "60"))
         params = {
             "model": model,
             "messages": messages,
-            "timeout": 30
+            "timeout": timeout
         }
         
         # Only add JSON format if requested
@@ -115,27 +117,38 @@ RULES:
 - For function requests, provide valid LaTeX for the function (e.g. "y=\\sin(x)").
 """
 
-        try:
-            model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini")
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Problem: {problem_text}\nContext: {context}"}
-            ]
-            params = self._build_completion_params(model, messages, temperature=0.2)
-            response = await self.client.chat.completions.create(**params)
-            
-            data = json.loads(response.choices[0].message.content)
-            # Include actual model name from OpenAI response
-            data["_model"] = response.model
-            return data
-            
-        except Exception as e:
-            print(f"Solver Error: {e}")
-            return {
-                "summary": "Error generating solution",
-                "steps": [{"title": "Error", "content": str(e)}],
-                "final_answer": "Could not solve."
-            }
+        max_retries = int(os.environ.get("OPENAI_SOLVER_MAX_RETRIES", "2"))
+        model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini")
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Problem: {problem_text}\nContext: {context}"}
+        ]
+        params = self._build_completion_params(model, messages, temperature=0.2)
+        last_error = None
+
+        for attempt in range(max_retries + 1):
+            try:
+                response = await self.client.chat.completions.create(**params)
+                data = json.loads(response.choices[0].message.content)
+                # Include actual model name from OpenAI response
+                data["_model"] = response.model
+                return data
+            except Exception as e:
+                last_error = e
+                msg = str(e).lower()
+                is_timeout = "timeout" in msg or "timed out" in msg or "deadline" in msg
+                if is_timeout and attempt < max_retries:
+                    backoff = min(8, 2 ** attempt)
+                    await asyncio.sleep(backoff)
+                    continue
+                break
+
+        print(f"Solver Error: {last_error}")
+        return {
+            "summary": "Error generating solution",
+            "steps": [{"title": "Error", "content": str(last_error)}],
+            "final_answer": "Could not solve."
+        }
 
     async def get_chat_response(self, query: str, session_context: dict, db = None) -> dict:
         """
@@ -214,4 +227,3 @@ Respond in plain text. Be conversational and helpful."""
             return {"relevant": True, "content": "I'm having trouble thinking right now. Could you ask again?"}
 
 solver_service = SolverService()
-

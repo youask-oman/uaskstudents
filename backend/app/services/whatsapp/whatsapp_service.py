@@ -35,8 +35,19 @@ const fs = require('fs');
 const path = require('path');
 const P = require('pino');
 const http = require('http');
+const crypto = require('crypto');
+const katex = require('katex');
+const sharp = require('sharp');
+const { mathjax } = require('mathjax-full/js/mathjax.js');
+const { TeX } = require('mathjax-full/js/input/tex.js');
+const { MathML } = require('mathjax-full/js/input/mathml.js');
+const { SVG } = require('mathjax-full/js/output/svg.js');
+const { liteAdaptor } = require('mathjax-full/js/adaptors/liteAdaptor.js');
+const { RegisterHTMLHandler } = require('mathjax-full/js/handlers/html.js');
+const { AllPackages } = require('mathjax-full/js/input/tex/AllPackages.js');
 
 const AUTH_DIR = process.env.WHATSAPP_AUTH_DIR || path.join(__dirname, 'whatsapp_auth');
+const CACHE_DIR = process.env.WHATSAPP_LATEX_CACHE_DIR || '/app/storage/latex_cache';
 
 // Ensure auth directory exists (persistent if WHATSAPP_AUTH_DIR points to /app/storage)
 try {
@@ -46,17 +57,112 @@ try {
 } catch (e) {
     console.error('Failed to ensure AUTH_DIR:', e);
 }
+
+// Ensure cache directory exists
+try {
+    if (!fs.existsSync(CACHE_DIR)) {
+        fs.mkdirSync(CACHE_DIR, { recursive: true });
+    }
+} catch (e) {
+    console.error('Failed to ensure CACHE_DIR:', e);
+}
+
 const INTERNAL_KEY = process.env.WHATSAPP_INTERNAL_KEY || '';
 const INTERNAL_PORT = process.env.WHATSAPP_INTERNAL_PORT || '8791';
 let currentSock = null;
 let sendServerStarted = false;
+
+const adaptor = liteAdaptor();
+RegisterHTMLHandler(adaptor);
+const svgOutput = new SVG({ fontCache: 'none' });
+const texInput = new TeX({ packages: AllPackages });
+const mathmlInput = new MathML({});
+const texDoc = mathjax.document('', { InputJax: texInput, OutputJax: svgOutput });
+const mathmlDoc = mathjax.document('', { InputJax: mathmlInput, OutputJax: svgOutput });
+
+function normalizeLatex(latex) {
+    return (latex || '').trim().replace(/\\s+/g, ' ');
+}
+
+function extractSvg(markup) {
+    const match = String(markup || '').match(/<svg[^>]*>[\\s\\S]*<\\/svg>/);
+    return match ? match[0] : markup;
+}
+
+function latexCacheKey(latex, engine, format, displayMode, scale) {
+    const normalized = normalizeLatex(latex);
+    const raw = `${engine}|${format}|${displayMode ? 1 : 0}|${scale}|${normalized}`;
+    return crypto.createHash('sha256').update(raw).digest('hex');
+}
+
+function renderWithMathJaxTex(latex, displayMode) {
+    const node = texDoc.convert(latex, { display: displayMode });
+    return adaptor.outerHTML(node);
+}
+
+function renderWithMathJaxMathML(mathml, displayMode) {
+    const node = mathmlDoc.convert(mathml, { display: displayMode });
+    return adaptor.outerHTML(node);
+}
+
+function renderWithKatex(latex, displayMode) {
+    const mathml = katex.renderToString(latex, {
+        displayMode,
+        throwOnError: false,
+        output: 'mathml'
+    });
+    return renderWithMathJaxMathML(mathml, displayMode);
+}
+
+async function renderLatexToImage(latex, format, scale, displayMode, engine) {
+    const safeScale = Math.max(1, Math.min(4, scale || 2));
+    let svg = '';
+    try {
+        if (engine === 'mathjax') {
+            svg = renderWithMathJaxTex(latex, displayMode);
+        } else {
+            svg = renderWithKatex(latex, displayMode);
+        }
+    } catch (err) {
+        if (engine !== 'mathjax') {
+            svg = renderWithMathJaxTex(latex, displayMode);
+        } else {
+            throw err;
+        }
+    }
+
+    svg = extractSvg(svg);
+    const density = 120 * safeScale;
+    const buffer = await sharp(Buffer.from(svg), { density }).toFormat(format).toBuffer();
+    const meta = await sharp(buffer).metadata();
+    return { buffer, width: meta.width || 0, height: meta.height || 0 };
+}
+
+function readJson(req) {
+    return new Promise((resolve, reject) => {
+        let body = '';
+        req.on('data', chunk => {
+            body += chunk;
+            if (body.length > 10 * 1024 * 1024) {
+                reject(new Error('Payload too large'));
+            }
+        });
+        req.on('end', () => {
+            try {
+                resolve(JSON.parse(body || '{}'));
+            } catch (err) {
+                reject(err);
+            }
+        });
+    });
+}
 
 function startSendServer() {
     if (sendServerStarted) return;
     sendServerStarted = true;
 
     const server = http.createServer(async (req, res) => {
-        if (req.method !== 'POST' || req.url !== '/send') {
+        if (req.method !== 'POST') {
             res.statusCode = 404;
             return res.end('Not found');
         }
@@ -66,14 +172,17 @@ function startSendServer() {
             return res.end('Unauthorized');
         }
 
-        let body = '';
-        req.on('data', chunk => { body += chunk; });
-        req.on('end', async () => {
+        if (!currentSock) {
+            res.statusCode = 503;
+            return res.end('WhatsApp not connected');
+        }
+
+        if (req.url === '/send') {
             try {
-                const payload = JSON.parse(body || '{}');
+                const payload = await readJson(req);
                 const to = payload.to;
                 const text = payload.text;
-                if (!to || !text || !currentSock) {
+                if (!to || !text) {
                     res.statusCode = 400;
                     return res.end('Bad request');
                 }
@@ -84,7 +193,75 @@ function startSendServer() {
                 res.statusCode = 500;
                 return res.end('Error');
             }
-        });
+        }
+
+        if (req.url === '/send-media') {
+            try {
+                const payload = await readJson(req);
+                const to = payload.to;
+                const bytesBase64 = payload.bytesBase64;
+                const contentType = payload.contentType || 'image/webp';
+                const caption = payload.caption || '';
+                if (!to || !bytesBase64) {
+                    res.statusCode = 400;
+                    return res.end('Bad request');
+                }
+                const buffer = Buffer.from(bytesBase64, 'base64');
+                await currentSock.sendMessage(to, { image: buffer, mimetype: contentType, caption });
+                res.statusCode = 200;
+                return res.end('OK');
+            } catch (err) {
+                res.statusCode = 500;
+                return res.end('Error');
+            }
+        }
+
+        if (req.url === '/internal/latex/render') {
+            try {
+                const payload = await readJson(req);
+                const latex = normalizeLatex(payload.latex || '');
+                const format = (payload.format || 'webp').toLowerCase();
+                const displayMode = payload.displayMode !== false;
+                const scale = Number(payload.scale) || 2;
+                const engine = (payload.engine || 'katex').toLowerCase();
+                if (!latex) {
+                    res.statusCode = 400;
+                    return res.end('Bad request');
+                }
+
+                const key = latexCacheKey(latex, engine, format, displayMode, scale);
+                const cachePath = path.join(CACHE_DIR, `${key}.${format}`);
+
+                if (fs.existsSync(cachePath)) {
+                    const cached = fs.readFileSync(cachePath);
+                    res.statusCode = 200;
+                    res.setHeader('Content-Type', 'application/json');
+                    return res.end(JSON.stringify({
+                        contentType: `image/${format}`,
+                        bytesBase64: cached.toString('base64')
+                    }));
+                }
+
+                const { buffer, width, height } = await renderLatexToImage(latex, format, scale, displayMode, engine);
+                fs.writeFileSync(cachePath, buffer);
+                res.statusCode = 200;
+                res.setHeader('Content-Type', 'application/json');
+                return res.end(JSON.stringify({
+                    contentType: `image/${format}`,
+                    bytesBase64: buffer.toString('base64'),
+                    width,
+                    height
+                }));
+            } catch (err) {
+                console.error('Latex render error:', err);
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                return res.end(JSON.stringify({ error: String(err && err.message ? err.message : err) }));
+            }
+        }
+
+        res.statusCode = 404;
+        return res.end('Not found');
     });
 
     server.listen(parseInt(INTERNAL_PORT, 10), '0.0.0.0', () => {
@@ -241,8 +418,9 @@ process.on('SIGINT', () => {
 connectToWhatsApp();
 """
         
-        # Save the script to a temporary location
-        script_dir = os.path.join(tempfile.gettempdir(), 'whatsapp_bot')
+        # Save the script to a writable, exec-friendly location
+        script_root = os.environ.get("WHATSAPP_NODE_DIR", "/app/storage/whatsapp_bot")
+        script_dir = os.path.join(script_root)
         os.makedirs(script_dir, exist_ok=True)
         
         self.node_script_path = os.path.join(script_dir, 'whatsapp_bot.js')
@@ -253,7 +431,7 @@ connectToWhatsApp();
 
     def _ensure_node_deps(self, script_dir: str) -> Optional[str]:
         """Ensure required Node.js deps are installed in the script directory."""
-        required = ["@whiskeysockets/baileys", "@hapi/boom", "qrcode", "pino"]
+        required = ["@whiskeysockets/baileys", "@hapi/boom", "qrcode", "pino", "katex", "sharp", "mathjax-full"]
         node_modules = os.path.join(script_dir, "node_modules")
 
         def has_pkg(pkg: str) -> bool:
@@ -309,9 +487,18 @@ connectToWhatsApp();
             self.status = "connecting"
             script_dir = os.path.dirname(self.node_script_path)
 
+            # Ensure no stale Node process is holding the internal port.
+            if self.process and self.process.poll() is None:
+                try:
+                    self.process.terminate()
+                    self.process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    self.process.kill()
+                self.process = None
+
             # If previously logged out, clear auth to force a fresh QR code.
             if self.logged_out:
-                auth_dir = os.path.join(script_dir, "whatsapp_auth")
+                auth_dir = os.environ.get("WHATSAPP_AUTH_DIR") or os.path.join(script_dir, "whatsapp_auth")
                 try:
                     if os.path.isdir(auth_dir):
                         import shutil

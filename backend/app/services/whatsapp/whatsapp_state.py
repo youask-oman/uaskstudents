@@ -9,6 +9,7 @@ REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 OCR_STATE_TTL_SECONDS = 2 * 60 * 60
 UPLOAD_META_TTL_SECONDS = 2 * 60 * 60
 DEDUPE_TTL_SECONDS = 2 * 60 * 60
+STEP_TTL_SECONDS = int(os.environ.get("WHATSAPP_STEP_TTL_SECONDS", "7200"))
 
 _redis_client: Optional[redis.Redis] = None
 
@@ -57,6 +58,21 @@ def get_ocr_state(phone: str) -> Optional[Dict[str, Any]]:
 
 def clear_ocr_state(phone: str) -> None:
     key = f"whatsapp:ocr_state:{phone}"
+    get_redis().delete(key)
+
+
+def set_step_pack(phone: str, data: Dict[str, Any]) -> None:
+    key = f"whatsapp:steppack:{phone}"
+    _set_json(key, data, STEP_TTL_SECONDS)
+
+
+def get_step_pack(phone: str) -> Optional[Dict[str, Any]]:
+    key = f"whatsapp:steppack:{phone}"
+    return _get_json(key)
+
+
+def clear_step_pack(phone: str) -> None:
+    key = f"whatsapp:steppack:{phone}"
     get_redis().delete(key)
 
 

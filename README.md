@@ -49,3 +49,16 @@ These are OFF by default and must be explicitly enabled:
 - `WHATSAPP_SOLVER_V3_ENABLED=false` (use Solver V3 for confirmed OCR text)
 - `WHATSAPP_INTERNAL_KEY=` (shared secret for internal WhatsApp media/send endpoints)
 - `WHATSAPP_INTERNAL_PORT=8791` (internal bridge port for Python -> Node sends)
+
+## WhatsApp LaTeX Rendering (Internal)
+
+- `WHATSAPP_LATEX_RENDER_ENABLED=false`
+- `WHATSAPP_LATEX_RENDER_ENGINE=katex`
+- `WHATSAPP_LATEX_IMAGE_FORMAT=webp`
+- `WHATSAPP_LATEX_MAX_BLOCKS_PER_REPLY=10`
+- `WHATSAPP_STEP_TTL_SECONDS=7200`
+- `WHATSAPP_INTERNAL_RENDER_URL=http://orchestrator:8791/internal/latex/render`
+- `WHATSAPP_INTERNAL_SEND_MEDIA_URL=http://orchestrator:8791/send-media`
+- `WHATSAPP_LATEX_CACHE_DIR=/app/storage/latex_cache`
+
+Rollback: set `WHATSAPP_LATEX_RENDER_ENABLED=false`.

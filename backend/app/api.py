@@ -58,6 +58,8 @@ from app.services.whatsapp.whatsapp_state import (
     create_upload_id,
     get_upload_meta,
 )
+from app.services.whatsapp.whatsapp_send import send_whatsapp_logo
+from app.services.whatsapp.step_delivery import handle_navigation
 from app.worker import celery_app
 from app.services.solve.cache_service import cache_service
 from app.services.token_policy import get_token_policy, serialize_token_policy
@@ -7185,6 +7187,7 @@ async def handle_whatsapp_message(
     message_id = request.message_id
     upload_id = request.upload_id
     whatsapp_ocr_enabled = os.getenv("WHATSAPP_OCR_ENABLED", "false").lower() == "true"
+    whatsapp_latex_enabled = os.getenv("WHATSAPP_LATEX_RENDER_ENABLED", "false").lower() == "true"
 
     # Dedupe by message_id to avoid double-processing
     if not mark_dedupe(message_id):
@@ -7266,6 +7269,9 @@ async def handle_whatsapp_message(
             "reply": "Please reply with:\n1 = Correct\n2 = Not correct (resend photo)\nEDIT: <corrected question>\nCANCEL"
         }
 
+    if whatsapp_latex_enabled and text and handle_navigation(from_number, text):
+        return {"reply": ""}
+
     # If image upload_id is provided and OCR is enabled, enqueue OCR extraction
     if upload_id and whatsapp_ocr_enabled:
         celery_app.send_task("whatsapp_ocr_extract", args=[upload_id, user.id, from_number, message_id])
@@ -7301,7 +7307,7 @@ Format: Problem → Steps → Final Answer"""
         result = await solver_service.solve_problem(problem_text, "", db)
         
         # Format response for WhatsApp
-        reply = "📝 *Problem:* " + text + "\n\n"
+        reply = "*Problem:* " + text + "\n\n"
         
         # Extract solution data (solver returns nested structure)
         solution = result.get("solution", {})
@@ -7335,6 +7341,7 @@ Format: Problem → Steps → Final Answer"""
         db.add(usage_log)
         db.commit()
         
+        send_whatsapp_logo(from_number)
         return {"reply": reply}
         
     except Exception as e:
