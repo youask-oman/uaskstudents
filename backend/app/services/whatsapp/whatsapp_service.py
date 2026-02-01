@@ -115,7 +115,10 @@ function renderWithKatex(latex, displayMode) {
 }
 
 async function renderLatexToImage(latex, format, scale, displayMode, engine) {
-    const safeScale = Math.max(1, Math.min(4, scale || 2));
+    const envScale = Number(process.env.WHATSAPP_LATEX_SCALE || '2');
+    const safeScale = Math.max(1, Math.min(3, scale || envScale || 2));
+    const maxWidth = Number(process.env.WHATSAPP_LATEX_MAX_WIDTH || '900');
+    const maxHeight = Number(process.env.WHATSAPP_LATEX_MAX_HEIGHT || '0');
     let svg = '';
     try {
         if (engine === 'mathjax') {
@@ -132,8 +135,17 @@ async function renderLatexToImage(latex, format, scale, displayMode, engine) {
     }
 
     svg = extractSvg(svg);
-    const density = 120 * safeScale;
-    const buffer = await sharp(Buffer.from(svg), { density }).toFormat(format).toBuffer();
+    const density = 110 * safeScale;
+    let img = sharp(Buffer.from(svg), { density }).flatten({ background: '#ffffff' }).toFormat(format);
+    if ((maxWidth && Number.isFinite(maxWidth)) || (maxHeight && Number.isFinite(maxHeight))) {
+        img = img.resize({
+            width: maxWidth && Number.isFinite(maxWidth) ? maxWidth : null,
+            height: maxHeight && Number.isFinite(maxHeight) ? maxHeight : null,
+            fit: 'inside',
+            withoutEnlargement: true,
+        });
+    }
+    const buffer = await img.toBuffer();
     const meta = await sharp(buffer).metadata();
     return { buffer, width: meta.width || 0, height: meta.height || 0, svg };
 }
