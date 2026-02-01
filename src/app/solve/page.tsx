@@ -619,24 +619,48 @@ export default function DashboardPage() {
 
                         {/* Tier-Aware Controls Section */}
                         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-800 p-4">
-                            <div className="flex flex-wrap items-center justify-between gap-4">
-                                {/* Goal Toggle */}
-                                <SegmentedControl
-                                    label="Goal"
-                                    options={[{ value: "solve", label: "Solve", icon: "bolt" }]}
-                                    value="solve"
-                                    onChange={() => { }}
-                                    size="sm"
-                                    className="solve-segmented"
-                                />
+                              <div className="flex flex-wrap items-center justify-between gap-4">
+                                  {/* Goal Toggle */}
+                                  <SegmentedControl
+                                      label="Goal"
+                                      options={[{ value: "solve", label: "Solve", icon: "bolt" }]}
+                                      value="solve"
+                                      onChange={() => { }}
+                                      size="sm"
+                                      className="solve-segmented"
+                                  />
 
-                                {/* Answer Style Toggle moved below input mode tabs */}
-                                {subscriptionLoaded && subscriptionError && (
-                                    <div className="text-xs font-semibold text-rose-500">
-                                        {subscriptionError}
-                                    </div>
-                                )}
-                            </div>
+                                  {/* Answer Style Toggle */}
+                                  <SegmentedControl
+                                      label="Answer Style"
+                                      options={[
+                                          { value: "quick", label: "Quick", icon: "speed" },
+                                          {
+                                              value: "tutor",
+                                              label: "Tutor",
+                                              icon: "menu_book",
+                                              disabled: !allowDetailed,
+                                              tooltip: allowDetailed
+                                                  ? "Step-by-step with checkpoints"
+                                                  : "Upgrade to unlock detailed explanations"
+                                          }
+                                      ]}
+                                      value={selectedAnswerStyle}
+                                      onChange={(v) => {
+                                          if (allowDetailed || v === "quick") {
+                                              setSelectedAnswerStyle(v as 'quick' | 'tutor');
+                                          }
+                                      }}
+                                      size="sm"
+                                      className="solve-segmented"
+                                  />
+
+                                  {subscriptionLoaded && subscriptionError && (
+                                      <div className="text-xs font-semibold text-rose-500">
+                                          {subscriptionError}
+                                      </div>
+                                  )}
+                              </div>
 
                             {/* Cost Preview */}
                             <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
@@ -701,33 +725,8 @@ export default function DashboardPage() {
                                     />
                                 )}
 
-                                {activeTab === 'text' && (
-                                    <div className="flex flex-col gap-6 relative">
-                                        {/* Answer Style Toggle (above input mode tabs) */}
-                                        <SegmentedControl
-                                            label="Answer Style"
-                                            options={[
-                                                { value: "quick", label: "Quick", icon: "speed" },
-                                                {
-                                                    value: "tutor",
-                                                    label: "Tutor",
-                                                    icon: "menu_book",
-                                                    disabled: !allowDetailed,
-                                                    tooltip: allowDetailed
-                                                        ? "Step-by-step with checkpoints"
-                                                        : "Upgrade to unlock detailed explanations"
-                                                }
-                                            ]}
-                                            value={selectedAnswerStyle}
-                                            onChange={(v) => {
-                                                if (allowDetailed || v === "quick") {
-                                                    setSelectedAnswerStyle(v as 'quick' | 'tutor');
-                                                }
-                                            }}
-                                            size="sm"
-                                            className="solve-segmented"
-                                        />
-
+                                  {activeTab === 'text' && (
+                                      <div className="flex flex-col gap-6 relative">
                                         {/* Input Mode Selector (Expression / Word Problem / Graphing) */}
                                         <InputModeSelector
                                             selectedMode={selectedInputMode}

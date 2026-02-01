@@ -107,6 +107,8 @@ export default function CropWorkspace({
         if (fullPage) {
             setCropWidthScale(1);
             setCropHeightScale(1);
+            onZoomChange(1);
+            onCropChange({ x: 0, y: 0 });
             setLockRatio(true);
         } else if (prevFullPage.current && !fullPage) {
             resetCropScale();
@@ -212,7 +214,7 @@ export default function CropWorkspace({
     return (
         <div
             ref={containerRef}
-            className="relative w-full min-h-[520px] bg-slate-900 rounded-xl overflow-hidden select-none touch-none"
+            className="relative w-full min-h-[560px] md:min-h-[680px] bg-slate-900 rounded-xl overflow-hidden select-none touch-none"
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -239,7 +241,7 @@ export default function CropWorkspace({
                 }}
                 cropSize={cropSize}
                 restrictPosition={false}
-                objectFit="contain"
+                objectFit={fullPage ? "cover" : "contain"}
                 showGrid={!selectionMode} // Hide grid in selection mode to reduce noise
                 classes={{
                     containerClassName: selectionMode ? "opacity-50 pointer-events-none" : ""

@@ -92,9 +92,5 @@ export default function PdfPageViewer({
         };
     }, [file, pageNumber, containerWidth, onPageCount, onRendered, onError]);
 
-    return (
-        <div ref={containerRef} className="w-full">
-            <div className="text-xs text-slate-500">Rendering selected page…</div>
-        </div>
-    );
+    return <div ref={containerRef} className="w-full" />;
 }

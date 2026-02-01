@@ -93,13 +93,22 @@ async function fetchApi(path: string, init?: RequestInit) {
     }
 }
 
+function normalizeExtractText(value: string): string {
+    if (!value) return value;
+    let text = decodeUnicodeEscapes(value);
+    text = text.replace(/\\n/g, "\n").replace(/\\r/g, "\r").replace(/\\t/g, "\t");
+    text = text.replace(/\\\$/g, "$");
+    text = text.replace(/\$/g, "");
+    return text;
+}
+
 function normalizeExtractResponse(response: ExtractResponse): ExtractResponse {
     const decodedNotes = response.notes?.map((note) =>
-        note ? decodeUnicodeEscapes(note) : note
+        note ? normalizeExtractText(note) : note
     );
     const decodedQuestions = response.questions?.map((question) => ({
         ...question,
-        text: decodeUnicodeEscapes(question.text),
+        text: normalizeExtractText(question.text),
     }));
     return {
         ...response,
@@ -219,9 +228,25 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
             else if (audioBlob.type.includes("id3")) ext = "mp3"; // rare recording format
             else if (audioBlob.type.includes("mpeg")) ext = "mp3";
 
+            // Normalize MIME so backend accepts it
+            let uploadBlob = audioBlob;
+            if (!audioBlob.type || audioBlob.type.includes("webm")) {
+                uploadBlob = new Blob([audioBlob], { type: "audio/webm" });
+                ext = "webm";
+            } else if (audioBlob.type.includes("mp4")) {
+                uploadBlob = new Blob([audioBlob], { type: "audio/mp4" });
+            } else if (audioBlob.type.includes("wav")) {
+                uploadBlob = new Blob([audioBlob], { type: "audio/wav" });
+            } else if (audioBlob.type.includes("ogg")) {
+                uploadBlob = new Blob([audioBlob], { type: "audio/ogg" });
+            } else if (audioBlob.type.includes("mpeg") || audioBlob.type.includes("mp3")) {
+                uploadBlob = new Blob([audioBlob], { type: "audio/mpeg" });
+                ext = "mp3";
+            }
+
             // 1. Transcribe with timeout
             const formData = new FormData();
-            formData.append("file", audioBlob, `audio.${ext}`);
+            formData.append("file", uploadBlob, `audio.${ext}`);
 
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout for transcription
@@ -862,21 +887,6 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                         <span>Status: {status}</span>
                     </div>
 
-                    {fileType === "pdf" && (
-                        <div className="flex items-center gap-3">
-                            <label className="text-xs font-semibold text-slate-500">Page</label>
-                            <input
-                                type="number"
-                                min={1}
-                                max={pageCount}
-                                value={pageNumber}
-                                onChange={(e) => setPageNumber(parseInt(e.target.value, 10) || 1)}
-                                className="w-20 text-xs border border-slate-200 rounded px-2 py-1"
-                            />
-                            <span className="text-xs text-slate-400">/ {pageCount}</span>
-                        </div>
-                    )}
-
                     {fileType === "pdf" && file && (
                         <PdfPageViewer
                             file={file}
@@ -911,33 +921,22 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                                 </div>
                             )}
 
-                            <div className="flex flex-wrap items-center gap-3">
-                                <label className="text-xs font-semibold text-slate-500 flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        checked={fullPage}
-                                        onChange={(e) => setFullPage(e.target.checked)}
-                                    />
-                                    Full page (skip crop)
-                                </label>
-                                <button
-                                    type="button"
-                                    onClick={() => setRotation((prev) => prev - 90)}
-                                    className="px-3 py-1 text-xs font-semibold border border-slate-200 rounded"
-                                >
-                                    Rotate Left
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setRotation((prev) => prev + 90)}
-                                    className="px-3 py-1 text-xs font-semibold border border-slate-200 rounded"
-                                >
-                                    Rotate Right
-                                </button>
-                            </div>
-
                             {/* OCR Engine Selection */}
                             <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                {fileType === "pdf" && (
+                                    <div className="flex items-center gap-2 pr-3 border-r border-slate-200">
+                                        <label className="text-sm font-bold text-indigo-600">Page</label>
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            max={pageCount}
+                                            value={pageNumber}
+                                            onChange={(e) => setPageNumber(parseInt(e.target.value, 10) || 1)}
+                                            className="w-20 text-sm font-bold text-slate-900 border border-slate-200 rounded px-2 py-1"
+                                        />
+                                        <span className="text-sm font-semibold text-slate-500">/ {pageCount}</span>
+                                    </div>
+                                )}
                                 <span className="text-[10px] uppercase font-bold text-slate-400 ml-1">OCR Engine:</span>
                                 <div className="flex border border-slate-200 rounded-md overflow-hidden">
                                     {ENGINE_OPTIONS.map((choice) => (
@@ -1004,6 +1003,31 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                             )}
                         </div>
                     )}
+
+                    <div className="flex flex-wrap items-center gap-3">
+                        <label className="text-xs font-semibold text-slate-500 flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                checked={fullPage}
+                                onChange={(e) => setFullPage(e.target.checked)}
+                            />
+                            Full page (skip crop)
+                        </label>
+                        <button
+                            type="button"
+                            onClick={() => setRotation((prev) => prev - 90)}
+                            className="px-3 py-1 text-xs font-semibold border border-slate-200 rounded"
+                        >
+                            Rotate Left
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setRotation((prev) => prev + 90)}
+                            className="px-3 py-1 text-xs font-semibold border border-slate-200 rounded"
+                        >
+                            Rotate Right
+                        </button>
+                    </div>
 
                     {/* Voice Control Toolbar */}
                     <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
