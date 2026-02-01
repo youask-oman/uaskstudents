@@ -29,6 +29,26 @@ def _should_keep_text(text: str) -> bool:
     return letters >= max(10, len(text) * 0.3)
 
 
+def _extract_inline_math_chunks(text: str) -> List[str]:
+    if not text:
+        return []
+    # Match LaTeX macro chunks like \frac{a}{b}, \sqrt{2}, \alpha, etc.
+    macro_chunk = re.findall(r"(\\\\[a-zA-Z]+(?:\\{[^{}]*\\})+)", text)
+    macro_simple = re.findall(r"(\\\\[a-zA-Z]+)", text)
+    chunks = macro_chunk + [m for m in macro_simple if m not in macro_chunk]
+    # Also capture simple power/subscript expressions like x^2, y_{3}
+    chunks += re.findall(r"([a-zA-Z0-9]+(?:\\^\\{?[^\\s\\}]+\\}?))", text)
+    chunks += re.findall(r"([a-zA-Z0-9]+(?:_\\{?[^\\s\\}]+\\}?))", text)
+    # de-dup while preserving order
+    seen = set()
+    ordered = []
+    for c in chunks:
+        if c not in seen:
+            seen.add(c)
+            ordered.append(c)
+    return ordered
+
+
 def build_step_pack(from_jid: str, steps: List[Dict[str, Any]]) -> Dict[str, Any]:
     pack_steps = []
     for i, step in enumerate(steps, 1):
@@ -48,11 +68,21 @@ def build_step_pack(from_jid: str, steps: List[Dict[str, Any]]) -> Dict[str, Any
         text_out = plain or explanation
         if latex_blocks:
             # Remove equation tokens from description; keep only prose.
-            text_out = re.sub(r"\[EQ_\\d+\\]", "", text_out).strip()
-        if not latex_blocks and _looks_like_latex(explanation):
-            # Force image-only for math-like text.
-            latex_blocks.append({"type": "inline", "latex": normalize_latex(explanation)})
-            text_out = ""
+            text_out = re.sub(r"\[EQ_\d+\]", "", text_out).strip()
+        elif _looks_like_latex(explanation):
+            # Wrap smallest math chunks instead of rendering full sentence.
+            chunks = _extract_inline_math_chunks(explanation)
+            if chunks:
+                for chunk in chunks:
+                    latex_blocks.append({"type": "inline", "latex": normalize_latex(chunk)})
+                # Remove chunks from prose
+                cleaned = explanation
+                for chunk in chunks:
+                    cleaned = cleaned.replace(chunk, "").strip()
+                text_out = cleaned if _should_keep_text(cleaned) else ""
+            else:
+                latex_blocks.append({"type": "inline", "latex": normalize_latex(explanation)})
+                text_out = ""
 
         pack_steps.append({
             "index": i,

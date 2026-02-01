@@ -13,6 +13,7 @@ export default function AdminDataPage() {
     const [offset, setOffset] = useState(0);
 
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+    const fallbackUrl = process.env.NEXT_PUBLIC_API_FALLBACK_URL || "http://orchestrator:8000";
     const getHeaders = (): HeadersInit => {
         const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
         const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -24,7 +25,12 @@ export default function AdminDataPage() {
         const controller = new AbortController();
         const fetchTables = async () => {
             try {
-                const res = await fetch(`${baseUrl}/api/v1/admin/db/tables`, { headers: getHeaders(), signal: controller.signal });
+                let res: Response | null = null;
+                try {
+                    res = await fetch(`${baseUrl}/api/v1/admin/db/tables`, { headers: getHeaders(), signal: controller.signal });
+                } catch (_e) {
+                    res = await fetch(`${fallbackUrl}/api/v1/admin/db/tables`, { headers: getHeaders(), signal: controller.signal });
+                }
                 if (!res.ok) throw new Error("Failed to load tables.");
                 const data = await res.json();
                 setTables(Array.isArray(data) ? data : []);
@@ -48,7 +54,12 @@ export default function AdminDataPage() {
         const controller = new AbortController();
         const fetchRows = async () => {
             try {
-                const res = await fetch(`${baseUrl}/api/v1/admin/db/table/${encodeURIComponent(selectedTable)}?limit=${limit}&offset=${offset}`, { headers: getHeaders(), signal: controller.signal });
+                let res: Response | null = null;
+                try {
+                    res = await fetch(`${baseUrl}/api/v1/admin/db/table/${encodeURIComponent(selectedTable)}?limit=${limit}&offset=${offset}`, { headers: getHeaders(), signal: controller.signal });
+                } catch (_e) {
+                    res = await fetch(`${fallbackUrl}/api/v1/admin/db/table/${encodeURIComponent(selectedTable)}?limit=${limit}&offset=${offset}`, { headers: getHeaders(), signal: controller.signal });
+                }
                 if (!res.ok) throw new Error("Failed to load rows.");
                 const data = await res.json();
                 setRows(Array.isArray(data) ? data : []);

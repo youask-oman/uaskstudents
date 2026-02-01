@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Request, Form
 from fastapi.responses import StreamingResponse
 from sqlmodel import Session, SQLModel, select
-from sqlalchemy import text as sql_text
+from sqlalchemy import text as sql_text, or_
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 import uuid
@@ -99,6 +99,13 @@ def _detect_image_kind(raw: bytes) -> Optional[str]:
     if ext == "webp":
         return "webp"
     return None
+
+
+def _normalize_whatsapp_number(value: str) -> str:
+    if not value:
+        return ""
+    digits = re.sub(r"\\D+", "", value)
+    return digits or value
 
 
 def _transform_v3_to_v1_format(v3_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -7270,6 +7277,7 @@ async def handle_whatsapp_message(
     Verify user, process math problem, and return solution
     """
     from_number = request.from_number
+    normalized_number = _normalize_whatsapp_number(from_number)
     text = request.text.strip()
     has_image = request.hasImage
     message_id = request.message_id
@@ -7300,7 +7308,7 @@ async def handle_whatsapp_message(
         
         if user:
             # Link the phone number to this user
-            user.whatsapp_number = from_number
+            user.whatsapp_number = normalized_number
             db.add(user)
             db.commit()
             return {
@@ -7313,7 +7321,12 @@ async def handle_whatsapp_message(
     
     # Check if user is already verified for this number
     user = db.exec(
-        select(User).where(User.whatsapp_number == from_number)
+        select(User).where(
+            or_(
+                User.whatsapp_number == from_number,
+                User.whatsapp_number == normalized_number,
+            )
+        )
     ).first()
     
     if not user:

@@ -135,7 +135,7 @@ async function renderLatexToImage(latex, format, scale, displayMode, engine) {
     const density = 120 * safeScale;
     const buffer = await sharp(Buffer.from(svg), { density }).toFormat(format).toBuffer();
     const meta = await sharp(buffer).metadata();
-    return { buffer, width: meta.width || 0, height: meta.height || 0 };
+    return { buffer, width: meta.width || 0, height: meta.height || 0, svg };
 }
 
 function readJson(req) {
@@ -224,6 +224,7 @@ function startSendServer() {
                 const displayMode = payload.displayMode !== false;
                 const scale = Number(payload.scale) || 2;
                 const engine = (payload.engine || 'katex').toLowerCase();
+                const returnSvg = payload.returnSvg === true || format === 'svg';
                 if (!latex) {
                     res.statusCode = 400;
                     return res.end('Bad request');
@@ -231,24 +232,58 @@ function startSendServer() {
 
                 const key = latexCacheKey(latex, engine, format, displayMode, scale);
                 const cachePath = path.join(CACHE_DIR, `${key}.${format}`);
+                const svgCachePath = path.join(CACHE_DIR, `${key}.svg`);
 
-                if (fs.existsSync(cachePath)) {
+                if (format === 'svg' && fs.existsSync(svgCachePath)) {
+                    const svgCached = fs.readFileSync(svgCachePath);
+                    res.statusCode = 200;
+                    res.setHeader('Content-Type', 'application/json');
+                    return res.end(JSON.stringify({
+                        contentType: 'image/svg+xml',
+                        svgBase64: svgCached.toString('base64'),
+                        svgContentType: 'image/svg+xml'
+                    }));
+                }
+                if (format !== 'svg' && fs.existsSync(cachePath)) {
                     const cached = fs.readFileSync(cachePath);
+                    let svgBase64 = null;
+                    if (returnSvg && fs.existsSync(svgCachePath)) {
+                        svgBase64 = fs.readFileSync(svgCachePath).toString('base64');
+                    }
                     res.statusCode = 200;
                     res.setHeader('Content-Type', 'application/json');
                     return res.end(JSON.stringify({
                         contentType: `image/${format}`,
-                        bytesBase64: cached.toString('base64')
+                        bytesBase64: cached.toString('base64'),
+                        svgBase64: svgBase64 || undefined,
+                        svgContentType: svgBase64 ? 'image/svg+xml' : undefined
                     }));
                 }
 
-                const { buffer, width, height } = await renderLatexToImage(latex, format, scale, displayMode, engine);
+                if (format === 'svg') {
+                    const svg = extractSvg(engine === 'mathjax' ? renderWithMathJaxTex(latex, displayMode) : renderWithKatex(latex, displayMode));
+                    fs.writeFileSync(svgCachePath, svg);
+                    res.statusCode = 200;
+                    res.setHeader('Content-Type', 'application/json');
+                    return res.end(JSON.stringify({
+                        contentType: 'image/svg+xml',
+                        svgBase64: Buffer.from(svg).toString('base64'),
+                        svgContentType: 'image/svg+xml'
+                    }));
+                }
+
+                const { buffer, width, height, svg } = await renderLatexToImage(latex, format, scale, displayMode, engine);
                 fs.writeFileSync(cachePath, buffer);
+                if (returnSvg && svg) {
+                    fs.writeFileSync(svgCachePath, svg);
+                }
                 res.statusCode = 200;
                 res.setHeader('Content-Type', 'application/json');
                 return res.end(JSON.stringify({
                     contentType: `image/${format}`,
                     bytesBase64: buffer.toString('base64'),
+                    svgBase64: returnSvg && svg ? Buffer.from(svg).toString('base64') : undefined,
+                    svgContentType: returnSvg && svg ? 'image/svg+xml' : undefined,
                     width,
                     height
                 }));
