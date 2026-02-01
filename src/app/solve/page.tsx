@@ -8,6 +8,7 @@ import MathRendererMJX from "@/components/MathRendererMJX";
 import MathInput, { MathInputRef } from "@/components/MathInput";
 import { MODES, ModeId, Suggestion } from "@/lib/modes";
 import SnapSolveV2 from "@/components/snap/SnapSolveV2";
+import SnapSolveInputPanel from "@/components/snap_solve/SnapSolveInputPanel";
 
 // Token validation imports
 import { estimateTokens } from "@/lib/tokenEstimator";
@@ -91,6 +92,7 @@ type FeaturesUsed = Partial<OcrMetadata & VoiceFeatures> & {
 };
 
 export default function DashboardPage() {
+    const useSnapSolveUploadPanelV2 = process.env.NEXT_PUBLIC_SNAP_SOLVE_UPLOAD_PANEL_V2 !== "false";
     const [activeTab, setActiveTab] = useState<'text' | 'snap' | 'voice'>('text');
     const [history, setHistory] = useState<ChatSession[]>([]);
     const [query, setQuery] = useState("sqrt(x+5) = x - 1");
@@ -709,20 +711,24 @@ export default function DashboardPage() {
                             {/* Tab Content */}
                             <div className="p-6">
                                 {activeTab === 'snap' && (
-                                    <SnapSolveV2
-                                        onUseText={(text) => {
-                                            setQuery(text);
-                                            setActiveTab("text");
-                                        }}
-                                        onSolveText={(text) => {
-                                            setQuery(text);
-                                            if (mathInputRef.current) {
-                                                mathInputRef.current.setValue(text);
-                                            }
-                                            handleSolve(text);
-                                        }}
-                                        requestedMode={selectedAnswerStyle === "tutor" ? "detailed" : "minimal"}
-                                    />
+                                    useSnapSolveUploadPanelV2 ? (
+                                        <SnapSolveInputPanel />
+                                    ) : (
+                                        <SnapSolveV2
+                                            onUseText={(text) => {
+                                                setQuery(text);
+                                                setActiveTab("text");
+                                            }}
+                                            onSolveText={(text) => {
+                                                setQuery(text);
+                                                if (mathInputRef.current) {
+                                                    mathInputRef.current.setValue(text);
+                                                }
+                                                handleSolve(text);
+                                            }}
+                                            requestedMode={selectedAnswerStyle === "tutor" ? "detailed" : "minimal"}
+                                        />
+                                    )
                                 )}
 
                                   {activeTab === 'text' && (
