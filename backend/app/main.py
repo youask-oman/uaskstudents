@@ -9,6 +9,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.api import limiter
 from pathlib import Path
+from app.services.llm import get_llm_manager
 
 load_dotenv()
 
@@ -96,6 +97,16 @@ def on_startup():
         except Exception as e:
             logging.error(f"Failed to initialize plans: {e}")
 
+    manager = get_llm_manager()
+    if manager.primary_provider == "ollama":
+        probe = manager.check_ollama_sync(timeout_seconds=2.0)
+        if not probe.get("reachable"):
+            logging.getLogger("uvicorn").warning(
+                "OLLAMA STARTUP SELF-CHECK FAILED: base_url=%s error=%s",
+                probe.get("base_url"),
+                probe.get("error"),
+            )
+
 # Monitoring Endpoints
 @app.get("/health")
 def health_check():
@@ -112,6 +123,26 @@ def readiness_check():
         return {"status": "ready"}
     except Exception as e:
         return {"status": "not_ready", "error": str(e)}, 503
+
+@app.get("/health/llm")
+async def llm_health_check():
+    manager = get_llm_manager()
+    ollama = await manager.check_ollama()
+    openai = await manager.check_openai()
+    breaker = manager.get_circuit_breaker_state("ollama")
+    return {
+        "provider": manager.primary_provider,
+        "fallback_enabled": manager.fallback_enabled,
+        "models": {
+            "ollama_default": os.environ.get("OLLAMA_MODEL_DEFAULT", "mightykatun/qwen2.5-math:7b"),
+            "openai_default": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+        },
+        "ollama": ollama,
+        "openai": openai,
+        "circuit_breaker": breaker,
+        "last_error": manager.last_error,
+        "timestamp": time.time(),
+    }
 
 from app.api import api_router
 from app.api_admin import admin_router

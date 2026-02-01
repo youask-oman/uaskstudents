@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://youask.ai/schemas/youask_plot_spec_v1.json",
+  "title": "YouAsk Plot Spec v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "response_type",
+    "question_id",
+    "mode",
+    "plot"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "v1" },
+    "response_type": { "type": "string", "const": "plot_spec" },
+
+    "question_id": { "type": "string" },
+    "mode": { "type": "string", "const": "PLOT_SPEC" },
+
+    "plot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plot_id", "attach_to_step_id", "plotly"],
+      "properties": {
+        "plot_id": { "type": "string" },
+
+        "attach_to_step_id": {
+          "type": ["integer", "null"],
+          "description": "Step to attach this plot to; null if not applicable.",
+          "default": null
+        },
+
+        "plotly": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["data", "layout", "config"],
+          "properties": {
+            "data": {
+              "type": "array",
+              "description": "Plotly traces. Must be renderable and minimal.",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+
+            "layout": {
+              "type": "object",
+              "description": "Minimal safe layout.",
+              "additionalProperties": true
+            },
+
+            "config": {
+              "type": "object",
+              "description": "Safe Plotly config. No external URLs.",
+              "additionalProperties": false,
+              "required": ["responsive", "displayModeBar"],
+              "properties": {
+                "responsive": { "type": "boolean" },
+                "displayModeBar": { "type": "boolean" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

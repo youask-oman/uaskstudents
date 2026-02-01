@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://youask.ai/schemas/youask_plot_trigger_v1.json",
+  "title": "YouAsk Plot Trigger v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "response_type",
+    "question_id",
+    "mode",
+    "language",
+    "plot_decision",
+    "meta"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "v1" },
+    "response_type": { "type": "string", "const": "plot_trigger" },
+
+    "question_id": { "type": "string" },
+    "mode": { "type": "string", "const": "PLOT_TRIGGER" },
+
+    "language": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["response_language", "english_only_enforced"],
+      "properties": {
+        "response_language": { "type": "string", "enum": ["en"] },
+        "english_only_enforced": { "type": "boolean", "const": true }
+      }
+    },
+
+    "plot_decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plot_needed", "plot_type", "variables", "ranges", "reason"],
+      "properties": {
+        "plot_needed": { "type": "boolean" },
+
+        "plot_type": {
+          "type": ["string", "null"],
+          "description": "Null if plot_needed=false. Otherwise choose one.",
+          "enum": [
+            "function_2d",
+            "parametric_2d",
+            "inequality_region_2d",
+            "scatter_2d",
+            "histogram",
+            "boxplot",
+            "geometry_sketch",
+            "complex_plane",
+            null
+          ],
+          "default": null
+        },
+
+        "variables": {
+          "type": "array",
+          "description": "Key variables needed for plotting; empty if plot_needed=false.",
+          "items": { "type": "string" },
+          "default": []
+        },
+
+        "ranges": {
+          "type": ["object", "null"],
+          "description": "Recommended ranges if applicable; null if not needed.",
+          "default": null,
+          "additionalProperties": false,
+          "required": ["x", "y"],
+          "properties": {
+            "x": {
+              "type": ["object", "null"],
+              "default": null,
+              "additionalProperties": false,
+              "required": ["min", "max"],
+              "properties": {
+                "min": { "type": ["number", "null"], "default": null },
+                "max": { "type": ["number", "null"], "default": null }
+              }
+            },
+            "y": {
+              "type": ["object", "null"],
+              "default": null,
+              "additionalProperties": false,
+              "required": ["min", "max"],
+              "properties": {
+                "min": { "type": ["number", "null"], "default": null },
+                "max": { "type": ["number", "null"], "default": null }
+              }
+            }
+          }
+        },
+
+        "reason": {
+          "type": ["string", "null"],
+          "description": "Short English reason. Null if plot_needed=false.",
+          "default": null
+        }
+      }
+    },
+
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "model", "latency_ms", "debug"],
+      "properties": {
+        "provider": { "type": "string", "enum": ["ollama", "openai", "other"] },
+        "model": { "type": "string" },
+        "latency_ms": { "type": "integer", "minimum": 0 },
+        "debug": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["prompt_id", "schema_valid"],
+          "properties": {
+            "prompt_id": { "type": "string" },
+            "schema_valid": { "type": "boolean" }
+          }
+        }
+      }
+    }
+  }
+}

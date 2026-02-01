@@ -1,7 +1,9 @@
 from typing import Optional, List
 from datetime import datetime
 from sqlmodel import Field, SQLModel, Relationship
-from sqlalchemy import Column, JSON, BigInteger
+from sqlalchemy import Column, JSON, BigInteger, Enum as SAEnum, Text, UniqueConstraint
+from uuid import uuid4
+from enum import Enum
 
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -595,6 +597,68 @@ class PromptVersion(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     
     template: PromptTemplate = Relationship(back_populates="versions")
+
+# --- Prompt & Schema Registry (DB-backed) ---
+
+class PromptTierEnum(str, Enum):
+    FREE = "FREE"
+    STANDARD = "STANDARD"
+    RESEARCH = "RESEARCH"
+
+class PromptModeEnum(str, Enum):
+    SOLVE = "SOLVE"
+    VERIFY = "VERIFY"
+    PLOT_TRIGGER = "PLOT_TRIGGER"
+    PLOT_SPEC = "PLOT_SPEC"
+
+class PromptRoleEnum(str, Enum):
+    SYSTEM = "SYSTEM"
+    DEVELOPER = "DEVELOPER"
+    USER = "USER"
+    INTERNAL = "INTERNAL"
+
+class PromptTemplateEntry(SQLModel, table=True):
+    __tablename__ = "prompt_templates"
+    __table_args__ = (UniqueConstraint("prompt_id", "version"),)
+
+    id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
+    prompt_id: str = Field(index=True)
+    tier: Optional[PromptTierEnum] = Field(default=None, sa_column=Column(SAEnum(PromptTierEnum)))
+    mode: PromptModeEnum = Field(sa_column=Column(SAEnum(PromptModeEnum)))
+    role: PromptRoleEnum = Field(sa_column=Column(SAEnum(PromptRoleEnum)))
+    content: str = Field(sa_column=Column(Text))
+    version: int = Field(default=1, index=True)
+    is_active: bool = Field(default=True, index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_by: Optional[str] = None
+
+class JsonSchemaEntry(SQLModel, table=True):
+    __tablename__ = "json_schemas"
+    __table_args__ = (UniqueConstraint("schema_id", "version"),)
+
+    id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
+    schema_id: str = Field(index=True)
+    content: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    version: int = Field(default=1, index=True)
+    is_active: bool = Field(default=True, index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_by: Optional[str] = None
+
+class PromptBinding(SQLModel, table=True):
+    __tablename__ = "prompt_bindings"
+
+    id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
+    tier: PromptTierEnum = Field(sa_column=Column(SAEnum(PromptTierEnum)))
+    mode: PromptModeEnum = Field(sa_column=Column(SAEnum(PromptModeEnum)))
+    global_system_prompt_id: str = Field(index=True)
+    developer_prompt_id: str = Field(index=True)
+    output_schema_id: str = Field(index=True)
+    is_active: bool = Field(default=True, index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_by: Optional[str] = None
 
 class UserQuotaOverride(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

@@ -1,0 +1,256 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://youask.ai/schemas/youask_math_solver_standard_solve_v1.json",
+  "title": "YouAsk Math Solver Standard Solve v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "response_type",
+    "question_id",
+    "tier",
+    "mode",
+    "language",
+    "question",
+    "solution",
+    "plot",
+    "verification",
+    "meta"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "v1" },
+
+    "response_type": {
+      "type": "string",
+      "const": "standard_solve"
+    },
+
+    "question_id": { "type": "string" },
+
+    "tier": { "type": "string", "const": "STANDARD" },
+
+    "mode": { "type": "string", "const": "SOLVE" },
+
+    "language": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["response_language", "english_only_enforced"],
+      "properties": {
+        "response_language": {
+          "type": "string",
+          "enum": ["en"]
+        },
+        "english_only_enforced": { "type": "boolean", "const": true },
+        "input_language_hint": {
+          "type": ["string", "null"],
+          "enum": ["en", "fr", "es", "pt", "it", "ar", null],
+          "default": null
+        }
+      }
+    },
+
+    "question": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["raw_text", "normalized_text"],
+      "properties": {
+        "raw_text": { "type": "string" },
+        "normalized_text": { "type": "string" },
+        "assumptions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        },
+        "constraints": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        }
+      }
+    },
+
+    "solution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "steps", "final_answer", "key_idea"],
+      "properties": {
+        "status": { "type": "string", "enum": ["ok", "needs_clarification", "error"] },
+
+        "steps": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["step_id", "title", "explanation", "math"],
+            "properties": {
+              "step_id": { "type": "integer", "minimum": 1 },
+              "title": { "type": "string" },
+
+              "explanation": {
+                "type": "string",
+                "description": "Moderate detail explanation in English."
+              },
+
+              "math": {
+                "type": "array",
+                "description": "LaTeX equations or expressions used in this step.",
+                "items": { "type": "string" },
+                "default": []
+              },
+
+              "result": {
+                "type": ["string", "null"],
+                "description": "Optional intermediate result in plain English/LaTeX.",
+                "default": null
+              },
+
+              "attach_plot_hint": {
+                "type": ["boolean", "null"],
+                "description": "If this specific step benefits from a plot.",
+                "default": null
+              }
+            }
+          }
+        },
+
+        "final_answer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value", "latex", "units"],
+          "properties": {
+            "value": { "type": "string" },
+            "latex": { "type": "string" },
+            "units": { "type": ["string", "null"], "default": null }
+          }
+        },
+
+        "key_idea": {
+          "type": ["string", "null"],
+          "description": "Optional brief insight/key idea. Must be concise.",
+          "default": null
+        },
+
+        "notes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        }
+      }
+    },
+
+    "plot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plot_needed", "plot_reason", "plot_specs"],
+      "properties": {
+        "plot_needed": { "type": "boolean" },
+        "plot_reason": { "type": ["string", "null"], "default": null },
+        "plot_specs": {
+          "type": ["array", "null"],
+          "default": null,
+          "description": "Not generated in SOLVE mode; only later by plot worker.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["plot_id", "library", "spec"],
+            "properties": {
+              "plot_id": { "type": "string" },
+              "library": { "type": "string", "enum": ["plotly"] },
+              "spec": { "type": "object" },
+              "attach_to_step_id": { "type": ["integer", "null"], "default": null }
+            }
+          }
+        }
+      }
+    },
+
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requested", "status", "checks"],
+      "properties": {
+        "requested": { "type": "boolean" },
+        "status": {
+          "type": "string",
+          "enum": ["not_requested", "verified", "partially_verified", "failed", "error"]
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["check_id", "verdict", "message", "related_step_id"],
+            "properties": {
+              "check_id": { "type": "string" },
+              "verdict": { "type": "string", "enum": ["pass", "warn", "fail"] },
+              "message": { "type": "string" },
+              "related_step_id": { "type": ["integer", "null"], "default": null }
+            }
+          }
+        }
+      }
+    },
+
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "model",
+        "timestamps",
+        "latency_ms",
+        "fingerprint",
+        "cache",
+        "debug"
+      ],
+      "properties": {
+        "provider": { "type": "string", "enum": ["ollama", "openai", "other"] },
+        "model": { "type": "string" },
+
+        "timestamps": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["started_at", "completed_at"],
+          "properties": {
+            "started_at": { "type": "string", "format": "date-time" },
+            "completed_at": { "type": "string", "format": "date-time" }
+          }
+        },
+
+        "latency_ms": { "type": "integer", "minimum": 0 },
+
+        "fingerprint": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["normalized_sha256"],
+          "properties": {
+            "normalized_sha256": { "type": "string" }
+          }
+        },
+
+        "cache": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["hit", "type", "source_question_id"],
+          "properties": {
+            "hit": { "type": "boolean" },
+            "type": { "type": "string", "enum": ["none", "exact", "semantic"] },
+            "source_question_id": { "type": ["string", "null"], "default": null }
+          }
+        },
+
+        "debug": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["prompt_id", "schema_valid", "fallback_used"],
+          "properties": {
+            "prompt_id": { "type": "string" },
+            "schema_valid": { "type": "boolean" },
+            "fallback_used": { "type": "boolean" }
+          }
+        }
+      }
+    }
+  }
+}

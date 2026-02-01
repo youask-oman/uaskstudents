@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Request, Form
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from sqlmodel import Session, SQLModel, select
 from sqlalchemy import text as sql_text, or_
 from typing import List, Optional, Dict, Any
@@ -32,7 +32,9 @@ from app.models import (
     AdminNote, SystemConfig, PromptTemplate, PromptVersion, UserQuotaOverride, SystemErrorEntry,
     School, Plan, Subscription, UsageLedger,
     PromptAsset, PlanPromptLink, RequestEvent, DeviceSignupLog, OcrCache,
-    OcrExtractionCache, CreditHold
+    OcrExtractionCache, CreditHold,
+    PromptTemplateEntry, JsonSchemaEntry, PromptBinding,
+    PromptTierEnum, PromptModeEnum, PromptRoleEnum
 )
 from openai import AsyncOpenAI, BadRequestError
 from app.services.subscription_service import subscription_service
@@ -60,6 +62,9 @@ from app.services.whatsapp.whatsapp_state import (
     log_whatsapp_event,
     get_whatsapp_events,
 )
+from app.services.prompt_registry_service import prompt_registry_service, PromptRegistryError
+from app.services.mode_execution_service import mode_execution_service, ModeExecutionError
+from app.services.llm import get_llm_manager, LLMProviderError
 from app.services.whatsapp.whatsapp_state import get_redis
 from app.services.whatsapp.whatsapp_send import send_whatsapp_logo
 from app.services.whatsapp.step_delivery import handle_navigation
@@ -6552,6 +6557,291 @@ async def admin_deploy_prompt(version_id: int, db: Session = Depends(get_session
     db.add(v)
     db.commit()
     return {"status": "ok"}
+
+# --- Prompt Registry (DB-backed) ---
+
+class RegistryPromptItem(BaseModel):
+    prompt_id: str
+    tier: Optional[str]
+    mode: str
+    role: str
+    version: int
+    is_active: bool
+    content: Optional[str] = None
+    updated_at: str
+    updated_by: Optional[str]
+
+class RegistrySchemaItem(BaseModel):
+    schema_id: str
+    version: int
+    is_active: bool
+    content: Optional[Dict[str, Any]] = None
+    updated_at: str
+    updated_by: Optional[str]
+
+class RegistryBindingItem(BaseModel):
+    tier: str
+    mode: str
+    global_system_prompt_id: str
+    developer_prompt_id: str
+    output_schema_id: str
+    is_active: bool
+    updated_at: str
+    updated_by: Optional[str]
+
+class PromptRegistryUpdateRequest(BaseModel):
+    content: str
+    tier: Optional[str] = None
+    mode: str
+    role: str
+    updated_by: Optional[str] = None
+
+class SchemaRegistryUpdateRequest(BaseModel):
+    content: Dict[str, Any]
+    updated_by: Optional[str] = None
+
+class RegistryRollbackRequest(BaseModel):
+    version: int
+    updated_by: Optional[str] = None
+
+class BindingActivateRequest(BaseModel):
+    tier: str
+    mode: str
+    global_system_prompt_id: str
+    developer_prompt_id: str
+    output_schema_id: str
+    updated_by: Optional[str] = None
+
+class PromptRegistryTestRequest(BaseModel):
+    tier: str
+    mode: str
+    question_payload: Dict[str, Any]
+    context_payload: Dict[str, Any] = Field(default_factory=dict)
+    runtime_hints: Dict[str, Any] = Field(default_factory=dict)
+
+def _parse_tier(value: Optional[str]) -> Optional[PromptTierEnum]:
+    if value is None:
+        return None
+    return PromptTierEnum(value.upper())
+
+def _parse_mode(value: str) -> PromptModeEnum:
+    return PromptModeEnum(value.upper())
+
+def _parse_role(value: str) -> PromptRoleEnum:
+    return PromptRoleEnum(value.upper())
+
+@api_router.get("/admin/prompt-registry/prompts", response_model=List[RegistryPromptItem])
+async def admin_list_prompt_registry_prompts(db: Session = Depends(get_session)):
+    rows = db.exec(
+        select(PromptTemplateEntry)
+        .where(PromptTemplateEntry.is_active == True)
+        .order_by(PromptTemplateEntry.prompt_id.asc())
+    ).all()
+    return [
+        RegistryPromptItem(
+            prompt_id=row.prompt_id,
+            tier=row.tier.value if row.tier else None,
+            mode=row.mode.value,
+            role=row.role.value,
+            version=row.version,
+            is_active=row.is_active,
+            content=None,
+            updated_at=row.updated_at.isoformat(),
+            updated_by=row.updated_by,
+        )
+        for row in rows
+    ]
+
+@api_router.get("/admin/prompt-registry/prompts/{prompt_id}/versions", response_model=List[RegistryPromptItem])
+async def admin_list_prompt_registry_versions(prompt_id: str, db: Session = Depends(get_session)):
+    rows = prompt_registry_service.get_prompt_versions(db, prompt_id)
+    return [
+        RegistryPromptItem(
+            prompt_id=row.prompt_id,
+            tier=row.tier.value if row.tier else None,
+            mode=row.mode.value,
+            role=row.role.value,
+            version=row.version,
+            is_active=row.is_active,
+            content=row.content,
+            updated_at=row.updated_at.isoformat(),
+            updated_by=row.updated_by,
+        )
+        for row in rows
+    ]
+
+@api_router.post("/admin/prompt-registry/prompts/{prompt_id}/update", response_model=RegistryPromptItem)
+async def admin_update_prompt_registry_prompt(prompt_id: str, req: PromptRegistryUpdateRequest, db: Session = Depends(get_session)):
+    entry = prompt_registry_service.update_prompt(
+        session=db,
+        prompt_id=prompt_id,
+        content=req.content,
+        tier=_parse_tier(req.tier),
+        mode=_parse_mode(req.mode),
+        role=_parse_role(req.role),
+        updated_by=req.updated_by,
+    )
+    return RegistryPromptItem(
+        prompt_id=entry.prompt_id,
+        tier=entry.tier.value if entry.tier else None,
+        mode=entry.mode.value,
+        role=entry.role.value,
+        version=entry.version,
+        is_active=entry.is_active,
+        content=entry.content,
+        updated_at=entry.updated_at.isoformat(),
+        updated_by=entry.updated_by,
+    )
+
+@api_router.post("/admin/prompt-registry/prompts/{prompt_id}/rollback", response_model=RegistryPromptItem)
+async def admin_rollback_prompt_registry_prompt(prompt_id: str, req: RegistryRollbackRequest, db: Session = Depends(get_session)):
+    entry = prompt_registry_service.rollback_prompt(db, prompt_id, req.version, req.updated_by)
+    return RegistryPromptItem(
+        prompt_id=entry.prompt_id,
+        tier=entry.tier.value if entry.tier else None,
+        mode=entry.mode.value,
+        role=entry.role.value,
+        version=entry.version,
+        is_active=entry.is_active,
+        content=entry.content,
+        updated_at=entry.updated_at.isoformat(),
+        updated_by=entry.updated_by,
+    )
+
+@api_router.get("/admin/prompt-registry/schemas", response_model=List[RegistrySchemaItem])
+async def admin_list_prompt_registry_schemas(db: Session = Depends(get_session)):
+    rows = db.exec(
+        select(JsonSchemaEntry)
+        .where(JsonSchemaEntry.is_active == True)
+        .order_by(JsonSchemaEntry.schema_id.asc())
+    ).all()
+    return [
+        RegistrySchemaItem(
+            schema_id=row.schema_id,
+            version=row.version,
+            is_active=row.is_active,
+            content=None,
+            updated_at=row.updated_at.isoformat(),
+            updated_by=row.updated_by,
+        )
+        for row in rows
+    ]
+
+@api_router.get("/admin/prompt-registry/schemas/{schema_id}/versions", response_model=List[RegistrySchemaItem])
+async def admin_list_prompt_registry_schema_versions(schema_id: str, db: Session = Depends(get_session)):
+    rows = prompt_registry_service.get_schema_versions(db, schema_id)
+    return [
+        RegistrySchemaItem(
+            schema_id=row.schema_id,
+            version=row.version,
+            is_active=row.is_active,
+            content=row.content,
+            updated_at=row.updated_at.isoformat(),
+            updated_by=row.updated_by,
+        )
+        for row in rows
+    ]
+
+@api_router.post("/admin/prompt-registry/schemas/{schema_id}/update", response_model=RegistrySchemaItem)
+async def admin_update_prompt_registry_schema(schema_id: str, req: SchemaRegistryUpdateRequest, db: Session = Depends(get_session)):
+    error = prompt_registry_service.validate_schema(req.content)
+    if error:
+        raise HTTPException(status_code=400, detail=f"Invalid schema: {error}")
+    entry = prompt_registry_service.update_schema(db, schema_id, req.content, req.updated_by)
+    return RegistrySchemaItem(
+        schema_id=entry.schema_id,
+        version=entry.version,
+        is_active=entry.is_active,
+        content=entry.content,
+        updated_at=entry.updated_at.isoformat(),
+        updated_by=entry.updated_by,
+    )
+
+@api_router.post("/admin/prompt-registry/schemas/{schema_id}/rollback", response_model=RegistrySchemaItem)
+async def admin_rollback_prompt_registry_schema(schema_id: str, req: RegistryRollbackRequest, db: Session = Depends(get_session)):
+    entry = prompt_registry_service.rollback_schema(db, schema_id, req.version, req.updated_by)
+    return RegistrySchemaItem(
+        schema_id=entry.schema_id,
+        version=entry.version,
+        is_active=entry.is_active,
+        content=entry.content,
+        updated_at=entry.updated_at.isoformat(),
+        updated_by=entry.updated_by,
+    )
+
+@api_router.get("/admin/prompt-registry/bindings", response_model=List[RegistryBindingItem])
+async def admin_list_prompt_registry_bindings(db: Session = Depends(get_session)):
+    rows = db.exec(select(PromptBinding).order_by(PromptBinding.updated_at.desc())).all()
+    return [
+        RegistryBindingItem(
+            tier=row.tier.value,
+            mode=row.mode.value,
+            global_system_prompt_id=row.global_system_prompt_id,
+            developer_prompt_id=row.developer_prompt_id,
+            output_schema_id=row.output_schema_id,
+            is_active=row.is_active,
+            updated_at=row.updated_at.isoformat(),
+            updated_by=row.updated_by,
+        )
+        for row in rows
+    ]
+
+@api_router.post("/admin/prompt-registry/bindings/activate", response_model=RegistryBindingItem)
+async def admin_activate_prompt_registry_binding(req: BindingActivateRequest, db: Session = Depends(get_session)):
+    entry = prompt_registry_service.activate_binding(
+        session=db,
+        tier=_parse_tier(req.tier),
+        mode=_parse_mode(req.mode),
+        global_system_prompt_id=req.global_system_prompt_id,
+        developer_prompt_id=req.developer_prompt_id,
+        output_schema_id=req.output_schema_id,
+        updated_by=req.updated_by,
+    )
+    return RegistryBindingItem(
+        tier=entry.tier.value,
+        mode=entry.mode.value,
+        global_system_prompt_id=entry.global_system_prompt_id,
+        developer_prompt_id=entry.developer_prompt_id,
+        output_schema_id=entry.output_schema_id,
+        is_active=entry.is_active,
+        updated_at=entry.updated_at.isoformat(),
+        updated_by=entry.updated_by,
+    )
+
+@api_router.post("/admin/prompt-registry/test")
+async def admin_prompt_registry_test(req: PromptRegistryTestRequest, db: Session = Depends(get_session)):
+    try:
+        result = await mode_execution_service.run(
+            session=db,
+            tier=PromptTierEnum(req.tier.upper()),
+            mode=PromptModeEnum(req.mode.upper()),
+            question_payload=req.question_payload,
+            context_payload=req.context_payload,
+            runtime_hints=req.runtime_hints,
+            request_id=str(uuid.uuid4()),
+        )
+        return result
+    except (ValueError, PromptRegistryError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except ModeExecutionError as e:
+        return JSONResponse(status_code=e.status_code, content=e.payload)
+
+
+@api_router.post("/admin/llm/circuit-breaker/reset")
+async def admin_reset_llm_circuit_breaker(provider: str = Query("ollama")):
+    manager = get_llm_manager()
+    try:
+        result = manager.reset_circuit_breaker(provider)
+        return result
+    except LLMProviderError as e:
+        detail = {
+            "code": "LLM_PROVIDER_ERROR",
+            "provider": e.provider,
+            "details": str(e).strip() or repr(e),
+        }
+        if e.details:
+            detail.update(e.details)
+        raise HTTPException(status_code=400, detail=detail)
 
 @api_router.get("/users/online")
 async def get_online_users(db: Session = Depends(get_session)):

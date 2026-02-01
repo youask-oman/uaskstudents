@@ -8,30 +8,66 @@ Simplified to pass through structured visual data to frontend.
 import os
 import json
 import time
+import hashlib
+import logging
 from typing import Dict, Any, List, Optional, Tuple, AsyncIterator
 from datetime import datetime
+from jsonschema import Draft202012Validator
 
 from app.schemas.na_math_solver_v3 import get_json_schema_for_openai_v3
 from app.utils.schema_cleaner import enforce_strict
-from app.services.validation_v3 import validate_response, create_error_response, generate_repair_prompt
+from app.services.validation_v3 import validate_response, create_error_response
 from app.prompts import get_prompt, get_schema
 from app.utils.schema_deref import deref_json_schema, validate_no_refs
 from app.llm_profiles.profiles import get_prompt_profile
 from app.services.response_mapper import map_minimal_to_canonical
-from app.utils.token_limits import get_effective_max_tokens
+from app.utils.token_limits import get_effective_max_tokens, get_effective_max_steps
 from app.services.token_policy import get_token_policy, TokenPolicy
+from app.services.llm import get_llm_manager, LLMProviderError
+from app.services.prompt_registry_service import prompt_registry_service, PromptRegistryError
+from app.services.prompt_manager import prompt_manager
+from app.services.message_builder import build_user_message
+from app.llm_profiles.profiles import PromptProfile
 
 class SolverV3:
     """
     Math Solver V3 using OpenAI Structured Outputs (Schema v1.0).
     """
     
-    def __init__(self):
-        """Initialize solver with OpenAI client."""
+    def __init__(self, llm_manager=None):
+        """Initialize solver with LLM provider manager."""
         self._client = None
-        self._model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-4o-mini")
-        self._fallback_model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-4o-mini")
-        print(f"[SOLVER_V3_INIT] Initialized with model: {self._model}")
+        self._llm_manager = llm_manager or get_llm_manager()
+        self._openai_model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-4o-mini")
+        print(f"[SOLVER_V3_INIT] LLM provider: {self._llm_manager.primary_provider}")
+        self._logger = logging.getLogger("solver_v3")
+
+    def _hash_text(self, text: str) -> str:
+        text = text or ""
+        return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+    def _sanitize_log_text(self, text: str, limit: int = 400) -> str:
+        if not isinstance(text, str):
+            text = str(text)
+        text = text.replace(os.environ.get("OPENAI_API_KEY", ""), "[REDACTED]") if os.environ.get("OPENAI_API_KEY") else text
+        text = text.replace(os.environ.get("WHATSAPP_INTERNAL_KEY", ""), "[REDACTED]") if os.environ.get("WHATSAPP_INTERNAL_KEY") else text
+        return text[:limit]
+
+    def _validate_with_draft202012(self, data: Dict[str, Any], schema: Dict[str, Any]) -> List[Dict[str, str]]:
+        validator = Draft202012Validator(schema)
+        issues: List[Dict[str, str]] = []
+        for err in validator.iter_errors(data):
+            path = "$"
+            if err.absolute_path:
+                for part in err.absolute_path:
+                    if isinstance(part, int):
+                        path += f"[{part}]"
+                    else:
+                        path += f".{part}"
+            issues.append({"type": "schema_error", "message": err.message, "path": path})
+            if len(issues) >= 20:
+                break
+        return issues
 
     @property
     def client(self):
@@ -65,7 +101,9 @@ class SolverV3:
         # Default telemetry
         telemetry = {
             "request_id": request_id,
-            "model": self._model,
+            "model": None,
+            "provider": self._llm_manager.primary_provider,
+            "fallback_provider": self._llm_manager.get_fallback_provider(),
             "input_tokens": 0,
             "output_tokens": 0,
             "total_tokens": 0,
@@ -82,10 +120,12 @@ class SolverV3:
             "plot_generated": False,
             "debit_status": "none",
             "repair_attempted": False,
+            "repair_attempts": 0,
             "openai_calls_count": 0,
             "openai_payload": None,
             "fallback_triggered": False,
-            "status_checks": []
+            "status_checks": [],
+            "llm_attempts": []
         }
         
         if trace:
@@ -107,16 +147,43 @@ class SolverV3:
                      user_obj = db_session.get(User, user_id)
 
                 try:
-                    profile = ProfileResolver.resolve_profile(
-                        db_session, 
-                        user_obj, 
-                        requested_mode=requested_mode,
-                        force_tier=user_tier if not user_obj else None
-                    )
+                    try:
+                        tier_enum = prompt_registry_service._resolve_tier(user_tier)
+                        binding_payload = prompt_manager.get_binding(db_session, tier_enum, prompt_registry_service._resolve_mode("solve"))
+                        system_prompt = binding_payload["global_system_prompt"]
+                        developer_prompt = binding_payload["developer_prompt"]
+                        schema_content = binding_payload["schema"]
+                        token_policy = get_token_policy(db_session)
+                        max_tokens = get_effective_max_tokens(requested_mode, learning_mode or "solve", token_policy)
+                        max_steps = get_effective_max_steps(requested_mode, learning_mode or "solve", token_policy)
+                        profile = PromptProfile(
+                            tier=user_tier,
+                            system_prompt_content=f"{system_prompt.strip()}\n\n{developer_prompt.strip()}",
+                            json_schema_content=schema_content if isinstance(schema_content, dict) else {},
+                            max_output_tokens=max_tokens,
+                            max_steps=max_steps,
+                            mode=requested_mode,
+                            allow_detailed=(requested_mode == "detailed"),
+                            allow_visuals_only_if_asked=(requested_mode == "minimal" and "free" in user_tier)
+                        )
+                        telemetry["prompt_binding"] = {
+                            "tier": tier_enum.value,
+                            "mode": "SOLVE",
+                            "global_system_prompt_id": binding_payload["binding"].global_system_prompt_id,
+                            "developer_prompt_id": binding_payload["binding"].developer_prompt_id,
+                            "output_schema_id": binding_payload["binding"].output_schema_id,
+                        }
+                    except PromptRegistryError:
+                        profile = ProfileResolver.resolve_profile(
+                            db_session,
+                            user_obj,
+                            requested_mode=requested_mode,
+                            force_tier=user_tier if not user_obj else None
+                        )
+
                     telemetry["mode_resolved"] = profile.mode
                     telemetry["tier_effective"] = profile.tier
-                    token_policy = get_token_policy(db_session)
-                    
+
                     if trace:
                         print(f"[SOLVER_V3] Resolved Profile: Tier={profile.tier}, Mode={profile.mode}")
 
@@ -201,6 +268,20 @@ class SolverV3:
             final_response_data = None
             successful_mode = None
             last_error = None
+            providers_to_try = self._llm_manager.get_provider_chain()
+
+            def _clamp_tokens_for_provider(provider: str, tokens: int) -> int:
+                if provider == "ollama":
+                    tier_slug = (user_tier or "").lower()
+                    cap = 1200
+                    if "free" in tier_slug:
+                        cap = 900
+                    elif "standard" in tier_slug or "pro" in tier_slug or "family" in tier_slug:
+                        cap = 1100
+                    elif "research" in tier_slug:
+                        cap = 1200
+                    return min(tokens, cap)
+                return tokens
             
             for pass_idx, current_mode in enumerate(passes):
                 is_fallback = (pass_idx > 0)
@@ -226,65 +307,152 @@ class SolverV3:
                 
                 telemetry[f"pass_{pass_idx+1}_max_tokens"] = effective_max_tokens
 
-                llm_start_perf = time.perf_counter()
-                try:
-                    # Pass the current_mode as requested_mode to control verbosity param
-                    response_data, llm_tokens, status_info = await self._call_llm_with_schema(
-                        problem_text, 
-                        context, 
-                        base_system_prompt, 
-                        json_schema_config=openai_schema_wrapper, 
-                        max_output_tokens=effective_max_tokens,
-                        trace=trace,
-                        trusted_context=trusted_context,
-                        requested_mode=current_mode,
-                        image_url=image_url
-                    )
-                    
-                    llm_end_perf = time.perf_counter()
-                    
-                    # Accumulate/Update telemetry
-                    telemetry["latency_ms_openai"] = int((llm_end_perf - llm_start_perf) * 1000)
-                    telemetry["input_tokens"] = llm_tokens.get("input", 0)
-                    telemetry["output_tokens"] = llm_tokens.get("output", 0)
-                    telemetry["total_tokens"] = llm_tokens.get("total", 0)
-                    telemetry["cached_tokens"] = llm_tokens.get("cached", None)
-                    telemetry["openai_payload"] = llm_tokens.get("payload")
-                    telemetry["openai_calls_count"] += 1
-                    
-                    # VALIDATION
-                    validation_success, validation_error, validated_data = self._check_status_and_validate(
-                        response_data, status_info, openai_schema_wrapper["schema"]
-                    )
-                    
-                    telemetry["status_checks"].append({
-                        "pass": pass_idx + 1,
-                        "mode": current_mode,
-                        "status": status_info.get("status", "unknown"),
-                        "finish_reason": status_info.get("finish_reason", "unknown"),
-                        "valid": validation_success,
-                        "error": validation_error
-                    })
+                for provider_idx, provider in enumerate(providers_to_try):
+                    llm_start_perf = time.perf_counter()
+                    effective_tokens = _clamp_tokens_for_provider(provider, effective_max_tokens)
+                    try:
+                        response_data, llm_tokens, status_info, model_used, raw_output_text = await self._call_llm_with_schema(
+                            problem_text,
+                            context,
+                            base_system_prompt,
+                            json_schema_config=openai_schema_wrapper,
+                            max_output_tokens=effective_tokens,
+                            trace=trace,
+                            trusted_context=trusted_context,
+                            requested_mode=current_mode,
+                            image_url=image_url,
+                            provider=provider,
+                            request_id=request_id,
+                        )
 
-                    if validation_success:
-                        final_response_data = validated_data
-                        successful_mode = current_mode
-                        telemetry["validated"] = True
-                        break # Success!
-                    else:
-                        print(f"[SOLVER_V3] Pass {pass_idx+1} Failed: {validation_error}")
+                        llm_end_perf = time.perf_counter()
+
+                        # Accumulate/Update telemetry
+                        telemetry["latency_ms_openai"] = int((llm_end_perf - llm_start_perf) * 1000)
+                        telemetry["input_tokens"] = llm_tokens.get("input", 0)
+                        telemetry["output_tokens"] = llm_tokens.get("output", 0)
+                        telemetry["total_tokens"] = llm_tokens.get("total", 0)
+                        telemetry["cached_tokens"] = llm_tokens.get("cached", None)
+                        telemetry["openai_payload"] = llm_tokens.get("payload")
+                        telemetry["openai_calls_count"] += 1
+                        telemetry["model"] = model_used
+                        telemetry["provider"] = provider
+                        if provider_idx > 0:
+                            telemetry["fallback_triggered"] = True
+
+                        telemetry["llm_attempts"].append(
+                            {"pass": pass_idx + 1, "mode": current_mode, "provider": provider}
+                        )
+                        self._logger.info(
+                            "llm_call request_id=%s tier=%s mode=%s provider=%s model=%s latency_ms=%s schema_id=%s prompt_hash=%s output_hash=%s",
+                            request_id,
+                            telemetry.get("tier_effective"),
+                            current_mode,
+                            provider,
+                            model_used,
+                            telemetry["latency_ms_openai"],
+                            telemetry.get("prompt_binding", {}).get("output_schema_id"),
+                            self._hash_text(base_system_prompt),
+                            self._hash_text(raw_output_text or ""),
+                        )
+
+                        # VALIDATION
+                        validation_success, validation_error, validated_data, error_list = self._check_status_and_validate(
+                            response_data, status_info, openai_schema_wrapper["schema"], raw_text=raw_output_text
+                        )
+
+                        telemetry["status_checks"].append(
+                            {
+                                "pass": pass_idx + 1,
+                                "mode": current_mode,
+                                "provider": provider,
+                                "status": status_info.get("status", "unknown"),
+                                "finish_reason": status_info.get("finish_reason", "unknown"),
+                                "valid": validation_success,
+                                "error": validation_error,
+                                "error_list": error_list,
+                            }
+                        )
+
+                        if validation_success:
+                            final_response_data = validated_data
+                            successful_mode = current_mode
+                            telemetry["validated"] = True
+                            break
+
+                        # Attempt repair once globally per solve request
+                        telemetry["validation_failures_count"] += 1
+                        repair_enabled = os.environ.get("LLM_REPAIR_ENABLED", "true").lower() in {"1", "true", "yes"}
+                        attempts = telemetry.get("repair_attempts", 0)
+                        if repair_enabled and attempts < 1:
+                            telemetry["repair_attempted"] = True
+                            telemetry["repair_attempts"] = attempts + 1
+                            try:
+                                repaired, repaired_text = await self._repair_response(
+                                    problem_text,
+                                    context,
+                                    base_system_prompt,
+                                    response_data,
+                                    validation_error,
+                                    error_list,
+                                    json_schema_config=openai_schema_wrapper,
+                                    max_output_tokens=min(1200, effective_tokens),
+                                    requested_mode=current_mode,
+                                    trace=trace,
+                                    provider=provider,
+                                )
+                                validation_success, validation_error, validated_data, post_repair_errors = self._check_status_and_validate(
+                                    repaired, status_info, openai_schema_wrapper["schema"], raw_text=repaired_text
+                                )
+                                if validation_success:
+                                    final_response_data = validated_data
+                                    successful_mode = current_mode
+                                    telemetry["validated"] = True
+                                    telemetry["repaired"] = True
+                                    break
+                                telemetry["repair_failed_error_list"] = post_repair_errors
+                                self._logger.warning(
+                                    "llm_schema_invalid request_id=%s provider=%s tier=%s mode=%s schema_id=%s prompt_hash=%s raw_hash=%s repair_hash=%s",
+                                    request_id,
+                                    provider,
+                                    telemetry.get("tier_effective"),
+                                    current_mode,
+                                    telemetry.get("prompt_binding", {}).get("output_schema_id"),
+                                    self._hash_text(base_system_prompt),
+                                    self._hash_text(raw_output_text or ""),
+                                    self._hash_text(repaired_text or ""),
+                                )
+                            except Exception as repair_error:
+                                last_error = str(repair_error)
+
                         last_error = validation_error
-                        continue # Try next pass
+                        if trace:
+                            print(f"[SOLVER_V3] Pass {pass_idx+1} provider={provider} failed validation: {validation_error}")
+                        continue
 
-                except Exception as e:
-                    print(f"[SOLVER_V3] Pass {pass_idx+1} Exception: {e}")
-                    last_error = str(e)
-                    continue
+                    except LLMProviderError as e:
+                        self._llm_manager.note_error(provider, e)
+                        last_error = str(e)
+                        if trace:
+                            print(f"[SOLVER_V3] Pass {pass_idx+1} provider={provider} error: {e}")
+                        continue
+                    except Exception as e:
+                        self._llm_manager.note_error(provider, e)
+                        last_error = str(e)
+                        if trace:
+                            print(f"[SOLVER_V3] Pass {pass_idx+1} provider={provider} exception: {e}")
+                        continue
+
+                if final_response_data:
+                    break
 
             # End of loops
             if not final_response_data:
                 # All passes failed
-                return self._handle_error(problem_text, f"All attempts failed. Last error: {last_error}", "exhausted_retries", telemetry, start_time_perf)
+                error_code = "exhausted_retries"
+                if telemetry.get("validation_failures_count", 0) > 0:
+                    error_code = "LLM_SCHEMA_INVALID"
+                return self._handle_error(problem_text, f"All attempts failed. Last error: {last_error}", error_code, telemetry, start_time_perf)
 
             # --- Success Processing ---
             response_data = final_response_data
@@ -415,7 +583,8 @@ class SolverV3:
         
         telemetry = {
             "request_id": request_id,
-            "model": self._model,
+            "model": self._openai_model,
+            "provider": "openai",
             "input_tokens": 0,
             "output_tokens": 0,
             "total_tokens": 0,
@@ -431,6 +600,15 @@ class SolverV3:
         }
 
         try:
+            provider = self._llm_manager.primary_provider
+            if provider != "openai":
+                fallback = self._llm_manager.get_fallback_provider()
+                if self._llm_manager.fallback_enabled and fallback == "openai":
+                    telemetry["fallback_triggered"] = True
+                    provider = "openai"
+                else:
+                    yield {"type": "error", "error": {"code": "provider_unavailable", "message": "Streaming requires OpenAI provider."}}
+                    return
             resolved_system_prompt = system_prompt or get_prompt("solver_system", "v3")
             def load_stream_schema(config_schema: Optional[Dict[str, Any]]) -> Dict[str, Any]:
                 candidate = config_schema if isinstance(config_schema, dict) else None
@@ -518,7 +696,7 @@ class SolverV3:
                     
                     # Note: Structured Outputs with Streaming works best with Chat Completions
                     params = {
-                        "model": self._model,
+                        "model": self._openai_model,
                         "messages": [
                             {"role": "system", "content": resolved_system_prompt},
                             {"role": "user", "content": user_message}
@@ -623,12 +801,9 @@ class SolverV3:
         requested_mode: str = "minimal"
     ) -> str:
         """
-        Build compact JSON user message for OpenAI.
-        
-        Only includes: trusted_context (normalized), requested_mode, problem.
-        No billing/feature metadata, no redundant fields.
+        Build strict user message using 3-block template.
         """
-        from app.services.context_normalizer import build_compact_user_message, normalize_trusted_context
+        from app.services.context_normalizer import normalize_trusted_context
         
         # Normalize trusted_context to compact enums (CA, CA-ON, 11)
         normalized_ctx = normalize_trusted_context(trusted_context) if trusted_context else {}
@@ -636,9 +811,12 @@ class SolverV3:
         # Add requested_mode to context
         if requested_mode:
             normalized_ctx["requested_mode"] = requested_mode
-        
-        # Build compact JSON message
-        return build_compact_user_message(problem_text, normalized_ctx)
+
+        question_payload = {"problem": problem_text}
+        context_payload = {"context": context, "trusted_context": normalized_ctx}
+        runtime_hints = {"requested_mode": requested_mode}
+
+        return build_user_message(question_payload, context_payload, runtime_hints)
 
 
     def _handle_error(self, problem, errors, code, telemetry, start_time_perf):
@@ -649,7 +827,13 @@ class SolverV3:
         return err_resp
 
 
-    def _check_status_and_validate(self, data: Any, status_info: Dict, schema: Dict) -> Tuple[bool, Optional[str], Optional[Dict]]:
+    def _check_status_and_validate(
+        self,
+        data: Any,
+        status_info: Dict,
+        schema: Dict,
+        raw_text: Optional[str] = None,
+    ) -> Tuple[bool, Optional[str], Optional[Dict], List[Dict[str, str]]]:
         """
         Check upstream status/finish_reason AND validate against schema.
         Returns: (success, error_msg, validated_data)
@@ -660,22 +844,33 @@ class SolverV3:
         
         # Responses API "incomplete"
         if status == "incomplete":
-            return False, f"Upstream Incomplete (reason={status_info.get('incomplete_reason')})", None
+            return False, f"Upstream Incomplete (reason={status_info.get('incomplete_reason')})", None, []
         
         # Chat Completions "length"
         if finish_reason == "length":
-            return False, "Upstream Truncated (length)", None
+            return False, "Upstream Truncated (length)", None, []
             
         # 2. Check Data Existence
         if not data:
-             return False, "Empty Data", None
+             return False, "Empty Data", None, [{"type": "parse_error", "message": "empty response", "path": "$"}]
 
-        # 3. Schema Validation
+        if isinstance(data, dict) and "_raw" in data:
+            msg = "Response was not valid JSON."
+            issues = [{"type": "parse_error", "message": msg, "path": "$"}]
+            return False, msg, None, issues
+
+        # 3. Schema Validation (Draft 2020-12 first)
+        schema_issues = self._validate_with_draft202012(data, schema)
+        if schema_issues:
+            return False, "Schema Validation Failed", None, schema_issues
+
+        # Optional strict checks
         validation = validate_response(data, strict=True)
         if not validation.valid:
-            return False, f"Schema Validation Failed: {validation.errors}", None
-            
-        return True, None, data
+            extra_issues = [{"type": "schema_error", "message": e, "path": "$"} for e in validation.errors[:20]]
+            return False, "Schema Validation Failed", None, extra_issues
+
+        return True, None, data, []
 
 
     async def _call_llm_with_schema(
@@ -688,8 +883,10 @@ class SolverV3:
         trace=False,
         trusted_context: dict = None,
         requested_mode: str = "minimal",
-        image_url: Optional[str] = None
-    ) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
+        image_url: Optional[str] = None,
+        provider: str = "openai",
+        request_id: Optional[str] = None,
+    ) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], str, str]:
         # Build compact JSON user message with normalized trusted_context
         if trace:
             print(f"[SOLVER_DEBUG] _call_llm_with_schema requested_mode={requested_mode}")
@@ -705,145 +902,60 @@ class SolverV3:
             print(f"[SOLVER_DEBUG] _call_llm_with_schema user_message[:100]: {user_message[:100]}...")
         tokens = {"input": 0, "output": 0, "total": 0, "cached": None}
         status_info = {"status": "unknown", "finish_reason": "unknown"}
-        
+
         schema_payload = json_schema_config
-        # If the schema is already wrapped (has 'name' and 'schema'), use it as is.
-        # Otherwise if it's raw schema, we might need to wrap it or let it fail?
-        # Current fix relies on get_json_schema_for_openai_v3 return wrapper.
-        
-        # Ensure 'type' is present in the inner schema or wrapper? response_format uses {type: json_schema, json_schema: ...}
-        # The 'json_schema' field needs 'name' and 'schema'.
-        
-        # We assume json_schema_config is correct.
-        pass
-        
-        # Check model type for API method
-        if "gpt-5" in self._model.lower():
-            # Use client.responses.create for gpt-5 access
-            verbosity = "low" if requested_mode == "minimal" else "high"
-            
-            # SAFEGUARD: Effort Control
-            reasoning_effort = "low"
-            
-            user_content = [{"type": "input_text", "text": user_message}]
-            if image_url:
-                user_content.append({"type": "input_image", "image_url": image_url})
-            params = {
-                "model": self._model,
-                "input": [
-                    {"role": "system", "content": [{"type": "input_text", "text": system_prompt}]},
-                    {"role": "user", "content": user_content}
-                ],
-                "text": {
-                    "verbosity": verbosity,
-                    "format": {
-                        "type": "json_schema",
-                        "name": schema_payload.get("name", "math_schema"),
-                        "schema": schema_payload.get("schema", schema_payload),
-                        "strict": schema_payload.get("strict", True)
-                    }
-                },
-                "max_output_tokens": max_output_tokens,
-                "reasoning": {"effort": reasoning_effort}
-            }
-            
-            response = await self.client.responses.create(**params)
+        provider = provider.lower()
+        system_for_provider = system_prompt
+        if provider == "ollama":
+            schema_text = json.dumps(schema_payload.get("schema", schema_payload), separators=(",", ":"))
+            system_for_provider = (
+                f"{system_prompt}\n\nJSON_SCHEMA:\n{schema_text}\n\n"
+                "Output only valid JSON that matches the schema."
+            )
 
-            if hasattr(response, "status"):
-                 status_info["status"] = response.status
-                 if response.status == "incomplete":
-                     details = getattr(response, "incomplete_details", None) or {}
-                     status_info["incomplete_reason"] = details.get("reason", "unknown")
+        user_content = user_message
+        if image_url:
+            if provider == "ollama":
+                raise LLMProviderError("Ollama does not support image inputs.", provider="ollama")
+            user_content = [
+                {"type": "text", "text": user_message},
+                {"type": "image_url", "image_url": {"url": image_url, "detail": "high"}},
+            ]
 
-            if hasattr(response, "usage"):
-                if hasattr(response.usage, "prompt_tokens"):
-                    tokens["input"] = response.usage.prompt_tokens
-                    tokens["output"] = response.usage.completion_tokens
-                    tokens["total"] = response.usage.total_tokens
-                elif hasattr(response.usage, "input_tokens"):
-                    tokens["input"] = response.usage.input_tokens
-                    tokens["output"] = response.usage.output_tokens
-                    tokens["total"] = response.usage.total_tokens
+        messages = [
+            {"role": "system", "content": system_for_provider},
+            {"role": "user", "content": user_content},
+        ]
 
-                if hasattr(response.usage, "prompt_tokens_details"):
-                    tokens["cached"] = getattr(response.usage.prompt_tokens_details, "cached_tokens", 0)
-                elif hasattr(response.usage, "input_token_details"):
-                    tokens["cached"] = getattr(response.usage.input_token_details, "cached_tokens", 0)
+        llm_client = self._llm_manager.get_client(provider)
+        verbosity = "low" if requested_mode == "minimal" else "high"
+        llm_response = await llm_client.generate(
+            messages=messages,
+            system_prompt=system_for_provider,
+            prompt=None,
+            json_schema=schema_payload if provider == "openai" else None,
+            max_tokens=max_output_tokens,
+            temperature=None,
+            stream=False,
+            request_id=request_id,
+            verbosity=verbosity,
+        )
 
-            content = None
-            if hasattr(response, "output") and response.output:
-                for item in response.output:
-                    if hasattr(item, "content") and item.content:
-                        content = item.content[0].text
-                        break
-            
-            if os.environ.get("OPENAI_DEBUG_CAPTURE") == "1":
-                 print(f"[DEBUG_CAPTURE] Status: {status_info['status']}")
+        status_info.update(llm_response.status or {})
+        tokens["input"] = llm_response.usage.get("input", 0)
+        tokens["output"] = llm_response.usage.get("output", 0)
+        tokens["total"] = llm_response.usage.get("total", 0)
+        tokens["cached"] = llm_response.usage.get("cached", None)
+        tokens["payload"] = llm_response.payload
 
-            data = None
-            if content:
-                try:
-                    data = json.loads(content)
-                except Exception:
-                    pass
+        data = None
+        if llm_response.content:
+            try:
+                data = json.loads(llm_response.content)
+            except Exception:
+                data = {"_raw": llm_response.content}
 
-            tokens["payload"] = {
-                "max_output_tokens": max_output_tokens,
-                "reasoning_effort": reasoning_effort,
-                "full_input": params.get("input", []),
-                "full_output": data
-            }
-            return data, tokens, status_info
-
-        else:
-            # Standard Chat Completions for gpt-4o
-            user_content = [{"type": "text", "text": user_message}]
-            if image_url:
-                user_content.append({"type": "image_url", "image_url": {"url": image_url, "detail": "high"}})
-            params = {
-                "model": self._model,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_content}
-                ],
-                "response_format": {
-                    "type": "json_schema",
-                    "json_schema": schema_payload
-                },
-                "max_completion_tokens": max_output_tokens
-            }
-            
-            response = await self.client.chat.completions.create(**params)
-            
-            finish_reason = response.choices[0].finish_reason
-            status_info["finish_reason"] = finish_reason
-            status_info["status"] = "completed"
-
-            content = response.choices[0].message.content
-            
-            if hasattr(response, 'usage'):
-                tokens["input"] = response.usage.prompt_tokens
-                tokens["output"] = response.usage.completion_tokens
-                tokens["total"] = response.usage.total_tokens
-                
-                if hasattr(response.usage, 'prompt_tokens_details') and response.usage.prompt_tokens_details:
-                    tokens["cached"] = getattr(response.usage.prompt_tokens_details, 'cached_tokens', 0)
-                if tokens["cached"] is None and hasattr(response.usage, 'cached_tokens'):
-                     tokens["cached"] = response.usage.cached_tokens
-
-            data = None
-            if content:
-                try:
-                    data = json.loads(content)
-                except Exception:
-                     pass
-
-            tokens["payload"] = {
-                "max_output_tokens": max_output_tokens,
-                "full_input": params.get("messages", []),
-                "full_output": data
-            }
-            return data, tokens, status_info
+        return data, tokens, status_info, llm_response.model, llm_response.content
 
     async def _repair_response(
         self,
@@ -851,81 +963,72 @@ class SolverV3:
         context,
         system_prompt,
         invalid_data,
-        validation,
+        validation_error,
+        error_list,
         json_schema_config,
         max_output_tokens=1200,
         requested_mode: str = "minimal",
-        trace=False
+        trace=False,
+        provider: str = "openai",
     ):
         if trace:
              print(f"[SOLVER_V3] Attempting repair...")
         
-        repair_prompt = generate_repair_prompt(invalid_data, validation, problem)
+        payload = invalid_data if isinstance(invalid_data, dict) else {"_raw": invalid_data}
+        raw_text = ""
+        if isinstance(invalid_data, dict) and "_raw" in invalid_data:
+            raw_text = str(invalid_data.get("_raw", ""))
+        elif isinstance(invalid_data, str):
+            raw_text = invalid_data
+        else:
+            raw_text = json.dumps(payload, ensure_ascii=True)
+
+        repair_prompt = (
+            "You are a strict JSON repair engine.\n"
+            "Your task: output ONLY valid JSON that matches the provided JSON Schema exactly.\n"
+            "Do not include markdown, commentary, or extra keys.\n\n"
+            f"JSON Schema:\n{json.dumps(json_schema_config.get('schema', json_schema_config), ensure_ascii=True)}\n\n"
+            f"Invalid output:\n{raw_text}\n\n"
+            f"Validation/parsing errors:\n{json.dumps(error_list or [], ensure_ascii=True)}\n\n"
+            "Return ONLY the corrected JSON."
+        )
         
         # For Strict Structured Output repair:
         # We start a fresh conversation or append. strict mode validation is rigid.
         # Simple approach: New request with "previous_invalid_json" in context[ERROR]
         # Or standard append.
         
+        provider = provider.lower()
+        system_for_provider = system_prompt
+        if provider == "ollama":
+            schema_text = json.dumps(json_schema_config.get("schema", json_schema_config), separators=(",", ":"))
+            system_for_provider = (
+                f"{system_prompt}\n\nJSON_SCHEMA:\n{schema_text}\n\n"
+                "Output only valid JSON that matches the schema."
+            )
+
         messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Problem: {problem}\nContext: {context}"},
-            {"role": "assistant", "content": json.dumps(invalid_data)},
-            {"role": "user", "content": repair_prompt}
+            {"role": "system", "content": system_for_provider},
+            {"role": "user", "content": repair_prompt},
         ]
-        
-        params = {
-            "model": self._fallback_model,
-            "messages": messages,
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": json_schema_config
-            },
-            "max_completion_tokens": max_output_tokens
-        }
-        
-        # Note: If gpt-5, we should use responses.create similarly.
-        # But repair is edge case, often fallback to gpt-4o works fine.
-        # We'll use fallback model for repair to be safe and cheap[ERROR]
-        # Original code used fallback model (gpt-5-mini).
-        
-        if "gpt-5" in self._fallback_model.lower():
-            verbosity = "low" if requested_mode == "minimal" else "high"
-            repair_user_content = (
-                f"Problem: {problem}\n"
-                f"Context: {context}\n"
-                f"Previous invalid JSON:\n{json.dumps(invalid_data)}\n"
-                f"{repair_prompt}"
-            )
-            response = await self.client.responses.create(
-                model=self._fallback_model,
-                input=[
-                    {"role": "system", "content": [{"type": "input_text", "text": system_prompt}]},
-                    {"role": "user", "content": [{"type": "input_text", "text": repair_user_content}]}
-                ],
-                text={
-                    "verbosity": verbosity,
-                    "format": {
-                        "type": "json_schema",
-                        "json_schema": json_schema_config
-                    }
-                },
-                max_output_tokens=max_output_tokens
-            )
-            content = None
-            if hasattr(response, "output") and response.output:
-                for item in response.output:
-                    if hasattr(item, "content") and item.content:
-                        content = item.content[0].text
-                        break
-            if not content:
-                raise ValueError("Empty gpt-5 repair output")
-            data = json.loads(content)
-        else:
-            response = await self.client.chat.completions.create(**params)
-            data = json.loads(response.choices[0].message.content)
+
+        llm_client = self._llm_manager.get_client(provider)
+        llm_response = await llm_client.generate(
+            messages=messages,
+            system_prompt=system_for_provider,
+            prompt=None,
+            json_schema=json_schema_config if provider == "openai" else None,
+            max_tokens=max_output_tokens,
+            temperature=None,
+            stream=False,
+            request_id=None,
+        )
+
+        if not llm_response.content:
+            raise ValueError("Empty repair output")
+        data = json.loads(llm_response.content)
         data["_repaired"] = True
-        return data
+        return data, llm_response.content
 
 import asyncio
 _solver_instance = None
