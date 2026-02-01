@@ -59,6 +59,28 @@ describe("SnapSolveInputPanel", () => {
         });
     });
 
+    test("paste handler supports clipboard files image payloads", async () => {
+        render(<SnapSolveInputPanel />);
+        const file = new File(["abc"], "clip-file.png", { type: "image/png" });
+        const pasteEvent = new Event("paste", { bubbles: true }) as Event & {
+            clipboardData: DataTransfer;
+        };
+        Object.defineProperty(pasteEvent, "clipboardData", {
+            value: {
+                items: [],
+                files: [file],
+            },
+        });
+
+        await act(async () => {
+            window.dispatchEvent(pasteEvent);
+        });
+
+        await waitFor(() => {
+            expect(screen.getByText(/clip-file\.png|Selected:/)).toBeInTheDocument();
+        });
+    });
+
     test("clear resets upload, question, result, and error state", async () => {
         global.fetch = jest.fn().mockResolvedValue({
             ok: true,

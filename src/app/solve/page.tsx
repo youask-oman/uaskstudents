@@ -26,7 +26,7 @@ import { validateMathQuery, isBlockingInputError, isInputTooShort } from "@/lib/
 // Tier-aware solve imports
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import CostPreview from "@/components/solve/CostPreview";
-import { SubscriptionResponse, fetchSubscription, calculateSolveCost } from "@/lib/subscription";
+import { SubscriptionResponse, fetchSubscription, fetchCreditsEstimate, CreditsEstimateResponse, SolveTier } from "@/lib/subscription";
 import { TokenPolicy, fetchTokenPolicy } from "@/lib/tokenPolicy";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -132,10 +132,12 @@ export default function DashboardPage() {
 
     // Tier-Aware Solve State
     const selectedGoal = 'solve';
-    const [selectedAnswerStyle, setSelectedAnswerStyle] = useState<'quick' | 'tutor'>('tutor');
+    const [selectedSolveTier, setSelectedSolveTier] = useState<SolveTier>("FREE");
     const [subscription, setSubscription] = useState<SubscriptionResponse | null>(null);
     const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
     const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
+    const [estimate, setEstimate] = useState<CreditsEstimateResponse | null>(null);
+    const [estimateError, setEstimateError] = useState<string | null>(null);
     const [tokenPolicy, setTokenPolicy] = useState<TokenPolicy | null>(null);
     const [tokenPolicyLoaded, setTokenPolicyLoaded] = useState(false);
     const [tokenPolicyError, setTokenPolicyError] = useState<string | null>(null);
@@ -188,15 +190,55 @@ export default function DashboardPage() {
     const router = useRouter();
     const subscriptionReady = subscriptionLoaded && !subscriptionError && !!subscription;
     const readySubscription = subscriptionReady ? subscription : null;
-    const allowDetailed = readySubscription?.allow_detailed ?? false;
+    const trustedProfile = readySubscription?.profile ?? null;
+    const estimatedQuestionCount = activeTab === "text"
+        ? Math.max(1, multiQuestionResult.suggestedSplits.length || 1)
+        : 1;
 
     useEffect(() => {
-        // If user loses entitlement (e.g. sub expires), fallback to Quick
-        if (!allowDetailed && selectedAnswerStyle === "tutor") {
-            setSelectedAnswerStyle("quick");
+        const stored = typeof window !== "undefined" ? localStorage.getItem("uask.solveTier") : null;
+        if (stored === "FREE" || stored === "STANDARD" || stored === "RESEARCH") {
+            setSelectedSolveTier(stored);
         }
-    }, [allowDetailed, selectedAnswerStyle]);
-    const trustedProfile = readySubscription?.profile ?? null;
+    }, []);
+
+    useEffect(() => {
+        if (!subscriptionReady || !readySubscription) return;
+        const hasStored = typeof window !== "undefined" ? localStorage.getItem("uask.solveTier") : null;
+        if (hasStored) return;
+        const defaultTier: SolveTier = readySubscription.plan.slug === "free" ? "FREE" : "STANDARD";
+        setSelectedSolveTier(defaultTier);
+        if (typeof window !== "undefined") {
+            localStorage.setItem("uask.solveTier", defaultTier);
+        }
+    }, [subscriptionReady, readySubscription]);
+
+    useEffect(() => {
+        if (!subscriptionReady || !readySubscription) return;
+        const runEstimate = async () => {
+            try {
+                setEstimateError(null);
+                const inputType = activeTab === "snap" ? "snap" : activeTab === "voice" ? "voice" : "text";
+                const response = await fetchCreditsEstimate({
+                    tier: selectedSolveTier,
+                    input_type: inputType,
+                    asset_type: activeTab === "snap" ? "image" : "none",
+                    question_count: estimatedQuestionCount,
+                    addons: {
+                        ocr: activeTab === "snap",
+                        voice: activeTab === "voice",
+                        verify: false,
+                        plot: false,
+                    },
+                });
+                setEstimate(response);
+            } catch (e) {
+                setEstimate(null);
+                setEstimateError(e instanceof Error ? e.message : "Unable to estimate credits");
+            }
+        };
+        void runEstimate();
+    }, [subscriptionReady, readySubscription, selectedSolveTier, activeTab, estimatedQuestionCount]);
 
     useEffect(() => {
         const userId = localStorage.getItem("user_id");
@@ -501,7 +543,7 @@ export default function DashboardPage() {
                     // Primary problem input - only one text field
                     confirmed_text: textToSolve,
                     // Tier-aware mode - single field, no duplication
-                    requested_mode: selectedAnswerStyle === 'tutor' ? 'detailed' : 'minimal',
+                    requested_mode: selectedSolveTier === 'RESEARCH' ? 'detailed' : 'minimal',
                     // Normalized trusted_context (compact enums)
                     trusted_context: {
                         learning_mode: selectedGoal,
@@ -632,25 +674,21 @@ export default function DashboardPage() {
                                       className="solve-segmented"
                                   />
 
-                                  {/* Answer Style Toggle */}
+                                  {/* Tier Selector */}
                                   <SegmentedControl
-                                      label="Answer Style"
+                                      label="Tier"
                                       options={[
-                                          { value: "quick", label: "Quick", icon: "speed" },
-                                          {
-                                              value: "tutor",
-                                              label: "Tutor",
-                                              icon: "menu_book",
-                                              disabled: !allowDetailed,
-                                              tooltip: allowDetailed
-                                                  ? "Step-by-step with checkpoints"
-                                                  : "Upgrade to unlock detailed explanations"
-                                          }
+                                          { value: "FREE", label: "Free", icon: "bolt" },
+                                          { value: "STANDARD", label: "Standard", icon: "school" },
+                                          { value: "RESEARCH", label: "Research", icon: "science" },
                                       ]}
-                                      value={selectedAnswerStyle}
+                                      value={selectedSolveTier}
                                       onChange={(v) => {
-                                          if (allowDetailed || v === "quick") {
-                                              setSelectedAnswerStyle(v as 'quick' | 'tutor');
+                                          if (v === "FREE" || v === "STANDARD" || v === "RESEARCH") {
+                                              setSelectedSolveTier(v as SolveTier);
+                                              if (typeof window !== "undefined") {
+                                                  localStorage.setItem("uask.solveTier", v);
+                                              }
                                           }
                                       }}
                                       size="sm"
@@ -666,17 +704,16 @@ export default function DashboardPage() {
 
                             {/* Cost Preview */}
                             <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-                                {readySubscription ? (
+                                {readySubscription && estimate ? (
                                     <CostPreview
-                                        baseCost={calculateSolveCost(readySubscription, selectedAnswerStyle, false, false)}
-                                        ocrCost={activeTab === 'snap' ? readySubscription.plan.multipliers.ocr_add : 0}
-                                        voiceCost={activeTab === 'voice' ? readySubscription.plan.multipliers.voice_add : 0}
+                                        perQuestionCost={estimate.per_question_credits}
+                                        questionCount={estimatedQuestionCount}
+                                        breakdown={estimate.breakdown}
                                         creditsRemaining={readySubscription.usage.credits_remaining}
-                                        isDetailed={selectedAnswerStyle === 'tutor'}
                                     />
                                 ) : (
                                     <div className="text-xs text-slate-500">
-                                        Subscription data required for cost preview.
+                                        {estimateError || "Subscription data required for cost preview."}
                                     </div>
                                 )}
                             </div>
@@ -726,7 +763,7 @@ export default function DashboardPage() {
                                                 }
                                                 handleSolve(text);
                                             }}
-                                            requestedMode={selectedAnswerStyle === "tutor" ? "detailed" : "minimal"}
+                                            requestedMode={selectedSolveTier === "RESEARCH" ? "detailed" : "minimal"}
                                         />
                                     )
                                 )}

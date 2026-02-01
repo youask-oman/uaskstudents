@@ -35,7 +35,10 @@ type ExtractedQuestion = {
 
 type PdfExtractResponse = {
     extracted_questions: ExtractedQuestion[];
-    meta: Record<string, unknown>;
+    meta: {
+        warnings?: string[];
+        [key: string]: unknown;
+    };
 };
 
 type SolvedQuestion = {
@@ -159,10 +162,13 @@ export default function SnapSolveInputPanel() {
         const handlePaste = (event: ClipboardEvent) => {
             if (activeSubTab !== "upload") return;
             if (!event.clipboardData) return;
-            const item = Array.from(event.clipboardData.items).find((it) => it.type.startsWith("image/"));
-            if (!item) return;
-            const blob = item.getAsFile();
+            const fileFromFiles = Array.from(event.clipboardData.files || []).find((file) => file.type.startsWith("image/"));
+            const fileFromItems = Array.from(event.clipboardData.items || [])
+                .find((item) => item.type.startsWith("image/"))
+                ?.getAsFile();
+            const blob = fileFromFiles || fileFromItems;
             if (!blob) return;
+            event.preventDefault();
             setUploadFile(new File([blob], `clipboard-${Date.now()}.png`, { type: blob.type || "image/png" }));
         };
         window.addEventListener("paste", handlePaste);
@@ -276,17 +282,44 @@ export default function SnapSolveInputPanel() {
         setCameraOpen(false);
     }, []);
 
+    React.useEffect(() => {
+        if (!cameraOpen || !videoRef.current || !streamRef.current) return;
+        const video = videoRef.current;
+        const stream = streamRef.current;
+        video.srcObject = stream;
+        const playVideo = async () => {
+            try {
+                await video.play();
+            } catch {
+                // Ignore autoplay race; user can still capture once stream becomes active.
+            }
+        };
+        if (video.readyState >= 1) {
+            void playVideo();
+        } else {
+            video.onloadedmetadata = () => {
+                void playVideo();
+            };
+        }
+        return () => {
+            video.onloadedmetadata = null;
+        };
+    }, [cameraOpen]);
+
     const openCamera = React.useCallback(async () => {
         try {
-            const media = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+            let media: MediaStream;
+            try {
+                media = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { ideal: "environment" } },
+                    audio: false,
+                });
+            } catch {
+                // Some browsers/devices reject facingMode constraints; retry with generic video.
+                media = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            }
             streamRef.current = media;
             setCameraOpen(true);
-            setTimeout(() => {
-                if (videoRef.current) {
-                    videoRef.current.srcObject = media;
-                    videoRef.current.play().catch(() => null);
-                }
-            }, 0);
         } catch {
             cameraInputRef.current?.click();
         }
@@ -316,6 +349,26 @@ export default function SnapSolveInputPanel() {
         setIsDragging(false);
         void handleIncomingFile(event.dataTransfer.files?.[0] || null);
     };
+
+    const handleClipboardButtonPaste = React.useCallback(async () => {
+        if (!navigator.clipboard || !("read" in navigator.clipboard)) {
+            setError("Clipboard read is not supported in this browser. Press Ctrl+V in the upload area instead.");
+            return;
+        }
+        try {
+            const items = await (navigator.clipboard as Clipboard & { read: () => Promise<ClipboardItem[]> }).read();
+            for (const item of items) {
+                const imageType = item.types.find((t) => t.startsWith("image/"));
+                if (!imageType) continue;
+                const blob = await item.getType(imageType);
+                await handleIncomingFile(new File([blob], `clipboard-${Date.now()}.png`, { type: imageType }));
+                return;
+            }
+            setError("No image found in clipboard.");
+        } catch {
+            setError("Clipboard access blocked. Allow clipboard permission or use Ctrl+V.");
+        }
+    }, [handleIncomingFile]);
 
     const handleClear = () => {
         setUploadFile(null);
@@ -383,6 +436,10 @@ export default function SnapSolveInputPanel() {
             const questions = data.extracted_questions || [];
             setExtractedQuestions(questions);
             setSelectedQuestionIds(new Set(questions.map((q) => q.id)));
+            if (!questions.length) {
+                const warning = Array.isArray(data.meta?.warnings) ? data.meta.warnings[0] : null;
+                setError(warning || "No questions detected in this crop. Try a larger crop or use Extract This Page.");
+            }
         } catch (e) {
             setError(e instanceof Error ? e.message : "Extraction failed.");
         } finally {
@@ -428,7 +485,7 @@ export default function SnapSolveInputPanel() {
                     <div className="mb-4 flex items-center gap-2 text-xs">
                         <button type="button" onClick={() => fileInputRef.current?.click()} className="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold">Upload file</button>
                         <button type="button" onClick={openCamera} className="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold">Camera</button>
-                        <span className="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold">Paste from Clipboard</span>
+                        <button type="button" onClick={() => void handleClipboardButtonPaste()} className="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold">Paste from Clipboard</button>
                     </div>
                     <input ref={fileInputRef} type="file" className="hidden" accept={ACCEPTED_UPLOAD} onChange={onFileInputChange} data-testid="snap-upload-input" />
                     <input ref={cameraInputRef} type="file" className="hidden" accept="image/png,image/jpeg,image/webp" capture="environment" onChange={onFileInputChange} />

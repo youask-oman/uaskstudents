@@ -30,6 +30,25 @@ DEFAULT_PRICING_CONFIG = {
         "voice_solve_credits": 3.0, # Base cost for voice
         "voice_credits_per_second": 3.333333
     },
+    "solve_pricing": {
+        "pricing_version": "2026-02-01",
+        "tiers": {
+            "FREE": 1.0,
+            "STANDARD": 2.0,
+            "RESEARCH": 4.0
+        },
+        "addons": {
+            "ocr": 1.0,
+            "voice": 1.0,
+            "verify": 0.0,
+            "plot": 0.0
+        },
+        "asset_addons": {
+            "none": 0.0,
+            "image": 0.0,
+            "pdf": 1.0
+        }
+    },
     "policy": {
         "max_credits_per_action": 50.0,
         "enforce_non_negative_balance": True
@@ -40,6 +59,7 @@ class PricingConfig(BaseModel):
     credits: Dict[str, Any]
     token_billing: Dict[str, Any]
     feature_costs: Dict[str, float]
+    solve_pricing: Dict[str, Any] = Field(default_factory=dict)
     # token_pricing_metadata: Dict[str, Any] # Removed/Depreciated for flattened token_billing
     policy: Dict[str, Any]
     config_version_id: Optional[int] = None

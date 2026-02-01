@@ -24,6 +24,7 @@ def _app_client() -> TestClient:
 
 def test_prepare_enforces_max_pages(monkeypatch):
     monkeypatch.setattr(snap_solve_pdf, "PDF_ENABLED", True)
+    monkeypatch.setattr(snap_solve_pdf, "_pix2text_available", lambda: True)
     monkeypatch.setattr(snap_solve_pdf, "PDF_MAX_PAGES", 1)
     snap_solve_pdf._PDF_STORE.clear()
     client = _app_client()
@@ -37,6 +38,7 @@ def test_prepare_enforces_max_pages(monkeypatch):
 
 def test_forbidden_access_for_other_owner(monkeypatch):
     monkeypatch.setattr(snap_solve_pdf, "PDF_ENABLED", True)
+    monkeypatch.setattr(snap_solve_pdf, "_pix2text_available", lambda: True)
     snap_solve_pdf._PDF_STORE.clear()
     client = _app_client()
 
@@ -75,6 +77,7 @@ def test_forbidden_access_for_other_owner(monkeypatch):
 
 def test_page_image_returns_png_and_is_reusable(monkeypatch):
     monkeypatch.setattr(snap_solve_pdf, "PDF_ENABLED", True)
+    monkeypatch.setattr(snap_solve_pdf, "_pix2text_available", lambda: True)
     snap_solve_pdf._PDF_STORE.clear()
     client = _app_client()
 
@@ -97,6 +100,7 @@ def test_page_image_returns_png_and_is_reusable(monkeypatch):
 
 def test_page_image_scale_is_clamped(monkeypatch):
     monkeypatch.setattr(snap_solve_pdf, "PDF_ENABLED", True)
+    monkeypatch.setattr(snap_solve_pdf, "_pix2text_available", lambda: True)
     monkeypatch.setattr(snap_solve_pdf, "PDF_RENDER_SCALE_MIN", 0.5)
     monkeypatch.setattr(snap_solve_pdf, "PDF_RENDER_SCALE_MAX", 4.0)
     snap_solve_pdf._PDF_STORE.clear()
@@ -116,6 +120,7 @@ def test_page_image_scale_is_clamped(monkeypatch):
 
 def test_extract_crop_uses_crop_dimensions(monkeypatch):
     monkeypatch.setattr(snap_solve_pdf, "PDF_ENABLED", True)
+    monkeypatch.setattr(snap_solve_pdf, "_pix2text_available", lambda: True)
     snap_solve_pdf._PDF_STORE.clear()
     seen = {}
 
@@ -154,6 +159,7 @@ def test_extract_crop_uses_crop_dimensions(monkeypatch):
 
 def test_rate_limit_returns_429_and_isolated_buckets(monkeypatch):
     monkeypatch.setattr(snap_solve_pdf, "PDF_ENABLED", True)
+    monkeypatch.setattr(snap_solve_pdf, "_pix2text_available", lambda: True)
     monkeypatch.setattr(snap_solve_pdf, "PDF_RATE_LIMIT_PAGE_IMAGE", 1)
     monkeypatch.setattr(snap_solve_pdf, "PDF_RATE_LIMIT_EXTRACT", 1)
     snap_solve_pdf._PDF_STORE.clear()
@@ -220,6 +226,7 @@ def test_rate_limit_returns_429_and_isolated_buckets(monkeypatch):
 
 def test_prepare_page_image_extract_page_flow(monkeypatch):
     monkeypatch.setattr(snap_solve_pdf, "PDF_ENABLED", True)
+    monkeypatch.setattr(snap_solve_pdf, "_pix2text_available", lambda: True)
     snap_solve_pdf._PDF_STORE.clear()
     monkeypatch.setattr(
         snap_solve_pdf,
@@ -258,6 +265,7 @@ def test_prepare_page_image_extract_page_flow(monkeypatch):
 
 def test_document_mode_cap_and_warning(monkeypatch):
     monkeypatch.setattr(snap_solve_pdf, "PDF_ENABLED", True)
+    monkeypatch.setattr(snap_solve_pdf, "_pix2text_available", lambda: True)
     monkeypatch.setattr(snap_solve_pdf, "PDF_DOCUMENT_EXTRACT_ENABLED", True)
     monkeypatch.setattr(snap_solve_pdf, "PDF_DOCUMENT_MAX_PAGES", 2)
     snap_solve_pdf._PDF_STORE.clear()

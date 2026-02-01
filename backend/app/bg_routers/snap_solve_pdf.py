@@ -5,6 +5,8 @@ import uuid
 import hashlib
 import tempfile
 import threading
+import logging
+import importlib.util
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
@@ -12,13 +14,14 @@ from typing import Any, Dict, List, Optional, Tuple
 from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
-from PIL import Image
+from PIL import Image, ImageOps, ImageEnhance
 import pypdfium2 as pdfium
 
 from app.services.ocr.ocr_service import ocr_service
 
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 PDF_ENABLED = os.getenv("SNAP_SOLVE_PDF_ENABLED", "true").lower() in {"1", "true", "yes"}
 PDF_MAX_MB = int(os.getenv("SNAP_SOLVE_PDF_MAX_MB", "10"))
@@ -169,10 +172,61 @@ def _render_page_png(session: PdfSession, page_index: int, scale: float) -> Tupl
 
 
 def _extract_questions_from_image(image_bytes: bytes, engine_choice: str, page_index: Optional[int] = None) -> List[Dict[str, Any]]:
+    def _image_candidates(raw_bytes: bytes) -> List[bytes]:
+        candidates: List[bytes] = [raw_bytes]
+        try:
+            with Image.open(io.BytesIO(raw_bytes)) as src:
+                base = src.convert("RGB")
+
+                # Candidate 2: upscale + contrast + sharpen for small math text.
+                boosted = base
+                if max(boosted.width, boosted.height) < 1600:
+                    boosted = boosted.resize((boosted.width * 2, boosted.height * 2), Image.Resampling.LANCZOS)
+                boosted = ImageOps.autocontrast(boosted)
+                boosted = ImageEnhance.Sharpness(boosted).enhance(1.6)
+                b1 = io.BytesIO()
+                boosted.save(b1, format="PNG")
+                candidates.append(b1.getvalue())
+
+                # Candidate 3: grayscale high-contrast fallback.
+                gray = ImageOps.autocontrast(base.convert("L"))
+                b2 = io.BytesIO()
+                gray.save(b2, format="PNG")
+                candidates.append(b2.getvalue())
+        except Exception:
+            pass
+        return candidates
+
     engine_name = "local" if engine_choice == "pix2text" else "auto"
-    ocr = ocr_service.recognize_region(image_bytes, engine_name=engine_name)
-    text = (ocr.get("text") or "").strip()
+    ocr = {}
+    text = ""
+    tried: List[str] = []
+    engines = [engine_name]
+    if engine_name != "auto":
+        engines.append("auto")
+    for candidate_index, candidate in enumerate(_image_candidates(image_bytes), start=1):
+        for eng in engines:
+            tried.append(f"{eng}:v{candidate_index}")
+            # For explicit Pix2Text, keep local-only unless we explicitly try "auto".
+            ocr = ocr_service.recognize_region(
+                candidate,
+                engine_name=eng,
+                fallback_to_vlm=eng != "local",
+            )
+            text = (ocr.get("text") or "").strip()
+            if text:
+                logger.info(
+                    "[snap_solve_pdf] OCR success page=%s engine=%s variant=%s chars=%s",
+                    page_index,
+                    eng,
+                    candidate_index,
+                    len(text),
+                )
+                break
+        if text:
+            break
     if not text:
+        logger.warning("[snap_solve_pdf] OCR empty page=%s attempts=%s", page_index, ",".join(tried))
         return []
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     if not lines:
@@ -186,6 +240,7 @@ def _extract_questions_from_image(image_bytes: bytes, engine_choice: str, page_i
                 "confidence": float(ocr.get("confidence") or 0.7),
                 "is_valid_math": True,
                 "source_page_index": page_index,
+                "ocr_engine": ocr.get("engine_used") or tried[-1],
             }
         )
     return questions
@@ -193,6 +248,10 @@ def _extract_questions_from_image(image_bytes: bytes, engine_choice: str, page_i
 
 def _clamp_scale(scale: float) -> float:
     return max(PDF_RENDER_SCALE_MIN, min(PDF_RENDER_SCALE_MAX, scale))
+
+
+def _pix2text_available() -> bool:
+    return importlib.util.find_spec("pix2text") is not None
 
 
 @router.post("/snap-solve/pdf/prepare")
@@ -281,6 +340,14 @@ async def snap_solve_pdf_page_image(
 async def snap_solve_pdf_extract(request: Request, body: PdfExtractRequest):
     _assert_pdf_enabled()
     _rate_limit(request, "pdf_extract", PDF_RATE_LIMIT_EXTRACT)
+    if body.engine_choice == "pix2text" and not _pix2text_available():
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error_code": "OCR_ENGINE_UNAVAILABLE",
+                "message": "Pix2Text local OCR is not installed on this service.",
+            },
+        )
     session = _load_session(request, body.pdf_id)
     mode = body.mode.lower().strip()
     if mode not in {"crop", "page", "document"}:
@@ -316,6 +383,10 @@ async def snap_solve_pdf_extract(request: Request, body: PdfExtractRequest):
         out = io.BytesIO()
         image.save(out, format="PNG")
         extracted = _extract_questions_from_image(out.getvalue(), body.engine_choice, page_index=body.page_index)
+        if not extracted:
+            warnings.append(
+                f"OCR returned no text for {mode} extraction (page={body.page_index}, engine={body.engine_choice})."
+            )
     else:
         doc_started = time.perf_counter()
         max_pages = min(session.page_count, PDF_DOCUMENT_MAX_PAGES)

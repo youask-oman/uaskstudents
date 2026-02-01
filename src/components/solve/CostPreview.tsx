@@ -1,11 +1,17 @@
 "use client";
 
 interface CostPreviewProps {
-    baseCost: number;
-    ocrCost?: number;
-    voiceCost?: number;
+    perQuestionCost: number;
+    questionCount?: number;
+    breakdown?: {
+        tier_base: number;
+        ocr: number;
+        voice: number;
+        verify?: number;
+        plot?: number;
+        asset_type_addon?: number;
+    };
     creditsRemaining: number;
-    isDetailed?: boolean;
     className?: string;
 }
 
@@ -14,15 +20,23 @@ interface CostPreviewProps {
  * Shows breakdown if OCR/voice add-ons are used.
  */
 export default function CostPreview({
-    baseCost,
-    ocrCost = 0,
-    voiceCost = 0,
+    perQuestionCost,
+    questionCount = 1,
+    breakdown,
     creditsRemaining,
-    isDetailed = false,
     className = ""
 }: CostPreviewProps) {
-    const totalCost = baseCost + ocrCost + voiceCost;
+    const totalCost = perQuestionCost * questionCount;
     const hasEnoughCredits = creditsRemaining >= totalCost;
+    const showBreakdown = Boolean(
+        breakdown &&
+        ((breakdown.ocr || 0) > 0 ||
+            (breakdown.voice || 0) > 0 ||
+            (breakdown.verify || 0) > 0 ||
+            (breakdown.plot || 0) > 0 ||
+            (breakdown.asset_type_addon || 0) > 0 ||
+            (breakdown.tier_base || 0) > 0)
+    );
 
     return (
         <div className={`flex items-center gap-2 text-sm ${className}`}>
@@ -39,12 +53,16 @@ export default function CostPreview({
             </div>
 
             {/* Show breakdown for detailed mode or add-ons */}
-            {(isDetailed || ocrCost > 0 || voiceCost > 0) && (
+            {showBreakdown && breakdown && (
                 <div className="flex items-center gap-1 text-xs text-slate-400">
                     <span>(</span>
-                    <span>{baseCost} base</span>
-                    {ocrCost > 0 && <span>+ {ocrCost} OCR</span>}
-                    {voiceCost > 0 && <span>+ {voiceCost} voice</span>}
+                    <span>{breakdown.tier_base} tier</span>
+                    {(breakdown.ocr || 0) > 0 && <span>+ {breakdown.ocr} OCR</span>}
+                    {(breakdown.voice || 0) > 0 && <span>+ {breakdown.voice} voice</span>}
+                    {(breakdown.verify || 0) > 0 && <span>+ {breakdown.verify} verify</span>}
+                    {(breakdown.plot || 0) > 0 && <span>+ {breakdown.plot} plot</span>}
+                    {(breakdown.asset_type_addon || 0) > 0 && <span>+ {breakdown.asset_type_addon} asset</span>}
+                    {questionCount > 1 && <span>x {questionCount}</span>}
                     <span>)</span>
                 </div>
             )}

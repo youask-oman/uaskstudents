@@ -740,3 +740,27 @@ HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
 HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
 HTTP Request: GET https://api.openai.com/v1/models "HTTP/1.1 401 Unauthorized"
 HTTP Request: POST https://api.openai.com/v1/responses "HTTP/1.1 401 Unauthorized"
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+HTTP Request: GET https://api.openai.com/v1/models "HTTP/1.1 401 Unauthorized"
+Region recognition failed: Pix2Text is not installed. This engine requires worker dependencies.
+Region recognition failed: Pix2Text is not installed. This engine requires worker dependencies.
+Region recognition failed: Pix2Text is not installed. This engine requires worker dependencies.
+Region recognition failed: Pix2Text is not installed. This engine requires worker dependencies.
+Region recognition failed: Pix2Text is not installed. This engine requires worker dependencies.
+Region recognition failed: Pix2Text is not installed. This engine requires worker dependencies.
+Region recognition failed: Pix2Text is not installed. This engine requires worker dependencies.
+Region recognition failed: Pix2Text is not installed. This engine requires worker dependencies.
+Region recognition failed: Pix2Text is not installed. This engine requires worker dependencies.
+Region recognition failed: Pix2Text is not installed. This engine requires worker dependencies.
+Region recognition failed: Pix2Text is not installed. This engine requires worker dependencies.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+Region recognition failed: Pix2Text is not installed. This engine requires worker dependencies.
+Region recognition failed: litellm is not installed. VLM engine requires litellm.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"

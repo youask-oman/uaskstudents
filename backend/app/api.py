@@ -83,6 +83,7 @@ from slowapi.errors import RateLimitExceeded
 from app.bg_routers.voice_router import router as voice_router
 from app.bg_routers.local_router import router as local_router
 from app.bg_routers.snap_solve_pdf import router as snap_solve_pdf_router
+from app.bg_routers.credits_router import router as credits_router
 
 limiter = Limiter(key_func=get_remote_address)
 api_router = APIRouter()
@@ -90,6 +91,7 @@ api_router = APIRouter()
 api_router.include_router(voice_router, tags=["voice"])
 api_router.include_router(local_router, tags=["local_math"])
 api_router.include_router(snap_solve_pdf_router, tags=["snap_solve_pdf"])
+api_router.include_router(credits_router, tags=["credits"])
 
 
 # --- Helper Functions ---

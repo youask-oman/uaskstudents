@@ -42,6 +42,26 @@ export interface SubscriptionResponse {
     allow_voice: boolean;
 }
 
+export type SolveTier = "FREE" | "STANDARD" | "RESEARCH";
+export type SolveInputType = "text" | "snap" | "voice";
+export type SolveAssetType = "none" | "image" | "pdf";
+
+export interface CreditsEstimateBreakdown {
+    tier_base: number;
+    ocr: number;
+    voice: number;
+    verify: number;
+    plot: number;
+    asset_type_addon?: number;
+}
+
+export interface CreditsEstimateResponse {
+    total_credits: number;
+    per_question_credits: number;
+    breakdown: CreditsEstimateBreakdown;
+    pricing_version: string;
+}
+
 /**
  * Fetch subscription details for tier-aware solve UX.
  */
@@ -59,6 +79,33 @@ export async function fetchSubscription(userId: string): Promise<SubscriptionRes
         throw new Error("Subscription response missing required fields");
     }
     return data as SubscriptionResponse;
+}
+
+export async function fetchCreditsEstimate(
+    payload: {
+        tier: SolveTier;
+        input_type: SolveInputType;
+        asset_type: SolveAssetType;
+        question_count: number;
+        addons: {
+            ocr: boolean;
+            voice: boolean;
+            verify: boolean;
+            plot: boolean;
+        };
+    }
+): Promise<CreditsEstimateResponse> {
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+    const res = await fetch(`${baseUrl}/api/v1/credits/estimate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+        const detail = await res.text();
+        throw new Error(detail || "Credits estimate failed");
+    }
+    return (await res.json()) as CreditsEstimateResponse;
 }
 
 /**
