@@ -1514,7 +1514,7 @@ async def _call_extract_questions(
                 f.write(image_bytes)
                 tmp_path = f.name
             result = ocr_service.process_job(
-                tmp_path, 
+                tmp_path,
                 engine_name="local",
                 crop_meta=crop_meta,
                 debug=debug
@@ -1539,6 +1539,12 @@ async def _call_extract_questions(
                 "output_tokens": 0,
                 "cached_tokens": 0
             }
+        except Exception as exc:
+            enable_lmm_fallback = os.getenv("ENABLE_LMM_FALLBACK", "true").lower() == "true"
+            logging.warning("Pix2Text extract failed (%s). Fallback to LMM=%s", exc, enable_lmm_fallback)
+            if not enable_lmm_fallback:
+                raise
+            # Fall through to LMM/VLM extraction below.
         finally:
             if tmp_path and os.path.exists(tmp_path):
                 os.unlink(tmp_path)

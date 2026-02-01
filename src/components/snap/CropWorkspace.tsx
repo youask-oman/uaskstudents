@@ -47,6 +47,7 @@ export default function CropWorkspace({
 }: CropWorkspaceProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const [workspaceSize, setWorkspaceSize] = useState({ width: 0, height: 0 });
+    const [mediaSize, setMediaSize] = useState<{ width: number; height: number } | null>(null);
     const [cropWidthScale, setCropWidthScale] = useState(DEFAULT_WIDTH_SCALE);
     const [cropHeightScale, setCropHeightScale] = useState(DEFAULT_HEIGHT_SCALE);
     const [lockRatio, setLockRatio] = useState(false);
@@ -121,10 +122,15 @@ export default function CropWorkspace({
         }
     }, [resetToken, resetCropScale]);
 
-    const cropSize = {
-        width: Math.max(32, clamp(workspaceSize.width * cropWidthScale, 32, workspaceSize.width)),
-        height: Math.max(32, clamp(workspaceSize.height * cropHeightScale, 32, workspaceSize.height)),
-    };
+    const cropSize = fullPage
+        ? {
+            width: Math.max(32, workspaceSize.width),
+            height: Math.max(32, workspaceSize.height),
+        }
+        : {
+            width: Math.max(32, clamp(workspaceSize.width * cropWidthScale, 32, workspaceSize.width)),
+            height: Math.max(32, clamp(workspaceSize.height * cropHeightScale, 32, workspaceSize.height)),
+        };
     const cropperKey = `${fullPage ? "full" : "crop"}-${Math.round(cropWidthScale * 100)}-${Math.round(cropHeightScale * 100)}`;
 
     const handleCropComplete = React.useCallback(
@@ -225,8 +231,10 @@ export default function CropWorkspace({
                 onRotationChange={onRotationChange}
                 onCropComplete={handleCropComplete}
                 onMediaLoaded={(media) => {
+                    const natural = { width: media.naturalWidth, height: media.naturalHeight };
+                    setMediaSize(natural);
                     if (onImageSize) {
-                        onImageSize({ width: media.naturalWidth, height: media.naturalHeight });
+                        onImageSize(natural);
                     }
                 }}
                 cropSize={cropSize}

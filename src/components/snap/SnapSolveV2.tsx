@@ -72,6 +72,26 @@ const ENGINE_LABELS: Record<EngineChoice, string> = {
     pix2text: "Pix2Text",
     lmm: "LMM (Uask AI)",
 };
+const FALLBACK_API_BASE = process.env.NEXT_PUBLIC_API_FALLBACK_URL || "";
+
+function buildFallbackUrl(path: string) {
+    if (!FALLBACK_API_BASE) return path;
+    if (/^https?:\/\//i.test(path)) return path;
+    const base = FALLBACK_API_BASE.replace(/\/+$/, "");
+    const suffix = path.startsWith("/") ? path : `/${path}`;
+    return `${base}${suffix}`;
+}
+
+async function fetchApi(path: string, init?: RequestInit) {
+    try {
+        const res = await fetch(path, init);
+        if (res.ok || !FALLBACK_API_BASE || !path.startsWith("/")) return res;
+        return await fetch(buildFallbackUrl(path), init);
+    } catch (err) {
+        if (!FALLBACK_API_BASE) throw err;
+        return await fetch(buildFallbackUrl(path), init);
+    }
+}
 
 function normalizeExtractResponse(response: ExtractResponse): ExtractResponse {
     const decodedNotes = response.notes?.map((note) =>
@@ -206,7 +226,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout for transcription
 
-            const transcribeRes = await fetch("/api/v1/audio/transcribe", {
+            const transcribeRes = await fetchApi("/api/v1/audio/transcribe", {
                 method: "POST",
                 body: formData,
                 signal: controller.signal
@@ -232,7 +252,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                 }
             };
 
-            const commandRes = await fetch("/api/v1/voice/command", {
+            const commandRes = await fetchApi("/api/v1/voice/command", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(commandPayload)
@@ -307,7 +327,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                     errForm.append("file", blob, "selection.jpg");
                     errForm.append("transcript", voiceTranscript || "");
 
-                    const errRes = await fetch("/api/v1/find_error", { method: "POST", body: errForm });
+                    const errRes = await fetchApi("/api/v1/find_error", { method: "POST", body: errForm });
                     const errData = await errRes.json();
 
                     if (errData.ok && errData.what_is_wrong) {
@@ -372,6 +392,8 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
         setFile(null);
         setFileType(null);
         setImageSrc(null);
+        setImageSize(null);
+        setViewportSize(null);
         setPageNumber(1);
         setPageCount(1);
         setCrop({ x: 0, y: 0 });
@@ -386,6 +408,15 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
         setSolveResults([]);
         setIsBusy(false);
         setFigureCrops({});
+        setErrorDiagnosis(null);
+        setLocalSteps(null);
+        setOcrMetadata({
+            ocr_confidence: 0,
+            ocr_warnings: [],
+            ocr_source: "image",
+            ocr_engine: "snap_v2",
+        });
+        setEngineStats({ pix2text: {}, lmm: {} });
         if (abortRef.current) {
             abortRef.current.abort();
             abortRef.current = null;
@@ -516,7 +547,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
 
             const startTime = Date.now();
             const userId = localStorage.getItem("user_id") || "1";
-            const res = await fetch(`/api/v1/extract_questions?user_id=${userId}`, {
+            const res = await fetchApi(`/api/v1/extract_questions?user_id=${userId}`, {
                 method: "POST",
                 body: form,
                 signal: controller.signal,
@@ -562,10 +593,14 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
 
             cache[requestHash] = normalizedData;
             saveCache(cache);
-            setStatus(normalizedData.ok ? "ready" : "error");
             if (!normalizedData.ok) {
+                setStatus("error");
                 setError(normalizedData.error || "Extraction returned error state.");
-            } else if (normalizedData.questions && normalizedData.questions.length > 0) {
+            } else if (!normalizedData.questions || normalizedData.questions.length === 0) {
+                setStatus("error");
+                setError("No questions detected. Try a tighter crop or switch OCR engine.");
+            } else {
+                setStatus("ready");
                 // Auto-select the first valid question for convenience
                 const firstValid = normalizedData.questions.find(q => q.is_valid_math);
                 if (firstValid) {
@@ -656,7 +691,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                 requires_figure: q.requires_figure || false,
                 figure_image_base64: figureCrops[q.id] || null,
             }));
-            const res = await fetch(`/api/v1/solve_questions_batch?user_id=${userId}`, {
+            const res = await fetchApi(`/api/v1/solve_questions_batch?user_id=${userId}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -751,7 +786,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                 max_lines: 6
             };
 
-            const res = await fetch("/api/v1/find_error_local", {
+            const res = await fetchApi("/api/v1/find_error_local", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
@@ -1022,42 +1057,19 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3">
-                        {!extractResult ? (
-                            <button
-                                type="button"
-                                onClick={handleExtract}
-                                disabled={!canExtract}
-                                className="px-5 py-2.5 text-sm font-bold rounded-xl bg-primary text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:hover:scale-100"
-                            >
-                                {isBusy && status === "extracting" ? (
-                                    <div className="flex items-center gap-2">
-                                        <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                        Extracting...
-                                    </div>
-                                ) : "Extract"}
-                            </button>
-                        ) : (
-                            <button
-                                type="button"
-                                onClick={handleSolveSelected}
-                                disabled={selectedCount === 0 || isBusy}
-                                className="px-5 py-2.5 text-sm font-bold rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:hover:scale-100"
-                            >
-                                {isBusy && status === "solving" ? (
-                                    <div className="flex items-center gap-2">
-                                        <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                        Solving...
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center gap-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                        </svg>
-                                        Solve with Uask AI Math
-                                    </div>
-                                )}
-                            </button>
-                        )}
+                        <button
+                            type="button"
+                            onClick={handleExtract}
+                            disabled={!canExtract}
+                            className="px-5 py-2.5 text-sm font-bold rounded-xl bg-primary text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:hover:scale-100"
+                        >
+                            {isBusy && status === "extracting" ? (
+                                <div className="flex items-center gap-2">
+                                    <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    Extracting...
+                                </div>
+                            ) : "Extract"}
+                        </button>
                         <button
                             type="button"
                             onClick={handleResetCropControls}

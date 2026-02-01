@@ -24,7 +24,6 @@ import { validateMathQuery, isBlockingInputError, isInputTooShort } from "@/lib/
 
 // Tier-aware solve imports
 import SegmentedControl from "@/components/ui/SegmentedControl";
-import UsageMeter from "@/components/ui/UsageMeter";
 import CostPreview from "@/components/solve/CostPreview";
 import { SubscriptionResponse, fetchSubscription, calculateSolveCost } from "@/lib/subscription";
 import { TokenPolicy, fetchTokenPolicy } from "@/lib/tokenPolicy";
@@ -631,48 +630,7 @@ export default function DashboardPage() {
                                     className="solve-segmented"
                                 />
 
-                                {/* Answer Style Toggle */}
-                                <SegmentedControl
-                                    label="Answer Style"
-                                    options={[
-                                        { value: "quick", label: "Quick", icon: "speed" },
-                                        {
-                                            value: "tutor",
-                                            label: "Tutor",
-                                            icon: "menu_book",
-                                            disabled: !allowDetailed,
-                                            tooltip: allowDetailed
-                                                ? "Step-by-step with checkpoints"
-                                                : "Upgrade to unlock detailed explanations"
-                                        }
-                                    ]}
-                                    value={selectedAnswerStyle}
-                                    onChange={(v) => {
-                                        if (allowDetailed || v === "quick") {
-                                            setSelectedAnswerStyle(v as 'quick' | 'tutor');
-                                        }
-                                    }}
-                                    size="sm"
-                                    className="solve-segmented"
-                                />
-
-                                {/* Usage Meters */}
-                                {readySubscription && (
-                                    <div className="flex items-center gap-4">
-                                        <UsageMeter
-                                            label="Credits"
-                                            used={readySubscription.usage.credits_used}
-                                            limit={readySubscription.plan.credits_monthly}
-                                            icon="payments"
-                                        />
-                                        <UsageMeter
-                                            label="OCR"
-                                            used={readySubscription.usage.ocr_used}
-                                            limit={readySubscription.usage.ocr_limit}
-                                            icon="document_scanner"
-                                        />
-                                    </div>
-                                )}
+                                {/* Answer Style Toggle moved below input mode tabs */}
                                 {subscriptionLoaded && subscriptionError && (
                                     <div className="text-xs font-semibold text-rose-500">
                                         {subscriptionError}
@@ -745,6 +703,31 @@ export default function DashboardPage() {
 
                                 {activeTab === 'text' && (
                                     <div className="flex flex-col gap-6 relative">
+                                        {/* Answer Style Toggle (above input mode tabs) */}
+                                        <SegmentedControl
+                                            label="Answer Style"
+                                            options={[
+                                                { value: "quick", label: "Quick", icon: "speed" },
+                                                {
+                                                    value: "tutor",
+                                                    label: "Tutor",
+                                                    icon: "menu_book",
+                                                    disabled: !allowDetailed,
+                                                    tooltip: allowDetailed
+                                                        ? "Step-by-step with checkpoints"
+                                                        : "Upgrade to unlock detailed explanations"
+                                                }
+                                            ]}
+                                            value={selectedAnswerStyle}
+                                            onChange={(v) => {
+                                                if (allowDetailed || v === "quick") {
+                                                    setSelectedAnswerStyle(v as 'quick' | 'tutor');
+                                                }
+                                            }}
+                                            size="sm"
+                                            className="solve-segmented"
+                                        />
+
                                         {/* Input Mode Selector (Expression / Word Problem / Graphing) */}
                                         <InputModeSelector
                                             selectedMode={selectedInputMode}

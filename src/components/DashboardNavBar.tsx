@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import UsageMeter from "@/components/ui/UsageMeter";
+import { SubscriptionResponse, fetchSubscription } from "@/lib/subscription";
 import { useTheme } from "@/hooks/useTheme";
 
 type StoredUser = {
@@ -34,6 +36,7 @@ export default function DashboardNavBar() {
     const [userRole, setUserRole] = useState("student");
     const [userTier, setUserTier] = useState("free");
     const [userAvatar, setUserAvatar] = useState("");
+    const [subscription, setSubscription] = useState<SubscriptionResponse | null>(null);
 
     const router = useRouter();
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -51,6 +54,18 @@ export default function DashboardNavBar() {
             setUserAvatar(storedUser?.avatar_url || localStorage.getItem("user_avatar") || "");
         };
 
+        const refreshSubscription = async () => {
+            if (typeof window === "undefined") return;
+            const userId = localStorage.getItem("user_id");
+            if (!userId) return;
+            try {
+                const sub = await fetchSubscription(userId);
+                setSubscription(sub);
+            } catch (error) {
+                console.warn("Failed to load subscription for navbar:", error);
+            }
+        };
+
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
                 setIsProfileOpen(false);
@@ -66,6 +81,7 @@ export default function DashboardNavBar() {
         };
 
         refreshUserInfo();
+        void refreshSubscription();
         document.addEventListener("mousedown", handleClickOutside);
         window.addEventListener("storage", handleStorage);
 
@@ -95,6 +111,22 @@ export default function DashboardNavBar() {
                         <Link className="text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white transition-colors text-sm font-medium" href="/dashboard?tab=history">History</Link>
                         <Link className="text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white transition-colors text-sm font-medium" href="#">Resources</Link>
                     </nav>
+                    {subscription && (
+                        <div className="hidden lg:flex items-center gap-3">
+                            <UsageMeter
+                                label="Credits"
+                                used={subscription.usage.credits_used}
+                                limit={subscription.plan.credits_monthly}
+                                icon="payments"
+                            />
+                            <UsageMeter
+                                label="OCR"
+                                used={subscription.usage.ocr_used}
+                                limit={subscription.usage.ocr_limit}
+                                icon="document_scanner"
+                            />
+                        </div>
+                    )}
                     <div className="flex items-center gap-4">
                         <button
                             onClick={toggleTheme}

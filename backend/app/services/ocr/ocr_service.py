@@ -248,6 +248,9 @@ class LocalEngine(OCREngine):
         fallback_chain = []
         debug_dir = None
         user_selection = crop_meta.get("user_selection", "crop") if crop_meta else "crop"
+
+        if Pix2Text is None:
+            raise OCREngineError("Pix2Text is not installed. This engine requires worker dependencies.", engine="local")
         
         # Determine image stats
         try:
@@ -579,6 +582,17 @@ class OCRService:
             
             result = engine.process(image_path, **process_kwargs)
             result["engine_used"] = engine.engine_name
+            # If local OCR returns empty/weak content, optionally fall back to VLM.
+            if engine_name == "local":
+                enable_lmm_fallback = os.getenv("ENABLE_LMM_FALLBACK", "true").lower() == "true"
+                content = (result.get("markdown") or result.get("plain_text") or "").strip()
+                confidence = float(result.get("confidence") or 0.0)
+                if enable_lmm_fallback and (not content or confidence <= 0.1):
+                    logger.warning("Local OCR returned empty/low-confidence result. Falling back to VLM...")
+                    vlm_res = self.vlm_engine.process(image_path, **kwargs)
+                    vlm_res["engine_used"] = "vlm"
+                    vlm_res["fallback_from"] = "local"
+                    return vlm_res
             return result
             
         except OCREngineError as e:

@@ -514,3 +514,141 @@ Attempting to connect to database (Attempt 1/10)...
 Database connection successful and tables created.
 Attempting to connect to database (Attempt 1/10)...
 Database connection successful and tables created.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-01&end_date=2026-02-01
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-01&end_date=2026-02-01
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-01&end_date=2026-02-01
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-01&end_date=2026-02-01
+extract_questions input metrics: size=974x777 stddev=71.96 white=0.884
+OCR processing: engine=local, image=/tmp/tmpzz7guttn.png
+Pix2Text step recognize_text_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize failed: Pix2Text is not installed. This engine requires worker dependencies.
+extract_questions input metrics: size=1107x884 stddev=100.61 white=0.794
+OCR processing: engine=local, image=/tmp/tmpv239uftv.png
+Pix2Text step recognize_text_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize failed: Pix2Text is not installed. This engine requires worker dependencies.
+extract_questions input metrics: size=626x500 stddev=28.30 white=0.974
+OCR processing: engine=local, image=/tmp/tmp2jchj_a7.png
+Pix2Text step recognize_text_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize failed: Pix2Text is not installed. This engine requires worker dependencies.
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-01&end_date=2026-02-01
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-01&end_date=2026-02-01
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-01&end_date=2026-02-01
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-01&end_date=2026-02-01
+HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+[QUESTION_CACHE] Already exists: 289d985ef36b321c...
+HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+extract_questions input metrics: size=743x593 stddev=123.00 white=0.435
+OCR processing: engine=local, image=/tmp/tmp43bd85sd.png
+Pix2Text step recognize_text_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize failed: Pix2Text is not installed. This engine requires worker dependencies.
+extract_questions input metrics: size=480x692 stddev=99.23 white=0.796
+OCR processing: engine=local, image=/tmp/tmptafr4pkf.png
+Pix2Text step recognize_text_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize failed: Pix2Text is not installed. This engine requires worker dependencies.
+extract_questions input metrics: size=643x233 stddev=59.76 white=0.919
+OCR processing: engine=local, image=/tmp/tmpjd1xz0p_.png
+Pix2Text step recognize_text_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize failed: Pix2Text is not installed. This engine requires worker dependencies.
+extract_questions input metrics: size=1543x1232 stddev=86.12 white=0.129
+OCR processing: engine=local, image=/tmp/tmp3w79arxx.png
+Pix2Text step recognize_text_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize failed: Pix2Text is not installed. This engine requires worker dependencies.
+extract_questions input metrics: size=771x675 stddev=37.14 white=0.945
+OCR processing: engine=local, image=/tmp/tmpfyg51nmv.png
+Pix2Text step recognize_text_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize failed: Pix2Text is not installed. This engine requires worker dependencies.
+extract_questions input metrics: size=520x415 stddev=25.02 white=0.977
+OCR processing: engine=local, image=/tmp/tmpllk1g_t_.png
+Pix2Text step recognize_text_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize failed: Pix2Text is not installed. This engine requires worker dependencies.
+extract_questions input metrics: size=684x507 stddev=100.92 white=0.000
+OCR processing: engine=local, image=/tmp/tmp7iw9uom5.png
+Pix2Text step recognize_text_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize failed: Pix2Text is not installed. This engine requires worker dependencies.
+extract_questions input metrics: size=391x312 stddev=117.29 white=0.300
+OCR processing: engine=local, image=/tmp/tmpikmxhuks.png
+Pix2Text step recognize_text_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize failed: Pix2Text is not installed. This engine requires worker dependencies.
+extract_questions input metrics: size=565x451 stddev=101.24 white=0.609
+OCR processing: engine=local, image=/tmp/tmpff5xh89a.png
+Pix2Text step recognize_text_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize failed: Pix2Text is not installed. This engine requires worker dependencies.
+extract_questions input metrics: size=565x451 stddev=101.23 white=0.608
+OCR processing: engine=local, image=/tmp/tmp_fq21jkv.png
+Pix2Text step recognize_text_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize failed: Pix2Text is not installed. This engine requires worker dependencies.
+extract_questions input metrics: size=981x783 stddev=120.26 white=0.622
+OCR processing: engine=local, image=/tmp/tmphvo_g7vg.png
+Pix2Text step recognize_text_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize failed: Pix2Text is not installed. This engine requires worker dependencies.
+extract_questions input metrics: size=974x777 stddev=71.65 white=0.887
+OCR processing: engine=local, image=/tmp/tmpboql_93b.png
+Pix2Text step recognize_text_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize_formula failed: Pix2Text is not installed. This engine requires worker dependencies.
+Pix2Text step recognize failed: Pix2Text is not installed. This engine requires worker dependencies.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+extract_questions input metrics: size=626x491 stddev=40.73 white=0.933
+OCR processing: engine=local, image=/tmp/tmp8xncg9g0.png
+OCR engine 'local' failed: Pix2Text is not installed. This engine requires worker dependencies.
+Local engine failed, falling back to LMM (VLM) engine...
+Fallback to LMM also failed: litellm is not installed. VLM engine requires litellm.
+extract_questions failed
+Traceback (most recent call last):
+  File "/app/app/api.py", line 2099, in extract_questions
+    extract_data = await _call_extract_questions(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+    )
+    ^
+  File "/app/app/api.py", line 1516, in _call_extract_questions
+    result = ocr_service.process_job(
+        tmp_path,
+    ...<2 lines>...
+        debug=debug
+    )
+  File "/app/app/services/ocr/ocr_service.py", line 583, in process_job
+    result = engine.process(image_path, **process_kwargs)
+  File "/app/app/services/ocr/ocr_service.py", line 253, in process
+    raise OCREngineError("Pix2Text is not installed. This engine requires worker dependencies.", engine="local")
+app.services.ocr.ocr_service.OCREngineError: Pix2Text is not installed. This engine requires worker dependencies.
+extract_questions input metrics: size=626x491 stddev=40.73 white=0.933
+OCR processing: engine=local, image=/tmp/tmpfdomgeo1.png
+OCR engine 'local' failed: Pix2Text is not installed. This engine requires worker dependencies.
+Local engine failed, falling back to LMM (VLM) engine...
+Fallback to LMM also failed: litellm is not installed. VLM engine requires litellm.
+extract_questions failed
+Traceback (most recent call last):
+  File "/app/app/api.py", line 2099, in extract_questions
+    extract_data = await _call_extract_questions(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+    )
+    ^
+  File "/app/app/api.py", line 1516, in _call_extract_questions
+    result = ocr_service.process_job(
+        tmp_path,
+    ...<2 lines>...
+        debug=debug
+    )
+  File "/app/app/services/ocr/ocr_service.py", line 583, in process_job
+    result = engine.process(image_path, **process_kwargs)
+  File "/app/app/services/ocr/ocr_service.py", line 253, in process
+    raise OCREngineError("Pix2Text is not installed. This engine requires worker dependencies.", engine="local")
+app.services.ocr.ocr_service.OCREngineError: Pix2Text is not installed. This engine requires worker dependencies.
