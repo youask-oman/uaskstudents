@@ -6146,17 +6146,18 @@ async def admin_get_db_table(
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_session)
 ):
-    table = SQLModel.metadata.tables.get(table_name)
-    if not table:
+    if table_name not in SQLModel.metadata.tables:
         raise HTTPException(status_code=404, detail="Table not found")
+    table = SQLModel.metadata.tables[table_name]
     if table.schema:
         qualified_name = f"\"{table.schema}\".\"{table.name}\""
     else:
         qualified_name = f"\"{table.name}\""
     try:
         query = sql_text(f"SELECT * FROM {qualified_name} LIMIT :limit OFFSET :offset")
-        rows = db.exec(query, {"limit": limit, "offset": offset}).all()
-        return [dict(row._mapping) for row in rows]
+        result = db.execute(query, {"limit": limit, "offset": offset})
+        rows = result.mappings().all()
+        return [dict(row) for row in rows]
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to read table {table_name}: {exc}")
 

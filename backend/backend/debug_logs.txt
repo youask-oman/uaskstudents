@@ -652,3 +652,11 @@ Traceback (most recent call last):
   File "/app/app/services/ocr/ocr_service.py", line 253, in process
     raise OCREngineError("Pix2Text is not installed. This engine requires worker dependencies.", engine="local")
 app.services.ocr.ocr_service.OCREngineError: Pix2Text is not installed. This engine requires worker dependencies.
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-01&end_date=2026-02-01
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-01&end_date=2026-02-01
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-01&end_date=2026-02-01
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-01&end_date=2026-02-01
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.

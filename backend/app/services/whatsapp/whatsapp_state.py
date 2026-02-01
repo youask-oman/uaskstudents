@@ -98,6 +98,7 @@ def log_whatsapp_event(event: Dict[str, Any], max_len: int = 200) -> None:
         payload.setdefault("timestamp", datetime.utcnow().isoformat() + "Z")
         if "text" in payload and isinstance(payload["text"], str):
             if len(payload["text"]) > max_len:
+                payload["full_text"] = payload["text"]
                 payload["text"] = payload["text"][: max_len - 3] + "..."
         get_redis().lpush(key, json.dumps(payload))
         get_redis().ltrim(key, 0, 199)

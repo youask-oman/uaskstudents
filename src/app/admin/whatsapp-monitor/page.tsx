@@ -8,6 +8,7 @@ interface MonitorEvent {
     from?: string;
     to?: string;
     text?: string;
+    full_text?: string;
     message_id?: string;
     upload_id?: string;
     ok?: boolean;
@@ -29,6 +30,7 @@ export default function WhatsAppMonitorPage() {
     const [phoneFilter, setPhoneFilter] = useState("");
     const [directionFilter, setDirectionFilter] = useState("");
     const [streaming, setStreaming] = useState(false);
+    const [selectedEvent, setSelectedEvent] = useState<MonitorEvent | null>(null);
 
     const fetchData = async () => {
         try {
@@ -171,10 +173,76 @@ export default function WhatsAppMonitorPage() {
                                 {evt.from ? `from: ${evt.from}` : ""} {evt.to ? `to: ${evt.to}` : ""}
                             </div>
                             {evt.error && <div className="mt-1 text-xs text-red-600">{evt.error}</div>}
+                            <div className="mt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedEvent(evt)}
+                                    className="text-xs font-semibold text-primary"
+                                >
+                                    View details
+                                </button>
+                            </div>
                         </div>
                     ))}
                 </div>
             </div>
+
+            {selectedEvent && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 w-[90%] max-w-3xl">
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700">
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">WhatsApp Event Detail</h3>
+                                <p className="text-xs text-slate-500">{selectedEvent.timestamp || ""}</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedEvent(null)}
+                                className="text-sm px-3 py-1 rounded border border-slate-200 dark:border-slate-700"
+                            >
+                                Close
+                            </button>
+                        </div>
+                        <div className="p-5 space-y-4">
+                            <div className="text-sm text-slate-700 dark:text-slate-200">
+                                <div className="text-xs text-slate-500 mb-1">Summary</div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className={`px-2 py-0.5 rounded text-xs ${selectedEvent.direction === "in" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"}`}>
+                                        {selectedEvent.direction}
+                                    </span>
+                                    <span className="text-xs text-slate-500">{selectedEvent.type}</span>
+                                    {selectedEvent.ok === false && <span className="text-xs text-red-600">failed</span>}
+                                    {selectedEvent.message_id && <span className="text-xs text-slate-500">msg: {selectedEvent.message_id}</span>}
+                                    {selectedEvent.upload_id && <span className="text-xs text-slate-500">upload: {selectedEvent.upload_id}</span>}
+                                </div>
+                                <div className="mt-2 text-xs text-slate-500">
+                                    {selectedEvent.from ? `from: ${selectedEvent.from}` : ""} {selectedEvent.to ? `to: ${selectedEvent.to}` : ""}
+                                </div>
+                            </div>
+                            <div className="text-sm">
+                                <div className="text-xs text-slate-500 mb-1">Full Text</div>
+                                <pre className="whitespace-pre-wrap text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-800 p-3 rounded border border-slate-200 dark:border-slate-700 text-xs">
+{selectedEvent.full_text || selectedEvent.text || ""}
+                                </pre>
+                            </div>
+                            {selectedEvent.error && (
+                                <div className="text-sm">
+                                    <div className="text-xs text-slate-500 mb-1">Error</div>
+                                    <pre className="whitespace-pre-wrap text-red-600 bg-red-50 dark:bg-red-900/30 p-3 rounded border border-red-200 dark:border-red-800 text-xs">
+{selectedEvent.error}
+                                    </pre>
+                                </div>
+                            )}
+                            <div className="text-sm">
+                                <div className="text-xs text-slate-500 mb-1">Raw JSON</div>
+                                <pre className="whitespace-pre-wrap text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 p-3 rounded border border-slate-200 dark:border-slate-700 text-[11px]">
+{JSON.stringify(selectedEvent, null, 2)}
+                                </pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

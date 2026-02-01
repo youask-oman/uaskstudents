@@ -12,8 +12,7 @@ export default function AdminDataPage() {
     const [limit, setLimit] = useState(200);
     const [offset, setOffset] = useState(0);
 
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
-    const fallbackUrl = process.env.NEXT_PUBLIC_API_FALLBACK_URL || "http://orchestrator:8000";
+    const fallbackUrl = process.env.NEXT_PUBLIC_API_FALLBACK_URL || "http://127.0.0.1:8000";
     const getHeaders = (): HeadersInit => {
         const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
         const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -26,9 +25,8 @@ export default function AdminDataPage() {
         const fetchTables = async () => {
             try {
                 let res: Response | null = null;
-                try {
-                    res = await fetch(`${baseUrl}/api/v1/admin/db/tables`, { headers: getHeaders(), signal: controller.signal });
-                } catch (_e) {
+                res = await fetch(`/api/admin/db/tables`, { headers: getHeaders(), signal: controller.signal });
+                if (!res.ok) {
                     res = await fetch(`${fallbackUrl}/api/v1/admin/db/tables`, { headers: getHeaders(), signal: controller.signal });
                 }
                 if (!res.ok) throw new Error("Failed to load tables.");
@@ -47,7 +45,7 @@ export default function AdminDataPage() {
         };
         fetchTables();
         return () => controller.abort();
-    }, [baseUrl]);
+    }, []);
 
     useEffect(() => {
         if (!selectedTable) return;
@@ -55,9 +53,8 @@ export default function AdminDataPage() {
         const fetchRows = async () => {
             try {
                 let res: Response | null = null;
-                try {
-                    res = await fetch(`${baseUrl}/api/v1/admin/db/table/${encodeURIComponent(selectedTable)}?limit=${limit}&offset=${offset}`, { headers: getHeaders(), signal: controller.signal });
-                } catch (_e) {
+                res = await fetch(`/api/admin/db/table/${encodeURIComponent(selectedTable)}?limit=${limit}&offset=${offset}`, { headers: getHeaders(), signal: controller.signal });
+                if (!res.ok) {
                     res = await fetch(`${fallbackUrl}/api/v1/admin/db/table/${encodeURIComponent(selectedTable)}?limit=${limit}&offset=${offset}`, { headers: getHeaders(), signal: controller.signal });
                 }
                 if (!res.ok) throw new Error("Failed to load rows.");
@@ -71,7 +68,7 @@ export default function AdminDataPage() {
         };
         fetchRows();
         return () => controller.abort();
-    }, [selectedTable, limit, offset, baseUrl]);
+    }, [selectedTable, limit, offset]);
 
     const filteredRows = useMemo(() => {
         if (!filter.trim()) return rows;
