@@ -58,7 +58,7 @@ type SolveResult = {
     credits_refunded?: number;
 };
 
-type EngineChoice = "pix2text" | "lmm";
+type EngineChoice = "pix2text";
 
 type EngineStat = {
     latencyMs?: number;
@@ -67,10 +67,9 @@ type EngineStat = {
     updatedAt?: number;
 };
 
-const ENGINE_OPTIONS: EngineChoice[] = ["pix2text", "lmm"];
+const ENGINE_OPTIONS: EngineChoice[] = ["pix2text"];
 const ENGINE_LABELS: Record<EngineChoice, string> = {
     pix2text: "Pix2Text",
-    lmm: "LMM (Uask AI)",
 };
 const FALLBACK_API_BASE = process.env.NEXT_PUBLIC_API_FALLBACK_URL || "";
 
@@ -159,7 +158,6 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
     const [ocrEngineChoice, setOcrEngineChoice] = React.useState<EngineChoice>("pix2text");
     const [engineStats, setEngineStats] = React.useState<Record<EngineChoice, EngineStat>>({
         pix2text: {},
-        lmm: {},
     });
 
     // Voice & Selection State
@@ -441,7 +439,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
             ocr_source: "image",
             ocr_engine: "snap_v2",
         });
-        setEngineStats({ pix2text: {}, lmm: {} });
+        setEngineStats({ pix2text: {} });
         if (abortRef.current) {
             abortRef.current.abort();
             abortRef.current = null;
@@ -525,6 +523,8 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
                 rotation,
                 ocr_engine_choice: ocrEngineChoice,
             };
+            console.log("[DEBUG] Extraction Request Meta:", JSON.stringify(meta, null, 2));
+
             const requestHash = await buildRequestHash(fileBytes, meta);
             const cache = loadCache();
             if (cache[requestHash]) {

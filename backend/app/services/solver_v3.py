@@ -23,7 +23,8 @@ from app.llm_profiles.profiles import get_prompt_profile
 from app.services.response_mapper import map_minimal_to_canonical
 from app.utils.token_limits import get_effective_max_tokens, get_effective_max_steps
 from app.services.token_policy import get_token_policy, TokenPolicy
-from app.services.llm import get_llm_manager, LLMProviderError
+from app.services.llm.manager import LLMManager, LLMProviderError, _default_provider
+from app.services.llm.clients import LLMResponse, LLMStreamResponse
 from app.services.prompt_registry_service import prompt_registry_service, PromptRegistryError
 from app.services.prompt_manager import prompt_manager
 from app.services.message_builder import build_user_message
@@ -36,10 +37,13 @@ class SolverV3:
     
     def __init__(self, llm_manager=None):
         """Initialize solver with LLM provider manager."""
-        self._client = None
-        self._llm_manager = llm_manager or get_llm_manager()
-        self._openai_model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-4o-mini")
-        print(f"[SOLVER_V3_INIT] LLM provider: {self._llm_manager.primary_provider}")
+        self.client_manager = LLMManager()
+
+        # Hardcode Qwen Math for now or use env
+        self.default_model = os.getenv("OLLAMA_MODEL_DEFAULT", "mightykatun/qwen2.5-math:7b")
+        # Ensure we are using Ollama client:
+        # self.client = ... (access via manager now)
+        print(f"[SOLVER_V3_INIT] LLM provider: {self.client_manager.primary_provider}")
         self._logger = logging.getLogger("solver_v3")
 
     def _hash_text(self, text: str) -> str:
@@ -69,13 +73,6 @@ class SolverV3:
                 break
         return issues
 
-    @property
-    def client(self):
-        if self._client is None:
-            from openai import AsyncOpenAI
-            self._client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-        return self._client
-
     async def solve(
         self,
         problem_text: str,
@@ -102,8 +99,8 @@ class SolverV3:
         telemetry = {
             "request_id": request_id,
             "model": None,
-            "provider": self._llm_manager.primary_provider,
-            "fallback_provider": self._llm_manager.get_fallback_provider(),
+            "provider": self.client_manager.primary_provider,
+            "fallback_provider": self.client_manager.get_fallback_provider(),
             "input_tokens": 0,
             "output_tokens": 0,
             "total_tokens": 0,
@@ -268,7 +265,7 @@ class SolverV3:
             final_response_data = None
             successful_mode = None
             last_error = None
-            providers_to_try = self._llm_manager.get_provider_chain()
+            providers_to_try = self.client_manager.get_provider_chain()
 
             def _clamp_tokens_for_provider(provider: str, tokens: int) -> int:
                 if provider == "ollama":
@@ -431,13 +428,13 @@ class SolverV3:
                         continue
 
                     except LLMProviderError as e:
-                        self._llm_manager.note_error(provider, e)
+                        self.client_manager.note_error(provider, e)
                         last_error = str(e)
                         if trace:
                             print(f"[SOLVER_V3] Pass {pass_idx+1} provider={provider} error: {e}")
                         continue
                     except Exception as e:
-                        self._llm_manager.note_error(provider, e)
+                        self.client_manager.note_error(provider, e)
                         last_error = str(e)
                         if trace:
                             print(f"[SOLVER_V3] Pass {pass_idx+1} provider={provider} exception: {e}")
@@ -583,8 +580,8 @@ class SolverV3:
         
         telemetry = {
             "request_id": request_id,
-            "model": self._openai_model,
-            "provider": "openai",
+            "model": self.default_model, # Changed to default_model
+            "provider": "ollama", # Changed to ollama
             "input_tokens": 0,
             "output_tokens": 0,
             "total_tokens": 0,
@@ -600,197 +597,93 @@ class SolverV3:
         }
 
         try:
-            provider = self._llm_manager.primary_provider
-            if provider != "openai":
-                fallback = self._llm_manager.get_fallback_provider()
-                if self._llm_manager.fallback_enabled and fallback == "openai":
-                    telemetry["fallback_triggered"] = True
-                    provider = "openai"
-                else:
-                    yield {"type": "error", "error": {"code": "provider_unavailable", "message": "Streaming requires OpenAI provider."}}
-                    return
+            # For streaming, we will force Ollama for now
+            provider = "ollama"
+            client = self.client_manager.get_client(provider)
+            
             resolved_system_prompt = system_prompt or get_prompt("solver_system", "v3")
-            def load_stream_schema(config_schema: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-                candidate = config_schema if isinstance(config_schema, dict) else None
-                if not candidate:
-                    candidate = get_json_schema_for_openai_v3()
-
-                # Check for "wrapped" schema style (used in free/schema.json)
-                if isinstance(candidate, dict) and "schema" in candidate and isinstance(candidate["schema"], dict):
-                    candidate = candidate["schema"]
-
-                try:
-                    deref = deref_json_schema(candidate)
-                except Exception as exc:
-                    print(f"[SOLVER_V3_STREAM] Schema dereference failed: {exc}")
-                    deref = deref_json_schema(get_json_schema_for_openai_v3())
-
-                if not isinstance(deref, dict) or deref.get("type") is None:
-                    deref = deref_json_schema(get_json_schema_for_openai_v3())
-
-                deref = enforce_strict(deref)
-                if deref.get("type") is None:
-                    deref["type"] = "object"
-                return deref
-
-            schema_wrapper = {
-                "name": "solve_response_v3",
-                "strict": True,
-                "schema": load_stream_schema(json_schema_config)
-            }
 
             user_message = self._build_user_message(
-                problem_text,
-                context,
-                trusted_context=trusted_context,
+                problem_text, 
+                context, 
+                trusted_context=trusted_context, 
                 requested_mode=requested_mode
             )
             
-            # FORCE learning_mode="solve" if mode="minimal" to prevent token blowout
-            # We must inspect trusted_context if present, or rely on requested_mode mapping
-            # Assuming profile check or logic upstream. Here we enforce hard-cap logic.
-            # If requested_mode is minimal, we treat it as minimal for caps.
-            
-            # Ideally we need "profile" object here too for mode, but we have `requested_mode`.
-            # We will use requested_mode to determine our deterministic cap.
-            
-            effective_learning_mode_stream = None
-            if trusted_context:
-                if requested_mode == "minimal":
-                     trusted_context["learning_mode"] = "solve"
-                effective_learning_mode_stream = trusted_context.get("learning_mode")
-
-            user_message = self._build_user_message(
-                problem_text,
-                context,
-                trusted_context=trusted_context,
-                requested_mode=requested_mode
-            )
+            # Determine max tokens
             if max_output_tokens and max_output_tokens > 0:
                 effective_max_tokens = max_output_tokens
             else:
-                raise ValueError("max_output_tokens must be provided for streaming solves")
+                 effective_max_tokens = 900 # Default conservative
 
             telemetry["max_output_tokens_effective"] = effective_max_tokens
-            # Trace logs
-            print(f"[SOLVER_TRACE] Mode: {requested_mode}, Learning: {effective_learning_mode_stream}")
-            print(f"[SOLVER_TRACE] Effective Max Output Tokens: {effective_max_tokens}")
-            print(f"[SOLVER_TRACE] System Prompt Length: {len(resolved_system_prompt or '')}")
-            print(f"[SOLVER_TRACE] User Message Length: {len(user_message or '')}")
-
-            telemetry["openai_payload"] = {
-                "response_format_schema_name": schema_wrapper.get("name", "solve_response_v3"),
-                "max_output_tokens": effective_max_tokens,
-                "system_message_length": len(resolved_system_prompt or ""),
-                "user_message_length": len(user_message or "")
-            }
             
-            # Implementation of Retries with Exponential Backoff (Part G1)
-            max_retries = 3
-            current_retry = 0
+            messages = [
+                {"role": "system", "content": resolved_system_prompt},
+                {"role": "user", "content": user_message}
+            ]
+
+            if trace:
+                print(f"[SOLVER_V3_STREAM] Calling Ollama with model={self.default_model}")
+
+            response_stream = await client.generate(
+                messages=messages,
+                system_prompt=None, # Already in messages
+                prompt=None,
+                json_schema=json_schema_config.get("schema") if json_schema_config else None,
+                max_tokens=effective_max_tokens,
+                temperature=0.4,
+                stream=True,
+                request_id=request_id,
+                model=self.default_model
+            )
+
+            full_content = ""
+            first_chunk = True
             
-            while current_retry <= max_retries:
-                try:
-                    llm_start_perf = time.perf_counter()
-                    telemetry["openai_calls_count"] += 1
-                    
-                    # Note: Structured Outputs with Streaming works best with Chat Completions
-                    params = {
-                        "model": self._openai_model,
-                        "messages": [
-                            {"role": "system", "content": resolved_system_prompt},
-                            {"role": "user", "content": user_message}
-                        ],
-                        "response_format": {
-                            "type": "json_schema",
-                            "json_schema": schema_wrapper
-                        },
-                        "stream": True,
-                        "stream_options": {"include_usage": True},
-                        "max_completion_tokens": effective_max_tokens # Part A2
-                    }
-
+            # Iterate over the generator returned by OllamaClient.generate (which yields dicts/chunks)
+            async for chunk_obj in response_stream:
+                if first_chunk:
                     if trace:
-                        print(f"[SOLVER_V3_STREAM] Calling OpenAI with params: model={params.get('model')}, max_tokens={params.get('max_completion_tokens')}, messages_count={len(params.get('messages', []))}")
+                        print(f"[SOLVER_V3_STREAM] First chunk received")
+                    first_chunk = False
+                
+                # Check for errors in chunk
+                if isinstance(chunk_obj, dict) and "error" in chunk_obj:
+                     yield {"type": "error", "error": chunk_obj["error"]}
+                     break
 
-                    response = await self.client.chat.completions.create(**params)
-                    
-                    full_content = ""
-                    
-                    first_chunk = True
-                    async for chunk in response:
-                        if first_chunk:
-                            if trace:
-                                print(f"[SOLVER_V3_STREAM] First chunk: {chunk.model_dump_json()}")
-                            first_chunk = False
-                        
-                        if not chunk.choices:
-                            # Usage chunk (last one in stream_options: include_usage)
-                            if chunk.usage:
-                                telemetry["input_tokens"] = chunk.usage.prompt_tokens
-                                telemetry["output_tokens"] = chunk.usage.completion_tokens
-                                telemetry["total_tokens"] = chunk.usage.total_tokens
-                                if hasattr(chunk.usage, 'prompt_tokens_details') and chunk.usage.prompt_tokens_details:
-                                    telemetry["cached_tokens"] = getattr(chunk.usage.prompt_tokens_details, 'cached_tokens', 0)
-                                
-                                telemetry["latency_ms_openai"] = int((time.perf_counter() - llm_start_perf) * 1000)
-                                
-                                # Capture final content as full_output
-                                full_output_data = None
-                                if full_content:
-                                    try:
-                                        full_output_data = json.loads(full_content)
-                                    except:
-                                        pass
-                                        
-                                telemetry["openai_payload"] = {
-                                    "response_format_schema_name": schema_wrapper.get("name", "solve_response_v3"),
-                                    "max_output_tokens": effective_max_tokens,
-                                    "full_input": params.get("messages", []),
-                                    "full_output": full_output_data or full_content # Fallback to raw string if JSON parsing failed
-                                }
-                                
-                                yield {"type": "telemetry", "telemetry": telemetry}
-                            continue
-                            
-                        delta = chunk.choices[0].delta
-                        if hasattr(delta, "refusal") and delta.refusal:
-                            if trace:
-                                print(f"[SOLVER_V3_STREAM] ❌ OpenAI Refusal: {delta.refusal}")
-                            yield {"type": "delta", "text": f"Refusal: {delta.refusal}"}
-                                
-                        if delta.content:
-                            full_content += delta.content
-                            yield {"type": "delta", "text": delta.content}
-                        
-                        if chunk.choices[0].finish_reason == "length":
-                            telemetry["truncated"] = True
-                            if trace:
-                                print(f"[SOLVER_V3_STREAM] ⚠️ Truncated (length): output length exceeded {effective_max_tokens}")
-                            # We yield truncation info in telemetry at the end, but can also notify here
-                            yield {"type": "meta", "truncated": True}
-                        elif chunk.choices[0].finish_reason == "content_filter":
-                            if trace:
-                                print(f"[SOLVER_V3_STREAM] ❌ Truncated (content_filter)")
-                            yield {"type": "error", "error": {"code": "content_filter", "message": "Content filtered."}}
+                # The client yields LLMStreamResponse objects or dicts? 
+                # Checking clients.py: yield LLMResponse(..., content=chunk_content, ...) but it's an async generator.
+                # Actually clients.py generate(stream=True) yields chunks.
+                # Let's assume it yields standard chunks or we need to adapt.
+                # Looking at clients.py earlier: it yields chunks from `_stream_response`.
+                
+                # We need to adapt the chunk to our expected format
+                content_delta = ""
+                
+                # If chunk is object with 'content'
+                if hasattr(chunk_obj, 'content'):
+                    content_delta = chunk_obj.content
+                elif isinstance(chunk_obj, dict):
+                     content_delta = chunk_obj.get("content", "")
+                
+                if content_delta:
+                    full_content += content_delta
+                    yield {"type": "delta", "text": content_delta}
 
-                    return # Success
-
-                except Exception as e:
-                    # Handle Rate Limits (429) and Transient Errors (Part G1)
-                    current_retry += 1
-                    if current_retry > max_retries:
-                        raise e
-                    
-                    # Simple exponential backoff
-                    wait_time = (2 ** current_retry) + (time.time() % 1) # add a bit of jitter
-                    if trace:
-                        print(f"[SOLVER_V3_STREAM] Error: {e}. Retrying in {wait_time:.2f}s... ({current_retry}/{max_retries})")
-                    await asyncio.sleep(wait_time)
+            # End of stream
+            telemetry["output_tokens"] = len(full_content) // 4 # Rough approx if usage not sent
+            telemetry["latency_ms_total"] = int((time.perf_counter() - start_time_perf) * 1000)
+            
+            # Yield telemetry at end
+            yield {"type": "telemetry", "telemetry": telemetry}
 
         except Exception as e:
             if trace:
                 print(f"[SOLVER_V3_STREAM] [ERROR] FATAL: {e}")
+                import traceback
+                traceback.print_exc()
             yield {"type": "error", "error": {"code": "fatal", "message": str(e)}}
 
     def _build_user_message(

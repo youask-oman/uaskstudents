@@ -36,12 +36,6 @@ from app.models import (
     PromptTemplateEntry, JsonSchemaEntry, PromptBinding,
     PromptTierEnum, PromptModeEnum, PromptRoleEnum
 )
-from openai import AsyncOpenAI, BadRequestError
-from app.services.subscription_service import subscription_service
-from app.services.vision import VisionService, vision_service
-from app.services.solver import solver_service
-from app.services.billing_service import billing_service
-from app.services.intent import should_require_visual
 from app.services.plot_sampling import process_visuals
 from app.services.rag import rag_service
 from app.services.ocr.upload_service import upload_service

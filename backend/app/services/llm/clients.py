@@ -38,6 +38,17 @@ class LLMResponse:
     latency_ms: int
 
 
+@dataclass
+class LLMStreamResponse:
+    content: str
+    provider: str
+    model: str
+    usage: Optional[Dict[str, Any]] = None
+    status: Optional[Dict[str, Any]] = None
+    latency_ms: int = 0
+
+
+
 class CircuitBreaker:
     def __init__(self, failure_threshold: int = 3, reset_seconds: int = 30):
         self.failure_threshold = failure_threshold
@@ -127,6 +138,7 @@ def build_ollama_chat_payload(
     stream: bool,
     options: Dict[str, Any],
     keep_alive: Optional[str],
+    fmt: Optional[str] = None,
 ) -> Dict[str, Any]:
     payload: Dict[str, Any] = {
         "model": model,
@@ -134,6 +146,8 @@ def build_ollama_chat_payload(
         "stream": stream,
         "options": options,
     }
+    if fmt:
+        payload["format"] = fmt
     if keep_alive:
         payload["keep_alive"] = keep_alive
     return payload
@@ -145,6 +159,7 @@ def build_ollama_generate_payload(
     stream: bool,
     options: Dict[str, Any],
     keep_alive: Optional[str],
+    fmt: Optional[str] = None,
 ) -> Dict[str, Any]:
     payload: Dict[str, Any] = {
         "model": model,
@@ -152,6 +167,8 @@ def build_ollama_generate_payload(
         "stream": stream,
         "options": options,
     }
+    if fmt:
+        payload["format"] = fmt
     if keep_alive:
         payload["keep_alive"] = keep_alive
     return payload
@@ -483,6 +500,13 @@ class OllamaClient:
             },
         )
 
+        # Determine format (e.g. "json")
+        fmt = None
+        if json_schema:
+             # If a schema is provided, we can imply "json" format
+             # Note: Ollama supports "json" string. Future versions might support full schema.
+             fmt = "json"
+        
         options = self._build_options(max_tokens, temperature)
         if use_chat:
             endpoint = "/api/chat"
@@ -492,6 +516,7 @@ class OllamaClient:
                 stream=stream,
                 options=options,
                 keep_alive=self.keep_alive,
+                fmt=fmt,
             )
         else:
             endpoint = "/api/generate"
@@ -501,6 +526,7 @@ class OllamaClient:
                 stream=stream,
                 options=options,
                 keep_alive=self.keep_alive,
+                fmt=fmt,
             )
 
         for attempt in range(self.max_retries + 1):

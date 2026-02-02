@@ -17,32 +17,40 @@ from typing import Optional, Dict, Any, List
 import json
 
 # ============================================================
-# FIX: Redirect all logging/cache directories to /tmp for Docker
+# FIX: Redirect all logging/cache directories to system temp
 # This prevents "[Errno 30] Read-only file system" errors
 # These MUST be set before any ML library imports!
 # ============================================================
-os.environ.setdefault("TENSORBOARD_LOGDIR", "/tmp/tensorboard_logs")
-os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
-os.environ.setdefault("HF_HOME", "/tmp/huggingface")
-os.environ.setdefault("TRANSFORMERS_CACHE", "/tmp/transformers_cache")
-os.environ.setdefault("TORCH_HOME", "/tmp/torch")
-os.environ.setdefault("XDG_CACHE_HOME", "/tmp/xdg_cache")
-os.environ.setdefault("PIX2TEXT_MODEL_DIR", "/tmp/pix2text_models")
-os.environ.setdefault("ONNXRUNTIME_EXTENSIONS_CACHE_DIR", "/tmp/onnxruntime")
+import tempfile
+_TEMP_DIR = tempfile.gettempdir()
+
+os.environ.setdefault("TENSORBOARD_LOGDIR", os.path.join(_TEMP_DIR, "tensorboard_logs"))
+os.environ.setdefault("MPLCONFIGDIR", os.path.join(_TEMP_DIR, "matplotlib"))
+os.environ.setdefault("HF_HOME", os.path.join(_TEMP_DIR, "huggingface"))
+os.environ.setdefault("TRANSFORMERS_CACHE", os.path.join(_TEMP_DIR, "transformers_cache"))
+os.environ.setdefault("TORCH_HOME", os.path.join(_TEMP_DIR, "torch"))
+os.environ.setdefault("XDG_CACHE_HOME", os.path.join(_TEMP_DIR, "xdg_cache"))
+os.environ.setdefault("PIX2TEXT_MODEL_DIR", os.path.join(_TEMP_DIR, "pix2text_models"))
+os.environ.setdefault("ONNXRUNTIME_EXTENSIONS_CACHE_DIR", os.path.join(_TEMP_DIR, "onnxruntime"))
 
 # YOLO/Ultralytics specific - these control where "runs" and config are stored
-os.environ.setdefault("YOLO_CONFIG_DIR", "/tmp/Ultralytics")
-os.environ.setdefault("ULTRALYTICS_CONFIG_DIR", "/tmp/Ultralytics")
-os.environ.setdefault("HOME", "/tmp")  # Fallback for libraries that use ~/
+os.environ.setdefault("YOLO_CONFIG_DIR", os.path.join(_TEMP_DIR, "Ultralytics"))
+os.environ.setdefault("ULTRALYTICS_CONFIG_DIR", os.path.join(_TEMP_DIR, "Ultralytics"))
+os.environ.setdefault("HOME", _TEMP_DIR)  # Fallback for libraries that use ~/
 
-# Create /tmp subdirectories (safe on any Linux system)
-for _dir in ["/tmp/tensorboard_logs", "/tmp/matplotlib", "/tmp/huggingface", "/tmp/p2t_output", 
-             "/tmp/xdg_cache", "/tmp/pix2text_models", "/tmp/onnxruntime", "/tmp/torch",
-             "/tmp/Ultralytics", "/tmp/Ultralytics/runs"]:
+# Create temp subdirectories
+_DIRS_TO_CREATE = [
+    "tensorboard_logs", "matplotlib", "huggingface", "p2t_output", 
+    "xdg_cache", "pix2text_models", "onnxruntime", "torch",
+    "Ultralytics", "Ultralytics/runs"
+]
+
+for _sub in _DIRS_TO_CREATE:
+    _dir = os.path.join(_TEMP_DIR, _sub)
     try:
         os.makedirs(_dir, exist_ok=True)
     except Exception:
-        pass  # Best effort, /tmp should always be writable
+        pass  # Best effort
 
 # Lazy import - only load pix2text when actually needed (worker only)
 try:
@@ -106,7 +114,7 @@ OUTPUT:
 # ============================================================
 
 class OCREngine:
-    """Base class for OCR engines."""
+    # Base class for OCR engines.
     
     def process(self, image_path: str, **kwargs) -> Dict[str, Any]:
         raise NotImplementedError
@@ -117,11 +125,9 @@ class OCREngine:
 
 
 class LocalEngine(OCREngine):
-    """
-    Pix2Text-based local OCR engine.
-    Pros: Privacy (data stays local), no API costs
-    Cons: Slower (15-25s), requires GPU for best performance
-    """
+    # Pix2Text-based local OCR engine.
+    # Pros: Privacy (data stays local), no API costs
+    # Cons: Slower (15-25s), requires GPU for best performance
     
     def __init__(self):
         self._p2t = None
@@ -141,7 +147,7 @@ class LocalEngine(OCREngine):
         return self._p2t
     
     def _preprocess_variants(self, image_path: str, debug_dir: Optional[str] = None) -> List[str]:
-        """Creates 2-3 variants of the image for robust OCR (Requirement D)."""
+        # Creates 2-3 variants of the image for robust OCR (Requirement D).
         variants = []
         img_orig = cv2.imread(image_path) if cv2 else None
         
@@ -182,7 +188,7 @@ class LocalEngine(OCREngine):
         return variants
 
     def _select_ocr_mode(self, width: int, height: int, crop_meta: Optional[Dict[str, Any]] = None) -> str:
-        """Deterministic router for Pix2Text mode selection."""
+        # Deterministic router for Pix2Text mode selection.
         full_page = crop_meta.get("fullPage", False) if crop_meta else False
         aspect_ratio = height / width if width > 0 else 0
         
@@ -198,7 +204,7 @@ class LocalEngine(OCREngine):
         return "recognize_text_formula"
 
     def is_figure_only(self, markdown: str) -> bool:
-        """Requirement 3: Detect if output is only a figure placeholder (even multi-line)."""
+        # Requirement 3: Detect if output is only a figure placeholder (even multi-line).
         s = markdown.strip()
         if not s: return True
         
@@ -211,35 +217,57 @@ class LocalEngine(OCREngine):
         
         if not self.looks_like_math(clean):
             # Check if remaining text is just fluff/noise
-            if len(clean) < 5 or not any(c.isalnum() for c in clean):
+            # Relaxed: Allow very short text (1+ chars) if alphanumeric
+            if not any(c.isalnum() for c in clean):
+                logger.info(f"Filtered (no alphanumeric): '{clean}'")
+                return True
+            if len(clean) < 1:
                 return True
                 
         return False
 
     def looks_like_math(self, text: str) -> bool:
-        """Requirement 3: Heuristic for math presence."""
+        # Requirement 3: Heuristic for math presence.
         math_tokens = [r"\\", r"\^", r"_", r"=", r"\+", r"\-", r"\*", r"\/", r"\(", r"\)", r"\[", r"\]"]
         if any(re.search(t, text) for t in math_tokens): return True
         if any(c.isdigit() for c in text): return True
         return False
 
+    def _normalize_delimiters(self, text: str) -> str:
+        # Convert $$...$$ to \[...\]
+        # We use a simple regex that matches content between $$ tags
+        # Note: This assumes balanced tags from Pix2Text
+        text = re.sub(r'\$\$(.*?)\$\$', r'\\[\1\\]', text, flags=re.DOTALL)
+        
+        # Convert $...$ to \(...\)
+        # Negative lookahead/lookbehind to ensure we don't match double $ if any remain
+        text = re.sub(r'(?<!\$)\$(?!\$)(.*?)(?<!\$)\$(?!\$)', r'\\(\1\\)', text, flags=re.DOTALL)
+        return text
+
     def _format_output(self, text: str, mode: str) -> str:
-        """Standardized formatting rules."""
+        # Standardized formatting rules.
         s = text.strip()
         if not s: return s
         
+        # Normalize delimiters first (convert $ -> \( and $$ -> \[)
+        s = self._normalize_delimiters(s)
+
         if mode == "recognize_formula":
-            # Always wrap formula mode output
-            if not (s.startswith("$$") and s.endswith("$$")):
-                s = s.replace("$", "") # Remove single $ if present
-                return f"$${s}$$"
+            # Ensure it is wrapped in block math if not already
+            if not (s.startswith("\\[") and s.endswith("\\]")):
+                 # It might be standard text now?
+                 # If we stripped $, it might be naked.
+                 # But _normalize_delimiters handles pairs.
+                 # If the WHOLE thing is a formula but Pix2Text didn't wrap it in $$,
+                 # verify if it has delimiters.
+                 if not (s.startswith("\\(") and s.endswith("\\)")):
+                      return f"\\[{s}\\]"
             return s
             
         if mode == "recognize_text_formula":
-            # Heuristic: if it's purely a latex string and no surrounding text, wrap it
-            if "\\" in s and len(s.split()) == 1 and not (s.startswith("$") or s.startswith("$$")):
-                return f"$${s}$$"
             return s
+            
+        return s
             
         return s
 
@@ -262,7 +290,7 @@ class LocalEngine(OCREngine):
 
         if debug:
             request_id = hashlib.md5(f"{image_path}{time.time()}".encode()).hexdigest()[:8]
-            debug_dir = f"/tmp/ocr_debug/{request_id}"
+            debug_dir = os.path.join(_TEMP_DIR, "ocr_debug", request_id)
             os.makedirs(debug_dir, exist_ok=True)
             shutil.copy(image_path, os.path.join(debug_dir, "input.png"))
             logger.info(f"Debug telemetry enabled at {debug_dir}")
@@ -273,7 +301,8 @@ class LocalEngine(OCREngine):
             
             # 2. Determine APIs to try based on user_selection (Requirement 2/B)
             if user_selection == "crop":
-                api_order = ["recognize_text_formula", "recognize_formula", "recognize"]
+                # Prioritize recognize_page to detect tables and layout properly
+                api_order = ["recognize_page", "recognize_text_formula", "recognize_formula", "recognize"]
             else: # whole_page
                 api_order = ["recognize_page", "recognize_text_formula"]
 
@@ -287,7 +316,7 @@ class LocalEngine(OCREngine):
                     try:
                         if api_name == "recognize_page":
                             res = self.p2t.recognize_page(v_path, save_dir=out_dir)
-                            raw = res.to_markdown(out_dir or "/tmp/p2t_output") if hasattr(res, "to_markdown") else str(res)
+                            raw = res.to_markdown(out_dir or os.path.join(_TEMP_DIR, "p2t_output")) if hasattr(res, "to_markdown") else str(res)
                         elif api_name == "recognize_text_formula":
                             raw = self.p2t.recognize_text_formula(v_path, return_text=True)
                         elif api_name == "recognize_formula":
@@ -359,11 +388,9 @@ class LocalEngine(OCREngine):
 
 
 class VlmEngine(OCREngine):
-    """
-    GPT-4o Vision-based OCR engine.
-    Pros: Fast (2-5s), highly accurate, excellent handwriting recognition
-    Cons: Requires API key, costs per image, data sent to cloud
-    """
+    # GPT-4o Vision-based OCR engine.
+    # Pros: Fast (2-5s), highly accurate, excellent handwriting recognition
+    # Cons: Requires API key, costs per image, data sent to cloud
     
     def __init__(self):
         self.model = os.getenv("VLM_MODEL_OCR", "gpt-4o")
@@ -509,14 +536,13 @@ class OCREngineError(Exception):
 # Main OCR Service
 # ============================================================
 
+
+
 class OCRService:
-    """
-    Hybrid OCR service with multiple engine support.
-    
-    Configuration:
-    - OCR_ENGINE env var: "vlm" (default), "local", or "auto"
-    - Auto mode: tries VLM first, falls back to local on failure
-    """
+    # Hybrid OCR service with multiple engine support.
+    # Configuration:
+    # - OCR_ENGINE env var: "vlm" (default), "local", or "auto"
+    # - Auto mode: tries VLM first, falls back to local on failure
     
     def __init__(self):
         self._local_engine = None
@@ -524,24 +550,24 @@ class OCRService:
 
     @property
     def local_engine(self) -> LocalEngine:
-        """Lazy initialization of local engine."""
+        # Lazy initialization of local engine.
         if self._local_engine is None:
             self._local_engine = LocalEngine()
         return self._local_engine
 
     @property
     def vlm_engine(self) -> VlmEngine:
-        """Lazy initialization of VLM engine."""
+        # Lazy initialization of VLM engine.
         if self._vlm_engine is None:
             self._vlm_engine = VlmEngine()
         return self._vlm_engine
 
     def get_default_engine(self) -> str:
-        """Get default engine from environment."""
-        return os.getenv("OCR_ENGINE", "vlm").lower()
+        # Get default engine from environment.
+        return "local" # Force local engine
 
     def get_engine(self, engine_name: str) -> OCREngine:
-        """Get engine instance by name."""
+        # Get engine instance by name.
         if engine_name == "local":
             return self.local_engine
         elif engine_name in ("vlm", "auto"):
@@ -551,25 +577,22 @@ class OCRService:
             return self.vlm_engine
 
     def process_job(self, image_path: str, engine_name: str = "auto", crop_meta: Optional[Dict[str, Any]] = None, debug: bool = False, **kwargs) -> Dict[str, Any]:
-        """
-        Process an image with the specified or default engine.
-        
-        Args:
-            image_path: Path to the image file
-            engine_name: Engine to use ("vlm", "local", "auto")
-            crop_meta: Metadata about the crop (rotation, fullPage, etc.)
-            debug: Whether to save debug artifacts
-            **kwargs: Additional arguments passed to the engine
-            
-        Returns:
-            Dict with OCR results including markdown, confidence, timing, etc.
-        """
+        # Process an image with the specified or default engine.
+        # Args:
+        #     image_path: Path to the image file
+        #     engine_name: Engine to use ("vlm", "local", "auto")
+        #     crop_meta: Metadata about the crop
+        #     debug: Whether to save debug artifacts
+        #     **kwargs: Additional arguments
+        # Returns:
+        #     Dict with OCR results including markdown, confidence, timing, etc.
         # Resolve "auto" to env default
         if engine_name == "auto":
             engine_name = self.get_default_engine()
         
         # Special handling for "auto" mode with fallback
-        use_fallback = self.get_default_engine() == "auto" and engine_name == "vlm"
+        # use_fallback = self.get_default_engine() == "auto" and engine_name == "vlm"
+        use_fallback = False # Disable fallback for now
         
         logger.info(f"OCR processing: engine={engine_name}, image={image_path}")
         
@@ -588,136 +611,64 @@ class OCRService:
                 content = (result.get("markdown") or result.get("plain_text") or "").strip()
                 confidence = float(result.get("confidence") or 0.0)
                 if enable_lmm_fallback and (not content or confidence <= 0.1):
-                    logger.warning("Local OCR returned empty/low-confidence result. Falling back to VLM...")
-                    vlm_res = self.vlm_engine.process(image_path, **kwargs)
-                    vlm_res["engine_used"] = "vlm"
-                    vlm_res["fallback_from"] = "local"
-                    return vlm_res
+                    logger.warning("Local OCR returned empty/low-confidence result. (VLM Fallback Disabled)")
+                    # vlm_res = self.vlm_engine.process(image_path, **kwargs)
+                    # vlm_res["engine_used"] = "vlm"
+                    # vlm_res["fallback_from"] = "local"
+                    # return vlm_res
+                    pass
             return result
-            
-        except OCREngineError as e:
-            logger.error(f"OCR engine '{e.engine}' failed: {e}")
-            
-            # Fallback Logic (Requirement G/7)
-            # 1. auto mode (vlm -> local)
-            if use_fallback and e.engine == "vlm":
-                logger.warning("VLM failed, falling back to local Pix2Text engine...")
-                try:
-                    result = self.local_engine.process(image_path, crop_meta=crop_meta, debug=debug, **kwargs)
-                    result["engine_used"] = "local"
-                    result["fallback_reason"] = str(e)
-                    return result
-                except Exception as fallback_error:
-                    logger.error(f"Fallback to local engine also failed: {fallback_error}")
-                    raise OCREngineError(f"Both VLM and local engines failed. VLM: {e}. Local: {fallback_error}", engine="auto")
-            
-            # 2. explicit local with LMM fallback (Requirement G)
-            enable_lmm_fallback = os.getenv("ENABLE_LMM_FALLBACK", "true").lower() == "true"
-            if engine_name == "local" and enable_lmm_fallback:
-                logger.warning("Local engine failed, falling back to LMM (VLM) engine...")
-                try:
-                    vlm_res = self.vlm_engine.process(image_path, **kwargs)
-                    vlm_res["engine_used"] = "vlm"
-                    vlm_res["fallback_from"] = "local"
-                    # Merge telemetry if available
-                    return vlm_res
-                except Exception as lmm_err:
-                    logger.error(f"Fallback to LMM also failed: {lmm_err}")
-            
-            raise
-                
+
         except Exception as e:
-            logger.error(f"Unexpected OCR error: {e}")
-            raise OCREngineError(f"OCR processing failed: {e}", engine=engine_name)
-    
-    def recognize_region(self, image_bytes: bytes, engine_name: str = "local", fallback_to_vlm: bool = True) -> Dict[str, Any]:
-        """
-        Recognize text in an image region (for local find error feature).
-        
-        Args:
-            image_bytes: Raw image bytes
-            engine_name: Engine to use (default: "local" for privacy)
-            fallback_to_vlm: If true, falls back to VLM if local engine fails or yields low confidence
-            
-        Returns:
-            {
-                "text": str,  # Normalized text
-                "raw": str,   # Raw OCR output
-                "confidence": float,
-                "engine_used": str
+            logger.error(f"OCR processing failed: {e}")
+            return {
+                "text": "",
+                "raw": "",
+                "confidence": 0.0,
+                "engine_used": engine_name
             }
-        """
+
+    def recognize_region(self, image_data: bytes, engine_name: str = "auto", fallback_to_vlm: bool = True) -> Dict[str, Any]:
+        # Recognize text in a specific region buffer.
+        # Wrapper around process_job for in-memory bytes.
         import tempfile
-        from PIL import Image, ImageEnhance, ImageOps
-        import io
+        import os
+        
+        # Write to temp file
+        fd, tmp_path = tempfile.mkstemp(suffix=".png")
+        os.close(fd)
         
         try:
-            # Load image
-            img = Image.open(io.BytesIO(image_bytes))
+            with open(tmp_path, "wb") as f:
+                f.write(image_data)
             
-            # 2. Enhance contrast and sharpen
-            from PIL import ImageFilter
-            enhancer = ImageEnhance.Contrast(img)
-            img = enhancer.enhance(1.8)
-            img = img.filter(ImageFilter.SHARPEN)
+            # Use process_job
+            # We map engine_name to what process_job expects
+            result = self.process_job(
+                image_path=tmp_path,
+                engine_name=engine_name,
+                debug=False
+            )
             
-            # 3. Upscale significantly for small crops (crucial for handwriting/math)
-            if img.width < 800 or img.height < 400:
-                scale = 3 if (img.width < 300) else 2
-                img = img.resize((img.width * scale, img.height * scale), Image.Resampling.LANCZOS)
+            normalized = (result.get("markdown") or result.get("plain_text") or "").strip()
+            confidence = float(result.get("confidence") or 0.0)
+            engine_used = result.get("engine_used") or engine_name
             
-            # Save to temp file for OCR engine
-            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp:
-                img.save(tmp.name, 'PNG')
-                tmp_path = tmp.name
+            if not normalized:
+                 logger.warning(f"recognize_region: {engine_name} returned empty text.")
             
-            try:
-                # Attempt with preferred engine
-                engine = self.get_engine(engine_name)
-                result = engine.process(tmp_path)
-                
-                raw_text = result.get("markdown", "") or result.get("text", "")
-                confidence = result.get("confidence", 0.5)
-                
-                # Check if result is poor (empty or missing math structure)
-                stripped = raw_text.strip()
-                has_numbers = any(c.isdigit() for c in stripped)
-                has_math_ops = any(c in stripped for c in "+-*/=")
-                
-                # If we have numbers but no operators and we're in local mode, it might have missed them
-                is_poor = not stripped or (len(stripped) < 3 and engine_name == "local")
-                if has_numbers and not has_math_ops and engine_name == "local":
-                    is_poor = True
+            display_raw = result.get("raw") or normalized or ""
+            
+            if len(display_raw) > 500:
+                display_raw = display_raw[:500] + "..."
+            
+            return {
+                "text": normalized,
+                "raw": display_raw,
+                "confidence": confidence,
+                "engine_used": engine_used
+            }
 
-                if is_poor and fallback_to_vlm and engine_name != "vlm":
-                    logger.warning(f"Local OCR result poor/empty/non-math. Falling back to VLM for region...")
-                    vlm_result = self.vlm_engine.process(tmp_path)
-                    raw_text = vlm_result.get("markdown", "")
-                    confidence = vlm_result.get("confidence", 0.9)
-                    engine_name = "vlm"
-                
-                # Basic normalization
-                normalized = raw_text.strip()
-                
-                # Cap length for logs/payload
-                display_raw = raw_text
-                if len(display_raw) > 500:
-                    display_raw = display_raw[:500] + "..."
-                
-                return {
-                    "text": normalized,
-                    "raw": display_raw,
-                    "confidence": confidence,
-                    "engine_used": engine_name
-                }
-            finally:
-                # Cleanup temp file
-                import os
-                try:
-                    os.unlink(tmp_path)
-                except:
-                    pass
-                    
         except Exception as e:
             logger.error(f"Region recognition failed: {e}")
             return {
@@ -726,6 +677,12 @@ class OCRService:
                 "confidence": 0.0,
                 "engine_used": engine_name
             }
+        finally:
+            try:
+                if os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
+            except:
+                pass
 
 
 # Singleton instance

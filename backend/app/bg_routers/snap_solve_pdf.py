@@ -171,7 +171,7 @@ def _render_page_png(session: PdfSession, page_index: int, scale: float) -> Tupl
     return data, pil.width, pil.height
 
 
-def _extract_questions_from_image(image_bytes: bytes, engine_choice: str, page_index: Optional[int] = None) -> List[Dict[str, Any]]:
+def _extract_questions_from_image(image_bytes: bytes, engine_choice: str, page_index: Optional[int] = None, single_block: bool = False) -> List[Dict[str, Any]]:
     def _image_candidates(raw_bytes: bytes) -> List[bytes]:
         candidates: List[bytes] = [raw_bytes]
         try:
@@ -228,9 +228,14 @@ def _extract_questions_from_image(image_bytes: bytes, engine_choice: str, page_i
     if not text:
         logger.warning("[snap_solve_pdf] OCR empty page=%s attempts=%s", page_index, ",".join(tried))
         return []
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
-    if not lines:
-        lines = [text]
+    if single_block:
+        # For crop mode, we want the entire text as one block/question
+        lines = [text.strip()]
+    else:
+        # For page mode, we naively split by lines (legacy behavior)
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        if not lines:
+            lines = [text]
     questions: List[Dict[str, Any]] = []
     for idx, line in enumerate(lines[:30]):
         questions.append(
@@ -382,7 +387,15 @@ async def snap_solve_pdf_extract(request: Request, body: PdfExtractRequest):
 
         out = io.BytesIO()
         image.save(out, format="PNG")
-        extracted = _extract_questions_from_image(out.getvalue(), body.engine_choice, page_index=body.page_index)
+        
+        # DEBUG: Save crop to disk to verify what we are sending to OCR
+        import tempfile
+        debug_crop_path = os.path.join(tempfile.gettempdir(), f"debug_crop_p{body.page_index}_{int(time.time())}.png")
+        with open(debug_crop_path, "wb") as f:
+            f.write(out.getvalue())
+        logger.info(f"[DEBUG] Saved PDF crop to {debug_crop_path}")
+
+        extracted = _extract_questions_from_image(out.getvalue(), body.engine_choice, page_index=body.page_index, single_block=(mode == "crop"))
         if not extracted:
             warnings.append(
                 f"OCR returned no text for {mode} extraction (page={body.page_index}, engine={body.engine_choice})."
