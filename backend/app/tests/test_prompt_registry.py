@@ -83,3 +83,19 @@ def test_import_script_loads_assets(tmp_path, monkeypatch):
         schema = prompt_registry_service.get_active_schema(session, "youask_math_solver_response_v1")
         assert prompt is not None
         assert schema is not None
+
+
+def test_ensure_ocr_extract_prompts(tmp_path):
+    session = _make_session(tmp_path)
+    prompt_registry_service.ensure_ocr_extract_prompts(session, updated_by="tester")
+
+    system_prompt = prompt_registry_service.get_active_prompt(
+        session, prompt_registry_service.OCR_EXTRACT_QWEN_SYSTEM_PROMPT_ID
+    )
+    user_prompt = prompt_registry_service.get_active_prompt(
+        session, prompt_registry_service.OCR_EXTRACT_QWEN_USER_PROMPT_ID
+    )
+
+    assert system_prompt is not None
+    assert user_prompt is not None
+    assert "Extract ALL math questions from the provided image or PDF page image(s)." in user_prompt.content

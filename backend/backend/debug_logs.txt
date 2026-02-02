@@ -995,3 +995,119 @@ HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
 Attempting to connect to database (Attempt 1/10)...
 Database connection successful and tables created.
 Prompt binding integrity OK: active_bindings=12 active_pairs=12
+extract_questions input metrics: size=736x736 stddev=51.44 white=0.000
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmp5mwawo3e.png
+Initializing Local Pix2Text engine...
+Use DocLayout-YOLO model for Layout Analysis: C:\Users\loaia\AppData\Roaming\pix2text\1.1\layout-docyolo\doclayout_yolo_docstructbench_imgsz1024.pt
+use model: C:\Users\loaia\AppData\Roaming\cnocr\2.3\densenet_lite_136-gru\cnocr-v2.3-densenet_lite_136-gru-epoch=004-ft-model.onnx
+use model: C:\Users\loaia\AppData\Roaming\cnstd\1.2\ppocr\ch_PP-OCRv5_det\ch_PP-OCRv5_det_infer.onnx
+Use model path for MFD: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfd-1.5-onnx\pix2text-mfd-1.5.onnx
+Use model dir for LatexOCR: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfr-1.5-onnx
+Loaded Pix2Text MFR model mfr-1.5 to: backend-onnx, device-cpu
+Pix2Text initialized successfully
+extract_questions input metrics: size=686x386 stddev=57.12 white=0.912
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmp9k9y5cbe.png
+extract_questions input metrics: size=640x480 stddev=45.81 white=0.000
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmp9e5k4apg.png
+extract_questions input metrics: size=322x300 stddev=42.96 white=0.936
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmpwy6bqt5g.png
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+extract_questions input metrics: size=322x300 stddev=42.96 white=0.936
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmpz168y6ex.png
+Initializing Local Pix2Text engine...
+Use DocLayout-YOLO model for Layout Analysis: C:\Users\loaia\AppData\Roaming\pix2text\1.1\layout-docyolo\doclayout_yolo_docstructbench_imgsz1024.pt
+use model: C:\Users\loaia\AppData\Roaming\cnocr\2.3\densenet_lite_136-gru\cnocr-v2.3-densenet_lite_136-gru-epoch=004-ft-model.onnx
+use model: C:\Users\loaia\AppData\Roaming\cnstd\1.2\ppocr\ch_PP-OCRv5_det\ch_PP-OCRv5_det_infer.onnx
+Use model path for MFD: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfd-1.5-onnx\pix2text-mfd-1.5.onnx
+Use model dir for LatexOCR: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfr-1.5-onnx
+Loaded Pix2Text MFR model mfr-1.5 to: backend-onnx, device-cpu
+Pix2Text initialized successfully
+Extract schema validation failed: <root>: Additional properties are not allowed (' questions' was unexpected); <root>: 'ok' is a required property; <root>: 'error' is a required property; <root>: 'is_math_page' is a required property; <root>: 'notes' is a required property
+extract_questions input metrics: size=322x300 stddev=42.96 white=0.936
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmpza8x_ofs.png
+Extract schema validation failed: <root>: Additional properties are not allowed (' questions' was unexpected); <root>: 'ok' is a required property; <root>: 'error' is a required property; <root>: 'is_math_page' is a required property; <root>: 'notes' is a required property
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+extract_questions input metrics: size=1033x358 stddev=32.73 white=0.920
+OCR processing: engine=local, image=/tmp/tmpy15roidt.png
+OCR processing failed: Pix2Text is not installed. This engine requires worker dependencies.
+HTTP Request: POST http://172.26.131.128:11434/api/chat "HTTP/1.1 200 OK"
+Extract schema validation failed: <root>: Additional properties are not allowed ('text' was unexpected); <root>: 'ok' is a required property; <root>: 'error' is a required property; <root>: 'is_math_page' is a required property; <root>: 'notes' is a required property
+extract_questions input metrics: size=1003x331 stddev=32.40 white=0.920
+OCR processing: engine=local, image=/tmp/tmp88q35526.png
+OCR processing failed: Pix2Text is not installed. This engine requires worker dependencies.
+HTTP Request: POST http://172.26.131.128:11434/api/chat "HTTP/1.1 200 OK"
+Extract schema validation failed: <root>: Additional properties are not allowed ('text' was unexpected); <root>: 'ok' is a required property; <root>: 'error' is a required property; <root>: 'is_math_page' is a required property; <root>: 'notes' is a required property
+extract_questions input metrics: size=1041x355 stddev=31.96 white=0.926
+OCR processing: engine=local, image=/tmp/tmpnsodzkpu.png
+OCR processing failed: Pix2Text is not installed. This engine requires worker dependencies.
+HTTP Request: POST http://172.26.131.128:11434/api/chat "HTTP/1.1 200 OK"
+Extract schema validation failed: <root>: Additional properties are not allowed ('text' was unexpected); <root>: 'ok' is a required property; <root>: 'error' is a required property; <root>: 'is_math_page' is a required property; <root>: 'notes' is a required property
+extract_questions input metrics: size=1033x358 stddev=32.73 white=0.920
+OCR processing: engine=local, image=/tmp/tmpb58ai_g_.png
+OCR processing failed: Pix2Text is not installed. This engine requires worker dependencies.
+HTTP Request: POST http://172.26.131.128:11434/api/chat "HTTP/1.1 200 OK"
+Extract schema validation failed: <root>: Additional properties are not allowed ('text' was unexpected); <root>: 'ok' is a required property; <root>: 'error' is a required property; <root>: 'is_math_page' is a required property; <root>: 'notes' is a required property
+extract_questions input metrics: size=1003x331 stddev=32.40 white=0.920
+OCR processing: engine=local, image=/tmp/tmp6tdbeytw.png
+OCR processing failed: Pix2Text is not installed. This engine requires worker dependencies.
+HTTP Request: POST http://172.26.131.128:11434/api/chat "HTTP/1.1 200 OK"
+Extract schema validation failed: <root>: Additional properties are not allowed ('text' was unexpected); <root>: 'ok' is a required property; <root>: 'error' is a required property; <root>: 'is_math_page' is a required property; <root>: 'notes' is a required property
+extract_questions input metrics: size=1041x355 stddev=31.96 white=0.926
+OCR processing: engine=local, image=/tmp/tmpcfw4155o.png
+OCR processing failed: Pix2Text is not installed. This engine requires worker dependencies.
+HTTP Request: POST http://172.26.131.128:11434/api/chat "HTTP/1.1 200 OK"
+Extract schema validation failed: <root>: Additional properties are not allowed ('text' was unexpected); <root>: 'ok' is a required property; <root>: 'error' is a required property; <root>: 'is_math_page' is a required property; <root>: 'notes' is a required property
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+[f7bef4c5] Incoming: POST /api/v1/extract_questions
+extract_questions input metrics: size=1033x358 stddev=32.73 white=0.920
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmpw986wjri.png
+Initializing Local Pix2Text engine...
+Use DocLayout-YOLO model for Layout Analysis: C:\Users\loaia\AppData\Roaming\pix2text\1.1\layout-docyolo\doclayout_yolo_docstructbench_imgsz1024.pt
+use model: C:\Users\loaia\AppData\Roaming\cnocr\2.3\densenet_lite_136-gru\cnocr-v2.3-densenet_lite_136-gru-epoch=004-ft-model.onnx
+use model: C:\Users\loaia\AppData\Roaming\cnstd\1.2\ppocr\ch_PP-OCRv5_det\ch_PP-OCRv5_det_infer.onnx
+Use model path for MFD: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfd-1.5-onnx\pix2text-mfd-1.5.onnx
+Use model dir for LatexOCR: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfr-1.5-onnx
+Loaded Pix2Text MFR model mfr-1.5 to: backend-onnx, device-cpu
+Pix2Text initialized successfully
+[f7bef4c5] Response: 200 | 79254ms
+[a684b74a] Incoming: POST /api/v1/extract_questions
+extract_questions input metrics: size=1003x331 stddev=32.40 white=0.920
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmpcj7sbu09.png
+[a684b74a] Response: 200 | 22357ms
+[5a0a59a0] Incoming: POST /api/v1/extract_questions
+extract_questions input metrics: size=1041x355 stddev=31.96 white=0.926
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmpshqc07bx.png
+qwen_math extract failed (). Fallback to LMM=True
+[5a0a59a0] Failed: name 'BadRequestError' is not defined | 92354ms

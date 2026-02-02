@@ -673,7 +673,7 @@ export default function DashboardPage() {
                         New Solve
                     </h1>
                     <p className="text-slate-600 dark:text-slate-300 text-lg font-normal">Select your preferred input method and define the context for the best tutor results.</p>
-                    <div className="mt-2 text-right text-xs font-semibold text-emerald-500">Uask AI V 1.0</div>
+                    <div className="mt-2 text-right text-xs font-semibold text-emerald-500">Uask AI v1.0</div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

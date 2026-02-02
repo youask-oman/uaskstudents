@@ -105,6 +105,10 @@ def on_startup():
         except Exception as e:
             logging.error(f"Failed to initialize plans: {e}")
         try:
+            prompt_registry_service.ensure_ocr_extract_prompts(session, updated_by="startup")
+        except Exception as e:
+            logging.error(f"Failed to seed OCR extract prompts: {e}")
+        try:
             report = prompt_registry_service.audit_active_bindings(session)
             if report.get("ok"):
                 logging.info(

@@ -2,11 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, 
 from fastapi.responses import StreamingResponse, JSONResponse
 from sqlmodel import Session, SQLModel, select
 from sqlalchemy import text as sql_text, or_
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from pydantic import BaseModel, Field
 import uuid
 import re
 import requests
+import httpx
 import hashlib
 import base64
 import filetype
@@ -20,6 +21,7 @@ import aiofiles
 from datetime import datetime, timedelta
 from jsonschema import Draft202012Validator, ValidationError
 from PIL import Image, ImageEnhance, ImageFilter, ImageStat
+from openai import AsyncOpenAI, BadRequestError
 
 from app.database import get_session
 from app.services.solve.normalizer_service import problem_normalizer_service
@@ -88,6 +90,15 @@ api_router.include_router(voice_router, tags=["voice"])
 api_router.include_router(local_router, tags=["local_math"])
 api_router.include_router(snap_solve_pdf_router, tags=["snap_solve_pdf"])
 api_router.include_router(credits_router, tags=["credits"])
+
+OCR_QWEN_SYSTEM_PROMPT_ID = os.environ.get(
+    "OCR_QWEN_SYSTEM_PROMPT_ID",
+    prompt_registry_service.OCR_EXTRACT_QWEN_SYSTEM_PROMPT_ID,
+)
+OCR_QWEN_USER_PROMPT_ID = os.environ.get(
+    "OCR_QWEN_USER_PROMPT_ID",
+    prompt_registry_service.OCR_EXTRACT_QWEN_USER_PROMPT_ID,
+)
 
 
 @api_router.get("/health/llm")
@@ -1190,80 +1201,61 @@ EXTRACT_SCHEMA = {
     "name": "extract_questions_v1",
     "schema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "ExtractQuestionsResponse",
         "type": "object",
         "additionalProperties": False,
         "required": ["ok", "error", "is_math_page", "notes", "questions"],
         "properties": {
             "ok": {"type": "boolean"},
-            "error": {"type": ["string", "null"], "minLength": 1, "maxLength": 200},
-            "is_math_page": {"type": ["boolean", "null"]},
-            "notes": {"type": ["array", "null"], "items": {"type": "string", "maxLength": 120}, "maxItems": 20},
+            "error": {
+                "anyOf": [
+                    {"type": "null"},
+                    {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["code", "message"],
+                        "properties": {
+                            "code": {"type": "string"},
+                            "message": {"type": "string"},
+                        },
+                    },
+                ],
+            },
+            "is_math_page": {"type": "boolean"},
+            "notes": {"type": "array", "items": {"type": "string"}},
             "questions": {
-                "type": ["array", "null"],
-                "maxItems": 40,
+                "type": "array",
                 "items": {
                     "type": "object",
                     "additionalProperties": False,
-                    "required": ["id", "text", "confidence", "is_valid_math", "reason_if_invalid", "type", "bbox", "requires_figure", "figure_type", "figure_bbox", "figure_role"],
+                    "required": ["id", "page", "text", "latex", "type"],
                     "properties": {
-                        "id": {"type": "string", "pattern": "^q[1-9][0-9]{0,2}$"},
-                        "text": {"type": "string", "minLength": 1, "maxLength": 1200},
-                        "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
-                        "is_valid_math": {"type": "boolean"},
-                        "reason_if_invalid": {
-                            "type": "string",
-                            "enum": [
-                                "OK",
-                                "No question asked",
-                                "Only instructions",
-                                "Too ambiguous",
-                                "Not math",
-                                "Unreadable",
-                                "Needs figure crop",
-                            ],
-                        },
+                        "id": {"type": "string", "minLength": 1},
+                        "page": {"type": "integer", "minimum": 0},
                         "type": {
                             "type": "string",
                             "enum": [
-                                "algebra",
-                                "calculus",
-                                "geometry",
-                                "statistics",
                                 "word_problem",
-                                "graphing",
+                                "equation",
+                                "multiple_choice",
+                                "graph",
+                                "table",
+                                "geometry",
                                 "other",
                             ],
                         },
-                        "bbox": {
-                            "type": "object",
-                            "additionalProperties": False,
-                            "required": ["x", "y", "w", "h"],
-                            "properties": {
-                                "x": {"type": "number", "minimum": 0.0, "maximum": 1.0},
-                                "y": {"type": "number", "minimum": 0.0, "maximum": 1.0},
-                                "w": {"type": "number", "exclusiveMinimum": 0.0, "maximum": 1.0},
-                                "h": {"type": "number", "exclusiveMinimum": 0.0, "maximum": 1.0},
-                            },
+                        "text": {"type": "string", "minLength": 1},
+                        "latex": {
+                            "anyOf": [
+                                {"type": "null"},
+                                {"type": "string", "minLength": 1},
+                            ],
                         },
-                        "requires_figure": {"type": "boolean"},
-                        "figure_type": {
-                            "type": ["string", "null"],
-                            "enum": ["graph", "table", "geometry_diagram", "chart", "unknown", None],
-                        },
-                        "figure_bbox": {
-                            "type": "object",
-                            "additionalProperties": False,
-                            "required": ["x", "y", "w", "h"],
-                            "properties": {
-                                "x": {"type": "number", "minimum": 0.0, "maximum": 1.0},
-                                "y": {"type": "number", "minimum": 0.0, "maximum": 1.0},
-                                "w": {"type": "number", "exclusiveMinimum": 0.0, "maximum": 1.0},
-                                "h": {"type": "number", "exclusiveMinimum": 0.0, "maximum": 1.0},
-                            },
-                        },
-                        "figure_role": {
-                            "type": ["string", "null"],
-                            "enum": ["essential", "helpful", "not_needed", None],
+                        "confidence": {
+                            "anyOf": [
+                                {"type": "null"},
+                                {"type": "number", "minimum": 0, "maximum": 1},
+                            ],
                         },
                     },
                 },
@@ -1277,7 +1269,7 @@ EXTRACT_SCHEMA_RUNTIME = EXTRACT_SCHEMA["schema"]
 EXTRACT_SCHEMA_VALIDATOR = Draft202012Validator(EXTRACT_SCHEMA_RUNTIME)
 INVALID_EXTRACT_PAYLOAD = {
     "ok": False,
-    "error": "invalid schema from model",
+    "error": {"code": "INVALID_SCHEMA", "message": "invalid schema from model"},
     "is_math_page": False,
     "notes": [],
     "questions": [],
@@ -1409,10 +1401,114 @@ def _extract_responses_message_text(response: Any) -> str:
     return ""
 
 
-def _validate_extract_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
-    errors = list(EXTRACT_SCHEMA_VALIDATOR.iter_errors(payload))
+def _sanitize_trimmed_keys(value: Any) -> Tuple[Any, bool]:
+    if isinstance(value, dict):
+        changed = False
+        out: Dict[str, Any] = {}
+        for key, val in value.items():
+            new_key = key.strip() if isinstance(key, str) else key
+            cleaned_val, child_changed = _sanitize_trimmed_keys(val)
+            if new_key != key:
+                changed = True
+            if child_changed:
+                changed = True
+            out[new_key] = cleaned_val
+        return out, changed
+    if isinstance(value, list):
+        changed = False
+        out_list = []
+        for item in value:
+            cleaned_item, child_changed = _sanitize_trimmed_keys(item)
+            if child_changed:
+                changed = True
+            out_list.append(cleaned_item)
+        return out_list, changed
+    return value, False
+
+
+def _normalize_extract_payload_shape(payload: Dict[str, Any], page_hint: int = 0) -> Dict[str, Any]:
+    """
+    Normalize legacy extract payload variants into ExtractQuestionsResponse schema shape.
+    """
+    out = dict(payload or {})
+    questions = out.get("questions")
+    if not isinstance(questions, list):
+        questions = []
+    normalized_questions = []
+    for idx, q in enumerate(questions):
+        if not isinstance(q, dict):
+            continue
+        qid = str(q.get("id") or f"p{page_hint}-q{idx+1}")
+        qtype = str(q.get("type") or "other")
+        if qtype not in {"word_problem", "equation", "multiple_choice", "graph", "table", "geometry", "other"}:
+            qtype = "other"
+        text = str(q.get("text") or "").strip()
+        if not text:
+            continue
+        page = q.get("page")
+        if not isinstance(page, int) or page < 0:
+            page = page_hint
+        latex = q.get("latex")
+        if isinstance(latex, str):
+            latex = latex.strip() or None
+        else:
+            latex = None
+        confidence = q.get("confidence")
+        if isinstance(confidence, (int, float)):
+            confidence = max(0.0, min(1.0, float(confidence)))
+        else:
+            confidence = None
+        normalized_questions.append(
+            {
+                "id": qid,
+                "page": page,
+                "text": text,
+                "latex": latex,
+                "type": qtype,
+                "confidence": confidence,
+            }
+        )
+    out["questions"] = normalized_questions
+    out["is_math_page"] = bool(out.get("is_math_page", bool(normalized_questions)))
+    notes = out.get("notes")
+    out["notes"] = notes if isinstance(notes, list) else ([] if notes is None else [str(notes)])
+    error_obj = out.get("error")
+    if isinstance(error_obj, str):
+        out["error"] = {"code": "EXTRACT_ERROR", "message": error_obj}
+    elif isinstance(error_obj, dict):
+        code = str(error_obj.get("code") or "EXTRACT_ERROR")
+        msg = str(error_obj.get("message") or "Extraction error")
+        out["error"] = {"code": code, "message": msg}
+    else:
+        out["error"] = None
+    out["ok"] = bool(out.get("ok", True))
+    return out
+
+
+def _extract_error_message(error_value: Any) -> Optional[str]:
+    if error_value is None:
+        return None
+    if isinstance(error_value, str):
+        return error_value
+    if isinstance(error_value, dict):
+        message = error_value.get("message")
+        if isinstance(message, str):
+            return message
+    return str(error_value)
+
+
+def _validate_extract_payload(payload: Dict[str, Any], page_hint: int = 0) -> Dict[str, Any]:
+    sanitized_payload, keys_changed = _sanitize_trimmed_keys(payload)
+    normalized_payload = _normalize_extract_payload_shape(sanitized_payload, page_hint=page_hint)
+    if keys_changed:
+        notes = normalized_payload.get("notes")
+        if not isinstance(notes, list):
+            notes = []
+        notes.append("Sanitized whitespace in JSON keys before validation.")
+        normalized_payload["notes"] = notes
+    errors = list(EXTRACT_SCHEMA_VALIDATOR.iter_errors(normalized_payload))
     if not errors:
-        return payload
+        return normalized_payload
     details = "; ".join(
         f"{'.'.join(str(part) for part in error.path) or '<root>'}: {error.message}"
         for error in errors[:5]
@@ -1434,25 +1530,18 @@ def _try_recover_json(content: str) -> Optional[str]:
     return None
 
 
-class ExtractBBox(BaseModel):
-    x: float
-    y: float
-    w: float
-    h: float
-
-
 class ExtractQuestionItem(BaseModel):
     id: str
+    page: int
     text: str
-    confidence: float
-    is_valid_math: bool
-    reason_if_invalid: Optional[str] = None
-    type: Optional[str] = None
-    bbox: Optional[ExtractBBox] = None
-    requires_figure: Optional[bool] = None
-    figure_type: Optional[str] = None
-    figure_bbox: Optional[ExtractBBox] = None
-    figure_role: Optional[str] = None
+    latex: Optional[str] = None
+    type: str
+    confidence: Optional[float] = None
+
+
+class ExtractErrorItem(BaseModel):
+    code: str
+    message: str
 
 
 class ExtractTelemetry(BaseModel):
@@ -1469,10 +1558,7 @@ class ExtractQuestionsResponse(BaseModel):
     is_math_page: bool
     notes: List[str]
     questions: List[ExtractQuestionItem]
-    error: Optional[str] = None
-    cache_hit: bool
-    cached_at: Optional[str] = None
-    telemetry: Optional[ExtractTelemetry] = None
+    error: Optional[ExtractErrorItem] = None
 
 
 class SolveBatchItem(BaseModel):
@@ -1529,16 +1615,78 @@ def _estimate_credits(
 
 
 async def _call_extract_questions(
+    session: Session,
     image_bytes: bytes, 
     max_output_tokens: int, 
     engine_choice: str = "lmm",
     crop_meta: Optional[Dict[str, Any]] = None,
     debug: bool = False
 ) -> Dict[str, Any]:
-    if engine_choice == "pix2text":
+    def _load_qwen_extract_prompts() -> Tuple[str, str]:
+        system_entry = prompt_registry_service.get_active_prompt(session, OCR_QWEN_SYSTEM_PROMPT_ID)
+        user_entry = prompt_registry_service.get_active_prompt(session, OCR_QWEN_USER_PROMPT_ID)
+        if not system_entry or not user_entry:
+            raise PromptRegistryError(
+                "Missing OCR extract prompts in prompt_templates. "
+                f"Expected prompt_ids: {OCR_QWEN_SYSTEM_PROMPT_ID}, {OCR_QWEN_USER_PROMPT_ID}"
+            )
+        return system_entry.content, user_entry.content
+
+    def _looks_like_garbled_pix2text(markdown: str) -> bool:
+        text = (markdown or "").strip()
+        if not text:
+            return True
+        if len(text) < 16:
+            return True
+        brace_pairs = text.count("{}")
+        slash_count = text.count("\\")
+        amp_count = text.count("&")
+        alpha_count = sum(1 for ch in text if ch.isalpha())
+        if brace_pairs >= 8:
+            return True
+        if slash_count >= 24 and alpha_count < max(20, len(text) // 12):
+            return True
+        if amp_count >= 10 and alpha_count < max(20, len(text) // 14):
+            return True
+        return False
+
+    def _pix2text_extract_payload(
+        markdown: str,
+        confidence: float,
+        page_number: int,
+        notes: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        return {
+            "payload": {
+                "ok": True,
+                "error": None,
+                "is_math_page": True,
+                "notes": notes or ["Extracted using Pix2Text (Local)"],
+                "questions": [{
+                    "id": f"p{page_number}-q1",
+                    "page": page_number,
+                    "text": markdown,
+                    "latex": markdown if ("\\" in markdown or "$" in markdown) else None,
+                    "confidence": confidence,
+                    "type": "equation",
+                }]
+            },
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cached_tokens": 0
+        }
+
+    if engine_choice in {"pix2text", "qwen_math"}:
         from app.services.ocr.ocr_service import ocr_service
         import tempfile
         tmp_path = None
+        markdown = ""
+        confidence = 0.8
+        page_num = 0
+        if isinstance(crop_meta, dict):
+            page_raw = crop_meta.get("page_number")
+            if isinstance(page_raw, int) and page_raw >= 0:
+                page_num = page_raw
         try:
             with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
                 f.write(image_bytes)
@@ -1550,28 +1698,83 @@ async def _call_extract_questions(
                 debug=debug
             )
             markdown = result.get("markdown", "")
-            return {
-                "payload": {
-                    "ok": True,
-                    "error": None,
-                    "is_math_page": True,
-                    "notes": ["Extracted using Pix2Text (Local)"],
-                    "questions": [{
-                        "id": "q1",
-                        "text": markdown,
-                        "confidence": result.get("confidence", 0.8),
-                        "is_valid_math": True,
-                        "type": "math"
-                    }]
+            confidence = float(result.get("confidence", 0.8) or 0.8)
+            if engine_choice == "pix2text":
+                base_payload = _pix2text_extract_payload(markdown, confidence, page_num)
+                base_payload["telemetry"] = result.get("telemetry")
+                return base_payload
+
+            # qwen_math mode: run vision extraction directly with Ollama /api/chat + schema format.
+            manager = get_llm_manager()
+            ollama_client = manager.get_client("ollama")
+            qwen_model = os.environ.get("OLLAMA_OCR_MODEL", os.environ.get("OLLAMA_MODEL_DEFAULT", "mightykatun/qwen2.5-math:7b"))
+            qwen_system_prompt, qwen_user_prompt = _load_qwen_extract_prompts()
+            image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+            qwen_request = {
+                "model": qwen_model,
+                "stream": False,
+                "messages": [
+                    {"role": "system", "content": qwen_system_prompt},
+                    {"role": "user", "content": qwen_user_prompt, "images": [image_b64]},
+                ],
+                "format": EXTRACT_SCHEMA["schema"],
+                "options": {
+                    "temperature": float(os.environ.get("OLLAMA_TEMPERATURE", "0.2")),
+                    "top_p": float(os.environ.get("OLLAMA_TOP_P", "0.9")),
+                    "num_ctx": int(os.environ.get("OLLAMA_CONTEXT_TOKENS", "4096")),
+                    "num_predict": max_output_tokens,
                 },
-                "telemetry": result.get("telemetry"),
-                "input_tokens": 0,
-                "output_tokens": 0,
-                "cached_tokens": 0
+            }
+            async with httpx.AsyncClient(
+                timeout=httpx.Timeout(float(os.environ.get("OLLAMA_TIMEOUT_SECONDS", "60")))
+            ) as http_client:
+                response = await http_client.post(f"{ollama_client.base_url}/api/chat", json=qwen_request)
+                if response.status_code >= 400:
+                    raise RuntimeError(f"Ollama OCR chat error: {response.status_code} {response.text[:200]}")
+                qwen_data = response.json()
+            content = (
+                (qwen_data.get("message") or {}).get("content")
+                if isinstance(qwen_data, dict)
+                else None
+            )
+            if not isinstance(content, str) or not content.strip():
+                raise RuntimeError("Empty content from Ollama OCR chat")
+            try:
+                qwen_payload = json.loads(content.strip())
+            except Exception:
+                # If Qwen returns malformed JSON, gracefully fall back to Pix2Text payload.
+                return _pix2text_extract_payload(
+                    markdown,
+                    confidence,
+                    page_num,
+                    notes=["Qwen Math returned invalid JSON; using Pix2Text OCR fallback."],
+                )
+            qwen_payload = _validate_extract_payload(qwen_payload, page_hint=page_num)
+            notes = qwen_payload.get("notes") or []
+            if _looks_like_garbled_pix2text(markdown):
+                notes.append("Pix2Text output looked noisy; refined with Qwen Math.")
+            else:
+                notes.append("Extracted with Qwen Math vision OCR.")
+            qwen_payload["notes"] = notes
+            return {
+                "payload": qwen_payload,
+                "telemetry": {
+                    "provider": "ollama",
+                    "model": qwen_model,
+                    "base_confidence": confidence,
+                },
+                "input_tokens": None,
+                "output_tokens": None,
+                "cached_tokens": None,
             }
         except Exception as exc:
+            if engine_choice == "qwen_math":
+                # Keep OCR path resilient without forcing OpenAI fallback.
+                fallback_notes = ["Qwen Math failed; using Pix2Text OCR fallback."]
+                if markdown:
+                    return _pix2text_extract_payload(markdown, confidence, page_num, notes=fallback_notes)
             enable_lmm_fallback = os.getenv("ENABLE_LMM_FALLBACK", "true").lower() == "true"
-            logging.warning("Pix2Text extract failed (%s). Fallback to LMM=%s", exc, enable_lmm_fallback)
+            logging.warning("%s extract failed (%s). Fallback to LMM=%s", engine_choice, exc, enable_lmm_fallback)
             if not enable_lmm_fallback:
                 raise
             # Fall through to LMM/VLM extraction below.
@@ -1701,7 +1904,12 @@ async def _call_extract_questions(
             cached_tokens = getattr(usage.prompt_tokens_details, "cached_tokens", None)
 
     payload = _parse_json_response(content)
-    payload = _validate_extract_payload(payload)
+    page_hint = 0
+    if isinstance(crop_meta, dict):
+        page_raw = crop_meta.get("page_number")
+        if isinstance(page_raw, int) and page_raw >= 0:
+            page_hint = page_raw
+    payload = _validate_extract_payload(payload, page_hint=page_hint)
     input_tokens = None
     output_tokens = None
     if usage:
@@ -2008,7 +2216,7 @@ async def extract_questions(
     render_scale: Optional[float] = Form(None),
     source: str = Form("image"),
     user_selection: str = Form("crop"),
-    ocr_engine_choice: str = Form("lmm"),
+    ocr_engine_choice: str = Form("pix2text"),
     debug: bool = Form(False),
     user_id: int = Query(...),
     session: Session = Depends(get_session)
@@ -2063,14 +2271,13 @@ async def extract_questions(
         payload = cached.result_json or {}
         ok = payload.get("ok", True)
         error = payload.get("error")
+        error_msg = _extract_error_message(error)
         return ExtractQuestionsResponse(
             ok=bool(ok),
             is_math_page=bool(payload.get("is_math_page", False)),
-            notes=payload.get("notes") or ([error] if error else []),
+            notes=payload.get("notes") or ([error_msg] if error_msg else []),
             questions=payload.get("questions") or [],
             error=error,
-            cache_hit=True,
-            cached_at=cached.created_at.isoformat()
         )
 
     request_id = str(uuid.uuid4())
@@ -2133,8 +2340,9 @@ async def extract_questions(
             }
         }
         extract_data = await _call_extract_questions(
-            image_bytes, 
-            max_extract_tokens, 
+            session=session,
+            image_bytes=image_bytes,
+            max_output_tokens=max_extract_tokens,
             engine_choice=ocr_engine_choice,
             crop_meta=crop_meta,
             debug=debug
@@ -2159,11 +2367,12 @@ async def extract_questions(
 
     ok_value = payload.get("ok", True)
     error_value = payload.get("error")
+    error_msg = _extract_error_message(error_value)
     result = {
         "ok": bool(ok_value),
         "error": error_value,
         "is_math_page": bool(payload.get("is_math_page", False)),
-        "notes": payload.get("notes") or ([error_value] if error_value else []),
+        "notes": payload.get("notes") or ([error_msg] if error_msg else []),
         "questions": payload.get("questions") or [],
     }
 
@@ -2225,8 +2434,6 @@ async def extract_questions(
         notes=result["notes"],
         questions=result["questions"],
         error=result.get("error"),
-        cache_hit=False,
-        telemetry=telemetry
     )
 
 
@@ -7350,7 +7557,8 @@ async def import_asset(
             
         # Call extraction
         result = await _call_extract_questions(
-            content, 
+            session=session,
+            image_bytes=content,
             max_output_tokens=4000, 
             engine_choice="lmm" 
         )

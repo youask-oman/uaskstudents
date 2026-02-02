@@ -27,10 +27,12 @@ type SnapSolveV2Props = {
 type ExtractQuestion = {
     id: string;
     text: string;
-    confidence: number;
-    is_valid_math: boolean;
+    confidence?: number;
+    is_valid_math?: boolean;
     reason_if_invalid?: string | null;
     type?: string | null;
+    page?: number | null;
+    latex?: string | null;
     bbox?: { x: number; y: number; w: number; h: number } | null;
     requires_figure?: boolean | null;
     figure_type?: string | null;
@@ -108,6 +110,8 @@ function normalizeExtractResponse(response: ExtractResponse): ExtractResponse {
     const decodedQuestions = response.questions?.map((question) => ({
         ...question,
         text: normalizeExtractText(question.text),
+        confidence: typeof question.confidence === "number" ? question.confidence : 0.8,
+        is_valid_math: typeof question.is_valid_math === "boolean" ? question.is_valid_math : true,
     }));
     return {
         ...response,

@@ -28,8 +28,10 @@ type PdfPrepareResponse = {
 type ExtractedQuestion = {
     id: string;
     text: string;
-    confidence: number;
-    is_valid_math: boolean;
+    confidence?: number;
+    is_valid_math?: boolean;
+    page?: number;
+    latex?: string | null;
     source_page_index?: number;
 };
 
@@ -41,11 +43,20 @@ type PdfExtractResponse = {
     };
 };
 
+type ImageExtractResponse = {
+    ok: boolean;
+    questions?: ExtractedQuestion[];
+    notes?: string[];
+    error?: string | null;
+};
+
 type SolvedQuestion = {
     questionId: string;
     result?: SolveResponse;
     error?: string;
 };
+
+type ImageExtractEngine = "pix2text" | "qwen_math";
 
 const ACCEPTED_UPLOAD = "image/png,image/jpeg,image/webp,application/pdf";
 const PDF_ENABLED = process.env.NEXT_PUBLIC_SNAP_SOLVE_PDF_ENABLED !== "false";
@@ -76,6 +87,10 @@ export default function SnapSolveInputPanel() {
     const [solvedQuestions, setSolvedQuestions] = React.useState<SolvedQuestion[]>([]);
     const [extracting, setExtracting] = React.useState(false);
     const [solvingSelected, setSolvingSelected] = React.useState(false);
+    const [imageExtracting, setImageExtracting] = React.useState(false);
+    const [imageExtractedQuestions, setImageExtractedQuestions] = React.useState<ExtractedQuestion[]>([]);
+    const [imageExtractEngine, setImageExtractEngine] = React.useState<ImageExtractEngine>("pix2text");
+    const [imageExtractNote, setImageExtractNote] = React.useState<string | null>(null);
     const fileInputRef = React.useRef<HTMLInputElement | null>(null);
     const cameraInputRef = React.useRef<HTMLInputElement | null>(null);
     const sketchRef = React.useRef<SketchCanvasHandle | null>(null);
@@ -96,6 +111,40 @@ export default function SnapSolveInputPanel() {
         if (typeof error === "string") return error;
         return fallback;
     }, []);
+    const normalizeExtractText = React.useCallback((value: string): string => {
+        if (!value) return "";
+        return value
+            .replace(/\\n/g, "\n")
+            .replace(/\\r/g, "\r")
+            .replace(/\\t/g, "\t")
+            .replace(/\\\\/g, "\\")
+            .replace(/ratio\s+AB:\s*\\?\(\{\\bf\s*B\s*C\}\s*,?\\?\)\s*is:/gi, "ratio \\(\\mathbf{AB}:\\mathbf{BC}\\) is:")
+            .replace(/ratio\s+AB:\s*BC\s*,?\s*is:/gi, "ratio \\(\\mathbf{AB}:\\mathbf{BC}\\) is:")
+            .trim();
+    }, []);
+    const normalizeLatexForReview = React.useCallback((value: string): string => {
+        if (!value) return "";
+        return normalizeExtractText(value)
+            .replace(/\\\\/g, "\\")
+            .replace(/\{\\bf\s+([^}]+)\}/g, "\\mathbf{$1}")
+            .replace(/\\bf\s+([A-Za-z0-9]+)/g, "\\mathbf{$1}")
+            .replace(/\\\[/g, "$$")
+            .replace(/\\\]/g, "$$")
+            .replace(/\\\(/g, "$")
+            .replace(/\\\)/g, "$");
+    }, [normalizeExtractText]);
+    const getUserId = React.useCallback((): string => {
+        if (typeof window === "undefined") return "1";
+        return localStorage.getItem("user_id") || "1";
+    }, []);
+    const imageExtractedText = React.useMemo(
+        () => imageExtractedQuestions.map((q, index) => `${index + 1}. ${normalizeExtractText(q.text || "")}`).filter(Boolean).join("\n\n"),
+        [imageExtractedQuestions, normalizeExtractText]
+    );
+    const imageLatexReviewText = React.useMemo(
+        () => imageExtractedQuestions.map((q, index) => `${index + 1}. ${normalizeLatexForReview(q.text || "")}`).filter(Boolean).join("\n\n"),
+        [imageExtractedQuestions, normalizeLatexForReview]
+    );
     const isSubmitEnabled = React.useMemo(() => {
         if (isPdfMode) return false;
         return Boolean(uploadedFile || sketchHasContent || questionText.trim().length > 0);
@@ -119,6 +168,9 @@ export default function SnapSolveInputPanel() {
         setExtractedQuestions([]);
         setSelectedQuestionIds(new Set());
         setSolvedQuestions([]);
+        setImageExtracting(false);
+        setImageExtractedQuestions([]);
+        setImageExtractNote(null);
     }, [clearPdfCache]);
 
     const setUploadFile = React.useCallback(
@@ -129,6 +181,9 @@ export default function SnapSolveInputPanel() {
             setExtractedQuestions([]);
             setSelectedQuestionIds(new Set());
             setSolvedQuestions([]);
+            setImageExtracting(false);
+            setImageExtractedQuestions([]);
+            setImageExtractNote(null);
 
             if (previewUrl && previewUrl.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
             if (!file) {
@@ -145,6 +200,65 @@ export default function SnapSolveInputPanel() {
             else setPreviewUrl(null);
         },
         [previewUrl, clearPdfState]
+    );
+
+    const extractImageQuestions = React.useCallback(
+        async (file: File) => {
+            if (!file.type.startsWith("image/")) return;
+            setImageExtracting(true);
+            setImageExtractedQuestions([]);
+            setImageExtractNote(null);
+            try {
+                const form = new FormData();
+                form.append("file", file);
+                form.append("source", "image");
+                form.append("user_selection", "whole_page");
+                form.append("ocr_engine_choice", imageExtractEngine);
+                const userId = getUserId();
+                const res = await fetch(`/api/v1/extract_questions?user_id=${encodeURIComponent(userId)}`, {
+                    method: "POST",
+                    body: form,
+                });
+                const payload = (await res.json().catch(() => ({}))) as ImageExtractResponse;
+                if (!res.ok) throw new Error(extractErrorMessage(payload, "Unable to extract questions from image."));
+                let questions = Array.isArray(payload.questions) ? payload.questions : [];
+                let notes = Array.isArray(payload.notes) ? payload.notes : [];
+
+                if (imageExtractEngine === "pix2text") {
+                    const mergedText = questions.map((q) => q.text || "").join("\n");
+                    const looksGarbled =
+                        questions.length === 0 ||
+                        ((mergedText.match(/\{\}/g) || []).length >= 8) ||
+                        ((mergedText.match(/\\/g) || []).length > 30 &&
+                            mergedText.replace(/[A-Za-z]/g, "").length > mergedText.replace(/[^A-Za-z]/g, "").length);
+                    if (looksGarbled) {
+                        const retryForm = new FormData();
+                        retryForm.append("file", file);
+                        retryForm.append("source", "image");
+                        retryForm.append("user_selection", "whole_page");
+                        retryForm.append("ocr_engine_choice", "qwen_math");
+                        const retryRes = await fetch(`/api/v1/extract_questions?user_id=${encodeURIComponent(userId)}`, {
+                            method: "POST",
+                            body: retryForm,
+                        });
+                        const retryPayload = (await retryRes.json().catch(() => ({}))) as ImageExtractResponse;
+                        if (retryRes.ok) {
+                            questions = Array.isArray(retryPayload.questions) ? retryPayload.questions : questions;
+                            notes = Array.isArray(retryPayload.notes) ? retryPayload.notes : notes;
+                            notes = ["Pix2Text looked noisy, switched to Qwen Math.", ...notes];
+                        }
+                    }
+                }
+
+                setImageExtractedQuestions(questions);
+                if (notes.length > 0) setImageExtractNote(notes[0] || null);
+            } catch (e) {
+                setError(e instanceof Error ? e.message : "Unable to extract questions from image.");
+            } finally {
+                setImageExtracting(false);
+            }
+        },
+        [extractErrorMessage, getUserId, imageExtractEngine]
     );
 
     React.useEffect(() => {
@@ -262,6 +376,7 @@ export default function SnapSolveInputPanel() {
                     setUploadFile(null);
                     clearPdfState();
                 }
+                return;
             }
         },
         [setUploadFile, preparePdf, clearPdfState]
@@ -378,6 +493,9 @@ export default function SnapSolveInputPanel() {
         setSketchHasContent(false);
         sketchRef.current?.clear();
         clearPdfState();
+        setImageExtracting(false);
+        setImageExtractedQuestions([]);
+        setImageExtractNote(null);
     };
 
     const handleSubmit = async () => {
@@ -497,6 +615,28 @@ export default function SnapSolveInputPanel() {
                             {uploadedFile.type === "application/pdf" && <div className="mt-2 text-xs text-slate-400">PDF selected</div>}
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             {previewUrl && <img src={previewUrl} alt="Upload preview" className="mt-3 max-h-56 rounded-lg border border-slate-700 object-contain" />}
+                            {uploadedFile.type.startsWith("image/") && (
+                                <div className="mt-3 flex flex-wrap items-center gap-2">
+                                    <label className="text-xs text-slate-300">Engine</label>
+                                    <select
+                                        value={imageExtractEngine}
+                                        onChange={(e) => setImageExtractEngine(e.target.value as ImageExtractEngine)}
+                                        className="rounded-lg border border-slate-600 bg-slate-900 px-2 py-1 text-xs text-slate-100"
+                                    >
+                                        <option value="pix2text">Pix2Text (default)</option>
+                                        <option value="qwen_math">Qwen Math (Ollama)</option>
+                                    </select>
+                                    <button
+                                        type="button"
+                                        onClick={() => void extractImageQuestions(uploadedFile)}
+                                        disabled={imageExtracting}
+                                        className="rounded-lg border border-slate-500 px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+                                    >
+                                        {imageExtracting ? "Extracting..." : "Extract"}
+                                    </button>
+                                    {imageExtractNote && <span className="text-xs text-emerald-300">{imageExtractNote}</span>}
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -550,6 +690,32 @@ export default function SnapSolveInputPanel() {
                         <button type="button" onClick={() => { sketchRef.current?.clear(); setSketchHasContent(false); }} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300">Clear canvas</button>
                     </div>
                     <SketchCanvas ref={sketchRef} tool={tool} brushSize={brushSize} onContentChange={setSketchHasContent} />
+                </div>
+            )}
+
+            {activeSubTab === "upload" && uploadedFile?.type.startsWith("image/") && (imageExtracting || imageExtractedQuestions.length > 0) && (
+                <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+                    <div className="mb-2 text-sm font-bold">Extracted Text</div>
+                    {imageExtracting ? (
+                        <div className="text-xs text-slate-500">Extracting text from image...</div>
+                    ) : (
+                        <div className="grid gap-3 md:grid-cols-2">
+                            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
+                                <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Plain Text</div>
+                                <pre data-testid="snap-image-extract-plain" className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-200">
+                                    {imageExtractedText || "No questions detected from this image."}
+                                </pre>
+                            </div>
+                            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
+                                <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">LaTeX Review</div>
+                                <article data-testid="snap-image-extract-latex" className="prose prose-slate max-w-none rounded-lg border border-rose-200 bg-rose-50 p-2 text-sm dark:prose-invert dark:border-rose-900/40 dark:bg-rose-950/20">
+                                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                        {imageLatexReviewText || "_No extracted math text to render._"}
+                                    </ReactMarkdown>
+                                </article>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 

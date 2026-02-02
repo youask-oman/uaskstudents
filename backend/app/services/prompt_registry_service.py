@@ -12,6 +12,7 @@ from app.models import (
     PromptBinding,
     PromptTierEnum,
     PromptModeEnum,
+    PromptRoleEnum,
 )
 
 
@@ -20,6 +21,53 @@ class PromptRegistryError(Exception):
 
 
 class PromptRegistryService:
+    OCR_EXTRACT_QWEN_SYSTEM_PROMPT_ID = "ocr_extract_qwen_system_v1"
+    OCR_EXTRACT_QWEN_USER_PROMPT_ID = "ocr_extract_qwen_user_v1"
+
+    OCR_EXTRACT_QWEN_SYSTEM_PROMPT_DEFAULT = (
+        "You are a strict JSON extraction engine for math worksheets and textbook pages.\n"
+        "Output ONLY valid JSON that matches the provided JSON schema exactly.\n"
+        "Do not output markdown. Do not add commentary. Do not wrap in code fences.\n"
+        "Do not include any keys not defined in the schema.\n"
+        "Keys must have no leading or trailing whitespace.\n"
+        "If you are uncertain about any field, use null where allowed and explain uncertainty in \"notes\".\n"
+        "If the image/page is not a math page, set is_math_page=false and return questions=[] with ok=true."
+    )
+    OCR_EXTRACT_QWEN_USER_PROMPT_DEFAULT = (
+        "Extract ALL math questions from the provided image or PDF page image(s).\n\n"
+        "If there are multiple questions, split them into separate items in questions[].\n\n"
+        "Preserve math notation. If you can express an equation in LaTeX confidently, put it in \"latex\"; otherwise set latex=null.\n\n"
+        "Include page number for each question (0-based).\n\n"
+        "If the page contains multiple subparts (a), (b), (c), either:\n"
+        "(1) keep them in one question text, OR\n"
+        "(2) create separate questions with ids p{page}-q{n}-part{letter}.\n"
+        "Return JSON only."
+    )
+
+    def ensure_ocr_extract_prompts(self, session: Session, updated_by: Optional[str] = "system") -> None:
+        """
+        Ensure OCR Qwen post-processing prompts exist in prompt_templates.
+        These IDs are read by runtime extraction flow and can be edited via registry admin APIs.
+        """
+        self.update_prompt(
+            session=session,
+            prompt_id=self.OCR_EXTRACT_QWEN_SYSTEM_PROMPT_ID,
+            content=self.OCR_EXTRACT_QWEN_SYSTEM_PROMPT_DEFAULT,
+            tier=None,
+            mode=PromptModeEnum.SOLVE,
+            role=PromptRoleEnum.SYSTEM,
+            updated_by=updated_by,
+        )
+        self.update_prompt(
+            session=session,
+            prompt_id=self.OCR_EXTRACT_QWEN_USER_PROMPT_ID,
+            content=self.OCR_EXTRACT_QWEN_USER_PROMPT_DEFAULT,
+            tier=None,
+            mode=PromptModeEnum.SOLVE,
+            role=PromptRoleEnum.DEVELOPER,
+            updated_by=updated_by,
+        )
+
     def audit_active_bindings(self, session: Session) -> Dict[str, Any]:
         """
         Validate that active prompt bindings are complete and resolvable.

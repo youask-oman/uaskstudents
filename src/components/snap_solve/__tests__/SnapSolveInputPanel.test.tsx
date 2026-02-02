@@ -26,6 +26,16 @@ jest.mock("@/components/snap_solve/SketchCanvas", () => {
 describe("SnapSolveInputPanel", () => {
     beforeEach(() => {
         jest.restoreAllMocks();
+        global.fetch = jest.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({
+                ok: true,
+                is_math_page: true,
+                notes: [],
+                questions: [],
+                cache_hit: false,
+            }),
+        }) as unknown as typeof fetch;
         Object.defineProperty(URL, "createObjectURL", {
             writable: true,
             value: jest.fn(() => "blob:test"),
@@ -34,6 +44,10 @@ describe("SnapSolveInputPanel", () => {
             writable: true,
             value: jest.fn(),
         });
+    });
+
+    afterEach(async () => {
+        await act(async () => { });
     });
 
     test("paste handler converts clipboard image to upload file", async () => {
@@ -60,6 +74,74 @@ describe("SnapSolveInputPanel", () => {
         await waitFor(() => {
             expect(screen.getByText(/Selected:/)).toBeInTheDocument();
         });
+    });
+
+    test("image upload extracts questions and renders plain + latex previews above input", async () => {
+        const fetchMock = jest
+            .fn()
+            .mockResolvedValue({
+                ok: true,
+                json: async () => ({
+                    ok: true,
+                    is_math_page: true,
+                    notes: [],
+                    cache_hit: false,
+                    questions: [{ id: "q1", text: "\\\\text{Solve } x^2 = 9", confidence: 0.9, is_valid_math: true }],
+                }),
+            });
+        global.fetch = fetchMock as unknown as typeof fetch;
+        render(<SnapSolveInputPanel />);
+
+        await act(async () => {
+            fireEvent.change(screen.getByTestId("snap-upload-input"), {
+                target: { files: [new File(["img"], "equation.png", { type: "image/png" })] },
+            });
+        });
+
+        expect(screen.getByRole("button", { name: "Extract" })).toBeInTheDocument();
+
+        await act(async () => {
+            fireEvent.click(screen.getByRole("button", { name: "Extract" }));
+        });
+
+        await waitFor(() => {
+            expect(screen.getByTestId("snap-image-extract-plain")).toHaveTextContent(/Solve/);
+            expect(screen.getByTestId("snap-image-extract-latex")).toHaveTextContent(/Solve/);
+        });
+
+        expect(fetchMock).toHaveBeenCalledWith(
+            expect.stringContaining("/api/v1/extract_questions?user_id="),
+            expect.objectContaining({ method: "POST" })
+        );
+    });
+
+    test("supports selecting Qwen Math extraction engine", async () => {
+        const fetchMock = jest.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({
+                ok: true,
+                is_math_page: true,
+                notes: ["Refined with Qwen Math"],
+                cache_hit: false,
+                questions: [{ id: "q1", text: "x^2=9", confidence: 0.9, is_valid_math: true }],
+            }),
+        });
+        global.fetch = fetchMock as unknown as typeof fetch;
+        render(<SnapSolveInputPanel />);
+
+        await act(async () => {
+            fireEvent.change(screen.getByTestId("snap-upload-input"), {
+                target: { files: [new File(["img"], "equation.png", { type: "image/png" })] },
+            });
+        });
+        fireEvent.change(screen.getByDisplayValue("Pix2Text (default)"), { target: { value: "qwen_math" } });
+        await act(async () => {
+            fireEvent.click(screen.getByRole("button", { name: "Extract" }));
+        });
+
+        const requestInit = fetchMock.mock.calls[0][1] as RequestInit;
+        const form = requestInit.body as FormData;
+        expect(form.get("ocr_engine_choice")).toBe("qwen_math");
     });
 
     test("paste handler supports clipboard files image payloads", async () => {
