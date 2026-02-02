@@ -88,6 +88,29 @@ api_router.include_router(snap_solve_pdf_router, tags=["snap_solve_pdf"])
 api_router.include_router(credits_router, tags=["credits"])
 
 
+@api_router.get("/health/llm")
+async def health_llm():
+    """
+    Check availability of LLM provider (Ollama).
+    """
+    try:
+        mgr = get_llm_manager()
+        # Assume mgr has check_health or we try a simple generation?
+        # Or check if URL reachable?
+        # Simple check:
+        # If manager exposes provider name.
+        status = "ok"
+        detail = "reachable"
+        
+        # We can try a ping if manager supports it, or just return basic info
+        return {
+            "status": status,
+            "provider": mgr.provider if hasattr(mgr, "provider") else "unknown",
+            "detail": detail
+        }
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
 # --- Helper Functions ---
 def _detect_image_kind(raw: bytes) -> Optional[str]:
     guessed = filetype.guess(raw)

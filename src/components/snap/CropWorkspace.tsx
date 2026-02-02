@@ -1,7 +1,5 @@
 "use client";
 
-"use client";
-
 import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
 import Cropper, { Area } from "react-easy-crop";
 import { CropArea, clamp } from "./snapSolveUtils";
@@ -47,7 +45,6 @@ export default function CropWorkspace({
 }: CropWorkspaceProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const [workspaceSize, setWorkspaceSize] = useState({ width: 0, height: 0 });
-    const [mediaSize, setMediaSize] = useState<{ width: number; height: number } | null>(null);
     const [cropWidthScale, setCropWidthScale] = useState(DEFAULT_WIDTH_SCALE);
     const [cropHeightScale, setCropHeightScale] = useState(DEFAULT_HEIGHT_SCALE);
     const [lockRatio, setLockRatio] = useState(false);
@@ -114,6 +111,7 @@ export default function CropWorkspace({
             resetCropScale();
         }
         prevFullPage.current = fullPage;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [fullPage, resetCropScale]);
 
     React.useEffect(() => {
@@ -234,7 +232,6 @@ export default function CropWorkspace({
                 onCropComplete={handleCropComplete}
                 onMediaLoaded={(media) => {
                     const natural = { width: media.naturalWidth, height: media.naturalHeight };
-                    setMediaSize(natural);
                     if (onImageSize) {
                         onImageSize(natural);
                     }

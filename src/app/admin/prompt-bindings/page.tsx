@@ -51,6 +51,7 @@ export default function AdminPromptBindingsPage() {
 
     useEffect(() => {
         loadBindings();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [baseUrl]);
 
     const handleSubmit = async () => {

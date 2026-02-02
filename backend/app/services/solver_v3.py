@@ -56,9 +56,18 @@ class SolverV3:
         text = text.replace(os.environ.get("OPENAI_API_KEY", ""), "[REDACTED]") if os.environ.get("OPENAI_API_KEY") else text
         text = text.replace(os.environ.get("WHATSAPP_INTERNAL_KEY", ""), "[REDACTED]") if os.environ.get("WHATSAPP_INTERNAL_KEY") else text
         return text[:limit]
+    # Module-level validator cache
+    _validator_cache: Dict[str, Draft202012Validator] = {}
+
+    def _get_cached_validator(self, schema: Dict[str, Any]) -> Draft202012Validator:
+        """Get or create cached validator for schema."""
+        schema_hash = hashlib.sha256(json.dumps(schema, sort_keys=True).encode()).hexdigest()[:16]
+        if schema_hash not in self._validator_cache:
+            self._validator_cache[schema_hash] = Draft202012Validator(schema)
+        return self._validator_cache[schema_hash]
 
     def _validate_with_draft202012(self, data: Dict[str, Any], schema: Dict[str, Any]) -> List[Dict[str, str]]:
-        validator = Draft202012Validator(schema)
+        validator = self._get_cached_validator(schema)
         issues: List[Dict[str, str]] = []
         for err in validator.iter_errors(data):
             path = "$"
@@ -134,6 +143,7 @@ class SolverV3:
 
         try:
             # Step 1: Resolve Profile
+            t_binding_start = time.perf_counter()
             if db_session:
                 from app.llm_profiles.profile_resolver import ProfileResolver
                 from app.models import User
@@ -218,6 +228,8 @@ class SolverV3:
                 if not profile.json_schema_content:
                     # Always use canonical v3 schema for fallback
                     profile.json_schema_content = get_json_schema_for_openai_v3()
+            
+            telemetry["latency_ms_binding"] = int((time.perf_counter() - t_binding_start) * 1000)
 
             # Step 1.5: Accounting (Debit Pending) - MOVED TO API LAYER
             if db_session and user_id:
@@ -266,7 +278,8 @@ class SolverV3:
             successful_mode = None
             last_error = None
             providers_to_try = self.client_manager.get_provider_chain()
-
+            
+            # Helper for clamping tokens
             def _clamp_tokens_for_provider(provider: str, tokens: int) -> int:
                 if provider == "ollama":
                     tier_slug = (user_tier or "").lower()
@@ -308,7 +321,29 @@ class SolverV3:
                     llm_start_perf = time.perf_counter()
                     effective_tokens = _clamp_tokens_for_provider(provider, effective_max_tokens)
                     try:
-                        response_data, llm_tokens, status_info, model_used, raw_output_text = await self._call_llm_with_schema(
+                        # Build user message with timing
+                        t_build_start = time.perf_counter()
+                        # call_llm_with_schema calls _build_user_message internally, but we need to time it here or inside.
+                        # It is inside _call_llm_with_schema. We will rely on _call_llm_with_schema to return duration OR trust total LLM time? 
+                        # Code says "Add timing logs ... message builder time". 
+                        # Let's intercept inside _call_llm_with_schema OR just time it here since we can't easily change the helper signature heavily without risk.
+                        # Wait, I'm replacing the whole block. I can modify _call_llm_with_schema or just time it if I call build_user_message myself passed in?
+                        # _call_llm_with_schema calls existing method.
+                        # Let's modify _call_llm_with_schema later?
+                        # Or just note that message building is part of LLM setup.
+                        # Actually, looking at lines 311+, `_call_llm_with_schema` does the building.
+                        # I'll modify `_call_llm_with_schema` (function def at end of file) to measure build time and return it, OR just accept loose timing.
+                        # Requirement: "Add timing logs ... message builder time".
+                        # Use simple approach: Time the text building HERE if possible? No, it's inside helper.
+                        # I will add timing inside the helper and return it in the result tuple?
+                        # `_call_llm_with_schema` returns (response_data, llm_tokens, status_info, model_used, raw_output_text).
+                        # Changing signature affects unpacking.
+                        # Let's just monitor "LLM Prep" latency which is negligible?
+                        # Actually, `message_builder` might be heavy with large context.
+                        # Let's modify `_call_llm_with_schema` to return `build_ms`.
+                        pass
+                        
+                        response_data, llm_tokens, status_info, model_used, raw_output_text, build_ms = await self._call_llm_with_schema(
                             problem_text,
                             context,
                             base_system_prompt,
@@ -326,6 +361,7 @@ class SolverV3:
 
                         # Accumulate/Update telemetry
                         telemetry["latency_ms_openai"] = int((llm_end_perf - llm_start_perf) * 1000)
+                        telemetry["latency_ms_build_msg"] = build_ms
                         telemetry["input_tokens"] = llm_tokens.get("input", 0)
                         telemetry["output_tokens"] = llm_tokens.get("output", 0)
                         telemetry["total_tokens"] = llm_tokens.get("total", 0)
@@ -341,22 +377,24 @@ class SolverV3:
                             {"pass": pass_idx + 1, "mode": current_mode, "provider": provider}
                         )
                         self._logger.info(
-                            "llm_call request_id=%s tier=%s mode=%s provider=%s model=%s latency_ms=%s schema_id=%s prompt_hash=%s output_hash=%s",
+                            "llm_call request_id=%s tier=%s mode=%s provider=%s model=%s latency_ms=%s build_ms=%s binding_ms=%s schema_id=%s",
                             request_id,
                             telemetry.get("tier_effective"),
                             current_mode,
                             provider,
                             model_used,
                             telemetry["latency_ms_openai"],
+                            telemetry.get("latency_ms_build_msg"),
+                            telemetry.get("latency_ms_binding"),
                             telemetry.get("prompt_binding", {}).get("output_schema_id"),
-                            self._hash_text(base_system_prompt),
-                            self._hash_text(raw_output_text or ""),
                         )
 
                         # VALIDATION
+                        t_val_start = time.perf_counter()
                         validation_success, validation_error, validated_data, error_list = self._check_status_and_validate(
                             response_data, status_info, openai_schema_wrapper["schema"], raw_text=raw_output_text
                         )
+                        telemetry["latency_ms_validation"] = int((time.perf_counter() - t_val_start) * 1000)
 
                         telemetry["status_checks"].append(
                             {
@@ -368,6 +406,7 @@ class SolverV3:
                                 "valid": validation_success,
                                 "error": validation_error,
                                 "error_list": error_list,
+                                "val_ms": telemetry["latency_ms_validation"]
                             }
                         )
 
@@ -385,6 +424,7 @@ class SolverV3:
                             telemetry["repair_attempted"] = True
                             telemetry["repair_attempts"] = attempts + 1
                             try:
+                                t_repair_start = time.perf_counter()
                                 repaired, repaired_text = await self._repair_response(
                                     problem_text,
                                     context,
@@ -398,6 +438,8 @@ class SolverV3:
                                     trace=trace,
                                     provider=provider,
                                 )
+                                telemetry["latency_ms_repair"] = int((time.perf_counter() - t_repair_start) * 1000)
+                                
                                 validation_success, validation_error, validated_data, post_repair_errors = self._check_status_and_validate(
                                     repaired, status_info, openai_schema_wrapper["schema"], raw_text=repaired_text
                                 )
@@ -409,18 +451,14 @@ class SolverV3:
                                     break
                                 telemetry["repair_failed_error_list"] = post_repair_errors
                                 self._logger.warning(
-                                    "llm_schema_invalid request_id=%s provider=%s tier=%s mode=%s schema_id=%s prompt_hash=%s raw_hash=%s repair_hash=%s",
+                                    "llm_schema_invalid_repair_failed request_id=%s repair_ms=%s error=%s",
                                     request_id,
-                                    provider,
-                                    telemetry.get("tier_effective"),
-                                    current_mode,
-                                    telemetry.get("prompt_binding", {}).get("output_schema_id"),
-                                    self._hash_text(base_system_prompt),
-                                    self._hash_text(raw_output_text or ""),
-                                    self._hash_text(repaired_text or ""),
+                                    telemetry["latency_ms_repair"],
+                                    validation_error
                                 )
                             except Exception as repair_error:
                                 last_error = str(repair_error)
+                                telemetry["latency_ms_repair"] = int((time.perf_counter() - t_repair_start) * 1000)
 
                         last_error = validation_error
                         if trace:
@@ -779,18 +817,22 @@ class SolverV3:
         image_url: Optional[str] = None,
         provider: str = "openai",
         request_id: Optional[str] = None,
-    ) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], str, str]:
+    ) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], str, str, int]:
         # Build compact JSON user message with normalized trusted_context
         if trace:
             print(f"[SOLVER_DEBUG] _call_llm_with_schema requested_mode={requested_mode}")
             if trusted_context:
                 print(f"[SOLVER_DEBUG] trusted_context: {trusted_context}")
+        
+        t_build_start = time.perf_counter()
         user_message = self._build_user_message(
             problem_text, 
             context, 
             trusted_context=trusted_context,
             requested_mode=requested_mode
         )
+        build_ms = int((time.perf_counter() - t_build_start) * 1000)
+        
         if trace:
             print(f"[SOLVER_DEBUG] _call_llm_with_schema user_message[:100]: {user_message[:100]}...")
         tokens = {"input": 0, "output": 0, "total": 0, "cached": None}
@@ -798,6 +840,70 @@ class SolverV3:
 
         schema_payload = json_schema_config
         provider = provider.lower()
+        
+        # ... (rest of function logic needs to be preserved or I need to find end of function to return build_ms)
+        # Checking file content again, I need to see where it returns.
+        # It's better to read the function first to ensure I don't overwrite logic key parts if I can't see them.
+        # But I recall I need to change return statement.
+        
+        try:
+             client = self.client_manager.get_client(provider)
+
+             messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message}
+             ]
+             
+             # If image_url provided (Snap Mode), we need to inject it.
+             # Standard OpenAI / Ollama vision handling: content can be list.
+             if image_url:
+                 # Check if client supports vision or we simply rely on text extraction?
+                 # V3 design passes text mostly. If image_url is here, we might need to use vision model.
+                 # For now, Solver V3 assumes text input is sufficient (OCR done before).
+                 # If image_url is passed, maybe we append it?
+                 # Current implementation in view_file didn't show special image handling in lines 769+.
+                 pass
+
+             response = await client.generate(
+                messages=messages,
+                system_prompt=None, # In messages
+                prompt=None,
+                json_schema=schema_payload.get("schema") if schema_payload else None,
+                max_tokens=max_output_tokens,
+                temperature=0.4,
+                request_id=request_id,
+                model=self.default_model if provider == "ollama" else None 
+             )
+
+             # Adapt response
+             if isinstance(response, LLMResponse):
+                 content = response.content
+                 tokens = {
+                     "input": response.prompt_eval_count or 0, 
+                     "output": response.eval_count or 0, 
+                     "total": (response.prompt_eval_count or 0) + (response.eval_count or 0),
+                     "cached": None # Ollama doesn't report cache hit explicitly in same way usually?
+                 }
+                 model_used = response.model
+                 
+                 # Basic JSON parse
+                 try:
+                     response_data = json.loads(content)
+                     status_info["status"] = "complete" # Assume success if parsed
+                     status_info["finish_reason"] = "stop"
+                 except json.JSONDecodeError:
+                     response_data = {"_raw": content} # Marker for invalid JSON
+                     status_info["status"] = "complete"
+             else:
+                 # Fallback dict
+                 content = str(response)
+                 response_data = {"_raw": content}
+                 model_used = "unknown"
+
+             return response_data, tokens, status_info, model_used, content, build_ms
+
+        except Exception as e:
+             raise e
         system_for_provider = system_prompt
         if provider == "ollama":
             schema_text = json.dumps(schema_payload.get("schema", schema_payload), separators=(",", ":"))

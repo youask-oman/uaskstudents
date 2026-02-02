@@ -22,6 +22,7 @@ export default React.memo(
         ref
     ) {
         const containerRef = React.useRef<HTMLDivElement | null>(null);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const fabricCanvasRef = React.useRef<any | null>(null);
         const htmlCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
         const [ready, setReady] = React.useState(false);

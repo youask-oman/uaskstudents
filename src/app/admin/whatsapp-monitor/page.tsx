@@ -44,8 +44,8 @@ export default function WhatsAppMonitorPage() {
             const json = await res.json();
             setData(json);
             setError(null);
-        } catch (e: any) {
-            setError(e?.message || "Failed to fetch monitor");
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : "Failed to fetch monitor");
         }
     };
 
@@ -53,6 +53,7 @@ export default function WhatsAppMonitorPage() {
         fetchData();
         const id = setInterval(fetchData, 5000);
         return () => clearInterval(id);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [phoneFilter, directionFilter]);
 
     useEffect(() => {
@@ -65,7 +66,7 @@ export default function WhatsAppMonitorPage() {
                     const events = prev?.events ? [payload, ...prev.events].slice(0, 200) : [payload];
                     return prev ? { ...prev, events } : { bot_status: { status: "unknown" }, queue_length: null, events };
                 });
-            } catch (_e) {
+            } catch {
                 // ignore
             }
         };
@@ -222,21 +223,21 @@ export default function WhatsAppMonitorPage() {
                             <div className="text-sm">
                                 <div className="text-xs text-slate-500 mb-1">Full Text</div>
                                 <pre className="whitespace-pre-wrap text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-800 p-3 rounded border border-slate-200 dark:border-slate-700 text-xs">
-{selectedEvent.full_text || selectedEvent.text || ""}
+                                    {selectedEvent.full_text || selectedEvent.text || ""}
                                 </pre>
                             </div>
                             {selectedEvent.error && (
                                 <div className="text-sm">
                                     <div className="text-xs text-slate-500 mb-1">Error</div>
                                     <pre className="whitespace-pre-wrap text-red-600 bg-red-50 dark:bg-red-900/30 p-3 rounded border border-red-200 dark:border-red-800 text-xs">
-{selectedEvent.error}
+                                        {selectedEvent.error}
                                     </pre>
                                 </div>
                             )}
                             <div className="text-sm">
                                 <div className="text-xs text-slate-500 mb-1">Raw JSON</div>
                                 <pre className="whitespace-pre-wrap text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 p-3 rounded border border-slate-200 dark:border-slate-700 text-[11px]">
-{JSON.stringify(selectedEvent, null, 2)}
+                                    {JSON.stringify(selectedEvent, null, 2)}
                                 </pre>
                             </div>
                         </div>

@@ -45,6 +45,7 @@ export default function AdminDataPage() {
         };
         fetchTables();
         return () => controller.abort();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
@@ -68,6 +69,7 @@ export default function AdminDataPage() {
         };
         fetchRows();
         return () => controller.abort();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedTable, limit, offset]);
 
     const filteredRows = useMemo(() => {

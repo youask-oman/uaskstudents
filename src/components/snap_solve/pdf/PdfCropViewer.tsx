@@ -78,6 +78,7 @@ export default function PdfCropViewer({ imageUrl, pageLabel, onCropChange }: Pro
                 onPointerUp={handleUp}
                 onPointerLeave={handleUp}
             >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                     ref={imgRef}
                     src={imageUrl}
@@ -90,7 +91,7 @@ export default function PdfCropViewer({ imageUrl, pageLabel, onCropChange }: Pro
                         onCropChange(rect, { width: img.naturalWidth, height: img.naturalHeight });
                     }}
                 />
-                {rect && imgRef.current && (
+                {rect && imgSize.width > 0 && imgSize.height > 0 && (
                     <div
                         className="pointer-events-none absolute border-2 border-primary bg-primary/20"
                         style={{

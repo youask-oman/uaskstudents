@@ -1,16 +1,17 @@
-import React from "react";
+import React, { forwardRef } from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import SnapSolveInputPanel from "@/components/snap_solve/SnapSolveInputPanel";
 
 jest.mock("react-markdown", () => {
-    return ({ children }: { children: React.ReactNode }) => <div>{children}</div>;
+    const MockMarkdown = ({ children }: { children: React.ReactNode }) => <div>{children}</div>;
+    MockMarkdown.displayName = "MockMarkdown";
+    return MockMarkdown;
 });
 jest.mock("remark-math", () => ({}));
 jest.mock("rehype-katex", () => ({}));
 
 jest.mock("@/components/snap_solve/SketchCanvas", () => {
-    const React = require("react");
-    return React.forwardRef((_props: unknown, ref: React.Ref<unknown>) => {
+    const MockSketchCanvas = forwardRef((_props: unknown, ref: React.Ref<unknown>) => {
         React.useImperativeHandle(ref, () => ({
             clear: jest.fn(),
             hasContent: () => true,
@@ -18,6 +19,8 @@ jest.mock("@/components/snap_solve/SketchCanvas", () => {
         }));
         return <div data-testid="mock-sketch-canvas" />;
     });
+    MockSketchCanvas.displayName = "MockSketchCanvas";
+    return MockSketchCanvas;
 });
 
 describe("SnapSolveInputPanel", () => {

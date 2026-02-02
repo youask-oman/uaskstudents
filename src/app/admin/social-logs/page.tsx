@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 interface MonitorEvent {
     direction: "in" | "out";
@@ -28,20 +28,23 @@ export default function SocialLogsPage() {
     const [phoneFilter, setPhoneFilter] = useState("");
     const [directionFilter, setDirectionFilter] = useState("");
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         const params = new URLSearchParams({ limit: "80" });
         if (phoneFilter.trim()) params.set("phone", phoneFilter.trim());
         if (directionFilter) params.set("direction", directionFilter);
         const res = await fetch(`/api/admin/whatsapp/monitor?${params.toString()}`);
         const json = await res.json();
         setData(json);
-    };
+    }, [phoneFilter, directionFilter]);
 
     useEffect(() => {
-        fetchData();
+        const loadData = async () => {
+            await fetchData();
+        };
+        loadData();
         const id = setInterval(fetchData, 5000);
         return () => clearInterval(id);
-    }, [phoneFilter, directionFilter]);
+    }, [fetchData]);
 
     return (
         <div className="p-8 max-w-6xl mx-auto">

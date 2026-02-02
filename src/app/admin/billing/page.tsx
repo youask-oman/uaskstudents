@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -47,7 +47,7 @@ export default function BillingControlCenter() {
 
     const getToken = () => typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-    const fetchConfig = async (type: string) => {
+    const fetchConfig = useCallback(async (type: string) => {
         setLoading(true);
         try {
             let url = `${API_BASE}/api/admin/config/${type}`;
@@ -69,9 +69,9 @@ export default function BillingControlCenter() {
             else setTokensConfig(data.policy || data || {});
         } catch (e) { console.error(e); }
         setLoading(false);
-    };
+    }, []);
 
-    const fetchTransactions = async () => {
+    const fetchTransactions = useCallback(async () => {
         setLoading(true);
         try {
             const res = await fetch(`${API_BASE}/api/admin/transactions`, {
@@ -82,9 +82,9 @@ export default function BillingControlCenter() {
             setTransactions(Array.isArray(data.data) ? data.data : []);
         } catch (e) { console.error(e); }
         setLoading(false);
-    };
+    }, []);
 
-    const fetchHistory = async (type: string) => {
+    const fetchHistory = useCallback(async (type: string) => {
         setLoading(true);
         try {
             const res = await fetch(`${API_BASE}/api/admin/config/history/${type}`, {
@@ -95,7 +95,7 @@ export default function BillingControlCenter() {
             setHistory(Array.isArray(data) ? data : []);
         } catch (e) { console.error(e); setHistory([]); }
         setLoading(false);
-    };
+    }, []);
 
     const saveConfig = async (type: string, value: Record<string, unknown>) => {
         if (!changeMsg.trim()) { alert("Please provide a change message"); return; }
@@ -128,11 +128,14 @@ export default function BillingControlCenter() {
     };
 
     useEffect(() => {
-        if (activeTab === "pricing") fetchConfig("pricing");
-        else if (activeTab === "tokens") fetchConfig("tokens");
-        else if (activeTab === "transactions") fetchTransactions();
-        else if (activeTab === "history") fetchHistory("pricing");
-    }, [activeTab]);
+        const loadData = async () => {
+            if (activeTab === "pricing") await fetchConfig("pricing");
+            else if (activeTab === "tokens") await fetchConfig("tokens");
+            else if (activeTab === "transactions") await fetchTransactions();
+            else if (activeTab === "history") await fetchHistory("pricing");
+        };
+        loadData();
+    }, [activeTab, fetchConfig, fetchTransactions, fetchHistory]);
 
     const checkUserCredits = async () => {
         if (!diagUserId) return;

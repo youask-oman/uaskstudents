@@ -88,7 +88,7 @@ export default function WhatsAppBotPage() {
             qr_ready: { color: "bg-blue-500", text: "Scan QR Code", icon: "qr_code_scanner" },
             connected: { color: "bg-green-500", text: "Connected", icon: "check_circle" },
         };
-        
+
         const config = statusConfig[botState.status];
         return (
             <div className={`${config.color} text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg`}>
@@ -177,7 +177,7 @@ export default function WhatsAppBotPage() {
                                     <ol className="list-decimal list-inside space-y-1 ml-2">
                                         <li>Open WhatsApp on your phone</li>
                                         <li>Go to Settings → Linked Devices</li>
-                                        <li>Tap "Link a Device"</li>
+                                        <li>Tap &quot;Link a Device&quot;</li>
                                         <li>Scan this QR code</li>
                                     </ol>
                                 </div>
@@ -222,7 +222,7 @@ export default function WhatsAppBotPage() {
                         <span className="material-symbols-outlined">analytics</span>
                         Statistics
                     </h2>
-                    
+
                     <div className="space-y-4">
                         <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-lg">
                             <div className="flex items-center gap-3">

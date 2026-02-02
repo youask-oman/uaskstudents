@@ -495,6 +495,7 @@ export default function SnapSolveInputPanel() {
                         <div className="mt-4 rounded-lg border border-slate-700 bg-slate-950 p-3">
                             <div className="text-xs font-semibold text-slate-300">Selected: {uploadedFile.name}</div>
                             {uploadedFile.type === "application/pdf" && <div className="mt-2 text-xs text-slate-400">PDF selected</div>}
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             {previewUrl && <img src={previewUrl} alt="Upload preview" className="mt-3 max-h-56 rounded-lg border border-slate-700 object-contain" />}
                         </div>
                     )}

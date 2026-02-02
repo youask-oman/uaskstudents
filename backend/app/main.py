@@ -5,6 +5,7 @@ from sqlmodel import Session, select
 import logging
 import json
 import time
+import uuid
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.api import limiter
@@ -26,21 +27,27 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
+    expose_headers=["*", "X-Request-ID"],
 )
-
-
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     logger = logging.getLogger("uvicorn")
-    logger.info(f"Incoming request: {request.method} {request.url}")
+    start_time = time.perf_counter()
+    
+    # Generate or use existing correlation ID
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())[:8]
+    
+    logger.info(f"[{request_id}] Incoming: {request.method} {request.url.path}")
     try:
         response = await call_next(request)
-        logger.info(f"Response status: {response.status_code}")
+        duration_ms = int((time.perf_counter() - start_time) * 1000)
+        logger.info(f"[{request_id}] Response: {response.status_code} | {duration_ms}ms")
+        response.headers["X-Request-ID"] = request_id
         return response
     except Exception as e:
-        logger.error(f"Request failed: {str(e)}")
+        duration_ms = int((time.perf_counter() - start_time) * 1000)
+        logger.error(f"[{request_id}] Failed: {str(e)} | {duration_ms}ms")
         raise e
 
 @app.on_event("startup")

@@ -34,6 +34,7 @@ interface Plan {
             plot_spec: number;
         };
         // Legacy
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         [key: string]: any;
     };
     system_prompt_template_id?: number | null;
@@ -62,6 +63,7 @@ function PricingPreviewPanel({ plans }: { plans: Plan[] }) {
     const [planId, setPlanId] = useState<string>("");
     const [tier, setTier] = useState<string>("standard");
     const [source, setSource] = useState<string>("text");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [result, setResult] = useState<any>(null);
     const [error, setError] = useState<string>("");
     const [loading, setLoading] = useState(false);
@@ -120,8 +122,8 @@ function PricingPreviewPanel({ plans }: { plans: Plan[] }) {
                 pricing_version: selectedPlan.multipliers?.version
             });
 
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : String(err));
         } finally {
             setLoading(false);
         }

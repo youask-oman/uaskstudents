@@ -1,3 +1,4 @@
+import asyncio
 import ipaddress
 import logging
 import os
@@ -139,6 +140,10 @@ def resolve_ollama_base_url() -> str:
 
 
 class LLMManager:
+    # Semaphore for throttling concurrent Ollama requests
+    _ollama_semaphore: asyncio.Semaphore = None
+    OLLAMA_MAX_CONCURRENT = int(os.environ.get("OLLAMA_MAX_CONCURRENT", "2"))
+
     def __init__(self):
         self.primary_provider = os.environ.get("LLM_PROVIDER", _default_provider()).lower()
         self.fallback_enabled = os.environ.get("LLM_FALLBACK_ENABLED", str(_default_fallback_enabled())).lower() in {
@@ -148,6 +153,10 @@ class LLMManager:
         }
         self._clients: Dict[str, Any] = {}
         self.last_error: Dict[str, Dict[str, Any]] = {}
+        
+        # Initialize semaphore lazily
+        if LLMManager._ollama_semaphore is None:
+            LLMManager._ollama_semaphore = asyncio.Semaphore(self.OLLAMA_MAX_CONCURRENT)
 
     def get_provider_chain(self) -> list:
         providers = [self.primary_provider]
@@ -162,6 +171,16 @@ class LLMManager:
         if self.primary_provider == "openai":
             return "ollama"
         return None
+
+    async def acquire_ollama_slot(self):
+        """Acquire a slot for Ollama request (for throttling)."""
+        if LLMManager._ollama_semaphore:
+            await LLMManager._ollama_semaphore.acquire()
+
+    def release_ollama_slot(self):
+        """Release Ollama request slot."""
+        if LLMManager._ollama_semaphore:
+            LLMManager._ollama_semaphore.release()
 
     def get_client(self, provider: str):
         provider = provider.lower()

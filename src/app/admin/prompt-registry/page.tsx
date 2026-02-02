@@ -81,6 +81,7 @@ export default function AdminPromptRegistryPage() {
         };
         loadVersions();
         return () => controller.abort();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selected?.prompt_id, baseUrl]);
 
     const handleSave = async () => {
@@ -151,11 +152,10 @@ export default function AdminPromptRegistryPage() {
                             {prompts.map((prompt) => (
                                 <li key={prompt.prompt_id}>
                                     <button
-                                        className={`w-full text-left px-3 py-2 rounded-lg text-sm border ${
-                                            selected?.prompt_id === prompt.prompt_id
+                                        className={`w-full text-left px-3 py-2 rounded-lg text-sm border ${selected?.prompt_id === prompt.prompt_id
                                                 ? "border-admin-primary bg-admin-primary/10 text-admin-primary"
                                                 : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300"
-                                        }`}
+                                            }`}
                                         onClick={() => setSelected(prompt)}
                                     >
                                         <div className="font-medium">{prompt.prompt_id}</div>
