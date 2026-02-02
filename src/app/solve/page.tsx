@@ -191,6 +191,13 @@ export default function DashboardPage() {
     const subscriptionReady = subscriptionLoaded && !subscriptionError && !!subscription;
     const readySubscription = subscriptionReady ? subscription : null;
     const trustedProfile = readySubscription?.profile ?? null;
+    const accountTier: SolveTier = readySubscription
+        ? (readySubscription.plan.slug === "research"
+            ? "RESEARCH"
+            : readySubscription.plan.slug === "free"
+                ? "FREE"
+                : "STANDARD")
+        : "FREE";
     const estimatedQuestionCount = activeTab === "text"
         ? Math.max(1, multiQuestionResult.suggestedSplits.length || 1)
         : 1;
@@ -206,7 +213,12 @@ export default function DashboardPage() {
         if (!subscriptionReady || !readySubscription) return;
         const hasStored = typeof window !== "undefined" ? localStorage.getItem("uask.solveTier") : null;
         if (hasStored) return;
-        const defaultTier: SolveTier = readySubscription.plan.slug === "free" ? "FREE" : "STANDARD";
+        const defaultTier: SolveTier =
+            readySubscription.plan.slug === "research"
+                ? "RESEARCH"
+                : readySubscription.plan.slug === "free"
+                    ? "FREE"
+                    : "STANDARD";
         setSelectedSolveTier(defaultTier);
         if (typeof window !== "undefined") {
             localStorage.setItem("uask.solveTier", defaultTier);
@@ -653,9 +665,15 @@ export default function DashboardPage() {
 
             <main className="max-w-5xl mx-auto px-4 py-8 md:py-12">
                 {/* Page Heading */}
-                <div className="mb-8">
-                    <h1 className="text-4xl font-black tracking-tight mb-2">New Solve</h1>
-                    <p className="text-slate-500 dark:text-slate-400 text-lg">Select your preferred input method and define the context for the best tutor results.</p>
+                <div className="mb-8 rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-gradient-to-b from-white to-slate-100/90 dark:from-slate-900 dark:to-slate-800/80 px-6 py-5 shadow-[0_1px_0_rgba(255,255,255,0.85)_inset,0_12px_24px_rgba(15,23,42,0.16)]">
+                    <h1
+                        className="text-4xl font-black tracking-tight mb-2 text-slate-900 dark:text-white"
+                        style={{ textShadow: "0 1px 0 rgba(255,255,255,0.55), 0 2px 0 rgba(15,23,42,0.18), 0 8px 14px rgba(15,23,42,0.15)" }}
+                    >
+                        New Solve
+                    </h1>
+                    <p className="text-slate-600 dark:text-slate-300 text-lg font-normal">Select your preferred input method and define the context for the best tutor results.</p>
+                    <div className="mt-2 text-right text-xs font-semibold text-emerald-500">Uask AI V 1.0</div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -1313,11 +1331,42 @@ export default function DashboardPage() {
                             </ul>
                         </div>
 
+                        {/* Student Context Card */}
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 transition-colors">
+                            <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
+                                <span className="material-symbols-outlined text-primary">school</span>
+                                Your School & Tier
+                            </h3>
+                            {readySubscription ? (
+                                <div className="space-y-2 text-sm">
+                                    <p className="text-slate-700 dark:text-slate-300">
+                                        <span className="font-semibold">School:</span>{" "}
+                                        {readySubscription.profile.school_name || "Not set"}
+                                    </p>
+                                    <p className="text-slate-700 dark:text-slate-300">
+                                        <span className="font-semibold">Location:</span>{" "}
+                                        {[readySubscription.profile.region_state_province, readySubscription.profile.region_country].filter(Boolean).join(", ") || "Not set"}
+                                    </p>
+                                    <p className="text-slate-700 dark:text-slate-300">
+                                        <span className="font-semibold">Subscription:</span> {readySubscription.plan.display_name}
+                                    </p>
+                                </div>
+                            ) : (
+                                <p className="text-sm text-slate-500">Subscription and school info are loading.</p>
+                            )}
+                        </div>
+
                         {/* Recent Solutions */}
                         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 transition-colors">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="font-bold text-slate-900 dark:text-white">Recent History</h3>
-                                <a className="text-primary text-xs font-semibold hover:underline" href="#">View All</a>
+                                <button
+                                    type="button"
+                                    onClick={() => router.push("/dashboard?tab=history")}
+                                    className="text-primary text-xs font-semibold hover:underline"
+                                >
+                                    View All
+                                </button>
                             </div>
                             <div className="space-y-3">
                                 {history.length === 0 ? (
@@ -1330,7 +1379,9 @@ export default function DashboardPage() {
                                             className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:border-primary/30 transition-colors cursor-pointer group"
                                         >
                                             <p className="text-xs font-bold text-primary mb-1 uppercase tracking-tighter">Session #{session.id}</p>
-                                            <p className="text-sm font-medium line-clamp-1 mb-2 text-slate-900 dark:text-slate-200">{session.title}</p>
+                                            <div className="text-sm font-medium mb-2 text-slate-900 dark:text-slate-200 overflow-hidden max-h-[1.6rem]">
+                                                <MathRenderer content={session.title} mode="prose" />
+                                            </div>
                                             <div className="flex justify-between items-center text-[10px] text-slate-400 font-medium">
                                                 <span>{new Date(session.created_at).toLocaleDateString()}</span>
                                                 <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>

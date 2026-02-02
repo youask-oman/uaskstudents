@@ -2,10 +2,8 @@ import os
 import json
 import hashlib
 import threading
-from typing import Union, Dict, Optional
+from typing import Union, Dict, Any
 from datetime import datetime, timedelta
-
-from app.models import PromptAsset
 
 # Thread-safe in-memory cache
 # Key: f"{asset.id}:{asset.checksum}" -> Content
@@ -24,7 +22,7 @@ class AssetLoader:
     """
     
     @staticmethod
-    def get_asset_content(asset: PromptAsset) -> Union[str, Dict]:
+    def get_asset_content(asset: Any) -> Union[str, Dict]:
         """
         Retrieve content for a PromptAsset. 
         Returns string for 'system' kind, dict for 'schema' kind.

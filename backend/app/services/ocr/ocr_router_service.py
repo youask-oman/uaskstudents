@@ -12,6 +12,7 @@ import os
 from typing import List, Tuple, Optional
 from sqlmodel import Session
 from app.models import Crop, User
+from app.services.tier_utils import get_user_effective_tier_slug
 
 class OCRRouterService:
     def __init__(self):
@@ -76,7 +77,7 @@ class OCRRouterService:
                 return "vlm", "text_formula", ["INTENT_HIGH_ACCURACY"]
             reasons.append("BUDGET_BLOCKED_INTENT")
 
-        # Case B: Pro/Enterprise users default to VLM
+        # Case B: Paid plans default to VLM
         if self._check_budget(user):
             return "vlm", "text_formula", ["SUBSCRIPTION_VLM"]
         
@@ -87,12 +88,9 @@ class OCRRouterService:
         """
         Check if user has budget for VLM usage.
         
-        Returns True for:
-        - Pro/Enterprise subscribers
-        - Users with remaining VLM quota
+        Returns True for paid tiers (non-free).
         """
-        if user.subscription_tier in ("pro", "enterprise"):
-            return True
-        return False
+        tier_slug = get_user_effective_tier_slug(user)
+        return tier_slug in {"student_standard", "research"}
 
 ocr_router_service = OCRRouterService()

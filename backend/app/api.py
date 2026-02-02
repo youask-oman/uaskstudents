@@ -29,9 +29,9 @@ from app.models import (
     CanonicalProblem, CanonicalSolution, UserSavedSolution, Payment, PromoCode,
     OCRQuestion, OCRChoice, OCRFigure, OCRAuditEvent,
     VoiceSession, VoiceAudio, VoiceJob, VoiceArtifact, VoiceConfirmation,
-    AdminNote, SystemConfig, PromptTemplate, PromptVersion, UserQuotaOverride, SystemErrorEntry,
+    AdminNote, SystemConfig, UserQuotaOverride, SystemErrorEntry,
     School, Plan, Subscription, UsageLedger,
-    PromptAsset, PlanPromptLink, RequestEvent, DeviceSignupLog, OcrCache,
+    RequestEvent, DeviceSignupLog, OcrCache,
     OcrExtractionCache, CreditHold,
     PromptTemplateEntry, JsonSchemaEntry, PromptBinding,
     PromptTierEnum, PromptModeEnum, PromptRoleEnum
@@ -57,6 +57,7 @@ from app.services.whatsapp.whatsapp_state import (
     get_whatsapp_events,
 )
 from app.services.prompt_registry_service import prompt_registry_service, PromptRegistryError
+from app.services.tier_utils import get_user_effective_tier_slug
 from app.services.mode_execution_service import mode_execution_service, ModeExecutionError
 from app.services.llm import get_llm_manager, LLMProviderError
 from app.services.whatsapp.whatsapp_state import get_redis
@@ -66,6 +67,7 @@ from app.worker import celery_app
 from app.services.solve.cache_service import cache_service
 from app.services.token_policy import get_token_policy, serialize_token_policy
 from app.config import get_settings
+from app.services.school_import_service import normalize_country_code
 
 
 
@@ -112,6 +114,14 @@ async def health_llm():
         raise HTTPException(status_code=503, detail=str(e))
 
 # --- Helper Functions ---
+def _resolve_runtime_tier_slug(user: Optional[User]) -> str:
+    """
+    Runtime tier source of truth:
+    subscription -> plan.slug, with legacy fallback for migration safety.
+    """
+    return get_user_effective_tier_slug(user)
+
+
 def _detect_image_kind(raw: bytes) -> Optional[str]:
     guessed = filetype.guess(raw)
     if not guessed:
@@ -667,6 +677,8 @@ class SubscriptionProfile(BaseModel):
     grade_level: Optional[str] = None
     region_country: Optional[str] = None
     region_state_province: Optional[str] = None
+    school_id: Optional[int] = None
+    school_name: Optional[str] = None
     display_name: str
 
 class SubscriptionResponse(BaseModel):
@@ -834,27 +846,6 @@ class QuotaOverrideRequest(BaseModel):
     ocr_concurrency: Optional[int] = None
     duration_hours: Optional[int] = None # null for permanent
 
-class PromptTemplateListItem(BaseModel):
-    id: int
-    name: str
-    slug: str
-    description: str
-    version: str
-    status: str # Production, Draft
-    last_updated: str
-
-class PromptVersionItem(BaseModel):
-    id: int
-    version: str
-    content: str
-    author: str
-    created_at: str
-    is_production: bool
-
-class PromptSaveRequest(BaseModel):
-    content: str
-    version: Optional[str] = None
-
 # --- OCR Subsystem Schemas ---
 
 class CropRect(BaseModel):
@@ -935,6 +926,7 @@ class UserProfileResponse(BaseModel):
     profile_province_state: Optional[str] = None
     grade_level: Optional[str] = None
     school_id: Optional[int] = None
+    school_name: Optional[str] = None
     
     # WhatsApp Integration
     whatsapp_secret: Optional[str] = None
@@ -1039,7 +1031,13 @@ def _sync_subscription_balance(subscription: Subscription, plan: Plan, session: 
     return expected_remaining
 
 
-def build_subscription_response(user: User, subscription: Subscription, plan: Plan, credits_remaining: Optional[float] = None) -> SubscriptionResponse:
+def build_subscription_response(
+    user: User,
+    subscription: Subscription,
+    plan: Plan,
+    credits_remaining: Optional[float] = None,
+    school_name: Optional[str] = None,
+) -> SubscriptionResponse:
     features = plan.features or {}
     multipliers = plan.multipliers or {"text_concise": 1, "text_detailed": 2, "ocr_add": 1, "voice_add": 1}
 
@@ -1069,6 +1067,8 @@ def build_subscription_response(user: User, subscription: Subscription, plan: Pl
         grade_level=user.grade_level,
         region_country=user.profile_country,
         region_state_province=user.profile_province_state,
+        school_id=user.school_id,
+        school_name=school_name if school_name is not None else (user.school.school_name if user.school else None),
         display_name=user.full_name
     )
 
@@ -1106,7 +1106,11 @@ async def get_my_subscription(
         raise HTTPException(status_code=500, detail="Plan not available for subscription")
 
     credits_remaining = _sync_subscription_balance(subscription, plan, session)
-    return build_subscription_response(user, subscription, plan, credits_remaining)
+    school_name = None
+    if user.school_id:
+        school = session.get(School, user.school_id)
+        school_name = school.school_name if school else None
+    return build_subscription_response(user, subscription, plan, credits_remaining, school_name=school_name)
 
 
 @api_router.get("/config/token-policy", response_model=TokenPolicyResponse)
@@ -3233,7 +3237,7 @@ async def solve_problem(
             problem_text=final_prompt,
             context=context,
             trace=body.mode == "debug",
-            user_tier=user.subscription_tier if user else "free",
+            user_tier=_resolve_runtime_tier_slug(user),
             user_id=user_id,
             db_session=session,
             requested_mode=requested_mode,
@@ -3276,7 +3280,7 @@ async def solve_problem(
         is_saved=False,
         learning_mode=(body.trusted_context or {}).get("learning_mode", "solve"),
         requested_mode=body.requested_mode or "minimal",
-        solve_tier=user.subscription_tier if user else "free"
+        solve_tier=_resolve_runtime_tier_slug(user)
     )
     session.add(new_chat)
     session.commit()
@@ -3350,85 +3354,23 @@ async def solve_problem(
         has_image=is_image
     )
 
-# --- Admin Prompt Asset & Link Management ---
+# --- Legacy Prompt Endpoints (Removed) ---
 
-class PromptAssetResponse(BaseModel):
-    id: int
-    key: str
-    kind: str
-    checksum: Optional[str]
+LEGACY_PROMPT_TABLES_REMOVED_DETAIL = (
+    "Legacy prompt tables were removed. Use /api/v1/admin/prompt-registry/* endpoints."
+)
 
-class PlanLinkUpdateRequest(BaseModel):
-    # Nested dict structure { mode: { system_id, schema_id } }
-    # Or flattened list?
-    # Request body: { "minimal": {"system_asset_id": 1, ...}, "detailed": ... }
-    minimal: Optional[Dict[str, int]] = None
-    detailed: Optional[Dict[str, int]] = None
-
-@api_router.get("/admin/prompt-assets", response_model=List[PromptAssetResponse])
-async def list_prompt_assets(
-    kind: Optional[str] = None,
-    session: Session = Depends(get_session)
-):
-    query = select(PromptAsset)
-    if kind:
-        query = query.where(PromptAsset.kind == kind)
-    assets = session.exec(query).all()
-    return assets
+@api_router.get("/admin/prompt-assets")
+async def list_prompt_assets_removed():
+    raise HTTPException(status_code=410, detail=LEGACY_PROMPT_TABLES_REMOVED_DETAIL)
 
 @api_router.put("/admin/plans/{plan_id}/prompt-links")
-async def update_plan_links(
-    plan_id: int,
-    body: PlanLinkUpdateRequest,
-    session: Session = Depends(get_session)
-):
-    plan = session.get(Plan, plan_id)
-    if not plan:
-        raise HTTPException(status_code=404, detail="Plan not found")
-
-    from app.models import PlanPromptLink
-
-    # Helper to update or create link
-    def _update_link(mode: str, data: Dict[str, int]):
-        if not data: return
-        
-        link = session.exec(select(PlanPromptLink).where(PlanPromptLink.plan_id == plan_id, PlanPromptLink.mode == mode)).first()
-        if not link:
-            link = PlanPromptLink(plan_id=plan_id, mode=mode)
-            session.add(link)
-        
-        if "system_asset_id" in data:
-            link.system_prompt_asset_id = data["system_asset_id"]
-        if "schema_asset_id" in data:
-            link.schema_prompt_asset_id = data["schema_asset_id"]
-        session.add(link)
-
-    if body.minimal:
-        _update_link("minimal", body.minimal)
-    
-    if body.detailed:
-        _update_link("detailed", body.detailed)
-        
-    session.commit()
-    return {"status": "ok", "message": "Links updated"}
+async def update_plan_links_removed(plan_id: int):
+    raise HTTPException(status_code=410, detail=LEGACY_PROMPT_TABLES_REMOVED_DETAIL)
 
 @api_router.get("/admin/plans/{plan_id}/prompt-links")
-async def get_plan_links(
-    plan_id: int,
-    session: Session = Depends(get_session)
-):
-    from app.models import PlanPromptLink
-    links = session.exec(select(PlanPromptLink).where(PlanPromptLink.plan_id == plan_id)).all()
-    
-    # Reshape for frontend
-    response = {"minimal": {}, "detailed": {}}
-    for link in links:
-        if link.mode in response:
-            response[link.mode] = {
-                "system_asset_id": link.system_prompt_asset_id,
-                "schema_asset_id": link.schema_prompt_asset_id
-            }
-    return response
+async def get_plan_links_removed(plan_id: int):
+    raise HTTPException(status_code=410, detail=LEGACY_PROMPT_TABLES_REMOVED_DETAIL)
 
     final_tokens_count = real_tokens if real_tokens > 0 else estimated_tokens
 
@@ -5112,7 +5054,8 @@ async def update_user_location(request: LocationUpdateRequest, session: Session 
 # ------------------------------------------------------------------
 
 # Valid countries and provinces/states
-VALID_COUNTRIES = ['USA', 'Canada']
+VALID_COUNTRY_INPUTS = ['USA', 'Canada', 'US', 'CA']
+COUNTRY_DISPLAY = {"US": "USA", "CA": "Canada"}
 
 US_STATES = [
     'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
@@ -5132,16 +5075,17 @@ VALID_GRADE_LEVELS = [f"Grade {i}" for i in range(4, 13)] + ["College", "Univers
 @api_router.get("/locations/countries")
 async def get_countries():
     """Get list of supported countries for student profiles."""
-    return {"countries": VALID_COUNTRIES}
+    return {"countries": ["USA", "Canada"], "canonical_codes": ["US", "CA"]}
 
 
 @api_router.get("/locations/provinces")
 async def get_provinces(country: str = Query(..., description="Country code (USA or Canada)")):
     """Get list of provinces/states for a country."""
-    if country not in VALID_COUNTRIES:
-        raise HTTPException(status_code=400, detail=f"Invalid country. Must be one of: {VALID_COUNTRIES}")
-    
-    if country == 'USA':
+    canonical_country = normalize_country_code(country)
+    if canonical_country not in {"US", "CA"}:
+        raise HTTPException(status_code=400, detail=f"Invalid country. Must be one of: {VALID_COUNTRY_INPUTS}")
+
+    if canonical_country == "US":
         return {"provinces": US_STATES, "label": "State"}
     else:
         return {"provinces": CA_PROVINCES, "label": "Province/Territory"}
@@ -5160,9 +5104,17 @@ class SchoolSearchResult(BaseModel):
     district: Optional[str]
 
 
+class SchoolDetailResult(BaseModel):
+    id: int
+    school_name: str
+    country: str
+    province_state: str
+    city: Optional[str] = None
+
+
 @api_router.get("/schools/search", response_model=List[SchoolSearchResult])
 async def search_schools(
-    country: str = Query(..., description="Country (USA or Canada)"),
+    country: str = Query(..., description="Country (USA/US or Canada/CA)"),
     province_state: str = Query(..., description="State or Province abbreviation"),
     q: str = Query("", description="Search query for school name"),
     limit: int = Query(20, ge=1, le=100, description="Max results"),
@@ -5172,17 +5124,21 @@ async def search_schools(
     Search schools by country, province/state, and optional name query.
     Returns minimal fields for dropdown display.
     """
-    if country not in VALID_COUNTRIES:
-        raise HTTPException(status_code=400, detail=f"Invalid country. Must be one of: {VALID_COUNTRIES}")
-    
+    canonical_country = normalize_country_code(country)
+    if canonical_country not in {"US", "CA"}:
+        raise HTTPException(status_code=400, detail=f"Invalid country. Must be one of: {VALID_COUNTRY_INPUTS}")
+
+    province_state = province_state.strip().upper()
     # Validate province_state
-    valid_provinces = US_STATES if country == 'USA' else CA_PROVINCES
+    valid_provinces = US_STATES if canonical_country == "US" else CA_PROVINCES
     if province_state not in valid_provinces:
-        raise HTTPException(status_code=400, detail=f"Invalid province/state for {country}")
-    
+        raise HTTPException(status_code=400, detail=f"Invalid province/state for {COUNTRY_DISPLAY[canonical_country]}")
+
+    # Dual-read compatibility while profile country strings transition.
+    country_values = [canonical_country, COUNTRY_DISPLAY[canonical_country]]
     # Build query
     stmt = select(School).where(
-        School.country == country,
+        School.country.in_(country_values),
         School.province_state == province_state
     )
     
@@ -5207,9 +5163,26 @@ async def search_schools(
     ]
 
 
+@api_router.get("/schools/{school_id}", response_model=SchoolDetailResult)
+async def get_school_by_id(
+    school_id: int,
+    session: Session = Depends(get_session),
+):
+    school = session.get(School, school_id)
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+    return SchoolDetailResult(
+        id=school.id,
+        school_name=school.school_name,
+        country=school.country,
+        province_state=school.province_state,
+        city=school.city,
+    )
+
+
 class ProfileLocationUpdateRequest(BaseModel):
     """Request body for updating profile location fields."""
-    profile_country: str  # Required: 'USA' or 'Canada'
+    profile_country: str  # Required: USA/US or Canada/CA
     profile_province_state: str  # Required: State or Province abbreviation
     grade_level: str  # Required: Grade 4-12, College, or University
     school_id: Optional[int] = None  # Optional FK to School
@@ -5230,18 +5203,20 @@ async def update_profile_location(
         raise HTTPException(status_code=404, detail="User not found")
     
     # Validate country
-    if body.profile_country not in VALID_COUNTRIES:
+    canonical_country = normalize_country_code(body.profile_country)
+    if canonical_country not in {"US", "CA"}:
         raise HTTPException(
             status_code=400, 
-            detail=f"Invalid country. Must be one of: {VALID_COUNTRIES}"
+            detail=f"Invalid country. Must be one of: {VALID_COUNTRY_INPUTS}"
         )
     
     # Validate province/state for country
-    valid_provinces = US_STATES if body.profile_country == 'USA' else CA_PROVINCES
-    if body.profile_province_state not in valid_provinces:
+    canonical_province = body.profile_province_state.strip().upper()
+    valid_provinces = US_STATES if canonical_country == "US" else CA_PROVINCES
+    if canonical_province not in valid_provinces:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid province/state for {body.profile_country}"
+            detail=f"Invalid province/state for {COUNTRY_DISPLAY[canonical_country]}"
         )
     
     # Validate grade level
@@ -5251,6 +5226,7 @@ async def update_profile_location(
             detail=f"Invalid grade level. Must be one of: {VALID_GRADE_LEVELS}"
         )
     
+    selected_school_name: Optional[str] = None
     # Validate school_id if provided
     if body.school_id is not None:
         school = session.get(School, body.school_id)
@@ -5258,15 +5234,17 @@ async def update_profile_location(
             raise HTTPException(status_code=400, detail="School not found")
         
         # Ensure school matches the country and province
-        if school.country != body.profile_country or school.province_state != body.profile_province_state:
+        school_country = normalize_country_code(school.country)
+        if school_country != canonical_country or school.province_state != canonical_province:
             raise HTTPException(
                 status_code=400,
                 detail="School must be in the same country and province/state as user profile"
             )
+        selected_school_name = school.school_name
     
     # Update user profile
     user.profile_country = body.profile_country
-    user.profile_province_state = body.profile_province_state
+    user.profile_province_state = canonical_province
     user.grade_level = body.grade_level
     user.school_id = body.school_id
     
@@ -5279,7 +5257,8 @@ async def update_profile_location(
         "profile_country": user.profile_country,
         "profile_province_state": user.profile_province_state,
         "grade_level": user.grade_level,
-        "school_id": user.school_id
+        "school_id": user.school_id,
+        "school_name": selected_school_name
     }
 
 
@@ -5648,6 +5627,7 @@ async def get_user_profile(user_id: int = Query(...), db: Session = Depends(get_
         profile_province_state=user.profile_province_state,
         grade_level=user.grade_level,
         school_id=user.school_id,
+        school_name=(user.school.school_name if user.school else None),
         
         # WhatsApp Integration
         whatsapp_secret=user.whatsapp_secret,
@@ -6331,6 +6311,7 @@ async def admin_get_db_table(
     table_name: str,
     limit: int = Query(200, ge=1, le=2000),
     offset: int = Query(0, ge=0),
+    order: str = Query("desc", pattern="^(asc|desc)$"),
     db: Session = Depends(get_session)
 ):
     if table_name not in SQLModel.metadata.tables:
@@ -6341,7 +6322,13 @@ async def admin_get_db_table(
     else:
         qualified_name = f"\"{table.name}\""
     try:
-        query = sql_text(f"SELECT * FROM {qualified_name} LIMIT :limit OFFSET :offset")
+        # Prefer deterministic ordering by id when available so admins see newest rows first.
+        if "id" in table.c:
+            query = sql_text(
+                f"SELECT * FROM {qualified_name} ORDER BY \"id\" {order.upper()} LIMIT :limit OFFSET :offset"
+            )
+        else:
+            query = sql_text(f"SELECT * FROM {qualified_name} LIMIT :limit OFFSET :offset")
         result = db.execute(query, {"limit": limit, "offset": offset})
         rows = result.mappings().all()
         return [dict(row) for row in rows]
@@ -6641,104 +6628,21 @@ async def admin_get_user_question_history(
 
     return response_items
 
-@api_router.get("/admin/prompts", response_model=List[PromptTemplateListItem])
-async def admin_get_prompts(db: Session = Depends(get_session)):
-    """Admin only: List all prompt templates"""
-    templates = db.exec(select(PromptTemplate)).all()
-    
-    # If no templates, seed default ones
-    if not templates:
-        t1 = PromptTemplate(name="Math Solver", slug="math-solver", description="System instruction for advanced step-by-step math resolution")
-        t2 = PromptTemplate(name="OCR Formatter", slug="ocr-formatter", description="Normalization rules for raw OCR output")
-        db.add(t1)
-        db.add(t2)
-        db.commit()
-        db.refresh(t1)
-        db.refresh(t2)
-        # Seed initial versions
-        v1 = PromptVersion(template_id=t1.id, version="v2.4.1", content="You are a Senior Mathematical Tutor...", author="admin_sarah", is_production=True)
-        v2 = PromptVersion(template_id=t2.id, version="v1.0.0", content="Convert math to LaTeX...", author="admin_sarah", is_production=True)
-        db.add(v1)
-        db.add(v2)
-        db.commit()
-        templates = [t1, t2]
+@api_router.get("/admin/prompts")
+async def admin_get_prompts_removed():
+    raise HTTPException(status_code=410, detail=LEGACY_PROMPT_TABLES_REMOVED_DETAIL)
 
-    results = []
-    for t in templates:
-        prod_v = db.exec(select(PromptVersion).where(PromptVersion.template_id == t.id, PromptVersion.is_production == True)).first()
-        results.append(PromptTemplateListItem(
-            id=t.id,
-            name=t.name,
-            slug=t.slug or "",
-            description=t.description or "",
-            version=prod_v.version if prod_v else "N/A",
-            status="Production" if prod_v else "Draft",
-            last_updated=(prod_v.created_at if prod_v else t.created_at).isoformat()
-        ))
-    return results
-
-@api_router.get("/admin/prompts/{template_id}/versions", response_model=List[PromptVersionItem])
-async def admin_get_prompt_versions(template_id: int, db: Session = Depends(get_session)):
-    """Admin only: Get all versions for a template"""
-    versions = db.exec(select(PromptVersion).where(PromptVersion.template_id == template_id).order_by(PromptVersion.created_at.desc())).all()
-    return [
-        PromptVersionItem(
-            id=v.id,
-            version=v.version,
-            content=v.content,
-            author=v.author,
-            created_at=v.created_at.isoformat(),
-            is_production=v.is_production
-        ) for v in versions
-    ]
+@api_router.get("/admin/prompts/{template_id}/versions")
+async def admin_get_prompt_versions_removed(template_id: int):
+    raise HTTPException(status_code=410, detail=LEGACY_PROMPT_TABLES_REMOVED_DETAIL)
 
 @api_router.post("/admin/prompts/{template_id}/save")
-async def admin_save_prompt(template_id: int, req: PromptSaveRequest, db: Session = Depends(get_session)):
-    """Admin only: Save a new draft version"""
-    # Generate new version string if not provided
-    if not req.version_string:
-        last = db.exec(select(PromptVersion).where(PromptVersion.template_id == template_id).order_by(PromptVersion.created_at.desc())).first()
-        if last:
-            import re
-            m = re.search(r'v(\d+)\.(\d+)\.(\d+)', last.version_string)
-            if m:
-                major, minor, patch = m.groups()
-                new_v = f"v{major}.{minor}.{int(patch)+1}"
-            else:
-                new_v = last.version_string + ".1"
-        else:
-            new_v = "v1.0.0"
-    else:
-        new_v = req.version_string
-
-    v = PromptVersion(
-        template_id=template_id,
-        version_string=new_v,
-        content=req.content,
-        author="Loai Admin",
-        is_production=False
-    )
-    db.add(v)
-    db.commit()
-    return {"status": "ok", "version_id": v.id}
+async def admin_save_prompt_removed(template_id: int):
+    raise HTTPException(status_code=410, detail=LEGACY_PROMPT_TABLES_REMOVED_DETAIL)
 
 @api_router.post("/admin/prompts/versions/{version_id}/deploy")
-async def admin_deploy_prompt(version_id: int, db: Session = Depends(get_session)):
-    """Admin only: Set a version as production"""
-    v = db.get(PromptVersion, version_id)
-    if not v:
-        raise HTTPException(status_code=404, detail="Version not found")
-    
-    # Set all other versions for this template to not production
-    others = db.exec(select(PromptVersion).where(PromptVersion.template_id == v.template_id, PromptVersion.is_production == True)).all()
-    for o in others:
-        o.is_production = False
-        db.add(o)
-    
-    v.is_production = True
-    db.add(v)
-    db.commit()
-    return {"status": "ok"}
+async def admin_deploy_prompt_removed(version_id: int):
+    raise HTTPException(status_code=410, detail=LEGACY_PROMPT_TABLES_REMOVED_DETAIL)
 
 # --- Prompt Registry (DB-backed) ---
 
@@ -6770,6 +6674,20 @@ class RegistryBindingItem(BaseModel):
     is_active: bool
     updated_at: str
     updated_by: Optional[str]
+
+class RegistryBindingAuditIssue(BaseModel):
+    type: str
+    tier: Optional[str] = None
+    mode: Optional[str] = None
+    binding_id: Optional[str] = None
+    prompt_id: Optional[str] = None
+    schema_id: Optional[str] = None
+
+class RegistryBindingAuditReport(BaseModel):
+    ok: bool
+    active_bindings: int
+    active_binding_pairs: int
+    issues: List[RegistryBindingAuditIssue]
 
 class PromptRegistryUpdateRequest(BaseModel):
     content: str
@@ -6968,6 +6886,16 @@ async def admin_list_prompt_registry_bindings(db: Session = Depends(get_session)
         for row in rows
     ]
 
+@api_router.get("/admin/prompt-registry/audit", response_model=RegistryBindingAuditReport)
+async def admin_prompt_registry_audit(db: Session = Depends(get_session)):
+    report = prompt_registry_service.audit_active_bindings(db)
+    return RegistryBindingAuditReport(
+        ok=report.get("ok", False),
+        active_bindings=report.get("active_bindings", 0),
+        active_binding_pairs=report.get("active_binding_pairs", 0),
+        issues=[RegistryBindingAuditIssue(**issue) for issue in report.get("issues", [])],
+    )
+
 @api_router.post("/admin/prompt-registry/bindings/activate", response_model=RegistryBindingItem)
 async def admin_activate_prompt_registry_binding(req: BindingActivateRequest, db: Session = Depends(get_session)):
     entry = prompt_registry_service.activate_binding(
@@ -7153,8 +7081,6 @@ class PlanCreate(BaseModel):
     seats: int = 1
     features: Dict[str, Any] = {}
     multipliers: Dict[str, Any] = {}
-    system_prompt_template_id: Optional[int] = None
-    schema_prompt_template_id: Optional[int] = None
     is_active: bool = True
 
 @api_router.get('/admin/plans')
@@ -7193,7 +7119,11 @@ async def get_my_subscription_v2(user_id: int = Query(...), session: Session = D
         raise HTTPException(status_code=500, detail="Plan not available for subscription")
 
     credits_remaining = _sync_subscription_balance(subscription, plan, session)
-    return build_subscription_response(user, subscription, plan, credits_remaining)
+    school_name = None
+    if user.school_id:
+        school = session.get(School, user.school_id)
+        school_name = school.school_name if school else None
+    return build_subscription_response(user, subscription, plan, credits_remaining, school_name=school_name)
 
 
 @api_router.get('/admin/plans-with-prompts')

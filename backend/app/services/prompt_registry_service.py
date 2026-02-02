@@ -20,6 +20,77 @@ class PromptRegistryError(Exception):
 
 
 class PromptRegistryService:
+    def audit_active_bindings(self, session: Session) -> Dict[str, Any]:
+        """
+        Validate that active prompt bindings are complete and resolvable.
+        Returns a report with issues but does not mutate data.
+        """
+        bindings = session.exec(
+            select(PromptBinding)
+            .where(PromptBinding.is_active == True)
+            .order_by(PromptBinding.tier.asc(), PromptBinding.mode.asc(), PromptBinding.updated_at.desc())
+        ).all()
+
+        issues = []
+        key_latest: Dict[Tuple[str, str], PromptBinding] = {}
+
+        for binding in bindings:
+            key = (binding.tier.value, binding.mode.value)
+            if key in key_latest:
+                issues.append({
+                    "type": "duplicate_active_binding",
+                    "tier": binding.tier.value,
+                    "mode": binding.mode.value,
+                    "binding_id": binding.id,
+                })
+                continue
+            key_latest[key] = binding
+
+            global_prompt = self.get_active_prompt(session, binding.global_system_prompt_id)
+            developer_prompt = self.get_active_prompt(session, binding.developer_prompt_id)
+            schema_entry = self.get_active_schema(session, binding.output_schema_id)
+
+            if not global_prompt:
+                issues.append({
+                    "type": "missing_global_prompt",
+                    "binding_id": binding.id,
+                    "tier": binding.tier.value,
+                    "mode": binding.mode.value,
+                    "prompt_id": binding.global_system_prompt_id,
+                })
+            if not developer_prompt:
+                issues.append({
+                    "type": "missing_developer_prompt",
+                    "binding_id": binding.id,
+                    "tier": binding.tier.value,
+                    "mode": binding.mode.value,
+                    "prompt_id": binding.developer_prompt_id,
+                })
+            if not schema_entry:
+                issues.append({
+                    "type": "missing_output_schema",
+                    "binding_id": binding.id,
+                    "tier": binding.tier.value,
+                    "mode": binding.mode.value,
+                    "schema_id": binding.output_schema_id,
+                })
+
+        expected_pairs = {(tier.value, mode.value) for tier in PromptTierEnum for mode in PromptModeEnum}
+        found_pairs = set(key_latest.keys())
+        for tier_value, mode_value in sorted(expected_pairs - found_pairs):
+            issues.append({
+                "type": "missing_binding_pair",
+                "tier": tier_value,
+                "mode": mode_value,
+            })
+
+        return {
+            "ok": len(issues) == 0,
+            "active_bindings": len(bindings),
+            "active_binding_pairs": len(found_pairs),
+            "issues": issues,
+        }
+
     def _resolve_tier(self, tier_slug: str) -> PromptTierEnum:
         slug = (tier_slug or "").lower()
         if "research" in slug:

@@ -1,7 +1,7 @@
 from typing import Optional, List
 from datetime import datetime
 from sqlmodel import Field, SQLModel, Relationship
-from sqlalchemy import Column, JSON, BigInteger, Enum as SAEnum, Text, UniqueConstraint
+from sqlalchemy import Column, JSON, BigInteger, Enum as SAEnum, Text, UniqueConstraint, DateTime, func, Index
 from uuid import uuid4
 from enum import Enum
 
@@ -144,10 +144,6 @@ class Plan(SQLModel, table=True):
     # Configuration JSONs
     features: dict = Field(default_factory=dict, sa_column=Column(JSON))
     multipliers: dict = Field(default_factory=dict, sa_column=Column(JSON))
-    
-    # Linked Prompts
-    system_prompt_template_id: Optional[int] = Field(default=None, foreign_key="prompttemplate.id")
-    schema_prompt_template_id: Optional[int] = Field(default=None, foreign_key="prompttemplate.id")
     
     is_active: bool = Field(default=True)
     version: int = Field(default=1) # Optimistic locking
@@ -496,36 +492,56 @@ class AdminNote(SQLModel, table=True):
 
 class School(SQLModel, table=True):
     """
-    Unified schools table for USA and Canada schools.
-    Uses SHA256-based school_key for deduplication across reimports.
+    Unified schools directory across Canada + United States sources.
     """
+    __table_args__ = (
+        UniqueConstraint("country", "source", "external_id", name="uq_school_country_source_external_id"),
+        Index("idx_school_country_province_city", "country", "province_state", "city"),
+        Index("idx_school_external_id", "external_id"),
+        Index("idx_school_school_key", "school_key"),
+    )
+
     id: Optional[int] = Field(default=None, primary_key=True)
     
-    # Location (required)
-    country: str = Field(index=True)  # 'USA' or 'Canada'
-    province_state: str = Field(index=True)  # State for USA, Province/Territory for Canada
+    # Location
+    country: str = Field(index=True)  # 'US' or 'CA'
+    province_state: str = Field(index=True)  # State for US, Province/Territory for CA
     
-    # Location (optional)
+    # Compatibility fields
     district: Optional[str] = None
     city: Optional[str] = None
     
-    # School Info (required)
+    # School info
     school_name: str = Field(index=True)
-    
-    # School Info (optional)
     school_type: Optional[str] = None  # public, private, charter, etc.
-    grade_range: Optional[str] = None  # e.g., "K-12", "9-12"
+    grade_range: Optional[str] = None
+
+    # Source / identifiers
+    external_id: Optional[str] = Field(default=None)  # Text: NCES ID (US) or Source_ID (CA)
+    source: str = Field(index=True)  # e.g. nces_csv, canada_csv
+    school_key: str = Field(index=True)
     
-    # Source tracking
-    external_id: Optional[str] = None  # NCES ID for US, Source_ID for Canada
-    source: str = Field(index=True)  # 'US_CSV' or 'CA_CSV'
-    
-    # Deduplication key: SHA256(lower(country)|lower(province_state)|lower(city or '')|lower(school_name))
-    school_key: str = Field(unique=True, index=True)
+    # Unified CA/US fields
+    website_url: Optional[str] = None
+    address_line1: Optional[str] = None
+    full_address: Optional[str] = None
+    street_no: Optional[str] = None
+    street_name: Optional[str] = None
+    postal_code: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    csdname: Optional[str] = None
+    csduid: Optional[str] = None
+    normalized_name: Optional[str] = None
+    normalized_address: Optional[str] = None
     
     # Timestamps
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    )
     
     # Relationships
     students: List["User"] = Relationship(back_populates="school")
@@ -577,26 +593,6 @@ class SystemConfigVersion(SQLModel, table=True):
     change_msg: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-
-class PromptTemplate(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    name: str = Field(unique=True, index=True) # e.g. "Math Solver"
-    slug: str = Field(unique=True, index=True) # e.g. "math-solver"
-    description: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    
-    versions: List["PromptVersion"] = Relationship(back_populates="template")
-
-class PromptVersion(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    template_id: int = Field(foreign_key="prompttemplate.id")
-    version: str # e.g. "v1.0.1" (previously version_string)
-    content: str
-    author: str
-    is_production: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    
-    template: PromptTemplate = Relationship(back_populates="versions")
 
 # --- Prompt & Schema Registry (DB-backed) ---
 
@@ -774,29 +770,6 @@ class RequestEvent(SQLModel, table=True):
     voice_used: bool = False
     response_truncated: bool = False
 
-
-# --- Tier-Aware Prompt Routing Models ---
-
-class PromptAsset(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    key: str = Field(unique=True, index=True) # e.g. "shared:minimal_system"
-    kind: str = Field(index=True) # system, schema
-    path: str # relative to backend/app, e.g. "llm_profiles/shared/minimal_system.txt"
-    checksum: Optional[str] = None # sha256
-    is_active: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-
-class PlanPromptLink(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    plan_id: int = Field(foreign_key="plan.id", index=True)
-    mode: str = Field(index=True) # minimal, detailed
-    
-    system_prompt_asset_id: Optional[int] = Field(default=None, foreign_key="promptasset.id")
-    schema_prompt_asset_id: Optional[int] = Field(default=None, foreign_key="promptasset.id")
-    
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 class CreditLot(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

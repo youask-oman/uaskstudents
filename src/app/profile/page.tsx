@@ -21,6 +21,7 @@ interface ProfileData {
     profile_province_state?: string;
     grade_level?: string;
     school_id?: number;
+    school_name?: string;
     usage: {
         questions_count: number;
         questions_total: number;
@@ -96,6 +97,8 @@ export default function ProfilePage() {
                 setProfileProvinceState(data.profile_province_state || "");
                 setGradeLevel(data.grade_level || "");
                 setSchoolId(data.school_id || null);
+                setSelectedSchoolName(data.school_name || "");
+                setSchoolQuery(data.school_name || "");
                 // WhatsApp
                 setWhatsappSecret(data.whatsapp_secret || "");
                 setWhatsappEnabled(data.whatsapp_enabled !== false);
@@ -224,6 +227,10 @@ export default function ProfilePage() {
             alert("Please select your Country, Province/State, and Grade Level.");
             return;
         }
+        if (schoolQuery.trim().length > 0 && !schoolId) {
+            alert("Please select a school from the dropdown list before saving.");
+            return;
+        }
 
         setSaving(true);
         try {
@@ -248,9 +255,13 @@ export default function ProfilePage() {
                         profile_country: data.profile_country,
                         profile_province_state: data.profile_province_state,
                         grade_level: data.grade_level,
-                        school_id: data.school_id
+                        school_id: data.school_id,
+                        school_name: data.school_name || null
                     });
                 }
+                setSchoolId(data.school_id || null);
+                setSelectedSchoolName(data.school_name || "");
+                setSchoolQuery(data.school_name || "");
             } else {
                 const error = await res.json();
                 alert(`Error: ${error.detail || "Failed to update location"}`);
@@ -275,6 +286,20 @@ export default function ProfilePage() {
         setSelectedSchoolName("");
         setSchoolQuery("");
     };
+
+    // If profile has school_id but API payload misses school_name, resolve by ID.
+    useEffect(() => {
+        if (!schoolId || selectedSchoolName) return;
+        fetch(`${apiBaseUrl}/api/v1/schools/${schoolId}`)
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+                if (data?.school_name) {
+                    setSelectedSchoolName(data.school_name);
+                    setSchoolQuery(data.school_name);
+                }
+            })
+            .catch(() => { /* best-effort hydration */ });
+    }, [schoolId, selectedSchoolName, apiBaseUrl]);
 
     if (loading) {
         return (

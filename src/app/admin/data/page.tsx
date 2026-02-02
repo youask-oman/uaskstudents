@@ -11,6 +11,7 @@ export default function AdminDataPage() {
     const [filter, setFilter] = useState("");
     const [limit, setLimit] = useState(200);
     const [offset, setOffset] = useState(0);
+    const [order, setOrder] = useState<"asc" | "desc">("desc");
 
     const fallbackUrl = process.env.NEXT_PUBLIC_API_FALLBACK_URL || "http://127.0.0.1:8000";
     const getHeaders = (): HeadersInit => {
@@ -33,7 +34,7 @@ export default function AdminDataPage() {
                 const data = await res.json();
                 setTables(Array.isArray(data) ? data : []);
                 if (Array.isArray(data) && data.length > 0) {
-                    setSelectedTable(data[0]);
+                    setSelectedTable(data.includes("school") ? "school" : data[0]);
                 }
             } catch (err) {
                 if ((err as Error).name === "AbortError") return;
@@ -54,9 +55,9 @@ export default function AdminDataPage() {
         const fetchRows = async () => {
             try {
                 let res: Response | null = null;
-                res = await fetch(`/api/admin/db/table/${encodeURIComponent(selectedTable)}?limit=${limit}&offset=${offset}`, { headers: getHeaders(), signal: controller.signal });
+                res = await fetch(`/api/admin/db/table/${encodeURIComponent(selectedTable)}?limit=${limit}&offset=${offset}&order=${order}`, { headers: getHeaders(), signal: controller.signal });
                 if (!res.ok) {
-                    res = await fetch(`${fallbackUrl}/api/v1/admin/db/table/${encodeURIComponent(selectedTable)}?limit=${limit}&offset=${offset}`, { headers: getHeaders(), signal: controller.signal });
+                    res = await fetch(`${fallbackUrl}/api/v1/admin/db/table/${encodeURIComponent(selectedTable)}?limit=${limit}&offset=${offset}&order=${order}`, { headers: getHeaders(), signal: controller.signal });
                 }
                 if (!res.ok) throw new Error("Failed to load rows.");
                 const data = await res.json();
@@ -70,7 +71,7 @@ export default function AdminDataPage() {
         fetchRows();
         return () => controller.abort();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedTable, limit, offset]);
+    }, [selectedTable, limit, offset, order]);
 
     const filteredRows = useMemo(() => {
         if (!filter.trim()) return rows;
@@ -110,6 +111,17 @@ export default function AdminDataPage() {
                     value={filter}
                     onChange={(e) => setFilter(e.target.value)}
                 />
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <span>Order</span>
+                    <select
+                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-xs text-slate-900 dark:text-white"
+                        value={order}
+                        onChange={(e) => setOrder((e.target.value as "asc" | "desc"))}
+                    >
+                        <option value="desc">Newest (id desc)</option>
+                        <option value="asc">Oldest (id asc)</option>
+                    </select>
+                </div>
                 <div className="flex items-center gap-2 text-xs text-slate-500">
                     <span>Limit</span>
                     <input

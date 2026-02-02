@@ -1,24 +1,15 @@
 from sqlmodel import select
-from app.models import PromptTemplate, PromptVersion
+from app.models import PromptTemplateEntry
 
 def get_active_prompt(slug: str, session) -> str:
     """
-    Retrieves the content of the currently active 'production' prompt version
-    for the given template slug. Returns None if not found.
+    Retrieves active prompt content by prompt_id from prompt_templates registry table.
+    Returns None if not found.
     """
-    # 1. Find the template
-    template = session.exec(select(PromptTemplate).where(PromptTemplate.slug == slug)).first()
-    if not template:
-        return None
-    
-    # 2. Find the active production version
-    stmt = select(PromptVersion).where(
-        PromptVersion.template_id == template.id,
-        PromptVersion.is_production == True
-    ).order_by(PromptVersion.created_at.desc())
-    
-    version = session.exec(stmt).first()
-    
-    if version:
-        return version.content
-    return None
+    entry = session.exec(
+        select(PromptTemplateEntry)
+        .where(PromptTemplateEntry.prompt_id == slug)
+        .where(PromptTemplateEntry.is_active == True)
+        .order_by(PromptTemplateEntry.version.desc())
+    ).first()
+    return entry.content if entry else None

@@ -96,6 +96,7 @@ def on_startup():
     
     # Initialize Plans
     from app.services.subscription_service import subscription_service
+    from app.services.prompt_registry_service import prompt_registry_service
     from app.database import engine
     from sqlmodel import Session
     with Session(engine) as session:
@@ -103,6 +104,23 @@ def on_startup():
             subscription_service.ensure_plans_exist(session)
         except Exception as e:
             logging.error(f"Failed to initialize plans: {e}")
+        try:
+            report = prompt_registry_service.audit_active_bindings(session)
+            if report.get("ok"):
+                logging.info(
+                    "Prompt binding integrity OK: active_bindings=%s active_pairs=%s",
+                    report.get("active_bindings"),
+                    report.get("active_binding_pairs"),
+                )
+            else:
+                logging.warning(
+                    "Prompt binding integrity issues found: %s issue(s)",
+                    len(report.get("issues", [])),
+                )
+                for issue in report.get("issues", [])[:20]:
+                    logging.warning("Prompt binding issue: %s", issue)
+        except Exception as e:
+            logging.error(f"Failed to audit prompt bindings: {e}")
 
     manager = get_llm_manager()
     if manager.primary_provider == "ollama":

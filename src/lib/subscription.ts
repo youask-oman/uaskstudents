@@ -54,6 +54,8 @@ export interface SubscriptionProfile {
     grade_level: string | null;
     region_country: string | null;
     region_state_province: string | null;
+    school_id?: number | null;
+    school_name?: string | null;
     display_name: string;
 }
 

@@ -1,4 +1,3 @@
-import csv
 from pathlib import Path
 from typing import Optional
 from sqlmodel import Session, select, SQLModel
@@ -6,8 +5,9 @@ from app.database import engine, create_db_and_tables
 from app.models import User, ChatSession, ChatMessage, UsageLog, Plan, School, Subscription, UsageLedger, SchoolImportRun
 from app.auth import get_password_hash
 from datetime import datetime, timedelta
-import hashlib
 import random
+import hashlib
+from app.services.school_import_service import import_school_csvs
 
 def active_seed():
     # Force reset of schema to ensure new columns exist (Dev only!)
@@ -402,74 +402,6 @@ def active_seed():
 
         load_school_directory(session)
 
-def _clean_string(value: Optional[str]) -> str:
-    if value is None:
-        return ""
-    return str(value).strip()
-
-def _compute_school_key(country: str, province: str, city: str, name: str) -> str:
-    normalized = "|".join([
-        country.strip().lower(),
-        province.strip().lower(),
-        city.strip().lower() if city else "",
-        name.strip().lower()
-    ])
-    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
-
-def import_school_csv(session: Session, path: Path, country: str, source_label: str, column_map: dict) -> dict:
-    stats = {
-        "processed": 0,
-        "inserted": 0,
-        "updated": 0,
-        "skipped": 0,
-        "errors": 0
-    }
-
-    if not path.exists():
-        return stats
-
-    with path.open(newline="", encoding="utf-8", errors="replace") as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            stats["processed"] += 1
-            try:
-                name = _clean_string(row.get(column_map["name"]))
-                province = _clean_string(row.get(column_map["province"]))
-                city = _clean_string(row.get(column_map["city"])) if column_map.get("city") else ""
-                external_id = _clean_string(row.get(column_map["external_id"])) if column_map.get("external_id") else None
-
-                if not name or not province:
-                    stats["skipped"] += 1
-                    continue
-
-                key = _compute_school_key(country, province.upper(), city, name)
-                existing = session.exec(select(School).where(School.school_key == key)).first()
-
-                if existing:
-                    existing.city = city or existing.city
-                    existing.updated_at = datetime.utcnow()
-                    session.add(existing)
-                    stats["updated"] += 1
-                    continue
-
-                new_school = School(
-                    country=country,
-                    province_state=province.upper(),
-                    city=city or None,
-                    school_name=name,
-                    external_id=external_id or None,
-                    source=source_label,
-                    school_key=key
-                )
-                session.add(new_school)
-                stats["inserted"] += 1
-            except Exception as exc:
-                stats["errors"] += 1
-                print(f"Failed to import school row {stats['processed']}: {exc}")
-        session.commit()
-
-    return stats
-
 def load_school_directory(session: Session):
     data_dir = Path(__file__).resolve().parents[1] / "data"
     import_run = SchoolImportRun(status="running")
@@ -480,25 +412,16 @@ def load_school_directory(session: Session):
     ca_path = data_dir / "schools_ca.csv"
 
     try:
-        us_stats = import_school_csv(session, us_path, "USA", "US_CSV", {
-            "name": "School Name",
-            "province": "State Abbr [Public School] Latest available year",
-            "city": "Location City [Public School] 2023-24",
-            "external_id": "School ID (12-digit) - NCES Assigned [Public School] Latest available year"
-        })
-        ca_stats = import_school_csv(session, ca_path, "Canada", "CA_CSV", {
-            "name": "Facility_Name",
-            "province": "Prov_Terr",
-            "city": "City",
-            "external_id": "Source_ID"
-        })
+        stats = import_school_csvs(session, ca_path, us_path)
         import_run.status = "completed"
-        import_run.us_rows_processed = us_stats["processed"]
-        import_run.ca_rows_processed = ca_stats["processed"]
-        import_run.inserted_count = us_stats["inserted"] + ca_stats["inserted"]
-        import_run.updated_count = us_stats["updated"] + ca_stats["updated"]
-        import_run.skipped_count = us_stats["skipped"] + ca_stats["skipped"]
-        import_run.error_count = us_stats["errors"] + ca_stats["errors"]
+        import_run.us_rows_processed = stats["us_rows_processed"]
+        import_run.ca_rows_processed = stats["ca_rows_processed"]
+        import_run.inserted_count = stats["inserted"]
+        import_run.updated_count = stats["updated"]
+        import_run.skipped_count = stats["skipped"]
+        import_run.error_count = stats["error_count"]
+        if stats["errors"]:
+            import_run.errors_json = {"errors": stats["errors"]}
     except Exception as exc:
         import_run.status = "failed"
         import_run.errors_json = {"error": str(exc)}

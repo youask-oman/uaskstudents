@@ -37,26 +37,6 @@ interface Plan {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         [key: string]: any;
     };
-    system_prompt_template_id?: number | null;
-    schema_prompt_template_id?: number | null;
-}
-
-interface PromptAsset {
-    id: number;
-    key: string;
-    kind: string;
-    checksum: string | null;
-}
-
-interface PlanLinks {
-    minimal: {
-        system_asset_id?: number | null;
-        schema_asset_id?: number | null;
-    };
-    detailed: {
-        system_asset_id?: number | null;
-        schema_asset_id?: number | null;
-    };
 }
 
 function PricingPreviewPanel({ plans }: { plans: Plan[] }) {
@@ -200,25 +180,16 @@ function PricingPreviewPanel({ plans }: { plans: Plan[] }) {
 
 export default function AdminSubscriptionsPage() {
     const [plans, setPlans] = useState<Plan[]>([]);
-    const [promptAssets, setPromptAssets] = useState<PromptAsset[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
-    const [currentLinks, setCurrentLinks] = useState<PlanLinks>({ minimal: {}, detailed: {} });
-    const fetchPlansAndPrompts = async () => {
+    const fetchPlans = async () => {
         try {
             const token = localStorage.getItem("token");
             const headers = { Authorization: `Bearer ${token}` };
-
-            const [plansRes, assetsRes] = await Promise.all([
-                fetch("http://localhost:8000/api/v1/admin/plans", { headers }),
-                fetch("http://localhost:8000/api/v1/admin/prompt-assets", { headers })
-            ]);
+            const plansRes = await fetch("http://localhost:8000/api/v1/admin/plans", { headers });
 
             if (plansRes.ok) {
                 setPlans(await plansRes.json());
-            }
-            if (assetsRes.ok) {
-                setPromptAssets(await assetsRes.json());
             }
         } catch (error) {
             console.error("Failed to fetch data", error);
@@ -227,42 +198,12 @@ export default function AdminSubscriptionsPage() {
         }
     };
 
-    const fetchPlanLinks = async (planId: number) => {
-        if (!planId) return;
-        try {
-            const token = localStorage.getItem("token");
-            const res = await fetch(`http://localhost:8000/api/v1/admin/plans/${planId}/prompt-links`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setCurrentLinks({
-                    minimal: {
-                        system_asset_id: data.minimal?.system_asset_id || null,
-                        schema_asset_id: data.minimal?.schema_asset_id || null
-                    },
-                    detailed: {
-                        system_asset_id: data.detailed?.system_asset_id || null,
-                        schema_asset_id: data.detailed?.schema_asset_id || null
-                    }
-                });
-            }
-        } catch (error) {
-            console.error("Failed to fetch plan links", error);
-        }
-    };
-
     useEffect(() => {
-        fetchPlansAndPrompts();
+        fetchPlans();
     }, []);
 
-    const handleEditClick = async (plan: Plan) => {
+    const handleEditClick = (plan: Plan) => {
         setSelectedPlan(plan);
-        // Default empty links
-        setCurrentLinks({ minimal: {}, detailed: {} });
-        if (plan.id) {
-            await fetchPlanLinks(plan.id);
-        }
     };
 
     const handleSavePlan = async (plan: Plan) => {
@@ -279,19 +220,9 @@ export default function AdminSubscriptionsPage() {
             body: JSON.stringify(plan)
         });
 
-        // 2. Save Prompt Links
-        await fetch(`http://localhost:8000/api/v1/admin/plans/${plan.id}/prompt-links`, {
-            method: "PUT",
-            headers,
-            body: JSON.stringify(currentLinks)
-        });
-
         setSelectedPlan(null);
-        fetchPlansAndPrompts();
+        fetchPlans();
     };
-
-    const systemAssets = promptAssets.filter(a => a.kind === "system");
-    const schemaAssets = promptAssets.filter(a => a.kind === "schema");
 
     return (
         <div className="p-8 max-w-7xl mx-auto w-full">
@@ -448,96 +379,11 @@ export default function AdminSubscriptionsPage() {
                                 </div>
                             </div>
 
-                            {/* Prompt Routing Section */}
                             <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
-                                <div className="flex justify-between items-center">
-                                    <h3 className="text-slate-900 dark:text-white font-bold">Tier-Aware Prompt Routing</h3>
-                                    <span className="text-xs text-slate-500">Configure assets for each mode</span>
-                                </div>
-                                <div className="grid grid-cols-2 gap-8">
-                                    {/* Minimal Mode */}
-                                    <div className="bg-white dark:bg-slate-950/50 p-4 rounded-lg border border-slate-200 dark:border-slate-800">
-                                        <h4 className="text-sm font-bold text-sky-400 mb-4 flex items-center gap-2">
-                                            <span className="material-symbols-outlined text-sm">bolt</span>
-                                            Minimal Mode (Fast)
-                                        </h4>
-                                        <div className="space-y-3">
-                                            <div className="space-y-1">
-                                                <label className="text-xs text-slate-400">System Prompt Asset</label>
-                                                <select
-                                                    value={currentLinks.minimal.system_asset_id || ""}
-                                                    onChange={(e) => setCurrentLinks({
-                                                        ...currentLinks,
-                                                        minimal: { ...currentLinks.minimal, system_asset_id: e.target.value ? parseInt(e.target.value) : null }
-                                                    })}
-                                                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded p-2 text-slate-900 dark:text-white text-sm"
-                                                >
-                                                    <option value="">-- Use Default / Inherit --</option>
-                                                    {systemAssets.map(a => (
-                                                        <option key={a.id} value={a.id}>{a.key}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-xs text-slate-400">JSON Schema Asset</label>
-                                                <select
-                                                    value={currentLinks.minimal.schema_asset_id || ""}
-                                                    onChange={(e) => setCurrentLinks({
-                                                        ...currentLinks,
-                                                        minimal: { ...currentLinks.minimal, schema_asset_id: e.target.value ? parseInt(e.target.value) : null }
-                                                    })}
-                                                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded p-2 text-slate-900 dark:text-white text-sm"
-                                                >
-                                                    <option value="">-- Use Default / Inherit --</option>
-                                                    {schemaAssets.map(a => (
-                                                        <option key={a.id} value={a.id}>{a.key}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Detailed Mode */}
-                                    <div className="bg-white dark:bg-slate-950/50 p-4 rounded-lg border border-slate-200 dark:border-slate-800">
-                                        <h4 className="text-sm font-bold text-violet-400 mb-4 flex items-center gap-2">
-                                            <span className="material-symbols-outlined text-sm">psychology</span>
-                                            Detailed Mode (Reasoning)
-                                        </h4>
-                                        <div className="space-y-3">
-                                            <div className="space-y-1">
-                                                <label className="text-xs text-slate-400">System Prompt Asset</label>
-                                                <select
-                                                    value={currentLinks.detailed.system_asset_id || ""}
-                                                    onChange={(e) => setCurrentLinks({
-                                                        ...currentLinks,
-                                                        detailed: { ...currentLinks.detailed, system_asset_id: e.target.value ? parseInt(e.target.value) : null }
-                                                    })}
-                                                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded p-2 text-slate-900 dark:text-white text-sm"
-                                                >
-                                                    <option value="">-- Use Default / Inherit --</option>
-                                                    {systemAssets.map(a => (
-                                                        <option key={a.id} value={a.id}>{a.key}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-xs text-slate-400">JSON Schema Asset</label>
-                                                <select
-                                                    value={currentLinks.detailed.schema_asset_id || ""}
-                                                    onChange={(e) => setCurrentLinks({
-                                                        ...currentLinks,
-                                                        detailed: { ...currentLinks.detailed, schema_asset_id: e.target.value ? parseInt(e.target.value) : null }
-                                                    })}
-                                                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded p-2 text-slate-900 dark:text-white text-sm"
-                                                >
-                                                    <option value="">-- Use Default / Inherit --</option>
-                                                    {schemaAssets.map(a => (
-                                                        <option key={a.id} value={a.id}>{a.key}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
+                                <h3 className="text-slate-900 dark:text-white font-bold">Prompt Routing</h3>
+                                <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 p-4 text-sm text-slate-600 dark:text-slate-300">
+                                    Plan prompt links were removed. Prompt routing is now managed centrally via Prompt Registry bindings.
+                                    Open <a className="text-admin-primary font-semibold hover:underline ml-1" href="/admin/prompt-bindings">/admin/prompt-bindings</a>.
                                 </div>
                             </div>
 
