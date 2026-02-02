@@ -90,3 +90,44 @@ async def test_ollama_retry_on_500():
     )
     assert json.loads(resp.content)["ok"] is True
     assert calls["count"] == 2
+
+
+@pytest.mark.asyncio
+async def test_ollama_failover_to_next_base_url_on_401():
+    calls = {"first": 0, "second": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        host = request.url.host
+        if host == "first-ollama.local":
+            calls["first"] += 1
+            return httpx.Response(401, json={"error": "unauthorized"})
+        calls["second"] += 1
+        return httpx.Response(200, json={"message": {"content": "{\"ok\": true}"}})
+
+    transport = httpx.MockTransport(handler)
+    client = OllamaClient(
+        base_url="http://first-ollama.local",
+        base_urls=["http://first-ollama.local", "http://second-ollama.local"],
+        model="qwen",
+        timeout_seconds=5,
+        max_retries=0,
+        keep_alive=None,
+        temperature=0.2,
+        top_p=0.9,
+        context_tokens=None,
+        transport=transport,
+    )
+
+    resp = await client.generate(
+        messages=[{"role": "user", "content": "Solve 2+2"}],
+        system_prompt=None,
+        prompt=None,
+        json_schema=None,
+        max_tokens=100,
+        temperature=None,
+        stream=False,
+        request_id="test",
+    )
+    assert json.loads(resp.content)["ok"] is True
+    assert calls["first"] == 1
+    assert calls["second"] == 1

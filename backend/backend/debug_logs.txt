@@ -1111,3 +1111,233 @@ extract_questions input metrics: size=1041x355 stddev=31.96 white=0.926
 OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmpshqc07bx.png
 qwen_math extract failed (). Fallback to LMM=True
 [5a0a59a0] Failed: name 'BadRequestError' is not defined | 92354ms
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+extract_questions input metrics: size=736x736 stddev=51.44 white=0.000
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmp79vg1k2t.png
+Initializing Local Pix2Text engine...
+Use DocLayout-YOLO model for Layout Analysis: C:\Users\loaia\AppData\Roaming\pix2text\1.1\layout-docyolo\doclayout_yolo_docstructbench_imgsz1024.pt
+use model: C:\Users\loaia\AppData\Roaming\cnocr\2.3\densenet_lite_136-gru\cnocr-v2.3-densenet_lite_136-gru-epoch=004-ft-model.onnx
+use model: C:\Users\loaia\AppData\Roaming\cnstd\1.2\ppocr\ch_PP-OCRv5_det\ch_PP-OCRv5_det_infer.onnx
+Use model path for MFD: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfd-1.5-onnx\pix2text-mfd-1.5.onnx
+Use model dir for LatexOCR: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfr-1.5-onnx
+Loaded Pix2Text MFR model mfr-1.5 to: backend-onnx, device-cpu
+Pix2Text initialized successfully
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+extract_questions input metrics: size=768x1024 stddev=35.28 white=0.941
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmp67qra7c1.png
+Initializing Local Pix2Text engine...
+Use DocLayout-YOLO model for Layout Analysis: C:\Users\loaia\AppData\Roaming\pix2text\1.1\layout-docyolo\doclayout_yolo_docstructbench_imgsz1024.pt
+use model: C:\Users\loaia\AppData\Roaming\cnocr\2.3\densenet_lite_136-gru\cnocr-v2.3-densenet_lite_136-gru-epoch=004-ft-model.onnx
+use model: C:\Users\loaia\AppData\Roaming\cnstd\1.2\ppocr\ch_PP-OCRv5_det\ch_PP-OCRv5_det_infer.onnx
+Use model path for MFD: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfd-1.5-onnx\pix2text-mfd-1.5.onnx
+Use model dir for LatexOCR: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfr-1.5-onnx
+Loaded Pix2Text MFR model mfr-1.5 to: backend-onnx, device-cpu
+Pix2Text initialized successfully
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+extract_questions input metrics: size=768x1024 stddev=35.28 white=0.941
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmpncv9wg9u.png
+Initializing Local Pix2Text engine...
+Use DocLayout-YOLO model for Layout Analysis: C:\Users\loaia\AppData\Roaming\pix2text\1.1\layout-docyolo\doclayout_yolo_docstructbench_imgsz1024.pt
+use model: C:\Users\loaia\AppData\Roaming\cnocr\2.3\densenet_lite_136-gru\cnocr-v2.3-densenet_lite_136-gru-epoch=004-ft-model.onnx
+use model: C:\Users\loaia\AppData\Roaming\cnstd\1.2\ppocr\ch_PP-OCRv5_det\ch_PP-OCRv5_det_infer.onnx
+Use model path for MFD: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfd-1.5-onnx\pix2text-mfd-1.5.onnx
+Use model dir for LatexOCR: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfr-1.5-onnx
+Loaded Pix2Text MFR model mfr-1.5 to: backend-onnx, device-cpu
+Pix2Text initialized successfully
+extract_questions input metrics: size=768x1024 stddev=35.28 white=0.941
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmp_qgn8ouv.png
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+extract_questions applying crop: x=59 y=616 w=547 h=140 image=768x1024
+extract_questions input metrics: size=547x140 stddev=27.31 white=0.954
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmpursfe1ct.png
+Initializing Local Pix2Text engine...
+Use DocLayout-YOLO model for Layout Analysis: C:\Users\loaia\AppData\Roaming\pix2text\1.1\layout-docyolo\doclayout_yolo_docstructbench_imgsz1024.pt
+use model: C:\Users\loaia\AppData\Roaming\cnocr\2.3\densenet_lite_136-gru\cnocr-v2.3-densenet_lite_136-gru-epoch=004-ft-model.onnx
+use model: C:\Users\loaia\AppData\Roaming\cnstd\1.2\ppocr\ch_PP-OCRv5_det\ch_PP-OCRv5_det_infer.onnx
+Use model path for MFD: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfd-1.5-onnx\pix2text-mfd-1.5.onnx
+Use model dir for LatexOCR: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfr-1.5-onnx
+Loaded Pix2Text MFR model mfr-1.5 to: backend-onnx, device-cpu
+Pix2Text initialized successfully
+extract_questions input metrics: size=369x369 stddev=32.08 white=0.967
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmpl1ssies0.png
+extract_questions input metrics: size=369x369 stddev=32.08 white=0.967
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmptf2qvq7t.png
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+extract_questions input metrics: size=369x369 stddev=32.08 white=0.967
+extract_questions provider attempt failed request provider=openai duration_ms=1828 reason=Error code: 400 - {'error': {'message': "Invalid schema for response_format 'extract_questions_v1': In context=('properties', 'questions', 'items'), 'required' is required to be supplied and to be an array including every key in properties. Missing 'confidence'.", 'type': 'invalid_request_error', 'param': 'text.format.schema', 'code': 'invalid_json_schema'}}
+extract_questions failed
+Traceback (most recent call last):
+  File "E:\uaskstudents\backend\app\api.py", line 2429, in extract_questions
+    extract_data = await _call_extract_questions(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\uaskstudents\backend\app\api.py", line 1995, in _call_extract_questions
+    raise RuntimeError(last_error or "All OCR providers failed")
+RuntimeError: Error code: 400 - {'error': {'message': "Invalid schema for response_format 'extract_questions_v1': In context=('properties', 'questions', 'items'), 'required' is required to be supplied and to be an array including every key in properties. Missing 'confidence'.", 'type': 'invalid_request_error', 'param': 'text.format.schema', 'code': 'invalid_json_schema'}}
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+extract_questions input metrics: size=369x369 stddev=32.08 white=0.967
+ocr_attempt request_id=dbe598c6-69e2-4df6-969f-cd323834666e provider=openai model=gpt-5-mini duration_ms=11526 validation_passed=True fail_reason=None
+Extract schema validation failed: <root>: Additional properties are not allowed ('ocr_fallback_attempts', 'ocr_model_used', 'ocr_provider_used' were unexpected)
+Extract schema validation failed: <root>: Additional properties are not allowed ('ocr_fallback_attempts', 'ocr_model_used', 'ocr_provider_used' were unexpected)
+Extract schema validation failed: <root>: Additional properties are not allowed ('ocr_fallback_attempts', 'ocr_model_used', 'ocr_provider_used' were unexpected)
+Extract schema validation failed: <root>: Additional properties are not allowed ('ocr_fallback_attempts', 'ocr_model_used', 'ocr_provider_used' were unexpected)
+Extract schema validation failed: <root>: Additional properties are not allowed ('ocr_fallback_attempts', 'ocr_model_used', 'ocr_provider_used' were unexpected)
+extract_questions applying crop: x=86 y=235 w=677 h=170 image=962x1280
+extract_questions input metrics: size=677x170 stddev=25.55 white=0.000
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmp7hse2knd.png
+Initializing Local Pix2Text engine...
+Use DocLayout-YOLO model for Layout Analysis: C:\Users\loaia\AppData\Roaming\pix2text\1.1\layout-docyolo\doclayout_yolo_docstructbench_imgsz1024.pt
+use model: C:\Users\loaia\AppData\Roaming\cnocr\2.3\densenet_lite_136-gru\cnocr-v2.3-densenet_lite_136-gru-epoch=004-ft-model.onnx
+use model: C:\Users\loaia\AppData\Roaming\cnstd\1.2\ppocr\ch_PP-OCRv5_det\ch_PP-OCRv5_det_infer.onnx
+Use model path for MFD: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfd-1.5-onnx\pix2text-mfd-1.5.onnx
+Use model dir for LatexOCR: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfr-1.5-onnx
+Loaded Pix2Text MFR model mfr-1.5 to: backend-onnx, device-cpu
+Pix2Text initialized successfully
+ocr_attempt request_id=32615e4b-f94c-4c90-94de-a4b7ecf2e286 provider=pix2txt model=pix2text-local duration_ms=4299 validation_passed=True fail_reason=None
+extract_questions applying crop: x=86 y=235 w=677 h=170 image=962x1280
+extract_questions input metrics: size=677x170 stddev=25.55 white=0.000
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmpedovcyh7.png
+ocr_attempt request_id=05acf3e8-88c7-4eee-b775-e21847807534 provider=qwen model=qwen2.5vl:3b duration_ms=64735 validation_passed=True fail_reason=None
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+extract_questions applying crop: x=92 y=438 w=708 h=175 image=962x1280
+extract_questions input metrics: size=708x175 stddev=27.32 white=0.000
+ocr_attempt request_id=a42e3107-e67b-428c-9883-eb6c0bd990bd provider=openai model=gpt-5-mini duration_ms=8232 validation_passed=True fail_reason=None
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+extract_questions applying crop: x=119 y=460 w=682 h=126 image=962x1280
+extract_questions input metrics: size=682x126 stddev=28.72 white=0.000
+ocr_attempt request_id=816b48ba-7b46-4e72-ab56-9be03fcecec9 provider=openai model=gpt-5-mini duration_ms=11501 validation_passed=True fail_reason=None
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+extract_questions applying crop: x=97 y=234 w=729 h=170 image=962x1280
+extract_questions input metrics: size=729x170 stddev=24.97 white=0.000
+ocr_attempt request_id=5b5fc431-ec12-4584-bfe3-066bbdbafe76 provider=openai model=gpt-5-mini duration_ms=10058 validation_passed=True fail_reason=None
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12

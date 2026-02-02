@@ -13,9 +13,10 @@ type Props = {
     imageUrl: string;
     pageLabel: string;
     onCropChange: (crop: PdfCropSelection | null, render: { width: number; height: number }) => void;
+    scale?: number;
 };
 
-export default function PdfCropViewer({ imageUrl, pageLabel, onCropChange }: Props) {
+export default function PdfCropViewer({ imageUrl, pageLabel, onCropChange, scale = 1 }: Props) {
     const wrapRef = React.useRef<HTMLDivElement | null>(null);
     const imgRef = React.useRef<HTMLImageElement | null>(null);
     const [imgSize, setImgSize] = React.useState({ width: 0, height: 0 });
@@ -83,7 +84,8 @@ export default function PdfCropViewer({ imageUrl, pageLabel, onCropChange }: Pro
                     ref={imgRef}
                     src={imageUrl}
                     alt="PDF page"
-                    className="w-full select-none"
+                    className="select-none"
+                    style={{ width: `${Math.min(1, Math.max(0.5, scale)) * 100}%`, maxWidth: "100%", height: "auto" }}
                     draggable={false}
                     onLoad={(e) => {
                         const img = e.currentTarget;

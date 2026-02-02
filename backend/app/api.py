@@ -45,6 +45,16 @@ from app.services.ocr.crop_service import crop_service
 from app.services.ocr.ocr_router_service import ocr_router_service
 from app.services.ocr.audit_log_service import audit_log_service
 from app.services.ocr.ocr_service import ocr_service
+from app.services.ocr.vision_routing import (
+    VisionInput,
+    VisionOptions,
+    VisionOcrProvider,
+    VisionProviderAttempt,
+    VisionExtractionResult,
+    VisionRoutingConfig,
+    build_provider_plan,
+    get_openai_ocr_model,
+)
 from app.services.solve.canonicalization_service import canonicalization_service
 from app.services.admin.analytics_service import record_request_event
 from app.services.whatsapp import whatsapp_service
@@ -62,6 +72,7 @@ from app.services.prompt_registry_service import prompt_registry_service, Prompt
 from app.services.tier_utils import get_user_effective_tier_slug
 from app.services.mode_execution_service import mode_execution_service, ModeExecutionError
 from app.services.llm import get_llm_manager, LLMProviderError
+from app.services.ollama import detect_ollama_base_url
 from app.services.whatsapp.whatsapp_state import get_redis
 from app.services.whatsapp.whatsapp_send import send_whatsapp_logo
 from app.services.whatsapp.step_delivery import handle_navigation
@@ -99,6 +110,14 @@ OCR_QWEN_USER_PROMPT_ID = os.environ.get(
     "OCR_QWEN_USER_PROMPT_ID",
     prompt_registry_service.OCR_EXTRACT_QWEN_USER_PROMPT_ID,
 )
+OCR_OPENAI_SYSTEM_PROMPT_ID = os.environ.get(
+    "OCR_OPENAI_SYSTEM_PROMPT_ID",
+    prompt_registry_service.OCR_EXTRACT_OPENAI_SYSTEM_PROMPT_ID,
+)
+OCR_OPENAI_SCHEMA_ID = os.environ.get(
+    "OCR_OPENAI_SCHEMA_ID",
+    prompt_registry_service.OCR_EXTRACT_OPENAI_SCHEMA_ID,
+)
 
 
 @api_router.get("/health/llm")
@@ -123,6 +142,12 @@ async def health_llm():
         }
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
+
+
+@api_router.get("/health/ollama")
+async def health_ollama():
+    base_url = detect_ollama_base_url(os.environ.get("OLLAMA_BASE_URL"))
+    return {"reachable": bool(base_url), "base_url": base_url}
 
 # --- Helper Functions ---
 def _resolve_runtime_tier_slug(user: Optional[User]) -> str:
@@ -1426,6 +1451,35 @@ def _sanitize_trimmed_keys(value: Any) -> Tuple[Any, bool]:
     return value, False
 
 
+_CJK_CHAR_RE = re.compile(r"[\u3400-\u4DBF\u4E00-\u9FFF]")
+_CJK_RUN_RE = re.compile(r"(?:(?<=\s)|^)([\u3400-\u4DBF\u4E00-\u9FFF]{1,3})(?=(?:\s|[0-9A-Za-z\\(\\[\\{]|$))")
+
+
+def _strip_likely_cjk_ocr_noise(text: str) -> str:
+    """
+    Remove short accidental CJK runs from predominantly Latin OCR outputs.
+    Keeps genuine CJK content intact by only applying when the text is mostly Latin.
+    """
+    if not text:
+        return text
+    cjk_count = len(_CJK_CHAR_RE.findall(text))
+    if cjk_count == 0:
+        return text
+    latin_count = sum(1 for ch in text if ch.isascii() and ch.isalpha())
+    digit_count = sum(1 for ch in text if ch.isdigit())
+    if cjk_count <= 3 and digit_count >= 2:
+        cleaned = _CJK_RUN_RE.sub("", text)
+        cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
+        return cleaned.strip()
+    if (latin_count + digit_count) < 16:
+        return text
+    if cjk_count > max(6, (latin_count + digit_count) // 6):
+        return text
+    cleaned = _CJK_RUN_RE.sub("", text)
+    cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
+    return cleaned.strip()
+
+
 def _normalize_extract_payload_shape(payload: Dict[str, Any], page_hint: int = 0) -> Dict[str, Any]:
     """
     Normalize legacy extract payload variants into ExtractQuestionsResponse schema shape.
@@ -1442,7 +1496,7 @@ def _normalize_extract_payload_shape(payload: Dict[str, Any], page_hint: int = 0
         qtype = str(q.get("type") or "other")
         if qtype not in {"word_problem", "equation", "multiple_choice", "graph", "table", "geometry", "other"}:
             qtype = "other"
-        text = str(q.get("text") or "").strip()
+        text = _strip_likely_cjk_ocr_noise(str(q.get("text") or "").strip())
         if not text:
             continue
         page = q.get("page")
@@ -1450,7 +1504,7 @@ def _normalize_extract_payload_shape(payload: Dict[str, Any], page_hint: int = 0
             page = page_hint
         latex = q.get("latex")
         if isinstance(latex, str):
-            latex = latex.strip() or None
+            latex = _strip_likely_cjk_ocr_noise(latex.strip()) or None
         else:
             latex = None
         confidence = q.get("confidence")
@@ -1559,6 +1613,9 @@ class ExtractQuestionsResponse(BaseModel):
     notes: List[str]
     questions: List[ExtractQuestionItem]
     error: Optional[ExtractErrorItem] = None
+    ocr_provider_used: Optional[str] = None
+    ocr_model_used: Optional[str] = None
+    ocr_fallback_attempts: Optional[List[Dict[str, Any]]] = None
 
 
 class SolveBatchItem(BaseModel):
@@ -1618,7 +1675,7 @@ async def _call_extract_questions(
     session: Session,
     image_bytes: bytes, 
     max_output_tokens: int, 
-    engine_choice: str = "lmm",
+    engine_choice: str = "auto",
     crop_meta: Optional[Dict[str, Any]] = None,
     debug: bool = False
 ) -> Dict[str, Any]:
@@ -1631,6 +1688,59 @@ async def _call_extract_questions(
                 f"Expected prompt_ids: {OCR_QWEN_SYSTEM_PROMPT_ID}, {OCR_QWEN_USER_PROMPT_ID}"
             )
         return system_entry.content, user_entry.content
+
+    def _load_openai_ocr_assets() -> Tuple[str, Dict[str, Any]]:
+        system_entry = prompt_registry_service.get_active_prompt(session, OCR_OPENAI_SYSTEM_PROMPT_ID)
+        schema_entry = prompt_registry_service.get_active_schema(session, OCR_OPENAI_SCHEMA_ID)
+        if not system_entry or not schema_entry:
+            raise PromptRegistryError(
+                "Missing OpenAI OCR prompt/schema in registry. "
+                f"Expected prompt_id={OCR_OPENAI_SYSTEM_PROMPT_ID} schema_id={OCR_OPENAI_SCHEMA_ID}"
+            )
+        return system_entry.content, schema_entry.content
+
+    def _normalize_openai_ocr_payload(raw_payload: Dict[str, Any], model: str) -> Dict[str, Any]:
+        warnings = raw_payload.get("warnings") if isinstance(raw_payload.get("warnings"), list) else []
+        questions = raw_payload.get("questions") if isinstance(raw_payload.get("questions"), list) else []
+        normalized_questions: List[Dict[str, Any]] = []
+        for idx, item in enumerate(questions):
+            if not isinstance(item, dict):
+                continue
+            qid = str(item.get("question_id") or f"p{page_num}-q{idx+1}")
+            page = item.get("page_index")
+            if not isinstance(page, int) or page < 0:
+                page = page_num
+            q_text = str(item.get("question_text") or "").strip()
+            q_latex = item.get("question_latex")
+            if not q_text and isinstance(q_latex, str):
+                q_text = q_latex.strip()
+            if not q_text:
+                continue
+            choices = item.get("answer_choices") if isinstance(item.get("answer_choices"), list) else []
+            q_type = "multiple_choice" if len(choices) > 0 else "other"
+            conf = item.get("confidence")
+            if not isinstance(conf, (int, float)):
+                conf = None
+            normalized_questions.append(
+                {
+                    "id": qid,
+                    "page": page,
+                    "text": q_text,
+                    "latex": str(q_latex).strip() if isinstance(q_latex, str) and q_latex.strip() else None,
+                    "type": q_type,
+                    "confidence": conf,
+                }
+            )
+        notes = [str(w) for w in warnings if isinstance(w, str)]
+        if not normalized_questions and not notes:
+            notes = ["No math questions detected."]
+        return {
+            "ok": True,
+            "error": None,
+            "is_math_page": bool(normalized_questions),
+            "notes": notes,
+            "questions": normalized_questions,
+        }
 
     def _looks_like_garbled_pix2text(markdown: str) -> bool:
         text = (markdown or "").strip()
@@ -1676,40 +1786,72 @@ async def _call_extract_questions(
             "cached_tokens": 0
         }
 
-    if engine_choice in {"pix2text", "qwen_math"}:
-        from app.services.ocr.ocr_service import ocr_service
-        import tempfile
-        tmp_path = None
-        markdown = ""
-        confidence = 0.8
-        page_num = 0
-        if isinstance(crop_meta, dict):
-            page_raw = crop_meta.get("page_number")
-            if isinstance(page_raw, int) and page_raw >= 0:
-                page_num = page_raw
-        try:
-            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
-                f.write(image_bytes)
-                tmp_path = f.name
-            result = ocr_service.process_job(
-                tmp_path,
-                engine_name="local",
-                crop_meta=crop_meta,
-                debug=debug
-            )
-            markdown = result.get("markdown", "")
-            confidence = float(result.get("confidence", 0.8) or 0.8)
-            if engine_choice == "pix2text":
-                base_payload = _pix2text_extract_payload(markdown, confidence, page_num)
-                base_payload["telemetry"] = result.get("telemetry")
-                return base_payload
+    def _is_incomplete(resp: Any) -> bool:
+        status = getattr(resp, "status", None)
+        if status and status != "completed":
+            return True
+        details = getattr(resp, "incomplete_details", None)
+        reason = getattr(details, "reason", None) if details else None
+        return reason == "max_output_tokens"
 
-            # qwen_math mode: run vision extraction directly with Ollama /api/chat + schema format.
+    page_num = 0
+    if isinstance(crop_meta, dict):
+        page_raw = crop_meta.get("page_number")
+        if isinstance(page_raw, int) and page_raw >= 0:
+            page_num = page_raw
+
+    class Pix2TextProvider(VisionOcrProvider):
+        name = "pix2txt"
+        supports_pdf = True
+        supports_image = True
+
+        async def extract(self, vision_input: VisionInput, options: VisionOptions) -> VisionExtractionResult:
+            import tempfile
+
+            tmp_path = None
+            try:
+                with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
+                    f.write(vision_input.images[0])
+                    tmp_path = f.name
+                result = ocr_service.process_job(
+                    tmp_path,
+                    engine_name="local",
+                    crop_meta=options.crop_meta,
+                    debug=options.debug,
+                )
+                markdown = str(result.get("markdown", "") or "").strip()
+                if not markdown:
+                    raise RuntimeError("empty_extraction")
+                confidence = float(result.get("confidence", 0.8) or 0.8)
+                payload_bundle = _pix2text_extract_payload(markdown, confidence, page_num)
+                return VisionExtractionResult(
+                    provider="pix2txt",
+                    model="pix2text-local",
+                    extracted_text=markdown,
+                    payload=payload_bundle["payload"],
+                    blocks=payload_bundle["payload"].get("questions") or [],
+                    confidence=confidence,
+                    diagnostics={"telemetry": result.get("telemetry")},
+                    token_usage={"input_tokens": 0, "output_tokens": 0, "cached_tokens": 0},
+                )
+            finally:
+                if tmp_path and os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
+
+    class QwenVisionProvider(VisionOcrProvider):
+        name = "qwen"
+        supports_pdf = True
+        supports_image = True
+
+        async def extract(self, vision_input: VisionInput, options: VisionOptions) -> VisionExtractionResult:
+            base = await Pix2TextProvider().extract(vision_input, options)
+            markdown = base.extracted_text
+            confidence = float(base.confidence or 0.8)
             manager = get_llm_manager()
             ollama_client = manager.get_client("ollama")
-            qwen_model = os.environ.get("OLLAMA_OCR_MODEL", os.environ.get("OLLAMA_MODEL_DEFAULT", "mightykatun/qwen2.5-math:7b"))
+            qwen_model = os.environ.get("OLLAMA_OCR_MODEL", os.environ.get("OLLAMA_MODEL_DEFAULT", "qwen2.5vl:3b"))
             qwen_system_prompt, qwen_user_prompt = _load_qwen_extract_prompts()
-            image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+            image_b64 = base64.b64encode(vision_input.images[0]).decode("utf-8")
             qwen_request = {
                 "model": qwen_model,
                 "stream": False,
@@ -1722,7 +1864,7 @@ async def _call_extract_questions(
                     "temperature": float(os.environ.get("OLLAMA_TEMPERATURE", "0.2")),
                     "top_p": float(os.environ.get("OLLAMA_TOP_P", "0.9")),
                     "num_ctx": int(os.environ.get("OLLAMA_CONTEXT_TOKENS", "4096")),
-                    "num_predict": max_output_tokens,
+                    "num_predict": options.max_output_tokens,
                 },
             }
             async with httpx.AsyncClient(
@@ -1738,16 +1880,24 @@ async def _call_extract_questions(
                 else None
             )
             if not isinstance(content, str) or not content.strip():
-                raise RuntimeError("Empty content from Ollama OCR chat")
+                raise RuntimeError("empty_extraction")
             try:
                 qwen_payload = json.loads(content.strip())
             except Exception:
-                # If Qwen returns malformed JSON, gracefully fall back to Pix2Text payload.
-                return _pix2text_extract_payload(
+                payload_bundle = _pix2text_extract_payload(
                     markdown,
                     confidence,
                     page_num,
                     notes=["Qwen Math returned invalid JSON; using Pix2Text OCR fallback."],
+                )
+                return VisionExtractionResult(
+                    provider="qwen",
+                    model=qwen_model,
+                    extracted_text=markdown,
+                    payload=payload_bundle["payload"],
+                    blocks=payload_bundle["payload"].get("questions") or [],
+                    confidence=confidence,
+                    diagnostics={"fallback": "pix2txt_json_recovery"},
                 )
             qwen_payload = _validate_extract_payload(qwen_payload, page_hint=page_num)
             notes = qwen_payload.get("notes") or []
@@ -1756,172 +1906,191 @@ async def _call_extract_questions(
             else:
                 notes.append("Extracted with Qwen Math vision OCR.")
             qwen_payload["notes"] = notes
-            return {
-                "payload": qwen_payload,
-                "telemetry": {
-                    "provider": "ollama",
-                    "model": qwen_model,
-                    "base_confidence": confidence,
-                },
-                "input_tokens": None,
-                "output_tokens": None,
-                "cached_tokens": None,
-            }
-        except Exception as exc:
-            if engine_choice == "qwen_math":
-                # Keep OCR path resilient without forcing OpenAI fallback.
-                fallback_notes = ["Qwen Math failed; using Pix2Text OCR fallback."]
-                if markdown:
-                    return _pix2text_extract_payload(markdown, confidence, page_num, notes=fallback_notes)
-            enable_lmm_fallback = os.getenv("ENABLE_LMM_FALLBACK", "true").lower() == "true"
-            logging.warning("%s extract failed (%s). Fallback to LMM=%s", engine_choice, exc, enable_lmm_fallback)
-            if not enable_lmm_fallback:
-                raise
-            # Fall through to LMM/VLM extraction below.
-        finally:
-            if tmp_path and os.path.exists(tmp_path):
-                os.unlink(tmp_path)
-
-    if not os.environ.get("OPENAI_API_KEY"):
-        raise ValueError("OPENAI_API_KEY not set")
-
-    client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-    b64 = base64.b64encode(image_bytes).decode("utf-8")
-
-    def _build_responses_request(max_tokens: int, prompt_suffix: Optional[str] = None):
-        user_prompt = EXTRACT_USER_PROMPT
-        if prompt_suffix:
-            user_prompt = f"{EXTRACT_USER_PROMPT} {prompt_suffix}"
-        return client.responses.create(
-            model=EXTRACT_MODEL,
-            input=[
-                {"role": "system", "content": [{"type": "input_text", "text": EXTRACT_SYSTEM_PROMPT}]},
-                {"role": "user", "content": [
-                    {"type": "input_text", "text": user_prompt},
-                    {"type": "input_image", "image_url": f"data:image/jpeg;base64,{b64}"}
-                ]}
-            ],
-            text={
-                "format": {
-                    "type": "json_schema",
-                    "name": EXTRACT_SCHEMA.get("name", "extract_questions"),
-                    "schema": EXTRACT_SCHEMA.get("schema"),
-                    "json_schema": EXTRACT_SCHEMA.get("schema"),
-                    "strict": True,
-                }
-            },
-            reasoning={"effort": "low"},
-            max_output_tokens=max_tokens
-        )
-
-    def _build_chat_request():
-        return client.chat.completions.create(
-            model=EXTRACT_MODEL,
-            messages=[
-                {"role": "system", "content": EXTRACT_SYSTEM_PROMPT},
-                {"role": "user", "content": [
-                    {"type": "text", "text": EXTRACT_USER_PROMPT},
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}", "detail": "high"}}
-                ]}
-            ],
-            response_format={
-                "type": "json_schema",
-                "name": EXTRACT_SCHEMA.get("name", "extract_questions"),
-                "schema": EXTRACT_SCHEMA.get("schema"),
-                "json_schema": EXTRACT_SCHEMA.get("schema"),
-            },
-            max_completion_tokens=max_output_tokens
-        )
-
-    def _is_incomplete(resp: Any) -> bool:
-        status = getattr(resp, "status", None)
-        if status and status != "completed":
-            return True
-        details = getattr(resp, "incomplete_details", None)
-        reason = getattr(details, "reason", None) if details else None
-        return reason == "max_output_tokens"
-
-    if "gpt-5" in EXTRACT_MODEL.lower():
-        response = await _build_responses_request(max_output_tokens)
-        content = _extract_openai_text(response)
-        if _is_incomplete(response) or not content.strip():
-            logging.warning(
-                "extract_questions incomplete response; status=%s reason=%s",
-                getattr(response, "status", None),
-                getattr(getattr(response, "incomplete_details", None), "reason", None),
+            return VisionExtractionResult(
+                provider="qwen",
+                model=qwen_model,
+                extracted_text="\n".join((q.get("text") or "") for q in (qwen_payload.get("questions") or [])).strip(),
+                payload=qwen_payload,
+                blocks=qwen_payload.get("questions") or [],
+                confidence=confidence,
+                diagnostics={"base_provider": "pix2txt"},
             )
-            retry_tokens = int(max_output_tokens * 2)
-            response = await _build_responses_request(
-                retry_tokens,
-                "Keep notes short and return at most 40 questions."
-            )
+
+    class OpenAIVisionProvider(VisionOcrProvider):
+        name = "openai"
+        supports_pdf = True
+        supports_image = True
+
+        async def extract(self, vision_input: VisionInput, options: VisionOptions) -> VisionExtractionResult:
+            api_key = os.environ.get("OPENAI_API_KEY")
+            if not api_key:
+                raise RuntimeError("OPENAI_API_KEY not set")
+            if len(vision_input.images) > 4:
+                raise RuntimeError("unsupported_too_many_images")
+
+            model = get_openai_ocr_model()
+            client = AsyncOpenAI(api_key=api_key)
+            b64 = base64.b64encode(vision_input.images[0]).decode("utf-8")
+            system_prompt, openai_schema = _load_openai_ocr_assets()
+            validator = Draft202012Validator(openai_schema)
+            user_prompt = "Extract math content from this input image. Return JSON only."
+
+            async def _responses_call(max_tokens: int, repair: bool = False):
+                prompt_text = user_prompt
+                if repair:
+                    prompt_text = "Return ONLY valid JSON that matches schema; no extra text."
+                return await client.responses.create(
+                    model=model,
+                    input=[
+                        {"role": "system", "content": [{"type": "input_text", "text": system_prompt}]},
+                        {"role": "user", "content": [
+                            {"type": "input_text", "text": prompt_text},
+                            {"type": "input_image", "image_url": f"data:image/jpeg;base64,{b64}"},
+                        ]},
+                    ],
+                    text={
+                        "format": {
+                            "type": "json_schema",
+                            "name": OCR_OPENAI_SCHEMA_ID,
+                            "schema": openai_schema,
+                            "strict": True,
+                        }
+                    },
+                    reasoning={"effort": "low"},
+                    max_output_tokens=max_tokens,
+                    timeout=float(os.environ.get("OPENAI_OCR_TIMEOUT_SECONDS", "60")),
+                )
+
+            response = await _responses_call(options.max_output_tokens)
             content = _extract_openai_text(response)
             if _is_incomplete(response) or not content.strip():
-                logging.error(
-                    "extract_questions retry incomplete; status=%s reason=%s",
-                    getattr(response, "status", None),
-                    getattr(getattr(response, "incomplete_details", None), "reason", None),
-                )
-                return {
-                    "payload": {
-                        "ok": False,
-                        "error": "Extraction truncated. Crop tighter or increase zoom.",
-                        "is_math_page": False,
-                        "notes": ["Extraction truncated. Crop tighter or increase zoom."],
-                        "questions": [],
-                    },
-                    "input_tokens": None,
-                    "output_tokens": None,
-                    "cached_tokens": None,
-                }
-    else:
-        response = await _build_chat_request()
-        content = _extract_openai_text(response)
+                response = await _responses_call(int(options.max_output_tokens * 2), repair=True)
+                content = _extract_openai_text(response)
+            if not content.strip():
+                raise RuntimeError("empty_extraction")
 
-    if not content.strip():
-        logging.error(
-            "extract_questions received empty content from OpenAI response; payload=%s",
-            _serialize_response_for_log(response),
-        )
-        return {
-            "payload": INVALID_EXTRACT_PAYLOAD,
-            "input_tokens": None,
-            "output_tokens": None,
-            "cached_tokens": None,
-        }
+            try:
+                parsed = _parse_json_response(content)
+            except Exception:
+                response = await _responses_call(int(options.max_output_tokens * 2), repair=True)
+                content = _extract_openai_text(response)
+                parsed = _parse_json_response(content)
+            errors = list(validator.iter_errors(parsed))
+            if errors:
+                response = await _responses_call(int(options.max_output_tokens * 2), repair=True)
+                content = _extract_openai_text(response)
+                parsed = _parse_json_response(content)
+                errors = list(validator.iter_errors(parsed))
+                if errors:
+                    raise RuntimeError("schema_validation_failed")
 
-    logging.info(
-        "extract_questions response raw content: %r (len=%d)",
-        _truncate_text(content, limit=400),
-        len(content)
-    )
-    usage = getattr(response, "usage", None)
-    cached_tokens = None
-    if usage:
-        if hasattr(usage, "input_token_details"):
-            cached_tokens = getattr(usage.input_token_details, "cached_tokens", None)
-        elif hasattr(usage, "prompt_tokens_details"):
-            cached_tokens = getattr(usage.prompt_tokens_details, "cached_tokens", None)
+            usage = getattr(response, "usage", None)
+            payload = _validate_extract_payload(_normalize_openai_ocr_payload(parsed, model), page_hint=page_num)
+            input_tokens = None
+            output_tokens = None
+            cached_tokens = None
+            usage_payload = parsed.get("usage") if isinstance(parsed.get("usage"), dict) else {}
+            if usage:
+                input_tokens = getattr(usage, "input_tokens", None) or getattr(usage, "prompt_tokens", None)
+                output_tokens = getattr(usage, "output_tokens", None) or getattr(usage, "completion_tokens", None)
+                if hasattr(usage, "input_token_details"):
+                    cached_tokens = getattr(usage.input_token_details, "cached_tokens", None)
+                elif hasattr(usage, "prompt_tokens_details"):
+                    cached_tokens = getattr(usage.prompt_tokens_details, "cached_tokens", None)
+            if usage_payload.get("tokens_in") is not None:
+                input_tokens = usage_payload.get("tokens_in")
+            if usage_payload.get("tokens_out") is not None:
+                output_tokens = usage_payload.get("tokens_out")
+            return VisionExtractionResult(
+                provider="openai",
+                model=model,
+                extracted_text="\n".join((q.get("text") or "") for q in (payload.get("questions") or [])).strip(),
+                payload=payload,
+                blocks=payload.get("questions") or [],
+                token_usage={
+                    "input_tokens": input_tokens,
+                    "output_tokens": output_tokens,
+                    "cached_tokens": cached_tokens,
+                },
+            )
 
-    payload = _parse_json_response(content)
-    page_hint = 0
-    if isinstance(crop_meta, dict):
-        page_raw = crop_meta.get("page_number")
-        if isinstance(page_raw, int) and page_raw >= 0:
-            page_hint = page_raw
-    payload = _validate_extract_payload(payload, page_hint=page_hint)
-    input_tokens = None
-    output_tokens = None
-    if usage:
-        input_tokens = getattr(usage, "input_tokens", None) or getattr(usage, "prompt_tokens", None)
-        output_tokens = getattr(usage, "output_tokens", None) or getattr(usage, "completion_tokens", None)
-
-    return {
-        "payload": payload,
-        "input_tokens": input_tokens,
-        "output_tokens": output_tokens,
-        "cached_tokens": cached_tokens,
+    providers: Dict[str, VisionOcrProvider] = {
+        "pix2txt": Pix2TextProvider(),
+        "qwen": QwenVisionProvider(),
+        "openai": OpenAIVisionProvider(),
     }
+    routing_cfg = VisionRoutingConfig.from_env()
+    plan = build_provider_plan(engine_choice, routing_cfg)
+    if not plan:
+        raise RuntimeError("No OCR providers enabled")
+
+    attempts: List[VisionProviderAttempt] = []
+    last_error: Optional[str] = None
+    for idx, provider_name in enumerate(plan):
+        provider = providers.get(provider_name)
+        if not provider:
+            continue
+        start_attempt = time.perf_counter()
+        request_id = (crop_meta or {}).get("request_id") if isinstance(crop_meta, dict) else None
+        try:
+            result = await provider.extract(
+                VisionInput(images=[image_bytes], request_id=request_id, source=(crop_meta or {}).get("source")),
+                VisionOptions(max_output_tokens=max_output_tokens, crop_meta=crop_meta, debug=debug),
+            )
+            duration_ms = int((time.perf_counter() - start_attempt) * 1000)
+            logging.info(
+                "ocr_attempt request_id=%s provider=%s model=%s duration_ms=%s validation_passed=%s fail_reason=%s",
+                request_id,
+                provider_name,
+                result.model,
+                duration_ms,
+                True,
+                None,
+            )
+            attempts.append(
+                VisionProviderAttempt(
+                    provider=provider_name,
+                    model=result.model,
+                    duration_ms=duration_ms,
+                    success=True,
+                )
+            )
+            token_usage = result.token_usage or {}
+            return {
+                "payload": result.payload,
+                "input_tokens": token_usage.get("input_tokens"),
+                "output_tokens": token_usage.get("output_tokens"),
+                "cached_tokens": token_usage.get("cached_tokens"),
+                "ocr_provider_used": result.provider,
+                "ocr_model_used": result.model,
+                "ocr_fallback_attempts": [a.__dict__ for a in attempts],
+            }
+        except Exception as exc:
+            duration_ms = int((time.perf_counter() - start_attempt) * 1000)
+            reason = str(exc)
+            last_error = reason
+            attempts.append(
+                VisionProviderAttempt(
+                    provider=provider_name,
+                    model=(os.environ.get("VLM_MODEL_OPENA_AI_OCR", "gpt-5-mini") if provider_name == "openai" else provider_name),
+                    duration_ms=duration_ms,
+                    success=False,
+                    reason=reason,
+                )
+            )
+            logging.warning(
+                "ocr_attempt request_id=%s provider=%s model=%s duration_ms=%s validation_passed=%s fail_reason=%s",
+                request_id,
+                provider_name,
+                (os.environ.get("VLM_MODEL_OPENA_AI_OCR", "gpt-5-mini") if provider_name == "openai" else provider_name),
+                duration_ms,
+                False,
+                reason[:200],
+            )
+            if idx == len(plan) - 1:
+                break
+
+    raise RuntimeError(last_error or "All OCR providers failed")
 
 
 def _parse_json_response(content: str) -> Dict[str, Any]:
@@ -2216,7 +2385,7 @@ async def extract_questions(
     render_scale: Optional[float] = Form(None),
     source: str = Form("image"),
     user_selection: str = Form("crop"),
-    ocr_engine_choice: str = Form("pix2text"),
+    ocr_engine_choice: str = Form("auto"),
     debug: bool = Form(False),
     user_id: int = Query(...),
     session: Session = Depends(get_session)
@@ -2268,7 +2437,18 @@ async def extract_questions(
         cached.last_hit_at = datetime.utcnow()
         session.add(cached)
         session.commit()
-        payload = cached.result_json or {}
+        page_hint = page_number if isinstance(page_number, int) and page_number >= 0 else 0
+        cached_result = cached.result_json or {}
+        payload = _validate_extract_payload(
+            {
+                "ok": cached_result.get("ok"),
+                "error": cached_result.get("error"),
+                "is_math_page": cached_result.get("is_math_page"),
+                "notes": cached_result.get("notes"),
+                "questions": cached_result.get("questions"),
+            },
+            page_hint=page_hint,
+        )
         ok = payload.get("ok", True)
         error = payload.get("error")
         error_msg = _extract_error_message(error)
@@ -2278,6 +2458,9 @@ async def extract_questions(
             notes=payload.get("notes") or ([error_msg] if error_msg else []),
             questions=payload.get("questions") or [],
             error=error,
+            ocr_provider_used=cached_result.get("ocr_provider_used"),
+            ocr_model_used=cached_result.get("ocr_model_used"),
+            ocr_fallback_attempts=cached_result.get("ocr_fallback_attempts"),
         )
 
     request_id = str(uuid.uuid4())
@@ -2291,6 +2474,18 @@ async def extract_questions(
         crop_ratios = _normalize_crop_ratios(
             crop_x, crop_y, crop_w, crop_h, preview_w, preview_h, img.width, img.height
         )
+        if user_selection != "whole_page" and crop_ratios:
+            x_px, y_px, w_px, h_px = _ratios_to_pixels(crop_ratios, img.width, img.height)
+            logging.info(
+                "extract_questions applying crop: x=%s y=%s w=%s h=%s image=%sx%s",
+                x_px,
+                y_px,
+                w_px,
+                h_px,
+                img.width,
+                img.height,
+            )
+            img = img.crop((x_px, y_px, x_px + w_px, y_px + h_px))
         metrics = _crop_quality_metrics(img)
         logging.info(
             "extract_questions input metrics: size=%sx%s stddev=%.2f white=%.3f",
@@ -2327,6 +2522,7 @@ async def extract_questions(
         if max_extract_tokens <= 0:
             raise HTTPException(status_code=500, detail="Extract token policy misconfigured")
         crop_meta = {
+            "request_id": request_id,
             "rotation": rotation,
             "fullPage": user_selection == "whole_page",
             "user_selection": user_selection,
@@ -2354,7 +2550,8 @@ async def extract_questions(
         logging.exception("extract_questions failed")
         raise HTTPException(status_code=502, detail=f"Extract engine error: {str(exc)}") from exc
 
-    payload = extract_data.get("payload") or {}
+    page_hint = page_number if isinstance(page_number, int) and page_number >= 0 else 0
+    payload = _validate_extract_payload(extract_data.get("payload") or {}, page_hint=page_hint)
     latency_ms = int((time.time() - start) * 1000)
     telemetry = ExtractTelemetry(
         request_id=request_id,
@@ -2374,6 +2571,9 @@ async def extract_questions(
         "is_math_page": bool(payload.get("is_math_page", False)),
         "notes": payload.get("notes") or ([error_msg] if error_msg else []),
         "questions": payload.get("questions") or [],
+        "ocr_provider_used": extract_data.get("ocr_provider_used"),
+        "ocr_model_used": extract_data.get("ocr_model_used"),
+        "ocr_fallback_attempts": extract_data.get("ocr_fallback_attempts") or [],
     }
 
     should_cache = _should_cache_extract_result(result)
@@ -2400,8 +2600,8 @@ async def extract_questions(
         "learning_mode": None,
         "subject": None,
         "grade_level": user.grade_level if user else None,
-        "model": EXTRACT_MODEL,
-        "provider": "openai",
+        "model": result.get("ocr_model_used") or EXTRACT_MODEL,
+        "provider": result.get("ocr_provider_used") or "openai",
         "route": "extract_questions",
         "tokens_in": telemetry.input_tokens,
         "tokens_out": telemetry.output_tokens,
@@ -2434,6 +2634,9 @@ async def extract_questions(
         notes=result["notes"],
         questions=result["questions"],
         error=result.get("error"),
+        ocr_provider_used=result.get("ocr_provider_used"),
+        ocr_model_used=result.get("ocr_model_used"),
+        ocr_fallback_attempts=result.get("ocr_fallback_attempts"),
     )
 
 
@@ -4334,6 +4537,7 @@ async def solve_v3_stream_endpoint(
     subscription = entitlement["subscription"]
     cost = entitlement["cost"]
     debit_meta = entitlement["meta"]
+    should_refund = (entitlement.get("status") != "already_processed" and cost > 0)
     
     if entitlement.get("status") != "already_processed":
         subscription_service.execute_debit(session, subscription, cost, debit_meta, request_id)
@@ -4341,10 +4545,6 @@ async def solve_v3_stream_endpoint(
     async def _inner_generate():
         start_total = time.perf_counter()
         # request_id already defined in outer scope
-        
-        # Capture context for refund on error
-        should_refund = (entitlement.get("status") != "already_processed" and cost > 0)
-
         
         requested_mode = body.requested_mode or "minimal"
         learning_mode = (body.trusted_context or {}).get("learning_mode", "solve")
@@ -4540,7 +4740,7 @@ async def solve_v3_stream_endpoint(
             "request_id": request_id,
             "session_id": None, # Will be set after creation
             "message_id": None,
-            "model": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-4o"),
+            "model": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
             "max_output_tokens": effective_max_tokens,
             "mode": requested_mode
         }

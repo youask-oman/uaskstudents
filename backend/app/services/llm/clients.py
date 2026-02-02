@@ -380,9 +380,18 @@ class OllamaClient:
         temperature: float,
         top_p: float,
         context_tokens: Optional[int],
+        base_urls: Optional[List[str]] = None,
         transport: Optional[httpx.BaseTransport] = None,
     ):
-        self.base_url = base_url.rstrip("/")
+        normalized_base_urls: List[str] = []
+        for url in (base_urls or [base_url]):
+            normalized = (url or "").strip().rstrip("/")
+            if normalized and normalized not in normalized_base_urls:
+                normalized_base_urls.append(normalized)
+        if not normalized_base_urls:
+            normalized_base_urls = [base_url.rstrip("/")]
+        self.base_urls = normalized_base_urls
+        self.base_url = self.base_urls[0]
         self.model = model
         self.timeout_seconds = timeout_seconds
         self.max_retries = max_retries
@@ -393,7 +402,6 @@ class OllamaClient:
         self._breaker = CircuitBreaker()
         self._last_error_details: Optional[Dict[str, Any]] = None
         self._client = httpx.AsyncClient(
-            base_url=self.base_url,
             timeout=httpx.Timeout(timeout_seconds),
             transport=transport,
         )
@@ -405,12 +413,18 @@ class OllamaClient:
             return message
         return repr(exc)
 
-    def _build_error_details(self, category: str, exc: Exception, status_code: Optional[int] = None) -> Dict[str, Any]:
+    def _build_error_details(
+        self,
+        category: str,
+        exc: Exception,
+        status_code: Optional[int] = None,
+        base_url: Optional[str] = None,
+    ) -> Dict[str, Any]:
         details: Dict[str, Any] = {
             "category": category,
             "exception_class": exc.__class__.__name__,
             "message": self._stringify_exception(exc),
-            "base_url": self.base_url,
+            "base_url": (base_url or self.base_url),
         }
         if status_code is not None:
             details["status_code"] = status_code
@@ -531,145 +545,156 @@ class OllamaClient:
 
         for attempt in range(self.max_retries + 1):
             attempts = attempt + 1
-            try:
-                response = await self._client.post(endpoint, json=payload)
-                if response.status_code >= 500:
-                    details = self._build_error_details(
-                        "http_5xx",
-                        Exception(f"Ollama server error {response.status_code}"),
-                        status_code=response.status_code,
-                    )
-                    raise LLMProviderError(
-                        f"Ollama server error: {response.status_code}",
-                        provider="ollama",
-                        status_code=response.status_code,
-                        is_transient=True,
-                        details=details,
-                    )
-                if response.status_code >= 400:
-                    details = self._build_error_details(
-                        "http_4xx",
-                        Exception(f"Ollama client error {response.status_code}"),
-                        status_code=response.status_code,
-                    )
-                    raise LLMProviderError(
-                        f"Ollama client error: {response.status_code}",
-                        provider="ollama",
-                        status_code=response.status_code,
-                        is_transient=False,
-                        details=details,
-                    )
-
-                content = ""
-                if stream:
-                    async for line in response.aiter_lines():
-                        if not line:
-                            continue
-                        data = json.loads(line)
-                        if data.get("done"):
-                            break
-                        delta = data.get("message", {}).get("content") or data.get("response", "")
-                        if delta:
-                            content += delta
-                else:
-                    try:
-                        data = response.json()
-                    except ValueError as e:
+            for idx, candidate_base_url in enumerate(self.base_urls):
+                self.base_url = candidate_base_url
+                try:
+                    response = await self._client.post(f"{self.base_url}{endpoint}", json=payload)
+                    if response.status_code >= 500:
+                        details = self._build_error_details(
+                            "http_5xx",
+                            Exception(f"Ollama server error {response.status_code}"),
+                            status_code=response.status_code,
+                            base_url=self.base_url,
+                        )
                         raise LLMProviderError(
-                            "Invalid JSON response from Ollama.",
+                            f"Ollama server error: {response.status_code}",
                             provider="ollama",
-                            status_code=502,
+                            status_code=response.status_code,
+                            is_transient=True,
+                            details=details,
+                        )
+                    if response.status_code >= 400:
+                        details = self._build_error_details(
+                            "http_4xx",
+                            Exception(f"Ollama client error {response.status_code}"),
+                            status_code=response.status_code,
+                            base_url=self.base_url,
+                        )
+                        raise LLMProviderError(
+                            f"Ollama client error: {response.status_code}",
+                            provider="ollama",
+                            status_code=response.status_code,
                             is_transient=False,
-                            details=self._build_error_details("invalid_json", e),
-                        ) from e
-                    content = data.get("message", {}).get("content")
-                    if content is None:
-                        content = data.get("response")
+                            details=details,
+                        )
 
-                if not isinstance(content, str) or not content.strip():
-                    raise LLMProviderError(
-                        "Empty response from Ollama.",
-                        provider="ollama",
-                        is_transient=False,
-                        details={
+                    content = ""
+                    if stream:
+                        async for line in response.aiter_lines():
+                            if not line:
+                                continue
+                            data = json.loads(line)
+                            if data.get("done"):
+                                break
+                            delta = data.get("message", {}).get("content") or data.get("response", "")
+                            if delta:
+                                content += delta
+                    else:
+                        try:
+                            data = response.json()
+                        except ValueError as e:
+                            raise LLMProviderError(
+                                "Invalid JSON response from Ollama.",
+                                provider="ollama",
+                                status_code=502,
+                                is_transient=False,
+                                details=self._build_error_details("invalid_json", e, base_url=self.base_url),
+                            ) from e
+                        content = data.get("message", {}).get("content")
+                        if content is None:
+                            content = data.get("response")
+
+                    if not isinstance(content, str) or not content.strip():
+                        raise LLMProviderError(
+                            "Empty response from Ollama.",
+                            provider="ollama",
+                            is_transient=False,
+                            details={
+                                "base_url": self.base_url,
+                                "category": "empty_response",
+                            },
+                        )
+
+                    self._breaker.record_success()
+                    latency_ms = int((time.perf_counter() - start) * 1000)
+                    usage = {"input": 0, "output": 0, "total": 0, "cached": None}
+                    status_info = {"status": "completed", "finish_reason": "stop"}
+                    payload_summary = {
+                        "max_output_tokens": max_tokens,
+                        "response_format_schema_name": json_schema.get("name") if json_schema else None,
+                    }
+
+                    _log_llm(
+                        "response",
+                        {
+                            "request_id": request_id,
+                            "provider": "ollama",
+                            "model": model_name,
                             "base_url": self.base_url,
-                            "category": "empty_response",
+                            "latency_ms": latency_ms,
+                            "output_length": len(content),
                         },
                     )
 
-                self._breaker.record_success()
-                latency_ms = int((time.perf_counter() - start) * 1000)
-                usage = {"input": 0, "output": 0, "total": 0, "cached": None}
-                status_info = {"status": "completed", "finish_reason": "stop"}
-                payload_summary = {
-                    "max_output_tokens": max_tokens,
-                    "response_format_schema_name": json_schema.get("name") if json_schema else None,
-                }
-
-                _log_llm(
-                    "response",
-                    {
-                        "request_id": request_id,
-                        "provider": "ollama",
-                        "model": model_name,
-                        "latency_ms": latency_ms,
-                        "output_length": len(content),
-                    },
-                )
-
-                return LLMResponse(
-                    content=content,
-                    provider="ollama",
-                    model=model_name,
-                    usage=usage,
-                    status=status_info,
-                    payload=payload_summary,
-                    attempts=attempts,
-                    latency_ms=latency_ms,
-                )
-            except LLMProviderError as e:
-                last_error = e
-                if not e.is_transient:
-                    raise
-                if attempt >= self.max_retries:
-                    self._record_transient_failure(
-                        e.details
-                        or {
-                            "base_url": self.base_url,
-                            "exception_class": e.__class__.__name__,
-                            "message": str(e),
-                        }
+                    return LLMResponse(
+                        content=content,
+                        provider="ollama",
+                        model=model_name,
+                        usage=usage,
+                        status=status_info,
+                        payload=payload_summary,
+                        attempts=attempts,
+                        latency_ms=latency_ms,
                     )
-                    raise
-            except (httpx.TimeoutException, httpx.ConnectError, httpx.RemoteProtocolError) as e:
-                last_error = e
-                if attempt >= self.max_retries:
-                    if isinstance(e, httpx.ConnectTimeout):
-                        category = "connect_timeout"
-                    elif isinstance(e, httpx.ReadTimeout):
-                        category = "read_timeout"
-                    elif isinstance(e, httpx.TimeoutException):
-                        category = "timeout"
-                    else:
-                        category = "connection_error"
-                    details = self._build_error_details(category, e)
-                    self._record_transient_failure(details)
-                    raise LLMProviderError(
-                        f"Ollama connection error: {self._stringify_exception(e)}",
-                        provider="ollama",
-                        is_transient=True,
-                        details=details,
-                    ) from e
-            except httpx.HTTPError as e:
-                last_error = e
-                if attempt >= self.max_retries:
-                    details = self._build_error_details("http_error", e)
-                    raise LLMProviderError(
-                        f"Ollama HTTP error: {self._stringify_exception(e)}",
-                        provider="ollama",
-                        is_transient=False,
-                        details=details,
-                    ) from e
+                except LLMProviderError as e:
+                    last_error = e
+                    if idx < len(self.base_urls) - 1:
+                        continue
+                    if not e.is_transient:
+                        raise
+                    if attempt >= self.max_retries:
+                        self._record_transient_failure(
+                            e.details
+                            or {
+                                "base_url": self.base_url,
+                                "exception_class": e.__class__.__name__,
+                                "message": str(e),
+                            }
+                        )
+                        raise
+                except (httpx.TimeoutException, httpx.ConnectError, httpx.RemoteProtocolError) as e:
+                    last_error = e
+                    if idx < len(self.base_urls) - 1:
+                        continue
+                    if attempt >= self.max_retries:
+                        if isinstance(e, httpx.ConnectTimeout):
+                            category = "connect_timeout"
+                        elif isinstance(e, httpx.ReadTimeout):
+                            category = "read_timeout"
+                        elif isinstance(e, httpx.TimeoutException):
+                            category = "timeout"
+                        else:
+                            category = "connection_error"
+                        details = self._build_error_details(category, e, base_url=self.base_url)
+                        self._record_transient_failure(details)
+                        raise LLMProviderError(
+                            f"Ollama connection error: {self._stringify_exception(e)}",
+                            provider="ollama",
+                            is_transient=True,
+                            details=details,
+                        ) from e
+                except httpx.HTTPError as e:
+                    last_error = e
+                    if idx < len(self.base_urls) - 1:
+                        continue
+                    if attempt >= self.max_retries:
+                        details = self._build_error_details("http_error", e, base_url=self.base_url)
+                        raise LLMProviderError(
+                            f"Ollama HTTP error: {self._stringify_exception(e)}",
+                            provider="ollama",
+                            is_transient=False,
+                            details=details,
+                        ) from e
             await asyncio.sleep(min(2 ** attempt, 4))
 
         raise LLMProviderError(

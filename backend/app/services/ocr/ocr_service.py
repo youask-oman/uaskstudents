@@ -7,7 +7,7 @@ Production-grade OCR service supporting multiple engines:
 
 Configuration via environment variables:
 - OCR_ENGINE: "vlm" (default), "local", or "auto" (VLM with local fallback)
-- VLM_MODEL_OCR: Model to use for VLM engine (default: gpt-4o)
+- VLM_MODEL_OCR: Model to use for VLM engine (default: gpt-5-mini)
 """
 
 import os
@@ -393,7 +393,7 @@ class VlmEngine(OCREngine):
     # Cons: Requires API key, costs per image, data sent to cloud
     
     def __init__(self):
-        self.model = os.getenv("VLM_MODEL_OCR", "gpt-4o")
+        self.model = os.getenv("VLM_MODEL_OCR", "gpt-5-mini")
 
     @property
     def engine_name(self) -> str:

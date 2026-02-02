@@ -56,13 +56,17 @@ type SolvedQuestion = {
     error?: string;
 };
 
-type ImageExtractEngine = "pix2text" | "qwen_math";
+type ImageExtractEngine = "auto" | "pix2text" | "qwen_math" | "openai";
 
 const ACCEPTED_UPLOAD = "image/png,image/jpeg,image/webp,application/pdf";
 const PDF_ENABLED = process.env.NEXT_PUBLIC_SNAP_SOLVE_PDF_ENABLED !== "false";
 const PDF_DOCUMENT_ENABLED = process.env.NEXT_PUBLIC_SNAP_SOLVE_PDF_DOCUMENT_EXTRACT_ENABLED === "true";
 
-export default function SnapSolveInputPanel() {
+type SnapSolveInputPanelProps = {
+    onResolveText?: (text: string, featureOverrides?: Record<string, unknown>) => Promise<void> | void;
+};
+
+export default function SnapSolveInputPanel({ onResolveText }: SnapSolveInputPanelProps) {
     const [activeSubTab, setActiveSubTab] = React.useState<SnapSubTab>("upload");
     const [questionText, setQuestionText] = React.useState("");
     const [uploadedFile, setUploadedFile] = React.useState<File | null>(null);
@@ -89,8 +93,10 @@ export default function SnapSolveInputPanel() {
     const [solvingSelected, setSolvingSelected] = React.useState(false);
     const [imageExtracting, setImageExtracting] = React.useState(false);
     const [imageExtractedQuestions, setImageExtractedQuestions] = React.useState<ExtractedQuestion[]>([]);
-    const [imageExtractEngine, setImageExtractEngine] = React.useState<ImageExtractEngine>("pix2text");
+    const [imageExtractEngine, setImageExtractEngine] = React.useState<ImageExtractEngine>("auto");
     const [imageExtractNote, setImageExtractNote] = React.useState<string | null>(null);
+    const [imageCrop, setImageCrop] = React.useState<PdfCropSelection | null>(null);
+    const [imageRender, setImageRender] = React.useState<{ width: number; height: number } | null>(null);
     const fileInputRef = React.useRef<HTMLInputElement | null>(null);
     const cameraInputRef = React.useRef<HTMLInputElement | null>(null);
     const sketchRef = React.useRef<SketchCanvasHandle | null>(null);
@@ -137,6 +143,13 @@ export default function SnapSolveInputPanel() {
         if (typeof window === "undefined") return "1";
         return localStorage.getItem("user_id") || "1";
     }, []);
+    React.useEffect(() => {
+        if (typeof window === "undefined") return;
+        const saved = localStorage.getItem("snapsolve_ocr_engine");
+        if (saved === "auto" || saved === "pix2text" || saved === "qwen_math" || saved === "openai") {
+            setImageExtractEngine(saved);
+        }
+    }, []);
     const imageExtractedText = React.useMemo(
         () => imageExtractedQuestions.map((q, index) => `${index + 1}. ${normalizeExtractText(q.text || "")}`).filter(Boolean).join("\n\n"),
         [imageExtractedQuestions, normalizeExtractText]
@@ -171,6 +184,8 @@ export default function SnapSolveInputPanel() {
         setImageExtracting(false);
         setImageExtractedQuestions([]);
         setImageExtractNote(null);
+        setImageCrop(null);
+        setImageRender(null);
     }, [clearPdfCache]);
 
     const setUploadFile = React.useCallback(
@@ -184,6 +199,8 @@ export default function SnapSolveInputPanel() {
             setImageExtracting(false);
             setImageExtractedQuestions([]);
             setImageExtractNote(null);
+            setImageCrop(null);
+            setImageRender(null);
 
             if (previewUrl && previewUrl.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
             if (!file) {
@@ -212,8 +229,17 @@ export default function SnapSolveInputPanel() {
                 const form = new FormData();
                 form.append("file", file);
                 form.append("source", "image");
-                form.append("user_selection", "whole_page");
+                const isCropMode = Boolean(imageCrop && imageRender);
+                form.append("user_selection", isCropMode ? "crop" : "whole_page");
                 form.append("ocr_engine_choice", imageExtractEngine);
+                if (isCropMode && imageCrop && imageRender) {
+                    form.append("crop_x", String(imageCrop.x));
+                    form.append("crop_y", String(imageCrop.y));
+                    form.append("crop_w", String(imageCrop.width));
+                    form.append("crop_h", String(imageCrop.height));
+                    form.append("preview_w", String(imageRender.width));
+                    form.append("preview_h", String(imageRender.height));
+                }
                 const userId = getUserId();
                 const res = await fetch(`/api/v1/extract_questions?user_id=${encodeURIComponent(userId)}`, {
                     method: "POST",
@@ -235,8 +261,16 @@ export default function SnapSolveInputPanel() {
                         const retryForm = new FormData();
                         retryForm.append("file", file);
                         retryForm.append("source", "image");
-                        retryForm.append("user_selection", "whole_page");
+                        retryForm.append("user_selection", isCropMode ? "crop" : "whole_page");
                         retryForm.append("ocr_engine_choice", "qwen_math");
+                        if (isCropMode && imageCrop && imageRender) {
+                            retryForm.append("crop_x", String(imageCrop.x));
+                            retryForm.append("crop_y", String(imageCrop.y));
+                            retryForm.append("crop_w", String(imageCrop.width));
+                            retryForm.append("crop_h", String(imageCrop.height));
+                            retryForm.append("preview_w", String(imageRender.width));
+                            retryForm.append("preview_h", String(imageRender.height));
+                        }
                         const retryRes = await fetch(`/api/v1/extract_questions?user_id=${encodeURIComponent(userId)}`, {
                             method: "POST",
                             body: retryForm,
@@ -258,7 +292,7 @@ export default function SnapSolveInputPanel() {
                 setImageExtracting(false);
             }
         },
-        [extractErrorMessage, getUserId, imageExtractEngine]
+        [extractErrorMessage, getUserId, imageCrop, imageExtractEngine, imageRender]
     );
 
     React.useEffect(() => {
@@ -496,10 +530,40 @@ export default function SnapSolveInputPanel() {
         setImageExtracting(false);
         setImageExtractedQuestions([]);
         setImageExtractNote(null);
+        setImageCrop(null);
+        setImageRender(null);
     };
 
     const handleSubmit = async () => {
         if (!isSubmitEnabled || isSubmitting || isPdfMode) return;
+        if (onResolveText) {
+            const extractedText = imageExtractedQuestions
+                .map((q) => normalizeExtractText(q.text || ""))
+                .filter(Boolean)
+                .join("\n\n");
+            const requestText = questionText.trim();
+            const resolveText = extractedText && requestText
+                ? `${extractedText}\n\nSpecial request: ${requestText}`
+                : (extractedText || requestText);
+            if (!resolveText) {
+                setError("Please extract a question first or add a special request.");
+                return;
+            }
+            setIsSubmitting(true);
+            setError(null);
+            try {
+                await onResolveText(resolveText, {
+                    ocr_used: true,
+                    ocr_source: uploadedFile?.type === "application/pdf" ? "pdf" : "image",
+                    ocr_engine: "qwen_math",
+                });
+            } catch (err) {
+                setError(err instanceof Error ? err.message : "Unexpected error");
+            } finally {
+                setIsSubmitting(false);
+            }
+            return;
+        }
         setIsSubmitting(true);
         setError(null);
         setResult(null);
@@ -593,9 +657,31 @@ export default function SnapSolveInputPanel() {
 
     return (
         <div className="flex flex-col gap-4">
-            <div className="inline-flex w-fit rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-700 dark:bg-slate-800">
-                <button type="button" onClick={() => setActiveSubTab("upload")} data-testid="snap-subtab-upload" className={`rounded-lg px-4 py-2 text-sm font-bold ${activeSubTab === "upload" ? "bg-white text-slate-900 shadow dark:bg-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-300"}`}>Upload</button>
-                <button type="button" onClick={() => setActiveSubTab("sketch")} data-testid="snap-subtab-sketch" className={`rounded-lg px-4 py-2 text-sm font-bold ${activeSubTab === "sketch" ? "bg-white text-slate-900 shadow dark:bg-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-300"}`}>Sketch</button>
+            <div className="grid w-full grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-700 dark:bg-slate-800">
+                <button
+                    type="button"
+                    onClick={() => setActiveSubTab("upload")}
+                    data-testid="snap-subtab-upload"
+                    className={`rounded-lg px-4 py-2 text-sm font-bold transition ${
+                        activeSubTab === "upload"
+                            ? "bg-sky-600 text-white shadow"
+                            : "bg-sky-100 text-sky-800 hover:bg-sky-200 dark:bg-sky-950/50 dark:text-sky-200"
+                    }`}
+                >
+                    Upload
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setActiveSubTab("sketch")}
+                    data-testid="snap-subtab-sketch"
+                    className={`rounded-lg px-4 py-2 text-sm font-bold transition ${
+                        activeSubTab === "sketch"
+                            ? "bg-emerald-600 text-white shadow"
+                            : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-200"
+                    }`}
+                >
+                    Sketch
+                </button>
             </div>
 
             {activeSubTab === "upload" ? (
@@ -613,18 +699,49 @@ export default function SnapSolveInputPanel() {
                         <div className="mt-4 rounded-lg border border-slate-700 bg-slate-950 p-3">
                             <div className="text-xs font-semibold text-slate-300">Selected: {uploadedFile.name}</div>
                             {uploadedFile.type === "application/pdf" && <div className="mt-2 text-xs text-slate-400">PDF selected</div>}
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            {previewUrl && <img src={previewUrl} alt="Upload preview" className="mt-3 max-h-56 rounded-lg border border-slate-700 object-contain" />}
+                            {previewUrl && (
+                                <div className="mt-3 flex flex-col gap-2">
+                                    <div className="flex items-center gap-2 text-xs">
+                                        <button
+                                            type="button"
+                                            className="rounded border border-slate-600 px-2 py-1"
+                                            onClick={() => {
+                                                setImageCrop(null);
+                                                if (imageRender) setImageRender({ ...imageRender });
+                                            }}
+                                        >
+                                            Clear crop
+                                        </button>
+                                    </div>
+                                    <PdfCropViewer
+                                        imageUrl={previewUrl}
+                                        pageLabel="Image (drag to crop area)"
+                                        scale={1}
+                                        onCropChange={(crop, render) => {
+                                            setImageCrop(crop);
+                                            setImageRender(render);
+                                        }}
+                                    />
+                                </div>
+                            )}
                             {uploadedFile.type.startsWith("image/") && (
                                 <div className="mt-3 flex flex-wrap items-center gap-2">
                                     <label className="text-xs text-slate-300">Engine</label>
                                     <select
                                         value={imageExtractEngine}
-                                        onChange={(e) => setImageExtractEngine(e.target.value as ImageExtractEngine)}
+                                        onChange={(e) => {
+                                            const next = e.target.value as ImageExtractEngine;
+                                            setImageExtractEngine(next);
+                                            if (typeof window !== "undefined") {
+                                                localStorage.setItem("snapsolve_ocr_engine", next);
+                                            }
+                                        }}
                                         className="rounded-lg border border-slate-600 bg-slate-900 px-2 py-1 text-xs text-slate-100"
                                     >
-                                        <option value="pix2text">Pix2Text (default)</option>
+                                        <option value="auto">Auto (Pix2Text -&gt; Qwen -&gt; OpenAI gpt-5-mini)</option>
+                                        <option value="pix2text">Pix2Text (local)</option>
                                         <option value="qwen_math">Qwen Math (Ollama)</option>
+                                        <option value="openai">OpenAI (gpt-5-mini)</option>
                                     </select>
                                     <button
                                         type="button"
@@ -720,7 +837,7 @@ export default function SnapSolveInputPanel() {
             )}
 
             <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-700">
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">input your question</label>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">(Optional) input your question if you have special request</label>
                 <textarea data-testid="snap-question-input" value={questionText} onChange={(e) => setQuestionText(e.target.value)} rows={4} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder="Type any extra context or direct question..." />
             </div>
 
@@ -759,7 +876,7 @@ export default function SnapSolveInputPanel() {
 
             <div className="flex items-center justify-end gap-3">
                 <button type="button" onClick={handleClear} data-testid="snap-clear-btn" className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200">Clear</button>
-                <button type="button" onClick={handleSubmit} disabled={!isSubmitEnabled || isSubmitting} data-testid="snap-submit-btn" className="rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white disabled:opacity-50">{isSubmitting ? "Submitting..." : "Submit"}</button>
+                <button type="button" onClick={handleSubmit} disabled={!isSubmitEnabled || isSubmitting} data-testid="snap-submit-btn" className="rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white disabled:opacity-50">{isSubmitting ? "Resolving..." : "Resolve"}</button>
             </div>
 
             {result && (

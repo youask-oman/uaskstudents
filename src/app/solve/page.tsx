@@ -533,12 +533,15 @@ export default function DashboardPage() {
         setSolveStartTime(Date.now());
 
         try {
-            // Bypass Next.js proxy for streaming if on localhost/127.0.0.1 dev server to avoid buffering (Part F2)
-            const baseUrl = (typeof window !== 'undefined' && (window.location.port === '3000' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+            // Prefer direct backend in local dev for SSE; fall back to Next proxy if direct fails.
+            const localDirectBase = (typeof window !== 'undefined' && (window.location.port === '3000' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
                 ? `${window.location.protocol}//${window.location.hostname}:8000`
-                : '';
+                : "";
+            const streamCandidates = localDirectBase
+                ? [`${localDirectBase}/api/v1/solve_v3_stream`, "/api/v1/solve_v3_stream"]
+                : ["/api/v1/solve_v3_stream"];
 
-            console.log(`[SOLVER_STREAM] Host: ${window.location.hostname}, Port: ${window.location.port} -> Fetching from ${baseUrl}/api/v1/solve_v3_stream`);
+            console.log(`[SOLVER_STREAM] Host: ${window.location.hostname}, Port: ${window.location.port} -> Candidates: ${streamCandidates.join(", ")}`);
             const featuresUsed: FeaturesUsed = {
                 ocr_used: activeTab === 'snap',
                 voice_used: activeTab === 'voice',
@@ -546,29 +549,44 @@ export default function DashboardPage() {
                 ...(activeTab === 'voice' ? voiceFeatures : {}),
                 ...featureOverrides,
             };
-            const response = await fetch(`${baseUrl}/api/v1/solve_v3_stream?user_id=${encodeURIComponent(userId)}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                mode: 'cors',
-                body: JSON.stringify({
-                    // Primary problem input - only one text field
-                    confirmed_text: textToSolve,
-                    // Tier-aware mode - legacy mapping + explicit tier
-                    requested_mode: selectedSolveTier === 'FREE' ? 'minimal' : 'detailed',
-                    tier: selectedSolveTier.toLowerCase(),
-                    // Normalized trusted_context (compact enums)
-                    trusted_context: {
-                        learning_mode: selectedGoal,
-                        // Values already normalized from API (CA, CA-ON, 11)
-                        grade_level: trustedProfile?.grade_level || undefined,
-                        region_country: trustedProfile?.region_country || undefined,
-                        region_state_province: trustedProfile?.region_state_province || undefined
-                    },
-                    // Feature flags for accounting (not sent to OpenAI)
-                    features_used: featuresUsed
-                })
-            });
+            let response: Response | null = null;
+            let lastFetchError: unknown = null;
+            for (const endpoint of streamCandidates) {
+                try {
+                    response = await fetch(`${endpoint}?user_id=${encodeURIComponent(userId)}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        mode: 'cors',
+                        body: JSON.stringify({
+                            // Primary problem input - only one text field
+                            confirmed_text: textToSolve,
+                            // Tier-aware mode - legacy mapping + explicit tier
+                            requested_mode: selectedSolveTier === 'FREE' ? 'minimal' : 'detailed',
+                            tier: selectedSolveTier.toLowerCase(),
+                            // Normalized trusted_context (compact enums)
+                            trusted_context: {
+                                learning_mode: selectedGoal,
+                                // Values already normalized from API (CA, CA-ON, 11)
+                                grade_level: trustedProfile?.grade_level || undefined,
+                                region_country: trustedProfile?.region_country || undefined,
+                                region_state_province: trustedProfile?.region_state_province || undefined
+                            },
+                            // Feature flags for accounting (not sent to OpenAI)
+                            features_used: featuresUsed
+                        })
+                    });
+                    break;
+                } catch (fetchErr) {
+                    lastFetchError = fetchErr;
+                    console.warn(`[SOLVER_STREAM] Failed endpoint ${endpoint}:`, fetchErr);
+                    response = null;
+                }
+            }
+
+            if (!response) {
+                throw (lastFetchError instanceof Error ? lastFetchError : new Error("Network error"));
+            }
 
             console.log(`[SOLVER_STREAM] Response status: ${response.status}, ok: ${response.ok}`);
 
@@ -658,6 +676,64 @@ export default function DashboardPage() {
 
         return () => clearInterval(tick);
     }, [isSolving, solveStartTime]);
+
+    const [elapsedNow, setElapsedNow] = useState<number>(Date.now());
+    useEffect(() => {
+        if (!isSolving || !solveStartTime) return;
+        setElapsedNow(Date.now());
+        const timer = window.setInterval(() => setElapsedNow(Date.now()), 100);
+        return () => window.clearInterval(timer);
+    }, [isSolving, solveStartTime]);
+
+    const elapsedMs = solveStartTime ? Math.max(0, elapsedNow - solveStartTime) : 0;
+    const formatElapsed = (ms: number) => {
+        const totalTenths = Math.floor(ms / 100);
+        const minutes = Math.floor(totalTenths / 600);
+        const seconds = Math.floor((totalTenths % 600) / 10);
+        const tenths = totalTenths % 10;
+        return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${tenths}`;
+    };
+
+    const rawStageOrder = [
+        "Preparing request...",
+        "Calling AI model...",
+        "Waiting for model...",
+        "Validating response...",
+        "Rendering plot...",
+        "Finalizing...",
+    ];
+    const rawStageIndex = rawStageOrder.indexOf(currentStage || "");
+    const normalizedStageIndex = rawStageIndex >= 0 ? rawStageIndex : 0;
+    const pipelineStages: Array<{ key: string; label: string; description: string; icon: string; status: "completed" | "active" | "pending" }> = [
+        {
+            key: "preparing",
+            label: "Preparing Engine",
+            description: "Initial environment setup complete",
+            icon: "task_alt",
+            status: "completed",
+        },
+        {
+            key: "executing",
+            label: "Executing Solver",
+            description: normalizedStageIndex === 0 ? "Compiling execution graph..." : "Pending core response",
+            icon: "calculate",
+            status: normalizedStageIndex === 0 ? "active" : normalizedStageIndex > 0 ? "completed" : "pending",
+        },
+        {
+            key: "calling",
+            label: "Calling AI Core",
+            description: normalizedStageIndex >= 1 && normalizedStageIndex <= 3 ? "Analyzing multidimensional tensors..." : "Awaiting model execution",
+            icon: "view_in_ar",
+            status: normalizedStageIndex >= 1 && normalizedStageIndex <= 3 ? "active" : normalizedStageIndex > 3 ? "completed" : "pending",
+        },
+        {
+            key: "plotting",
+            label: "Plotting Coordinates",
+            description: normalizedStageIndex === 4 ? "Rendering coordinate visuals..." : "Awaiting visualization data",
+            icon: "polyline",
+            status: normalizedStageIndex === 4 ? "active" : normalizedStageIndex > 4 ? "completed" : "pending",
+        },
+    ];
 
     return (
         <div className="solve-ui bg-background-light dark:bg-background-dark min-h-screen text-slate-900 dark:text-slate-100 font-display transition-colors duration-200">
@@ -768,7 +844,19 @@ export default function DashboardPage() {
                             <div className="p-6">
                                 {activeTab === 'snap' && (
                                     useSnapSolveUploadPanelV2 ? (
-                                        <SnapSolveInputPanel />
+                                        <SnapSolveInputPanel
+                                            onResolveText={(text, featureOverrides) => {
+                                                setQuery(text);
+                                                if (mathInputRef.current) {
+                                                    mathInputRef.current.setValue(text);
+                                                }
+                                                return handleSolve(text, {
+                                                    ocr_used: true,
+                                                    ocr_engine: "qwen_math",
+                                                    ...(featureOverrides || {}),
+                                                });
+                                            }}
+                                        />
                                     ) : (
                                         <SnapSolveV2
                                             onUseText={(text) => {
@@ -1413,108 +1501,121 @@ export default function DashboardPage() {
 
             {/* Streaming Solve Popup (Part F1) */}
             {isSolving && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col max-h-[80vh] animate-in zoom-in-95 duration-300">
-                        {/* Header */}
-                        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
-                            <div className="flex items-center gap-3">
-                                <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
-                                    <span className="material-symbols-outlined text-sm animate-spin-slow">auto_awesome</span>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="Solving math problem"
+                        className="relative w-full max-w-4xl overflow-hidden rounded-[28px] border border-white/10 bg-[rgba(10,18,34,0.82)] shadow-[0_28px_60px_rgba(0,0,0,0.55)]"
+                    >
+                        <div className="pointer-events-none absolute inset-0 opacity-90 [background-image:linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] [background-size:28px_28px]" />
+                        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_24%_18%,rgba(46,91,255,0.22),transparent_44%),radial-gradient(circle_at_78%_90%,rgba(139,92,246,0.15),transparent_42%)]" />
+
+                        <div className="relative border-b border-white/10 px-4 py-5 sm:px-8 sm:py-7 flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-4">
+                                <div className="relative flex size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#2E5BFF] to-[#8B5CF6] text-white shadow-[0_0_30px_rgba(46,91,255,0.45)]">
+                                    <span className="material-symbols-outlined text-[30px] motion-safe:animate-[uaskPulseGlow_2s_ease-in-out_infinite]">functions</span>
                                 </div>
                                 <div>
-                                    <h3 className="text-sm font-bold dark:text-white">Solving Problem...</h3>
-                                    <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-widest">{currentStage || "Preparing..."}</p>
+                                    <h3 className="text-xl sm:text-2xl font-bold tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">Solving Math Problem...</h3>
+                                    <p className="mt-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.28em] text-[#4b80ff]">Advanced Neural Computation</p>
                                 </div>
                             </div>
                             <div className="text-right">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Elapsed Time</p>
-                                <p className="text-xs font-mono font-bold text-primary">
-                                    {solveStartTime ? ((Date.now() - solveStartTime) / 1000).toFixed(1) : "0.0"}s
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Elapsed Time</p>
+                                <p className="mt-0.5 min-w-[9ch] tabular-nums text-2xl sm:text-3xl font-mono font-medium text-[#4b80ff] drop-shadow-[0_0_10px_rgba(46,91,255,0.58)]">
+                                    {formatElapsed(elapsedMs)}
+                                    <span className="ml-1 text-base opacity-70">s</span>
                                 </p>
                             </div>
                         </div>
 
-                        {/* Progress Bar */}
-                        <div className="h-1 bg-slate-100 dark:bg-slate-800">
-                            <div
-                                className="h-full bg-primary transition-all duration-300"
-                                style={{ width: `${solveProgress}%` }}
-                            ></div>
-                        </div>
-
-                        {/* Content Area - Stage-based progress UI (Part F1) */}
-                        <div className="flex-1 overflow-y-auto p-8 space-y-6">
-                            {/* Stage Progress Display */}
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                    <span className="material-symbols-outlined text-xs animate-spin">sync</span>
-                                    AI Processing Status
-                                </div>
-
-                                {/* Stage List */}
-                                <div className="space-y-3">
-                                    {['Preparing request...', 'Calling AI model...', 'Waiting for model...', 'Validating response...', 'Rendering plot...', 'Finalizing...'].map((stage, idx) => {
-                                        const isActive = currentStage === stage;
-                                        const isPast = ['Preparing request...', 'Calling AI model...', 'Waiting for model...', 'Validating response...', 'Rendering plot...', 'Finalizing...']
-                                            .indexOf(currentStage || '') > idx;
-                                        return (
-                                            <div key={stage} className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-300 ${isActive ? 'bg-primary/10 border border-primary/30' : isPast ? 'opacity-50' : 'opacity-30'}`}>
-                                                <span className={`material-symbols-outlined text-lg ${isActive ? 'text-primary animate-pulse' : isPast ? 'text-green-500' : 'text-slate-400'}`}>
-                                                    {isPast ? 'check_circle' : isActive ? 'pending' : 'radio_button_unchecked'}
-                                                </span>
-                                                <span className={`font-semibold ${isActive ? 'text-primary' : 'text-slate-600 dark:text-slate-400'}`}>
-                                                    {stage}
-                                                </span>
-                                                {isActive && <span className="ml-auto text-xs text-primary font-mono">{solveStartTime ? ((Date.now() - solveStartTime) / 1000).toFixed(1) : '0.0'}s</span>}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-
-                                {/* Tokens received indicator */}
-                                {streamingContent && streamingContent.length > 0 && (
-                                    <div className="mt-4 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs text-slate-500 font-mono">
-                                        📦 Receiving structured data... ({streamingContent.length} characters)
-                                    </div>
-                                )}
+                        <div className="relative px-4 py-6 sm:px-9 sm:py-10">
+                            <div className="mb-8 flex items-center gap-2.5 text-[10px] sm:text-[11px] font-black tracking-[0.22em] uppercase text-slate-400">
+                                <span className="material-symbols-outlined text-lg text-[#8B5CF6] motion-safe:animate-spin">autorenew</span>
+                                <span>System Pipeline State</span>
                             </div>
-
-                            {/* Telemetry (Final) */}
-                            {streamingTelemetry && (
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6 border-t border-slate-100 dark:border-slate-800 animate-in slide-in-from-bottom-2 duration-500">
-                                    <div className="space-y-1">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Model</p>
-                                        <p className="text-xs font-bold truncate">{streamingTelemetry.model}</p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Total Tokens</p>
-                                        <p className="text-xs font-bold">{streamingTelemetry.total_tokens}</p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Latency (AI)</p>
-                                        <p className="text-xs font-bold">{streamingTelemetry.latency_ms_openai}ms</p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Status</p>
-                                        <p className={`text-xs font-bold ${streamingTelemetry.truncated ? 'text-amber-500' : 'text-emerald-500'}`}>
-                                            {streamingTelemetry.truncated ? 'Truncated' : 'Complete'}
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-7 sm:gap-x-10 sm:gap-y-9">
+                                {pipelineStages.map((stage) => {
+                                    const isCompleted = stage.status === "completed";
+                                    const isActive = stage.status === "active";
+                                    const icon = isCompleted ? "task_alt" : stage.icon;
+                                    return (
+                                        <div key={stage.key} className={`flex items-center gap-4 ${stage.status === "pending" ? "opacity-45" : ""}`}>
+                                            <div className="relative flex items-center justify-center">
+                                                <div className={`absolute inset-0 rounded-full blur-xl ${isCompleted ? "bg-emerald-500/30" : isActive ? "bg-[#2E5BFF]/35" : "bg-transparent"}`} />
+                                                <div
+                                                    className={[
+                                                        "relative flex size-11 items-center justify-center rounded-xl border text-lg",
+                                                        isCompleted
+                                                            ? "bg-emerald-500/10 border-emerald-400/70 text-emerald-400"
+                                                            : isActive
+                                                                ? "bg-[#2E5BFF]/20 border-[#2E5BFF] text-[#4b80ff] motion-safe:animate-[uaskPulseGlow_2s_ease-in-out_infinite]"
+                                                                : "bg-slate-900/70 border-white/15 text-slate-500",
+                                                    ].join(" ")}
+                                                >
+                                                    <span className="material-symbols-outlined">{icon}</span>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <p
+                                                    className={[
+                                                        "text-lg leading-tight",
+                                                        isCompleted ? "font-semibold text-white" : isActive ? "font-bold text-[#8ab0ff]" : "font-medium text-slate-300",
+                                                    ].join(" ")}
+                                                >
+                                                    {stage.label}
+                                                </p>
+                                                <p className={`mt-1 text-xs ${isCompleted ? "text-slate-400" : isActive ? "text-[#7ba5ff]" : "text-slate-500"}`}>{stage.description}</p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
 
-                        {/* Footer */}
-                        <div className="px-6 py-4 bg-slate-50/50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                            <p className="text-[10px] text-slate-400 font-medium italic">
-                                Do not refresh until the solution is finalized.
-                            </p>
-                            <div className="flex items-center gap-2">
-                                <div className="size-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Streaming Active</span>
+                        <div className="relative border-t border-white/10 bg-white/[0.02] px-4 py-5 sm:px-9 sm:py-6 flex flex-col md:flex-row items-center justify-between gap-5">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-8 items-end gap-1 motion-reduce:hidden">
+                                    {Array.from({ length: 7 }).map((_, idx) => (
+                                        <span
+                                            key={`bar-${idx}`}
+                                            className="block w-1 rounded-sm bg-gradient-to-t from-[#2E5BFF] to-[#8B5CF6] motion-safe:animate-[uaskWave_1.2s_ease-in-out_infinite]"
+                                            style={{ animationDelay: `${idx * 0.1}s` }}
+                                        />
+                                    ))}
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="size-2 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.9)] motion-safe:animate-pulse" />
+                                        <span className="text-[10px] uppercase tracking-[0.2em] font-black text-white">Streaming Active</span>
+                                    </div>
+                                    <p className="mt-0.5 text-[11px] text-slate-500">Packet delivery in real-time</p>
+                                </div>
+                            </div>
+                            <div className="text-center md:text-right">
+                                <p className="text-xs italic text-slate-400/70">Solution generation in progress</p>
+                                <div className="mt-1 flex items-center justify-center md:justify-end gap-2 text-[10px] uppercase tracking-[0.18em] font-bold text-slate-500">
+                                    <span>v4.0.1 Stable</span>
+                                    <span className="size-1 rounded-full bg-slate-600" />
+                                    <span>{streamingContent ? "Encrypted Stream" : "Secure Stream"}</span>
+                                </div>
+                                {streamingTelemetry?.model && (
+                                    <div className="mt-1 text-[10px] text-slate-500">Model: {streamingTelemetry.model}</div>
+                                )}
                             </div>
                         </div>
                     </div>
+                    <style jsx>{`
+                        @keyframes uaskWave {
+                            0%, 100% { height: 10px; opacity: 0.45; }
+                            50% { height: 30px; opacity: 1; }
+                        }
+                        @keyframes uaskPulseGlow {
+                            0%, 100% { filter: drop-shadow(0 0 4px rgba(46, 91, 255, 0.45)); transform: scale(1); }
+                            50% { filter: drop-shadow(0 0 14px rgba(139, 92, 246, 0.78)); transform: scale(1.04); }
+                        }
+                    `}</style>
                 </div>
             )}
 

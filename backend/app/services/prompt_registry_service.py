@@ -1,6 +1,7 @@
 import hashlib
 import json
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 from sqlmodel import Session, select
@@ -23,6 +24,8 @@ class PromptRegistryError(Exception):
 class PromptRegistryService:
     OCR_EXTRACT_QWEN_SYSTEM_PROMPT_ID = "ocr_extract_qwen_system_v1"
     OCR_EXTRACT_QWEN_USER_PROMPT_ID = "ocr_extract_qwen_user_v1"
+    OCR_EXTRACT_OPENAI_SYSTEM_PROMPT_ID = "openai_ocr_system_prompt_v1"
+    OCR_EXTRACT_OPENAI_SCHEMA_ID = "youask_math_solver_openai_ocr_v1"
 
     OCR_EXTRACT_QWEN_SYSTEM_PROMPT_DEFAULT = (
         "You are a strict JSON extraction engine for math worksheets and textbook pages.\n"
@@ -43,6 +46,17 @@ class PromptRegistryService:
         "(2) create separate questions with ids p{page}-q{n}-part{letter}.\n"
         "Return JSON only."
     )
+
+    def _repo_root(self) -> Path:
+        return Path(__file__).resolve().parents[3]
+
+    def _load_asset_text(self, rel_path: str) -> str:
+        path = self._repo_root() / rel_path
+        return path.read_text(encoding="utf-8").strip()
+
+    def _load_asset_json(self, rel_path: str) -> Dict[str, Any]:
+        path = self._repo_root() / rel_path
+        return json.loads(path.read_text(encoding="utf-8"))
 
     def ensure_ocr_extract_prompts(self, session: Session, updated_by: Optional[str] = "system") -> None:
         """
@@ -65,6 +79,27 @@ class PromptRegistryService:
             tier=None,
             mode=PromptModeEnum.SOLVE,
             role=PromptRoleEnum.DEVELOPER,
+            updated_by=updated_by,
+        )
+        openai_system_prompt = self._load_asset_text(
+            "static_design/sug_prompts_qwen/openai_ocr_system_prompt_v1.txt"
+        )
+        openai_schema = self._load_asset_json(
+            "static_design/sug_prompts_qwen/youask_math_solver_openai_ocr_v1.json"
+        )
+        self.update_prompt(
+            session=session,
+            prompt_id=self.OCR_EXTRACT_OPENAI_SYSTEM_PROMPT_ID,
+            content=openai_system_prompt,
+            tier=None,
+            mode=PromptModeEnum.SOLVE,
+            role=PromptRoleEnum.SYSTEM,
+            updated_by=updated_by,
+        )
+        self.update_schema(
+            session=session,
+            schema_id=self.OCR_EXTRACT_OPENAI_SCHEMA_ID,
+            content=openai_schema,
             updated_by=updated_by,
         )
 

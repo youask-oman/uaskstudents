@@ -134,7 +134,7 @@ describe("SnapSolveInputPanel", () => {
                 target: { files: [new File(["img"], "equation.png", { type: "image/png" })] },
             });
         });
-        fireEvent.change(screen.getByDisplayValue("Pix2Text (default)"), { target: { value: "qwen_math" } });
+        fireEvent.change(screen.getByDisplayValue("Auto (Pix2Text -> Qwen -> OpenAI gpt-5-mini)"), { target: { value: "qwen_math" } });
         await act(async () => {
             fireEvent.click(screen.getByRole("button", { name: "Extract" }));
         });

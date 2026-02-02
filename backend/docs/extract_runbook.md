@@ -5,6 +5,12 @@
 - Look for lines that start with `extract_questions response raw content: …` (INFO level) and `Invalid JSON response from Extract engine` (ERROR).
 - If text extraction fails, the log also prints `OpenAI extract response missing text` plus a truncated sanitized representation of the OpenAI payload.
 
+## OCR Engines
+- Supported engines: `pix2text` (local), `qwen_math` (Ollama), `openai` (`gpt-5-mini` via `VLM_MODEL_OPENA_AI_OCR`).
+- AUTO routing order is deterministic: `pix2txt -> qwen -> openai`.
+- OpenAI OCR uses prompt ID `openai_ocr_system_prompt_v1` and schema ID `youask_math_solver_openai_ocr_v1` from prompt registry tables.
+- If `OPENAI_API_KEY` is missing, OpenAI is disabled from AUTO plans.
+
 ## Diagnostic Path
 1. Upload/crop an image in Snap & Solve and hit **Send to AI**.
 2. Watch for the INFO log above—if it prints `""` or `ResponseReasoningItem`, the model ignored the schema.

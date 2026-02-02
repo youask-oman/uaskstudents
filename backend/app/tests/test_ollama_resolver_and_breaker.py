@@ -9,6 +9,7 @@ from app.api import PromptRegistryTestRequest, admin_prompt_registry_test, admin
 from app.models import PromptModeEnum, PromptRoleEnum, PromptTierEnum
 from app.services.llm.clients import LLMProviderError, OllamaClient
 from app.services.llm import manager as llm_manager_module
+from app.services.ollama import ollama_resolver
 from app.services.mode_execution_service import mode_execution_service
 from app.services.prompt_registry_service import prompt_registry_service
 
@@ -70,31 +71,29 @@ def _generate_kwargs():
 
 
 def test_resolver_prefers_explicit_env(monkeypatch):
+    ollama_resolver.clear_ollama_url_cache()
     monkeypatch.setenv("OLLAMA_BASE_URL", "http://172.26.131.128:11434")
-    llm_manager_module._RESOLVED_OLLAMA_BASE_URL = None
-    assert llm_manager_module.resolve_ollama_base_url() == "http://172.26.131.128:11434"
+    monkeypatch.setattr(ollama_resolver, "is_ollama_alive", lambda url: url == "http://172.26.131.128:11434")
+    assert ollama_resolver.detect_ollama_base_url("http://172.26.131.128:11434") == "http://172.26.131.128:11434"
+
+
+def test_resolver_parses_multiple_and_malformed_explicit_urls(monkeypatch):
+    ollama_resolver.clear_ollama_url_cache()
+    monkeypatch.setattr(ollama_resolver, "is_ollama_alive", lambda url: url == "http://localhost:11434")
+    detected = ollama_resolver.detect_ollama_base_url("http://172.26.131.128:11434http://localhost:11434")
+    assert detected == "http://localhost:11434"
 
 
 def test_resolver_uses_wsl_gateway_candidate(monkeypatch):
-    monkeypatch.delenv("OLLAMA_BASE_URL", raising=False)
-    llm_manager_module._RESOLVED_OLLAMA_BASE_URL = None
-    monkeypatch.setattr(llm_manager_module, "_detect_container_runtime", lambda: True)
-    monkeypatch.setattr(llm_manager_module, "_read_resolv_nameserver_ip", lambda: "172.26.131.128")
-
-    def fake_probe(base_url: str, timeout_seconds: float = 2.0):
-        if base_url == "http://172.26.131.128:11434":
-            return True, None
-        return False, {"exception_class": "ConnectError", "message": "down", "base_url": base_url}
-
-    monkeypatch.setattr(llm_manager_module, "_probe_ollama_tags_sync", fake_probe)
-    assert llm_manager_module.resolve_ollama_base_url() == "http://172.26.131.128:11434"
+    ollama_resolver.clear_ollama_url_cache()
+    monkeypatch.setattr(ollama_resolver, "is_ollama_alive", lambda url: url == "http://host.docker.internal:11434")
+    assert ollama_resolver.detect_ollama_base_url(None) == "http://host.docker.internal:11434"
 
 
 @pytest.mark.asyncio
 async def test_health_check_has_meaningful_error(monkeypatch):
     monkeypatch.delenv("OLLAMA_BASE_URL", raising=False)
-    llm_manager_module._RESOLVED_OLLAMA_BASE_URL = None
-    monkeypatch.setattr(llm_manager_module, "resolve_ollama_base_url", lambda: "http://172.26.131.128:11434")
+    monkeypatch.setattr(llm_manager_module, "detect_ollama_base_url", lambda _env: "http://172.26.131.128:11434")
 
     class FakeAsyncClient:
         def __init__(self, *args, **kwargs):
