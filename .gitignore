@@ -43,3 +43,5 @@ next-env.d.ts
 # OS
 .DS_Store
 Thumbs.db
+backend/backend/debug_logs.txt
+backend/backend/debug_logs.txt
