@@ -5,78 +5,80 @@ from typing import Optional, Tuple
 import json
 
 from app.models import User, Plan, Subscription, UsageLedger
+from app.schemas.pricing import PlanMultipliers, PlanFeatures, CreditsConfig, SolveCreditsConfig, TierPricingConfig, VerifyCreditsConfig
 
 class SubscriptionService:
     def ensure_plans_exist(self, session: Session):
         """Initialize default plans if they don't exist."""
         count = session.exec(select(func.count(Plan.id))).one()
         if count == 0:
+            # Create default plans using new Pydantic schemas for features/multipliers
+            
+            # 1. Free Plan
+            free_feats = PlanFeatures(
+                allow_research=False,
+                ocr_monthly_cap=3,
+                voice_monthly_cap=3,
+                daily_credit_cap=5
+            )
+            free_mults = PlanMultipliers(
+                credits=CreditsConfig(
+                    solve=SolveCreditsConfig(
+                        free=TierPricingConfig(text=1, snap_image=2, snap_pdf=3, voice=2),
+                        # Standard/Research are expensive on Free plan
+                        standard=TierPricingConfig(text=1000, snap_image=1000, snap_pdf=1000, voice=1000),
+                        research=TierPricingConfig(text=1000, snap_image=1000, snap_pdf=1000, voice=1000)
+                    )
+                )
+            )
             free_plan = Plan(
-                name="Free",
-                slug="free",
-                credits_per_month=50,
-                price_monthly_cents=0,
-                price_yearly_cents=0,
-                seats=1,
-                features={
-                    "ocr_monthly_cap": 3,
-                    "voice_monthly_cap": 3,
-                    "generated_images_monthly_cap": 5,
-                    "daily_credit_cap": 5,
-                    "make_it_right_monthly_cap": 5
-                },
-                multipliers={
-                    "text_concise": 1,
-                    "text_detailed": 1000, # Effectively disabled or requires upgrade
-                    "ocr_add": 1,
-                    "voice_add": 1
-                },
+                name="Free", slug="free", credits_per_month=50,
+                price_monthly_cents=0, price_yearly_cents=0, seats=1,
+                features=free_feats.model_dump(),
+                multipliers=free_mults.model_dump(),
                 is_active=True
             )
             
+            # 2. Student Plan
+            student_feats = PlanFeatures(
+                allow_research=True,
+                ocr_monthly_cap=100,
+                voice_monthly_cap=50,
+                daily_credit_cap=50
+            )
+            student_mults = PlanMultipliers(
+                credits=CreditsConfig(
+                    solve=SolveCreditsConfig(
+                        # Free Tier usage for Students
+                        free=TierPricingConfig(text=1, snap_image=2, snap_pdf=3, voice=2),
+                        # Standard Tier usage for Students
+                        standard=TierPricingConfig(text=2, snap_image=3, snap_pdf=4, voice=3),
+                        # Research Tier usage for Students
+                        research=TierPricingConfig(text=4, snap_image=5, snap_pdf=6, voice=5)
+                    )
+                )
+            )
             student_plan = Plan(
-                name="Student Standard",
-                slug="student_standard",
-                credits_per_month=300,
-                price_monthly_cents=999,
-                price_yearly_cents=9900,
-                seats=1,
-                features={
-                    "ocr_monthly_cap": 100,
-                    "voice_monthly_cap": 50,
-                    "generated_images_monthly_cap": 20,
-                    "daily_credit_cap": 50,
-                    "make_it_right_monthly_cap": 20
-                },
-                multipliers={
-                    "text_concise": 1,
-                    "text_detailed": 2,
-                    "ocr_add": 1,
-                    "voice_add": 1
-                },
+                name="Student Standard", slug="student_standard", credits_per_month=300,
+                price_monthly_cents=999, price_yearly_cents=9900, seats=1,
+                features=student_feats.model_dump(),
+                multipliers=student_mults.model_dump(),
                 is_active=True
             )
             
+            # 3. Family Plan
+            family_feats = PlanFeatures(
+                allow_research=True,
+                ocr_monthly_cap=200,
+                voice_monthly_cap=100,
+                daily_credit_cap=100
+            )
+            # Use same multipliers as Student
             family_plan = Plan(
-                name="Family Standard",
-                slug="family_standard",
-                credits_per_month=600,
-                price_monthly_cents=1999,
-                price_yearly_cents=19900,
-                seats=3,
-                features={
-                    "ocr_monthly_cap": 200,
-                    "voice_monthly_cap": 100,
-                    "generated_images_monthly_cap": 50,
-                    "daily_credit_cap": 100,
-                    "make_it_right_monthly_cap": 50
-                },
-                multipliers={
-                    "text_concise": 1,
-                    "text_detailed": 2,
-                    "ocr_add": 1,
-                    "voice_add": 1
-                },
+                name="Family Standard", slug="family_standard", credits_per_month=600,
+                price_monthly_cents=1999, price_yearly_cents=19900, seats=3,
+                features=family_feats.model_dump(),
+                multipliers=student_mults.model_dump(), # Same pricing structure
                 is_active=True
             )
             
@@ -146,26 +148,39 @@ class SubscriptionService:
         session.refresh(user) # Refresh user to load relation
         return new_sub
 
-    def calculate_cost(self, plan: Plan, mode: str, has_ocr: bool, has_voice: bool) -> float:
-        multipliers = plan.multipliers or {}
+    def calculate_cost(self, plan: Plan, tier: str, source_type: str = "text") -> float:
+        """
+        Calculate cost for a solve action based on Tier and Source Type.
+        tier: "free", "standard", "research"
+        source_type: "text", "snap_image", "snap_pdf", "voice"
+        """
+        multipliers_data = plan.multipliers or {}
         
-        # Map frontend modes to plan multiplier keys
-        # minimal -> concise, detailed -> detailed
-        cost_key_mode = mode
-        if mode == "minimal":
-             cost_key_mode = "concise"
-             
-        base_cost = multipliers.get(f"text_{cost_key_mode}", 1) 
-        
-        # Check if mode is effectively disabled (high cost)
-        if base_cost >= 999:
-             pass
+        # Parse into Pydantic model for validation/access
+        # If version missing, this might fail unless we migrated. 
+        # (Migration script assumed run)
+        try:
+            mults = PlanMultipliers(**multipliers_data)
+        except Exception:
+            # Fallback for unmigrated data (safety)
+            return 1000.0 
 
-        cost = base_cost
-        if has_ocr:
-            cost += multipliers.get("ocr_add", 1)
-        if has_voice:
-            cost += multipliers.get("voice_add", 1)
+        # 1. Get Tier Config
+        tier_config = getattr(mults.credits.solve, tier, None)
+        if not tier_config:
+            # Invalid tier?
+            return 1000.0
+            
+        # 2. Get Cost by Source Type
+        cost = 1
+        if source_type == "snap_image":
+            cost = tier_config.snap_image
+        elif source_type == "snap_pdf":
+            cost = tier_config.snap_pdf
+        elif source_type == "voice":
+            cost = tier_config.voice
+        else:
+            cost = tier_config.text
             
         return float(cost)
 
@@ -176,16 +191,33 @@ class SubscriptionService:
         action_request: dict
     ) -> dict:
         """
-        Check if user can perform action and debit credits tentatively.
+        Check if user can perform action and debit credits.
         action_request: {
-            "mode": "concise" | "detailed",
+            "tier": "free" | "standard" | "research" (optional, derived from mode if missing),
+            "mode": "minimal" | "detailed" | "research" (frontend mode),
             "has_ocr": bool,
             "has_voice": bool,
-            "question_hash": str,
-            "is_make_it_right": bool
+            "source_type": "text" | "snap_image" | "snap_pdf" | "voice" (optional),
+            "reference_id": str (optional idempotency key)
         }
-        Returns: {"allowed": bool, "cost": float, "reason": str, "subscription_id": int}
         """
+        # 0. Idempotency Check
+        ref_id = action_request.get("reference_id")
+        if ref_id:
+             existing = session.exec(select(UsageLedger).where(UsageLedger.reference_id == ref_id)).first()
+             if existing:
+                 # Already processed
+                 user = session.get(User, user_id)
+                 if user and user.subscription:
+                     return {
+                         "allowed": True, 
+                         "cost": existing.amount, 
+                         "subscription": user.subscription,
+                         "new_feature_usage": user.subscription.feature_usage,
+                         "meta": existing.meta,
+                         "status": "already_processed"
+                     }
+        
         user = session.get(User, user_id)
         if not user:
              return {"allowed": False, "reason": "User not found"}
@@ -196,51 +228,106 @@ class SubscriptionService:
              
         plan = subscription.plan
         
-        # 1. Check Feature Caps
-        caps = plan.features or {}
+        # 1. Parse Features
+        features_data = plan.features or {}
+        try:
+            feats = PlanFeatures(**features_data)
+        except:
+             # Fallback
+             feats = PlanFeatures()
+        
         feature_usage = subscription.feature_usage or {}
         
-        if action_request.get("has_ocr"):
-            if feature_usage.get("ocr", 0) >= caps.get("ocr_monthly_cap", 0) and caps.get("ocr_monthly_cap", 0) > 0:
-                return {"allowed": False, "reason": "OCR monthly limit reached"}
-        
-        if action_request.get("has_voice"):
-             if feature_usage.get("voice", 0) >= caps.get("voice_monthly_cap", 0) and caps.get("voice_monthly_cap", 0) > 0:
-                return {"allowed": False, "reason": "Voice monthly limit reached"}
-
-        # 2. Daily Cap Check (Optional, simplified)
-        # Need to query ledger for today's usage if strict, or use redis. 
-        # Skipping strict daily cap for MVP to avoid expensive query, user requested optional.
-
-        # 3. Calculate Cost
-        if action_request.get("is_make_it_right", False):
-            # Verify if eligible for free Make it Right
-            # Logic: Check if we have already given a free Make it Right for this question hash
-            # This is complex in a single transaction. 
-            # Simplified: Assume allowed if passed here, controller checks eligibility logic or trusting flag if internal.
-            # But we must check if they have Make It Right credits left in plan?
-            if feature_usage.get("make_it_right", 0) >= caps.get("make_it_right_monthly_cap", 5):
-                 # Fallback to normal cost if cap exceeded
-                 cost = self.calculate_cost(plan, action_request["mode"], action_request["has_ocr"], action_request["has_voice"])
+        # 2. Determine Tier & Source
+        tier = action_request.get("tier")
+        if not tier:
+            # Legacy mapping from mode
+            mode = action_request.get("mode", "minimal")
+            if mode == "detailed":
+                tier = "standard"
+            elif mode == "research":
+                tier = "research"
             else:
+                tier = "free"
+        
+        source = action_request.get("source_type")
+        if not source:
+            if action_request.get("has_voice"):
+                source = "voice"
+            elif action_request.get("has_ocr"):
+                # TODO: Differentiate snap_image vs snap_pdf if needed
+                source = "snap_image"
+            else:
+                source = "text"
+
+        # 3. Check Gates
+        if tier == "research" and not feats.allow_research:
+            return {"allowed": False, "reason": "Research tier not included in your plan", "error_code": "TIER_NOT_ALLOWED"}
+            
+        if tier == "standard":
+             # Implicit gate?
+             pass
+
+        # 4. Check Caps
+        if source in ["snap_image", "snap_pdf"] and feats.ocr_monthly_cap > 0:
+            if feature_usage.get("ocr", 0) >= feats.ocr_monthly_cap:
+                 return {"allowed": False, "reason": "OCR monthly limit reached", "error_code": "CAP_EXCEEDED", "cap": "ocr_monthly"}
+                 
+        if source == "voice" and feats.voice_monthly_cap > 0:
+            if feature_usage.get("voice", 0) >= feats.voice_monthly_cap:
+                 return {"allowed": False, "reason": "Voice monthly limit reached", "error_code": "CAP_EXCEEDED", "cap": "voice_monthly"}
+
+        # Daily Cap Check
+        if feats.daily_credit_cap > 0:
+             # Calculate usage for today
+             start_of_day = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+             # UsageLedger links to subscription, which links to user.
+             # Query by subscription_id for simpler index usage? Or user_id if ledger has it?
+             # SubscriptionService usage ledger has subscription_id.
+             daily_used = session.exec(
+                 select(func.sum(UsageLedger.amount))
+                 .where(UsageLedger.subscription_id == subscription.id)
+                 .where(UsageLedger.created_at >= start_of_day)
+                 .where(UsageLedger.transaction_type == "DEBIT") # Only count debits
+             ).one() or 0.0
+             
+             # Estimate cost of this request?
+             # We haven't calculated `cost` variable yet in this function (it's below at step 5).
+             # We can pre-calculate cost or check strictly strictly strict?
+             # Let's peek cost.
+             peek_cost = self.calculate_cost(plan, tier, source)
+             if (daily_used + peek_cost) > feats.daily_credit_cap:
+                  return {"allowed": False, "reason": "Daily credit limit reached", "error_code": "CAP_EXCEEDED", "cap": "daily_credits"}
+
+
+        # 5. Calculate Cost
+        is_make_it_right = action_request.get("is_make_it_right", False)
+        cost = 0.0
+        
+        if is_make_it_right:
+             if feature_usage.get("make_it_right", 0) >= feats.make_it_right_monthly_cap:
+                 # Cap exceeded, charge normal price
+                 cost = self.calculate_cost(plan, tier, source)
+             else:
                  cost = 0.0
         else:
-            cost = self.calculate_cost(plan, action_request["mode"], action_request["has_ocr"], action_request["has_voice"])
+             cost = self.calculate_cost(plan, tier, source)
 
-        # 4. Check Balance
+        # 6. Check Balance
         if subscription.credits_balance < cost:
-            return {"allowed": False, "reason": "Insufficient credits", "shortfall": cost - subscription.credits_balance}
+            return {"allowed": False, "reason": "Insufficient credits", "shortfall": cost - subscription.credits_balance, "error_code": "INSUFFICIENT_CREDITS"}
 
-        # 5. Debit (Locking row would be ideal here in a transaction block)
-        # Using simple decrement for now - optimistic locking or db-level atomic update is safer
-        # subscription.credits_balance -= cost -- handled by caller commit? 
-        # Better to return plan/cost and let caller finalize in transaction
-        
+        # 7. Return entitlement (Caller must execute debit)
         return {
             "allowed": True, 
             "cost": cost, 
             "subscription": subscription,
-            "new_feature_usage": feature_usage # Helper to update counters
+            "new_feature_usage": feature_usage,
+            "meta": {
+                "tier": tier,
+                "source": source,
+                "is_make_it_right": is_make_it_right
+            }
         }
 
     def execute_debit(self, session: Session, subscription: Subscription, cost: float, meta: dict, ref_id: str):

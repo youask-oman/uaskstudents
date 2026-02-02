@@ -542,8 +542,9 @@ export default function DashboardPage() {
                 body: JSON.stringify({
                     // Primary problem input - only one text field
                     confirmed_text: textToSolve,
-                    // Tier-aware mode - single field, no duplication
-                    requested_mode: selectedSolveTier === 'RESEARCH' ? 'detailed' : 'minimal',
+                    // Tier-aware mode - legacy mapping + explicit tier
+                    requested_mode: selectedSolveTier === 'FREE' ? 'minimal' : 'detailed',
+                    tier: selectedSolveTier.toLowerCase(),
                     // Normalized trusted_context (compact enums)
                     trusted_context: {
                         learning_mode: selectedGoal,
@@ -663,44 +664,44 @@ export default function DashboardPage() {
 
                         {/* Tier-Aware Controls Section */}
                         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-800 p-4">
-                              <div className="flex flex-wrap items-center justify-between gap-4">
-                                  {/* Goal Toggle */}
-                                  <SegmentedControl
-                                      label="Goal"
-                                      options={[{ value: "solve", label: "Solve", icon: "bolt" }]}
-                                      value="solve"
-                                      onChange={() => { }}
-                                      size="sm"
-                                      className="solve-segmented"
-                                  />
+                            <div className="flex flex-wrap items-center justify-between gap-4">
+                                {/* Goal Toggle */}
+                                <SegmentedControl
+                                    label="Goal"
+                                    options={[{ value: "solve", label: "Solve", icon: "bolt" }]}
+                                    value="solve"
+                                    onChange={() => { }}
+                                    size="sm"
+                                    className="solve-segmented"
+                                />
 
-                                  {/* Tier Selector */}
-                                  <SegmentedControl
-                                      label="Tier"
-                                      options={[
-                                          { value: "FREE", label: "Free", icon: "bolt" },
-                                          { value: "STANDARD", label: "Standard", icon: "school" },
-                                          { value: "RESEARCH", label: "Research", icon: "science" },
-                                      ]}
-                                      value={selectedSolveTier}
-                                      onChange={(v) => {
-                                          if (v === "FREE" || v === "STANDARD" || v === "RESEARCH") {
-                                              setSelectedSolveTier(v as SolveTier);
-                                              if (typeof window !== "undefined") {
-                                                  localStorage.setItem("uask.solveTier", v);
-                                              }
-                                          }
-                                      }}
-                                      size="sm"
-                                      className="solve-segmented"
-                                  />
+                                {/* Tier Selector */}
+                                <SegmentedControl
+                                    label="Tier"
+                                    options={[
+                                        { value: "FREE", label: "Free", icon: "bolt" },
+                                        { value: "STANDARD", label: "Standard", icon: "school" },
+                                        { value: "RESEARCH", label: "Research", icon: "science" },
+                                    ]}
+                                    value={selectedSolveTier}
+                                    onChange={(v) => {
+                                        if (v === "FREE" || v === "STANDARD" || v === "RESEARCH") {
+                                            setSelectedSolveTier(v as SolveTier);
+                                            if (typeof window !== "undefined") {
+                                                localStorage.setItem("uask.solveTier", v);
+                                            }
+                                        }
+                                    }}
+                                    size="sm"
+                                    className="solve-segmented"
+                                />
 
-                                  {subscriptionLoaded && subscriptionError && (
-                                      <div className="text-xs font-semibold text-rose-500">
-                                          {subscriptionError}
-                                      </div>
-                                  )}
-                              </div>
+                                {subscriptionLoaded && subscriptionError && (
+                                    <div className="text-xs font-semibold text-rose-500">
+                                        {subscriptionError}
+                                    </div>
+                                )}
+                            </div>
 
                             {/* Cost Preview */}
                             <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
@@ -768,8 +769,8 @@ export default function DashboardPage() {
                                     )
                                 )}
 
-                                  {activeTab === 'text' && (
-                                      <div className="flex flex-col gap-6 relative">
+                                {activeTab === 'text' && (
+                                    <div className="flex flex-col gap-6 relative">
                                         {/* Input Mode Selector (Expression / Word Problem / Graphing) */}
                                         <InputModeSelector
                                             selectedMode={selectedInputMode}

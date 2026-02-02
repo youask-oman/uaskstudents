@@ -2,17 +2,41 @@
  * Types and API client for subscription/tier-aware solve UX.
  */
 
+export interface TierPricing {
+    text: number;
+    snap_image: number;
+    snap_pdf: number;
+    voice: number;
+}
+
 export interface SubscriptionPlan {
     id: number;
     slug: string;
     display_name: string;
     credits_monthly: number;
     seats: number;
+    // Multipliers can be legacy flat object or new structured object
     multipliers: {
-        text_concise: number;
-        text_detailed: number;
-        ocr_add: number;
-        voice_add: number;
+        version?: number;
+        credits?: {
+            solve: {
+                free: TierPricing;
+                standard: TierPricing;
+                research: TierPricing;
+            };
+            verify: {
+                free: number;
+                standard: number;
+                research: number;
+            };
+            plot_trigger: number;
+            plot_spec: number;
+        };
+        // Legacy fallback keys
+        text_concise?: number;
+        text_detailed?: number;
+        ocr_add?: number;
+        voice_add?: number;
     };
     features: Record<string, unknown>;
 }
@@ -119,12 +143,29 @@ export function calculateSolveCost(
 ): number {
     const { multipliers } = subscription.plan;
 
-    let cost = answerStyle === "tutor"
-        ? multipliers.text_detailed
-        : multipliers.text_concise;
+    // Check for V1 schema
+    if (multipliers.version === 1 && multipliers.credits) {
+        // Map frontend "answerStyle" to Tier
+        // quick -> Free Tier Quality (roughly)
+        // tutor -> Standard Tier Quality/Reasoning
+        // This mapping is loose on frontend; strict logic is in backend.
+        // But for estimation:
+        const tier = answerStyle === "tutor" ? "standard" : "free";
+        const tierConfig = multipliers.credits.solve[tier];
 
-    if (ocrUsed) cost += multipliers.ocr_add;
-    if (voiceUsed) cost += multipliers.voice_add;
+        if (voiceUsed) return tierConfig.voice;
+        // Assuming OCR implies Image for now in simple estimator
+        if (ocrUsed) return tierConfig.snap_image;
+        return tierConfig.text;
+    }
+
+    // Legacy Fallback
+    let cost = answerStyle === "tutor"
+        ? (multipliers.text_detailed || 2)
+        : (multipliers.text_concise || 1);
+
+    if (ocrUsed) cost += (multipliers.ocr_add || 1);
+    if (voiceUsed) cost += (multipliers.voice_add || 1);
 
     return cost;
 }

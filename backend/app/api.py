@@ -4127,9 +4127,52 @@ async def solve_v3_stream_endpoint(
     from app.utils.token_limits import get_effective_max_tokens
     from pathlib import Path
 
-    async def generate():
+    from app.services.subscription_service import subscription_service
+
+    # 0. Phase 3: Idempotency & Debit (Audit/Billing)
+    # Generate request_id early to use as idempotency key or reference
+    request_id = str(uuid.uuid4())
+
+    # Resolve checks
+    action_req = {
+        "tier": getattr(body, "tier", None), # From Phase 2 update
+        "mode": body.requested_mode,
+        "has_ocr": body.features_used.get("ocr_used", False) if body.features_used else False,
+        "has_voice": body.features_used.get("voice_used", False) if body.features_used else False,
+        "reference_id": request_id, 
+        "source_type": None
+    }
+    
+    entitlement = subscription_service.check_entitlement_and_debit(session, user_id, action_req)
+    if not entitlement["allowed"]:
+         # Strict HTTP Status Mapping (Phase 4)
+         err_code = entitlement.get("error_code")
+         detail_msg = entitlement.get("reason", "Credit check failed")
+         
+         if err_code == "TIER_NOT_ALLOWED":
+             raise HTTPException(status_code=403, detail=detail_msg)
+         elif err_code == "CAP_EXCEEDED":
+             raise HTTPException(status_code=429, detail=detail_msg)
+         elif err_code == "INSUFFICIENT_CREDITS":
+             raise HTTPException(status_code=402, detail=detail_msg)
+         else:
+             raise HTTPException(status_code=402, detail=detail_msg) # Fallback
+         
+    # Execute Debit if not already processed
+    subscription = entitlement["subscription"]
+    cost = entitlement["cost"]
+    debit_meta = entitlement["meta"]
+    
+    if entitlement.get("status") != "already_processed":
+        subscription_service.execute_debit(session, subscription, cost, debit_meta, request_id)
+
+    async def _inner_generate():
         start_total = time.perf_counter()
-        request_id = str(uuid.uuid4())
+        # request_id already defined in outer scope
+        
+        # Capture context for refund on error
+        should_refund = (entitlement.get("status") != "already_processed" and cost > 0)
+
         
         requested_mode = body.requested_mode or "minimal"
         learning_mode = (body.trusted_context or {}).get("learning_mode", "solve")
@@ -4835,6 +4878,28 @@ async def solve_v3_stream_endpoint(
                 pass
             yield f"event: done\ndata: {json.dumps({'ok': False, 'error': {'code': 'internal_error', 'message': str(e)}})}\n\n"
 
+    async def generate():
+        try:
+            async for chunk in _inner_generate():
+                # Check for explicit application error yield logic
+                if should_refund and "event: done" in chunk:
+                    # Check for failure in the done event
+                    # We look for simple string match to avoid parsing every chunk
+                    # The DONE event looks like: data: {"ok": false, ...}
+                    if '"ok": false' in chunk or '"ok":false' in chunk:
+                         try:
+                             subscription_service.refund_credits(session, subscription.id, cost, "System Error during solve", request_id)
+                         except Exception as idx:
+                             print(f"Refund failed: {idx}")
+                yield chunk
+        except Exception as e:
+            if should_refund:
+                try:
+                    subscription_service.refund_credits(session, subscription.id, cost, "System Error during solve", request_id)
+                except Exception as ex:
+                    print(f"Refund failed: {ex}")
+            raise e
+
     return StreamingResponse(
         generate(), 
         media_type="text/event-stream",
@@ -4844,6 +4909,102 @@ async def solve_v3_stream_endpoint(
             "Connection": "keep-alive"
         }
     )
+
+
+@api_router.post("/solve/batch", response_model=SolveBatchResponse)
+async def solve_batch_endpoint(
+    body: SolveBatchRequest,
+    user_id: int = Query(...),
+    session: Session = Depends(get_session)
+):
+    """
+    Batch solve items with per-item tier application and credit deduction.
+    """
+    from app.services.solver_v3 import get_solver_v3
+    from app.services.subscription_service import subscription_service
+    
+    results = []
+    
+    for item in body.items:
+        # Unique ID for idempotency and tracing
+        ref_id = f"batch_{uuid.uuid4()}_{item.question_id}"
+        
+        # 1. Check Entitlement
+        action_req = {
+            # Use requested_mode to derive tier if not explicit
+            # Batch request logic usually similar to stream
+            "mode": item.requested_mode or "minimal",
+            "has_ocr": body.features_used.get("ocr_used", False) if body.features_used else False,
+            "has_voice": body.features_used.get("voice_used", False) if body.features_used else False,
+            "reference_id": ref_id,
+            "source_type": None
+        }
+        
+        entitlement = subscription_service.check_entitlement_and_debit(session, user_id, action_req)
+        
+        if not entitlement["allowed"]:
+            # Strict error mapping for batch items?
+            # Usually batch 200 OK with per-item error details.
+            # But let's check code.
+            err_code = entitlement.get("error_code")
+            reason = entitlement.get("reason", "Credit check failed")
+            
+            results.append(SolveBatchItemResult(
+                question_id=item.question_id,
+                ok=False,
+                error=f"[{err_code}] {reason}" if err_code else reason
+            ))
+            continue
+            
+        # 2. Execute Debit (if not already processed)
+        status = entitlement.get("status")
+        subscription = entitlement.get("subscription")
+        cost = entitlement.get("cost", 0.0)
+        
+        if status != "already_processed" and subscription:
+            subscription_service.execute_debit(session, subscription, cost, entitlement["meta"], ref_id)
+            
+        # 3. Solve
+        try:
+            solver = get_solver_v3()
+            resolved_tier = entitlement["meta"].get("tier", "free")
+            
+            solve_res = await solver.solve(
+                problem_text=item.text,
+                context="",
+                request_id=ref_id,
+                user_tier=resolved_tier,
+                requested_mode=item.requested_mode or "minimal",
+                db_session=session,
+                features_used=body.features_used,
+                # Force non-streaming response
+            )
+            
+            results.append(SolveBatchItemResult(
+                question_id=item.question_id,
+                ok=True,
+                solve_response_json=solve_res if isinstance(solve_res, dict) else solve_res.dict(),
+                credits_final=cost,
+                credits_reserved=cost
+            ))
+            
+        except Exception as e:
+            # Refund if we charged
+            if status != "already_processed" and cost > 0 and subscription:
+                subscription_service.refund_credits(
+                    session, subscription.id, cost, 
+                    f"Batch error: {str(e)}", ref_id
+                )
+                
+            results.append(SolveBatchItemResult(
+                question_id=item.question_id,
+                ok=False,
+                error=str(e),
+                credits_refunded=cost if (status != "already_processed" and cost > 0) else 0.0
+            ))
+
+    return SolveBatchResponse(ok=True, results=results)
+
 
 
     # ------------------------------------------------------------------

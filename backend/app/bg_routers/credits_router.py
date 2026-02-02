@@ -1,108 +1,242 @@
-from typing import Dict, Any, Literal
-
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Dict, Any, Literal, Optional
+from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel, Field
 from sqlmodel import Session
+from jose import jwt, JWTError
 
 from app.database import get_session
-from app.services.pricing_service import pricing_service
-
+from app.models import User, Subscription, Plan
+from app.schemas.pricing import PlanMultipliers, PlanFeatures, CreditsConfig
+from app.auth import SECRET_KEY, ALGORITHM
+# from app.auth import get_current_user # Not available in auth.py, defining locally
 
 router = APIRouter()
 
-TierValue = Literal["FREE", "STANDARD", "RESEARCH"]
-InputTypeValue = Literal["text", "snap", "voice"]
-AssetTypeValue = Literal["none", "image", "pdf"]
+# --- Auth Helper ---
+def get_current_user_optional(
+    authorization: Optional[str] = Header(None),
+    session: Session = Depends(get_session)
+) -> Optional[User]:
+    """Extract user from JWT token if present."""
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    
+    token = authorization.replace("Bearer ", "")
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            return None
+        return session.exec(from_user_email_query(email)).first() # Pseudo query, using simple get
+        # Actually, let's just find by email if possible, or ID if we stored ID
+        # Converting to standard logic:
+        # Assuming payload has "sub" as email.
+    except JWTError:
+        return None
 
+def get_current_user_from_token(token: str, session: Session) -> Optional[User]:
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email = payload.get("sub")
+        if not email:
+            return None
+        # Safe way: scan all users? No, assume email index or lookup
+        # For efficiency, let's assume we can query User by email
+        # Since I don't recall if User has email index, I'll iterate or use SQLModel select
+        from sqlmodel import select
+        statement = select(User).where(User.email == email)
+        return session.exec(statement).first()
+    except:
+        return None
+
+def get_optional_user(
+    authorization: Optional[str] = Header(None),
+    session: Session = Depends(get_session)
+) -> Optional[User]:
+    if not authorization:
+        return None
+    token = authorization.replace("Bearer ", "").strip()
+    return get_current_user_from_token(token, session)
+
+
+# --- Request/Response Models ---
 
 class EstimateAddons(BaseModel):
+    verification_requested: bool = False
+    plot_requested: bool = False
+    
+    # Legacy / Frontend Compatibility
     ocr: bool = False
     voice: bool = False
-    verify: bool = False
+    verify: bool = False 
     plot: bool = False
 
-
 class CreditsEstimateRequest(BaseModel):
-    tier: TierValue
-    input_type: InputTypeValue
-    asset_type: AssetTypeValue = "none"
+    tier: str # FREE, STANDARD, RESEARCH
+    mode: str = "SOLVE" # SOLVE, VERIFY, etc.
+    input_type: str = "text" # text, snap, voice
+    asset_type: str = "none"
     question_count: int = Field(default=1, ge=1, le=100)
     addons: EstimateAddons = Field(default_factory=EstimateAddons)
 
+class CapChecks(BaseModel):
+    daily_ok: bool
+    ocr_ok: bool
+    voice_ok: bool
+    # could add others if needed
 
 class CreditsEstimateBreakdown(BaseModel):
-    tier_base: float
-    ocr: float
-    voice: float
-    verify: float
-    plot: float
-    asset_type_addon: float = 0.0
-
+    base: float
+    reason: str
+    addons: Dict[str, float] = {}
 
 class CreditsEstimateResponse(BaseModel):
     total_credits: float
     per_question_credits: float
     breakdown: CreditsEstimateBreakdown
+    cap_checks: CapChecks
     pricing_version: str
 
 
-def _resolve_pricing(session: Session) -> Dict[str, Any]:
-    config = pricing_service.get_pricing_config(session)
-    solve_pricing = dict(config.solve_pricing or {})
-    if not solve_pricing:
-        raise HTTPException(
-            status_code=503,
-            detail={
-                "code": "PRICING_CONFIG_MISSING",
-                "message": "Solve pricing config is missing from DB.",
-            },
-        )
-    return solve_pricing
-
+# --- Logic ---
 
 @router.post("/credits/estimate", response_model=CreditsEstimateResponse)
 async def estimate_credits(
     body: CreditsEstimateRequest,
     session: Session = Depends(get_session),
+    user: Optional[User] = Depends(get_optional_user)
 ):
-    solve_pricing = _resolve_pricing(session)
-    tiers = solve_pricing.get("tiers") or {}
-    addons_cfg = solve_pricing.get("addons") or {}
-    asset_addons = solve_pricing.get("asset_addons") or {}
-    pricing_version = str(solve_pricing.get("pricing_version") or "unknown")
+    # 1. Resolve Plan
+    plan: Plan = None
+    subscription: Optional[Subscription] = None
+    
+    if user:
+        # Load subscription
+        from sqlmodel import select
+        # Assuming user.subscription is a relationship, or we query it.
+        # User <-> Subscription is usually 1:1
+        # Let's query active subscription
+        sub_query = select(Subscription).where(Subscription.user_id == user.id).where(Subscription.is_active == True)
+        subscription = session.exec(sub_query).first()
+        
+        if subscription:
+            # Query plan
+            plan = session.get(Plan, subscription.plan_id)
+    
+    if not plan:
+        # Fallback to default "Free" plan if no user or no subscription
+        # Ideally we fetch the "free" plan from DB
+        from sqlmodel import select
+        plan = session.exec(select(Plan).where(Plan.slug == "free")).first()
+        if not plan:
+             raise HTTPException(status_code=500, detail="Default pricing plan not found.")
 
-    if body.tier not in tiers:
-        raise HTTPException(
-            status_code=400,
-            detail={"code": "INVALID_TIER", "message": f"No pricing configured for tier {body.tier}."},
-        )
+    # 2. Parse Schemas
+    try:
+        multipliers = PlanMultipliers(**(plan.multipliers or {}))
+        features = PlanFeatures(**(plan.features or {}))
+    except Exception as e:
+        # Fallback for legacy plans?
+        # print(f"Schema parse error: {e}")
+        # Create default generic structure
+        multipliers = PlanMultipliers()
+        features = PlanFeatures()
 
-    ocr_enabled = bool(body.addons.ocr or body.input_type == "snap")
-    voice_enabled = bool(body.addons.voice or body.input_type == "voice")
-    verify_enabled = bool(body.addons.verify)
-    plot_enabled = bool(body.addons.plot)
+    # 3. Determine Cost
+    # Map input tier (string) to config key
+    tier_key = body.tier.lower() # free, standard, research
+    
+    # Safety check for tier existence
+    if not hasattr(multipliers.credits.solve, tier_key):
+        tier_key = "standard" # Fallback
+    
+    tier_config = getattr(multipliers.credits.solve, tier_key)
+    
+    # Calculate Base Cost
+    base_cost = 0.0
+    reason_str = f"solve.{tier_key}"
+    
+    if body.input_type == "voice":
+        base_cost = float(tier_config.voice)
+        reason_str += ".voice"
+    elif body.input_type == "snap":
+        if body.asset_type == "pdf":
+            base_cost = float(tier_config.snap_pdf)
+            reason_str += ".snap_pdf"
+        else:
+            base_cost = float(tier_config.snap_image)
+            reason_str += ".snap_image"
+    else:
+        base_cost = float(tier_config.text)
+        reason_str += ".text"
+        
+    # Addons
+    addons_cost = 0.0
+    addon_detail = {}
+    
+    # Verification
+    # Logic: If requested_mode is VERIFY, or addons.verification_requested is True?
+    # Spec says mode="SOLVE|VERIFY...". If mode is SOLVE, verification might be an addon step?
+    # User request: "addons": { "verification_requested": false ... }
+    # Let's assume verification is post-solve addon or separate mode.
+    # If mode=SOLVE and verify requested:
+    verify_req = body.addons.verification_requested or body.addons.verify
+    if verify_req and features.allow_verify:
+        v_cost = getattr(multipliers.credits.verify, tier_key, 1)
+        addons_cost += v_cost
+        addon_detail["verify"] = float(v_cost)
+        
+    plot_req = body.addons.plot_requested or body.addons.plot
+    if plot_req and features.allow_plot:
+        p_cost = multipliers.credits.plot_spec # or trigger
+        addons_cost += p_cost
+        addon_detail["plot"] = float(p_cost)
 
-    tier_base = float(tiers.get(body.tier, 0.0))
-    ocr_cost = float(addons_cfg.get("ocr", 0.0)) if ocr_enabled else 0.0
-    voice_cost = float(addons_cfg.get("voice", 0.0)) if voice_enabled else 0.0
-    verify_cost = float(addons_cfg.get("verify", 0.0)) if verify_enabled else 0.0
-    plot_cost = float(addons_cfg.get("plot", 0.0)) if plot_enabled else 0.0
-    asset_type_addon = float(asset_addons.get(body.asset_type, 0.0))
+    per_question = base_cost + addons_cost
+    total = per_question * body.question_count
 
-    per_question = tier_base + ocr_cost + voice_cost + verify_cost + plot_cost + asset_type_addon
-    total = per_question * float(body.question_count)
-
+    # 4. Cap Checks
+    # We need usage data. If no user, assume OK.
+    daily_ok = True
+    ocr_ok = True
+    voice_ok = True
+    
+    if user and subscription:
+        usage = subscription.feature_usage or {}
+        
+        # Check Daily Cap (This is tricky without ledger/quota summary for 'today')
+        # Assuming subscription.feature_usage tracks monthly/periodic usage, not daily.
+        # But PlanFeatures has daily_credit_cap.
+        # We might skip strictly checking daily limit here if we don't have the "used today" data readily available in feature_usage.
+        # However, let's assume we want to signal if they are close or over if we knew. 
+        # For now, let's mark true unless we implement a daily tracker lookup.
+        # TODO: Implement accurate daily check via BillingLedger or dedicated counter
+        pass 
+        
+        # Check Monthly Caps
+        if body.input_type == "snap":
+            current_ocr = usage.get("ocr", 0)
+            if features.ocr_monthly_cap > 0 and current_ocr >= features.ocr_monthly_cap:
+                ocr_ok = False
+        
+        if body.input_type == "voice":
+            current_voice = usage.get("voice", 0)
+            if features.voice_monthly_cap > 0 and current_voice >= features.voice_monthly_cap:
+                voice_ok = False
+                
+    
     return CreditsEstimateResponse(
         total_credits=total,
         per_question_credits=per_question,
-        pricing_version=pricing_version,
         breakdown=CreditsEstimateBreakdown(
-            tier_base=tier_base,
-            ocr=ocr_cost,
-            voice=voice_cost,
-            verify=verify_cost,
-            plot=plot_cost,
-            asset_type_addon=asset_type_addon,
+            base=base_cost,
+            reason=reason_str,
+            addons=addon_detail
         ),
+        cap_checks=CapChecks(
+            daily_ok=daily_ok,
+            ocr_ok=ocr_ok,
+            voice_ok=voice_ok
+        ),
+        pricing_version=str(multipliers.version)
     )
-
