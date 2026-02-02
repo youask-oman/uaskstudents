@@ -652,7 +652,7 @@ class SubscriptionPlanInfo(BaseModel):
     display_name: str
     credits_monthly: int
     seats: int
-    multipliers: Dict[str, float]
+    multipliers: Dict[str, Any]
     features: Dict[str, Any]
 
 class SubscriptionUsage(BaseModel):
