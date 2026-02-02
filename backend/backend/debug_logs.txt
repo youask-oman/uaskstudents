@@ -1341,3 +1341,12 @@ Prompt binding integrity OK: active_bindings=12 active_pairs=12
 Attempting to connect to database (Attempt 1/10)...
 Database connection successful and tables created.
 Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+extract_questions applying crop: x=92 y=212 w=703 h=192 image=962x1280
+extract_questions input metrics: size=703x192 stddev=24.48 white=0.000
+ocr_attempt request_id=3f44d2a5-7c6c-432e-ae5a-b0fdd0c55730 provider=openai model=gpt-5-mini duration_ms=10240 validation_passed=True fail_reason=None
