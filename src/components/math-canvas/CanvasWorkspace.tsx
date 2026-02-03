@@ -1,10 +1,18 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import type { Editor } from "@tiptap/core";
 import EditorToolbar from "./EditorToolbar";
 import GraphEditor from "./GraphEditor";
 import LatexEditor from "./LatexEditor";
 import PaperPage from "./PaperPage";
+import RichTextToolbar from "./RichTextToolbar";
+import {
+  exportCanvasToDocx,
+  exportCanvasToPdf,
+  hasExportableSolution,
+  SolutionExportPayload,
+} from "./export/exportDocument";
 import {
   DEFAULT_ELEMENT_STYLE,
   DocumentAction,
@@ -42,8 +50,11 @@ export default function CanvasWorkspace({ sessionId, savedVersions = [], state, 
   const [styleDraft, setStyleDraft] = useState(DEFAULT_ELEMENT_STYLE);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [savingVersion, setSavingVersion] = useState(false);
-  const [versionOptions, setVersionOptions] = useState<SavedPaperVersion[]>(savedVersions);
-  const [selectedVersionKey, setSelectedVersionKey] = useState<string>(savedVersions[0]?.key || "");
+  const [exportingDocx, setExportingDocx] = useState(false);
+  const [activeTextEditor, setActiveTextEditor] = useState<Editor | null>(null);
+  const [activeTextEditorId, setActiveTextEditorId] = useState<string | null>(null);
+  const versionOptions = savedVersions;
+  const [selectedVersionKey, setSelectedVersionKey] = useState<string>(() => savedVersions[0]?.key ?? "");
 
   const activePage = useMemo(
     () => state.pages.find((page) => page.id === state.activePageId) ?? state.pages[0],
@@ -55,9 +66,10 @@ export default function CanvasWorkspace({ sessionId, savedVersions = [], state, 
   );
 
   useEffect(() => {
-    setVersionOptions(savedVersions);
-    setSelectedVersionKey(savedVersions[0]?.key || "");
-  }, [savedVersions]);
+    if (!selectedVersionKey || !savedVersions.some((version) => version.key === selectedVersionKey)) {
+      setSelectedVersionKey(savedVersions[0]?.key ?? "");
+    }
+  }, [savedVersions, selectedVersionKey]);
 
   const handleSelectTool = useCallback(
     (tool: ToolType) => {
@@ -197,28 +209,6 @@ export default function CanvasWorkspace({ sessionId, savedVersions = [], state, 
         throw new Error(detail);
       }
       const payload = (await response.json()) as { version?: number };
-      const versionNum = Number(payload.version);
-      const savedAt = typeof (payload as Record<string, unknown>).saved_at === "string"
-        ? String((payload as Record<string, unknown>).saved_at)
-        : new Date().toISOString();
-      const titleRaw = typeof (payload as Record<string, unknown>).title === "string"
-        ? String((payload as Record<string, unknown>).title)
-        : "";
-      const version = Number.isFinite(versionNum) && versionNum > 0 ? versionNum : versionOptions.length + 1;
-      const title = titleRaw.trim() || `Version ${version}`;
-      const pagesSnapshot = JSON.parse(JSON.stringify(state.pages)) as SavedPaperVersion["pages"];
-      const nextVersion: SavedPaperVersion = {
-        key: `${version}-${savedAt || Date.now()}`,
-        version,
-        title,
-        savedAt,
-        pages: pagesSnapshot,
-      };
-      setVersionOptions((prev) => {
-        const deduped = prev.filter((entry) => entry.version !== nextVersion.version);
-        return [nextVersion, ...deduped].sort((left, right) => right.version - left.version);
-      });
-      setSelectedVersionKey(nextVersion.key);
       setSaveMessage(`Saved version ${payload.version ?? ""}`.trim());
     } catch (error) {
       console.error("Failed to save paper version", error);
@@ -226,7 +216,7 @@ export default function CanvasWorkspace({ sessionId, savedVersions = [], state, 
     } finally {
       setSavingVersion(false);
     }
-  }, [savingVersion, sessionId, state.pages, versionOptions.length]);
+  }, [savingVersion, sessionId, state.pages]);
 
   const handleLoadVersion = useCallback(() => {
     if (!selectedVersion) return;
@@ -309,6 +299,48 @@ export default function CanvasWorkspace({ sessionId, savedVersions = [], state, 
   const canRedo = state.future.length > 0;
   const canPaste = Boolean(state.clipboard && state.clipboard.elements.length > 0);
   const hasSelection = state.selection.elementIds.length > 0;
+  const canExport = useMemo(() => hasExportableSolution(state.pages), [state.pages]);
+
+  const buildExportPayload = useCallback((): SolutionExportPayload => {
+    const tier =
+      typeof window !== "undefined" ? (window.localStorage.getItem("selected_solve_tier") || undefined) : undefined;
+    return {
+      pages: state.pages,
+      solveId: sessionId,
+      tier: tier ? tier.toUpperCase() : undefined,
+      title: "Solution",
+      generatedAt: new Date().toISOString(),
+    };
+  }, [sessionId, state.pages]);
+
+  const handleExportPdf = useCallback(() => {
+    try {
+      exportCanvasToPdf(buildExportPayload());
+      setSaveMessage("Opened print view for PDF export.");
+    } catch (error) {
+      console.error("Failed to export PDF", error);
+      setSaveMessage(error instanceof Error ? error.message : "Failed to export PDF.");
+    }
+  }, [buildExportPayload]);
+
+  const handleExportDocx = useCallback(async () => {
+    if (exportingDocx) return;
+    setExportingDocx(true);
+    try {
+      await exportCanvasToDocx(buildExportPayload());
+      setSaveMessage("DOCX export generated.");
+    } catch (error) {
+      console.error("Failed to export DOCX", error);
+      setSaveMessage(error instanceof Error ? error.message : "Failed to export DOCX.");
+    } finally {
+      setExportingDocx(false);
+    }
+  }, [buildExportPayload, exportingDocx]);
+
+  const handleActiveTextEditorChange = useCallback((editor: Editor | null, elementId: string | null) => {
+    setActiveTextEditor(editor);
+    setActiveTextEditorId(elementId);
+  }, []);
 
   return (
     <section className={styles.centerColumn}>
@@ -328,6 +360,15 @@ export default function CanvasWorkspace({ sessionId, savedVersions = [], state, 
         onAddPage={handleAddPage}
         onSaveVersion={handleSaveVersion}
         savingVersion={savingVersion}
+        canExport={canExport}
+        exportingDocx={exportingDocx}
+        onExportPdf={handleExportPdf}
+        onExportDocx={handleExportDocx}
+      />
+      <RichTextToolbar
+        key={activeTextEditorId || "no-active-editor"}
+        activeEditor={activeTextEditor}
+        onNotice={(message) => setSaveMessage(message)}
       />
 
       {saveMessage ? <div className={styles.versionSaveNotice}>{saveMessage}</div> : null}
@@ -455,7 +496,16 @@ export default function CanvasWorkspace({ sessionId, savedVersions = [], state, 
               setLatexEditorTarget({ elementId, initialLatex: latexRaw });
               dispatch({ type: "SET_TOOL", tool: "math" });
             }}
-            onCommitText={(elementId, text) => dispatch({ type: "SET_TEXT_CONTENT", elementId, text })}
+            onCommitText={(elementId, payload) =>
+              dispatch({
+                type: "SET_TEXT_CONTENT",
+                elementId,
+                text: payload.text,
+                richTextHtml: payload.richTextHtml,
+                richTextJson: payload.richTextJson,
+              })
+            }
+            onActiveTextEditorChange={handleActiveTextEditorChange}
             onUpdateBlock={(blockId, updater) => dispatch({ type: "UPDATE_BLOCK", pageId: page.id, blockId, updater })}
             onDeleteBlock={(blockId) => dispatch({ type: "DELETE_BLOCK", pageId: page.id, blockId })}
           />

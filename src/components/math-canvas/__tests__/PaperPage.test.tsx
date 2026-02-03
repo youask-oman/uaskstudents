@@ -44,6 +44,7 @@ const baseProps = (page: CanvasPageData) => ({
   onDeleteElements: jest.fn(),
   onRequestMathEdit: jest.fn(),
   onCommitText: jest.fn(),
+  onActiveTextEditorChange: jest.fn(),
   onUpdateBlock: jest.fn(),
   onDeleteBlock: jest.fn(),
 });
@@ -58,7 +59,9 @@ describe("PaperPage text editing", () => {
     expect(textElement).not.toBeNull();
     fireEvent.pointerDown(textElement as Element, { button: 0, clientX: 120, clientY: 120 });
 
-    expect(screen.getByDisplayValue("Double-click to edit")).toBeInTheDocument();
+    const editor = container.querySelector(".ProseMirror");
+    expect(editor).not.toBeNull();
+    expect(editor?.textContent || "").toContain("Double-click to edit");
   });
 
   test("double-click still opens editor when not in text tool", () => {
@@ -70,6 +73,29 @@ describe("PaperPage text editing", () => {
     expect(textElement).not.toBeNull();
     fireEvent.doubleClick(textElement as Element);
 
-    expect(screen.getByDisplayValue("Double-click to edit")).toBeInTheDocument();
+    const editor = container.querySelector(".ProseMirror");
+    expect(editor).not.toBeNull();
+    expect(editor?.textContent || "").toContain("Double-click to edit");
+  });
+
+  test("export mode hides inline action controls", () => {
+    const page: CanvasPageData = {
+      id: "page-1",
+      blocks: [
+        { id: "rec-1", type: "recognition", latex: "\\(x^2=1\\)" },
+        {
+          id: "steps-1",
+          type: "steps",
+          steps: [{ title: "Step 1", explanation: "Do algebra." }],
+          result: "x = \\pm 1",
+        },
+      ],
+      elements: [],
+    };
+    const props = baseProps(page);
+    render(<PaperPage {...props} exportMode />);
+
+    expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
   });
 });

@@ -1,18 +1,30 @@
-Solve the math problem below with EXTREME rigor and completeness. Follow these rules EXACTLY:
+Solve the math problem below with EXTREME rigor and completeness. Follow these rules EXACTLY.
+
+RULE 0: MATH RENDERING COMPATIBILITY (CRITICAL)
+Your answer is rendered as Markdown with KaTeX/MathJax-style math support.
+You MUST follow this formatting contract:
+
+A) Inline math: use ONLY $ ... $
+B) Display math: use ONLY $$ ... $$ (use only when truly necessary)
+C) NEVER use \( \) or \[ \] (not allowed)
+D) Line breaks:
+   - NEVER use \\ in normal text
+   - The ONLY place \\ is allowed is INSIDE an aligned display block:
+     $$\begin{aligned} ... \\ ... \end{aligned}$$
+   - Do NOT put \\ right after $$ or right before $$ (forbidden)
+E) Display blocks $$ ... $$ must contain ONLY math (no English inside)
+
+If you violate Rule 0, the output is invalid.
 
 RULE 1: STEPS (RESEARCH MODE)
-
 Output EXACTLY 12-18 numbered steps (Step 1, Step 2, ..., Step N).
-
 Each step must be ONE complete sentence explaining ONE micro-operation.
-
-Each step MUST include a title field in the same line:
+Each step MUST include a title field in the same line using this exact pattern:
 Step k: title: <short specific description ≤120 chars> — <one sentence micro-operation>
-
-NO skipping steps. Expand every algebra/calculus transformation.
+Do NOT skip steps; expand every algebra/calculus transformation into micro-operations.
+Do NOT insert extra blank paragraphs between steps.
 
 RULE 2: DOMAIN CONSTRAINTS (MANDATORY)
-
 BEFORE Step 1, state ALL constraints in a dedicated section (even if trivial).
 
 Format exactly:
@@ -21,28 +33,39 @@ Domain constraints:
 • <constraint 2>
 • <combined conclusion if relevant>
 
-Include relevant types:
-• Square roots: radicand ≥ 0
-• Denominators: ≠ 0
-• Logs: argument > 0
-• Even roots: radicand ≥ 0
-• Inverse trig: state principal domain restrictions if relevant
+Include constraints as applicable:
+• Square roots / even roots: radicand ≥ 0
+• Denominators: expression ≠ 0
+• Logs: argument > 0 (and base constraints if relevant)
+• Inverse trig: state principal-value restrictions if relevant
+• Any other restriction implied by the problem
 
 RULE 3: VERIFICATION (MANDATORY)
+AFTER the steps, include EXACTLY 3 explicit checks:
 
-AFTER solution, include EXACTLY 3 explicit checks:
 Verification:
-(1) Domain check: <show it satisfies constraints>
-(2) Substitution/check: <plug into original or differentiate to confirm>
-(3) Extraneous/edge-case rejection: <show why a rejected candidate fails>
+(1) Domain check: <show final answer satisfies ALL constraints>
+(2) Substitution/check: <plug into original OR differentiate/compare to confirm>
+(3) Extraneous/edge-case rejection: <show why any rejected candidate fails, or state none exist and why>
 
 RULE 4: FINAL ANSWER (MANDATORY)
+End with EXACTLY these two lines:
 
-End with:
-Final Answer: <plain English>
-LaTeX: <clean LaTeX final result>
+Final Answer: <plain English, concise>
+LaTeX: <clean LaTeX final result ONLY, with NO delimiters like $...$, \( \), \[ \], or $$...$$>
 
-RULE 5: PLOTLY SPEC (MANDATORY)
+RULE 5: PLOTLY JSON (MANDATORY, EXACTLY ONE CODE BLOCK TOTAL)
+Include EXACTLY ONE fenced code block labeled json containing valid Plotly JSON.
+This must be the ONLY code block in the entire response.
+
+Plot requirements:
+- Use 5–9 sample points total per series (arrays length 5–9).
+- Use simple reasonable ranges; avoid extreme values.
+- Choose a meaningful plot:
+  • For equations: plot LHS and RHS as two series.
+  • For integrals: plot the integrand over a reasonable interval.
+  • For series/limits: plot partial sums or function behavior.
+- The JSON must be a single object with keys "data" and "layout".
 
 Include EXACTLY ONE fenced code block containing valid Plotly JSON:
 
@@ -63,27 +86,22 @@ If the problem is not naturally graphable (e.g., symbolic integral), plot a mean
 Use 5–9 sample points, simple ranges, and avoid extreme values.
 
 RULE 6: LANGUAGE
-
 English ONLY.
+Write in Markdown.
+Use LaTeX for math expressions like $\sqrt{x+3}$ and $x \ge 3$.
+No extra JSON objects and no extra code blocks (only the single Plotly json block is allowed).
+No fluff, no motivational talk.
 
-Math notation in LaTeX: $\sqrt{x+3}$, $x \ge 3$.
-
-NO JSON objects, NO schema fields, NO extra code blocks
-(ONLY the single Plotly ```json block is allowed.)
 
 RULE 7: LENGTH
-
 Minimum 1500 characters total output.
 
 PENALTY WARNING:
-
 Missing step numbers → rejection
-
 Missing domain constraints → rejection
-
 Missing verification checks → rejection
-
 Missing Plotly code block → rejection
+Missing Final Answer and LaTeX lines → rejection
 
 NOW SOLVE THIS PROBLEM:
 {PROBLEM}

@@ -166,9 +166,9 @@ def resolve_max_output_chars(*, tier: str, env_default: int) -> int:
 
 def load_default_freeform_prompt_template() -> str:
     app_dir = Path(__file__).resolve().parents[2]
-    prompt_path = app_dir / "prompts" / "free_form_math_standard_detailed.txt"
+    prompt_path = Path(__file__).resolve().parents[4] / "static_design" / "sug_prompts_qwen" / "free_form_math_standard_detailed.txt"
     if not prompt_path.exists():
-        fallback = Path(__file__).resolve().parents[4] / "static_design" / "sug_prompts_qwen" / "free_form_math_standard_detailed.txt"
+        fallback = app_dir / "prompts" / "free_form_math_standard_detailed.txt"
         if fallback.exists():
             prompt_path = fallback
     if not prompt_path.exists():

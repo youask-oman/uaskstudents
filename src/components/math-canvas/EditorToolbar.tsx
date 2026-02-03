@@ -20,6 +20,10 @@ interface EditorToolbarProps {
   onAddPage: () => void;
   onSaveVersion: () => void;
   savingVersion: boolean;
+  canExport: boolean;
+  exportingDocx?: boolean;
+  onExportPdf: () => void;
+  onExportDocx: () => void;
 }
 
 const toolButtons: Array<{ tool: ToolType; icon: string; label: string; accent?: boolean }> = [
@@ -88,6 +92,10 @@ export default function EditorToolbar({
   onAddPage,
   onSaveVersion,
   savingVersion,
+  canExport,
+  exportingDocx = false,
+  onExportPdf,
+  onExportDocx,
 }: EditorToolbarProps) {
   return (
     <div className={styles.toolbar}>
@@ -115,6 +123,33 @@ export default function EditorToolbar({
       </div>
 
       <div className={styles.toolbarActionsRight}>
+        {canExport ? (
+          <>
+            <button
+              type="button"
+              className={styles.secondaryActionButton}
+              onClick={onExportPdf}
+              aria-label="Export PDF"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }} aria-hidden="true">
+                picture_as_pdf
+              </span>
+              Export PDF
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryActionButton}
+              onClick={onExportDocx}
+              aria-label="Export DOCX"
+              disabled={exportingDocx}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }} aria-hidden="true">
+                description
+              </span>
+              {exportingDocx ? "Exporting..." : "Export DOCX"}
+            </button>
+          </>
+        ) : null}
         <button
           type="button"
           className={styles.saveVersionButton}

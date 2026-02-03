@@ -1,0 +1,104 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`math-canvas export layout builds clean export HTML without action controls 1`] = `
+"<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>uask-solution-sin-2-x-cos-2-x-1-2026-02-03.pdf</title>
+  <style>
+    :root { color-scheme: light; }
+    body { margin: 0; background: #f4f6f8; font-family: "Segoe UI", Arial, sans-serif; color: #101828; }
+    .doc-root { max-width: 980px; margin: 0 auto; padding: 24px; }
+    .sheet {
+      background: #fff; border: 1px solid #d9dde5; border-radius: 12px;
+      padding: 28px 34px; margin-bottom: 24px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+    }
+    .brand { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #48617f; }
+    .title { margin: 8px 0 6px; font-size: 30px; font-weight: 700; }
+    .meta { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: #55657f; border-bottom: 1px solid #e4e7ed; padding-bottom: 10px; margin-bottom: 14px; }
+    .page-title { font-size: 14px; font-weight: 700; margin: 4px 0 12px; color: #1f3f63; }
+    .section { border: 1px solid #e5e8ee; border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; break-inside: avoid; page-break-inside: avoid; }
+    .section h3 { margin: 0 0 10px; font-size: 16px; color: #1f3550; }
+    .step-card { border: 1px solid #ecf0f5; border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; break-inside: avoid; page-break-inside: avoid; }
+    .step-card h4 { margin: 0 0 8px; font-size: 14px; color: #17406f; }
+    .step-prose { font-size: 14px; line-height: 1.6; }
+    .step-math { margin-top: 8px; text-align: center; }
+    .final-answer-content { font-size: 16px; font-weight: 700; text-align: center; }
+    .verification-item { margin-bottom: 8px; font-size: 13px; line-height: 1.5; }
+    .verification-math { margin-top: 5px; }
+    .rich-text-export p { margin: 0 0 8px; }
+    .rich-text-export ul, .rich-text-export ol { margin: 0 0 8px 20px; }
+    .rich-text-export table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+    .rich-text-export td, .rich-text-export th { border: 1px solid #d7deea; padding: 6px 8px; }
+    .rich-text-export a { color: #1b5ca1; text-decoration: underline; }
+    .plot-card { border: 1px solid #e1e6ee; border-radius: 10px; padding: 10px; break-inside: avoid; }
+    .plot-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+    .plot-svg { width: 100%; height: auto; max-height: 260px; background: #fff; }
+    .plot-axis-labels { display: flex; justify-content: space-between; font-size: 12px; color: #42526a; margin-top: 6px; }
+    .paper-page-break { page-break-before: always; }
+    math { font-size: 1.05em; color: #101828; }
+    .step-math math, .verification-math math { display: inline-block; }
+    @media print {
+      body { margin: 0; background: #fff; }
+      .doc-root { max-width: none; margin: 0; padding: 0; }
+      .sheet { border: 0; border-radius: 0; box-shadow: none; margin: 0; padding: 0.6in; }
+      [data-no-export="true"] { display: none !important; }
+      .paper-page-break { break-before: page; page-break-before: always; }
+      .section, .step-card, .plot-card { break-inside: avoid; page-break-inside: avoid; }
+      @page { size: Letter portrait; margin: 0.6in; }
+    }
+  </style>
+</head>
+<body>
+  <main class="doc-root">
+    <article class="sheet">
+      <div class="brand">uask.ai</div>
+      <h1 class="title">Solution</h1>
+      <div class="meta">
+        <span><strong>Date:</strong> 2/3/2026, 1:30:00 PM</span>
+        <span><strong>Solve ID:</strong> 158</span>
+        <span><strong>Tier:</strong> RESEARCH</span>
+      </div>
+      
+    <section class="paper-page ">
+      <div class="page-title">Canvas Page 1 - Identity</div>
+      
+          <section class="section problem-section">
+            <h3>Problem</h3>
+            <div class="problem-content"><span class="katex"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mrow><mi>sin</mi><mo>⁡</mo></mrow><mn>2</mn></msup><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo><mo>+</mo><msup><mrow><mi>cos</mi><mo>⁡</mo></mrow><mn>2</mn></msup><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\\sin^2(x)+\\cos^2(x)=1</annotation></semantics></math></span></div>
+          </section>
+        
+          <section class="section steps-section">
+            <h3>Step-by-step Solution</h3>
+            
+  <article class="step-card">
+    <h4>Step 1 - Use Identity</h4>
+    <div class="step-prose">Apply <span class="katex"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mrow><mi>sin</mi><mo>⁡</mo></mrow><mn>2</mn></msup><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo><mo>+</mo><msup><mrow><mi>cos</mi><mo>⁡</mo></mrow><mn>2</mn></msup><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\\sin^2(x)+\\cos^2(x)=1</annotation></semantics></math></span>.</div>
+    
+  </article>
+
+  <article class="step-card">
+    <h4>Step 2 - Conclude</h4>
+    
+    <div class="step-math"><span class="katex"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msup><mrow><mi>sin</mi><mo>⁡</mo></mrow><mn>2</mn></msup><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo><mo>+</mo><msup><mrow><mi>cos</mi><mo>⁡</mo></mrow><mn>2</mn></msup><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\\sin^2(x)+\\cos^2(x)=1</annotation></semantics></math></span></div>
+  </article>
+
+            <div class="verification"><h4>Verification</h4><div class="verification-item"><strong>check_1:</strong> Holds for all real x.</div></div>
+            <section class="section final-answer"><h3>Final Answer</h3><div class="final-answer-content"><span class="katex"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msup><mrow><mi>sin</mi><mo>⁡</mo></mrow><mn>2</mn></msup><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo><mo>+</mo><msup><mrow><mi>cos</mi><mo>⁡</mo></mrow><mn>2</mn></msup><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\\sin^2(x)+\\cos^2(x)=1</annotation></semantics></math></span></div></section>
+          </section>
+        
+      
+    </section>
+  
+    </article>
+  </main>
+  <script>
+    window.addEventListener("load", () => { setTimeout(() => window.print(), 220); });
+    window.addEventListener("afterprint", () => { window.close(); });
+  </script>
+</body>
+</html>"
+`;

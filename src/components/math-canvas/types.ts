@@ -47,7 +47,18 @@ export interface ElementBase {
 export interface TextElement extends ElementBase {
   type: "text";
   text: string;
+  richTextHtml?: string;
+  richTextJson?: Record<string, unknown>;
 }
+
+export type RichTextStyleOption =
+  | "title"
+  | "subtitle"
+  | "heading"
+  | "subheading"
+  | "section"
+  | "subsection"
+  | "body";
 
 export interface MathElement extends ElementBase {
   type: "math";
@@ -95,6 +106,8 @@ export type CanvasElement = TextElement | MathElement | ShapeElement | LineEleme
 export interface StepRow {
   title: string;
   explanation?: string;
+  explanationRichHtml?: string;
+  explanationRichJson?: Record<string, unknown>;
   mathLatex?: string;
 }
 

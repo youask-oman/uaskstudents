@@ -24,6 +24,11 @@ const cloneElement = (element: CanvasElement): CanvasElement => ({
   ...element,
   style: { ...element.style },
   ...(element.type === "plot" ? { points: element.points.map((point) => ({ ...point })) } : {}),
+  ...(element.type === "text" && element.richTextJson
+    ? {
+        richTextJson: JSON.parse(JSON.stringify(element.richTextJson)) as Record<string, unknown>,
+      }
+    : {}),
 });
 
 const cloneBlock = (block: CanvasBlock): CanvasBlock => {
@@ -192,7 +197,13 @@ export type DocumentAction =
   | { type: "MOVE_ELEMENTS"; elementIds: string[]; dx: number; dy: number }
   | { type: "RESIZE_ELEMENT"; elementId: string; width: number; height: number; x?: number; y?: number }
   | { type: "DELETE_ELEMENTS"; elementIds: string[] }
-  | { type: "SET_TEXT_CONTENT"; elementId: string; text: string }
+  | {
+      type: "SET_TEXT_CONTENT";
+      elementId: string;
+      text: string;
+      richTextHtml?: string;
+      richTextJson?: Record<string, unknown>;
+    }
   | { type: "SET_MATH_LATEX"; elementId: string; latexRaw: string }
   | { type: "UPDATE_BLOCK"; pageId: string; blockId: string; updater: (block: CanvasBlock) => CanvasBlock }
   | { type: "DELETE_BLOCK"; pageId: string; blockId: string }
@@ -288,7 +299,15 @@ export const documentReducer = (state: CanvasDocumentState, action: DocumentActi
     }
     case "SET_TEXT_CONTENT": {
       const nextPages = updateElementInPages(state.pages, action.elementId, (element) =>
-        element.type === "text" ? { ...element, text: action.text, updatedAt: Date.now() } : element
+        element.type === "text"
+          ? {
+              ...element,
+              text: action.text,
+              richTextHtml: action.richTextHtml,
+              richTextJson: action.richTextJson,
+              updatedAt: Date.now(),
+            }
+          : element
       );
       return commitSnapshot(state, { pages: nextPages });
     }

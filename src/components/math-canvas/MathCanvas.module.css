@@ -286,6 +286,108 @@
   cursor: not-allowed;
 }
 
+.secondaryActionButton {
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid #bfd0e6;
+  background: #ffffff;
+  color: #18416b;
+  padding: 0 12px;
+  font-weight: 700;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.secondaryActionButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.richTextToolbar {
+  position: sticky;
+  top: var(--toolbar-height);
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--divider-color);
+  background: #ffffff;
+}
+
+.richToolbarSelect {
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid #cfd9e8;
+  background: #ffffff;
+  color: #163a61;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 10px;
+  min-width: 128px;
+}
+
+.richToolbarButton {
+  min-width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid #cfd9e8;
+  background: #ffffff;
+  color: #1b3f67;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+
+.richToolbarButton:disabled,
+.richToolbarSelect:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.richToolbarButtonActive {
+  background: #e7f1ff;
+  border-color: #8eb3df;
+}
+
+.richToolbarMenuWrap {
+  position: relative;
+}
+
+.richToolbarPopup {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 210px;
+  border-radius: 10px;
+  border: 1px solid #d2ddeb;
+  background: #ffffff;
+  box-shadow: 0 10px 20px rgba(12, 28, 46, 0.14);
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.richToolbarInput {
+  width: 100%;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid #cfd9e8;
+  padding: 0 8px;
+  font-size: 13px;
+}
+
+.richToolbarPopupActions {
+  display: flex;
+  gap: 6px;
+}
+
 .versionSaveNotice {
   position: sticky;
   top: var(--toolbar-height);
@@ -438,6 +540,11 @@
   resize: vertical;
 }
 
+.inlineEditRichText {
+  min-height: 120px;
+  height: 180px;
+}
+
 .paperCanvas {
   position: relative;
   min-height: 620px;
@@ -471,8 +578,105 @@
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.92);
   padding: 8px 10px;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  overflow: auto;
+}
+
+.richTextElementContent {
+  color: inherit;
+  font-size: inherit;
+  line-height: 1.5;
+}
+
+.richTextElementContent p {
+  margin: 0 0 8px;
+}
+
+.richTextElementContent h1,
+.richTextEditorContent h1 {
+  font-size: 1.4em;
+  margin: 0 0 10px;
+}
+
+.richTextElementContent h2,
+.richTextEditorContent h2 {
+  font-size: 1.25em;
+  margin: 0 0 10px;
+}
+
+.richTextElementContent h3,
+.richTextEditorContent h3 {
+  font-size: 1.15em;
+  margin: 0 0 9px;
+}
+
+.richTextElementContent h4,
+.richTextElementContent h5,
+.richTextElementContent h6,
+.richTextEditorContent h4,
+.richTextEditorContent h5,
+.richTextEditorContent h6 {
+  margin: 0 0 8px;
+}
+
+.richTextElementContent ul,
+.richTextElementContent ol,
+.richTextEditorContent ul,
+.richTextEditorContent ol {
+  margin: 0 0 8px 20px;
+}
+
+.richTextElementContent a,
+.richTextEditorContent a {
+  color: #0f59a8;
+  text-decoration: underline;
+}
+
+.richTextElementContent table,
+.richTextEditorContent table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 220px;
+  table-layout: fixed;
+}
+
+.richTextElementContent td,
+.richTextElementContent th,
+.richTextEditorContent td,
+.richTextEditorContent th {
+  border: 1px solid #d2ddeb;
+  padding: 6px 8px;
+  vertical-align: top;
+}
+
+.canvasRichTextEditorWrap {
+  width: 100%;
+  height: 100%;
+  border: 1px solid #8eb4e8;
+  border-radius: 10px;
+  background: #ffffff;
+  overflow: auto;
+}
+
+.richTextEditorContent {
+  width: 100%;
+  min-height: 100%;
+  outline: none;
+  padding: 8px 10px;
+  color: var(--text-main);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.richTextEditorContent p {
+  margin: 0 0 8px;
+}
+
+.richTextEditorContent :global(.rt-title) {
+  color: #143a66;
+}
+
+.richTextEditorContent :global(.rt-subtitle) {
+  color: #245281;
 }
 
 .mathElementBody {
@@ -542,12 +746,8 @@
 
 .canvasTextEditor {
   position: absolute;
-  border: 1px solid #8eb4e8;
-  border-radius: 10px;
-  padding: 8px 10px;
-  resize: none;
-  outline: none;
-  background: #fff;
+  z-index: 5;
+  background: transparent;
 }
 
 .palettePanel {

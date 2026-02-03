@@ -1,0 +1,518 @@
+import katex from "katex";
+import type { CanvasElement, CanvasPageData, StepRow } from "../types";
+
+export interface SolutionExportPayload {
+  pages: CanvasPageData[];
+  title?: string;
+  solveId?: string;
+  tier?: string;
+  generatedAt?: string;
+}
+
+const MATH_DELIMITER_RE = /(\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\))/g;
+const HAS_DELIMITED_MATH_RE = /(\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\))/;
+const HAS_RAW_LATEX_RE = /\\[a-zA-Z]+|[_^{}]/;
+const SAFE_PROTOCOL_RE = /^(https?:|mailto:)/i;
+
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const normalizeWhitespace = (value: string): string => value.replace(/\s+/g, " ").trim();
+
+const stripMathDelimiters = (value: string): string => {
+  const trimmed = value.trim();
+  if (trimmed.startsWith("\\(") && trimmed.endsWith("\\)")) return trimmed.slice(2, -2).trim();
+  if (trimmed.startsWith("\\[") && trimmed.endsWith("\\]")) return trimmed.slice(2, -2).trim();
+  return trimmed;
+};
+
+const latexToHtml = (latex: string, displayMode: boolean): string => {
+  const source = stripMathDelimiters(latex);
+  if (!source) return "";
+  try {
+    return katex.renderToString(source, {
+      throwOnError: false,
+      displayMode,
+      output: "mathml",
+      strict: "ignore",
+      trust: false,
+    });
+  } catch {
+    return `<code>${escapeHtml(source)}</code>`;
+  }
+};
+
+const proseWithMathToHtml = (value: string): string => {
+  const text = value || "";
+  if (!text) return "";
+  let output = "";
+  let cursor = 0;
+  for (const match of text.matchAll(MATH_DELIMITER_RE)) {
+    const index = match.index ?? -1;
+    if (index < 0) continue;
+    const full = match[0];
+    const before = text.slice(cursor, index);
+    output += escapeHtml(before).replace(/\n/g, "<br/>");
+    const isDisplay = full.startsWith("\\[");
+    output += latexToHtml(full, isDisplay);
+    cursor = index + full.length;
+  }
+  output += escapeHtml(text.slice(cursor)).replace(/\n/g, "<br/>");
+  return output;
+};
+
+const richMathToHtml = (value: string, displayMode = false): string => {
+  const text = (value || "").trim();
+  if (!text) return "";
+  if (HAS_DELIMITED_MATH_RE.test(text)) return proseWithMathToHtml(text);
+  if (HAS_RAW_LATEX_RE.test(text)) return latexToHtml(text, displayMode);
+  return escapeHtml(text).replace(/\n/g, "<br/>");
+};
+
+const sanitizeRichHtmlFragment = (html: string): string => {
+  if (!html.trim()) return "";
+  if (typeof window === "undefined" || typeof window.DOMParser === "undefined") {
+    return escapeHtml(html);
+  }
+  const parser = new window.DOMParser();
+  const parsed = parser.parseFromString(`<body>${html}</body>`, "text/html");
+  const body = parsed.body;
+  body.querySelectorAll("script, style, iframe, object, embed").forEach((node) => node.remove());
+  body.querySelectorAll("*").forEach((node) => {
+    [...node.attributes].forEach((attribute) => {
+      const name = attribute.name.toLowerCase();
+      if (name.startsWith("on")) node.removeAttribute(attribute.name);
+    });
+    if (node instanceof HTMLAnchorElement) {
+      const href = node.getAttribute("href") || "";
+      if (!SAFE_PROTOCOL_RE.test(href)) node.removeAttribute("href");
+      node.setAttribute("target", "_blank");
+      node.setAttribute("rel", "noopener noreferrer nofollow");
+    }
+  });
+  return body.innerHTML;
+};
+
+const plainFromLatex = (value: string): string =>
+  stripMathDelimiters(value)
+    .replace(/\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g, "($1)/($2)")
+    .replace(/\\sqrt\s*\{([^{}]+)\}/g, "sqrt($1)")
+    .replace(/\\boxed\{([^}]+)\}/g, "$1")
+    .replace(/\\text\{([^}]+)\}/g, "$1")
+    .replace(/\\cdot/g, " * ")
+    .replace(/\\times/g, " x ")
+    .replace(/\\pm/g, " +/- ")
+    .replace(/\\leq/g, " <= ")
+    .replace(/\\geq/g, " >= ")
+    .replace(/\\neq/g, " != ")
+    .replace(/\\infty/g, " infinity ")
+    .replace(/\\(sin|cos|tan|cot|sec|csc|log|ln|exp)\b/g, "$1")
+    .replace(/\\([a-zA-Z]+)/g, "$1")
+    .replace(/[{}]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const plainText = (value: string): string =>
+  normalizeWhitespace(
+    value
+      .replace(MATH_DELIMITER_RE, (full) => plainFromLatex(full))
+      .replace(/\\boxed\{([^}]+)\}/g, "$1")
+      .replace(/\*\*/g, ""),
+  );
+
+const plainTextFromHtml = (value?: string): string => {
+  if (!value) return "";
+  if (typeof window === "undefined" || typeof window.DOMParser === "undefined") {
+    return plainText(value.replace(/<[^>]+>/g, " "));
+  }
+  const parser = new window.DOMParser();
+  const parsed = parser.parseFromString(`<body>${value}</body>`, "text/html");
+  return plainText(parsed.body.textContent || "");
+};
+
+const extractProblemText = (pages: CanvasPageData[]): string => {
+  for (const page of pages) {
+    for (const block of page.blocks || []) {
+      if (block.type === "recognition" && block.latex.trim()) return block.latex;
+    }
+  }
+  for (const page of pages) {
+    for (const block of page.blocks || []) {
+      if (block.type === "steps" && block.steps.length > 0) {
+        const first = block.steps[0];
+        const candidate = first.explanation || first.mathLatex || first.title;
+        if (candidate) return candidate;
+      }
+    }
+  }
+  return "solution";
+};
+
+const slugify = (value: string): string => {
+  const plain = plainText(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+  return plain || "solution";
+};
+
+export const hasExportableSolution = (pages: CanvasPageData[]): boolean => {
+  let hasProblem = false;
+  let hasSteps = false;
+  for (const page of pages) {
+    for (const block of page.blocks || []) {
+      if (block.type === "recognition" && block.latex.trim()) hasProblem = true;
+      if (block.type === "steps" && block.steps.length > 0) hasSteps = true;
+    }
+  }
+  return hasProblem && hasSteps;
+};
+
+export const suggestExportFileName = (
+  payload: SolutionExportPayload,
+  extension: "pdf" | "docx",
+): string => {
+  const slug = slugify(extractProblemText(payload.pages));
+  const day = new Date(payload.generatedAt || Date.now()).toISOString().slice(0, 10);
+  return `uask-solution-${slug}-${day}.${extension}`;
+};
+
+const renderPlotSvg = (element: CanvasElement): string => {
+  if (element.type !== "plot" || element.points.length < 2) return "";
+  const width = 520;
+  const height = 240;
+  const padding = 24;
+  const xs = element.points.map((p) => p.x);
+  const ys = element.points.map((p) => p.y);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  const spanX = Math.max(1e-9, maxX - minX);
+  const spanY = Math.max(1e-9, maxY - minY);
+
+  const path = element.points
+    .map((p, idx) => {
+      const px = padding + ((p.x - minX) / spanX) * (width - padding * 2);
+      const py = height - padding - ((p.y - minY) / spanY) * (height - padding * 2);
+      return `${idx === 0 ? "M" : "L"}${px.toFixed(2)} ${py.toFixed(2)}`;
+    })
+    .join(" ");
+
+  return `
+    <div class="plot-card">
+      <div class="plot-title">${escapeHtml(element.title || "Graph")}</div>
+      <svg viewBox="0 0 ${width} ${height}" class="plot-svg" role="img" aria-label="${escapeHtml(
+        element.title || "Graph",
+      )}">
+        <rect x="0" y="0" width="${width}" height="${height}" fill="#fff" stroke="#d8dee9" />
+        <path d="${path}" fill="none" stroke="#1f4f8a" stroke-width="2.2" />
+      </svg>
+      <div class="plot-axis-labels">
+        <span>x: ${escapeHtml(element.xLabel || "x")}</span>
+        <span>y: ${escapeHtml(element.yLabel || "y")}</span>
+      </div>
+    </div>
+  `;
+};
+
+const renderStep = (step: StepRow, index: number): string => `
+  <article class="step-card">
+    <h4>Step ${index + 1}${step.title ? ` - ${escapeHtml(step.title)}` : ""}</h4>
+    ${
+      step.explanationRichHtml
+        ? `<div class="step-prose rich-text">${sanitizeRichHtmlFragment(step.explanationRichHtml)}</div>`
+        : step.explanation
+          ? `<div class="step-prose">${proseWithMathToHtml(step.explanation)}</div>`
+          : ""
+    }
+    ${step.mathLatex ? `<div class="step-math">${latexToHtml(step.mathLatex, true)}</div>` : ""}
+  </article>
+`;
+
+const renderPage = (page: CanvasPageData, pageIndex: number): string => {
+  const blocks = page.blocks || [];
+  const blockHtml = blocks
+    .map((block) => {
+      if (block.type === "recognition") {
+        return `
+          <section class="section problem-section">
+            <h3>Problem</h3>
+            <div class="problem-content">${richMathToHtml(block.latex, true)}</div>
+          </section>
+        `;
+      }
+      if (block.type === "steps") {
+        return `
+          <section class="section steps-section">
+            <h3>Step-by-step Solution</h3>
+            ${block.steps.map((step, idx) => renderStep(step, idx)).join("")}
+            ${
+              block.verificationChecks && block.verificationChecks.length > 0
+                ? `<div class="verification"><h4>Verification</h4>${block.verificationChecks
+                    .map(
+                      (check) =>
+                        `<div class="verification-item"><strong>${escapeHtml(check.checkId)}:</strong> ${escapeHtml(
+                          check.message,
+                        )}${
+                          check.evidenceMath ? `<div class="verification-math">${latexToHtml(check.evidenceMath, false)}</div>` : ""
+                        }</div>`,
+                    )
+                    .join("")}</div>`
+                : ""
+            }
+            ${
+              block.result
+                ? `<section class="section final-answer"><h3>Final Answer</h3><div class="final-answer-content">${richMathToHtml(
+                    block.result,
+                    true,
+                  )}</div></section>`
+                : ""
+            }
+          </section>
+        `;
+      }
+      return `
+        <section class="section notes-section">
+          <h3>Notes</h3>
+          <div>${proseWithMathToHtml(block.text)}</div>
+        </section>
+      `;
+    })
+    .join("");
+
+  const elementHtml = page.elements
+    .map((element) => {
+      if (element.type === "math") {
+        return `<section class="section"><h3>Math Block</h3><div class="step-math">${latexToHtml(
+          element.latexRaw,
+          true,
+        )}</div></section>`;
+      }
+      if (element.type === "text") {
+        const richHtml = sanitizeRichHtmlFragment(element.richTextHtml || "");
+        return `<section class="section"><h3>Text Block</h3><div class="rich-text-export">${
+          richHtml || proseWithMathToHtml(element.text)
+        }</div></section>`;
+      }
+      if (element.type === "plot") {
+        return `<section class="section"><h3>Graph</h3>${renderPlotSvg(element)}</section>`;
+      }
+      return "";
+    })
+    .join("");
+
+  return `
+    <section class="paper-page ${pageIndex > 0 ? "paper-page-break" : ""}">
+      <div class="page-title">Canvas Page ${pageIndex + 1}${page.title ? ` - ${escapeHtml(page.title)}` : ""}</div>
+      ${blockHtml}
+      ${elementHtml}
+    </section>
+  `;
+};
+
+export const buildExportHtml = (payload: SolutionExportPayload): string => {
+  const generatedAt = new Date(payload.generatedAt || Date.now());
+  const generatedLabel = generatedAt.toLocaleString();
+  const fileTitle = suggestExportFileName(payload, "pdf");
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(fileTitle)}</title>
+  <style>
+    :root { color-scheme: light; }
+    body { margin: 0; background: #f4f6f8; font-family: "Segoe UI", Arial, sans-serif; color: #101828; }
+    .doc-root { max-width: 980px; margin: 0 auto; padding: 24px; }
+    .sheet {
+      background: #fff; border: 1px solid #d9dde5; border-radius: 12px;
+      padding: 28px 34px; margin-bottom: 24px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+    }
+    .brand { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #48617f; }
+    .title { margin: 8px 0 6px; font-size: 30px; font-weight: 700; }
+    .meta { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: #55657f; border-bottom: 1px solid #e4e7ed; padding-bottom: 10px; margin-bottom: 14px; }
+    .page-title { font-size: 14px; font-weight: 700; margin: 4px 0 12px; color: #1f3f63; }
+    .section { border: 1px solid #e5e8ee; border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; break-inside: avoid; page-break-inside: avoid; }
+    .section h3 { margin: 0 0 10px; font-size: 16px; color: #1f3550; }
+    .step-card { border: 1px solid #ecf0f5; border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; break-inside: avoid; page-break-inside: avoid; }
+    .step-card h4 { margin: 0 0 8px; font-size: 14px; color: #17406f; }
+    .step-prose { font-size: 14px; line-height: 1.6; }
+    .step-math { margin-top: 8px; text-align: center; }
+    .final-answer-content { font-size: 16px; font-weight: 700; text-align: center; }
+    .verification-item { margin-bottom: 8px; font-size: 13px; line-height: 1.5; }
+    .verification-math { margin-top: 5px; }
+    .rich-text-export p { margin: 0 0 8px; }
+    .rich-text-export ul, .rich-text-export ol { margin: 0 0 8px 20px; }
+    .rich-text-export table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+    .rich-text-export td, .rich-text-export th { border: 1px solid #d7deea; padding: 6px 8px; }
+    .rich-text-export a { color: #1b5ca1; text-decoration: underline; }
+    .plot-card { border: 1px solid #e1e6ee; border-radius: 10px; padding: 10px; break-inside: avoid; }
+    .plot-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+    .plot-svg { width: 100%; height: auto; max-height: 260px; background: #fff; }
+    .plot-axis-labels { display: flex; justify-content: space-between; font-size: 12px; color: #42526a; margin-top: 6px; }
+    .paper-page-break { page-break-before: always; }
+    math { font-size: 1.05em; color: #101828; }
+    .step-math math, .verification-math math { display: inline-block; }
+    @media print {
+      body { margin: 0; background: #fff; }
+      .doc-root { max-width: none; margin: 0; padding: 0; }
+      .sheet { border: 0; border-radius: 0; box-shadow: none; margin: 0; padding: 0.6in; }
+      [data-no-export="true"] { display: none !important; }
+      .paper-page-break { break-before: page; page-break-before: always; }
+      .section, .step-card, .plot-card { break-inside: avoid; page-break-inside: avoid; }
+      @page { size: Letter portrait; margin: 0.6in; }
+    }
+  </style>
+</head>
+<body>
+  <main class="doc-root">
+    <article class="sheet">
+      <div class="brand">uask.ai</div>
+      <h1 class="title">${escapeHtml(payload.title || "Solution")}</h1>
+      <div class="meta">
+        <span><strong>Date:</strong> ${escapeHtml(generatedLabel)}</span>
+        ${payload.solveId ? `<span><strong>Solve ID:</strong> ${escapeHtml(payload.solveId)}</span>` : ""}
+        ${payload.tier ? `<span><strong>Tier:</strong> ${escapeHtml(payload.tier)}</span>` : ""}
+      </div>
+      ${payload.pages.map((page, index) => renderPage(page, index)).join("")}
+    </article>
+  </main>
+  <script>
+    window.addEventListener("load", () => { setTimeout(() => window.print(), 220); });
+    window.addEventListener("afterprint", () => { window.close(); });
+  </script>
+</body>
+</html>`;
+};
+
+export const exportCanvasToPdf = (payload: SolutionExportPayload): void => {
+  if (typeof window === "undefined") return;
+  const popup = window.open("", "_blank", "noopener,noreferrer");
+  if (!popup) throw new Error("Popup blocked. Please allow popups for exports.");
+  const html = buildExportHtml(payload);
+  popup.document.open();
+  popup.document.write(html);
+  popup.document.close();
+};
+
+export const exportCanvasToDocx = async (payload: SolutionExportPayload): Promise<void> => {
+  const docxLib = await import("docx");
+  const fileSaverModule = await import("file-saver");
+  const saveAs: ((data: Blob, filename: string) => void) | undefined =
+    (fileSaverModule as { saveAs?: (data: Blob, filename: string) => void }).saveAs ||
+    (fileSaverModule as { default?: { saveAs?: (data: Blob, filename: string) => void } }).default?.saveAs;
+  if (!saveAs) throw new Error("Unable to load file-saver.");
+
+  const { Document, Packer, Paragraph, HeadingLevel, AlignmentType, Table, TableRow, TableCell, WidthType } = docxLib;
+  const generatedAt = new Date(payload.generatedAt || Date.now());
+  const generatedLabel = generatedAt.toLocaleString();
+
+  const children: import("docx").FileChild[] = [
+    new Paragraph({ text: "uask.ai", heading: HeadingLevel.HEADING_3 }),
+    new Paragraph({ text: payload.title || "Solution", heading: HeadingLevel.TITLE }),
+    new Paragraph({
+      text: `Date: ${generatedLabel}${payload.solveId ? ` | Solve ID: ${payload.solveId}` : ""}${
+        payload.tier ? ` | Tier: ${payload.tier}` : ""
+      }`,
+    }),
+  ];
+
+  payload.pages.forEach((page, pageIdx) => {
+    children.push(
+      new Paragraph({
+        text: `Canvas Page ${pageIdx + 1}${page.title ? ` - ${plainText(page.title)}` : ""}`,
+        heading: HeadingLevel.HEADING_2,
+        pageBreakBefore: pageIdx > 0,
+      }),
+    );
+
+    for (const block of page.blocks || []) {
+      if (block.type === "recognition") {
+        children.push(new Paragraph({ text: "Problem", heading: HeadingLevel.HEADING_3 }));
+        children.push(new Paragraph({ text: plainText(block.latex) }));
+        continue;
+      }
+
+      if (block.type === "steps") {
+        children.push(new Paragraph({ text: "Step-by-step Solution", heading: HeadingLevel.HEADING_3 }));
+        block.steps.forEach((step, idx) => {
+          children.push(
+            new Paragraph({
+              text: `Step ${idx + 1}${step.title ? ` - ${plainText(step.title)}` : ""}`,
+              heading: HeadingLevel.HEADING_4,
+            }),
+          );
+          const stepExplanation = plainTextFromHtml(step.explanationRichHtml) || plainText(step.explanation || "");
+          if (stepExplanation) children.push(new Paragraph({ text: stepExplanation }));
+          if (step.mathLatex) children.push(new Paragraph({ text: plainText(step.mathLatex), alignment: AlignmentType.CENTER }));
+        });
+        if (block.verificationChecks && block.verificationChecks.length > 0) {
+          children.push(new Paragraph({ text: "Verification", heading: HeadingLevel.HEADING_4 }));
+          block.verificationChecks.forEach((check) => {
+            children.push(new Paragraph({ text: `${check.checkId}: ${plainText(check.message)}` }));
+            if (check.evidenceMath) children.push(new Paragraph({ text: plainText(check.evidenceMath) }));
+          });
+        }
+        if (block.result) {
+          children.push(new Paragraph({ text: "Final Answer", heading: HeadingLevel.HEADING_3 }));
+          children.push(new Paragraph({ text: plainText(block.result), alignment: AlignmentType.CENTER }));
+        }
+        continue;
+      }
+
+      children.push(new Paragraph({ text: "Notes", heading: HeadingLevel.HEADING_3 }));
+      children.push(new Paragraph({ text: plainText(block.text) }));
+    }
+
+    for (const element of page.elements) {
+      if (element.type === "text") {
+        children.push(new Paragraph({ text: "Text Block", heading: HeadingLevel.HEADING_3 }));
+        const textValue = plainTextFromHtml(element.richTextHtml) || plainText(element.text);
+        children.push(new Paragraph({ text: textValue }));
+      } else if (element.type === "math") {
+        children.push(new Paragraph({ text: "Math Block", heading: HeadingLevel.HEADING_3 }));
+        children.push(new Paragraph({ text: plainText(element.latexRaw), alignment: AlignmentType.CENTER }));
+      } else if (element.type === "plot") {
+        children.push(new Paragraph({ text: `Graph - ${plainText(element.title || "Plot")}`, heading: HeadingLevel.HEADING_3 }));
+        const rows = [
+          new TableRow({
+            children: [
+              new TableCell({ children: [new Paragraph("x")] }),
+              new TableCell({ children: [new Paragraph("y")] }),
+            ],
+          }),
+          ...element.points.slice(0, 30).map(
+            (point) =>
+              new TableRow({
+                children: [
+                  new TableCell({ children: [new Paragraph(String(point.x))] }),
+                  new TableCell({ children: [new Paragraph(String(point.y))] }),
+                ],
+              }),
+          ),
+        ];
+        children.push(
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows,
+          }),
+        );
+      }
+    }
+  });
+
+  const doc = new Document({
+    sections: [{ properties: {}, children }],
+  });
+  const blob = await Packer.toBlob(doc);
+  saveAs(blob, suggestExportFileName(payload, "docx"));
+};

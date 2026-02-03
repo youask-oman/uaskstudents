@@ -1,37 +1,65 @@
-Solve the math problem below with EXTREME detail. Follow these rules EXACTLY:
+Solve the math problem below with EXTREME detail. Follow these rules EXACTLY.
+
+RULE 0: MATH RENDERING COMPATIBILITY (CRITICAL)
+Your answer is rendered as Markdown with KaTeX/MathJax-style math support.
+You MUST follow this formatting contract:
+
+A) Inline math: use ONLY $ ... $
+B) Display math: use ONLY $$ ... $$ (use rarely)
+C) NEVER use \( \) or \[ \] (not allowed)
+D) Line breaks:
+   - NEVER use \\ in normal text
+   - The ONLY place \\ is allowed is INSIDE an aligned display block:
+     $$\begin{aligned} ... \\ ... \end{aligned}$$
+   - Do NOT put \\ right after $$ or right before $$ (forbidden)
+E) Display blocks $$ ... $$ must contain ONLY math (no English inside)
+
+If you violate Rule 0, the output is invalid.
 
 RULE 1: STEPS
-- Output EXACTLY 12-18 numbered steps (Step 1, Step 2, ..., Step N)
-- Each step must be a complete sentence explaining ONE micro-operation.
-- Each step MUST have a title field: title: short specific description (≤120 chars)
-- NO skipping steps (e.g., "Step 3: Square both sides" -> "Step 4: Simplify left side (√a)² = a" -> "Step 5: Expand right side (x-3)² = x²-6x+9")
+- Output EXACTLY 12-18 numbered steps (Step 1, Step 2, ..., Step N).
+- Each step must be ONE complete sentence describing ONE micro-operation (no multi-action steps).
+- Each step MUST be on ONE line and MUST follow this exact pattern:
+  Step k: title: <short specific description ≤120 chars> — <one sentence micro-operation>
+- NO skipping steps; expand every algebra/calculus transformation into micro-operations.
 
 RULE 2: DOMAIN CONSTRAINTS
-- BEFORE solving, state ALL constraints in a dedicated section:
-  "Domain constraints:
-   • Radicand: x + 3 ≥ 0 → x ≥ -3
-   • RHS non-negative: x - 3 ≥ 0 → x ≥ 3
-   • Combined: x ≥ 3"
-   • Square roots: radicand ≥ 0
-   • Denominators: ≠ 0
-   • Logs: argument > 0
-- Store constraints in question.constraints as bullet-like strings.
+- BEFORE Step 1, state ALL domain constraints in a dedicated section (even if trivial).
+- Format exactly:
+  Domain constraints:
+  • <constraint 1>
+  • <constraint 2>
+  • <combined conclusion if relevant>
+- Include all applicable types:
+  • Square roots / even roots: radicand ≥ 0
+  • Denominators: expression ≠ 0
+  • Logs: argument > 0 (and base constraints if relevant)
+  • Inverse trig: principal-value restrictions if relevant
+  • Any other restriction implied by the problem
 
+RULE 3: VERIFICATION (MANDATORY)
+- AFTER the steps, include EXACTLY 3 checks in this exact format:
 
-RULE 3: VERIFICATION
-- AFTER solution, show 3 explicit checks:
-  "Verification:
-   (1) Domain check: x=6 satisfies x ≥ 3 ✓
-   (2) Substitution: √(6+3) = √9 = 3 and 6-3 = 3 ✓
-   (3) Extraneous rejection: x=1 fails x ≥ 3 ✗"
+Verification:
+(1) Domain check: <show the final answer satisfies ALL constraints>
+(2) Substitution/check: <plug into the original OR differentiate/compare to confirm>
+(3) Extraneous/edge-case rejection: <show why any rejected candidate fails, or state none exist and why>
 
-Rule 3.1: FINAL ANSWER (MANDATORY)
-    - final_answer.value: plain English answer (e.g., "x = 6")
-    - final_answer.latex: clean LaTeX (e.g., "x = 6")
-    - final_answer.units: null or unit string
+RULE 4: FINAL ANSWER (MANDATORY)
+- End with EXACTLY these two lines:
 
-Rule 4: PLOTLY SPEC
+Final Answer: <plain English, concise>
+LaTeX: <clean LaTeX final result ONLY, with NO delimiters like $...$, \( \), \[ \], or $$...$$>
 
+RULE 5: PLOTLY SPEC (MANDATORY, EXACTLY ONE CODE BLOCK TOTAL)
+- Include EXACTLY ONE fenced code block labeled json containing valid Plotly JSON.
+- This must be the ONLY code block in the entire response.
+- Use 5–9 sample points per series (arrays length 5–9).
+- Choose a meaningful plot:
+  • For equations: plot LHS and RHS as two series.
+  • For integrals: plot the integrand over a reasonable interval.
+  • For series/limits: plot partial sums or function behavior.
+- The JSON must be a single object with keys "data" and "layout" using this structure (fill with real numbers):
 - Include ONE fenced code block with valid Plotly JSON:
   "```json
   {
@@ -45,9 +73,10 @@ Rule 4: PLOTLY SPEC
 
 Rule 5: LANGUAGE
 - English ONLY (no other languages)
-- Math notation in LaTeX: $\sqrt{x+3}$, $x \geq 3$
-- NO JSON objects, NO schema fields, NO "final_answer" keys
-  (OPTIONAL FIX: allow JSON ONLY inside the single Plotly ```json block)
+- Write in Markdown.
+- Use LaTeX in $...$ for math, like $\sqrt{x+3}$ and $x \ge 3$.
+- NO extra code blocks and no extra JSON blocks (only the single Plotly json block is allowed).
+- No schema fields, no key-value objects, no “question.constraints”, no “final_answer.*”.
 
 Rule 6: LENGTH
 - Minimum 1500 characters total output
@@ -55,8 +84,9 @@ Rule 6: LENGTH
 PENALTY WARNING:
 - Missing step numbers → rejection
 - Missing domain constraints → rejection
-- Missing verification checks → rejection
+- Missing Final Answer lines → rejection
 - Missing Plotly code block → rejection
+
 
 NOW SOLVE THIS PROBLEM:
 {PROBLEM}

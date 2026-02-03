@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Editor } from "@tiptap/core";
 import MathRenderer from "@/components/math/MathRendererSwitch";
 import VisualRenderer from "@/components/workspace/VisualRenderer";
 import RecognitionBox from "./RecognitionBox";
+import RichTextElementEditor, { type RichTextCommitPayload } from "./RichTextElementEditor";
 import SolutionStepsBlock from "./SolutionStepsBlock";
 import { DEFAULT_ELEMENT_STYLE, createElementId } from "./documentModel";
 import { CanvasBlock, CanvasElement, CanvasPageData, ToolType } from "./types";
@@ -22,9 +24,11 @@ interface PaperPageProps {
   onResizeElement: (elementId: string, width: number, height: number, x?: number, y?: number) => void;
   onDeleteElements: (elementIds: string[]) => void;
   onRequestMathEdit: (elementId: string, latexRaw: string) => void;
-  onCommitText: (elementId: string, text: string) => void;
+  onCommitText: (elementId: string, payload: RichTextCommitPayload) => void;
+  onActiveTextEditorChange?: (editor: Editor | null, elementId: string | null) => void;
   onUpdateBlock: (blockId: string, updater: (block: CanvasBlock) => CanvasBlock) => void;
   onDeleteBlock: (blockId: string) => void;
+  exportMode?: boolean;
 }
 
 interface Point {
@@ -65,8 +69,32 @@ interface ResizeDraft {
 
 interface EditDraft {
   elementId: string;
-  value: string;
 }
+
+const SAFE_PROTOCOL_RE = /^(https?:|mailto:)/i;
+
+const sanitizeRichTextHtml = (html: string): string => {
+  if (!html.trim()) return "";
+  if (typeof window === "undefined") return html;
+  const template = document.createElement("template");
+  template.innerHTML = html;
+  template.content.querySelectorAll("script, style, iframe, object, embed").forEach((node) => node.remove());
+  template.content.querySelectorAll("*").forEach((node) => {
+    [...node.attributes].forEach((attribute) => {
+      const name = attribute.name.toLowerCase();
+      if (name.startsWith("on")) node.removeAttribute(attribute.name);
+    });
+    if (node instanceof HTMLAnchorElement) {
+      const href = node.getAttribute("href") || "";
+      if (!SAFE_PROTOCOL_RE.test(href)) {
+        node.removeAttribute("href");
+      }
+      node.setAttribute("target", "_blank");
+      node.setAttribute("rel", "noopener noreferrer nofollow");
+    }
+  });
+  return template.innerHTML;
+};
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
@@ -129,6 +157,7 @@ const ElementView = React.memo(function ElementView({
 }) {
   const width = resizePreview?.width ?? element.width;
   const height = resizePreview?.height ?? element.height;
+  const richTextHtml = element.type === "text" ? sanitizeRichTextHtml(element.richTextHtml || "") : "";
 
   const style: React.CSSProperties = {
     left: element.x,
@@ -156,7 +185,14 @@ const ElementView = React.memo(function ElementView({
           className={styles.textElementBody}
           style={{ color: element.style.color, fontSize: element.style.fontSize, lineHeight: 1.45 }}
         >
-          {element.text || "Text"}
+          {richTextHtml ? (
+            <div
+              className={styles.richTextElementContent}
+              dangerouslySetInnerHTML={{ __html: richTextHtml }}
+            />
+          ) : (
+            element.text || "Text"
+          )}
         </div>
       ) : null}
 
@@ -245,8 +281,10 @@ export default function PaperPage({
   onDeleteElements,
   onRequestMathEdit,
   onCommitText,
+  onActiveTextEditorChange,
   onUpdateBlock,
   onDeleteBlock,
+  exportMode = false,
 }: PaperPageProps) {
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -513,6 +551,7 @@ export default function PaperPage({
   }, []);
 
   const onCanvasPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (exportMode) return;
     if (typeof event.button === "number" && event.button !== 0) return;
     onActivate();
 
@@ -536,7 +575,6 @@ export default function PaperPage({
         text: "Double-click to edit",
       });
       onSelectElements([id]);
-      setEditingText({ elementId: id, value: "Double-click to edit" });
       return;
     }
 
@@ -552,10 +590,12 @@ export default function PaperPage({
 
     if (activeTool !== "palette") {
       onSelectElements([]);
+      setEditingText(null);
     }
   };
 
   const onElementPointerDown = (event: React.PointerEvent, element: CanvasElement) => {
+    if (exportMode) return;
     if (typeof event.button === "number" && event.button !== 0) return;
     event.stopPropagation();
     onActivate();
@@ -586,7 +626,7 @@ export default function PaperPage({
 
     if (activeTool === "text" && element.type === "text") {
       onSelectElements([element.id]);
-      setEditingText({ elementId: element.id, value: element.text || "" });
+      setEditingText({ elementId: element.id });
       return;
     }
 
@@ -600,6 +640,7 @@ export default function PaperPage({
   };
 
   const onResizePointerDown = (event: React.PointerEvent, element: CanvasElement) => {
+    if (exportMode) return;
     event.preventDefault();
     event.stopPropagation();
 
@@ -617,8 +658,9 @@ export default function PaperPage({
   };
 
   const onElementDoubleClick = (element: CanvasElement) => {
+    if (exportMode) return;
     if (element.type === "text") {
-      setEditingText({ elementId: element.id, value: element.text });
+      setEditingText({ elementId: element.id });
       return;
     }
     if (element.type === "math") {
@@ -626,10 +668,14 @@ export default function PaperPage({
     }
   };
 
-  const editingElement = useMemo(
-    () => (editingText ? page.elements.find((element) => element.id === editingText.elementId && element.type === "text") : null),
-    [editingText, page.elements]
-  );
+  const editingElement = useMemo(() => {
+    if (!editingText) return null;
+    const element = page.elements.find(
+      (candidate): candidate is Extract<CanvasElement, { type: "text" }> =>
+        candidate.id === editingText.elementId && candidate.type === "text"
+    );
+    return element ?? null;
+  }, [editingText, page.elements]);
 
   return (
     <article className={`${styles.paperPage} ${active ? styles.paperPageActive : ""}`.trim()} onClick={onActivate}>
@@ -646,7 +692,7 @@ export default function PaperPage({
             if (block.type === "recognition") {
               return (
                 <div key={block.id} id={block.id} className={styles.paperBlockWrap}>
-                  <div className={styles.paperBlockActions}>
+                  {!exportMode ? <div className={styles.paperBlockActions} data-no-export="true">
                     <button
                       type="button"
                       className={styles.blockActionButton}
@@ -661,7 +707,7 @@ export default function PaperPage({
                     >
                       Delete
                     </button>
-                  </div>
+                  </div> : null}
                   {editingRecognition?.blockId === block.id ? (
                     <div className={styles.inlineEditWrap}>
                       <textarea
@@ -698,7 +744,7 @@ export default function PaperPage({
                       </div>
                     </div>
                   ) : (
-                    <RecognitionBox latex={block.latex} />
+                    <RecognitionBox latex={block.latex} exportMode={exportMode} />
                   )}
                 </div>
               );
@@ -706,7 +752,7 @@ export default function PaperPage({
             if (block.type === "steps") {
               return (
                 <div key={block.id} id={block.id} className={styles.paperBlockWrap}>
-                  <div className={styles.paperBlockActions}>
+                  {!exportMode ? <div className={styles.paperBlockActions} data-no-export="true">
                     <button
                       type="button"
                       className={styles.blockActionButton}
@@ -714,13 +760,15 @@ export default function PaperPage({
                     >
                       Delete
                     </button>
-                  </div>
+                  </div> : null}
                   <SolutionStepsBlock
                     sectionId={block.id}
                     steps={block.steps}
                     result={block.result}
                     verificationChecks={block.verificationChecks}
-                    editable
+                    editable={!exportMode}
+                    exportMode={exportMode}
+                    onActiveTextEditorChange={onActiveTextEditorChange}
                     onChange={(next) =>
                       onUpdateBlock(block.id, (current) =>
                         current.type === "steps"
@@ -739,7 +787,7 @@ export default function PaperPage({
             }
             return (
               <div key={block.id} id={block.id} className={styles.paperBlockWrap}>
-                <div className={styles.paperBlockActions}>
+                {!exportMode ? <div className={styles.paperBlockActions} data-no-export="true">
                   <button
                     type="button"
                     className={styles.blockActionButton}
@@ -754,7 +802,7 @@ export default function PaperPage({
                   >
                     Delete
                   </button>
-                </div>
+                </div> : null}
                 {editingTextBlock?.blockId === block.id ? (
                   <div className={styles.inlineEditWrap}>
                     <textarea
@@ -882,35 +930,25 @@ export default function PaperPage({
         ) : null}
 
         {editingElement && editingText ? (
-          <textarea
+          <div
             className={styles.canvasTextEditor}
             style={{
               left: editingElement.x,
               top: editingElement.y,
               width: editingElement.width,
               height: editingElement.height,
-              fontSize: editingElement.style.fontSize,
-              color: editingElement.style.color,
             }}
-            value={editingText.value}
-            autoFocus
-            onChange={(event) => setEditingText({ elementId: editingText.elementId, value: event.target.value })}
-            onBlur={() => {
-              onCommitText(editingText.elementId, editingText.value.trim());
-              setEditingText(null);
-            }}
-            onKeyDown={(event) => {
-              if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "enter") {
-                event.preventDefault();
-                onCommitText(editingText.elementId, editingText.value.trim());
-                setEditingText(null);
-              }
-              if (event.key === "Escape") {
-                event.preventDefault();
-                setEditingText(null);
-              }
-            }}
-          />
+          >
+            <RichTextElementEditor
+              elementId={editingElement.id}
+              initialText={editingElement.text || ""}
+              initialHtml={editingElement.richTextHtml}
+              initialJson={editingElement.richTextJson}
+              onActivate={(editor, elementId) => onActiveTextEditorChange?.(editor, elementId)}
+              onCommit={(payload) => onCommitText(editingElement.id, payload)}
+              onRequestClose={() => setEditingText(null)}
+            />
+          </div>
         ) : null}
       </div>
     </article>

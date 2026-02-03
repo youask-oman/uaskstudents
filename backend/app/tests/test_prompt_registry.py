@@ -152,3 +152,30 @@ def test_ensure_standard_solve_binding_sets_extreme_default_and_deactivates_lega
     assert prompt_registry_service.get_active_schema(session, "youask_math_solver_standard_solve_extreme_v1") is not None
     assert prompt_registry_service.get_active_prompt(session, "solve_standard_moderate_v1") is None
     assert prompt_registry_service.get_active_schema(session, "youask_math_solver_standard_solve_v1") is None
+
+
+def test_ensure_freeform_solve_prompts_by_tier_uses_updated_assets(tmp_path):
+    session = _make_session(tmp_path)
+    created = prompt_registry_service.ensure_freeform_solve_prompts_by_tier(session, updated_by="tester")
+
+    repo_root = Path(__file__).resolve().parents[3]
+    expected_assets = {
+        prompt_registry_service.FREEFORM_SOLVE_FREE_PROMPT_ID: repo_root
+        / "static_design"
+        / "sug_prompts_qwen"
+        / "free_form_math_free_fast_v1.txt",
+        prompt_registry_service.FREEFORM_SOLVE_PROMPT_ID: repo_root
+        / "static_design"
+        / "sug_prompts_qwen"
+        / "free_form_math_standard_detailed.txt",
+        prompt_registry_service.FREEFORM_SOLVE_RESEARCH_PROMPT_ID: repo_root
+        / "static_design"
+        / "sug_prompts_qwen"
+        / "free_form_math_research_rigorous_v1.txt",
+    }
+
+    assert set(created.keys()) == set(expected_assets.keys())
+    for prompt_id, path in expected_assets.items():
+        row = prompt_registry_service.get_active_prompt(session, prompt_id)
+        assert row is not None
+        assert row.content == path.read_text(encoding="utf-8").strip()

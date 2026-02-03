@@ -1,7 +1,10 @@
 "use client";
 
 import React from "react";
+import type { Editor } from "@tiptap/core";
 import MathRenderer from "@/components/math/MathRendererSwitch";
+import RichTextElementEditor from "./RichTextElementEditor";
+import type { RichTextCommitPayload } from "./RichTextElementEditor";
 import { StepRow, VerificationCheck } from "./types";
 import styles from "./MathCanvas.module.css";
 
@@ -11,8 +14,40 @@ interface SolutionStepsBlockProps {
   verificationChecks?: VerificationCheck[];
   sectionId?: string;
   editable?: boolean;
+  exportMode?: boolean;
+  onActiveTextEditorChange?: (editor: Editor | null, elementId: string | null) => void;
   onChange?: (next: { steps: StepRow[]; result?: string; verificationChecks?: VerificationCheck[] }) => void;
 }
+
+const SAFE_PROTOCOL_RE = /^(https?:|mailto:)/i;
+
+const sanitizeRichTextHtml = (html: string): string => {
+  if (!html.trim()) return "";
+  if (typeof window === "undefined") return html;
+  const template = document.createElement("template");
+  template.innerHTML = html;
+  template.content.querySelectorAll("script, style, iframe, object, embed").forEach((node) => node.remove());
+  template.content.querySelectorAll("*").forEach((node) => {
+    [...node.attributes].forEach((attribute) => {
+      const name = attribute.name.toLowerCase();
+      if (name.startsWith("on")) node.removeAttribute(attribute.name);
+    });
+    if (node instanceof HTMLAnchorElement) {
+      const href = node.getAttribute("href") || "";
+      if (!SAFE_PROTOCOL_RE.test(href)) node.removeAttribute("href");
+      node.setAttribute("target", "_blank");
+      node.setAttribute("rel", "noopener noreferrer nofollow");
+    }
+  });
+  return template.innerHTML;
+};
+
+const normalizedJson = (value: Record<string, unknown> | undefined): string => JSON.stringify(value || null);
+
+const hasSameDraftContent = (draft: StepRow, payload: RichTextCommitPayload): boolean =>
+  (draft.explanation || "") === payload.text &&
+  (draft.explanationRichHtml || "") === (payload.richTextHtml || "") &&
+  normalizedJson(draft.explanationRichJson) === normalizedJson(payload.richTextJson);
 
 export default function SolutionStepsBlock({
   steps,
@@ -20,12 +55,32 @@ export default function SolutionStepsBlock({
   verificationChecks,
   sectionId = "steps-block",
   editable = false,
+  exportMode = false,
+  onActiveTextEditorChange,
   onChange,
 }: SolutionStepsBlockProps) {
   const [editingStepIndex, setEditingStepIndex] = React.useState<number | null>(null);
   const [stepDraft, setStepDraft] = React.useState<StepRow>({ title: "", explanation: "", mathLatex: "" });
   const [editingResult, setEditingResult] = React.useState(false);
   const [resultDraft, setResultDraft] = React.useState(result || "");
+  const handleStepEditorActivate = React.useCallback(
+    (editor: Editor | null, elementId: string | null) => onActiveTextEditorChange?.(editor, elementId),
+    [onActiveTextEditorChange],
+  );
+  const handleStepEditorCommit = React.useCallback((payload: RichTextCommitPayload) => {
+    setStepDraft((prev) => {
+      if (hasSameDraftContent(prev, payload)) return prev;
+      return {
+        ...prev,
+        explanation: payload.text,
+        explanationRichHtml: payload.richTextHtml,
+        explanationRichJson: payload.richTextJson,
+      };
+    });
+  }, []);
+  const handleStepEditorRequestClose = React.useCallback(() => {
+    // Keep step edit form open; Save/Cancel controls handle form lifecycle.
+  }, []);
 
   React.useEffect(() => {
     setResultDraft(result || "");
@@ -60,7 +115,7 @@ export default function SolutionStepsBlock({
   return (
     <div className={styles.stepsBlock}>
       {steps.map((step, index) => (
-        <div key={`${step.title}-${index}`} className={styles.stepRow} id={`${sectionId}-step-${index + 1}`}>
+        <div key={`${sectionId}-step-${index}`} className={styles.stepRow} id={`${sectionId}-step-${index + 1}`}>
           <span className={styles.stepLabel}>STEP {index + 1}</span>
           <div className={styles.stepValue}>
             {editingStepIndex !== index ? (
@@ -76,12 +131,18 @@ export default function SolutionStepsBlock({
                   placeholder={`Step ${index + 1} title`}
                   onChange={(event) => setStepDraft((prev) => ({ ...prev, title: event.target.value }))}
                 />
-                <textarea
-                  className={styles.inlineEditTextArea}
-                  value={stepDraft.explanation || ""}
-                  placeholder="Step explanation"
-                  onChange={(event) => setStepDraft((prev) => ({ ...prev, explanation: event.target.value }))}
-                />
+                <div className={styles.inlineEditRichText}>
+                  <RichTextElementEditor
+                    key={`${sectionId}-step-editor-${index}`}
+                    elementId={`${sectionId}-step-${index}`}
+                    initialText={stepDraft.explanation || ""}
+                    initialHtml={stepDraft.explanationRichHtml}
+                    initialJson={stepDraft.explanationRichJson}
+                    onActivate={handleStepEditorActivate}
+                    onCommit={handleStepEditorCommit}
+                    onRequestClose={handleStepEditorRequestClose}
+                  />
+                </div>
                 <textarea
                   className={styles.inlineEditTextArea}
                   value={stepDraft.mathLatex || ""}
@@ -103,7 +164,13 @@ export default function SolutionStepsBlock({
               </div>
             ) : (
               <>
-                {step.explanation ? (
+                {step.explanationRichHtml ? (
+                  <div
+                    style={{ marginTop: 3, fontSize: 13 }}
+                    className={styles.richTextElementContent}
+                    dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(step.explanationRichHtml) }}
+                  />
+                ) : step.explanation ? (
                   <div style={{ marginTop: 3, fontSize: 13 }}>
                     <MathRenderer content={step.explanation} mode="prose" />
                   </div>
@@ -113,7 +180,7 @@ export default function SolutionStepsBlock({
                     <MathRenderer content={step.mathLatex} mode="inline" />
                   </div>
                 ) : null}
-                {editable ? (
+                {editable && !exportMode ? (
                   <div className={styles.blockActions}>
                     <button type="button" className={styles.blockActionButton} onClick={() => startEditStep(index)}>
                       Edit
@@ -167,7 +234,7 @@ export default function SolutionStepsBlock({
                 <strong>Final Answer:</strong>{" "}
                 {result ? <MathRenderer content={result} mode="inline" /> : "Not provided."}
               </span>
-              {editable ? (
+              {editable && !exportMode ? (
                 <div className={styles.blockActions}>
                   <button type="button" className={styles.blockActionButton} onClick={() => setEditingResult(true)}>
                     Edit

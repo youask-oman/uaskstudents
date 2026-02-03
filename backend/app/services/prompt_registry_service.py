@@ -67,7 +67,7 @@ class PromptRegistryService:
     )
     STANDARD_SOLVE_PROMPT_ASSET = "backend/app/prompts/solve_standard_extreme_detailed_v1.txt"
     STANDARD_SOLVE_SCHEMA_ASSET = "backend/app/schemas/youask_math_solver_standard_solve_extreme_v1.json"
-    FREEFORM_SOLVE_PROMPT_ASSET = "backend/app/prompts/free_form_math_standard_detailed.txt"
+    FREEFORM_SOLVE_PROMPT_ASSET = "static_design/sug_prompts_qwen/free_form_math_standard_detailed.txt"
     FREEFORM_SOLVE_FREE_PROMPT_ASSET = "static_design/sug_prompts_qwen/free_form_math_free_fast_v1.txt"
     FREEFORM_SOLVE_RESEARCH_PROMPT_ASSET = "static_design/sug_prompts_qwen/free_form_math_research_rigorous_v1.txt"
 
