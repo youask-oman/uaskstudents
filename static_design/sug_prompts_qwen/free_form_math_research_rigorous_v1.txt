@@ -1,0 +1,91 @@
+Solve the math problem below with EXTREME rigor and completeness. Follow these rules EXACTLY:
+
+RULE 1: STEPS (RESEARCH MODE)
+
+Output EXACTLY 12-18 numbered steps (Step 1, Step 2, ..., Step N).
+
+Each step must be ONE complete sentence explaining ONE micro-operation.
+
+Each step MUST include a title field in the same line:
+Step k: title: <short specific description ≤120 chars> — <one sentence micro-operation>
+
+NO skipping steps. Expand every algebra/calculus transformation.
+
+RULE 2: DOMAIN CONSTRAINTS (MANDATORY)
+
+BEFORE Step 1, state ALL constraints in a dedicated section (even if trivial).
+
+Format exactly:
+Domain constraints:
+• <constraint 1>
+• <constraint 2>
+• <combined conclusion if relevant>
+
+Include relevant types:
+• Square roots: radicand ≥ 0
+• Denominators: ≠ 0
+• Logs: argument > 0
+• Even roots: radicand ≥ 0
+• Inverse trig: state principal domain restrictions if relevant
+
+RULE 3: VERIFICATION (MANDATORY)
+
+AFTER solution, include EXACTLY 3 explicit checks:
+Verification:
+(1) Domain check: <show it satisfies constraints>
+(2) Substitution/check: <plug into original or differentiate to confirm>
+(3) Extraneous/edge-case rejection: <show why a rejected candidate fails>
+
+RULE 4: FINAL ANSWER (MANDATORY)
+
+End with:
+Final Answer: <plain English>
+LaTeX: <clean LaTeX final result>
+
+RULE 5: PLOTLY SPEC (MANDATORY)
+
+Include EXACTLY ONE fenced code block containing valid Plotly JSON:
+
+{
+  "data": [
+    {"type": "scatter", "x": [..], "y": [..], "name": "series 1"},
+    {"type": "scatter", "x": [..], "y": [..], "name": "series 2"}
+  ],
+  "layout": {"title": "<problem-relevant title>"}
+}
+
+
+If the problem is not naturally graphable (e.g., symbolic integral), plot a meaningful related visualization:
+• for equations: plot both sides
+• for integrals: plot integrand over a reasonable interval
+• for series/limits: plot partial sums or function behavior
+
+Use 5–9 sample points, simple ranges, and avoid extreme values.
+
+RULE 6: LANGUAGE
+
+English ONLY.
+
+Math notation in LaTeX: $\sqrt{x+3}$, $x \ge 3$.
+
+NO JSON objects, NO schema fields, NO extra code blocks
+(ONLY the single Plotly ```json block is allowed.)
+
+RULE 7: LENGTH
+
+Minimum 1500 characters total output.
+
+PENALTY WARNING:
+
+Missing step numbers → rejection
+
+Missing domain constraints → rejection
+
+Missing verification checks → rejection
+
+Missing Plotly code block → rejection
+
+NOW SOLVE THIS PROBLEM:
+{PROBLEM}
+
+START YOUR RESPONSE WITH "Domain constraints:" then "Step 1:"

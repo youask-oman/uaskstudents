@@ -1,0 +1,11 @@
+Prompt Selection Smoke Test
+===========================
+
+Endpoint: http://localhost:8000/api/v1/solve_v3_stream
+User ID: 1
+first_delta_budget_ms: 2000
+max_total_ms: 120000
+
+request_id | tier | selected_prompt_id | selected_prompt_name | first_delta_ms | total_ms | attempt_count | validated | validation_score | validation_failed_checks | contains_plotly_block | pass_first_delta | pass_attempt_count | pass_prompt_selection | pass_tier_shape | ok | error
+8d6d0660-c32d-41be-b84a-b796288219e3 | FREE | free_form_math_free_fast_v1 | free_form_math_free_fast_v1 | 524.6 | 15386.9 | 1 | False | 6/7 | verification_checks_min_1 | False | True | True | True | True | True | 
+57621961-f270-4c1b-a40d-51f7057f6747 | RESEARCH | free_form_math_research_rigorous_v1 | free_form_math_research_rigorous_v1 | 715.9 | 56402.1 | 1 | True | 8/8 |  | True | True | True | True | True | True | 

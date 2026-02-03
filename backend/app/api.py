@@ -84,11 +84,14 @@ from app.services.solve.freeform_solver import (
     FREEFORM_PROMPT_VERSION,
     archive_freeform_output,
     generate_freeform_solution,
+    resolve_num_predict,
+    resolve_timeout_seconds,
     should_use_freeform_output,
 )
 from app.services.token_policy import get_token_policy, serialize_token_policy
 from app.config import get_settings
 from app.services.school_import_service import normalize_country_code
+from app.utils.perf_timer import perf_emit, perf_enabled
 
 
 
@@ -257,6 +260,51 @@ def _validate_stream_payload(payload: Dict[str, Any], schema_config: Optional[Di
 
     schema_errors = _format_json_schema_errors(list(validator.iter_errors(payload)))
     return schema_errors + _collect_stream_business_rule_errors(payload)
+
+
+def _sha256_text(value: str) -> str:
+    return hashlib.sha256((value or "").encode("utf-8")).hexdigest()
+
+
+def _preview_text(value: str, limit: int = 60) -> str:
+    text = value or ""
+    if len(text) <= limit:
+        return text
+    head = text[: limit // 2]
+    tail = text[-(limit // 2):]
+    return f"{head}...{tail}"
+
+
+def _is_truthy(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _resolve_freeform_max_attempts(
+    *,
+    effective_tier: str,
+    trusted_context: Optional[Dict[str, Any]],
+    is_make_it_right: bool,
+) -> int:
+    tier_norm = (effective_tier or "FREE").strip().upper()
+    learning_mode = str((trusted_context or {}).get("learning_mode") or "").strip().lower()
+    improve_requested = (
+        is_make_it_right
+        or learning_mode == "improve"
+        or _is_truthy((trusted_context or {}).get("improve"))
+        or _is_truthy((trusted_context or {}).get("improve_requested"))
+    )
+    if tier_norm == "RESEARCH" and improve_requested:
+        default_attempts = int(os.environ.get("FREEFORM_MAX_ATTEMPTS_RESEARCH_IMPROVE", "3"))
+    elif tier_norm == "STANDARD" and improve_requested:
+        default_attempts = int(os.environ.get("FREEFORM_MAX_ATTEMPTS_STANDARD_IMPROVE", "2"))
+    else:
+        default_attempts = 1
+    configured_cap = int(os.environ.get("FREEFORM_MAX_ATTEMPTS", str(default_attempts)))
+    return max(1, min(3, min(default_attempts, configured_cap)))
 
 
 def _build_schema_valid_stream_error_payload(
@@ -5046,12 +5094,39 @@ async def solve_v3_stream_endpoint(
         deduct_attempted = {"credits": False, "ocr": False, "voice": False}
         deduct_committed = False
         features_used = body.features_used or {}
-        problem_text = (
+        raw_problem_text = (
             body.confirmed_text or
             body.confirmed_markdown or
             body.text_query or
             "No problem provided"
-        ).strip()
+        )
+        if perf_enabled():
+            perf_emit(
+                label="solve_input_received",
+                file_function="backend/app/api.py:solve_v3_stream_endpoint._inner_generate",
+                elapsed_ms=0.0,
+                request_id=request_id,
+                extra=(
+                    f"confirmed_text_len={len(body.confirmed_text or '')}"
+                    f"|confirmed_markdown_len={len(body.confirmed_markdown or '')}"
+                    f"|text_query_len={len(body.text_query or '')}"
+                    f"|raw_hash={_sha256_text(raw_problem_text or '')}"
+                    f"|raw_preview={_preview_text(raw_problem_text or '').replace(chr(10), ' ')}"
+                ),
+            )
+        problem_text = (raw_problem_text or "").strip()
+        if perf_enabled():
+            perf_emit(
+                label="solve_input_selected",
+                file_function="backend/app/api.py:solve_v3_stream_endpoint._inner_generate",
+                elapsed_ms=0.0,
+                request_id=request_id,
+                extra=(
+                    f"len={len(problem_text)}"
+                    f"|hash={_sha256_text(problem_text)}"
+                    f"|preview={_preview_text(problem_text).replace(chr(10), ' ')}"
+                ),
+            )
         print(f"[API] Solve Request Body: {body.model_dump_json(indent=2)}")
         token_policy = get_token_policy(session)
         print(f"[API] Loaded TokenPolicy: {json.dumps(serialize_token_policy(token_policy), indent=2)}")
@@ -5278,7 +5353,14 @@ async def solve_v3_stream_endpoint(
         freeform_prompt_id = FREEFORM_PROMPT_ID
         freeform_prompt_version = FREEFORM_PROMPT_VERSION
         if output_format == FREEFORM_OUTPUT_MODE.lower():
-            freeform_prompt_entry = prompt_registry_service.get_active_prompt(session, FREEFORM_PROMPT_ID)
+            tier_enum = PromptTierEnum((effective_tier or "FREE").upper())
+            freeform_prompt_entry = prompt_registry_service.get_active_freeform_prompt_for_tier(
+                session=session,
+                tier=tier_enum,
+                provider=stream_provider,
+                model=stream_model,
+                mode=PromptModeEnum.SOLVE,
+            )
             if not freeform_prompt_entry or not (freeform_prompt_entry.content or "").strip():
                 if deduct_committed and debit_cost > 0:
                     subscription_service.refund_credits(
@@ -5288,11 +5370,21 @@ async def solve_v3_stream_endpoint(
                         "Free-form solve failed: prompt not configured",
                         request_id,
                     )
-                yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': False, 'error': {'code': 'freeform_prompt_not_found', 'message': f'Missing active free-form prompt in prompt_templates: {FREEFORM_PROMPT_ID}', 'request_id': request_id}})}\n\n"
+                yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': False, 'error': {'code': 'freeform_prompt_not_found', 'message': f'Missing active tiered free-form prompt in prompt_templates for tier={effective_tier}', 'request_id': request_id}})}\n\n"
                 return
             freeform_prompt_template = freeform_prompt_entry.content
             freeform_prompt_id = freeform_prompt_entry.prompt_id
             freeform_prompt_version = str(freeform_prompt_entry.version)
+            logging.getLogger(__name__).debug(
+                "request_id=%s freeform_prompt_selected tier=%s provider=%s model=%s prompt_id=%s prompt_row_id=%s version=%s",
+                request_id,
+                effective_tier,
+                stream_provider,
+                stream_model,
+                freeform_prompt_entry.prompt_id,
+                freeform_prompt_entry.id,
+                freeform_prompt_entry.version,
+            )
 
         # Meta Event (Part A1)
         meta_data = {
@@ -5467,17 +5559,33 @@ async def solve_v3_stream_endpoint(
                 yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': False, 'error': {'code': 'ollama_unreachable', 'message': 'Ollama base URL is not reachable', 'request_id': request_id}})}\n\n"
                 return
 
-            max_attempts = max(1, min(3, int(os.environ.get("FREEFORM_MAX_ATTEMPTS", "3"))))
-            num_predict = int(os.environ.get("FREEFORM_NUM_PREDICT", "2500"))
-            timeout_seconds = int(os.environ.get("FREEFORM_TIMEOUT_SECONDS", "120"))
+            max_attempts = _resolve_freeform_max_attempts(
+                effective_tier=effective_tier,
+                trusted_context=body.trusted_context,
+                is_make_it_right=bool(getattr(body, "is_make_it_right", False)),
+            )
+            base_num_predict = int(os.environ.get("FREEFORM_NUM_PREDICT", "2500"))
+            num_predict = resolve_num_predict(
+                tier=effective_tier,
+                difficulty=body.difficulty,
+                requested_mode=requested_mode,
+                env_default=base_num_predict,
+            )
+            timeout_seconds = resolve_timeout_seconds(
+                tier=effective_tier,
+                env_default=int(os.environ.get("FREEFORM_TIMEOUT_SECONDS", "120")),
+            )
 
             attempt_summaries: List[Dict[str, Any]] = []
             selected_result = None
             latest_nonempty_result = None
+            first_delta_emitted = False
             for attempt_number in range(1, max_attempts + 1):
                 yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': f'Free-form attempt {attempt_number}/{max_attempts}...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
                 try:
-                    attempt_result = await generate_freeform_solution(
+                    attempt_result = None
+                    streamed_parts: List[str] = []
+                    async for stream_event in generate_freeform_solution(
                         problem_text=problem_text,
                         prompt_template=freeform_prompt_template or "",
                         model=stream_model,
@@ -5486,13 +5594,58 @@ async def solve_v3_stream_endpoint(
                         timeout_seconds=timeout_seconds,
                         prompt_id=freeform_prompt_id,
                         prompt_version=freeform_prompt_version,
-                    )
-                    status = "ok" if attempt_result.validation.get("is_valid") else "invalid"
+                        tier=effective_tier,
+                        requested_mode=requested_mode,
+                    ):
+                        event_type = stream_event.get("type")
+                        if event_type == "delta":
+                            chunk_text = str(stream_event.get("text") or "")
+                            if chunk_text:
+                                streamed_parts.append(chunk_text)
+                                yield f"event: delta\ndata: {json.dumps({'type': 'delta', 'text': chunk_text})}\n\n"
+                                if not first_delta_emitted:
+                                    first_delta_emitted = True
+                                    if perf_enabled():
+                                        perf_emit(
+                                            label="sse_first_delta",
+                                            file_function="backend/app/api.py:solve_v3_stream_endpoint._inner_generate",
+                                            elapsed_ms=(time.perf_counter() - start_total) * 1000.0,
+                                            request_id=request_id,
+                                            extra=f"attempt={attempt_number}",
+                                        )
+                        elif event_type == "result":
+                            attempt_result = stream_event.get("result")
+                    if attempt_result is None:
+                        raise RuntimeError("freeform_stream_missing_result")
+                    streamed_text = "".join(streamed_parts)
+                    if attempt_result.output_text and attempt_result.output_text != streamed_text:
+                        if attempt_result.output_text.startswith(streamed_text):
+                            tail = attempt_result.output_text[len(streamed_text) :]
+                            if tail:
+                                yield f"event: delta\ndata: {json.dumps({'type': 'delta', 'text': tail})}\n\n"
+                                if not first_delta_emitted:
+                                    first_delta_emitted = True
+                                    if perf_enabled():
+                                        perf_emit(
+                                            label="sse_first_delta",
+                                            file_function="backend/app/api.py:solve_v3_stream_endpoint._inner_generate",
+                                            elapsed_ms=(time.perf_counter() - start_total) * 1000.0,
+                                            request_id=request_id,
+                                            extra=f"attempt={attempt_number}|postprocess_tail=1",
+                                        )
+                    if attempt_result.validation.get("is_valid"):
+                        status = "ok"
+                    elif attempt_result.validation.get("is_usable"):
+                        status = "usable"
+                    else:
+                        status = "invalid"
                     attempt_summaries.append(
                         {
                             "attempt_number": attempt_number,
                             "status": status,
                             "latency_ms": attempt_result.latency_ms,
+                            "time_to_first_token_ms": attempt_result.time_to_first_token_ms,
+                            "truncated": attempt_result.truncated,
                             "char_count": len(attempt_result.output_text or ""),
                             "validation_score": attempt_result.validation.get("score"),
                             "failed_checks": attempt_result.validation.get("failed_checks", []),
@@ -5501,6 +5654,12 @@ async def solve_v3_stream_endpoint(
                     if attempt_result.output_text:
                         latest_nonempty_result = (attempt_number, attempt_result)
                     if attempt_result.validation.get("is_valid"):
+                        selected_result = (attempt_number, attempt_result)
+                        break
+                    if attempt_result.validation.get("is_usable") and attempt_result.extracted_answer:
+                        selected_result = (attempt_number, attempt_result)
+                        break
+                    if attempt_result.validation.get("is_usable"):
                         selected_result = (attempt_number, attempt_result)
                         break
                 except Exception as attempt_error:
@@ -5516,6 +5675,8 @@ async def solve_v3_stream_endpoint(
                             "error": error_text,
                         }
                     )
+                if attempt_number >= max_attempts:
+                    break
 
             final_choice = selected_result or latest_nonempty_result
             if final_choice is None:
@@ -5559,8 +5720,17 @@ async def solve_v3_stream_endpoint(
                 archive_path=archive_path,
                 status=final_status,
             )
-            if output_text:
+            if output_text and not first_delta_emitted:
                 yield f"event: delta\ndata: {json.dumps({'type': 'delta', 'text': output_text})}\n\n"
+                if perf_enabled():
+                    perf_emit(
+                        label="sse_first_delta",
+                        file_function="backend/app/api.py:solve_v3_stream_endpoint._inner_generate",
+                        elapsed_ms=(time.perf_counter() - start_total) * 1000.0,
+                        request_id=request_id,
+                        extra=f"attempt={final_attempt_number}|fallback=1",
+                    )
+                first_delta_emitted = True
 
             yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': 'Finalizing...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
 
@@ -5579,8 +5749,11 @@ async def solve_v3_stream_endpoint(
                 "prompt_id": freeform_prompt_id,
                 "prompt_version": freeform_prompt_version,
                 "validated": final_result.validation.get("is_valid", False),
+                "is_usable": final_result.validation.get("is_usable", False),
                 "validation_score": final_result.validation.get("score"),
+                "validation_quality_score": final_result.validation.get("quality_score"),
                 "validation_failed_checks": final_result.validation.get("failed_checks", []),
+                "validation_missing_items": final_result.validation.get("missing_items", []),
                 "schema_valid": None,
                 "hide_from_tutor": True,
                 "channel": "canvas_primary",

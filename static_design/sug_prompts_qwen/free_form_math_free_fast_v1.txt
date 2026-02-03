@@ -1,0 +1,44 @@
+Solve the math problem below clearly and efficiently. Follow these rules EXACTLY:
+RULE 1: STEPS (FAST MODE)
+Output EXACTLY 6-10 numbered steps (Step 1, Step 2, ..., Step N).
+Each step must be ONE complete sentence describing ONE clear operation or reasoning action.
+Each step MUST include a title field in the same line:
+Step k: title: <short specific description ≤90 chars> — <one sentence explanation>
+Do NOT add extra paragraphs between steps.
+No fluff. No motivational talk. No long explanations.
+RULE 2: DOMAIN CONSTRAINTS (ONLY WHEN APPLICABLE)
+BEFORE Step 1, include a short section ONLY if the problem involves any of:
+square roots, denominators, logarithms, even roots, inverse trig restrictions.
+
+Format exactly:
+Domain constraints:
+• <constraint 1>
+• <constraint 2> (if needed)
+
+If not applicable, do NOT include this section.
+RULE 3: VERIFICATION (LIGHT, FAST)
+
+AFTER the steps, include a verification section with EXACTLY 1-2 checks:
+Verification:
+(1) <quick substitution or check>
+(2) <domain check if needed>
+
+If only one check is meaningful, include only (1).
+RULE 4: FINAL ANSWER (MANDATORY)
+
+End with:
+Final Answer: <plain English>
+LaTeX: <clean LaTeX for the final answer>
+
+RULE 5: LANGUAGE + FORMAT
+English ONLY.
+Use LaTeX for math expressions like $\sqrt{x+3}$, $x \ge 3$.
+NO JSON. NO code blocks. NO Plotly.
+
+RULE 6: LENGTH
+Keep output concise. Target 500–1100 characters.
+
+NOW SOLVE THIS PROBLEM:
+{PROBLEM}
+
+START YOUR RESPONSE WITH "Step 1:"

@@ -30,6 +30,13 @@ class PromptRegistryService:
     STANDARD_SOLVE_SCHEMA_ID = "youask_math_solver_standard_solve_extreme_v1"
     STANDARD_SOLVE_GLOBAL_SYSTEM_ID = "global_system_prompt_v1"
     FREEFORM_SOLVE_PROMPT_ID = "free_form_math_standard_detailed_v1"
+    FREEFORM_SOLVE_FREE_PROMPT_ID = "free_form_math_free_fast_v1"
+    FREEFORM_SOLVE_RESEARCH_PROMPT_ID = "free_form_math_research_rigorous_v1"
+    FREEFORM_SOLVE_TIER_PROMPT_IDS = {
+        PromptTierEnum.FREE: FREEFORM_SOLVE_FREE_PROMPT_ID,
+        PromptTierEnum.STANDARD: FREEFORM_SOLVE_PROMPT_ID,
+        PromptTierEnum.RESEARCH: FREEFORM_SOLVE_RESEARCH_PROMPT_ID,
+    }
     LEGACY_STANDARD_SOLVE_PROMPT_IDS = (
         "solve_standard_moderate_v1",
         "solve_standard_moderate_v2",
@@ -61,6 +68,8 @@ class PromptRegistryService:
     STANDARD_SOLVE_PROMPT_ASSET = "backend/app/prompts/solve_standard_extreme_detailed_v1.txt"
     STANDARD_SOLVE_SCHEMA_ASSET = "backend/app/schemas/youask_math_solver_standard_solve_extreme_v1.json"
     FREEFORM_SOLVE_PROMPT_ASSET = "backend/app/prompts/free_form_math_standard_detailed.txt"
+    FREEFORM_SOLVE_FREE_PROMPT_ASSET = "static_design/sug_prompts_qwen/free_form_math_free_fast_v1.txt"
+    FREEFORM_SOLVE_RESEARCH_PROMPT_ASSET = "static_design/sug_prompts_qwen/free_form_math_research_rigorous_v1.txt"
 
     def _repo_root(self) -> Path:
         return Path(__file__).resolve().parents[3]
@@ -195,13 +204,98 @@ class PromptRegistryService:
         updated_by: Optional[str] = "system",
     ) -> PromptTemplateEntry:
         content = self._load_asset_text(self.FREEFORM_SOLVE_PROMPT_ASSET)
-        return self.update_prompt(
+        return self._upsert_prompt_if_checksum_differs(
             session=session,
             prompt_id=self.FREEFORM_SOLVE_PROMPT_ID,
             content=content,
             tier=PromptTierEnum.STANDARD,
             mode=PromptModeEnum.SOLVE,
             role=PromptRoleEnum.DEVELOPER,
+            updated_by=updated_by,
+        )
+
+    def ensure_freeform_solve_prompts_by_tier(
+        self,
+        session: Session,
+        updated_by: Optional[str] = "system",
+    ) -> Dict[str, PromptTemplateEntry]:
+        prompts = {
+            self.FREEFORM_SOLVE_FREE_PROMPT_ID: (
+                self.FREEFORM_SOLVE_FREE_PROMPT_ASSET,
+                PromptTierEnum.FREE,
+            ),
+            self.FREEFORM_SOLVE_PROMPT_ID: (
+                self.FREEFORM_SOLVE_PROMPT_ASSET,
+                PromptTierEnum.STANDARD,
+            ),
+            self.FREEFORM_SOLVE_RESEARCH_PROMPT_ID: (
+                self.FREEFORM_SOLVE_RESEARCH_PROMPT_ASSET,
+                PromptTierEnum.RESEARCH,
+            ),
+        }
+        created: Dict[str, PromptTemplateEntry] = {}
+        for prompt_id, (asset_path, tier_enum) in prompts.items():
+            content = self._load_asset_text(asset_path)
+            if "{PROBLEM}" not in content:
+                raise PromptRegistryError(f"Prompt {prompt_id} missing required placeholder {{PROBLEM}}")
+            created[prompt_id] = self._upsert_prompt_if_checksum_differs(
+                session=session,
+                prompt_id=prompt_id,
+                content=content,
+                tier=tier_enum,
+                mode=PromptModeEnum.SOLVE,
+                role=PromptRoleEnum.DEVELOPER,
+                updated_by=updated_by,
+            )
+        return created
+
+    def get_active_freeform_prompt_for_tier(
+        self,
+        session: Session,
+        tier: PromptTierEnum,
+        provider: str,
+        model: str,
+        mode: PromptModeEnum = PromptModeEnum.SOLVE,
+    ) -> Optional[PromptTemplateEntry]:
+        if (provider or "").strip().lower() != "ollama":
+            return None
+        prompt_id = self.FREEFORM_SOLVE_TIER_PROMPT_IDS.get(tier)
+        if not prompt_id:
+            return None
+        entry = session.exec(
+            select(PromptTemplateEntry)
+            .where(PromptTemplateEntry.prompt_id == prompt_id)
+            .where(PromptTemplateEntry.tier == tier)
+            .where(PromptTemplateEntry.mode == mode)
+            .where(PromptTemplateEntry.role == PromptRoleEnum.DEVELOPER)
+            .where(PromptTemplateEntry.is_active == True)
+            .order_by(PromptTemplateEntry.version.desc(), PromptTemplateEntry.id.desc())
+        ).first()
+        return entry
+
+    def _content_checksum(self, content: str) -> str:
+        return hashlib.sha256((content or "").strip().encode("utf-8")).hexdigest()
+
+    def _upsert_prompt_if_checksum_differs(
+        self,
+        session: Session,
+        prompt_id: str,
+        content: str,
+        tier: Optional[PromptTierEnum],
+        mode: PromptModeEnum,
+        role: str,
+        updated_by: Optional[str],
+    ) -> PromptTemplateEntry:
+        current = self.get_active_prompt(session, prompt_id)
+        if current and self._content_checksum(current.content) == self._content_checksum(content):
+            return current
+        return self.update_prompt(
+            session=session,
+            prompt_id=prompt_id,
+            content=content,
+            tier=tier,
+            mode=mode,
+            role=role,
             updated_by=updated_by,
         )
 

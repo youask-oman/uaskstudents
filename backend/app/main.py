@@ -122,6 +122,11 @@ def on_startup():
             logging.error(f"Failed to seed free-form solve prompt: {e}")
             session.rollback()
         try:
+            prompt_registry_service.ensure_freeform_solve_prompts_by_tier(session, updated_by="startup")
+        except Exception as e:
+            logging.error(f"Failed to seed tiered free-form solve prompts: {e}")
+            session.rollback()
+        try:
             report = prompt_registry_service.audit_active_bindings(session)
             if report.get("ok"):
                 logging.info(
