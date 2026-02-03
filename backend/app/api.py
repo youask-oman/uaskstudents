@@ -5564,11 +5564,18 @@ async def solve_v3_stream_endpoint(
                 trusted_context=body.trusted_context,
                 is_make_it_right=bool(getattr(body, "is_make_it_right", False)),
             )
+            freeform_requested_mode = requested_mode
+            if (
+                (effective_tier or "").strip().upper() == "RESEARCH"
+                and requested_mode.strip().lower() in {"", "minimal", "concise"}
+                and os.environ.get("FREEFORM_RESEARCH_FORCE_IMPROVE_MODE", "1").strip().lower() in {"1", "true", "yes", "on"}
+            ):
+                freeform_requested_mode = "improve"
             base_num_predict = int(os.environ.get("FREEFORM_NUM_PREDICT", "2500"))
             num_predict = resolve_num_predict(
                 tier=effective_tier,
                 difficulty=body.difficulty,
-                requested_mode=requested_mode,
+                requested_mode=freeform_requested_mode,
                 env_default=base_num_predict,
             )
             timeout_seconds = resolve_timeout_seconds(
@@ -5595,7 +5602,7 @@ async def solve_v3_stream_endpoint(
                         prompt_id=freeform_prompt_id,
                         prompt_version=freeform_prompt_version,
                         tier=effective_tier,
-                        requested_mode=requested_mode,
+                        requested_mode=freeform_requested_mode,
                     ):
                         event_type = stream_event.get("type")
                         if event_type == "delta":
@@ -5694,13 +5701,21 @@ async def solve_v3_stream_endpoint(
             final_attempt_number, final_result = final_choice
             output_text = final_result.output_text
             extracted_answer = final_result.extracted_answer or ""
-            archive_path = archive_freeform_output(
-                request_id=request_id,
-                provider=stream_provider,
-                model=stream_model,
-                attempt_number=final_attempt_number,
-                output_text=output_text,
-            )
+            archive_path = None
+            try:
+                archive_path = archive_freeform_output(
+                    request_id=request_id,
+                    provider=stream_provider,
+                    model=stream_model,
+                    attempt_number=final_attempt_number,
+                    output_text=output_text,
+                )
+            except Exception as archive_exc:
+                logging.getLogger(__name__).warning(
+                    "request_id=%s freeform_archive_failed error=%s",
+                    request_id,
+                    archive_exc,
+                )
             final_status = "ok" if final_result.validation.get("is_valid") else "invalid"
             _persist_freeform_attempt(
                 session=session,
@@ -5748,6 +5763,7 @@ async def solve_v3_stream_endpoint(
                 "archive_path": archive_path,
                 "prompt_id": freeform_prompt_id,
                 "prompt_version": freeform_prompt_version,
+                "requested_mode_model": freeform_requested_mode,
                 "validated": final_result.validation.get("is_valid", False),
                 "is_usable": final_result.validation.get("is_usable", False),
                 "validation_score": final_result.validation.get("score"),

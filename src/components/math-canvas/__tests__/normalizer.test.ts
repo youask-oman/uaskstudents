@@ -160,4 +160,53 @@ Final answer: x = 2
     const chartItems = normalized.items.filter((item) => item.type === "chart");
     expect(chartItems.length).toBeGreaterThanOrEqual(1);
   });
+
+  test("fills missing structured final answer from content fallback", () => {
+    const assistant: SessionMessage = {
+      role: "assistant",
+      content: `
+**Step 1: Solve**
+\\[
+x = 11
+\\]
+**Final Answer:**
+\\[
+\\boxed{x = 11}
+\\]
+      `,
+      structured_data: {
+        output_format: "freeform",
+        extracted_answer: "(2) Sub",
+        solution: {
+          steps: [{ step_id: 1, title: "Solve", explanation: "Do algebra." }],
+        },
+      },
+    };
+
+    const normalized = normalizeAssistantMessage(assistant, 4);
+    const solutionItem = normalized.items.find((item) => item.type === "math_solution");
+    expect(solutionItem).toBeDefined();
+    if (!solutionItem || solutionItem.type !== "math_solution") return;
+    expect(solutionItem.payload.result).toContain("x = 11");
+  });
+
+  test("keeps prose lines with inline math as explanation text", () => {
+    const assistant: SessionMessage = {
+      role: "assistant",
+      content: `
+Step 1: Verify identity
+To verify the identity, we can consider a specific value of \\(x\\). Let's choose \\(x = 0\\):
+\\[
+\\sin^2(0) + \\cos^2(0) = 1
+\\]
+      `,
+    };
+
+    const normalized = normalizeAssistantMessage(assistant, 5);
+    const solutionItem = normalized.items.find((item) => item.type === "math_solution");
+    expect(solutionItem).toBeDefined();
+    if (!solutionItem || solutionItem.type !== "math_solution") return;
+    expect(solutionItem.payload.steps[0].explanation).toContain("specific value");
+    expect(solutionItem.payload.steps[0].mathLatex).toContain("\\sin^2(0)");
+  });
 });

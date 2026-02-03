@@ -980,6 +980,8 @@ export default function DashboardPage() {
                                     <div className="space-y-3">
                                         {useSnapSolveUploadPanelV2 ? (
                                             <SnapSolveInputPanel
+                                                tier={selectedSolveTier}
+                                                requestedMode={selectedSolveTier === "FREE" ? "minimal" : "detailed"}
                                                 onResolveText={(text, featureOverrides) => {
                                                     setQuery(text);
                                                     if (mathInputRef.current) {

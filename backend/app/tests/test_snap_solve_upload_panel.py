@@ -10,6 +10,7 @@ from app.bg_routers.local_router import (
     _validate_mime,
     solve_from_image_or_sketch,
 )
+from app.models import User
 
 
 def _png_bytes(mode: str = "RGBA") -> bytes:
@@ -97,3 +98,87 @@ async def test_solve_from_sketch_mode_png_success(monkeypatch, tmp_path):
     payload = result.model_dump()
     assert payload["meta"]["mode"] == "sketch"
     assert payload["answer_markdown"] == "Sketch result"
+
+
+@pytest.mark.asyncio
+async def test_fallback_solver_passes_research_tier_to_solver(monkeypatch, tmp_path):
+    captured_kwargs = {}
+
+    class FakeSolver:
+        async def solve(self, **kwargs):
+            captured_kwargs.update(kwargs)
+            return {"_content": "ok"}
+
+    monkeypatch.setattr("app.bg_routers.local_router.get_solver_v3", lambda: FakeSolver())
+
+    db_path = tmp_path / "snap_solve_tier_research.db"
+    engine = create_engine(f"sqlite:///{db_path}")
+    SQLModel.metadata.create_all(engine)
+    with Session(engine) as session:
+        user = User(
+            email="research@example.com",
+            full_name="Research User",
+            password_hash="x",
+            subscription_tier="research",
+        )
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+
+        await solve_from_image_or_sketch(
+            request=None,
+            mode="upload",
+            question_text="Solve x^2=1",
+            image=None,
+            tier="research",
+            original_filename=None,
+            client_context=None,
+            user_id=user.id,
+            session=session,
+        )
+
+    assert captured_kwargs["user_tier"] == "research"
+    assert captured_kwargs["requested_mode"] == "detailed"
+    assert captured_kwargs["user_id"] == user.id
+
+
+@pytest.mark.asyncio
+async def test_fallback_solver_clamps_requested_tier_to_entitlement(monkeypatch, tmp_path):
+    captured_kwargs = {}
+
+    class FakeSolver:
+        async def solve(self, **kwargs):
+            captured_kwargs.update(kwargs)
+            return {"_content": "ok"}
+
+    monkeypatch.setattr("app.bg_routers.local_router.get_solver_v3", lambda: FakeSolver())
+
+    db_path = tmp_path / "snap_solve_tier_clamp.db"
+    engine = create_engine(f"sqlite:///{db_path}")
+    SQLModel.metadata.create_all(engine)
+    with Session(engine) as session:
+        user = User(
+            email="free@example.com",
+            full_name="Free User",
+            password_hash="x",
+            subscription_tier="free",
+        )
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+
+        await solve_from_image_or_sketch(
+            request=None,
+            mode="upload",
+            question_text="Solve x^2=1",
+            image=None,
+            tier="research",
+            requested_mode="detailed",
+            original_filename=None,
+            client_context=None,
+            user_id=user.id,
+            session=session,
+        )
+
+    assert captured_kwargs["user_tier"] == "free"
+    assert captured_kwargs["requested_mode"] == "detailed"

@@ -147,7 +147,6 @@ const ElementView = React.memo(function ElementView({
       id={element.id}
       style={style}
       onPointerDown={(event) => onPointerDown(event, element)}
-      onMouseDown={(event) => onPointerDown(event as unknown as React.PointerEvent, element)}
       onDoubleClick={() => onDoubleClick(element)}
       data-element-id={element.id}
       data-element-type={element.type}
@@ -226,7 +225,6 @@ const ElementView = React.memo(function ElementView({
           className={styles.resizeHandle}
           aria-label="Resize element"
           onPointerDown={(event) => onResizePointerDown(event, element)}
-          onMouseDown={(event) => onResizePointerDown(event as unknown as React.PointerEvent, element)}
         />
       ) : null}
     </div>
@@ -586,6 +584,12 @@ export default function PaperPage({
       return;
     }
 
+    if (activeTool === "text" && element.type === "text") {
+      onSelectElements([element.id]);
+      setEditingText({ elementId: element.id, value: element.text || "" });
+      return;
+    }
+
     setDragging({
       elementIds: nextSelection.length > 0 ? nextSelection : [element.id],
       startClientX: event.clientX,
@@ -801,7 +805,6 @@ export default function PaperPage({
         className={styles.paperCanvas}
         ref={canvasRef}
         onPointerDown={onCanvasPointerDown}
-        onMouseDown={(event) => onCanvasPointerDown(event as unknown as React.PointerEvent<HTMLDivElement>)}
         data-testid={`paper-canvas-${page.id}`}
       >
         {page.elements.length === 0 ? (

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request
+from fastapi.params import Form as FormParam, Param
 from sqlmodel import Session, select
 from pydantic import BaseModel, Field, confloat
 from typing import Optional, Dict, Any, List
@@ -11,10 +12,11 @@ from PIL import Image
 import logging
 
 from app.database import get_session
-from app.models import Crop
+from app.models import Crop, User
 from app.services.ocr.ocr_service import ocr_service
 from app.services.ocr.crop_service import STORAGE_DIR
 from app.services.solver_v3 import get_solver_v3
+from app.services.tier_utils import get_user_effective_tier_slug
 from app.services.math.error_localizer import (
     OCRPayload, Budget, find_first_error_from_ocr
 )
@@ -26,6 +28,7 @@ MAX_UPLOAD_BYTES = int(os.getenv("SNAP_SOLVE_MAX_UPLOAD_BYTES", str(10 * 1024 * 
 MAX_IMAGE_DIM = int(os.getenv("SNAP_SOLVE_MAX_IMAGE_DIM", "2000"))
 ALLOWED_IMAGE_MIME = {"image/png", "image/jpeg", "image/webp"}
 ALLOWED_UPLOAD_MIME = ALLOWED_IMAGE_MIME | {"application/pdf"}
+_TIER_ORDER = {"free": 0, "standard": 1, "research": 2}
 
 class BBox(BaseModel):
     x: confloat(ge=0.0, le=1.0)
@@ -55,6 +58,38 @@ class SolveFromImageOrSketchResponse(BaseModel):
     answer_markdown: str
     answer_latex: Optional[str] = None
     meta: Dict[str, Any]
+
+
+def _normalize_tier_slug(value: Optional[str]) -> str:
+    raw = (value or "").strip().lower()
+    if raw in {"research", "enterprise"}:
+        return "research"
+    if raw in {"standard", "student_standard", "pro", "premium", "family", "family_standard"}:
+        return "standard"
+    return "free"
+
+
+def _clamp_requested_tier(requested_tier: Optional[str], entitled_tier: str) -> str:
+    entitled = _normalize_tier_slug(entitled_tier)
+    requested = _normalize_tier_slug(requested_tier) if requested_tier else entitled
+    if _TIER_ORDER[requested] <= _TIER_ORDER[entitled]:
+        return requested
+    return entitled
+
+
+def _resolve_requested_mode(requested_mode: Optional[str], effective_tier: str) -> str:
+    mode = (requested_mode or "").strip().lower()
+    if mode in {"minimal", "detailed"}:
+        return mode
+    return "minimal" if _normalize_tier_slug(effective_tier) == "free" else "detailed"
+
+
+def _resolve_fastapi_default(value: Any) -> Any:
+    # Direct unit tests sometimes invoke the endpoint function directly, so
+    # FastAPI Form default objects can leak into runtime values.
+    if isinstance(value, (Param, FormParam)):
+        return None
+    return value
 
 def load_cropped_image_by_hash(crop_hash: str, session: Session):
     """
@@ -330,8 +365,12 @@ async def solve_from_image_or_sketch(
     mode: str = Form(...),
     question_text: str = Form(""),
     image: Optional[UploadFile] = File(default=None),
+    tier: Optional[str] = Form(default=None),
+    requested_mode: Optional[str] = Form(default=None),
+    user_id_form: Optional[int] = Form(default=None),
     original_filename: Optional[str] = Form(default=None),
     client_context: Optional[str] = Form(default=None),
+    user_id: Optional[int] = None,
     session: Session = Depends(get_session),
 ):
     request_id = str(uuid.uuid4())
@@ -377,6 +416,19 @@ async def solve_from_image_or_sketch(
     if not image_text and not question_text:
         raise HTTPException(status_code=400, detail="Provide an image/sketch or question text.")
 
+    resolved_tier = _resolve_fastapi_default(tier)
+    resolved_mode = _resolve_fastapi_default(requested_mode)
+    resolved_user_id_form = _resolve_fastapi_default(user_id_form)
+    resolved_user_id_query = _resolve_fastapi_default(user_id)
+    resolved_user_id = resolved_user_id_query if resolved_user_id_query is not None else resolved_user_id_form
+    entitled_tier_slug = "free"
+    if resolved_user_id:
+        user_obj = session.get(User, resolved_user_id)
+        if user_obj:
+            entitled_tier_slug = get_user_effective_tier_slug(user_obj)
+    effective_tier_slug = _clamp_requested_tier(resolved_tier, entitled_tier_slug)
+    effective_requested_mode = _resolve_requested_mode(resolved_mode, effective_tier_slug)
+
     combined_prompt = question_text
     if image_text:
         combined_prompt = f"{question_text}\n\nExtracted content:\n{image_text}".strip()
@@ -386,8 +438,9 @@ async def solve_from_image_or_sketch(
         problem_text=combined_prompt,
         context="",
         request_id=request_id,
-        user_tier="free",
-        requested_mode="minimal",
+        user_tier=effective_tier_slug,
+        user_id=resolved_user_id,
+        requested_mode=effective_requested_mode,
         db_session=session,
         trusted_context={"client_context": client_context} if client_context else None,
     )
@@ -402,5 +455,9 @@ async def solve_from_image_or_sketch(
             "mime": image_mime,
             "latency_ms": latency_ms,
             "request_id": request_id,
+            "requested_tier": _normalize_tier_slug(resolved_tier) if resolved_tier else None,
+            "effective_tier": effective_tier_slug,
+            "requested_mode": effective_requested_mode,
+            "user_id": resolved_user_id,
         },
     )

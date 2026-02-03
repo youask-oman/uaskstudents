@@ -64,9 +64,11 @@ const PDF_DOCUMENT_ENABLED = process.env.NEXT_PUBLIC_SNAP_SOLVE_PDF_DOCUMENT_EXT
 
 type SnapSolveInputPanelProps = {
     onResolveText?: (text: string, featureOverrides?: Record<string, unknown>) => Promise<void> | void;
+    tier?: "FREE" | "STANDARD" | "RESEARCH";
+    requestedMode?: "minimal" | "detailed";
 };
 
-export default function SnapSolveInputPanel({ onResolveText }: SnapSolveInputPanelProps) {
+export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode }: SnapSolveInputPanelProps) {
     const [activeSubTab, setActiveSubTab] = React.useState<SnapSubTab>("upload");
     const [questionText, setQuestionText] = React.useState("");
     const [uploadedFile, setUploadedFile] = React.useState<File | null>(null);
@@ -178,6 +180,28 @@ export default function SnapSolveInputPanel({ onResolveText }: SnapSolveInputPan
         if (isPdfMode) return false;
         return Boolean(uploadedFile || sketchHasContent || questionText.trim().length > 0);
     }, [uploadedFile, sketchHasContent, questionText, isPdfMode]);
+
+    const resolveSolveTier = React.useCallback((): "free" | "standard" | "research" => {
+        const propTier = (tier || "").toLowerCase();
+        if (propTier === "free" || propTier === "standard" || propTier === "research") {
+            return propTier;
+        }
+        if (typeof window !== "undefined") {
+            const storedTier = (window.localStorage.getItem("selected_solve_tier") || "").toLowerCase();
+            if (storedTier === "free" || storedTier === "standard" || storedTier === "research") {
+                return storedTier;
+            }
+        }
+        return "free";
+    }, [tier]);
+
+    const resolveSolveMode = React.useCallback(
+        (effectiveTier: "free" | "standard" | "research"): "minimal" | "detailed" => {
+            if (requestedMode === "minimal" || requestedMode === "detailed") return requestedMode;
+            return effectiveTier === "free" ? "minimal" : "detailed";
+        },
+        [requestedMode],
+    );
 
     const clearPdfCache = React.useCallback(() => {
         pdfCacheRef.current.forEach((entry) => {
@@ -600,9 +624,14 @@ export default function SnapSolveInputPanel({ onResolveText }: SnapSolveInputPan
         setError(null);
         setResult(null);
         try {
+            const userId = (typeof window !== "undefined" && window.localStorage.getItem("user_id")) || "1";
+            const effectiveTier = resolveSolveTier();
+            const effectiveMode = resolveSolveMode(effectiveTier);
             const formData = new FormData();
             formData.append("mode", activeSubTab);
             formData.append("question_text", questionText);
+            formData.append("tier", effectiveTier);
+            formData.append("requested_mode", effectiveMode);
             let fileToSend: File | null = null;
             if (activeSubTab === "upload") fileToSend = uploadedFile;
             else if (activeSubTab === "sketch" && sketchRef.current?.hasContent()) fileToSend = await sketchRef.current.exportAsFile();
@@ -610,7 +639,7 @@ export default function SnapSolveInputPanel({ onResolveText }: SnapSolveInputPan
                 formData.append("image", fileToSend);
                 formData.append("original_filename", fileToSend.name);
             }
-            const response = await fetch("/api/v1/math/solve_from_image_or_sketch", { method: "POST", body: formData });
+            const response = await fetch(`/api/v1/math/solve_from_image_or_sketch?user_id=${encodeURIComponent(userId)}`, { method: "POST", body: formData });
             const payload = await response.json();
             if (!response.ok) throw new Error(payload?.detail || payload?.error || "Unable to solve this request.");
             setResult(payload as SolveResponse);
@@ -672,10 +701,15 @@ export default function SnapSolveInputPanel({ onResolveText }: SnapSolveInputPan
         const out: SolvedQuestion[] = [];
         for (const q of selected) {
             try {
+                const userId = (typeof window !== "undefined" && window.localStorage.getItem("user_id")) || "1";
+                const effectiveTier = resolveSolveTier();
+                const effectiveMode = resolveSolveMode(effectiveTier);
                 const formData = new FormData();
                 formData.append("mode", "upload");
                 formData.append("question_text", q.text);
-                const response = await fetch("/api/v1/math/solve_from_image_or_sketch", { method: "POST", body: formData });
+                formData.append("tier", effectiveTier);
+                formData.append("requested_mode", effectiveMode);
+                const response = await fetch(`/api/v1/math/solve_from_image_or_sketch?user_id=${encodeURIComponent(userId)}`, { method: "POST", body: formData });
                 const payload = await response.json();
                 if (!response.ok) throw new Error(extractErrorMessage(payload, "Solve failed."));
                 out.push({ questionId: q.id, result: payload as SolveResponse });

@@ -50,8 +50,11 @@ export const segmentMath = (content: string): MathSegment[] => {
         const closeDelim = next.type === "block_math" ? "\\]" : "\\)";
         const closeIndex = findDelimiter(content, closeDelim, next.index + 2);
         if (closeIndex === -1) {
-            segments.push({ type: next.type === "block_math" ? "block_math" : "inline_math", value: content.slice(next.index + 2) });
-            break;
+            // Keep unmatched opening delimiters as plain text so we do not
+            // render the rest of a streaming/truncated message as math.
+            segments.push({ type: "text", value: content.slice(next.index, next.index + 2) });
+            cursor = next.index + 2;
+            continue;
         }
 
         const value = content.slice(next.index + 2, closeIndex);

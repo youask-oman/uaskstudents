@@ -83,3 +83,32 @@ def test_coerce_research_plotly_adds_fallback_when_missing() -> None:
     coerced = _coerce_research_plotly_block(raw, "RESEARCH")
     assert "```json" in coerced
     assert '"data"' in coerced
+
+
+def test_validate_research_tier_counts_markdown_step_and_verification_labels() -> None:
+    output = (
+        "Domain constraints:\n"
+        "- x != 2\n\n"
+        "**Step 1: title: Start - Rewrite equation.**\n"
+        "**Step 2: title: Isolate - Move terms.**\n"
+        "**Step 3: title: Simplify - Combine terms.**\n"
+        "**Step 4: title: Transform - Normalize form.**\n"
+        "**Step 5: title: Continue - Apply algebra.**\n"
+        "**Step 6: title: Continue - Apply algebra.**\n"
+        "**Step 7: title: Continue - Apply algebra.**\n"
+        "**Step 8: title: Continue - Apply algebra.**\n"
+        "**Step 9: title: Continue - Apply algebra.**\n"
+        "**Step 10: title: Continue - Apply algebra.**\n"
+        "**Step 11: title: Continue - Apply algebra.**\n"
+        "**Step 12: title: Finish - Present result.**\n\n"
+        "Verification:\n"
+        "**Verification check 1: Domain check**\n"
+        "**Verification check 2: Substitution check**\n"
+        "**Verification check 3: Edge-case check**\n\n"
+        "```json\n{\"data\":[{\"type\":\"scatter\",\"x\":[0,1],\"y\":[0,1]}],\"layout\":{\"title\":\"Plot\"}}\n```\n\n"
+        "Final Answer: x=7/2\n"
+    )
+    result = validate_freeform_output(output, tier="RESEARCH", requested_mode="minimal")
+    assert result["explicit_step_count"] == 12
+    assert result["checks"]["verification_checks_min_3"] is True
+    assert result["is_valid"] is True

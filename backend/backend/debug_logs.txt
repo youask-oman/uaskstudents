@@ -2278,3 +2278,137 @@ Prompt binding integrity OK: active_bindings=12 active_pairs=12
 HTTP Request: POST http://172.26.131.128:11434/api/generate "HTTP/1.1 200 OK"
 HTTP Request: POST http://172.26.131.128:11434/api/generate "HTTP/1.1 200 OK"
 HTTP Request: POST http://172.26.131.128:11434/api/generate "HTTP/1.1 200 OK"
+Exception during reset or similar
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/site-packages/sqlalchemy/pool/base.py", line 985, in _finalize_fairy
+    fairy._reset(
+    ~~~~~~~~~~~~^
+        pool,
+        ^^^^^
+    ...<2 lines>...
+        asyncio_safe=can_manipulate_connection,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/usr/local/lib/python3.13/site-packages/sqlalchemy/pool/base.py", line 1433, in _reset
+    pool._dialect.do_rollback(self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/sqlalchemy/engine/default.py", line 712, in do_rollback
+    dbapi_connection.rollback()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+psycopg2.OperationalError: server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+Exception during reset or similar
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/site-packages/sqlalchemy/pool/base.py", line 985, in _finalize_fairy
+    fairy._reset(
+    ~~~~~~~~~~~~^
+        pool,
+        ^^^^^
+    ...<2 lines>...
+        asyncio_safe=can_manipulate_connection,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/usr/local/lib/python3.13/site-packages/sqlalchemy/pool/base.py", line 1433, in _reset
+    pool._dialect.do_rollback(self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/sqlalchemy/engine/default.py", line 712, in do_rollback
+    dbapi_connection.rollback()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+psycopg2.OperationalError: server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Failed to enforce STANDARD/SOLVE binding defaults: [Errno 2] No such file or directory: '/backend/app/prompts/solve_standard_extreme_detailed_v1.txt'
+Failed to seed free-form solve prompt: [Errno 2] No such file or directory: '/backend/app/prompts/free_form_math_standard_detailed.txt'
+Failed to seed tiered free-form solve prompts: [Errno 2] No such file or directory: '/backend/app/prompts/free_form_math_standard_detailed.txt'
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+HTTP Request: POST http://172.26.131.128:11434/api/generate "HTTP/1.1 200 OK"
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Failed to enforce STANDARD/SOLVE binding defaults: [Errno 2] No such file or directory: '/backend/app/prompts/solve_standard_extreme_detailed_v1.txt'
+Failed to seed free-form solve prompt: [Errno 2] No such file or directory: '/backend/app/prompts/free_form_math_standard_detailed.txt'
+Failed to seed tiered free-form solve prompts: [Errno 2] No such file or directory: '/backend/app/prompts/free_form_math_standard_detailed.txt'
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+HTTP Request: POST http://172.26.131.128:11434/api/generate "HTTP/1.1 200 OK"
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Failed to enforce STANDARD/SOLVE binding defaults: [Errno 2] No such file or directory: '/backend/app/prompts/solve_standard_extreme_detailed_v1.txt'
+Failed to seed free-form solve prompt: [Errno 2] No such file or directory: '/backend/app/prompts/free_form_math_standard_detailed.txt'
+Failed to seed tiered free-form solve prompts: [Errno 2] No such file or directory: '/backend/app/prompts/free_form_math_standard_detailed.txt'
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+HTTP Request: POST http://172.26.131.128:11434/api/generate "HTTP/1.1 200 OK"
+request_id=5d8c0f01-53b4-4090-a436-13255bb860b5 freeform_archive_failed error=[Errno 30] Read-only file system: '/storage'
+extract_questions input metrics: size=369x369 stddev=32.08 white=0.967
+HTTP Request: POST http://172.26.131.128:11434/api/generate "HTTP/1.1 200 OK"
+ocr_attempt request_id=814d0930-ea4b-4e99-a9d3-e63c89a079a1 provider=openai model=gpt-5-mini duration_ms=10959 validation_passed=True fail_reason=None
+request_id=fa2d83f5-4e1b-4435-a84e-914af1b8c35f freeform_archive_failed error=[Errno 30] Read-only file system: '/storage'
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-03&end_date=2026-02-03
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-01&end_date=2026-02-03
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-03&end_date=2026-02-03
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-01&end_date=2026-02-03
+extract_questions applying crop: x=99 y=422 w=424 h=121 image=1091x1139
+extract_questions input metrics: size=424x121 stddev=60.97 white=0.913
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmpgqw0j9cn.png
+Initializing Local Pix2Text engine...
+Use DocLayout-YOLO model for Layout Analysis: C:\Users\loaia\AppData\Roaming\pix2text\1.1\layout-docyolo\doclayout_yolo_docstructbench_imgsz1024.pt
+use model: C:\Users\loaia\AppData\Roaming\cnocr\2.3\densenet_lite_136-gru\cnocr-v2.3-densenet_lite_136-gru-epoch=004-ft-model.onnx
+use model: C:\Users\loaia\AppData\Roaming\cnstd\1.2\ppocr\ch_PP-OCRv5_det\ch_PP-OCRv5_det_infer.onnx
+Use model path for MFD: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfd-1.5-onnx\pix2text-mfd-1.5.onnx
+Use model dir for LatexOCR: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfr-1.5-onnx
+Loaded Pix2Text MFR model mfr-1.5 to: backend-onnx, device-cpu
+Pix2Text initialized successfully
+ocr_attempt request_id=8c0cead0-a098-4592-af6a-e51874733389 provider=pix2txt model=pix2text-local duration_ms=4263 validation_passed=True fail_reason=None
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12

@@ -15,10 +15,12 @@ FREEFORM_OUTPUT_MODE = "FREEFORM"
 FREEFORM_PROMPT_ID = "free_form_math_standard_detailed_v1"
 FREEFORM_PROMPT_VERSION = "v1"
 
-_STEP_RE = re.compile(r"(?mi)^\s*Step\s+(\d+)\s*[:.\-]")
+_STEP_RE = re.compile(r"(?mi)^\s*(?:[-*]\s*)?(?:\*{1,2}\s*)?Step\s+(\d+)\s*[:.\-]")
 _DOMAIN_RE = re.compile(r"(?i)domain\s+(constraints?|restrictions?)")
 _VERIFY_RE = re.compile(r"(?i)\bverification\b")
-_VERIFY_CHECK_RE = re.compile(r"(?mi)^\s*(?:\(\d+\)|\d+\.)\s+")
+_VERIFY_CHECK_RE = re.compile(
+    r"(?mi)^\s*(?:[-*]\s*)?(?:\*{1,2}\s*)?(?:\(\d+\)|\d+[.)]|verification\s+check\s+\d+)\s*(?:[:.\-])?\s+"
+)
 _PLOTLY_BLOCK_RE = re.compile(r"```json[\s\S]*?```", re.IGNORECASE)
 _PLOTLY_LABEL_RE = re.compile(r"(?i)\bplotly\s+json\b")
 _GRAPH_KEYWORDS_RE = re.compile(r"(?i)\b(graph|plot|sketch|draw|visuali[sz]e)\b")
@@ -26,10 +28,13 @@ _DOMAIN_TRIGGER_RE = re.compile(r"(?i)(sqrt|\\sqrt|log|\\log|ln|denominator|/x|x
 _MATH_MARKER_RE = re.compile(r"(?i)(=|\\frac|\\sqrt|\\int|\\sum|\\prod|\\lim|[\d][\+\-\*/\^])")
 _GENERIC_STEP_LINE_RE = re.compile(r"(?mi)^\s*(?:Step\s+\d+|(?:\d+[\)\.\-]))\s+")
 _FINAL_ANSWER_RE_LIST = [
-    re.compile(r"(?im)^\s*final answer\s*[:\-]\s*(.+?)\s*$"),
-    re.compile(r"(?im)^\s*answer\s*[:\-]\s*(.+?)\s*$"),
+    re.compile(r"(?im)^[ \t]*final answer[ \t]*[:\-][ \t]*(.+?)[ \t]*$"),
+    re.compile(r"(?im)^[ \t]*answer[ \t]*[:\-][ \t]*(.+?)[ \t]*$"),
     re.compile(r"\\boxed\{([^}]+)\}"),
 ]
+_FINAL_ANSWER_HEADER_RE = re.compile(r"(?im)^\s*\*{0,2}\s*final answer\s*\*{0,2}\s*:?\s*$")
+_DISPLAY_BLOCK_RE = re.compile(r"\\\[(.*?)\\\]", re.DOTALL)
+_EQUATION_LINE_RE = re.compile(r"(?m)^\s*([^\n]{1,260}[=<>][^\n]{1,260})\s*$")
 
 
 @dataclass
@@ -351,10 +356,11 @@ def validate_freeform_output(
     char_count = len(output_text)
     step_matches = _STEP_RE.findall(output_text)
     unique_steps = sorted({int(step) for step in step_matches})
+    explicit_step_count = len(unique_steps)
     generic_step_count = len(_GENERIC_STEP_LINE_RE.findall(output_text))
     paragraphs = [p.strip() for p in re.split(r"\n\s*\n", output_text) if p.strip()]
     section_count = max(len(unique_steps), generic_step_count, len(paragraphs))
-    step_count = section_count
+    step_count = explicit_step_count if explicit_step_count > 0 else section_count
     has_domain = bool(_DOMAIN_RE.search(output_text))
     has_verification = bool(_VERIFY_RE.search(output_text))
     verification_checks = len(_VERIFY_CHECK_RE.findall(output_text))
@@ -367,7 +373,7 @@ def validate_freeform_output(
     coherent = char_count >= 80 and step_count >= 2 and has_final_answer and not truncated
     steps_range_free = 6 <= step_count <= 10
     steps_range_standard = 6 <= step_count <= 12
-    steps_range_research = 12 <= step_count <= 18
+    steps_range_research = 12 <= explicit_step_count <= 18
     verification_checks_min_1 = verification_checks >= 1
     verification_checks_max_2 = verification_checks <= 2
     verification_checks_min_3 = verification_checks >= 3
@@ -385,6 +391,7 @@ def validate_freeform_output(
         "steps_range_free": steps_range_free,
         "steps_range_standard": steps_range_standard,
         "steps_range_research": steps_range_research,
+        "research_explicit_steps_min_12": explicit_step_count >= 12,
         "has_math_work": has_math_work,
         "has_domain_constraints": has_domain,
         "has_verification_section": has_verification,
@@ -411,6 +418,7 @@ def validate_freeform_output(
         required = [
             "has_final_answer",
             "steps_range_research",
+            "research_explicit_steps_min_12",
             "has_math_work",
             "has_domain_constraints",
             "has_verification_section",
@@ -446,6 +454,7 @@ def validate_freeform_output(
         checks["steps_range_free"],
         checks["steps_range_standard"],
         checks["steps_range_research"],
+        checks["research_explicit_steps_min_12"],
         checks["steps_min_10"],
         checks["has_math_work"],
         checks["has_domain_constraints"],
@@ -478,6 +487,8 @@ def validate_freeform_output(
     if tier_norm == "RESEARCH":
         if not checks["steps_range_research"]:
             missing_items.append("steps_range_research")
+        if not checks["research_explicit_steps_min_12"]:
+            missing_items.append("research_explicit_steps_min_12")
         if not checks["has_domain_constraints"]:
             missing_items.append("domain_constraints")
         if not checks["has_verification_section"]:
@@ -501,20 +512,68 @@ def validate_freeform_output(
         "missing_items": missing_items,
         "char_count": char_count,
         "step_count": step_count,
+        "explicit_step_count": explicit_step_count,
         "truncated": truncated,
     }
 
 
 def extract_answer_from_freeform(output_text: str) -> Optional[str]:
+    def _clean_candidate(raw: Optional[str]) -> Optional[str]:
+        value = (raw or "").strip()
+        if not value:
+            return None
+        value = re.sub(r"^\*{1,3}\s*", "", value)
+        value = re.sub(r"\s*\*{1,3}$", "", value).strip()
+        value = re.sub(r"^\(?\d+\)?[.)]\s*", "", value).strip()
+        value = re.sub(r"\s{2,}", " ", value)
+        if not value:
+            return None
+        if re.match(r"(?i)^(step|verification|domain|check|plotly)\b", value):
+            return None
+        if re.match(r"(?i)^sub(?:stitution)?\.?$", value):
+            return None
+        return value[:320]
+
     for pattern in _FINAL_ANSWER_RE_LIST:
         match = pattern.search(output_text)
         if match:
-            value = (match.group(1) or "").strip()
-            if value:
-                return value
+            candidate = _clean_candidate(match.group(1) if match.lastindex else match.group(0))
+            if candidate:
+                return candidate
+
+    lines = [line.rstrip() for line in output_text.splitlines()]
+    for idx, line in enumerate(lines):
+        if not _FINAL_ANSWER_HEADER_RE.match(line):
+            continue
+        for follow in lines[idx + 1 : idx + 9]:
+            if not follow.strip():
+                continue
+            boxed = re.search(r"\\boxed\{([^}]+)\}", follow)
+            if boxed:
+                candidate = _clean_candidate(boxed.group(1))
+                if candidate:
+                    return candidate
+            candidate = _clean_candidate(follow)
+            if candidate and any(token in candidate for token in ("=", "\\frac", "\\sqrt", "\\pi", "\\theta")):
+                return candidate
+
+    display_blocks = _DISPLAY_BLOCK_RE.findall(output_text)
+    for block in reversed(display_blocks):
+        candidate = _clean_candidate(block.strip())
+        if candidate and any(token in candidate for token in ("=", "\\boxed", "\\frac", "\\sqrt", "\\pi")):
+            return candidate
+
+    equation_lines = _EQUATION_LINE_RE.findall(output_text or "")
+    for equation in reversed(equation_lines):
+        candidate = _clean_candidate(equation)
+        if candidate:
+            return candidate
+
     step_lines = [line.strip() for line in output_text.splitlines() if line.strip()]
-    if step_lines:
-        return step_lines[-1][:300]
+    for line in reversed(step_lines):
+        candidate = _clean_candidate(line)
+        if candidate:
+            return candidate
     return None
 
 
@@ -531,8 +590,10 @@ def archive_freeform_output(
     root_dir.mkdir(parents=True, exist_ok=True)
     safe_provider = re.sub(r"[^A-Za-z0-9._-]+", "-", provider or "unknown")
     safe_model = re.sub(r"[^A-Za-z0-9._-]+", "-", model or "unknown")
-    timestamp = now.strftime("%Y%m%dT%H%M%S%fZ")
-    file_name = f"{timestamp}_{request_id}_{safe_provider}_{safe_model}_attempt{attempt_number}_freeform.md"
+    timestamp = now.strftime("%Y%m%dT%H%M%S")
+    #file_name = f"{timestamp}_{request_id}_{safe_provider}_{safe_model}_attempt{attempt_number}_freeform.md"
+    file_name = f"{timestamp}_{request_id}_uask_{attempt_number}_freeform.md"
+
     file_path = root_dir / file_name
     file_path.write_text(output_text, encoding="utf-8")
     return str(file_path)

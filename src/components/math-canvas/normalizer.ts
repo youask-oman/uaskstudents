@@ -272,29 +272,36 @@ const parseResultFromObject = (value: unknown): string | undefined => {
 
   const finalAnswer = asRecord(asRecord(obj.solution)?.final_answer) || asRecord(obj.final_answer);
   if (finalAnswer) {
-    return (
+    const candidate = cleanAnswerCandidate(
       asString(finalAnswer.latex) ||
       asString(finalAnswer.value) ||
       asString(finalAnswer.answer_latex) ||
       asString(finalAnswer.answer_text) ||
       asString(finalAnswer.value_latex) ||
       asString(finalAnswer.value) ||
-      undefined
+      undefined,
     );
+    if (candidate) return candidate;
   }
 
   const answer = asRecord(obj.answer);
   if (answer) {
-    return asString(answer.final_latex) || asString(answer.final_text) || undefined;
+    const candidate = cleanAnswerCandidate(asString(answer.final_latex) || asString(answer.final_text) || undefined);
+    if (candidate) return candidate;
+  }
+
+  const extractedAnswer = cleanAnswerCandidate(asString(obj.extracted_answer) || undefined);
+  if (extractedAnswer) {
+    return extractedAnswer;
   }
 
   const hints = getHintsList(obj);
   for (let i = hints.length - 1; i >= 0; i -= 1) {
-    const hintValue = asString(hints[i].value);
-    if (hintValue && hintValue.trim().length > 0) return hintValue.trim();
+    const hintValue = cleanAnswerCandidate(asString(hints[i].value) || undefined);
+    if (hintValue) return hintValue;
   }
 
-  return asString(obj.result) || undefined;
+  return cleanAnswerCandidate(asString(obj.result) || undefined);
 };
 
 const parseRecognizedLatexFromObject = (value: unknown): string | undefined => {
@@ -450,10 +457,46 @@ const normalizeStepLine = (line: string): string =>
     .replace(/`([^`]+)`/g, "$1")
     .trim();
 
-const looksLikeMathLine = (line: string): boolean =>
-  /\\[a-zA-Z]+/.test(line) ||
-  /[=+\-*/^_{}()[\]]/.test(line) ||
-  /(?:sqrt|frac|int|sum|lim|sin|cos|tan|log)\b/i.test(line);
+const isDelimiterOnlyLine = (line: string): boolean => /^\\[\[\]\(\)]$/.test(line.trim());
+
+const looksLikeMathLine = (line: string): boolean => {
+  const trimmed = line.trim();
+  if (!trimmed) return false;
+  if (isDelimiterOnlyLine(trimmed)) return false;
+
+  if (/\\(boxed|frac|sqrt|int|sum|lim|sin|cos|tan|log|ln|pi|theta|left|right|begin|end)\b/i.test(trimmed)) {
+    return true;
+  }
+
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  const wordCount = words.length;
+  const alphaCount = (trimmed.match(/[A-Za-z]/g) || []).length;
+  const nonAlphaCount = trimmed.length - alphaCount;
+  const startsLikeSentence = /^[A-Z]/.test(trimmed);
+  const hasEquation = /[=<>]/.test(trimmed);
+  const hasMathSymbols = /[+\-*/^_{}]/.test(trimmed);
+  if (startsLikeSentence && wordCount >= 8) return false;
+  if ((hasEquation || hasMathSymbols) && wordCount <= 6) return true;
+  if ((hasEquation || hasMathSymbols) && nonAlphaCount > alphaCount * 1.35) return true;
+
+  return false;
+};
+
+const cleanAnswerCandidate = (value: string | undefined): string | undefined => {
+  const trimmed = (value || "").trim();
+  if (!trimmed) return undefined;
+  const cleaned = trimmed
+    .replace(/^\*{1,3}\s*/, "")
+    .replace(/\s*\*{1,3}$/, "")
+    .replace(/^\(?\d+\)?[.)]\s*/, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  if (!cleaned) return undefined;
+  if (/^(step|verification|domain|check|plotly)\b/i.test(cleaned)) return undefined;
+  if (/^sub(?:stitution)?\.?$/i.test(cleaned)) return undefined;
+  if (/^\(?\d+\)?[.)-]?\s*[A-Za-z]{1,20}$/.test(cleaned)) return undefined;
+  return cleaned;
+};
 
 const detectStepsFromText = (text: string): StepRow[] => {
   const lines = text
@@ -499,6 +542,9 @@ const detectStepsFromText = (text: string): StepRow[] => {
       const bullet = line.replace(/^[-*]\s+/, "").trim();
       if (/^[-*]\s+/.test(line)) {
         if (bullet) current.explanationParts.push(bullet);
+        return;
+      }
+      if (isDelimiterOnlyLine(line)) {
         return;
       }
       if (looksLikeMathLine(line)) {
@@ -551,12 +597,28 @@ const detectResultFromText = (text: string): string | undefined => {
     const match = trimmed.match(
       /^(?:final answer(?: value| latex)?|final_answer(?:\s*\(value\)|\s*value)?|answer|therefore|so)\s*[:=-]\s*(.+)$/i
     );
-    if (match?.[1]) return match[1].trim();
+    const candidate = cleanAnswerCandidate(match?.[1]);
+    if (candidate) return candidate;
   }
-  const boxed = text.match(/\\boxed\{([^}]+)\}/);
-  if (boxed?.[1]) return boxed[1].trim();
+  const boxedMatches = [...text.matchAll(/\\boxed\{([^}]+)\}/g)];
+  for (let i = boxedMatches.length - 1; i >= 0; i -= 1) {
+    const candidate = cleanAnswerCandidate(boxedMatches[i][1]);
+    if (candidate) return candidate;
+  }
+  const blocks = [...text.matchAll(/\\\[(.*?)\\\]/gs)];
+  for (let i = blocks.length - 1; i >= 0; i -= 1) {
+    const candidate = cleanAnswerCandidate(blocks[i][1]);
+    if (candidate && /[=<>]|\\(frac|sqrt|pi|theta|boxed)/i.test(candidate)) {
+      return candidate;
+    }
+  }
+  const equationLines = text.match(/^\s*([^\n]{1,260}[=<>][^\n]{1,260})\s*$/gm) || [];
+  for (let i = equationLines.length - 1; i >= 0; i -= 1) {
+    const candidate = cleanAnswerCandidate(equationLines[i]);
+    if (candidate) return candidate;
+  }
   const thereforeInline = text.match(/therefore[,:\s]+(.+)$/im);
-  return thereforeInline?.[1]?.trim() || undefined;
+  return cleanAnswerCandidate(thereforeInline?.[1]);
 };
 
 const detectPlotFromText = (text: string): ChartPayload | null => {
@@ -678,10 +740,33 @@ export const normalizeAssistantMessage = (
     return base;
   }
 
+  const extractedFromContent = contentText.trim() ? extractSolutionFromText(contentText) : { solution: null, remainingText: contentText };
   const structuredSolution = parseMathSolutionFromObject(message.structured_data);
-  if (structuredSolution) {
-    base.items.push({ type: "math_solution", payload: structuredSolution });
-    structuredSolution.plots?.forEach((plot) => {
+  const mergedSolution = structuredSolution
+    ? {
+        ...structuredSolution,
+        recognizedLatex: structuredSolution.recognizedLatex || extractedFromContent.solution?.recognizedLatex,
+        steps:
+          structuredSolution.steps.length > 0
+            ? structuredSolution.steps
+            : (extractedFromContent.solution?.steps || []),
+        result:
+          cleanAnswerCandidate(structuredSolution.result) ||
+          cleanAnswerCandidate(extractedFromContent.solution?.result),
+        verificationChecks:
+          structuredSolution.verificationChecks.length > 0
+            ? structuredSolution.verificationChecks
+            : (extractedFromContent.solution?.verificationChecks || []),
+        plots:
+          structuredSolution.plots.length > 0
+            ? structuredSolution.plots
+            : (extractedFromContent.solution?.plots || []),
+      }
+    : extractedFromContent.solution;
+
+  if (mergedSolution) {
+    base.items.push({ type: "math_solution", payload: mergedSolution });
+    mergedSolution.plots?.forEach((plot) => {
       base.items.push({ type: "chart", payload: plot });
     });
   }
@@ -695,15 +780,7 @@ export const normalizeAssistantMessage = (
   });
 
   if (contentText.trim()) {
-    const extracted = extractSolutionFromText(contentText);
-    if (extracted.solution && !structuredSolution) {
-      base.items.push({ type: "math_solution", payload: extracted.solution });
-      extracted.solution.plots?.forEach((plot) => {
-        base.items.push({ type: "chart", payload: plot });
-      });
-    }
-
-    const remaining = extracted.remainingText.trim();
+    const remaining = extractedFromContent.remainingText.trim();
     if (remaining) {
       base.items.push({ type: "text", text: remaining });
     }
