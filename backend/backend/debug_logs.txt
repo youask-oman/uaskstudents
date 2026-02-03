@@ -1796,3 +1796,9 @@ Prompt binding integrity OK: active_bindings=12 active_pairs=12
 HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
 HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
 HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
