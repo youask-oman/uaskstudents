@@ -14,7 +14,7 @@ export default function TopHeader({ notebookTitle }: TopHeaderProps) {
         <div className={styles.logoBadge}>
           <span className="material-symbols-outlined">calculate</span>
         </div>
-        <h1 className={styles.brandTitle}>Math Canvas AI</h1>
+        <h1 className={styles.brandTitle}>Uask Canvas AI</h1>
         <div className={styles.searchWrap}>
           <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
             search

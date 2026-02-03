@@ -117,6 +117,11 @@ def on_startup():
             logging.error(f"Failed to enforce STANDARD/SOLVE binding defaults: {e}")
             session.rollback()
         try:
+            prompt_registry_service.ensure_freeform_solve_prompt(session, updated_by="startup")
+        except Exception as e:
+            logging.error(f"Failed to seed free-form solve prompt: {e}")
+            session.rollback()
+        try:
             report = prompt_registry_service.audit_active_bindings(session)
             if report.get("ok"):
                 logging.info(

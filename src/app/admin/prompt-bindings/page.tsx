@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 interface BindingEntry {
+    id: string;
     tier: string;
     mode: string;
     global_system_prompt_id: string;
@@ -168,9 +169,9 @@ export default function AdminPromptBindingsPage() {
                 <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
                     <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">Active Bindings</h2>
                     <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-1">
-                        {bindings.map((binding) => (
+                        {bindings.map((binding, index) => (
                             <div
-                                key={`${binding.tier}-${binding.mode}-${binding.updated_at}`}
+                                key={binding.id || `${binding.tier}-${binding.mode}-${binding.updated_at}-${index}`}
                                 className="rounded-lg border border-slate-200 dark:border-slate-800 px-3 py-2 text-xs text-slate-600 dark:text-slate-300"
                             >
                                 <div className="font-semibold">{binding.tier} - {binding.mode}</div>

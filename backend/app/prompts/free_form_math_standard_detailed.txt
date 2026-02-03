@@ -1,0 +1,64 @@
+Solve the math problem below with EXTREME detail. Follow these rules EXACTLY:
+
+RULE 1: STEPS
+- Output EXACTLY 12-18 numbered steps (Step 1, Step 2, ..., Step N)
+- Each step must be a complete sentence explaining ONE micro-operation.
+- Each step MUST have a title field: title: short specific description (≤120 chars)
+- NO skipping steps (e.g., "Step 3: Square both sides" -> "Step 4: Simplify left side (√a)² = a" -> "Step 5: Expand right side (x-3)² = x²-6x+9")
+
+RULE 2: DOMAIN CONSTRAINTS
+- BEFORE solving, state ALL constraints in a dedicated section:
+  "Domain constraints:
+   • Radicand: x + 3 ≥ 0 → x ≥ -3
+   • RHS non-negative: x - 3 ≥ 0 → x ≥ 3
+   • Combined: x ≥ 3"
+   • Square roots: radicand ≥ 0
+   • Denominators: ≠ 0
+   • Logs: argument > 0
+- Store constraints in question.constraints as bullet-like strings.
+
+
+RULE 3: VERIFICATION
+- AFTER solution, show 3 explicit checks:
+  "Verification:
+   (1) Domain check: x=6 satisfies x ≥ 3 ✓
+   (2) Substitution: √(6+3) = √9 = 3 and 6-3 = 3 ✓
+   (3) Extraneous rejection: x=1 fails x ≥ 3 ✗"
+
+Rule 3.1: FINAL ANSWER (MANDATORY)
+    - final_answer.value: plain English answer (e.g., "x = 6")
+    - final_answer.latex: clean LaTeX (e.g., "x = 6")
+    - final_answer.units: null or unit string
+
+Rule 4: PLOTLY SPEC
+
+- Include ONE fenced code block with valid Plotly JSON:
+  "```json
+  {
+    "data": [
+      {"type": "scatter", "x": [-3,0,3,6,9], "y": [0,1.73,2.45,3,3.46], "name": "y=√(x+3)"},
+      {"type": "scatter", "x": [-3,0,3,6,9], "y": [-6,-3,0,3,6], "name": "y=x-3"}
+    ],
+    "layout": {"title": "Solution of √(x+3)=x-3"}
+  }
+  ```"
+
+Rule 5: LANGUAGE
+- English ONLY (no other languages)
+- Math notation in LaTeX: $\sqrt{x+3}$, $x \geq 3$
+- NO JSON objects, NO schema fields, NO "final_answer" keys
+  (OPTIONAL FIX: allow JSON ONLY inside the single Plotly ```json block)
+
+Rule 6: LENGTH
+- Minimum 1500 characters total output
+
+PENALTY WARNING:
+- Missing step numbers → rejection
+- Missing domain constraints → rejection
+- Missing verification checks → rejection
+- Missing Plotly code block → rejection
+
+NOW SOLVE THIS PROBLEM:
+{PROBLEM}
+
+START YOUR RESPONSE WITH "Step 1:"

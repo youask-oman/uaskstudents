@@ -83,4 +83,36 @@ describe("math-canvas normalizer", () => {
     const chartItems = normalized.items.filter((item) => item.type === "chart");
     expect(chartItems).toHaveLength(1);
   });
+
+  test("parses free-form markdown steps and latex lines", () => {
+    const assistant: SessionMessage = {
+      role: "assistant",
+      content: `
+**Step 1: Isolate the radical**
+\\[
+x = 2\\sqrt{x-1}
+\\]
+**Step 2: Square both sides**
+\\[
+x^2 = 4(x-1)
+\\]
+**Step 3: Rearrange**
+\\[
+x^2-4x+4=0
+\\]
+**Step 4: Factor**
+\\[
+(x-2)^2=0
+\\]
+Final answer: x = 2
+      `,
+    };
+
+    const normalized = normalizeAssistantMessage(assistant, 1);
+    const solutionItem = normalized.items.find((item) => item.type === "math_solution");
+    expect(solutionItem).toBeDefined();
+    if (!solutionItem || solutionItem.type !== "math_solution") return;
+    expect(solutionItem.payload.steps.length).toBeGreaterThanOrEqual(4);
+    expect(solutionItem.payload.result).toContain("x = 2");
+  });
 });

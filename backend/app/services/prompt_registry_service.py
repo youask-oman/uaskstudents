@@ -29,6 +29,7 @@ class PromptRegistryService:
     STANDARD_SOLVE_PROMPT_ID = "solve_standard_extreme_detailed_v1"
     STANDARD_SOLVE_SCHEMA_ID = "youask_math_solver_standard_solve_extreme_v1"
     STANDARD_SOLVE_GLOBAL_SYSTEM_ID = "global_system_prompt_v1"
+    FREEFORM_SOLVE_PROMPT_ID = "free_form_math_standard_detailed_v1"
     LEGACY_STANDARD_SOLVE_PROMPT_IDS = (
         "solve_standard_moderate_v1",
         "solve_standard_moderate_v2",
@@ -59,6 +60,7 @@ class PromptRegistryService:
     )
     STANDARD_SOLVE_PROMPT_ASSET = "backend/app/prompts/solve_standard_extreme_detailed_v1.txt"
     STANDARD_SOLVE_SCHEMA_ASSET = "backend/app/schemas/youask_math_solver_standard_solve_extreme_v1.json"
+    FREEFORM_SOLVE_PROMPT_ASSET = "backend/app/prompts/free_form_math_standard_detailed.txt"
 
     def _repo_root(self) -> Path:
         return Path(__file__).resolve().parents[3]
@@ -184,6 +186,22 @@ class PromptRegistryService:
             global_system_prompt_id=self.STANDARD_SOLVE_GLOBAL_SYSTEM_ID,
             developer_prompt_id=target_prompt_id,
             output_schema_id=target_schema_id,
+            updated_by=updated_by,
+        )
+
+    def ensure_freeform_solve_prompt(
+        self,
+        session: Session,
+        updated_by: Optional[str] = "system",
+    ) -> PromptTemplateEntry:
+        content = self._load_asset_text(self.FREEFORM_SOLVE_PROMPT_ASSET)
+        return self.update_prompt(
+            session=session,
+            prompt_id=self.FREEFORM_SOLVE_PROMPT_ID,
+            content=content,
+            tier=PromptTierEnum.STANDARD,
+            mode=PromptModeEnum.SOLVE,
+            role=PromptRoleEnum.DEVELOPER,
             updated_by=updated_by,
         )
 

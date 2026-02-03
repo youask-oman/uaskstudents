@@ -19,7 +19,11 @@ export default function SolutionStepsBlock({ steps, result, verificationChecks }
           <span className={styles.stepLabel}>STEP {index + 1}</span>
           <div className={styles.stepValue}>
             <div style={{ fontWeight: 600 }}>{step.title}</div>
-            {step.explanation ? <div style={{ marginTop: 3, fontSize: 13 }}>{step.explanation}</div> : null}
+            {step.explanation ? (
+              <div style={{ marginTop: 3, fontSize: 13 }}>
+                <MathRenderer content={step.explanation} mode="prose" />
+              </div>
+            ) : null}
             {step.mathLatex ? (
               <div style={{ marginTop: 4 }}>
                 <MathRenderer content={step.mathLatex} mode="inline" />

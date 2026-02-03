@@ -34,7 +34,7 @@ from app.models import (
     AdminNote, SystemConfig, UserQuotaOverride, SystemErrorEntry,
     School, Plan, Subscription, UsageLedger,
     RequestEvent, DeviceSignupLog, OcrCache,
-    OcrExtractionCache, CreditHold,
+    OcrExtractionCache, CreditHold, SolverOutputAttempt,
     PromptTemplateEntry, JsonSchemaEntry, PromptBinding,
     PromptTierEnum, PromptModeEnum, PromptRoleEnum
 )
@@ -78,6 +78,14 @@ from app.services.whatsapp.whatsapp_send import send_whatsapp_logo
 from app.services.whatsapp.step_delivery import handle_navigation
 from app.worker import celery_app
 from app.services.solve.cache_service import cache_service
+from app.services.solve.freeform_solver import (
+    FREEFORM_OUTPUT_MODE,
+    FREEFORM_PROMPT_ID,
+    FREEFORM_PROMPT_VERSION,
+    archive_freeform_output,
+    generate_freeform_solution,
+    should_use_freeform_output,
+)
 from app.services.token_policy import get_token_policy, serialize_token_policy
 from app.config import get_settings
 from app.services.school_import_service import normalize_country_code
@@ -375,6 +383,52 @@ def _build_schema_valid_stream_error_payload(
             },
         },
     }
+
+
+def _persist_freeform_attempt(
+    *,
+    session: Session,
+    request_id: str,
+    user_id: int,
+    session_id: Optional[int],
+    message_id: Optional[int],
+    attempt_number: int,
+    provider: str,
+    model: str,
+    prompt_id: str,
+    prompt_version: str,
+    raw_solution_text: str,
+    extracted_answer: Optional[str],
+    validation_json: Optional[Dict[str, Any]],
+    latency_ms: Optional[int],
+    archive_path: Optional[str],
+    status: str,
+    error_message: Optional[str] = None,
+) -> SolverOutputAttempt:
+    entry = SolverOutputAttempt(
+        request_id=request_id,
+        user_id=user_id,
+        session_id=session_id,
+        message_id=message_id,
+        output_format=FREEFORM_OUTPUT_MODE.lower(),
+        prompt_id=prompt_id,
+        prompt_version=prompt_version,
+        attempt_number=attempt_number,
+        provider=provider,
+        model=model,
+        latency_ms=latency_ms,
+        char_count=len(raw_solution_text or ""),
+        extracted_answer=extracted_answer,
+        raw_solution_text=raw_solution_text or "",
+        validation_json=validation_json or {},
+        archive_path=archive_path,
+        status=status,
+        error_message=error_message,
+    )
+    session.add(entry)
+    session.commit()
+    session.refresh(entry)
+    return entry
 
 
 def _detect_image_kind(raw: bytes) -> Optional[str]:
@@ -4174,6 +4228,11 @@ async def solve_v3_runtime_meta(
     tier_requested = tier_policy["tier_requested"]
     tier_effective = tier_policy["tier_effective"]
     mode_label = (mode_family or "SOLVE").strip().upper()
+    output_format = (
+        FREEFORM_OUTPUT_MODE.lower()
+        if should_use_freeform_output(provider, model) and mode_label == "SOLVE"
+        else "json_schema"
+    )
 
     try:
         profile = ProfileResolver.resolve_profile(
@@ -4207,6 +4266,7 @@ async def solve_v3_runtime_meta(
         "tier_requested": tier_requested,
         "tier_effective": tier_effective,
         "mode": mode_label,
+        "output_format": output_format,
         "prompt_binding_id": binding_meta.get("binding_id"),
         "global_system_prompt_id": binding_meta.get("global_system_prompt_id"),
         "developer_prompt_id": binding_meta.get("developer_prompt_id"),
@@ -5209,6 +5269,31 @@ async def solve_v3_stream_endpoint(
         session.commit()
         deduct_committed = True
 
+        output_format = (
+            FREEFORM_OUTPUT_MODE.lower()
+            if should_use_freeform_output(stream_provider, stream_model)
+            else "json_schema"
+        )
+        freeform_prompt_template: Optional[str] = None
+        freeform_prompt_id = FREEFORM_PROMPT_ID
+        freeform_prompt_version = FREEFORM_PROMPT_VERSION
+        if output_format == FREEFORM_OUTPUT_MODE.lower():
+            freeform_prompt_entry = prompt_registry_service.get_active_prompt(session, FREEFORM_PROMPT_ID)
+            if not freeform_prompt_entry or not (freeform_prompt_entry.content or "").strip():
+                if deduct_committed and debit_cost > 0:
+                    subscription_service.refund_credits(
+                        session,
+                        sub_id,
+                        debit_cost,
+                        "Free-form solve failed: prompt not configured",
+                        request_id,
+                    )
+                yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': False, 'error': {'code': 'freeform_prompt_not_found', 'message': f'Missing active free-form prompt in prompt_templates: {FREEFORM_PROMPT_ID}', 'request_id': request_id}})}\n\n"
+                return
+            freeform_prompt_template = freeform_prompt_entry.content
+            freeform_prompt_id = freeform_prompt_entry.prompt_id
+            freeform_prompt_version = str(freeform_prompt_entry.version)
+
         # Meta Event (Part A1)
         meta_data = {
             "request_id": request_id,
@@ -5223,11 +5308,12 @@ async def solve_v3_stream_endpoint(
             "effective_tier": effective_tier,
             "prompt_binding_id": binding_meta.get("binding_id"),
             "global_system_prompt_id": binding_meta.get("global_system_prompt_id"),
-            "developer_prompt_id": binding_meta.get("developer_prompt_id"),
-            "output_schema_id": binding_meta.get("output_schema_id"),
+            "developer_prompt_id": freeform_prompt_id if output_format == FREEFORM_OUTPUT_MODE.lower() else binding_meta.get("developer_prompt_id"),
+            "output_schema_id": None if output_format == FREEFORM_OUTPUT_MODE.lower() else binding_meta.get("output_schema_id"),
             "global_system_prompt_version": binding_meta.get("global_system_prompt_version"),
-            "developer_prompt_version": binding_meta.get("developer_prompt_version"),
-            "output_schema_version": binding_meta.get("output_schema_version"),
+            "developer_prompt_version": freeform_prompt_version if output_format == FREEFORM_OUTPUT_MODE.lower() else binding_meta.get("developer_prompt_version"),
+            "output_schema_version": None if output_format == FREEFORM_OUTPUT_MODE.lower() else binding_meta.get("output_schema_version"),
+            "output_format": output_format,
         }
         meta_data["input_modality"] = modality
         meta_data["verification_level"] = verification_level
@@ -5241,12 +5327,13 @@ async def solve_v3_stream_endpoint(
             "mode": "SOLVE",
             "prompt_binding_id": binding_meta.get("binding_id"),
             "global_system_prompt_id": binding_meta.get("global_system_prompt_id"),
-            "developer_prompt_id": binding_meta.get("developer_prompt_id"),
-            "output_schema_id": binding_meta.get("output_schema_id"),
+            "developer_prompt_id": freeform_prompt_id if output_format == FREEFORM_OUTPUT_MODE.lower() else binding_meta.get("developer_prompt_id"),
+            "output_schema_id": None if output_format == FREEFORM_OUTPUT_MODE.lower() else binding_meta.get("output_schema_id"),
+            "output_format": output_format,
             "prompt_versions": {
                 "system": binding_meta.get("global_system_prompt_version"),
-                "developer": binding_meta.get("developer_prompt_version"),
-                "schema": binding_meta.get("output_schema_version"),
+                "developer": freeform_prompt_version if output_format == FREEFORM_OUTPUT_MODE.lower() else binding_meta.get("developer_prompt_version"),
+                "schema": None if output_format == FREEFORM_OUTPUT_MODE.lower() else binding_meta.get("output_schema_version"),
             },
         }
         
@@ -5257,7 +5344,10 @@ async def solve_v3_stream_endpoint(
         # Stage: Preparing request... (Part A2)
         yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': 'Preparing request...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
 
-        print(f"[SOLVER_V3_STREAM] Recv: {problem_text[:50]}... (Mode: {body.mode}, tokens: {max_output_tokens})")
+        print(
+            f"[SOLVER_V3_STREAM] Recv: {problem_text[:50]}... "
+            f"(RequestedMode: {requested_mode}, output_format: {output_format}, tokens: {max_output_tokens})"
+        )
 
         try:
             validate_math_query(problem_text)
@@ -5360,13 +5450,238 @@ async def solve_v3_stream_endpoint(
         # Stage: Calling AI model...
         yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': 'Calling AI model...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
 
+        # Stage: Waiting for model...
+        yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': 'Waiting for model...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
+
+        if output_format == FREEFORM_OUTPUT_MODE.lower():
+            base_url = detect_ollama_base_url(os.environ.get("OLLAMA_BASE_URL"))
+            if not base_url:
+                if deduct_committed and debit_cost > 0:
+                    subscription_service.refund_credits(
+                        session,
+                        sub_id,
+                        debit_cost,
+                        "Free-form solve failed: Ollama not reachable",
+                        request_id,
+                    )
+                yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': False, 'error': {'code': 'ollama_unreachable', 'message': 'Ollama base URL is not reachable', 'request_id': request_id}})}\n\n"
+                return
+
+            max_attempts = max(1, min(3, int(os.environ.get("FREEFORM_MAX_ATTEMPTS", "3"))))
+            num_predict = int(os.environ.get("FREEFORM_NUM_PREDICT", "2500"))
+            timeout_seconds = int(os.environ.get("FREEFORM_TIMEOUT_SECONDS", "120"))
+
+            attempt_summaries: List[Dict[str, Any]] = []
+            selected_result = None
+            latest_nonempty_result = None
+            for attempt_number in range(1, max_attempts + 1):
+                yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': f'Free-form attempt {attempt_number}/{max_attempts}...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
+                try:
+                    attempt_result = await generate_freeform_solution(
+                        problem_text=problem_text,
+                        prompt_template=freeform_prompt_template or "",
+                        model=stream_model,
+                        base_url=base_url,
+                        num_predict=num_predict,
+                        timeout_seconds=timeout_seconds,
+                        prompt_id=freeform_prompt_id,
+                        prompt_version=freeform_prompt_version,
+                    )
+                    status = "ok" if attempt_result.validation.get("is_valid") else "invalid"
+                    attempt_summaries.append(
+                        {
+                            "attempt_number": attempt_number,
+                            "status": status,
+                            "latency_ms": attempt_result.latency_ms,
+                            "char_count": len(attempt_result.output_text or ""),
+                            "validation_score": attempt_result.validation.get("score"),
+                            "failed_checks": attempt_result.validation.get("failed_checks", []),
+                        }
+                    )
+                    if attempt_result.output_text:
+                        latest_nonempty_result = (attempt_number, attempt_result)
+                    if attempt_result.validation.get("is_valid"):
+                        selected_result = (attempt_number, attempt_result)
+                        break
+                except Exception as attempt_error:
+                    error_text = str(attempt_error)
+                    attempt_summaries.append(
+                        {
+                            "attempt_number": attempt_number,
+                            "status": "error",
+                            "latency_ms": None,
+                            "char_count": 0,
+                            "validation_score": "0/0",
+                            "failed_checks": ["generation_error"],
+                            "error": error_text,
+                        }
+                    )
+
+            final_choice = selected_result or latest_nonempty_result
+            if final_choice is None:
+                if deduct_committed and debit_cost > 0:
+                    subscription_service.refund_credits(
+                        session,
+                        sub_id,
+                        debit_cost,
+                        "Free-form solve failed after retries",
+                        request_id,
+                    )
+                yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': False, 'error': {'code': 'freeform_generation_failed', 'message': 'Unable to generate free-form solution.', 'request_id': request_id}})}\n\n"
+                return
+
+            final_attempt_number, final_result = final_choice
+            output_text = final_result.output_text
+            extracted_answer = final_result.extracted_answer or ""
+            archive_path = archive_freeform_output(
+                request_id=request_id,
+                provider=stream_provider,
+                model=stream_model,
+                attempt_number=final_attempt_number,
+                output_text=output_text,
+            )
+            final_status = "ok" if final_result.validation.get("is_valid") else "invalid"
+            _persist_freeform_attempt(
+                session=session,
+                request_id=request_id,
+                user_id=user_id,
+                session_id=new_chat.id,
+                message_id=placeholder_msg.id,
+                attempt_number=final_attempt_number,
+                provider=stream_provider,
+                model=stream_model,
+                prompt_id=final_result.prompt_id,
+                prompt_version=final_result.prompt_version,
+                raw_solution_text=output_text,
+                extracted_answer=extracted_answer,
+                validation_json=final_result.validation,
+                latency_ms=final_result.latency_ms,
+                archive_path=archive_path,
+                status=final_status,
+            )
+            if output_text:
+                yield f"event: delta\ndata: {json.dumps({'type': 'delta', 'text': output_text})}\n\n"
+
+            yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': 'Finalizing...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
+
+            freeform_telemetry = {
+                "provider": stream_provider,
+                "model": stream_model,
+                "output_format": FREEFORM_OUTPUT_MODE.lower(),
+                "request_id": request_id,
+                "latency_ms_total": int((time.perf_counter() - start_total) * 1000),
+                "latency_ms_generation": final_result.latency_ms,
+                "char_count": len(output_text),
+                "attempts": attempt_summaries,
+                "attempt_count": len(attempt_summaries),
+                "final_attempt_number": final_attempt_number,
+                "archive_path": archive_path,
+                "prompt_id": freeform_prompt_id,
+                "prompt_version": freeform_prompt_version,
+                "validated": final_result.validation.get("is_valid", False),
+                "validation_score": final_result.validation.get("score"),
+                "validation_failed_checks": final_result.validation.get("failed_checks", []),
+                "schema_valid": None,
+                "hide_from_tutor": True,
+                "channel": "canvas_primary",
+            }
+
+            placeholder_msg.content = output_text
+            placeholder_msg.structured_data = {
+                "output_format": FREEFORM_OUTPUT_MODE.lower(),
+                "raw_solution_text": output_text,
+                "extracted_answer": extracted_answer,
+                "validation_json": final_result.validation,
+                "attempts": attempt_summaries,
+                "archive_path": archive_path,
+                "prompt_id": freeform_prompt_id,
+                "prompt_version": freeform_prompt_version,
+                "request_id": request_id,
+                "solve_meta": meta_data.get("solve_meta"),
+                "hide_from_tutor": True,
+            }
+            placeholder_msg.telemetry = freeform_telemetry
+            placeholder_msg.tokens_used = max(len(output_text) // 4, 1)
+            placeholder_msg.subject = body.subject or "General"
+            placeholder_msg.grade_level = context_user.grade_level if context_user else None
+            placeholder_msg.difficulty = body.difficulty
+
+            tokens_estimate = max(len(output_text) // 4, 1)
+            add_tokens_to_user(user_id, tokens_estimate, session)
+            session.add(UsageLog(user_id=user_id, action_type="solve_v3_stream", tokens_used=tokens_estimate))
+            session.commit()
+
+            log_solve_trace({
+                "request_id": request_id,
+                "user_id": user_id,
+                "seat_id": None,
+                "plan_key": plan_key,
+                "ui_goal": learning_mode,
+                "ui_style": requested_mode,
+                "resolved_profile_key": profile_key,
+                "resolved_system_file_path": profile.system_asset_path or profile.system_relative_path,
+                "resolved_schema_file_path": profile.schema_asset_path or profile.schema_relative_path,
+                "schema_name": None,
+                "max_output_tokens_sent": effective_max_tokens,
+                "model_sent": stream_model,
+                "cache_hit": False,
+                "openai_calls_count": 0,
+                "repair_attempted": False,
+                "prompt_tokens_estimate": None,
+                "input_tokens": 0,
+                "output_tokens": tokens_estimate,
+                "cached_tokens": None,
+                "deduct_attempted": deduct_attempted,
+                "deduct_committed": deduct_committed,
+                "openai_payload": None,
+                "problem_text": problem_text,
+                "input_modality": modality,
+                "verification_level": verification_level,
+                "token_policy_key": policy_key,
+                "prompt_binding_id": binding_meta.get("binding_id"),
+                "global_system_prompt_id": binding_meta.get("global_system_prompt_id"),
+                "developer_prompt_id": freeform_prompt_id,
+                "output_schema_id": None,
+                "global_system_prompt_version": binding_meta.get("global_system_prompt_version"),
+                "developer_prompt_version": freeform_prompt_version,
+                "output_schema_version": None,
+                "output_format": FREEFORM_OUTPUT_MODE.lower(),
+            })
+            record_request_event(session, {
+                "request_id": request_id,
+                "user_id": user_id,
+                "mode": requested_mode,
+                "learning_mode": learning_mode,
+                "subject": body.subject,
+                "grade_level": user_obj.grade_level if user_obj else None,
+                "model": stream_model,
+                "provider": stream_provider,
+                "route": "solve_v3_stream",
+                "tokens_in": 0,
+                "tokens_out": tokens_estimate,
+                "tokens_total": tokens_estimate,
+                "cost_usd": _calc_cost(tokens_estimate, stream_model, 0, tokens_estimate),
+                "latency_ms": freeform_telemetry["latency_ms_total"],
+                "status": "ok",
+                "error_type": None,
+                "schema_valid": None,
+                "verification_pass": bool(final_result.validation.get("checks", {}).get("verification_checks_min_3")),
+                "is_stream": True,
+                "is_cached": False,
+                "credit_deducted": deduct_committed,
+                "credit_amount": debit_cost if deduct_committed else None,
+                "ocr_used": action_req["has_ocr"],
+                "voice_used": action_req["has_voice"],
+                "response_truncated": False,
+            })
+            yield f"event: telemetry\ndata: {json.dumps({'type': 'telemetry', 'telemetry': freeform_telemetry})}\n\n"
+            yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': True, 'session_id': new_chat.id, 'message_id': placeholder_msg.id})}\n\n"
+            return
+
         solver = get_solver_v3()
         full_content = ""
         openai_telemetry = {}
         repair_attempted = False
-        
-        # Stage: Waiting for model...
-        yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': 'Waiting for model...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
 
         try:
             async for chunk in solver.solve_stream(
@@ -7720,6 +8035,7 @@ class RegistrySchemaItem(BaseModel):
     updated_by: Optional[str]
 
 class RegistryBindingItem(BaseModel):
+    id: str
     tier: str
     mode: str
     global_system_prompt_id: str
@@ -7928,6 +8244,7 @@ async def admin_list_prompt_registry_bindings(db: Session = Depends(get_session)
     rows = db.exec(select(PromptBinding).order_by(PromptBinding.updated_at.desc())).all()
     return [
         RegistryBindingItem(
+            id=row.id,
             tier=row.tier.value,
             mode=row.mode.value,
             global_system_prompt_id=row.global_system_prompt_id,
@@ -7962,6 +8279,7 @@ async def admin_activate_prompt_registry_binding(req: BindingActivateRequest, db
         updated_by=req.updated_by,
     )
     return RegistryBindingItem(
+        id=entry.id,
         tier=entry.tier.value,
         mode=entry.mode.value,
         global_system_prompt_id=entry.global_system_prompt_id,

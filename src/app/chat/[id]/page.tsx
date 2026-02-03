@@ -1,9 +1,9 @@
 "use client";
 
 import { use, useEffect, useMemo, useReducer, useState } from "react";
+import DashboardNavBar from "@/components/DashboardNavBar";
 import MathCanvasLayout from "@/components/math-canvas/MathCanvasLayout";
 import LeftNotebookSidebar from "@/components/math-canvas/LeftNotebookSidebar";
-import TopHeader from "@/components/math-canvas/TopHeader";
 import CanvasWorkspace from "@/components/math-canvas/CanvasWorkspace";
 import RightTutorChat from "@/components/math-canvas/RightTutorChat";
 import {
@@ -25,6 +25,28 @@ interface ChatSessionPayload {
   messages: SessionMessage[];
 }
 
+const asRecord = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+
+const isSolvePrimaryAssistantMessage = (message: SessionMessage): boolean => {
+  if (message.role !== "assistant") return false;
+
+  const telemetry = asRecord(message.telemetry);
+  if (telemetry?.hide_from_tutor === true) return true;
+  if (telemetry?.channel === "canvas_primary") return true;
+
+  const structured = asRecord(message.structured_data);
+  if (!structured) return false;
+  if (structured.hide_from_tutor === true) return true;
+  if (structured.solve_meta) return true;
+
+  const outputFormat = typeof structured.output_format === "string" ? structured.output_format.toLowerCase() : "";
+  if (outputFormat === "freeform" || outputFormat === "json_schema") return true;
+
+  if (structured.schema_version && asRecord(structured.question) && asRecord(structured.solution)) return true;
+  return false;
+};
+
 const createPage = (): CanvasPageData => ({
   id: createPageId(),
   blocks: [],
@@ -34,6 +56,10 @@ const createPage = (): CanvasPageData => ({
 const buildInitialPages = (messages: ReturnType<typeof normalizeSessionMessages>): CanvasPageData[] => {
   const solution = extractPrimarySolution(messages);
   const firstPage = createPage();
+  const firstStepTitle = solution?.steps?.[0]?.title?.trim();
+  if (firstStepTitle) {
+    firstPage.title = firstStepTitle;
+  }
   const blocks = firstPage.blocks || [];
 
   if (solution?.recognizedLatex) {
@@ -54,20 +80,25 @@ const buildInitialPages = (messages: ReturnType<typeof normalizeSessionMessages>
     });
   }
 
+  const latestAssistantText = [...messages]
+    .reverse()
+    .find((message) => message.role === "assistant");
+  const latestText = latestAssistantText ? flattenTextItems(latestAssistantText) : "";
+
+  if (latestText && (blocks.length === 0 || (solution?.steps.length ?? 0) <= 1)) {
+    blocks.push({
+      id: `block-${Date.now()}-text`,
+      type: "text",
+      text: latestText,
+    });
+  }
+
   if (blocks.length === 0) {
-    const latestAssistantText = [...messages]
-      .reverse()
-      .find((message) => message.role === "assistant");
-    if (latestAssistantText) {
-      const text = flattenTextItems(latestAssistantText);
-      if (text) {
-        blocks.push({
-          id: `block-${Date.now()}-text`,
-          type: "text",
-          text,
-        });
-      }
-    }
+    blocks.push({
+      id: `block-${Date.now()}-empty`,
+      type: "text",
+      text: "No parsed solution yet. Try solving again.",
+    });
   }
 
   firstPage.blocks = blocks;
@@ -137,6 +168,16 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     [session?.messages]
   );
 
+  const tutorMessages = useMemo(
+    () => (session?.messages || []).filter((message) => !isSolvePrimaryAssistantMessage(message)),
+    [session?.messages]
+  );
+
+  const tutorNormalizedMessages = useMemo(
+    () => normalizeSessionMessages(tutorMessages),
+    [tutorMessages]
+  );
+
   const primarySolution = useMemo(
     () => extractPrimarySolution(normalizedMessages),
     [normalizedMessages]
@@ -196,7 +237,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   return (
     <>
       <MathCanvasLayout
-        header={<TopHeader notebookTitle={notebookTitle} />}
+        header={<DashboardNavBar />}
         leftSidebar={
           <LeftNotebookSidebar
             notebookTitle={notebookTitle}
@@ -213,7 +254,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         rightSidebar={
           <RightTutorChat
             sessionId={String(session.id)}
-            initialMessages={normalizedMessages}
+            initialMessages={tutorNormalizedMessages}
             originalProblem={primarySolution?.recognizedLatex || ""}
             stepTitles={stepTitles}
             classification={classification}

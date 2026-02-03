@@ -170,6 +170,7 @@ export interface CanvasDocumentState extends DocumentSnapshot {
 
 export interface CanvasPageData {
   id: string;
+  title?: string;
   blocks?: CanvasBlock[];
   elements: CanvasElement[];
 }

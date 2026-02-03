@@ -771,6 +771,29 @@ class RequestEvent(SQLModel, table=True):
     response_truncated: bool = False
 
 
+class SolverOutputAttempt(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    request_id: str = Field(index=True)
+    user_id: Optional[int] = Field(default=None, foreign_key="user.id", index=True)
+    session_id: Optional[int] = Field(default=None, foreign_key="chatsession.id", index=True)
+    message_id: Optional[int] = Field(default=None, foreign_key="chatmessage.id", index=True)
+    output_format: str = Field(default="freeform", index=True)
+    prompt_id: Optional[str] = Field(default=None, index=True)
+    prompt_version: Optional[str] = None
+    attempt_number: int = Field(default=1, index=True)
+    provider: Optional[str] = Field(default=None, index=True)
+    model: Optional[str] = Field(default=None, index=True)
+    latency_ms: Optional[int] = None
+    char_count: int = Field(default=0)
+    extracted_answer: Optional[str] = Field(default=None, sa_column=Column(Text))
+    raw_solution_text: str = Field(default="", sa_column=Column(Text))
+    validation_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    archive_path: Optional[str] = None
+    status: str = Field(default="ok", index=True)  # ok / invalid / error
+    error_message: Optional[str] = Field(default=None, sa_column=Column(Text))
+    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+
+
 class CreditLot(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id", index=True)

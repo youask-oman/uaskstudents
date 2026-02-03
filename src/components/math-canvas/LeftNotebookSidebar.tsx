@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import MathRenderer from "@/components/math/MathRendererSwitch";
 import styles from "./MathCanvas.module.css";
 
 interface LeftNotebookSidebarProps {
@@ -27,7 +28,9 @@ export default function LeftNotebookSidebar({
       <p className={styles.sidebarLabel}>Notebook</p>
       <div className={styles.notebookCard}>
         <div className={styles.notebookTitle}>{notebookTitle}</div>
-        <div className={styles.notebookMeta}>{notebookSubtitle}</div>
+        <div className={styles.notebookMeta}>
+          <MathRenderer content={notebookSubtitle} mode="inline" />
+        </div>
       </div>
 
       <nav className={styles.navList} aria-label="Notebook navigation">

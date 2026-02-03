@@ -623,7 +623,10 @@ export default function PaperPage({
   return (
     <article className={`${styles.paperPage} ${active ? styles.paperPageActive : ""}`.trim()} onClick={onActivate}>
       <div className={styles.paperPageHeader}>
-        <span className={styles.paperPageTitle}>Page {index + 1}</span>
+        <span className={styles.paperPageTitle}>
+          Page {index + 1}
+          {page.title ? ` - ${page.title}` : ""}
+        </span>
       </div>
 
       {page.blocks && page.blocks.length > 0 ? (

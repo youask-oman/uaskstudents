@@ -378,32 +378,98 @@ const detectLatexFromText = (text: string): string | undefined => {
   return candidate || undefined;
 };
 
+const normalizeStepLine = (line: string): string =>
+  line
+    .replace(/[\u200e\u200f]/g, "")
+    .replace(/^#{1,6}\s*/, "")
+    .replace(/^>\s*/, "")
+    .replace(/\*\*/g, "")
+    .replace(/__/g, "")
+    .replace(/`([^`]+)`/g, "$1")
+    .trim();
+
+const looksLikeMathLine = (line: string): boolean =>
+  /\\[a-zA-Z]+/.test(line) ||
+  /[=+\-*/^_{}()[\]]/.test(line) ||
+  /(?:sqrt|frac|int|sum|lim|sin|cos|tan|log)\b/i.test(line);
+
 const detectStepsFromText = (text: string): StepRow[] => {
   const lines = text
     .split("\n")
-    .map((line) => line.trim())
+    .map((line) => normalizeStepLine(line))
     .filter(Boolean);
 
-  const stepPattern = /^(?:step\s*\d+[:.)-]?|\d+[.)-])\s*(.+)$/i;
+  const stepPattern = /^(?:step\s*(\d+)|\(?(\d+)\)?)[\s:.)\-–—]*\s*(.+)?$/i;
   const steps: StepRow[] = [];
+  let current: { title: string; explanationParts: string[]; mathParts: string[] } | null = null;
+
+  const pushCurrent = () => {
+    if (!current) return;
+    const explanation = current.explanationParts.join(" ").trim();
+    const mathLatex = current.mathParts.join(" \\\\ ").trim();
+    steps.push({
+      title: current.title,
+      explanation: explanation || undefined,
+      mathLatex: mathLatex || undefined,
+    });
+    current = null;
+  };
 
   lines.forEach((line, index) => {
+    if (/^(?:final answer|answer|therefore|so)\b/i.test(line)) {
+      pushCurrent();
+      return;
+    }
     const match = line.match(stepPattern);
-    if (match?.[1]) {
-      steps.push({
-        title: `Step ${steps.length + 1}`,
-        explanation: match[1].trim(),
-      });
+    if (match) {
+      pushCurrent();
+      const stepNumber = match[1] || match[2] || String(steps.length + 1);
+      const initialText = (match[3] || "").trim();
+      current = {
+        title: `Step ${stepNumber}`,
+        explanationParts: initialText ? [initialText] : [],
+        mathParts: [],
+      };
       return;
     }
+
+    if (current) {
+      const bullet = line.replace(/^[-*]\s+/, "").trim();
+      if (/^[-*]\s+/.test(line)) {
+        if (bullet) current.explanationParts.push(bullet);
+        return;
+      }
+      if (looksLikeMathLine(line)) {
+        current.mathParts.push(line);
+        return;
+      }
+      current.explanationParts.push(line);
+      return;
+    }
+
+    if (/^\(?\d+\)?[.)\-–—]\s+/.test(line)) {
+      const textLine = line.replace(/^\(?\d+\)?[.)\-–—]\s+/, "").trim();
+      if (textLine) {
+        steps.push({
+          title: `Step ${steps.length + 1}`,
+          explanation: textLine,
+        });
+      }
+      return;
+    }
+
     if (/^[-*]\s+/.test(line)) {
-      steps.push({
-        title: `Step ${steps.length + 1}`,
-        explanation: line.replace(/^[-*]\s+/, ""),
-      });
+      const bullet = line.replace(/^[-*]\s+/, "").trim();
+      if (bullet) {
+        steps.push({
+          title: `Step ${steps.length + 1}`,
+          explanation: bullet,
+        });
+      }
       return;
     }
-    if (index < 3 && /(?:simplify|solve|expand|factor|substitute|evaluate)/i.test(line)) {
+
+    if (index < 8 && /(?:simplify|solve|expand|factor|substitute|evaluate|isolate|rearrange)/i.test(line)) {
       steps.push({
         title: `Step ${steps.length + 1}`,
         explanation: line,
@@ -411,7 +477,8 @@ const detectStepsFromText = (text: string): StepRow[] => {
     }
   });
 
-  return steps.slice(0, 8);
+  pushCurrent();
+  return steps.slice(0, 32);
 };
 
 const detectResultFromText = (text: string): string | undefined => {

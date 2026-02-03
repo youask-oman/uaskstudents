@@ -1,0 +1,97 @@
+To solve the equation \(\sqrt{x+3} = x-3\), we will follow these steps:
+
+**Step 1: Square both sides of the equation to eliminate the square root.**
+\[
+(\sqrt{x+3})^2 = (x-3)^2
+\]
+This simplifies to:
+\[
+x+3 = x^2 - 6x + 9
+\]
+
+**Step 2: Rearrange the equation to form a standard quadratic equation.**
+Subtract \(x+3\) from both sides:
+\[
+0 = x^2 - 6x + 9 - x - 3
+\]
+Simplify the right side:
+\[
+0 = x^2 - 7x + 6
+\]
+So, we have:
+\[
+x^2 - 7x + 6 = 0
+\]
+
+**Step 3: Factor the quadratic equation.**
+We need to find two numbers that multiply to 6 and add up to -7. These numbers are -1 and -6. Therefore, we can factor the quadratic as:
+\[
+(x-1)(x-6) = 0
+\]
+Setting each factor equal to zero gives us the potential solutions:
+\[
+x-1 = 0 \quad \text{or} \quad x-6 = 0
+\]
+Solving these equations, we get:
+\[
+x = 1 \quad \text{or} \quad x = 6
+\]
+
+**Step 4: Verify the solutions by substituting them back into the original equation.**
+
+**Verification check 1: Check \(x = 6\).**
+Substitute \(x = 6\) into the original equation:
+\[
+\sqrt{6+3} = 6-3
+\]
+Simplify both sides:
+\[
+\sqrt{9} = 3
+\]
+Since \(3 = 3\), \(x = 6\) is a valid solution.
+
+**Verification check 2: Check \(x = 1\).**
+Substitute \(x = 1\) into the original equation:
+\[
+\sqrt{1+3} = 1-3
+\]
+Simplify both sides:
+\[
+\sqrt{4} = -2
+\]
+Since \(2 \neq -2\), \(x = 1\) is not a valid solution.
+
+**Step 5: State the final answer.**
+The only valid solution is \(x = 6\).
+
+**Domain check:**
+We need to ensure that the solution satisfies the domain constraints. The domain constraints are:
+\[
+x + 3 \geq 0 \quad \text{and} \quad x - 3 \geq 0
+\]
+Simplifying these, we get:
+\[
+x \geq -3 \quad \text{and} \quad x \geq 3
+\]
+Combining these, we have:
+\[
+x \geq 3
+\]
+Since \(x = 6\) satisfies \(x \geq 3\), it is within the domain.
+
+**Final answer:**
+\[
+\boxed{6}
+\]
+
+**Plotly code block:**
+To plot the functions \(y = \sqrt{x+3}\) and \(y = x-3\) and verify the solution, we can use the following Plotly JSON:
+```json
+{
+  "data": [
+    { "type": " scatter", "x": [-3,0,3,6,9], "y": [0,1.73,2.45,3,3.46], "name": "y=√(x+3)"},
+    { "type": " scatter", "x": [-3,0,3,6,9], "y": [-6,-3,0,3,6], "name": "y=x-3"}
+  ],
+  " layout": { ".title": "Solution of √(x+3)=x-3" }
+}
+```
