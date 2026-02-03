@@ -1769,3 +1769,30 @@ Pix2Text initialized successfully
 ocr_attempt request_id=29cc1852-f766-4109-b54b-4c6c9d2874ba provider=pix2txt model=pix2text-local duration_ms=2474 validation_passed=True fail_reason=None
 [QUESTION_CACHE] Already exists: 9cb5b7a7e84cc07c...
 [QUESTION_CACHE] Stored: b65d28b3b864f223...
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+extract_questions applying crop: x=94 y=581 w=627 h=175 image=1091x1139
+extract_questions input metrics: size=627x175 stddev=49.41 white=0.943
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmp21ypzlxa.png
+Initializing Local Pix2Text engine...
+Use DocLayout-YOLO model for Layout Analysis: C:\Users\loaia\AppData\Roaming\pix2text\1.1\layout-docyolo\doclayout_yolo_docstructbench_imgsz1024.pt
+use model: C:\Users\loaia\AppData\Roaming\cnocr\2.3\densenet_lite_136-gru\cnocr-v2.3-densenet_lite_136-gru-epoch=004-ft-model.onnx
+use model: C:\Users\loaia\AppData\Roaming\cnstd\1.2\ppocr\ch_PP-OCRv5_det\ch_PP-OCRv5_det_infer.onnx
+Use model path for MFD: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfd-1.5-onnx\pix2text-mfd-1.5.onnx
+Use model dir for LatexOCR: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfr-1.5-onnx
+Loaded Pix2Text MFR model mfr-1.5 to: backend-onnx, device-cpu
+Pix2Text initialized successfully
+ocr_attempt request_id=ed98c07c-93a7-42c3-b2d4-ac1a0fd117fd provider=pix2txt model=pix2text-local duration_ms=3033 validation_passed=True fail_reason=None
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
