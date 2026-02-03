@@ -226,6 +226,16 @@
   border-color: var(--border-color);
 }
 
+.toolButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.toolButtonActive {
+  background: #e6f0ff;
+  border-color: #b7cff6;
+}
+
 .toolAccent {
   color: var(--accent-color);
 }
@@ -287,6 +297,160 @@
 .paperContent {
   display: grid;
   gap: 14px;
+}
+
+.paperBlocksStack {
+  display: grid;
+  gap: 14px;
+}
+
+.paperCanvas {
+  position: relative;
+  min-height: 620px;
+  margin-top: 16px;
+  border: 1px dashed #d8e2ef;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 251, 255, 0.92));
+  overflow: hidden;
+}
+
+.paperCanvasHint {
+  color: var(--text-muted);
+  font-size: 14px;
+  padding: 18px;
+}
+
+.canvasElement {
+  position: absolute;
+  user-select: none;
+}
+
+.canvasElementSelected {
+  outline: 2px solid rgba(74, 144, 226, 0.35);
+  outline-offset: 1px;
+}
+
+.textElementBody {
+  width: 100%;
+  min-height: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 8px 10px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.mathElementBody {
+  height: 100%;
+  border-radius: 14px;
+  border: 1px solid #c7def8;
+  padding: 14px;
+  text-align: center;
+  background: linear-gradient(180deg, #f7fbff 0%, var(--latex-bg) 100%);
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 8px;
+}
+
+.shapeElementBody {
+  width: 100%;
+  height: 100%;
+  border-style: solid;
+  border-radius: 10px;
+  opacity: 0.9;
+}
+
+.lineElementSvg {
+  overflow: visible;
+}
+
+.plotElementBody {
+  width: 100%;
+  height: 100%;
+  border: 1px solid #d9e4f2;
+  border-radius: 10px;
+  padding: 8px;
+  background: #fff;
+}
+
+.resizeHandle {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  border: 1px solid #fff;
+  background: var(--primary-color);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.25);
+}
+
+.canvasDraft {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.draftRect {
+  position: absolute;
+  border: 2px dashed var(--primary-color);
+  background: rgba(74, 144, 226, 0.12);
+}
+
+.draftSvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.canvasTextEditor {
+  position: absolute;
+  border: 1px solid #8eb4e8;
+  border-radius: 10px;
+  padding: 8px 10px;
+  resize: none;
+  outline: none;
+  background: #fff;
+}
+
+.palettePanel {
+  position: sticky;
+  top: var(--toolbar-height);
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--divider-color);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.paletteControl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-main);
+}
+
+.paletteControl input[type="color"] {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: #fff;
+}
+
+.paletteRange {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-main);
 }
 
 .recognitionBox {
@@ -511,6 +675,64 @@
   gap: 8px;
 }
 
+.modalHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.graphTabRow {
+  display: inline-flex;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.graphTabButton {
+  height: 34px;
+  padding: 0 14px;
+  border: 0;
+  background: #fff;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.graphTabButtonActive {
+  background: #ebf4ff;
+  color: var(--primary-color);
+}
+
+.graphMetaGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.graphMetaField {
+  display: grid;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.graphMetaField input {
+  height: 34px;
+}
+
+.graphError {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid #fecaca;
+  background: #fff1f2;
+  color: #be123c;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
 @media (max-width: 1200px) {
   .body {
     grid-template-columns: 248px 1fr 320px;
@@ -536,6 +758,10 @@
   .paperPage {
     margin: 20px 14px;
     max-width: none;
+  }
+
+  .graphMetaGrid {
+    grid-template-columns: 1fr;
   }
 
   .searchWrap {

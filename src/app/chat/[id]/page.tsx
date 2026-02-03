@@ -1,12 +1,11 @@
 "use client";
 
-import { use, useEffect, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useReducer, useState } from "react";
 import MathCanvasLayout from "@/components/math-canvas/MathCanvasLayout";
 import LeftNotebookSidebar from "@/components/math-canvas/LeftNotebookSidebar";
 import TopHeader from "@/components/math-canvas/TopHeader";
 import CanvasWorkspace from "@/components/math-canvas/CanvasWorkspace";
 import RightTutorChat from "@/components/math-canvas/RightTutorChat";
-import LatexEditor from "@/components/math-canvas/LatexEditor";
 import {
   extractPrimarySolution,
   flattenTextItems,
@@ -14,6 +13,7 @@ import {
   parseStepTitles,
 } from "@/components/math-canvas/normalizer";
 import { CanvasPageData, SessionMessage } from "@/components/math-canvas/types";
+import { buildInitialDocumentState, createPageId, documentReducer } from "@/components/math-canvas/documentModel";
 import { DEMO_SOLUTION } from "@/lib/mock-response";
 
 interface ChatSessionPayload {
@@ -26,16 +26,18 @@ interface ChatSessionPayload {
 }
 
 const createPage = (): CanvasPageData => ({
-  id: `page-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+  id: createPageId(),
   blocks: [],
+  elements: [],
 });
 
 const buildInitialPages = (messages: ReturnType<typeof normalizeSessionMessages>): CanvasPageData[] => {
   const solution = extractPrimarySolution(messages);
   const firstPage = createPage();
+  const blocks = firstPage.blocks || [];
 
   if (solution?.recognizedLatex) {
-    firstPage.blocks.push({
+    blocks.push({
       id: `block-${Date.now()}-recognized`,
       type: "recognition",
       latex: solution.recognizedLatex,
@@ -44,7 +46,7 @@ const buildInitialPages = (messages: ReturnType<typeof normalizeSessionMessages>
   }
 
   if (solution && (solution.steps.length > 0 || solution.result)) {
-    firstPage.blocks.push({
+    blocks.push({
       id: `block-${Date.now()}-steps`,
       type: "steps",
       steps: solution.steps,
@@ -52,14 +54,14 @@ const buildInitialPages = (messages: ReturnType<typeof normalizeSessionMessages>
     });
   }
 
-  if (firstPage.blocks.length === 0) {
+  if (blocks.length === 0) {
     const latestAssistantText = [...messages]
       .reverse()
       .find((message) => message.role === "assistant");
     if (latestAssistantText) {
       const text = flattenTextItems(latestAssistantText);
       if (text) {
-        firstPage.blocks.push({
+        blocks.push({
           id: `block-${Date.now()}-text`,
           type: "text",
           text,
@@ -68,6 +70,8 @@ const buildInitialPages = (messages: ReturnType<typeof normalizeSessionMessages>
     }
   }
 
+  firstPage.blocks = blocks;
+
   return [firstPage];
 };
 
@@ -75,9 +79,10 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   const { id } = use(params);
   const [session, setSession] = useState<ChatSessionPayload | null>(null);
   const [loading, setLoading] = useState(true);
-  const [pages, setPages] = useState<CanvasPageData[]>([]);
-  const [activePageId, setActivePageId] = useState("");
-  const [latexEditorOpen, setLatexEditorOpen] = useState(false);
+  const [documentState, dispatch] = useReducer(
+    documentReducer,
+    buildInitialDocumentState([createPage()], "text")
+  );
 
   useEffect(() => {
     const fetchSession = async () => {
@@ -162,8 +167,10 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   useEffect(() => {
     if (!session) return;
     const initialPages = buildInitialPages(normalizedMessages);
-    setPages(initialPages);
-    setActivePageId(initialPages[0]?.id || "");
+    dispatch({
+      type: "RESET",
+      state: buildInitialDocumentState(initialPages, "text"),
+    });
   }, [normalizedMessages, session]);
 
   if (loading) {
@@ -199,15 +206,8 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         }
         workspace={
           <CanvasWorkspace
-            pages={pages}
-            activePageId={activePageId}
-            onSelectPage={setActivePageId}
-            onAddPage={() => {
-              const page = createPage();
-              setPages((prev) => [...prev, page]);
-              setActivePageId(page.id);
-            }}
-            onOpenLatexEditor={() => setLatexEditorOpen(true)}
+            state={documentState}
+            dispatch={dispatch}
           />
         }
         rightSidebar={
@@ -220,34 +220,6 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
           />
         }
       />
-
-      {latexEditorOpen ? (
-        <LatexEditor
-          key={`${activePageId}-${latexEditorOpen ? "open" : "closed"}`}
-          onClose={() => setLatexEditorOpen(false)}
-          onInsert={(latex) => {
-            if (!activePageId) return;
-            setPages((prev) =>
-              prev.map((page) =>
-                page.id === activePageId
-                  ? {
-                      ...page,
-                      blocks: [
-                        ...page.blocks,
-                        {
-                          id: `block-${Date.now()}-latex`,
-                          type: "recognition",
-                          latex,
-                          badge: "AI recognized",
-                        },
-                      ],
-                    }
-                  : page
-              )
-            );
-          }}
-        />
-      ) : null}
     </>
   );
 }

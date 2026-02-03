@@ -12,6 +12,86 @@ export interface SessionMessage {
   plot?: Record<string, unknown> | null;
 }
 
+export type ToolType =
+  | "text"
+  | "math"
+  | "shape"
+  | "compass"
+  | "ruler"
+  | "graph"
+  | "eraser"
+  | "palette";
+
+export interface ElementStyle {
+  color: string;
+  strokeColor: string;
+  strokeWidth: number;
+  fillColor: string;
+  fontSize: number;
+}
+
+export interface ElementBase {
+  id: string;
+  type: "text" | "math" | "shape" | "line" | "circle" | "plot";
+  pageId: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  zIndex: number;
+  style: ElementStyle;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface TextElement extends ElementBase {
+  type: "text";
+  text: string;
+}
+
+export interface MathElement extends ElementBase {
+  type: "math";
+  latexRaw: string;
+  renderMode: "inline" | "block";
+  badge?: string;
+}
+
+export interface ShapeElement extends ElementBase {
+  type: "shape";
+  shapeKind: "rect";
+}
+
+export interface LineElement extends ElementBase {
+  type: "line";
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  length: number;
+}
+
+export interface CircleElement extends ElementBase {
+  type: "circle";
+  radius: number;
+  centerX: number;
+  centerY: number;
+}
+
+export interface PlotDataPoint {
+  x: number;
+  y: number;
+}
+
+export interface PlotElement extends ElementBase {
+  type: "plot";
+  title: string;
+  xLabel: string;
+  yLabel: string;
+  points: PlotDataPoint[];
+}
+
+export type CanvasElement = TextElement | MathElement | ShapeElement | LineElement | CircleElement | PlotElement;
+
 export interface StepRow {
   title: string;
   explanation?: string;
@@ -57,7 +137,30 @@ export type CanvasBlock =
   | { id: string; type: "steps"; steps: StepRow[]; result?: string }
   | { id: string; type: "text"; text: string };
 
+export interface SelectionState {
+  elementIds: string[];
+}
+
+export interface ClipboardPayload {
+  elements: CanvasElement[];
+  sourcePageId: string;
+}
+
+export interface DocumentSnapshot {
+  pages: CanvasPageData[];
+  activePageId: string;
+  selection: SelectionState;
+}
+
+export interface CanvasDocumentState extends DocumentSnapshot {
+  activeTool: ToolType;
+  clipboard: ClipboardPayload | null;
+  past: DocumentSnapshot[];
+  future: DocumentSnapshot[];
+}
+
 export interface CanvasPageData {
   id: string;
-  blocks: CanvasBlock[];
+  blocks?: CanvasBlock[];
+  elements: CanvasElement[];
 }
