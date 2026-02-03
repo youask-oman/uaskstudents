@@ -18,6 +18,8 @@ interface EditorToolbarProps {
   onCopy: () => void;
   onPaste: () => void;
   onAddPage: () => void;
+  onSaveVersion: () => void;
+  savingVersion: boolean;
 }
 
 const toolButtons: Array<{ tool: ToolType; icon: string; label: string; accent?: boolean }> = [
@@ -84,6 +86,8 @@ export default function EditorToolbar({
   onCopy,
   onPaste,
   onAddPage,
+  onSaveVersion,
+  savingVersion,
 }: EditorToolbarProps) {
   return (
     <div className={styles.toolbar}>
@@ -110,12 +114,26 @@ export default function EditorToolbar({
         <IconButton icon="content_paste" label="Paste" onClick={onPaste} disabled={!canPaste} />
       </div>
 
-      <button type="button" className={styles.addPageButton} onClick={onAddPage} aria-label="Add Page">
-        <span className="material-symbols-outlined" style={{ fontSize: 18 }} aria-hidden="true">
-          add_circle
-        </span>
-        Add Page
-      </button>
+      <div className={styles.toolbarActionsRight}>
+        <button
+          type="button"
+          className={styles.saveVersionButton}
+          onClick={onSaveVersion}
+          aria-label="Save Version"
+          disabled={savingVersion}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: 18 }} aria-hidden="true">
+            save
+          </span>
+          {savingVersion ? "Saving..." : "Save Version"}
+        </button>
+        <button type="button" className={styles.addPageButton} onClick={onAddPage} aria-label="Add Page">
+          <span className="material-symbols-outlined" style={{ fontSize: 18 }} aria-hidden="true">
+            add_circle
+          </span>
+          Add Page
+        </button>
+      </div>
     </div>
   );
 }

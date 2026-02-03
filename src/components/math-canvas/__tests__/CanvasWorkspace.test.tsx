@@ -27,7 +27,7 @@ function WorkspaceHarness() {
     ])
   );
 
-  return <CanvasWorkspace state={state} dispatch={dispatch} />;
+  return <CanvasWorkspace sessionId="1" state={state} dispatch={dispatch} />;
 }
 
 describe("CanvasWorkspace toolbox", () => {

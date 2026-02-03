@@ -12,7 +12,7 @@ import {
   normalizeSessionMessages,
   parseStepTitles,
 } from "@/components/math-canvas/normalizer";
-import { CanvasPageData, SessionMessage } from "@/components/math-canvas/types";
+import { CanvasPageData, SavedPaperVersion, SessionMessage } from "@/components/math-canvas/types";
 import { buildInitialDocumentState, createPageId, documentReducer } from "@/components/math-canvas/documentModel";
 import { DEMO_SOLUTION } from "@/lib/mock-response";
 
@@ -59,12 +59,63 @@ const createPage = (): CanvasPageData => ({
   elements: [],
 });
 
+const asSavedPage = (value: unknown): CanvasPageData | null => {
+  const record = asRecord(value);
+  if (!record) return null;
+  const elements = Array.isArray(record.elements) ? record.elements : [];
+  const blocks = Array.isArray(record.blocks) ? record.blocks : [];
+  return {
+    id: typeof record.id === "string" && record.id.trim() ? record.id : createPageId(),
+    title: typeof record.title === "string" ? record.title : undefined,
+    blocks: blocks as CanvasPageData["blocks"],
+    elements: elements as CanvasPageData["elements"],
+  };
+};
+
+const getSavedPaperVersions = (messages: SessionMessage[]): SavedPaperVersion[] => {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const message = messages[i];
+    if (message.role !== "assistant") continue;
+    const structured = asRecord(message.structured_data);
+    if (!structured) continue;
+    const versions = structured.paper_versions;
+    if (!Array.isArray(versions) || versions.length === 0) continue;
+    const parsed: SavedPaperVersion[] = versions
+      .map((rawVersion, index) => {
+        const versionObj = asRecord(rawVersion);
+        if (!versionObj || !Array.isArray(versionObj.pages)) return null;
+        const pages = versionObj.pages.map(asSavedPage).filter((page): page is CanvasPageData => Boolean(page));
+        if (pages.length === 0) return null;
+        const versionNumberRaw = Number(versionObj.version);
+        const version = Number.isFinite(versionNumberRaw) && versionNumberRaw > 0 ? versionNumberRaw : index + 1;
+        const savedAt = typeof versionObj.saved_at === "string" ? versionObj.saved_at : "";
+        const title = typeof versionObj.title === "string" && versionObj.title.trim()
+          ? versionObj.title.trim()
+          : `Version ${version}`;
+        return {
+          key: `${version}-${savedAt || index}`,
+          version,
+          title,
+          savedAt,
+          pages,
+        };
+      })
+      .filter((item): item is SavedPaperVersion => Boolean(item))
+      .sort((left, right) => right.version - left.version);
+    if (parsed.length > 0) return parsed;
+  }
+  return [];
+};
+
 const buildInitialPages = (messages: ReturnType<typeof normalizeSessionMessages>): CanvasPageData[] => {
   const solution = extractPrimarySolution(messages);
   const firstPage = createPage();
   const now = Date.now();
+  const layoutTitle = solution?.layoutTitle?.trim();
   const firstStepTitle = solution?.steps?.[0]?.title?.trim();
-  if (firstStepTitle) {
+  if (layoutTitle) {
+    firstPage.title = layoutTitle;
+  } else if (firstStepTitle) {
     firstPage.title = firstStepTitle;
   }
   const blocks = firstPage.blocks || [];
@@ -130,7 +181,7 @@ const buildInitialPages = (messages: ReturnType<typeof normalizeSessionMessages>
         },
         createdAt: now + index,
         updatedAt: now + index,
-        title: plot.title || `Plot ${index + 1}`,
+        title: layoutTitle || plot.title || `Plot ${index + 1}`,
         xLabel: plot.xLabel || "x",
         yLabel: plot.yLabel || "y",
         points: plot.points.map((point) => ({ x: Number(point.x), y: Number(point.y) })),
@@ -221,25 +272,43 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
 
   const outlineItems = useMemo<OutlineItem[]>(() => {
     const items: OutlineItem[] = [];
-    if (primarySolution?.recognizedLatex) {
-      items.push({ id: "recognized-block", label: "Recognized Problem", tag: "RECOGNITION" });
-    }
-    if (primarySolution?.steps?.length) {
-      primarySolution.steps.forEach((step, index) => {
-        const title = (step.title || "").trim();
-        const generic = /^step\s+\d+$/i.test(title);
+    const firstPage = documentState.pages[0];
+    const blocks = firstPage?.blocks || [];
+    const plots = (firstPage?.elements || []).filter((element) => element.type === "plot");
+
+    blocks.forEach((block) => {
+      if (block.type === "recognition") {
+        items.push({ id: block.id, label: "Recognized Problem", tag: "RECOGNITION" });
+      }
+      if (block.type === "steps") {
+        block.steps.forEach((step, index) => {
+          const title = (step.title || "").trim();
+          const generic = /^step\s+\d+$/i.test(title);
+          items.push({
+            id: `${block.id}-step-${index + 1}`,
+            label: generic || !title ? `Step ${index + 1}` : title,
+            tag: "STEP",
+          });
+        });
+        items.push({ id: `${block.id}-final-answer`, label: "Final Answer", tag: "FINAL" });
+        if (Array.isArray(block.verificationChecks) && block.verificationChecks.length > 0) {
+          items.push({ id: `${block.id}-verification`, label: "Verification", tag: "VERIFY" });
+        }
+      }
+      if (block.type === "text") {
+        items.push({ id: block.id, label: "Notes", tag: "NOTE" });
+      }
+    });
+
+    if (plots.length > 0) {
+      plots.forEach((plot, index) => {
         items.push({
-          id: `steps-block-step-${index + 1}`,
-          label: generic || !title ? `Step ${index + 1}` : title,
-          tag: "STEP",
+          id: plot.id,
+          label: plot.title || `Plot ${index + 1}`,
+          tag: "PLOT",
         });
       });
-      items.push({ id: "steps-block-final-answer", label: "Final Answer", tag: "FINAL" });
-    }
-    if (primarySolution?.verificationChecks?.length) {
-      items.push({ id: "steps-block-verification", label: "Verification", tag: "VERIFY" });
-    }
-    if (primarySolution?.plots?.length) {
+    } else if (primarySolution?.plots?.length) {
       primarySolution.plots.forEach((plot, index) => {
         items.push({
           id: `plot-element-${index + 1}`,
@@ -249,7 +318,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
       });
     }
     return items;
-  }, [primarySolution]);
+  }, [documentState.pages, primarySolution]);
 
   const stepTitles = useMemo(
     () => parseStepTitles(primarySolution?.steps || []),
@@ -273,14 +342,22 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     return undefined;
   }, [session?.messages]);
 
+  const savedPaperVersions = useMemo(
+    () => getSavedPaperVersions(session?.messages || []),
+    [session?.messages]
+  );
+
   useEffect(() => {
     if (!session) return;
-    const initialPages = buildInitialPages(normalizedMessages);
+    const latestSavedPages = savedPaperVersions[0]?.pages;
+    const initialPages = latestSavedPages && latestSavedPages.length > 0
+      ? latestSavedPages
+      : buildInitialPages(normalizedMessages);
     dispatch({
       type: "RESET",
       state: buildInitialDocumentState(initialPages, "text"),
     });
-  }, [normalizedMessages, session]);
+  }, [normalizedMessages, savedPaperVersions, session]);
 
   if (loading) {
     return (
@@ -316,6 +393,8 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         }
         workspace={
           <CanvasWorkspace
+            sessionId={String(session.id)}
+            savedVersions={savedPaperVersions}
             state={documentState}
             dispatch={dispatch}
           />

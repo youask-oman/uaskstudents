@@ -206,6 +206,12 @@
   z-index: 12;
 }
 
+.toolbarActionsRight {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .toolActions {
   display: flex;
   align-items: center;
@@ -261,6 +267,83 @@
   gap: 6px;
 }
 
+.saveVersionButton {
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid #c6d8ea;
+  background: #ffffff;
+  color: var(--text-main);
+  padding: 0 12px;
+  font-weight: 700;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.saveVersionButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.versionSaveNotice {
+  position: sticky;
+  top: var(--toolbar-height);
+  z-index: 11;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--divider-color);
+  background: #f2f9ff;
+  color: #235a86;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.versionLoadPanel {
+  position: sticky;
+  top: calc(var(--toolbar-height) + 34px);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--divider-color);
+  background: #ffffff;
+}
+
+.versionLoadLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.versionLoadSelect {
+  min-width: 320px;
+  max-width: 520px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--text-main);
+  font-size: 12px;
+  padding: 6px 8px;
+}
+
+.versionLoadButton {
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--primary-color);
+  background: var(--primary-color);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0 12px;
+}
+
+.versionLoadButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .pagesStack {
   padding: 22px 0 48px;
 }
@@ -302,6 +385,57 @@
 .paperBlocksStack {
   display: grid;
   gap: 14px;
+}
+
+.paperBlockWrap {
+  position: relative;
+}
+
+.paperBlockActions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.blockActions {
+  margin-top: 8px;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.blockActionButton {
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: #ffffff;
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0 10px;
+}
+
+.inlineEditWrap {
+  display: grid;
+  gap: 8px;
+}
+
+.inlineEditInput,
+.inlineEditTextArea {
+  width: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--text-main);
+  font-size: 13px;
+  padding: 8px 10px;
+}
+
+.inlineEditTextArea {
+  min-height: 88px;
+  resize: vertical;
 }
 
 .paperCanvas {
@@ -568,6 +702,18 @@
   color: var(--text-main);
 }
 
+.stepTitleTag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border-radius: 999px;
+  background: #e8f1ff;
+  color: #1f4ea4;
+  font-size: 12px;
+  padding: 0 10px;
+  margin-bottom: 6px;
+}
+
 .resultBadge {
   display: inline-flex;
   align-items: center;
@@ -610,6 +756,10 @@
   font-weight: 700;
 }
 
+.chatTutorLogo {
+  border-radius: 4px;
+}
+
 .chatScroll {
   flex: 1;
   overflow-y: auto;
@@ -643,6 +793,15 @@
 .chatBubbleRowUser {
   justify-self: end;
   max-width: 92%;
+}
+
+.chatSolutionSignature {
+  margin-top: 5px;
+  text-align: right;
+  color: #7f8ea3;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
 .quickActions {

@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
+import logo10 from "@/app/logo/logo-10.png";
 import ChatMessage from "./ChatMessage";
 import QuickActions from "./QuickActions";
 import styles from "./MathCanvas.module.css";
@@ -126,10 +128,8 @@ export default function RightTutorChat({
     <aside className={styles.rightSidebar}>
       <div className={styles.chatHeader}>
         <div className={styles.chatHeaderTitle}>
-          <span className="material-symbols-outlined" style={{ color: "var(--primary-color)" }}>
-            smart_toy
-          </span>
-          Ask AI Tutor
+          <Image src={logo10} alt="Uask.ai" width={26} height={26} className={styles.chatTutorLogo} />
+          Uask AI Tutor
         </div>
       </div>
 

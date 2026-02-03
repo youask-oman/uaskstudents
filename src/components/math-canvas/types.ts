@@ -120,6 +120,7 @@ export interface ChartPayload {
 }
 
 export interface MathSolutionPayload {
+  layoutTitle?: string;
   recognizedLatex?: string;
   steps: StepRow[];
   result?: string;
@@ -173,4 +174,12 @@ export interface CanvasPageData {
   title?: string;
   blocks?: CanvasBlock[];
   elements: CanvasElement[];
+}
+
+export interface SavedPaperVersion {
+  key: string;
+  version: number;
+  title: string;
+  savedAt: string;
+  pages: CanvasPageData[];
 }

@@ -8,13 +8,16 @@ import PaperPage from "./PaperPage";
 import {
   DEFAULT_ELEMENT_STYLE,
   DocumentAction,
+  buildInitialDocumentState,
   createElementId,
   createPageId,
 } from "./documentModel";
-import { CanvasDocumentState, CanvasElement, ToolType } from "./types";
+import { CanvasDocumentState, CanvasElement, SavedPaperVersion, ToolType } from "./types";
 import styles from "./MathCanvas.module.css";
 
 interface CanvasWorkspaceProps {
+  sessionId: string;
+  savedVersions?: SavedPaperVersion[];
   state: CanvasDocumentState;
   dispatch: React.Dispatch<DocumentAction>;
 }
@@ -32,16 +35,29 @@ const isInputLikeTarget = (target: EventTarget | null): boolean => {
   return false;
 };
 
-export default function CanvasWorkspace({ state, dispatch }: CanvasWorkspaceProps) {
+export default function CanvasWorkspace({ sessionId, savedVersions = [], state, dispatch }: CanvasWorkspaceProps) {
   const [latexEditorTarget, setLatexEditorTarget] = useState<MathEditorTarget | null>(null);
   const [graphEditorOpen, setGraphEditorOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [styleDraft, setStyleDraft] = useState(DEFAULT_ELEMENT_STYLE);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [savingVersion, setSavingVersion] = useState(false);
+  const [versionOptions, setVersionOptions] = useState<SavedPaperVersion[]>(savedVersions);
+  const [selectedVersionKey, setSelectedVersionKey] = useState<string>(savedVersions[0]?.key || "");
 
   const activePage = useMemo(
     () => state.pages.find((page) => page.id === state.activePageId) ?? state.pages[0],
     [state.activePageId, state.pages]
   );
+  const selectedVersion = useMemo(
+    () => versionOptions.find((version) => version.key === selectedVersionKey) || null,
+    [selectedVersionKey, versionOptions]
+  );
+
+  useEffect(() => {
+    setVersionOptions(savedVersions);
+    setSelectedVersionKey(savedVersions[0]?.key || "");
+  }, [savedVersions]);
 
   const handleSelectTool = useCallback(
     (tool: ToolType) => {
@@ -158,6 +174,69 @@ export default function CanvasWorkspace({ state, dispatch }: CanvasWorkspaceProp
     dispatch({ type: "PASTE_CLIPBOARD", targetPageId: state.activePageId });
   }, [dispatch, state.activePageId]);
 
+  const handleSaveVersion = useCallback(async () => {
+    if (!sessionId || sessionId === "demo-1") {
+      setSaveMessage("Version saving is unavailable in demo mode.");
+      return;
+    }
+    if (savingVersion) return;
+    setSavingVersion(true);
+    setSaveMessage(null);
+    try {
+      const response = await fetch(`/api/v1/sessions/${sessionId}/paper-versions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: `Canvas Version ${new Date().toISOString()}`,
+          pages: state.pages,
+        }),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({} as Record<string, unknown>));
+        const detail = typeof error?.detail === "string" ? error.detail : "Failed to save version.";
+        throw new Error(detail);
+      }
+      const payload = (await response.json()) as { version?: number };
+      const versionNum = Number(payload.version);
+      const savedAt = typeof (payload as Record<string, unknown>).saved_at === "string"
+        ? String((payload as Record<string, unknown>).saved_at)
+        : new Date().toISOString();
+      const titleRaw = typeof (payload as Record<string, unknown>).title === "string"
+        ? String((payload as Record<string, unknown>).title)
+        : "";
+      const version = Number.isFinite(versionNum) && versionNum > 0 ? versionNum : versionOptions.length + 1;
+      const title = titleRaw.trim() || `Version ${version}`;
+      const pagesSnapshot = JSON.parse(JSON.stringify(state.pages)) as SavedPaperVersion["pages"];
+      const nextVersion: SavedPaperVersion = {
+        key: `${version}-${savedAt || Date.now()}`,
+        version,
+        title,
+        savedAt,
+        pages: pagesSnapshot,
+      };
+      setVersionOptions((prev) => {
+        const deduped = prev.filter((entry) => entry.version !== nextVersion.version);
+        return [nextVersion, ...deduped].sort((left, right) => right.version - left.version);
+      });
+      setSelectedVersionKey(nextVersion.key);
+      setSaveMessage(`Saved version ${payload.version ?? ""}`.trim());
+    } catch (error) {
+      console.error("Failed to save paper version", error);
+      setSaveMessage("Failed to save version.");
+    } finally {
+      setSavingVersion(false);
+    }
+  }, [savingVersion, sessionId, state.pages, versionOptions.length]);
+
+  const handleLoadVersion = useCallback(() => {
+    if (!selectedVersion) return;
+    dispatch({
+      type: "RESET",
+      state: buildInitialDocumentState(selectedVersion.pages, state.activeTool),
+    });
+    setSaveMessage(`Loaded ${selectedVersion.title}`);
+  }, [dispatch, selectedVersion, state.activeTool]);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
@@ -247,7 +326,39 @@ export default function CanvasWorkspace({ state, dispatch }: CanvasWorkspaceProp
         onCopy={handleCopy}
         onPaste={handlePaste}
         onAddPage={handleAddPage}
+        onSaveVersion={handleSaveVersion}
+        savingVersion={savingVersion}
       />
+
+      {saveMessage ? <div className={styles.versionSaveNotice}>{saveMessage}</div> : null}
+
+      {versionOptions.length > 0 ? (
+        <div className={styles.versionLoadPanel}>
+          <span className={styles.versionLoadLabel}>Saved versions</span>
+          <select
+            className={styles.versionLoadSelect}
+            value={selectedVersionKey}
+            onChange={(event) => setSelectedVersionKey(event.target.value)}
+          >
+            {versionOptions.map((version) => {
+              const savedAtLabel = version.savedAt ? new Date(version.savedAt).toLocaleString() : "";
+              return (
+                <option key={version.key} value={version.key}>
+                  {`v${version.version} - ${version.title}${savedAtLabel ? ` (${savedAtLabel})` : ""}`}
+                </option>
+              );
+            })}
+          </select>
+          <button
+            type="button"
+            className={styles.versionLoadButton}
+            disabled={!selectedVersion}
+            onClick={handleLoadVersion}
+          >
+            Load
+          </button>
+        </div>
+      ) : null}
 
       {paletteOpen ? (
         <div className={styles.palettePanel} role="region" aria-label="Style palette">
@@ -345,6 +456,8 @@ export default function CanvasWorkspace({ state, dispatch }: CanvasWorkspaceProp
               dispatch({ type: "SET_TOOL", tool: "math" });
             }}
             onCommitText={(elementId, text) => dispatch({ type: "SET_TEXT_CONTENT", elementId, text })}
+            onUpdateBlock={(blockId, updater) => dispatch({ type: "UPDATE_BLOCK", pageId: page.id, blockId, updater })}
+            onDeleteBlock={(blockId) => dispatch({ type: "DELETE_BLOCK", pageId: page.id, blockId })}
           />
         ))}
       </div>

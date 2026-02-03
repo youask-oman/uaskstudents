@@ -1,4 +1,5 @@
 import {
+  CanvasBlock,
   CanvasDocumentState,
   CanvasElement,
   CanvasPageData,
@@ -25,9 +26,25 @@ const cloneElement = (element: CanvasElement): CanvasElement => ({
   ...(element.type === "plot" ? { points: element.points.map((point) => ({ ...point })) } : {}),
 });
 
+const cloneBlock = (block: CanvasBlock): CanvasBlock => {
+  if (block.type === "recognition") {
+    return { ...block };
+  }
+  if (block.type === "text") {
+    return { ...block };
+  }
+  return {
+    ...block,
+    steps: block.steps.map((step) => ({ ...step })),
+    verificationChecks: block.verificationChecks
+      ? block.verificationChecks.map((check) => ({ ...check }))
+      : undefined,
+  };
+};
+
 const clonePage = (page: CanvasPageData): CanvasPageData => ({
   ...page,
-  blocks: page.blocks ? [...page.blocks] : undefined,
+  blocks: page.blocks ? page.blocks.map(cloneBlock) : undefined,
   elements: page.elements.map(cloneElement),
 });
 
@@ -73,6 +90,23 @@ const updatePage = (
   pageId: string,
   updater: (page: CanvasPageData) => CanvasPageData
 ): CanvasPageData[] => pages.map((page) => (page.id === pageId ? updater(page) : page));
+
+const updateBlockInPage = (
+  pages: CanvasPageData[],
+  pageId: string,
+  blockId: string,
+  updater: (block: CanvasBlock) => CanvasBlock
+): CanvasPageData[] =>
+  updatePage(pages, pageId, (page) => ({
+    ...page,
+    blocks: (page.blocks || []).map((block) => (block.id === blockId ? updater(block) : block)),
+  }));
+
+const removeBlockFromPage = (pages: CanvasPageData[], pageId: string, blockId: string): CanvasPageData[] =>
+  updatePage(pages, pageId, (page) => ({
+    ...page,
+    blocks: (page.blocks || []).filter((block) => block.id !== blockId),
+  }));
 
 const updateElementInPages = (
   pages: CanvasPageData[],
@@ -160,6 +194,8 @@ export type DocumentAction =
   | { type: "DELETE_ELEMENTS"; elementIds: string[] }
   | { type: "SET_TEXT_CONTENT"; elementId: string; text: string }
   | { type: "SET_MATH_LATEX"; elementId: string; latexRaw: string }
+  | { type: "UPDATE_BLOCK"; pageId: string; blockId: string; updater: (block: CanvasBlock) => CanvasBlock }
+  | { type: "DELETE_BLOCK"; pageId: string; blockId: string }
   | { type: "APPLY_STYLE"; elementIds: string[]; style: Partial<ElementStyle> }
   | { type: "SET_CLIPBOARD"; clipboard: ClipboardPayload | null }
   | { type: "COPY_SELECTION" }
@@ -260,6 +296,14 @@ export const documentReducer = (state: CanvasDocumentState, action: DocumentActi
       const nextPages = updateElementInPages(state.pages, action.elementId, (element) =>
         element.type === "math" ? { ...element, latexRaw: action.latexRaw, updatedAt: Date.now() } : element
       );
+      return commitSnapshot(state, { pages: nextPages });
+    }
+    case "UPDATE_BLOCK": {
+      const nextPages = updateBlockInPage(state.pages, action.pageId, action.blockId, action.updater);
+      return commitSnapshot(state, { pages: nextPages });
+    }
+    case "DELETE_BLOCK": {
+      const nextPages = removeBlockFromPage(state.pages, action.pageId, action.blockId);
       return commitSnapshot(state, { pages: nextPages });
     }
     case "APPLY_STYLE": {

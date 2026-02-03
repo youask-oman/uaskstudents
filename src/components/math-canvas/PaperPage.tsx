@@ -6,7 +6,7 @@ import VisualRenderer from "@/components/workspace/VisualRenderer";
 import RecognitionBox from "./RecognitionBox";
 import SolutionStepsBlock from "./SolutionStepsBlock";
 import { DEFAULT_ELEMENT_STYLE, createElementId } from "./documentModel";
-import { CanvasElement, CanvasPageData, ToolType } from "./types";
+import { CanvasBlock, CanvasElement, CanvasPageData, ToolType } from "./types";
 import styles from "./MathCanvas.module.css";
 
 interface PaperPageProps {
@@ -23,6 +23,8 @@ interface PaperPageProps {
   onDeleteElements: (elementIds: string[]) => void;
   onRequestMathEdit: (elementId: string, latexRaw: string) => void;
   onCommitText: (elementId: string, text: string) => void;
+  onUpdateBlock: (blockId: string, updater: (block: CanvasBlock) => CanvasBlock) => void;
+  onDeleteBlock: (blockId: string) => void;
 }
 
 interface Point {
@@ -245,6 +247,8 @@ export default function PaperPage({
   onDeleteElements,
   onRequestMathEdit,
   onCommitText,
+  onUpdateBlock,
+  onDeleteBlock,
 }: PaperPageProps) {
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -257,6 +261,8 @@ export default function PaperPage({
   const [dragging, setDragging] = useState<DragDraft | null>(null);
   const [resizing, setResizing] = useState<ResizeDraft | null>(null);
   const [editingText, setEditingText] = useState<EditDraft | null>(null);
+  const [editingRecognition, setEditingRecognition] = useState<{ blockId: string; value: string } | null>(null);
+  const [editingTextBlock, setEditingTextBlock] = useState<{ blockId: string; value: string } | null>(null);
 
   const selectedSet = useMemo(() => new Set(selectedElementIds), [selectedElementIds]);
 
@@ -635,26 +641,156 @@ export default function PaperPage({
           {page.blocks.map((block) => {
             if (block.type === "recognition") {
               return (
-                <div key={block.id} id={block.id}>
-                  <RecognitionBox latex={block.latex} />
+                <div key={block.id} id={block.id} className={styles.paperBlockWrap}>
+                  <div className={styles.paperBlockActions}>
+                    <button
+                      type="button"
+                      className={styles.blockActionButton}
+                      onClick={() => setEditingRecognition({ blockId: block.id, value: block.latex })}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.blockActionButton}
+                      onClick={() => onDeleteBlock(block.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                  {editingRecognition?.blockId === block.id ? (
+                    <div className={styles.inlineEditWrap}>
+                      <textarea
+                        className={styles.inlineEditTextArea}
+                        value={editingRecognition.value}
+                        onChange={(event) =>
+                          setEditingRecognition((prev) =>
+                            prev ? { ...prev, value: event.target.value } : prev
+                          )
+                        }
+                      />
+                      <div className={styles.blockActions}>
+                        <button
+                          type="button"
+                          className={styles.blockActionButton}
+                          onClick={() => {
+                            onUpdateBlock(block.id, (current) =>
+                              current.type === "recognition"
+                                ? { ...current, latex: editingRecognition.value.trim() || current.latex }
+                                : current
+                            );
+                            setEditingRecognition(null);
+                          }}
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.blockActionButton}
+                          onClick={() => setEditingRecognition(null)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <RecognitionBox latex={block.latex} />
+                  )}
                 </div>
               );
             }
             if (block.type === "steps") {
               return (
-                <div key={block.id} id={block.id}>
+                <div key={block.id} id={block.id} className={styles.paperBlockWrap}>
+                  <div className={styles.paperBlockActions}>
+                    <button
+                      type="button"
+                      className={styles.blockActionButton}
+                      onClick={() => onDeleteBlock(block.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
                   <SolutionStepsBlock
                     sectionId={block.id}
                     steps={block.steps}
                     result={block.result}
                     verificationChecks={block.verificationChecks}
+                    editable
+                    onChange={(next) =>
+                      onUpdateBlock(block.id, (current) =>
+                        current.type === "steps"
+                          ? {
+                              ...current,
+                              steps: next.steps,
+                              result: next.result,
+                              verificationChecks: next.verificationChecks,
+                            }
+                          : current
+                      )
+                    }
                   />
                 </div>
               );
             }
             return (
-              <div key={block.id} id={block.id} style={{ fontSize: 14, color: "var(--text-main)" }}>
-                <MathRenderer content={block.text} mode="prose" />
+              <div key={block.id} id={block.id} className={styles.paperBlockWrap}>
+                <div className={styles.paperBlockActions}>
+                  <button
+                    type="button"
+                    className={styles.blockActionButton}
+                    onClick={() => setEditingTextBlock({ blockId: block.id, value: block.text })}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.blockActionButton}
+                    onClick={() => onDeleteBlock(block.id)}
+                  >
+                    Delete
+                  </button>
+                </div>
+                {editingTextBlock?.blockId === block.id ? (
+                  <div className={styles.inlineEditWrap}>
+                    <textarea
+                      className={styles.inlineEditTextArea}
+                      value={editingTextBlock.value}
+                      onChange={(event) =>
+                        setEditingTextBlock((prev) =>
+                          prev ? { ...prev, value: event.target.value } : prev
+                        )
+                      }
+                    />
+                    <div className={styles.blockActions}>
+                      <button
+                        type="button"
+                        className={styles.blockActionButton}
+                        onClick={() => {
+                          onUpdateBlock(block.id, (current) =>
+                            current.type === "text"
+                              ? { ...current, text: editingTextBlock.value.trim() || current.text }
+                              : current
+                          );
+                          setEditingTextBlock(null);
+                        }}
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.blockActionButton}
+                        onClick={() => setEditingTextBlock(null)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 14, color: "var(--text-main)" }}>
+                    <MathRenderer content={block.text} mode="prose" />
+                  </div>
+                )}
               </div>
             );
           })}

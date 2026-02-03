@@ -87,6 +87,7 @@ export default function ChatMessage({ message }: ChatMessageProps) {
           <RenderAssistantItem key={`${message.id}-${index}`} item={item} />
         ))}
       </div>
+      <div className={styles.chatSolutionSignature}>Uask.ai</div>
     </div>
   );
 }

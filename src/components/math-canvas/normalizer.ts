@@ -63,6 +63,19 @@ const parsePointArray = (value: unknown): ChartPayload["points"] => {
     .filter((item): item is NonNullable<typeof item> => item !== null);
 };
 
+const parseLayoutTitleFromObject = (value: unknown): string | undefined => {
+  const obj = asRecord(value);
+  if (!obj) return undefined;
+  const layout = asRecord(obj.layout);
+  if (!layout) return undefined;
+  return (
+    asString(layout[".title"]) ||
+    asString(layout.title) ||
+    asString(asRecord(layout.title)?.text) ||
+    undefined
+  );
+};
+
 const parsePlotlySpecPoints = (value: unknown): ChartPayload["points"] => {
   const spec = asRecord(value);
   if (!spec) return [];
@@ -95,7 +108,11 @@ const parseDirectPlotlyChart = (value: unknown): ChartPayload | null => {
   const layout = asRecord(spec.layout);
   const xAxis = asRecord(layout?.xaxis);
   const yAxis = asRecord(layout?.yaxis);
-  const titleValue = asString(layout?.title) || asString(asRecord(layout?.title)?.text) || "Graph";
+  const titleValue =
+    asString(layout?.[".title"]) ||
+    asString(layout?.title) ||
+    asString(asRecord(layout?.title)?.text) ||
+    "Graph";
   const xLabel = asString(xAxis?.title) || asString(asRecord(xAxis?.title)?.text) || "x";
   const yLabel = asString(yAxis?.title) || asString(asRecord(yAxis?.title)?.text) || "y";
 
@@ -110,9 +127,12 @@ const parseDirectPlotlyChart = (value: unknown): ChartPayload | null => {
 const parsePlotFromObject = (value: unknown): ChartPayload[] => {
   const obj = asRecord(value);
   if (!obj) return [];
+  const layoutTitle = parseLayoutTitleFromObject(obj);
 
   const directPlotly = parseDirectPlotlyChart(obj);
-  if (directPlotly) return [directPlotly];
+  if (directPlotly) {
+    return [{ ...directPlotly, title: layoutTitle || directPlotly.title }];
+  }
 
   const plotObject = asRecord(obj.plot);
   const plotSpecs = Array.isArray(plotObject?.plot_specs) ? plotObject?.plot_specs : [];
@@ -123,7 +143,7 @@ const parsePlotFromObject = (value: unknown): ChartPayload[] => {
     const specPoints = parsePlotlySpecPoints(specEntry.spec);
     if (specPoints.length < 2) return;
     parsedFromPlotSpecs.push({
-      title: asString(specEntry.plot_id) || `Plot ${index + 1}`,
+      title: layoutTitle || asString(specEntry.plot_id) || `Plot ${index + 1}`,
       xLabel: "x",
       yLabel: "y",
       points: specPoints,
@@ -141,7 +161,7 @@ const parsePlotFromObject = (value: unknown): ChartPayload[] => {
       if (!directSpec) return;
       mappedDirectSpecs.push({
         ...directSpec,
-        title: asString(specEntry.plot_id) || directSpec.title || `Plot ${index + 1}`,
+        title: layoutTitle || asString(specEntry.plot_id) || directSpec.title || `Plot ${index + 1}`,
       });
     });
     if (mappedDirectSpecs.length > 0) return mappedDirectSpecs;
@@ -167,7 +187,7 @@ const parsePlotFromObject = (value: unknown): ChartPayload[] => {
     if (points.length < 2) return;
 
     parsed.push({
-      title: asString(plot.title) || asString(plot.name) || "Graph",
+      title: layoutTitle || asString(plot.title) || asString(plot.name) || "Graph",
       xLabel: asString(plot.x_label) || "x",
       yLabel: asString(plot.y_label) || "y",
       points,
@@ -180,7 +200,7 @@ const parsePlotFromObject = (value: unknown): ChartPayload[] => {
   if (directPoints.length >= 2) {
     return [
       {
-        title: asString(obj.title) || "Graph",
+        title: layoutTitle || asString(obj.title) || "Graph",
         xLabel: asString(obj.xLabel) || "x",
         yLabel: asString(obj.yLabel) || "y",
         points: directPoints,
@@ -330,6 +350,7 @@ const parseMathSolutionFromObject = (value: unknown): MathSolutionPayload | null
   const obj = asRecord(value);
   if (!obj) return null;
 
+  const layoutTitle = parseLayoutTitleFromObject(obj);
   const steps = parseStepsFromObject(obj);
   const result = parseResultFromObject(obj);
   const recognizedLatex = parseRecognizedLatexFromObject(obj);
@@ -341,6 +362,7 @@ const parseMathSolutionFromObject = (value: unknown): MathSolutionPayload | null
   }
 
   return {
+    layoutTitle,
     recognizedLatex,
     steps,
     result,

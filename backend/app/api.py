@@ -6787,6 +6787,20 @@ class ChatSessionResponse(BaseModel):
     created_at: str
     messages: List[ChatMessageSchema]
 
+
+class PaperVersionSaveRequest(BaseModel):
+    title: Optional[str] = None
+    pages: List[Dict[str, Any]]
+
+
+class PaperVersionSaveResponse(BaseModel):
+    ok: bool
+    session_id: int
+    message_id: int
+    version: int
+    title: str
+    saved_at: str
+
 @api_router.get("/sessions/{session_id}", response_model=ChatSessionResponse)
 async def get_session_details(session_id: int, session: Session = Depends(get_session)):
     chat_session = session.get(ChatSession, session_id)
@@ -6816,6 +6830,78 @@ async def get_session_details(session_id: int, session: Session = Depends(get_se
             )
             for msg in chat_session.messages
         ]
+    )
+
+
+def _pick_primary_solve_message(messages: List[ChatMessage]) -> Optional[ChatMessage]:
+    for msg in messages:
+        if msg.role != "assistant":
+            continue
+        telemetry = msg.telemetry if isinstance(msg.telemetry, dict) else {}
+        structured = msg.structured_data if isinstance(msg.structured_data, dict) else {}
+        if telemetry.get("channel") == "canvas_primary" or telemetry.get("hide_from_tutor") is True:
+            return msg
+        if structured.get("hide_from_tutor") is True or structured.get("solve_meta"):
+            return msg
+        if str(structured.get("output_format") or "").lower() in {"freeform", "json_schema"}:
+            return msg
+    for msg in messages:
+        if msg.role == "assistant":
+            return msg
+    return None
+
+
+@api_router.post("/sessions/{session_id}/paper-versions", response_model=PaperVersionSaveResponse)
+async def save_paper_version(
+    session_id: int,
+    request: PaperVersionSaveRequest,
+    db: Session = Depends(get_session),
+):
+    chat_session = db.get(ChatSession, session_id)
+    if not chat_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if not request.pages:
+        raise HTTPException(status_code=400, detail="pages is required")
+
+    assistant_messages = db.exec(
+        select(ChatMessage)
+        .where(ChatMessage.session_id == session_id)
+        .where(ChatMessage.role == "assistant")
+        .order_by(ChatMessage.created_at.desc())
+    ).all()
+    target = _pick_primary_solve_message(assistant_messages)
+    if not target:
+        raise HTTPException(status_code=404, detail="No assistant solve output found")
+
+    structured = target.structured_data.copy() if isinstance(target.structured_data, dict) else {}
+    existing = structured.get("paper_versions")
+    versions = existing if isinstance(existing, list) else []
+    next_version = len(versions) + 1
+    saved_at = datetime.utcnow().isoformat() + "Z"
+    entry = {
+        "version": next_version,
+        "title": (request.title or f"Version {next_version}").strip() or f"Version {next_version}",
+        "saved_at": saved_at,
+        "pages": request.pages,
+    }
+    versions.append(entry)
+    # Keep last 25 versions to avoid unbounded growth.
+    structured["paper_versions"] = versions[-25:]
+    structured["paper_latest_version"] = next_version
+    target.structured_data = structured
+    target.content = target.content or "Updated paper version."
+
+    db.add(target)
+    db.commit()
+    db.refresh(target)
+
+    return PaperVersionSaveResponse(
+        ok=True,
+        session_id=session_id,
+        message_id=int(target.id or 0),
+        version=next_version,
+        title=entry["title"],
+        saved_at=saved_at,
     )
 
 class QuestionRequest(BaseModel):
