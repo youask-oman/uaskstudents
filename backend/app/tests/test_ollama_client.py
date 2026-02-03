@@ -131,3 +131,44 @@ async def test_ollama_failover_to_next_base_url_on_401():
     assert json.loads(resp.content)["ok"] is True
     assert calls["first"] == 1
     assert calls["second"] == 1
+
+
+@pytest.mark.asyncio
+async def test_ollama_generate_stream_yields_chunks():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/chat"
+        body = b'\n'.join(
+            [
+                b'{"message":{"content":"{\\"ok\\":"},"done":false}',
+                b'{"message":{"content":"true}"},"done":false}',
+                b'{"done":true}',
+            ]
+        ) + b"\n"
+        return httpx.Response(200, content=body)
+
+    transport = httpx.MockTransport(handler)
+    client = OllamaClient(
+        base_url="http://ollama.local",
+        model="qwen",
+        timeout_seconds=5,
+        max_retries=0,
+        keep_alive=None,
+        temperature=0.2,
+        top_p=0.9,
+        context_tokens=None,
+        transport=transport,
+    )
+
+    parts = []
+    async for chunk in client.generate_stream(
+        messages=[{"role": "user", "content": "Solve 2+2"}],
+        system_prompt=None,
+        prompt=None,
+        json_schema=None,
+        max_tokens=100,
+        temperature=None,
+        request_id="test-stream",
+    ):
+        if chunk.content:
+            parts.append(chunk.content)
+    assert "".join(parts) == '{"ok":true}'

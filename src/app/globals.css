@@ -3,6 +3,39 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --primary-color: #4A90E2;
+  --primary-hover: #357ABD;
+  --secondary-color: #6C757D;
+  --accent-color: #FFD700;
+
+  --app-bg: #F4F7F9;
+  --sidebar-bg: #FFFFFF;
+  --paper-bg: #FFFFFF;
+  --chat-bg: #F9FAFB;
+
+  --border-color: #E2E8F0;
+  --divider-color: #EDF2F7;
+  --paper-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+
+  --text-main: #2D3748;
+  --text-muted: #718096;
+  --text-on-primary: #FFFFFF;
+  --font-ui: 'Inter', -apple-system, sans-serif;
+  --font-math: 'Latin Modern Roman', serif;
+
+  --latex-bg: #F0F7FF;
+  --step-label-bg: #EBF4FF;
+  --result-green: #48BB78;
+
+  --notebook-card-hover: #F7FAFC;
+  --active-indicator: #4A90E2;
+
+  --sidebar-width: 280px;
+  --chat-width: 360px;
+  --toolbar-height: 64px;
+}
+
 .bg-pattern {
   background-color: #f6f6f8;
   background-image: radial-gradient(#135bec 0.5px, transparent 0.5px);

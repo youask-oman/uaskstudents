@@ -7,7 +7,7 @@ from sqlmodel import Session
 
 from app.models import PromptTierEnum, PromptModeEnum
 from app.services.message_builder import build_user_message
-from app.services.prompt_manager import prompt_manager
+from app.prompts.db_loader import load_prompt_bundle
 from app.services.llm import get_llm_manager, LLMProviderError
 
 
@@ -67,9 +67,10 @@ class ModeExecutionService:
         runtime_hints: Dict[str, Any],
         request_id: str,
     ) -> Dict[str, Any]:
-        binding_payload = prompt_manager.get_binding(session, tier, mode)
+        binding_payload = load_prompt_bundle(tier=tier.value, mode=mode.value, session=session)
         schema = binding_payload["schema"]
-        system_prompt = f"{binding_payload['global_system_prompt'].strip()}\n\n{binding_payload['developer_prompt'].strip()}"
+        system_prompt = binding_payload["system_prompt"]
+        developer_prompt = binding_payload["developer_prompt"]
         user_message = build_user_message(question_payload, context_payload, runtime_hints)
 
         providers = self._llm_manager.get_provider_chain()
@@ -81,6 +82,7 @@ class ModeExecutionService:
                 response = await client.generate(
                     messages=[
                         {"role": "system", "content": system_prompt},
+                        {"role": "developer", "content": developer_prompt},
                         {"role": "user", "content": user_message},
                     ],
                     system_prompt=system_prompt,
@@ -112,6 +114,7 @@ class ModeExecutionService:
                     repair_resp = await client.generate(
                         messages=[
                             {"role": "system", "content": system_prompt},
+                            {"role": "developer", "content": developer_prompt},
                             {"role": "user", "content": repair_prompt},
                         ],
                         system_prompt=system_prompt,

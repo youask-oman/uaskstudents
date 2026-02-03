@@ -10,11 +10,13 @@ class PromptProfile(BaseModel):
     
     # Direct Content (populated by resolver)
     system_prompt_content: Optional[str] = None
+    developer_prompt_content: Optional[str] = None
     json_schema_content: Optional[dict] = None
     system_asset_path: Optional[str] = None
     schema_asset_path: Optional[str] = None
     system_asset_key: Optional[str] = None
     schema_asset_key: Optional[str] = None
+    prompt_binding_meta: Optional[dict] = None
     
     max_output_tokens: int
     max_steps: int
@@ -55,8 +57,8 @@ def get_profile_standard() -> PromptProfile:
     # Standard users get the full V3 experience
     return PromptProfile(
         tier="standard",
-        system_relative_path="../static_design/solver_system.txt", # Pointing to existing V3 prompt location or new standard loc
-        schema_relative_path="../schemas/na_math_solver_v3.py", # OR pointing to a json schema file if we convert
+        system_relative_path=None,
+        schema_relative_path=None,
         # ACTUALLY: The current solver uses python schemas dynamically, but for uniformity we might want JSON assets.
         # However, for now, let's keep standard pointing to where it was, but we might need to adjust logic to handle .py vs .json or 
         # just standardize on reading text/json files.

@@ -12,6 +12,8 @@ from app.services.ollama import (
     is_ollama_alive,
 )
 
+OLLAMA_REQUIRED_MODEL = "mightykatun/qwen2.5-math:7b"
+
 
 def _is_production() -> bool:
     for key in ("APP_ENV", "ENV", "ENVIRONMENT", "NODE_ENV"):
@@ -27,6 +29,10 @@ def _default_provider() -> str:
 
 def _default_fallback_enabled() -> bool:
     return not _is_production()
+
+
+def get_configured_ollama_model() -> str:
+    return os.environ.get("OLLAMA_MODEL", OLLAMA_REQUIRED_MODEL)
 
 
 def _resolve_or_raise_ollama_base_url() -> str:
@@ -103,7 +109,7 @@ class LLMManager:
             client = OllamaClient(
                 base_url=base_url,
                 base_urls=base_urls,
-                model=os.environ.get("OLLAMA_MODEL_DEFAULT", "mightykatun/qwen2.5-math:7b"),
+                model=get_configured_ollama_model(),
                 timeout_seconds=int(os.environ.get("OLLAMA_TIMEOUT_SECONDS", "30")),
                 max_retries=int(os.environ.get("OLLAMA_MAX_RETRIES", "1")),
                 keep_alive=os.environ.get("OLLAMA_KEEPALIVE", "5m"),
@@ -136,6 +142,7 @@ class LLMManager:
     async def check_ollama(self) -> Dict[str, Any]:
         env_url = os.environ.get("OLLAMA_BASE_URL")
         base_url = detect_ollama_base_url(env_url)
+        expected_model = get_configured_ollama_model()
         tried = get_last_tried_candidates() or build_candidate_urls(env_url)
         result = {
             "configured": bool(os.environ.get("OLLAMA_BASE_URL", "").strip()),
@@ -144,6 +151,8 @@ class LLMManager:
             "reachable": False,
             "ok": False,
             "models": [],
+            "expected_model": expected_model,
+            "expected_model_available": False,
             "tried": tried,
         }
         if not base_url:
@@ -162,6 +171,7 @@ class LLMManager:
                     data = resp.json()
                     models = [m.get("name") for m in data.get("models", []) if isinstance(m, dict)]
                     result["models"] = models
+                    result["expected_model_available"] = expected_model in models
                 else:
                     result["error"] = {
                         "exception_class": "HTTPStatus",
@@ -177,17 +187,45 @@ class LLMManager:
         return result
 
     def check_ollama_sync(self, timeout_seconds: float = 2.0) -> Dict[str, Any]:
-        del timeout_seconds  # keep signature compatibility
         env_url = os.environ.get("OLLAMA_BASE_URL")
         base_url = detect_ollama_base_url(env_url)
         tried = get_last_tried_candidates() or build_candidate_urls(env_url)
+        expected_model = get_configured_ollama_model()
         reachable = bool(base_url and is_ollama_alive(base_url))
-        result = {"base_url": base_url, "reachable": reachable, "tried": tried}
+        result = {
+            "base_url": base_url,
+            "reachable": reachable,
+            "tried": tried,
+            "models": [],
+            "expected_model": expected_model,
+            "expected_model_available": False,
+        }
         if not reachable:
             result["error"] = {
                 "exception_class": "RuntimeError",
                 "message": "Cannot reach Ollama. Set OLLAMA_BASE_URL or ensure Ollama is reachable.",
                 "tried": tried,
+            }
+            return result
+        try:
+            with httpx.Client(timeout=httpx.Timeout(timeout_seconds)) as client:
+                resp = client.get(f"{base_url}/api/tags")
+                if resp.status_code == 200:
+                    data = resp.json()
+                    models = [m.get("name") for m in data.get("models", []) if isinstance(m, dict)]
+                    result["models"] = models
+                    result["expected_model_available"] = expected_model in models
+                else:
+                    result["error"] = {
+                        "exception_class": "HTTPStatus",
+                        "message": f"status={resp.status_code}",
+                        "base_url": base_url,
+                    }
+        except Exception as exc:
+            result["error"] = {
+                "exception_class": exc.__class__.__name__,
+                "message": str(exc).strip() or repr(exc),
+                "base_url": base_url,
             }
         return result
 

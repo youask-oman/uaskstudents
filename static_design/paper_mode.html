@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .graph-paper {
+            background-size: 40px 40px;
+            background-image: 
+                linear-gradient(to right, rgba(19, 127, 236, 0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(19, 127, 236, 0.05) 1px, transparent 1px);
+        }
+        .latex-glow {
+            text-shadow: 0 0 15px rgba(19, 127, 236, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-[#0d141b] dark:text-slate-100 antialiased overflow-hidden h-screen flex flex-col">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-[#e7edf3] dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-3 z-20">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-3">
+<div class="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
+<span class="material-symbols-outlined">calculate</span>
+</div>
+<h2 class="text-[#0d141b] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">Math Canvas AI</h2>
+</div>
+<div class="h-6 w-[1px] bg-slate-200 dark:bg-slate-700 mx-2"></div>
+<label class="flex flex-col min-w-48 !h-9 max-w-64">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full overflow-hidden">
+<div class="text-[#4c739a] flex border-none bg-[#e7edf3] dark:bg-slate-800 items-center justify-center pl-3">
+<span class="material-symbols-outlined text-sm">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 border-none bg-[#e7edf3] dark:bg-slate-800 text-[#0d141b] dark:text-slate-200 focus:ring-0 h-full placeholder:text-[#4c739a] px-3 text-sm" placeholder="Search my notes..." value=""/>
+</div>
+</label>
+</div>
+<div class="flex flex-1 justify-end gap-4 items-center">
+<nav class="hidden md:flex items-center gap-6 mr-6">
+<a class="text-[#4c739a] dark:text-slate-400 text-sm font-medium hover:text-primary transition-colors" href="#">My Notebooks</a>
+<a class="text-[#4c739a] dark:text-slate-400 text-sm font-medium hover:text-primary transition-colors" href="#">Templates</a>
+<a class="text-[#4c739a] dark:text-slate-400 text-sm font-medium hover:text-primary transition-colors" href="#">Shared</a>
+</nav>
+<div class="flex gap-2">
+<button class="flex min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-9 px-4 bg-[#e7edf3] dark:bg-slate-800 text-[#0d141b] dark:text-slate-200 text-sm font-bold">
+<span>Save</span>
+</button>
+<button class="flex min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-9 px-4 bg-primary text-white text-sm font-bold">
+<span>Export</span>
+</button>
+</div>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 border border-slate-200 dark:border-slate-700" data-alt="User profile avatar circle" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCkenMdwIwSXXiPkzlBNHAln58CXTM_d56ySvjYoCNU2CqZ3o8daY3IsJRzjqZZCAuPbe3ER7wzi637OWbSXCYrVhDva-F1_y5gyVb97DWF6iqgUjow4A1xaH2UodZ1TwpOlZxJbDGvj_zxsNQJ7CCg2LzYGpxusujvaNDsqvQ4k8lf4WOTPyx-YTjGCl-kyf995PvSl59ssNjH6G7XJp9HRL_x7qzzO-Hl9yMOKoaNpFLQYNLNAD7nSSQQ-yhZ5gdNy-N26n1l7gk");'></div>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden">
+<!-- Left Sidebar: Navigation -->
+<aside class="w-64 border-r border-[#e7edf3] dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col p-4 shrink-0 overflow-y-auto">
+<div class="mb-8">
+<h3 class="text-xs font-semibold text-[#4c739a] uppercase tracking-wider mb-4 px-3">Notebook</h3>
+<div class="flex flex-col gap-1">
+<div class="flex flex-col px-3 py-3 mb-2 rounded-xl bg-primary/10 border border-primary/20">
+<h1 class="text-[#0d141b] dark:text-white text-sm font-bold">Calculus 101</h1>
+<p class="text-primary text-xs font-medium">Semester A - 2024</p>
+</div>
+</div>
+</div>
+<nav class="flex flex-col gap-1">
+<div class="flex items-center gap-3 px-3 py-2 text-[#4c739a] dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg cursor-pointer">
+<span class="material-symbols-outlined text-[20px]">home</span>
+<p class="text-sm font-medium">Overview</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-primary bg-primary/5 rounded-lg border-l-4 border-primary">
+<span class="material-symbols-outlined text-[20px] fill-current">edit_note</span>
+<p class="text-sm font-bold">Math Canvas</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-[#4c739a] dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg cursor-pointer">
+<span class="material-symbols-outlined text-[20px]">category</span>
+<p class="text-sm font-medium">Geometry Tools</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-[#4c739a] dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg cursor-pointer">
+<span class="material-symbols-outlined text-[20px]">analytics</span>
+<p class="text-sm font-medium">Statistics</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-[#4c739a] dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg cursor-pointer">
+<span class="material-symbols-outlined text-[20px]">history</span>
+<p class="text-sm font-medium">Revision History</p>
+</div>
+</nav>
+<div class="mt-auto pt-6">
+<div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-dashed border-slate-300 dark:border-slate-700">
+<p class="text-xs text-[#4c739a] dark:text-slate-400 mb-2">Storage used</p>
+<div class="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[45%]"></div>
+</div>
+<p class="text-[10px] mt-2 text-slate-500">4.5GB of 10GB free</p>
+</div>
+</div>
+</aside>
+<!-- Main Canvas Area -->
+<main class="flex-1 flex flex-col bg-white dark:bg-slate-900 relative">
+<!-- Toolbar -->
+<div class="flex justify-between items-center px-4 py-2 border-b border-[#e7edf3] dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur sticky top-0 z-10">
+<div class="flex items-center gap-1">
+<button class="p-2 text-[#0d141b] dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Text">
+<span class="material-symbols-outlined text-blue-500">title</span>
+</button>
+<button class="p-2 text-[#0d141b] dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Sigma/Sum">
+<span class="material-symbols-outlined text-orange-500">functions</span>
+</button>
+<button class="p-2 text-[#0d141b] dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Equation Editor">
+<span class="material-symbols-outlined text-purple-500">variables</span>
+</button>
+<div class="w-[1px] h-6 bg-slate-200 dark:bg-slate-700 mx-1"></div>
+<button class="p-2 text-[#0d141b] dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Compass">
+<span class="material-symbols-outlined text-green-500">explore</span>
+</button>
+<button class="p-2 text-[#0d141b] dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Ruler">
+<span class="material-symbols-outlined text-red-500">straighten</span>
+</button>
+<button class="p-2 text-[#0d141b] dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Graph">
+<span class="material-symbols-outlined text-indigo-500">show_chart</span>
+</button>
+<div class="w-[1px] h-6 bg-slate-200 dark:bg-slate-700 mx-1"></div>
+<button class="p-2 text-[#0d141b] dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Eraser">
+<span class="material-symbols-outlined text-slate-500">ink_eraser</span>
+</button>
+<button class="p-2 text-[#0d141b] dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Colors">
+<span class="material-symbols-outlined text-pink-500">palette</span>
+</button>
+</div>
+<button class="flex items-center justify-center rounded-lg h-9 bg-primary text-white gap-2 px-4 font-bold text-sm shadow-sm hover:shadow-md transition-shadow">
+<span class="material-symbols-outlined text-sm">add_circle</span>
+<span class="truncate">Add Page</span>
+</button>
+</div>
+<!-- Editor Content -->
+<div class="flex-1 overflow-y-auto graph-paper p-8 lg:p-12">
+<div class="max-w-[800px] mx-auto bg-white dark:bg-slate-800 shadow-xl border border-slate-200 dark:border-slate-700 min-h-[1000px] rounded-sm p-12">
+<!-- Breadcrumbs -->
+<div class="flex items-center gap-2 mb-8">
+<a class="text-[#4c739a] dark:text-slate-400 text-xs font-medium hover:underline" href="#">Calculus</a>
+<span class="text-slate-300 dark:text-slate-600">/</span>
+<span class="text-[#0d141b] dark:text-white text-xs font-bold">Week 3: Definite Integrals</span>
+</div>
+<!-- Page Content -->
+<div class="space-y-8">
+<div class="border-b-2 border-slate-100 dark:border-slate-700 pb-4">
+<h2 class="text-[#0d141b] dark:text-white text-3xl font-bold mb-2">Lesson: Fundamental Theorem of Calculus</h2>
+<p class="text-[#4c739a] dark:text-slate-400 text-sm italic">Modified Oct 24, 2024 • Workspace Shared</p>
+</div>
+<p class="text-[#0d141b] dark:text-slate-300 leading-relaxed">
+                            The Fundamental Theorem of Calculus relates differentiation and integration, showing that they are inverse operations. 
+                            Let's look at the evaluation of a standard integral:
+                        </p>
+<div class="py-10 bg-primary/5 dark:bg-primary/10 rounded-xl flex flex-col items-center justify-center border border-primary/10">
+<h1 class="text-primary dark:text-primary tracking-light text-[36px] font-bold leading-tight latex-glow mb-4">
+                                f(x) = ∫<sub>0</sub><sup>5</sup> (3x² + 2x) dx
+                            </h1>
+<div class="flex items-center gap-2 text-xs font-medium text-primary/60 bg-white dark:bg-slate-900 px-3 py-1 rounded-full border border-primary/20">
+<span class="material-symbols-outlined text-xs">auto_fix</span>
+                                AI recognized: Definite Integral
+                            </div>
+</div>
+<p class="text-[#0d141b] dark:text-slate-300 leading-relaxed">
+                            To solve this, we first find the antiderivative of 3x² + 2x, which is x³ + x². 
+                            Then we evaluate from 0 to 5:
+                        </p>
+<div class="p-6 border-l-4 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 rounded-r-xl">
+<div class="space-y-4">
+<div class="flex justify-between items-center">
+<span class="text-slate-500 font-mono text-sm">STEP 1:</span>
+<span class="text-primary font-bold">F(x) = x³ + x² + C</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-slate-500 font-mono text-sm">STEP 2:</span>
+<span class="text-[#0d141b] dark:text-white font-bold">[5³ + 5²] - [0³ + 0²]</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-slate-500 font-mono text-sm">RESULT:</span>
+<span class="bg-primary text-white px-3 py-1 rounded-lg font-bold">150</span>
+</div>
+</div>
+</div>
+<div class="h-64 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center text-slate-400">
+<span class="material-symbols-outlined text-4xl mb-2">add_photo_alternate</span>
+<p class="text-sm">Click to insert graph or drawing</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Right Sidebar: AI Assistant -->
+<aside class="w-80 border-l border-[#e7edf3] dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0 overflow-hidden">
+<div class="p-4 border-b border-[#e7edf3] dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">smart_toy</span>
+<span class="font-bold text-sm">Ask AI Tutor</span>
+</div>
+<button class="text-slate-400 hover:text-slate-600">
+<span class="material-symbols-outlined text-sm">settings</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-4">
+<!-- AI Message -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-2">
+<div class="size-6 bg-primary rounded-full flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-[14px]">auto_awesome</span>
+</div>
+<span class="text-xs font-bold text-slate-500">AI ASSISTANT</span>
+</div>
+<div class="bg-[#f0f7ff] dark:bg-primary/10 p-3 rounded-2xl rounded-tl-none border border-primary/10">
+<p class="text-sm text-[#0d141b] dark:text-slate-200">
+                            I see you're working on Definite Integrals. Would you like me to explain the Geometric interpretation or show you some integration by parts examples?
+                        </p>
+</div>
+</div>
+<!-- User Message -->
+<div class="flex flex-col gap-2 items-end">
+<div class="bg-slate-100 dark:bg-slate-800 p-3 rounded-2xl rounded-tr-none">
+<p class="text-sm text-[#0d141b] dark:text-slate-200">
+                            Show me the geometric interpretation.
+                        </p>
+</div>
+</div>
+<!-- AI Response Card -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-2">
+<div class="size-6 bg-primary rounded-full flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-[14px]">auto_awesome</span>
+</div>
+<span class="text-xs font-bold text-slate-500">AI ASSISTANT</span>
+</div>
+<div class="bg-[#f0f7ff] dark:bg-primary/10 p-4 rounded-2xl rounded-tl-none border border-primary/10">
+<p class="text-sm mb-3">Geometrically, the integral represents the **net signed area** between the curve and the x-axis.</p>
+<div class="aspect-square w-full bg-white dark:bg-slate-800 rounded-lg border border-primary/20 p-2 overflow-hidden" data-alt="Geometric plot showing area under a curve">
+<div class="w-full h-full bg-slate-50 dark:bg-slate-900 rounded flex items-center justify-center relative">
+<svg class="w-full h-full stroke-primary fill-primary/10" viewbox="0 0 100 100">
+<path d="M 10 90 Q 50 10 90 90 L 10 90 Z" fill-opacity="0.2" stroke-width="2"></path>
+<line stroke="#cbd5e1" stroke-width="1" x1="0" x2="100" y1="90" y2="90"></line>
+<line stroke="#cbd5e1" stroke-width="1" x1="10" x2="10" y1="0" y2="100"></line>
+</svg>
+<span class="absolute text-[10px] bottom-1 left-12 text-slate-400">Area = 150</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Quick Prompts & Chat Input -->
+<div class="p-4 border-t border-[#e7edf3] dark:border-slate-800 space-y-4">
+<div class="flex flex-wrap gap-2">
+<button class="px-3 py-1.5 text-[11px] font-medium bg-slate-50 dark:bg-slate-800 text-[#4c739a] border border-slate-200 dark:border-slate-700 rounded-full hover:border-primary hover:text-primary transition-all">
+                        Simplify Eq
+                    </button>
+<button class="px-3 py-1.5 text-[11px] font-medium bg-slate-50 dark:bg-slate-800 text-[#4c739a] border border-slate-200 dark:border-slate-700 rounded-full hover:border-primary hover:text-primary transition-all">
+                        Plot Graph
+                    </button>
+<button class="px-3 py-1.5 text-[11px] font-medium bg-slate-50 dark:bg-slate-800 text-[#4c739a] border border-slate-200 dark:border-slate-700 rounded-full hover:border-primary hover:text-primary transition-all">
+                        Check Steps
+                    </button>
+</div>
+<div class="relative">
+<input class="w-full pr-12 pl-4 py-3 bg-[#e7edf3] dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-primary text-sm placeholder:text-[#4c739a]" placeholder="Ask anything about the math..." type="text"/>
+<button class="absolute right-2 top-2 p-1.5 bg-primary text-white rounded-lg shadow-sm">
+<span class="material-symbols-outlined text-sm">send</span>
+</button>
+</div>
+</div>
+</aside>
+</div>
+</body></html>

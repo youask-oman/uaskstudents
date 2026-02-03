@@ -98,19 +98,8 @@ class PromptRegistry:
         
         print(f"[PromptRegistry] Loading prompts from: {self.base_path}")
         
-        # Load solver_system.txt (system prompt)
-        system_file = self.base_path / "solver_system.txt"
-        if system_file.exists():
-            self._load_prompt_file(system_file, "solver_system", "v3")
-        else:
-            print(f"[PromptRegistry] WARNING: solver_system.txt not found at {system_file}")
-        
-        # Load solver_developer.txt (contains JSON schema)
-        developer_file = self.base_path / "solver_developer.txt"
-        if developer_file.exists():
-            self._load_schema_file(developer_file, "na_math_solver")
-        else:
-            print(f"[PromptRegistry] WARNING: solver_developer.txt not found at {developer_file}")
+        # Prompt and schema loading is DB-managed via prompt_bindings/prompt_templates/json_schemas.
+        # Keep this registry class for compatibility only.
         
         print(f"[PromptRegistry] Loaded {len(self.prompts)} prompts")
     

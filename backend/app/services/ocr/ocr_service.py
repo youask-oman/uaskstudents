@@ -230,7 +230,21 @@ class LocalEngine(OCREngine):
         # Requirement 3: Heuristic for math presence.
         math_tokens = [r"\\", r"\^", r"_", r"=", r"\+", r"\-", r"\*", r"\/", r"\(", r"\)", r"\[", r"\]"]
         if any(re.search(t, text) for t in math_tokens): return True
-        if any(c.isdigit() for c in text): return True
+        if re.search(r"\d+\s*[A-Za-z]|[A-Za-z]\s*\d+", text):
+            return True
+        return False
+
+    def _has_strong_math_signal(self, text: str) -> bool:
+        """Stricter signal to reject page-heading OCR noise on tight crops."""
+        s = (text or "").strip()
+        if not s:
+            return False
+        if re.search(r"(=|\\sqrt|√|[\+\-\*/\^])", s):
+            return True
+        if re.search(r"[A-Za-z]\s*=\s*[A-Za-z0-9]", s):
+            return True
+        if re.search(r"\b(?:sin|cos|tan|log|ln)\b", s, flags=re.IGNORECASE):
+            return True
         return False
 
     def _normalize_delimiters(self, text: str) -> str:
@@ -301,8 +315,8 @@ class LocalEngine(OCREngine):
             
             # 2. Determine APIs to try based on user_selection (Requirement 2/B)
             if user_selection == "crop":
-                # Prioritize recognize_page to detect tables and layout properly
-                api_order = ["recognize_page", "recognize_text_formula", "recognize_formula", "recognize"]
+                # For tight crops, formula/text_formula are more reliable than page layout mode.
+                api_order = ["recognize_text_formula", "recognize_formula", "recognize", "recognize_page"]
             else: # whole_page
                 api_order = ["recognize_page", "recognize_text_formula"]
 
@@ -326,7 +340,14 @@ class LocalEngine(OCREngine):
                         
                         candidate = self._format_output(str(raw), api_name)
                         is_weak = self.is_figure_only(candidate)
-                        
+                        if (
+                            not is_weak
+                            and user_selection == "crop"
+                            and api_name == "recognize_page"
+                            and not self._has_strong_math_signal(candidate)
+                        ):
+                            is_weak = True
+
                         fallback_chain.append({
                             "variant": os.path.basename(v_path),
                             "method": api_name,

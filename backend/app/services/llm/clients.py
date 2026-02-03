@@ -5,7 +5,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, AsyncIterator, Dict, List, Optional
 
 import httpx
 
@@ -46,6 +46,7 @@ class LLMStreamResponse:
     usage: Optional[Dict[str, Any]] = None
     status: Optional[Dict[str, Any]] = None
     latency_ms: int = 0
+    done: bool = False
 
 
 
@@ -114,6 +115,8 @@ def _normalize_messages_for_ollama(messages: List[Dict[str, Any]]) -> List[Dict[
     normalized: List[Dict[str, str]] = []
     for msg in messages:
         role = msg.get("role")
+        if role == "developer":
+            role = "system"
         content = msg.get("content", "")
         if isinstance(content, list):
             text_parts: List[str] = []
@@ -366,6 +369,42 @@ class OpenAIClient:
             payload=payload,
             attempts=1,
             latency_ms=latency_ms,
+        )
+
+    async def generate_stream(
+        self,
+        *,
+        messages: Optional[List[Dict[str, Any]]],
+        system_prompt: Optional[str],
+        prompt: Optional[str],
+        json_schema: Optional[Dict[str, Any]],
+        max_tokens: int,
+        temperature: Optional[float],
+        request_id: Optional[str],
+        model: Optional[str] = None,
+        verbosity: Optional[str] = None,
+    ) -> AsyncIterator[LLMStreamResponse]:
+        # Degrade gracefully for providers without native streaming in this client.
+        response = await self.generate(
+            messages=messages,
+            system_prompt=system_prompt,
+            prompt=prompt,
+            json_schema=json_schema,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            stream=False,
+            request_id=request_id,
+            model=model,
+            verbosity=verbosity,
+        )
+        yield LLMStreamResponse(
+            content=response.content,
+            provider=response.provider,
+            model=response.model,
+            usage=response.usage,
+            status=response.status,
+            latency_ms=response.latency_ms,
+            done=True,
         )
 
 
@@ -701,4 +740,176 @@ class OllamaClient:
             f"Ollama request failed: {last_error}",
             provider="ollama",
             is_transient=True,
+        )
+
+    async def generate_stream(
+        self,
+        *,
+        messages: Optional[List[Dict[str, Any]]],
+        system_prompt: Optional[str],
+        prompt: Optional[str],
+        json_schema: Optional[Dict[str, Any]],
+        max_tokens: int,
+        temperature: Optional[float],
+        request_id: Optional[str],
+        model: Optional[str] = None,
+        verbosity: Optional[str] = None,
+    ) -> AsyncIterator[LLMStreamResponse]:
+        del verbosity  # unused by Ollama transport
+        if not self._breaker.allow_request():
+            raise LLMProviderError(
+                "Ollama circuit breaker open.",
+                provider="ollama",
+                status_code=503,
+                is_transient=True,
+                details={
+                    "base_url": self.base_url,
+                    "reset_in_seconds": self._breaker.reset_in_seconds(),
+                    "last_failure": self._breaker.last_failure or self._last_error_details,
+                },
+            )
+
+        model_name = model or self.model
+        start = time.perf_counter()
+
+        if messages is None:
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            if prompt is not None:
+                messages.append({"role": "user", "content": prompt})
+
+        use_chat = len(messages) > 0
+        normalized_messages = _normalize_messages_for_ollama(messages) if use_chat else []
+        options = self._build_options(max_tokens, temperature)
+        fmt = "json" if json_schema else None
+
+        endpoint = "/api/chat" if use_chat else "/api/generate"
+        payload = (
+            build_ollama_chat_payload(
+                model=model_name,
+                messages=normalized_messages,
+                stream=True,
+                options=options,
+                keep_alive=self.keep_alive,
+                fmt=fmt,
+            )
+            if use_chat
+            else build_ollama_generate_payload(
+                model=model_name,
+                prompt=prompt or "",
+                stream=True,
+                options=options,
+                keep_alive=self.keep_alive,
+                fmt=fmt,
+            )
+        )
+
+        response: Optional[httpx.Response] = None
+        for attempt in range(self.max_retries + 1):
+            for idx, candidate_base_url in enumerate(self.base_urls):
+                self.base_url = candidate_base_url
+                try:
+                    response = await self._client.post(f"{self.base_url}{endpoint}", json=payload)
+                    if response.status_code >= 500:
+                        raise LLMProviderError(
+                            f"Ollama server error: {response.status_code}",
+                            provider="ollama",
+                            status_code=response.status_code,
+                            is_transient=True,
+                            details={"base_url": self.base_url},
+                        )
+                    if response.status_code >= 400:
+                        raise LLMProviderError(
+                            f"Ollama client error: {response.status_code}",
+                            provider="ollama",
+                            status_code=response.status_code,
+                            is_transient=False,
+                            details={"base_url": self.base_url},
+                        )
+                    break
+                except LLMProviderError:
+                    if idx < len(self.base_urls) - 1:
+                        continue
+                    if attempt >= self.max_retries:
+                        raise
+            if response is not None:
+                break
+            await asyncio.sleep(min(2 ** attempt, 4))
+
+        if response is None:
+            # Fallback to one-shot generation if stream transport never established.
+            one_shot = await self.generate(
+                messages=messages,
+                system_prompt=system_prompt,
+                prompt=prompt,
+                json_schema=json_schema,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                stream=False,
+                request_id=request_id,
+                model=model,
+            )
+            yield LLMStreamResponse(
+                content=one_shot.content,
+                provider=one_shot.provider,
+                model=one_shot.model,
+                usage=one_shot.usage,
+                status=one_shot.status,
+                latency_ms=one_shot.latency_ms,
+                done=True,
+            )
+            return
+
+        usage = {"input": 0, "output": 0, "total": 0, "cached": None}
+        status = {"status": "completed", "finish_reason": "stop"}
+        try:
+            async for line in response.aiter_lines():
+                if not line:
+                    continue
+                data = json.loads(line)
+                if data.get("done"):
+                    self._breaker.record_success()
+                    break
+                delta = data.get("message", {}).get("content") or data.get("response", "")
+                if delta:
+                    yield LLMStreamResponse(
+                        content=delta,
+                        provider="ollama",
+                        model=model_name,
+                        done=False,
+                    )
+        except Exception:
+            # Graceful degradation: emit one full chunk instead of failing stream contract.
+            one_shot = await self.generate(
+                messages=messages,
+                system_prompt=system_prompt,
+                prompt=prompt,
+                json_schema=json_schema,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                stream=False,
+                request_id=request_id,
+                model=model,
+            )
+            yield LLMStreamResponse(
+                content=one_shot.content,
+                provider=one_shot.provider,
+                model=one_shot.model,
+                usage=one_shot.usage,
+                status=one_shot.status,
+                latency_ms=one_shot.latency_ms,
+                done=True,
+            )
+            return
+
+        latency_ms = int((time.perf_counter() - start) * 1000)
+        yield LLMStreamResponse(
+            content="",
+            provider="ollama",
+            model=model_name,
+            usage=usage,
+            status=status,
+            latency_ms=latency_ms,
+            done=True,
         )

@@ -2,16 +2,20 @@ from typing import Optional
 
 from sqlmodel import Session, select
 
-from app.llm_profiles.profiles import PromptProfile, get_profile_free
+from app.llm_profiles.profiles import PromptProfile
 from app.models import Plan, User
-from app.services.prompt_registry_service import PromptRegistryError, prompt_registry_service
 from app.services.tier_utils import get_user_effective_tier_slug, normalize_tier_slug
 from app.services.token_policy import get_token_policy
 from app.utils.token_limits import get_effective_max_steps, get_effective_max_tokens
+from app.prompts.db_loader import PromptBindingLookupError, load_prompt_bundle
 
 
 class ProfileResolutionError(Exception):
     """Raised when a profile cannot be resolved."""
+    def __init__(self, message: str, code: str = "PROFILE_RESOLUTION_FAILED", details: Optional[dict] = None):
+        super().__init__(message)
+        self.code = code
+        self.details = details or {}
 
 
 class ProfileResolver:
@@ -27,6 +31,8 @@ class ProfileResolver:
         requested_mode: str = "minimal",  # "minimal" or "detailed"
         learning_mode: str = "solve",  # "solve" or "study"
         force_tier: Optional[str] = None,
+        mode_family: str = "SOLVE",
+        provider: str = "ollama",
     ) -> PromptProfile:
         plan = None
         tier_slug = "free"
@@ -46,50 +52,35 @@ class ProfileResolver:
             tier_slug = "free"
 
         if not plan:
-            print("WARNING: No 'free' plan found in DB. Using hardcoded fallback.")
-            return get_profile_free()
+            raise ProfileResolutionError("No plan found for profile resolution.")
 
         policy = get_token_policy(session)
         max_tokens = get_effective_max_tokens(requested_mode, learning_mode, policy)
         max_steps = get_effective_max_steps(requested_mode, learning_mode, policy)
 
         try:
-            system_prompt, schema_content, _ = prompt_registry_service.resolve_binding_payload(
-                session=session,
-                tier_slug=tier_slug,
-                mode="solve",
-            )
-            return PromptProfile(
+            bundle = load_prompt_bundle(
                 tier=tier_slug,
-                system_prompt_content=system_prompt,
-                json_schema_content=schema_content if isinstance(schema_content, dict) else {},
-                max_output_tokens=max_tokens,
-                max_steps=max_steps,
-                mode=requested_mode,
-                allow_detailed=(requested_mode == "detailed"),
-                allow_visuals_only_if_asked=(requested_mode == "minimal" and "free" in tier_slug),
+                mode=mode_family,
+                session=session,
+                provider=provider,
             )
-        except PromptRegistryError:
-            # Hard fallback to FREE binding only; no legacy table dependency.
-            try:
-                system_prompt, schema_content, _ = prompt_registry_service.resolve_binding_payload(
-                    session=session,
-                    tier_slug="free",
-                    mode="solve",
-                )
-                return PromptProfile(
-                    tier="free",
-                    system_prompt_content=system_prompt,
-                    json_schema_content=schema_content if isinstance(schema_content, dict) else {},
-                    max_output_tokens=max_tokens,
-                    max_steps=max_steps,
-                    mode=requested_mode,
-                    allow_detailed=(requested_mode == "detailed"),
-                    allow_visuals_only_if_asked=True,
-                )
-            except PromptRegistryError as e:
-                if tier_slug != "free":
-                    print(
-                        f"WARNING: Missing prompt registry binding for tier={tier_slug}; using hardcoded free fallback. ({e})"
-                    )
-                return get_profile_free()
+        except PromptBindingLookupError as e:
+            raise ProfileResolutionError(
+                f"Prompt binding lookup failed: {e}",
+                code=getattr(e, "code", "PROMPT_BINDING_LOOKUP_FAILED"),
+                details=getattr(e, "details", {}),
+            ) from e
+
+        return PromptProfile(
+            tier=tier_slug,
+            system_prompt_content=bundle["system_prompt"],
+            developer_prompt_content=bundle["developer_prompt"],
+            json_schema_content=bundle["schema"] if isinstance(bundle["schema"], dict) else {},
+            max_output_tokens=max_tokens,
+            max_steps=max_steps,
+            mode=requested_mode,
+            allow_detailed=(requested_mode == "detailed"),
+            allow_visuals_only_if_asked=(requested_mode == "minimal" and "free" in tier_slug),
+            prompt_binding_meta=bundle.get("meta"),
+        )

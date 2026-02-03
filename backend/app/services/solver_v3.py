@@ -17,18 +17,18 @@ from jsonschema import Draft202012Validator
 from app.schemas.na_math_solver_v3 import get_json_schema_for_openai_v3
 from app.utils.schema_cleaner import enforce_strict
 from app.services.validation_v3 import validate_response, create_error_response
-from app.prompts import get_prompt, get_schema
 from app.utils.schema_deref import deref_json_schema, validate_no_refs
 from app.llm_profiles.profiles import get_prompt_profile
 from app.services.response_mapper import map_minimal_to_canonical
 from app.utils.token_limits import get_effective_max_tokens, get_effective_max_steps
 from app.services.token_policy import get_token_policy, TokenPolicy
-from app.services.llm.manager import LLMManager, LLMProviderError, _default_provider
+from app.services.llm.manager import LLMManager, LLMProviderError, _default_provider, get_configured_ollama_model
 from app.services.llm.clients import LLMResponse, LLMStreamResponse
 from app.services.prompt_registry_service import prompt_registry_service, PromptRegistryError
 from app.services.prompt_manager import prompt_manager
 from app.services.message_builder import build_user_message
 from app.llm_profiles.profiles import PromptProfile
+from app.prompts.db_loader import PromptBindingLookupError, load_prompt_bundle
 
 class SolverV3:
     """
@@ -37,10 +37,10 @@ class SolverV3:
     
     def __init__(self, llm_manager=None):
         """Initialize solver with LLM provider manager."""
-        self.client_manager = LLMManager()
+        self.client_manager = llm_manager or LLMManager()
 
         # Hardcode Qwen Math for now or use env
-        self.default_model = os.getenv("OLLAMA_MODEL_DEFAULT", "mightykatun/qwen2.5-math:7b")
+        self.default_model = get_configured_ollama_model()
         # Ensure we are using Ollama client:
         # self.client = ... (access via manager now)
         print(f"[SOLVER_V3_INIT] LLM provider: {self.client_manager.primary_provider}")
@@ -147,6 +147,7 @@ class SolverV3:
             if db_session:
                 from app.llm_profiles.profile_resolver import ProfileResolver
                 from app.models import User
+                from app.services.tier_utils import get_user_effective_tier_slug
                 
                 # Load user object if needed
                 user_obj = None
@@ -154,39 +155,28 @@ class SolverV3:
                      user_obj = db_session.get(User, user_id)
 
                 try:
-                    try:
-                        tier_enum = prompt_registry_service._resolve_tier(user_tier)
-                        binding_payload = prompt_manager.get_binding(db_session, tier_enum, prompt_registry_service._resolve_mode("solve"))
-                        system_prompt = binding_payload["global_system_prompt"]
-                        developer_prompt = binding_payload["developer_prompt"]
-                        schema_content = binding_payload["schema"]
-                        token_policy = get_token_policy(db_session)
-                        max_tokens = get_effective_max_tokens(requested_mode, learning_mode or "solve", token_policy)
-                        max_steps = get_effective_max_steps(requested_mode, learning_mode or "solve", token_policy)
-                        profile = PromptProfile(
-                            tier=user_tier,
-                            system_prompt_content=f"{system_prompt.strip()}\n\n{developer_prompt.strip()}",
-                            json_schema_content=schema_content if isinstance(schema_content, dict) else {},
-                            max_output_tokens=max_tokens,
-                            max_steps=max_steps,
-                            mode=requested_mode,
-                            allow_detailed=(requested_mode == "detailed"),
-                            allow_visuals_only_if_asked=(requested_mode == "minimal" and "free" in user_tier)
-                        )
-                        telemetry["prompt_binding"] = {
-                            "tier": tier_enum.value,
-                            "mode": "SOLVE",
-                            "global_system_prompt_id": binding_payload["binding"].global_system_prompt_id,
-                            "developer_prompt_id": binding_payload["binding"].developer_prompt_id,
-                            "output_schema_id": binding_payload["binding"].output_schema_id,
-                        }
-                    except PromptRegistryError:
-                        profile = ProfileResolver.resolve_profile(
-                            db_session,
-                            user_obj,
-                            requested_mode=requested_mode,
-                            force_tier=user_tier if not user_obj else None
-                        )
+                    effective_tier_slug = get_user_effective_tier_slug(user_obj) if user_obj else user_tier
+                    binding_bundle = load_prompt_bundle(
+                        tier=effective_tier_slug,
+                        mode="solve",
+                        session=db_session,
+                    )
+                    token_policy = get_token_policy(db_session)
+                    max_tokens = get_effective_max_tokens(requested_mode, learning_mode or "solve", token_policy)
+                    max_steps = get_effective_max_steps(requested_mode, learning_mode or "solve", token_policy)
+                    profile = PromptProfile(
+                        tier=effective_tier_slug,
+                        system_prompt_content=binding_bundle["system_prompt"],
+                        developer_prompt_content=binding_bundle["developer_prompt"],
+                        json_schema_content=binding_bundle["schema"] if isinstance(binding_bundle["schema"], dict) else {},
+                        max_output_tokens=max_tokens,
+                        max_steps=max_steps,
+                        mode=requested_mode,
+                        allow_detailed=(requested_mode == "detailed"),
+                        allow_visuals_only_if_asked=(requested_mode == "minimal" and "free" in effective_tier_slug),
+                        prompt_binding_meta=binding_bundle.get("meta"),
+                    )
+                    telemetry["prompt_binding"] = binding_bundle.get("meta")
 
                     telemetry["mode_resolved"] = profile.mode
                     telemetry["tier_effective"] = profile.tier
@@ -197,37 +187,13 @@ class SolverV3:
                 except Exception as e:
                     return self._handle_error(problem_text, f"Profile resolution failed: {e}", "config_error", telemetry, start_time_perf)
             else:
-                # Fallback purely for unit tests without DB
-                from app.llm_profiles.profiles import get_prompt_profile
-                from app.prompts import get_prompt
-                from app.schemas.na_math_solver_v3 import get_json_schema_for_openai_v3
-                profile = get_prompt_profile(user_tier)
-                profile.mode = "minimal" if user_tier == "free" else "detailed" # Mock
-                
-                # Hydrate content if missing
-                if not profile.system_prompt_content:
-                    if profile.tier == "free":
-                        # Load from file relative to profiles.py? Or just use default prompts?
-                        # For manual testing, we want the REAL prompt if possible.
-                        # But simpler is to use get_prompt("solver_system") if standard.
-                         try:
-                             # Try to load using the relative path defined in profile
-                             full_path = profile.system_full_path
-                             if os.path.exists(full_path):
-                                 with open(full_path, "r", encoding="utf-8") as f:
-                                     profile.system_prompt_content = f.read()
-                             else:
-                                 # Fallback to default v3 prompt
-                                 profile.system_prompt_content = get_prompt("solver_system")
-                         except Exception:
-                             profile.system_prompt_content = get_prompt("solver_system")
-
-                    else:
-                        profile.system_prompt_content = get_prompt("solver_system")
-
-                if not profile.json_schema_content:
-                    # Always use canonical v3 schema for fallback
-                    profile.json_schema_content = get_json_schema_for_openai_v3()
+                return self._handle_error(
+                    problem_text,
+                    "Prompt binding lookup requires db_session; file fallback is disabled.",
+                    "config_error",
+                    telemetry,
+                    start_time_perf,
+                )
             
             telemetry["latency_ms_binding"] = int((time.perf_counter() - t_binding_start) * 1000)
 
@@ -347,6 +313,7 @@ class SolverV3:
                             problem_text,
                             context,
                             base_system_prompt,
+                            developer_prompt=profile.developer_prompt_content,
                             json_schema_config=openai_schema_wrapper,
                             max_output_tokens=effective_tokens,
                             trace=trace,
@@ -606,6 +573,7 @@ class SolverV3:
         request_id: str = None,
         max_output_tokens: int = 900, # Ignored in favor of deterministic cap
         system_prompt: Optional[str] = None,
+        developer_prompt: Optional[str] = None,
         json_schema_config: Optional[Dict[str, Any]] = None,
         trusted_context: Optional[Dict[str, Any]] = None,
         requested_mode: str = "minimal"
@@ -635,11 +603,18 @@ class SolverV3:
         }
 
         try:
-            # For streaming, we will force Ollama for now
             provider = "ollama"
             client = self.client_manager.get_client(provider)
-            
-            resolved_system_prompt = system_prompt or get_prompt("solver_system", "v3")
+            if not system_prompt:
+                yield {
+                    "type": "error",
+                    "error": {
+                        "code": "prompt_binding_missing",
+                        "message": "Missing system prompt from DB binding; file fallback is disabled.",
+                    },
+                }
+                return
+            resolved_system_prompt = system_prompt
 
             user_message = self._build_user_message(
                 problem_text, 
@@ -658,60 +633,59 @@ class SolverV3:
             
             messages = [
                 {"role": "system", "content": resolved_system_prompt},
-                {"role": "user", "content": user_message}
             ]
+            if developer_prompt:
+                messages.append({"role": "developer", "content": developer_prompt})
+            messages.append({"role": "user", "content": user_message})
 
             if trace:
                 print(f"[SOLVER_V3_STREAM] Calling Ollama with model={self.default_model}")
 
-            response_stream = await client.generate(
+            schema_payload = json_schema_config.get("schema") if isinstance(json_schema_config, dict) and "schema" in json_schema_config else json_schema_config
+            response_stream = client.generate_stream(
                 messages=messages,
-                system_prompt=None, # Already in messages
+                system_prompt=None,
                 prompt=None,
-                json_schema=json_schema_config.get("schema") if json_schema_config else None,
+                json_schema=schema_payload,
                 max_tokens=effective_max_tokens,
                 temperature=0.4,
-                stream=True,
                 request_id=request_id,
-                model=self.default_model
+                model=self.default_model,
             )
 
             full_content = ""
             first_chunk = True
             
-            # Iterate over the generator returned by OllamaClient.generate (which yields dicts/chunks)
             async for chunk_obj in response_stream:
                 if first_chunk:
                     if trace:
                         print(f"[SOLVER_V3_STREAM] First chunk received")
                     first_chunk = False
-                
-                # Check for errors in chunk
-                if isinstance(chunk_obj, dict) and "error" in chunk_obj:
-                     yield {"type": "error", "error": chunk_obj["error"]}
-                     break
-
-                # The client yields LLMStreamResponse objects or dicts? 
-                # Checking clients.py: yield LLMResponse(..., content=chunk_content, ...) but it's an async generator.
-                # Actually clients.py generate(stream=True) yields chunks.
-                # Let's assume it yields standard chunks or we need to adapt.
-                # Looking at clients.py earlier: it yields chunks from `_stream_response`.
-                
-                # We need to adapt the chunk to our expected format
                 content_delta = ""
-                
-                # If chunk is object with 'content'
-                if hasattr(chunk_obj, 'content'):
+                if hasattr(chunk_obj, "content"):
                     content_delta = chunk_obj.content
                 elif isinstance(chunk_obj, dict):
-                     content_delta = chunk_obj.get("content", "")
+                    content_delta = chunk_obj.get("content", "")
                 
                 if content_delta:
                     full_content += content_delta
                     yield {"type": "delta", "text": content_delta}
+                if hasattr(chunk_obj, "usage") and chunk_obj.usage:
+                    telemetry["input_tokens"] = chunk_obj.usage.get("input", 0)
+                    telemetry["output_tokens"] = chunk_obj.usage.get("output", 0)
+                    telemetry["total_tokens"] = chunk_obj.usage.get("total", 0)
+                    telemetry["cached_tokens"] = chunk_obj.usage.get("cached")
+                if hasattr(chunk_obj, "model") and chunk_obj.model:
+                    telemetry["model"] = chunk_obj.model
+                if hasattr(chunk_obj, "provider") and chunk_obj.provider:
+                    telemetry["provider"] = chunk_obj.provider
+                if hasattr(chunk_obj, "status") and chunk_obj.status:
+                    telemetry["status"] = chunk_obj.status
 
             # End of stream
-            telemetry["output_tokens"] = len(full_content) // 4 # Rough approx if usage not sent
+            if not telemetry.get("output_tokens"):
+                telemetry["output_tokens"] = len(full_content) // 4
+                telemetry["total_tokens"] = telemetry.get("input_tokens", 0) + telemetry["output_tokens"]
             telemetry["latency_ms_total"] = int((time.perf_counter() - start_time_perf) * 1000)
             
             # Yield telemetry at end
@@ -809,7 +783,8 @@ class SolverV3:
         problem_text, 
         context, 
         system_prompt, 
-        json_schema_config,
+        developer_prompt=None,
+        json_schema_config=None,
         max_output_tokens=4096,
         trace=False,
         trusted_context: dict = None,
@@ -851,8 +826,10 @@ class SolverV3:
 
              messages = [
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message}
              ]
+             if developer_prompt:
+                 messages.append({"role": "developer", "content": developer_prompt})
+             messages.append({"role": "user", "content": user_message})
              
              # If image_url provided (Snap Mode), we need to inject it.
              # Standard OpenAI / Ollama vision handling: content can be list.
@@ -871,6 +848,7 @@ class SolverV3:
                 json_schema=schema_payload.get("schema") if schema_payload else None,
                 max_tokens=max_output_tokens,
                 temperature=0.4,
+                stream=False,
                 request_id=request_id,
                 model=self.default_model if provider == "ollama" else None 
              )
@@ -879,10 +857,11 @@ class SolverV3:
              if isinstance(response, LLMResponse):
                  content = response.content
                  tokens = {
-                     "input": response.prompt_eval_count or 0, 
-                     "output": response.eval_count or 0, 
-                     "total": (response.prompt_eval_count or 0) + (response.eval_count or 0),
-                     "cached": None # Ollama doesn't report cache hit explicitly in same way usually?
+                     "input": (response.usage or {}).get("input", 0),
+                     "output": (response.usage or {}).get("output", 0),
+                     "total": (response.usage or {}).get("total", 0),
+                     "cached": (response.usage or {}).get("cached"),
+                     "payload": response.payload,
                  }
                  model_used = response.model
                  

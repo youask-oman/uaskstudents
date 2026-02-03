@@ -61,10 +61,28 @@ interface VoiceArtifact {
 }
 
 interface StreamingTelemetry {
+    provider?: string;
     model?: string;
     total_tokens?: number;
     latency_ms_openai?: number;
     truncated?: boolean;
+}
+
+interface StreamingRuntimeMeta {
+    request_id?: string;
+    provider?: string;
+    model?: string;
+    tier_requested?: string;
+    effective_tier?: string;
+    mode_family?: string;
+    mode?: string;
+    prompt_binding_id?: string;
+    global_system_prompt_id?: string;
+    developer_prompt_id?: string;
+    output_schema_id?: string;
+    global_system_prompt_version?: number;
+    developer_prompt_version?: number;
+    output_schema_version?: number;
 }
 
 interface OcrMetadata {
@@ -128,7 +146,82 @@ export default function DashboardPage() {
     const [streamingContent, setStreamingContent] = useState("");
     const [currentStage, setCurrentStage] = useState("");
     const [streamingTelemetry, setStreamingTelemetry] = useState<StreamingTelemetry | null>(null);
+    const [streamingMeta, setStreamingMeta] = useState<StreamingRuntimeMeta | null>(null);
+    const [runtimeDebugMeta, setRuntimeDebugMeta] = useState<StreamingRuntimeMeta | null>(null);
+    const [showRuntimeDebug, setShowRuntimeDebug] = useState(false);
+    const [runtimeDebugLoading, setRuntimeDebugLoading] = useState(false);
+    const [runtimeDebugError, setRuntimeDebugError] = useState<string | null>(null);
     const [solveStartTime, setSolveStartTime] = useState<number | null>(null);
+
+    const buildRuntimeMetaFromPayload = (payload: unknown, fallbackRequestedMode: string): StreamingRuntimeMeta => {
+        const toObject = (value: unknown): Record<string, unknown> =>
+            (value && typeof value === "object" ? (value as Record<string, unknown>) : {});
+
+        const payloadObj = toObject(payload);
+        const nested = toObject(payloadObj.solve_meta ?? payloadObj);
+        const versions = toObject(nested.prompt_versions ?? payloadObj.prompt_versions);
+        return {
+            request_id: (payloadObj.request_id as string | undefined) ?? (nested.request_id as string | undefined),
+            provider: (payloadObj.provider as string | undefined) ?? (nested.provider as string | undefined),
+            model: (payloadObj.model as string | undefined) ?? (nested.model as string | undefined),
+            tier_requested: (payloadObj.tier_requested as string | undefined) ?? (nested.tier_requested as string | undefined),
+            effective_tier:
+                (payloadObj.effective_tier as string | undefined) ??
+                (payloadObj.tier_effective as string | undefined) ??
+                (nested.effective_tier as string | undefined) ??
+                (nested.tier_effective as string | undefined),
+            mode_family:
+                (payloadObj.mode_family as string | undefined) ??
+                (nested.mode_family as string | undefined) ??
+                (nested.mode as string | undefined) ??
+                "SOLVE",
+            mode: (payloadObj.mode as string | undefined) ?? (nested.mode as string | undefined) ?? fallbackRequestedMode,
+            prompt_binding_id:
+                (payloadObj.prompt_binding_id as string | undefined) ??
+                (nested.prompt_binding_id as string | undefined),
+            global_system_prompt_id:
+                (payloadObj.global_system_prompt_id as string | undefined) ??
+                (nested.global_system_prompt_id as string | undefined),
+            developer_prompt_id:
+                (payloadObj.developer_prompt_id as string | undefined) ??
+                (nested.developer_prompt_id as string | undefined),
+            output_schema_id:
+                (payloadObj.output_schema_id as string | undefined) ??
+                (nested.output_schema_id as string | undefined),
+            global_system_prompt_version:
+                (payloadObj.global_system_prompt_version as number | undefined) ??
+                (versions.system as number | undefined),
+            developer_prompt_version:
+                (payloadObj.developer_prompt_version as number | undefined) ??
+                (versions.developer as number | undefined),
+            output_schema_version:
+                (payloadObj.output_schema_version as number | undefined) ??
+                (versions.schema as number | undefined),
+        };
+    };
+
+    const fetchSolveRuntimeMeta = async (
+        userId: string,
+        tier: SolveTier,
+        requestedMode: string
+    ): Promise<StreamingRuntimeMeta> => {
+        const queryParams = new URLSearchParams({
+            user_id: userId,
+            tier: tier.toLowerCase(),
+            mode_family: "SOLVE",
+            requested_mode: requestedMode,
+        });
+        const res = await fetch(`/api/v1/solve_v3_runtime_meta?${queryParams.toString()}`, {
+            method: "GET",
+            credentials: "include",
+        });
+        if (!res.ok) {
+            const raw = await res.text();
+            throw new Error(raw || "Failed to fetch runtime metadata");
+        }
+        const data = await res.json();
+        return buildRuntimeMetaFromPayload(data, requestedMode);
+    };
 
     // Tier-Aware Solve State
     const selectedGoal = 'solve';
@@ -507,6 +600,26 @@ export default function DashboardPage() {
         }
     };
 
+    const handleDebugRuntimeMeta = async () => {
+        if (isSolving) return;
+        const userId = localStorage.getItem("user_id") || "1";
+        const requestedMode = selectedSolveTier === "FREE" ? "minimal" : "detailed";
+
+        setRuntimeDebugLoading(true);
+        setRuntimeDebugError(null);
+        try {
+            const runtimeMeta = await fetchSolveRuntimeMeta(userId, selectedSolveTier, requestedMode);
+            setRuntimeDebugMeta(runtimeMeta);
+            setShowRuntimeDebug(true);
+        } catch (err) {
+            console.error("[RUNTIME_DEBUG] Failed to load solve runtime metadata:", err);
+            setRuntimeDebugError((err as Error).message || "Failed to fetch runtime metadata");
+            setShowRuntimeDebug(true);
+        } finally {
+            setRuntimeDebugLoading(false);
+        }
+    };
+
     const handleSolve = async (overrideText?: string, featureOverrides?: FeaturesUsed) => {
         if (isSolving) return;
         if (!tokenPolicyReady) {
@@ -530,16 +643,22 @@ export default function DashboardPage() {
         setStreamingContent("");
         setCurrentStage("Initializing...");
         setStreamingTelemetry(null);
+        setStreamingMeta(null);
         setSolveStartTime(Date.now());
 
         try {
-            // Prefer direct backend in local dev for SSE; fall back to Next proxy if direct fails.
-            const localDirectBase = (typeof window !== 'undefined' && (window.location.port === '3000' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
-                ? `${window.location.protocol}//${window.location.hostname}:8000`
-                : "";
-            const streamCandidates = localDirectBase
-                ? [`${localDirectBase}/api/v1/solve_v3_stream`, "/api/v1/solve_v3_stream"]
-                : ["/api/v1/solve_v3_stream"];
+            // Always use same-origin API route so CSP/connect-src stays on `self`.
+            const streamCandidates = ["/api/v1/solve_v3_stream"];
+            const requestedMode = selectedSolveTier === 'FREE' ? 'minimal' : 'detailed';
+
+            // Seed runtime metadata immediately so solve popup does not show placeholders.
+            void fetchSolveRuntimeMeta(userId, selectedSolveTier, requestedMode)
+                .then((runtimeMeta) => {
+                    setStreamingMeta((prev) => ({ ...(prev || {}), ...runtimeMeta }));
+                })
+                .catch((metaErr) => {
+                    console.warn("[SOLVER_STREAM] Runtime meta prefetch failed:", metaErr);
+                });
 
             console.log(`[SOLVER_STREAM] Host: ${window.location.hostname}, Port: ${window.location.port} -> Candidates: ${streamCandidates.join(", ")}`);
             const featuresUsed: FeaturesUsed = {
@@ -557,12 +676,11 @@ export default function DashboardPage() {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         credentials: 'include',
-                        mode: 'cors',
                         body: JSON.stringify({
                             // Primary problem input - only one text field
                             confirmed_text: textToSolve,
                             // Tier-aware mode - legacy mapping + explicit tier
-                            requested_mode: selectedSolveTier === 'FREE' ? 'minimal' : 'detailed',
+                            requested_mode: requestedMode,
                             tier: selectedSolveTier.toLowerCase(),
                             // Normalized trusted_context (compact enums)
                             trusted_context: {
@@ -629,7 +747,8 @@ export default function DashboardPage() {
                             } else if (currentEvent === 'stage') {
                                 setCurrentStage(data.name);
                             } else if (currentEvent === 'telemetry') {
-                                setStreamingTelemetry(data);
+                                const telemetryPayload = data?.telemetry ?? data;
+                                setStreamingTelemetry(telemetryPayload);
                             } else if (currentEvent === 'done') {
                                 console.log("[SSE] Done event received", data);
                                 if (data.ok) {
@@ -640,6 +759,8 @@ export default function DashboardPage() {
                                 }
                             } else if (currentEvent === 'meta') {
                                 if (data.truncated) console.warn("Response truncated");
+                                const parsedMeta = buildRuntimeMetaFromPayload(data, requestedMode);
+                                setStreamingMeta((prev) => ({ ...(prev || {}), ...parsedMeta }));
                             }
                         } catch (e) {
                             console.error("Error parsing SSE data", e);
@@ -842,37 +963,52 @@ export default function DashboardPage() {
 
                             {/* Tab Content */}
                             <div className="p-6">
+                                {(activeTab === "text" || activeTab === "snap") && (
+                                    <div className="mb-3 flex justify-end">
+                                        <button
+                                            type="button"
+                                            onClick={handleDebugRuntimeMeta}
+                                            disabled={isSolving || runtimeDebugLoading}
+                                            className="flex items-center gap-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg font-semibold transition-colors text-xs hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            <span className="material-symbols-outlined text-sm">bug_report</span>
+                                            {runtimeDebugLoading ? "Loading..." : "Debug"}
+                                        </button>
+                                    </div>
+                                )}
                                 {activeTab === 'snap' && (
-                                    useSnapSolveUploadPanelV2 ? (
-                                        <SnapSolveInputPanel
-                                            onResolveText={(text, featureOverrides) => {
-                                                setQuery(text);
-                                                if (mathInputRef.current) {
-                                                    mathInputRef.current.setValue(text);
-                                                }
-                                                return handleSolve(text, {
-                                                    ocr_used: true,
-                                                    ocr_engine: "qwen_math",
-                                                    ...(featureOverrides || {}),
-                                                });
-                                            }}
-                                        />
-                                    ) : (
-                                        <SnapSolveV2
-                                            onUseText={(text) => {
-                                                setQuery(text);
-                                                setActiveTab("text");
-                                            }}
-                                            onSolveText={(text) => {
-                                                setQuery(text);
-                                                if (mathInputRef.current) {
-                                                    mathInputRef.current.setValue(text);
-                                                }
-                                                handleSolve(text);
-                                            }}
-                                            requestedMode={selectedSolveTier === "RESEARCH" ? "detailed" : "minimal"}
-                                        />
-                                    )
+                                    <div className="space-y-3">
+                                        {useSnapSolveUploadPanelV2 ? (
+                                            <SnapSolveInputPanel
+                                                onResolveText={(text, featureOverrides) => {
+                                                    setQuery(text);
+                                                    if (mathInputRef.current) {
+                                                        mathInputRef.current.setValue(text);
+                                                    }
+                                                    return handleSolve(text, {
+                                                        ocr_used: true,
+                                                        ocr_engine: "qwen_math",
+                                                        ...(featureOverrides || {}),
+                                                    });
+                                                }}
+                                            />
+                                        ) : (
+                                            <SnapSolveV2
+                                                onUseText={(text) => {
+                                                    setQuery(text);
+                                                    setActiveTab("text");
+                                                }}
+                                                onSolveText={(text) => {
+                                                    setQuery(text);
+                                                    if (mathInputRef.current) {
+                                                        mathInputRef.current.setValue(text);
+                                                    }
+                                                    handleSolve(text);
+                                                }}
+                                                requestedMode={selectedSolveTier === "RESEARCH" ? "detailed" : "minimal"}
+                                            />
+                                        )}
+                                    </div>
                                 )}
 
                                 {activeTab === 'text' && (
@@ -1499,6 +1635,38 @@ export default function DashboardPage() {
                 <p className="text-slate-400 text-xs font-medium">© {new Date().getFullYear()} YouAsk AI LLM Math Solver Labs. All rights reserved.</p>
             </footer>
 
+            {showRuntimeDebug && (
+                <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+                    <div className="w-full max-w-xl rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-xl">
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Solve Runtime Debug</h3>
+                            <button
+                                type="button"
+                                onClick={() => setShowRuntimeDebug(false)}
+                                className="text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                            >
+                                Close
+                            </button>
+                        </div>
+                        {runtimeDebugError ? (
+                            <p className="text-xs text-red-500">{runtimeDebugError}</p>
+                        ) : (
+                            <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+                                <div>Tier: {runtimeDebugMeta?.effective_tier || selectedSolveTier}</div>
+                                <div>Mode: {runtimeDebugMeta?.mode_family || "SOLVE"}</div>
+                                <div>LLM Provider: {runtimeDebugMeta?.provider || "ollama"}</div>
+                                <div>Model: {runtimeDebugMeta?.model || "unknown"}</div>
+                                <div>Prompt Binding ID: {runtimeDebugMeta?.prompt_binding_id || "-"}</div>
+                                <div>Global System Prompt ID: {runtimeDebugMeta?.global_system_prompt_id || "-"}</div>
+                                <div>Developer Prompt ID: {runtimeDebugMeta?.developer_prompt_id || "-"}</div>
+                                <div>Output Schema ID: {runtimeDebugMeta?.output_schema_id || "-"}</div>
+                                <div>Request ID: {runtimeDebugMeta?.request_id || "-"}</div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Streaming Solve Popup (Part F1) */}
             {isSolving && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
@@ -1603,6 +1771,35 @@ export default function DashboardPage() {
                                 {streamingTelemetry?.model && (
                                     <div className="mt-1 text-[10px] text-slate-500">Model: {streamingTelemetry.model}</div>
                                 )}
+                                <details className="mt-2 text-left md:text-right">
+                                    <summary className="cursor-pointer text-[10px] uppercase tracking-[0.15em] text-slate-400">Debug / Runtime</summary>
+                                    <div className="mt-2 space-y-1 text-[10px] text-slate-400">
+                                        <div>Tier Requested: {streamingMeta?.tier_requested || selectedSolveTier}</div>
+                                        <div>Tier: {streamingMeta?.effective_tier || accountTier}</div>
+                                        <div>Mode: {streamingMeta?.mode_family || "SOLVE"}</div>
+                                        <div>LLM Provider: {streamingMeta?.provider || streamingTelemetry?.provider || "ollama"}</div>
+                                        <div>Model: {streamingMeta?.model || streamingTelemetry?.model || "unknown"}</div>
+                                        <div>Prompt Binding ID: {streamingMeta?.prompt_binding_id || "-"}</div>
+                                        <div>Global System Prompt ID: {streamingMeta?.global_system_prompt_id || "-"}</div>
+                                        <div>Developer Prompt ID: {streamingMeta?.developer_prompt_id || "-"}</div>
+                                        <div>Output Schema ID: {streamingMeta?.output_schema_id || "-"}</div>
+                                        <div>
+                                            Request ID:{" "}
+                                            <button
+                                                type="button"
+                                                className="underline"
+                                                onClick={() => streamingMeta?.request_id && navigator.clipboard?.writeText(streamingMeta.request_id)}
+                                            >
+                                                {streamingMeta?.request_id || "-"}
+                                            </button>
+                                        </div>
+                                        {(streamingMeta?.global_system_prompt_version || streamingMeta?.developer_prompt_version || streamingMeta?.output_schema_version) && (
+                                            <div>
+                                                Versions: S={streamingMeta?.global_system_prompt_version ?? "-"}, D={streamingMeta?.developer_prompt_version ?? "-"}, Schema={streamingMeta?.output_schema_version ?? "-"}
+                                            </div>
+                                        )}
+                                    </div>
+                                </details>
                             </div>
                         </div>
                     </div>

@@ -163,3 +163,14 @@ success
 workbench@youask:/mnt/c/Users/loaia$ ollama list
 NAME                           ID              SIZE      MODIFIED
 mightykatun/qwen2.5-math:7b    31a9e0864604    8.1 GB    4 seconds ago
+
+
+Quick cheat sheet
+
+Changed code/Dockerfile/deps? → docker compose up -d --build
+
+Changed .env / service config and it’s not taking effect? → docker compose up -d --force-recreate
+
+Want fresh containers from scratch? → docker compose down && docker compose up -d --build
+
+Docker itself is broken or networking is haunted? → restart Docker daemon

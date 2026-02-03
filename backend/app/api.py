@@ -56,7 +56,7 @@ from app.services.ocr.vision_routing import (
     get_openai_ocr_model,
 )
 from app.services.solve.canonicalization_service import canonicalization_service
-from app.services.admin.analytics_service import record_request_event
+from app.services.admin.analytics_service import record_request_event, _calc_cost
 from app.services.whatsapp import whatsapp_service
 from app.services.whatsapp.whatsapp_state import (
     mark_dedupe,
@@ -156,6 +156,28 @@ def _resolve_runtime_tier_slug(user: Optional[User]) -> str:
     subscription -> plan.slug, with legacy fallback for migration safety.
     """
     return get_user_effective_tier_slug(user)
+
+
+_TIER_ORDER = {"FREE": 0, "STANDARD": 1, "RESEARCH": 2}
+
+
+def _normalize_tier_for_prompt_binding(value: Optional[str]) -> str:
+    raw = (value or "").strip().lower()
+    if raw in {"research", "enterprise", "family", "family_standard"}:
+        return "RESEARCH"
+    if raw in {"standard", "student_standard", "pro", "premium"}:
+        return "STANDARD"
+    return "FREE"
+
+
+def _clamp_requested_tier(requested_tier: Optional[str], entitled_tier_slug: str) -> Dict[str, str]:
+    entitled = _normalize_tier_for_prompt_binding(entitled_tier_slug)
+    requested = _normalize_tier_for_prompt_binding(requested_tier) if requested_tier else entitled
+    effective = requested if _TIER_ORDER[requested] <= _TIER_ORDER[entitled] else entitled
+    return {
+        "tier_requested": requested,
+        "tier_effective": effective,
+    }
 
 
 def _detect_image_kind(raw: bytes) -> Optional[str]:
@@ -341,6 +363,7 @@ class SolveRequest(BaseModel):
     has_voice: Optional[bool] = False
     
     # Tier-Aware & Trusted Context
+    tier: Optional[str] = Field(None, description="Requested tier from frontend: free|standard|research")
     trusted_context: Optional[Dict[str, Any]] = None
     requested_mode: Optional[str] = "minimal"
     features_used: Optional[Dict[str, Any]] = None
@@ -1201,6 +1224,7 @@ OCR_V5_SCHEMA = {
 
 EXTRACT_MODEL = os.getenv("EXTRACT_MODEL", "gpt-5-mini")
 EXTRACT_MAX_MB = int(os.getenv("EXTRACT_MAX_MB", "10"))
+EXTRACT_CACHE_REV = os.getenv("EXTRACT_CACHE_REV", "2026-02-03-pix2txt-crop-v2")
 
 EXTRACT_SYSTEM_PROMPT = (
     "You are a robust Math JSON OCR EXTRACTOR.\n\n"
@@ -1849,7 +1873,7 @@ async def _call_extract_questions(
             confidence = float(base.confidence or 0.8)
             manager = get_llm_manager()
             ollama_client = manager.get_client("ollama")
-            qwen_model = os.environ.get("OLLAMA_OCR_MODEL", os.environ.get("OLLAMA_MODEL_DEFAULT", "qwen2.5vl:3b"))
+            qwen_model = os.environ.get("OLLAMA_OCR_MODEL", os.environ.get("OLLAMA_MODEL", "qwen2.5vl:3b"))
             qwen_system_prompt, qwen_user_prompt = _load_qwen_extract_prompts()
             image_b64 = base64.b64encode(vision_input.images[0]).decode("utf-8")
             qwen_request = {
@@ -2412,6 +2436,7 @@ async def extract_questions(
         raise HTTPException(status_code=415, detail="Unsupported image type")
 
     meta = {
+        "extract_cache_rev": EXTRACT_CACHE_REV,
         "file_hash": file_hash,
         "page_number": page_number,
         "crop_x": crop_x,
@@ -2592,7 +2617,6 @@ async def extract_questions(
     total_tokens = None
     if telemetry.input_tokens is not None and telemetry.output_tokens is not None:
         total_tokens = telemetry.input_tokens + telemetry.output_tokens
-    from app.services.admin.analytics_service import record_request_event, _calc_cost
     record_request_event(session, {
         "request_id": request_id,
         "user_id": user_id,
@@ -3856,6 +3880,74 @@ async def get_plan_links_removed(plan_id: int):
 # Solver V3 Endpoint - Production-Grade with Schema Validation
 # ------------------------------------------------------------------
 
+@api_router.get("/solve_v3_runtime_meta")
+async def solve_v3_runtime_meta(
+    user_id: int = Query(...),
+    tier: Optional[str] = Query(None),
+    mode_family: str = Query("SOLVE"),
+    requested_mode: str = Query("minimal"),
+    session: Session = Depends(get_session),
+):
+    from app.llm_profiles.profile_resolver import ProfileResolver, ProfileResolutionError
+    from app.services.llm.manager import get_configured_ollama_model
+
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    request_id = str(uuid.uuid4())
+    provider = "ollama"
+    model = get_configured_ollama_model()
+    entitled_tier_slug = _resolve_runtime_tier_slug(user)
+    tier_policy = _clamp_requested_tier(tier, entitled_tier_slug)
+    tier_requested = tier_policy["tier_requested"]
+    tier_effective = tier_policy["tier_effective"]
+    mode_label = (mode_family or "SOLVE").strip().upper()
+
+    try:
+        profile = ProfileResolver.resolve_profile(
+            session=session,
+            user=user,
+            requested_mode=requested_mode,
+            learning_mode="solve",
+            force_tier=tier_effective,
+            mode_family=mode_label,
+            provider=provider,
+        )
+    except ProfileResolutionError as profile_err:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "code": getattr(profile_err, "code", "PROFILE_RESOLUTION_FAILED"),
+                "message": str(profile_err),
+                "request_id": request_id,
+                "tier": tier_effective,
+                "mode": mode_label,
+                "provider": provider,
+                "details": getattr(profile_err, "details", {}),
+            },
+        )
+
+    binding_meta = getattr(profile, "prompt_binding_meta", {}) or {}
+    return {
+        "request_id": request_id,
+        "provider": provider,
+        "model": model,
+        "tier_requested": tier_requested,
+        "tier_effective": tier_effective,
+        "mode": mode_label,
+        "prompt_binding_id": binding_meta.get("binding_id"),
+        "global_system_prompt_id": binding_meta.get("global_system_prompt_id"),
+        "developer_prompt_id": binding_meta.get("developer_prompt_id"),
+        "output_schema_id": binding_meta.get("output_schema_id"),
+        "prompt_versions": {
+            "system": binding_meta.get("global_system_prompt_version"),
+            "developer": binding_meta.get("developer_prompt_version"),
+            "schema": binding_meta.get("output_schema_version"),
+        },
+    }
+
+
 @api_router.post("/solve_v3")
 # @limiter.limit("10/minute")
 async def solve_v3_endpoint(
@@ -3945,12 +4037,37 @@ async def solve_v3_endpoint(
     # Fetch user to get profile location for curriculum adaptation
     user = session.get(User, user_id)
     from app.llm_profiles.profile_resolver import ProfileResolver
-    resolved_profile = ProfileResolver.resolve_profile(
-        session,
-        user,
-        requested_mode=requested_mode,
-        learning_mode=learning_mode
-    )
+    from app.llm_profiles.profile_resolver import ProfileResolutionError
+    from app.services.llm.manager import get_configured_ollama_model
+    entitled_tier_slug = _resolve_runtime_tier_slug(user)
+    tier_policy = _clamp_requested_tier(body.tier, entitled_tier_slug)
+    requested_tier = tier_policy["tier_requested"]
+    effective_tier = tier_policy["tier_effective"]
+    solve_provider = "ollama"
+    configured_model = get_configured_ollama_model()
+    try:
+        resolved_profile = ProfileResolver.resolve_profile(
+            session,
+            user,
+            requested_mode=requested_mode,
+            learning_mode=learning_mode,
+            force_tier=effective_tier,
+            mode_family="SOLVE",
+            provider=solve_provider,
+        )
+    except ProfileResolutionError as profile_err:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "code": getattr(profile_err, "code", "PROFILE_RESOLUTION_FAILED"),
+                "message": str(profile_err),
+                "request_id": request_id,
+                "tier": effective_tier,
+                "mode": "SOLVE",
+                "provider": solve_provider,
+                "details": getattr(profile_err, "details", {}),
+            },
+        )
     effective_max_tokens = None
     if resolved_profile:
         from app.utils.token_limits import get_effective_max_tokens
@@ -4177,8 +4294,8 @@ async def solve_v3_endpoint(
                 "learning_mode": learning_mode,
                 "subject": body.subject,
                 "grade_level": user.grade_level if user else None,
-                "model": (result.get("telemetry") or {}).get("model") or os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
-                "provider": "openai",
+                "model": (result.get("telemetry") or {}).get("model") or configured_model,
+                "provider": (result.get("telemetry") or {}).get("provider") or solve_provider,
                 "route": "solve_v3",
                 "tokens_in": (result.get("telemetry") or {}).get("input_tokens"),
                 "tokens_out": (result.get("telemetry") or {}).get("output_tokens"),
@@ -4207,7 +4324,24 @@ async def solve_v3_endpoint(
                 "error": True,
                 "error_type": result.get("error_type"),
                 "message": result.get("message"),
-                "validation_errors": result.get("validation_errors", [])
+                "validation_errors": result.get("validation_errors", []),
+                "solve_meta": {
+                    "request_id": request_id,
+                    "provider": (result.get("telemetry") or {}).get("provider") or solve_provider,
+                    "model": (result.get("telemetry") or {}).get("model") or configured_model,
+                    "tier_requested": requested_tier,
+                    "tier_effective": effective_tier,
+                    "mode": "SOLVE",
+                    "prompt_binding_id": ((result.get("telemetry") or {}).get("prompt_binding") or {}).get("binding_id"),
+                    "global_system_prompt_id": ((result.get("telemetry") or {}).get("prompt_binding") or {}).get("global_system_prompt_id"),
+                    "developer_prompt_id": ((result.get("telemetry") or {}).get("prompt_binding") or {}).get("developer_prompt_id"),
+                    "output_schema_id": ((result.get("telemetry") or {}).get("prompt_binding") or {}).get("output_schema_id"),
+                    "prompt_versions": {
+                        "system": ((result.get("telemetry") or {}).get("prompt_binding") or {}).get("global_system_prompt_version"),
+                        "developer": ((result.get("telemetry") or {}).get("prompt_binding") or {}).get("developer_prompt_version"),
+                        "schema": ((result.get("telemetry") or {}).get("prompt_binding") or {}).get("output_schema_version"),
+                    },
+                },
             }
         
         # Success - process plot if available
@@ -4313,6 +4447,24 @@ async def solve_v3_endpoint(
         result["request_id"] = request_id
 
         telemetry = result.get("telemetry") or result.get("_telemetry") or {}
+        binding_meta = (telemetry.get("prompt_binding") or (getattr(resolved_profile, "prompt_binding_meta", {}) or {}))
+        result["solve_meta"] = {
+            "request_id": request_id,
+            "provider": telemetry.get("provider") or solve_provider,
+            "model": telemetry.get("model") or configured_model,
+            "tier_requested": requested_tier,
+            "tier_effective": effective_tier,
+            "mode": "SOLVE",
+            "prompt_binding_id": binding_meta.get("binding_id"),
+            "global_system_prompt_id": binding_meta.get("global_system_prompt_id"),
+            "developer_prompt_id": binding_meta.get("developer_prompt_id"),
+            "output_schema_id": binding_meta.get("output_schema_id"),
+            "prompt_versions": {
+                "system": binding_meta.get("global_system_prompt_version"),
+                "developer": binding_meta.get("developer_prompt_version"),
+                "schema": binding_meta.get("output_schema_version"),
+            },
+        }
         openai_payload = telemetry.get("openai_payload") or {}
         profile_key = None
         if resolved_profile:
@@ -4360,8 +4512,8 @@ async def solve_v3_endpoint(
             "learning_mode": learning_mode,
             "subject": body.subject,
             "grade_level": user.grade_level if user else None,
-            "model": telemetry.get("model") or result.get("_model") or os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
-            "provider": "openai",
+            "model": telemetry.get("model") or result.get("_model") or configured_model,
+            "provider": telemetry.get("provider") or solve_provider,
             "route": "solve_v3",
             "tokens_in": telemetry.get("input_tokens"),
             "tokens_out": telemetry.get("output_tokens"),
@@ -4445,8 +4597,8 @@ async def solve_v3_endpoint(
                 "learning_mode": learning_mode,
                 "subject": body.subject,
                 "grade_level": user.grade_level if user else None,
-                "model": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
-                "provider": "openai",
+                "model": configured_model,
+                "provider": solve_provider,
                 "route": "solve_v3",
                 "tokens_in": None,
                 "tokens_out": None,
@@ -4503,14 +4655,26 @@ async def solve_v3_stream_endpoint(
     from pathlib import Path
 
     from app.services.subscription_service import subscription_service
+    from app.services.tier_utils import get_user_effective_tier_slug
+    from app.services.llm.manager import get_configured_ollama_model
+    from app.llm_profiles.profile_resolver import ProfileResolutionError
 
     # 0. Phase 3: Idempotency & Debit (Audit/Billing)
     # Generate request_id early to use as idempotency key or reference
     request_id = str(uuid.uuid4())
 
     # Resolve checks
+    user_obj = session.get(User, user_id)
+    effective_tier_slug = get_user_effective_tier_slug(user_obj)
+    tier_policy = _clamp_requested_tier(body.tier, effective_tier_slug)
+    requested_tier = tier_policy["tier_requested"]
+    effective_tier = tier_policy["tier_effective"]
+    stream_provider = "ollama"
+    stream_model = get_configured_ollama_model()
+    effective_billing_tier = effective_tier.lower()
+
     action_req = {
-        "tier": getattr(body, "tier", None), # From Phase 2 update
+        "tier": effective_billing_tier,
         "mode": body.requested_mode,
         "has_ocr": body.features_used.get("ocr_used", False) if body.features_used else False,
         "has_voice": body.features_used.get("voice_used", False) if body.features_used else False,
@@ -4551,35 +4715,73 @@ async def solve_v3_stream_endpoint(
         deduct_attempted = {"credits": False, "ocr": False, "voice": False}
         deduct_committed = False
         features_used = body.features_used or {}
-        print(f"[API] Solve Request Body: {body.model_dump_json(indent=2)}")
-        token_policy = get_token_policy(session)
-        print(f"[API] Loaded TokenPolicy: {json.dumps(serialize_token_policy(token_policy), indent=2)}")
-
-        # Resolve profile for correct prompt/schema/tokens
-        from app.llm_profiles.profile_resolver import ProfileResolver
-        user_obj = session.get(User, user_id)
-        profile = ProfileResolver.resolve_profile(
-            session,
-            user_obj,
-            requested_mode=requested_mode,
-            learning_mode=learning_mode
-        )
-        print(f"[SOLVER_V3_STREAM] Resolved Profile: Tier={profile.tier}, Mode={profile.mode}, MaxTokens={profile.max_output_tokens}")
-        profile_key = f"{profile.tier.upper().replace('-', '_')}_{profile.mode.upper()}"
-        plan_key = None
-        if user_obj and user_obj.subscription and user_obj.subscription.plan:
-            plan_key = user_obj.subscription.plan.slug
-        else:
-            plan_key = profile.tier
-
-        effective_max_tokens = get_effective_max_tokens(requested_mode, learning_mode, token_policy)
-
         problem_text = (
             body.confirmed_text or
             body.confirmed_markdown or
             body.text_query or
             "No problem provided"
         ).strip()
+        print(f"[API] Solve Request Body: {body.model_dump_json(indent=2)}")
+        token_policy = get_token_policy(session)
+        print(f"[API] Loaded TokenPolicy: {json.dumps(serialize_token_policy(token_policy), indent=2)}")
+
+        # Resolve profile for correct prompt/schema/tokens
+        from app.llm_profiles.profile_resolver import ProfileResolver
+        plan_key = None
+        if user_obj and user_obj.subscription and user_obj.subscription.plan:
+            plan_key = user_obj.subscription.plan.slug
+        else:
+            plan_key = effective_tier_slug
+        try:
+            profile = ProfileResolver.resolve_profile(
+                session,
+                user_obj,
+                requested_mode=requested_mode,
+                learning_mode=learning_mode,
+                force_tier=effective_tier,
+                mode_family="SOLVE",
+                provider=stream_provider,
+            )
+        except ProfileResolutionError as profile_err:
+            error_code = getattr(profile_err, "code", "PROFILE_RESOLUTION_FAILED")
+            error_details = getattr(profile_err, "details", {})
+            log_solve_trace({
+                "request_id": request_id,
+                "user_id": user_id,
+                "seat_id": None,
+                "plan_key": plan_key,
+                "ui_goal": learning_mode,
+                "ui_style": requested_mode,
+                "resolved_profile_key": None,
+                "resolved_system_file_path": None,
+                "resolved_schema_file_path": None,
+                "schema_name": None,
+                "max_output_tokens_sent": None,
+                "model_sent": stream_model,
+                "cache_hit": False,
+                "openai_calls_count": 0,
+                "repair_attempted": False,
+                "prompt_tokens_estimate": None,
+                "input_tokens": None,
+                "output_tokens": None,
+                "cached_tokens": None,
+                "deduct_attempted": deduct_attempted,
+                "deduct_committed": deduct_committed,
+                "openai_payload": None,
+                "problem_text": problem_text,
+                "error": f"{error_code}: {profile_err}",
+            })
+            yield f"event: done\ndata: {json.dumps({'ok': False, 'error': {'code': error_code, 'message': str(profile_err), 'request_id': request_id, 'tier': effective_tier, 'mode': 'SOLVE', 'provider': stream_provider, 'details': error_details}})}\n\n"
+            return
+        print(f"[SOLVER_V3_STREAM] Resolved Profile: Tier={profile.tier}, Mode={profile.mode}, MaxTokens={profile.max_output_tokens}")
+        profile_key = f"{profile.tier.upper().replace('-', '_')}_{profile.mode.upper()}"
+        binding_meta = getattr(profile, "prompt_binding_meta", {}) or {}
+        if user_obj and user_obj.subscription and user_obj.subscription.plan:
+            plan_key = user_obj.subscription.plan.slug
+        else:
+            plan_key = profile.tier
+
+        effective_max_tokens = get_effective_max_tokens(requested_mode, learning_mode, token_policy)
 
         if not problem_text:
             print("[SOLVER_V3_STREAM] No problem text found in request body")
@@ -4595,7 +4797,7 @@ async def solve_v3_stream_endpoint(
                 "resolved_schema_file_path": profile.schema_asset_path or profile.schema_relative_path,
                 "schema_name": None,
                 "max_output_tokens_sent": effective_max_tokens,
-                "model_sent": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                "model_sent": stream_model,
                 "cache_hit": False,
                 "openai_calls_count": 0,
                 "repair_attempted": False,
@@ -4617,7 +4819,7 @@ async def solve_v3_stream_endpoint(
                 "subject": body.subject,
                 "grade_level": user_obj.grade_level if user_obj else None,
                 "model": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
-                "provider": "openai",
+                "provider": stream_provider,
                 "route": "solve_v3_stream",
                 "tokens_in": None,
                 "tokens_out": None,
@@ -4654,6 +4856,7 @@ async def solve_v3_stream_endpoint(
         # Entitlement check + debit (credits/OCR/voice)
         action_mode = "detailed" if requested_mode == "detailed" else "concise"
         action_req = {
+            "tier": effective_billing_tier,
             "mode": action_mode,
             "has_ocr": bool(body.image_url or body.artifact_id or features_used.get("ocr_used")),
             "has_voice": bool(body.has_voice or features_used.get("voice_used")),
@@ -4680,7 +4883,7 @@ async def solve_v3_stream_endpoint(
                 "resolved_schema_file_path": profile.schema_asset_path or profile.schema_relative_path,
                 "schema_name": None,
                 "max_output_tokens_sent": effective_max_tokens,
-                "model_sent": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                "model_sent": stream_model,
                 "cache_hit": False,
                 "openai_calls_count": 0,
                 "repair_attempted": False,
@@ -4702,7 +4905,7 @@ async def solve_v3_stream_endpoint(
                 "subject": body.subject,
                 "grade_level": user_obj.grade_level if user_obj else None,
                 "model": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
-                "provider": "openai",
+                "provider": stream_provider,
                 "route": "solve_v3_stream",
                 "tokens_in": None,
                 "tokens_out": None,
@@ -4740,13 +4943,41 @@ async def solve_v3_stream_endpoint(
             "request_id": request_id,
             "session_id": None, # Will be set after creation
             "message_id": None,
-            "model": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+            "provider": stream_provider,
+            "model": stream_model,
             "max_output_tokens": effective_max_tokens,
-            "mode": requested_mode
+            "mode": requested_mode,
+            "mode_family": "SOLVE",
+            "tier_requested": requested_tier,
+            "effective_tier": effective_tier,
+            "prompt_binding_id": binding_meta.get("binding_id"),
+            "global_system_prompt_id": binding_meta.get("global_system_prompt_id"),
+            "developer_prompt_id": binding_meta.get("developer_prompt_id"),
+            "output_schema_id": binding_meta.get("output_schema_id"),
+            "global_system_prompt_version": binding_meta.get("global_system_prompt_version"),
+            "developer_prompt_version": binding_meta.get("developer_prompt_version"),
+            "output_schema_version": binding_meta.get("output_schema_version"),
         }
         meta_data["input_modality"] = modality
         meta_data["verification_level"] = verification_level
         meta_data["token_policy_key"] = policy_key
+        meta_data["solve_meta"] = {
+            "request_id": request_id,
+            "provider": stream_provider,
+            "model": stream_model,
+            "tier_requested": requested_tier,
+            "tier_effective": effective_tier,
+            "mode": "SOLVE",
+            "prompt_binding_id": binding_meta.get("binding_id"),
+            "global_system_prompt_id": binding_meta.get("global_system_prompt_id"),
+            "developer_prompt_id": binding_meta.get("developer_prompt_id"),
+            "output_schema_id": binding_meta.get("output_schema_id"),
+            "prompt_versions": {
+                "system": binding_meta.get("global_system_prompt_version"),
+                "developer": binding_meta.get("developer_prompt_version"),
+                "schema": binding_meta.get("output_schema_version"),
+            },
+        }
         
         max_output_tokens = effective_max_tokens
         meta_data["type"] = "meta"
@@ -4772,7 +5003,7 @@ async def solve_v3_stream_endpoint(
                 "resolved_schema_file_path": profile.schema_asset_path or profile.schema_relative_path,
                 "schema_name": None,
                 "max_output_tokens_sent": effective_max_tokens,
-                "model_sent": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                "model_sent": stream_model,
                 "cache_hit": False,
                 "openai_calls_count": 0,
                 "repair_attempted": False,
@@ -4794,7 +5025,7 @@ async def solve_v3_stream_endpoint(
                 "subject": body.subject,
                 "grade_level": user_obj.grade_level if user_obj else None,
                 "model": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
-                "provider": "openai",
+                "provider": stream_provider,
                 "route": "solve_v3_stream",
                 "tokens_in": None,
                 "tokens_out": None,
@@ -4821,11 +5052,11 @@ async def solve_v3_stream_endpoint(
         if body.difficulty: context += f", Difficulty: {body.difficulty}"
         if body.mode: context += f", Mode: {body.mode}"
         
-        user_obj = session.get(User, user_id)
-        if user_obj:
-            country = user_obj.profile_country or 'Canada'
-            province = user_obj.profile_province_state or 'ON'
-            context += f"\n\n[STUDENT CONTEXT]\nCountry: {country}\nProvince: {province}\nGrade: {user_obj.grade_level or 'Unknown'}"
+        context_user = user_obj or session.get(User, user_id)
+        if context_user:
+            country = context_user.profile_country or 'Canada'
+            province = context_user.profile_province_state or 'ON'
+            context += f"\n\n[STUDENT CONTEXT]\nCountry: {country}\nProvince: {province}\nGrade: {context_user.grade_level or 'Unknown'}"
 
         # Part E1: Create placeholder assistant message row
         new_chat = ChatSession(
@@ -4873,6 +5104,7 @@ async def solve_v3_stream_endpoint(
                 request_id=request_id,
                 max_output_tokens=max_output_tokens,
                 system_prompt=profile.system_prompt_content,
+                developer_prompt=getattr(profile, "developer_prompt_content", None),
                 json_schema_config=profile.json_schema_content,
                 trusted_context=body.trusted_context,
                 requested_mode=requested_mode
@@ -4883,7 +5115,10 @@ async def solve_v3_stream_endpoint(
                 elif chunk["type"] == "telemetry":
                     openai_telemetry = chunk["telemetry"]
                 elif chunk["type"] == "meta" and chunk.get("truncated"):
-                    yield f"event: meta\ndata: {json.dumps({'type': 'meta', 'truncated': True})}\n\n"
+                    truncated_meta = dict(meta_data)
+                    truncated_meta["truncated"] = True
+                    truncated_meta["type"] = "meta"
+                    yield f"event: meta\ndata: {json.dumps(truncated_meta)}\n\n"
                 elif chunk["type"] == "error":
                     subscription_service.refund_credits(session, sub_id, debit_cost, f"Stream Error: {chunk['error']}", request_id)
                     log_solve_trace({
@@ -4898,7 +5133,7 @@ async def solve_v3_stream_endpoint(
                         "resolved_schema_file_path": profile.schema_asset_path or profile.schema_relative_path,
                         "schema_name": (openai_telemetry.get("openai_payload") or {}).get("response_format_schema_name"),
                         "max_output_tokens_sent": effective_max_tokens,
-                        "model_sent": openai_telemetry.get("model") or os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                        "model_sent": openai_telemetry.get("model") or stream_model,
                         "cache_hit": False,
                         "openai_calls_count": openai_telemetry.get("openai_calls_count", 0),
                         "repair_attempted": False,
@@ -4910,7 +5145,14 @@ async def solve_v3_stream_endpoint(
                         "deduct_committed": deduct_committed,
                         "openai_payload": openai_telemetry.get("openai_payload"),
                         "problem_text": problem_text,
-                        "error": str(chunk.get("error"))
+                        "error": str(chunk.get("error")),
+                        "prompt_binding_id": binding_meta.get("binding_id"),
+                        "global_system_prompt_id": binding_meta.get("global_system_prompt_id"),
+                        "developer_prompt_id": binding_meta.get("developer_prompt_id"),
+                        "output_schema_id": binding_meta.get("output_schema_id"),
+                        "global_system_prompt_version": binding_meta.get("global_system_prompt_version"),
+                        "developer_prompt_version": binding_meta.get("developer_prompt_version"),
+                        "output_schema_version": binding_meta.get("output_schema_version"),
                     })
                     record_request_event(session, {
                         "request_id": request_id,
@@ -4919,8 +5161,8 @@ async def solve_v3_stream_endpoint(
                         "learning_mode": learning_mode,
                         "subject": body.subject,
                         "grade_level": user_obj.grade_level if user_obj else None,
-                        "model": openai_telemetry.get("model") or os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
-                        "provider": "openai",
+                        "model": openai_telemetry.get("model") or stream_model,
+                        "provider": openai_telemetry.get("provider") or stream_provider,
                         "route": "solve_v3_stream",
                         "tokens_in": openai_telemetry.get("input_tokens"),
                         "tokens_out": openai_telemetry.get("output_tokens"),
@@ -5124,7 +5366,7 @@ async def solve_v3_stream_endpoint(
                 "resolved_schema_file_path": profile.schema_asset_path or profile.schema_relative_path,
                 "schema_name": (openai_telemetry.get("openai_payload") or {}).get("response_format_schema_name"),
                 "max_output_tokens_sent": effective_max_tokens,
-                "model_sent": openai_telemetry.get("model") or os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                "model_sent": openai_telemetry.get("model") or stream_model,
                 "cache_hit": False,
                 "openai_calls_count": openai_telemetry.get("openai_calls_count", 0),
                 "repair_attempted": False,
@@ -5139,7 +5381,14 @@ async def solve_v3_stream_endpoint(
                 ,
                 "input_modality": modality,
                 "verification_level": verification_level,
-                "token_policy_key": policy_key
+                "token_policy_key": policy_key,
+                "prompt_binding_id": binding_meta.get("binding_id"),
+                "global_system_prompt_id": binding_meta.get("global_system_prompt_id"),
+                "developer_prompt_id": binding_meta.get("developer_prompt_id"),
+                "output_schema_id": binding_meta.get("output_schema_id"),
+                "global_system_prompt_version": binding_meta.get("global_system_prompt_version"),
+                "developer_prompt_version": binding_meta.get("developer_prompt_version"),
+                "output_schema_version": binding_meta.get("output_schema_version"),
             })
             record_request_event(session, {
                 "request_id": request_id,
@@ -5148,8 +5397,8 @@ async def solve_v3_stream_endpoint(
                 "learning_mode": learning_mode,
                 "subject": body.subject,
                 "grade_level": user_obj.grade_level if user_obj else None,
-                "model": openai_telemetry.get("model") or os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
-                "provider": "openai",
+                "model": openai_telemetry.get("model") or stream_model,
+                "provider": openai_telemetry.get("provider") or stream_provider,
                 "route": "solve_v3_stream",
                 "tokens_in": openai_telemetry.get("input_tokens"),
                 "tokens_out": openai_telemetry.get("output_tokens"),
@@ -5199,7 +5448,7 @@ async def solve_v3_stream_endpoint(
                 "resolved_schema_file_path": profile.schema_asset_path or profile.schema_relative_path,
                 "schema_name": (openai_telemetry.get("openai_payload") or {}).get("response_format_schema_name"),
                 "max_output_tokens_sent": effective_max_tokens,
-                "model_sent": openai_telemetry.get("model") or os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                "model_sent": openai_telemetry.get("model") or stream_model,
                 "cache_hit": False,
                 "openai_calls_count": openai_telemetry.get("openai_calls_count", 0),
                 "repair_attempted": False,
@@ -5221,8 +5470,8 @@ async def solve_v3_stream_endpoint(
                     "learning_mode": learning_mode,
                     "subject": body.subject,
                     "grade_level": user_obj.grade_level if user_obj else None,
-                    "model": openai_telemetry.get("model") or os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
-                    "provider": "openai",
+                    "model": openai_telemetry.get("model") or stream_model,
+                    "provider": openai_telemetry.get("provider") or stream_provider,
                     "route": "solve_v3_stream",
                     "tokens_in": openai_telemetry.get("input_tokens"),
                     "tokens_out": openai_telemetry.get("output_tokens"),
