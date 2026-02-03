@@ -1937,3 +1937,14 @@ Prompt binding integrity OK: active_bindings=12 active_pairs=12
 Attempting to connect to database (Attempt 1/10)...
 Database connection successful and tables created.
 Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Failed to enforce STANDARD/SOLVE binding defaults: [Errno 2] No such file or directory: '/backend/app/prompts/solve_standard_extreme_detailed_v1.txt'
+Failed to seed free-form solve prompt: [Errno 2] No such file or directory: '/backend/app/prompts/free_form_math_standard_detailed.txt'
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
