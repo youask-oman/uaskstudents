@@ -143,7 +143,7 @@ export interface NormalizedChatMessage {
 
 export type CanvasBlock =
   | { id: string; type: "recognition"; latex: string; badge?: string }
-  | { id: string; type: "steps"; steps: StepRow[]; result?: string }
+  | { id: string; type: "steps"; steps: StepRow[]; result?: string; verificationChecks?: VerificationCheck[] }
   | { id: string; type: "text"; text: string };
 
 export interface SelectionState {

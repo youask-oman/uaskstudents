@@ -86,9 +86,33 @@ const parsePlotlySpecPoints = (value: unknown): ChartPayload["points"] => {
   return [];
 };
 
+const parseDirectPlotlyChart = (value: unknown): ChartPayload | null => {
+  const spec = asRecord(value);
+  if (!spec) return null;
+  const points = parsePlotlySpecPoints(spec);
+  if (points.length < 2) return null;
+
+  const layout = asRecord(spec.layout);
+  const xAxis = asRecord(layout?.xaxis);
+  const yAxis = asRecord(layout?.yaxis);
+  const titleValue = asString(layout?.title) || asString(asRecord(layout?.title)?.text) || "Graph";
+  const xLabel = asString(xAxis?.title) || asString(asRecord(xAxis?.title)?.text) || "x";
+  const yLabel = asString(yAxis?.title) || asString(asRecord(yAxis?.title)?.text) || "y";
+
+  return {
+    title: titleValue,
+    xLabel,
+    yLabel,
+    points,
+  };
+};
+
 const parsePlotFromObject = (value: unknown): ChartPayload[] => {
   const obj = asRecord(value);
   if (!obj) return [];
+
+  const directPlotly = parseDirectPlotlyChart(obj);
+  if (directPlotly) return [directPlotly];
 
   const plotObject = asRecord(obj.plot);
   const plotSpecs = Array.isArray(plotObject?.plot_specs) ? plotObject?.plot_specs : [];
@@ -106,6 +130,22 @@ const parsePlotFromObject = (value: unknown): ChartPayload[] => {
     });
   });
   if (parsedFromPlotSpecs.length > 0) return parsedFromPlotSpecs;
+
+  const directPlotSpecs = Array.isArray(obj.plot_specs) ? obj.plot_specs : [];
+  if (directPlotSpecs.length > 0) {
+    const mappedDirectSpecs: ChartPayload[] = [];
+    directPlotSpecs.forEach((specLike, index) => {
+      const specEntry = asRecord(specLike);
+      if (!specEntry) return;
+      const directSpec = parseDirectPlotlyChart(specEntry.spec ?? specEntry);
+      if (!directSpec) return;
+      mappedDirectSpecs.push({
+        ...directSpec,
+        title: asString(specEntry.plot_id) || directSpec.title || `Plot ${index + 1}`,
+      });
+    });
+    if (mappedDirectSpecs.length > 0) return mappedDirectSpecs;
+  }
 
   const plotsValue = asRecord(obj.visuals)?.plots ?? obj.plots ?? obj.plot;
   const plots = Array.isArray(plotsValue) ? plotsValue : plotsValue ? [plotsValue] : [];
@@ -484,11 +524,15 @@ const detectStepsFromText = (text: string): StepRow[] => {
 const detectResultFromText = (text: string): string | undefined => {
   const lines = text.split("\n");
   for (const line of lines) {
-    const trimmed = line.trim();
+    const trimmed = line.trim().replace(/\*\*/g, "");
     if (!trimmed) continue;
-    const match = trimmed.match(/^(?:final answer|answer|therefore|so)\s*[:=-]\s*(.+)$/i);
+    const match = trimmed.match(
+      /^(?:final answer(?: value| latex)?|final_answer(?:\s*\(value\)|\s*value)?|answer|therefore|so)\s*[:=-]\s*(.+)$/i
+    );
     if (match?.[1]) return match[1].trim();
   }
+  const boxed = text.match(/\\boxed\{([^}]+)\}/);
+  if (boxed?.[1]) return boxed[1].trim();
   const thereforeInline = text.match(/therefore[,:\s]+(.+)$/im);
   return thereforeInline?.[1]?.trim() || undefined;
 };
@@ -508,6 +552,34 @@ const detectPlotFromText = (text: string): ChartPayload | null => {
     xLabel: "x",
     yLabel: "y",
     points,
+  };
+};
+
+const parseNumberArray = (raw: string): number[] =>
+  raw
+    .split(",")
+    .map((item) => Number(item.trim()))
+    .filter((value) => Number.isFinite(value));
+
+const detectPlotlyArraysFromText = (text: string): ChartPayload | null => {
+  const blockMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const source = (blockMatch?.[1] || text).replace(/[\r\n]+/g, " ");
+
+  const xMatch = source.match(/["']?\s*x\s*["']?\s*:\s*\[([^\]]+)\]/i);
+  const yMatch = source.match(/["']?\s*y\s*["']?\s*:\s*\[([^\]]+)\]/i);
+  if (!xMatch?.[1] || !yMatch?.[1]) return null;
+
+  const xs = parseNumberArray(xMatch[1]);
+  const ys = parseNumberArray(yMatch[1]);
+  const length = Math.min(xs.length, ys.length);
+  if (length < 2) return null;
+
+  const titleMatch = source.match(/["']?\s*title\s*["']?\s*:\s*["']([^"']+)["']/i);
+  return {
+    title: (titleMatch?.[1] || "Graph").trim(),
+    xLabel: "x",
+    yLabel: "y",
+    points: Array.from({ length }).map((_, i) => ({ x: xs[i], y: ys[i] })),
   };
 };
 
@@ -548,7 +620,7 @@ const extractSolutionFromText = (text: string): {
     const textSteps = detectStepsFromText(text);
     const textResult = detectResultFromText(text);
     const recognizedLatex = detectLatexFromText(text);
-    const textPlot = detectPlotFromText(text);
+    const textPlot = detectPlotlyArraysFromText(text) || detectPlotFromText(text);
     if (textSteps.length > 0 || textResult || recognizedLatex || textPlot) {
       parsedSolution = {
         recognizedLatex,

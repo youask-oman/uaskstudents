@@ -142,6 +142,7 @@ const ElementView = React.memo(function ElementView({
   return (
     <div
       className={`${styles.canvasElement} ${selected ? styles.canvasElementSelected : ""}`.trim()}
+      id={element.id}
       style={style}
       onPointerDown={(event) => onPointerDown(event, element)}
       onMouseDown={(event) => onPointerDown(event as unknown as React.PointerEvent, element)}
@@ -633,13 +634,26 @@ export default function PaperPage({
         <div className={styles.paperBlocksStack}>
           {page.blocks.map((block) => {
             if (block.type === "recognition") {
-              return <RecognitionBox key={block.id} latex={block.latex} />;
+              return (
+                <div key={block.id} id={block.id}>
+                  <RecognitionBox latex={block.latex} />
+                </div>
+              );
             }
             if (block.type === "steps") {
-              return <SolutionStepsBlock key={block.id} steps={block.steps} result={block.result} />;
+              return (
+                <div key={block.id} id={block.id}>
+                  <SolutionStepsBlock
+                    sectionId={block.id}
+                    steps={block.steps}
+                    result={block.result}
+                    verificationChecks={block.verificationChecks}
+                  />
+                </div>
+              );
             }
             return (
-              <div key={block.id} style={{ fontSize: 14, color: "var(--text-main)" }}>
+              <div key={block.id} id={block.id} style={{ fontSize: 14, color: "var(--text-main)" }}>
                 <MathRenderer content={block.text} mode="prose" />
               </div>
             );

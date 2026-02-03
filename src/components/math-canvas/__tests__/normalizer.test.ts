@@ -115,4 +115,49 @@ Final answer: x = 2
     expect(solutionItem.payload.steps.length).toBeGreaterThanOrEqual(4);
     expect(solutionItem.payload.result).toContain("x = 2");
   });
+
+  test("parses direct plotly JSON from assistant text", () => {
+    const assistant: SessionMessage = {
+      role: "assistant",
+      content: `
+\`\`\`json
+{
+  "data": [
+    { "type": "scatter", "mode": "lines", "x": [-2,-1,0,1,2], "y": [4,1,0,1,4] }
+  ],
+  "layout": {
+    "title": "y = x^2",
+    "xaxis": { "title": "x" },
+    "yaxis": { "title": "y" }
+  }
+}
+\`\`\`
+      `,
+    };
+
+    const normalized = normalizeAssistantMessage(assistant, 2);
+    const chartItems = normalized.items.filter((item) => item.type === "chart");
+    expect(chartItems.length).toBeGreaterThanOrEqual(1);
+  });
+
+  test("parses malformed plotly-like block from freeform text", () => {
+    const assistant: SessionMessage = {
+      role: "assistant",
+      content: `
+**Plotly JSON:**
+\`\`\`json
+{
+  "data": [
+    {"type": " scatter", "x": [1,1.5,2,2.5,3], "y": [0,0.866,1.732,2.291,2.598], "name": "y=2 sqrt(x-1)"}
+  ],
+  " layout": {" title": "Solution plot"}
+}
+\`\`\`
+      `,
+    };
+
+    const normalized = normalizeAssistantMessage(assistant, 3);
+    const chartItems = normalized.items.filter((item) => item.type === "chart");
+    expect(chartItems.length).toBeGreaterThanOrEqual(1);
+  });
 });

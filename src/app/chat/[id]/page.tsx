@@ -25,6 +25,12 @@ interface ChatSessionPayload {
   messages: SessionMessage[];
 }
 
+interface OutlineItem {
+  id: string;
+  label: string;
+  tag: string;
+}
+
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === "object" ? (value as Record<string, unknown>) : null;
 
@@ -56,6 +62,7 @@ const createPage = (): CanvasPageData => ({
 const buildInitialPages = (messages: ReturnType<typeof normalizeSessionMessages>): CanvasPageData[] => {
   const solution = extractPrimarySolution(messages);
   const firstPage = createPage();
+  const now = Date.now();
   const firstStepTitle = solution?.steps?.[0]?.title?.trim();
   if (firstStepTitle) {
     firstPage.title = firstStepTitle;
@@ -64,7 +71,7 @@ const buildInitialPages = (messages: ReturnType<typeof normalizeSessionMessages>
 
   if (solution?.recognizedLatex) {
     blocks.push({
-      id: `block-${Date.now()}-recognized`,
+      id: "recognized-block",
       type: "recognition",
       latex: solution.recognizedLatex,
       badge: "AI recognized",
@@ -73,10 +80,11 @@ const buildInitialPages = (messages: ReturnType<typeof normalizeSessionMessages>
 
   if (solution && (solution.steps.length > 0 || solution.result)) {
     blocks.push({
-      id: `block-${Date.now()}-steps`,
+      id: "steps-block",
       type: "steps",
       steps: solution.steps,
       result: solution.result,
+      verificationChecks: solution.verificationChecks,
     });
   }
 
@@ -87,7 +95,7 @@ const buildInitialPages = (messages: ReturnType<typeof normalizeSessionMessages>
 
   if (latestText && (blocks.length === 0 || (solution?.steps.length ?? 0) <= 1)) {
     blocks.push({
-      id: `block-${Date.now()}-text`,
+      id: "text-block",
       type: "text",
       text: latestText,
     });
@@ -95,10 +103,38 @@ const buildInitialPages = (messages: ReturnType<typeof normalizeSessionMessages>
 
   if (blocks.length === 0) {
     blocks.push({
-      id: `block-${Date.now()}-empty`,
+      id: "empty-block",
       type: "text",
       text: "No parsed solution yet. Try solving again.",
     });
+  }
+
+  if (solution?.plots?.length) {
+    firstPage.elements = solution.plots
+      .filter((plot) => Array.isArray(plot.points) && plot.points.length >= 2)
+      .map((plot, index) => ({
+        id: `plot-element-${index + 1}`,
+        type: "plot" as const,
+        pageId: firstPage.id,
+        x: 24,
+        y: 24 + index * 290,
+        width: 720,
+        height: 270,
+        zIndex: 100 + index,
+        style: {
+          color: "#1e293b",
+          strokeColor: "#1e293b",
+          strokeWidth: 2,
+          fillColor: "#ffffff",
+          fontSize: 14,
+        },
+        createdAt: now + index,
+        updatedAt: now + index,
+        title: plot.title || `Plot ${index + 1}`,
+        xLabel: plot.xLabel || "x",
+        yLabel: plot.yLabel || "y",
+        points: plot.points.map((point) => ({ x: Number(point.x), y: Number(point.y) })),
+      }));
   }
 
   firstPage.blocks = blocks;
@@ -183,6 +219,38 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     [normalizedMessages]
   );
 
+  const outlineItems = useMemo<OutlineItem[]>(() => {
+    const items: OutlineItem[] = [];
+    if (primarySolution?.recognizedLatex) {
+      items.push({ id: "recognized-block", label: "Recognized Problem", tag: "RECOGNITION" });
+    }
+    if (primarySolution?.steps?.length) {
+      primarySolution.steps.forEach((step, index) => {
+        const title = (step.title || "").trim();
+        const generic = /^step\s+\d+$/i.test(title);
+        items.push({
+          id: `steps-block-step-${index + 1}`,
+          label: generic || !title ? `Step ${index + 1}` : title,
+          tag: "STEP",
+        });
+      });
+      items.push({ id: "steps-block-final-answer", label: "Final Answer", tag: "FINAL" });
+    }
+    if (primarySolution?.verificationChecks?.length) {
+      items.push({ id: "steps-block-verification", label: "Verification", tag: "VERIFY" });
+    }
+    if (primarySolution?.plots?.length) {
+      primarySolution.plots.forEach((plot, index) => {
+        items.push({
+          id: `plot-element-${index + 1}`,
+          label: plot.title || `Plot ${index + 1}`,
+          tag: "PLOT",
+        });
+      });
+    }
+    return items;
+  }, [primarySolution]);
+
   const stepTitles = useMemo(
     () => parseStepTitles(primarySolution?.steps || []),
     [primarySolution?.steps]
@@ -243,6 +311,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             notebookTitle={notebookTitle}
             notebookSubtitle={notebookSubtitle}
             usagePercent={usagePercent}
+            outlineItems={outlineItems}
           />
         }
         workspace={

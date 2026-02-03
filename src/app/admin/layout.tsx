@@ -68,6 +68,7 @@ export default function AdminLayout({
         { label: "WhatsApp Bot", href: "/admin/whatsapp-bot", icon: "chat" },
         { label: "WhatsApp Monitor", href: "/admin/whatsapp-monitor", icon: "monitor_heart" },
         { label: "Logs", href: "/admin/logs", icon: "receipt_long" },
+        { label: "Solver Outputs", href: "/admin/solver-attempts", icon: "article" },
         { label: "Social Logs", href: "/admin/social-logs", icon: "forum" },
         { label: "Data", href: "/admin/data", icon: "table_view" },
         { label: "System Config", href: "/admin/system-config", icon: "tune" },

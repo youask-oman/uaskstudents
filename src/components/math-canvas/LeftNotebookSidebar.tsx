@@ -8,20 +8,23 @@ interface LeftNotebookSidebarProps {
   notebookTitle: string;
   notebookSubtitle: string;
   usagePercent: number;
+  outlineItems?: Array<{
+    id: string;
+    label: string;
+    tag: string;
+  }>;
 }
 
 const navItems = [
   { key: "overview", label: "Overview", icon: "home" },
   { key: "canvas", label: "Math Canvas", icon: "edit_note" },
-  { key: "geometry", label: "Geometry Tools", icon: "category" },
-  { key: "stats", label: "Statistics", icon: "analytics" },
-  { key: "history", label: "Revision History", icon: "history" },
 ];
 
 export default function LeftNotebookSidebar({
   notebookTitle,
   notebookSubtitle,
   usagePercent,
+  outlineItems = [],
 }: LeftNotebookSidebarProps) {
   return (
     <aside className={styles.leftSidebar}>
@@ -47,6 +50,20 @@ export default function LeftNotebookSidebar({
           </button>
         ))}
       </nav>
+
+      {outlineItems.length > 0 ? (
+        <div className={styles.outlineWrap}>
+          <div className={styles.outlineTitle}>Paper Outline</div>
+          <div className={styles.outlineList}>
+            {outlineItems.map((item) => (
+              <a key={`${item.tag}-${item.id}`} href={`#${item.id}`} className={styles.outlineLink}>
+                <span className={styles.outlineTag}>{item.tag}</span>
+                <span>{item.label}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className={styles.storageWrap}>
         <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Storage used</div>

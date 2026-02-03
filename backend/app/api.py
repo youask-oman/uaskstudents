@@ -7649,6 +7649,106 @@ async def admin_analytics_anomalies(
     }
     return get_anomalies(db, range, filters)
 
+
+class SolverOutputAttemptListItem(BaseModel):
+    id: int
+    request_id: str
+    user_id: Optional[int] = None
+    session_id: Optional[int] = None
+    message_id: Optional[int] = None
+    output_format: str
+    prompt_id: Optional[str] = None
+    prompt_version: Optional[str] = None
+    attempt_number: int
+    provider: Optional[str] = None
+    model: Optional[str] = None
+    latency_ms: Optional[int] = None
+    char_count: int
+    status: str
+    archive_path: Optional[str] = None
+    created_at: str
+    output_preview: str
+
+
+class SolverOutputAttemptDetail(SolverOutputAttemptListItem):
+    extracted_answer: Optional[str] = None
+    validation_json: Optional[Dict[str, Any]] = None
+    error_message: Optional[str] = None
+    raw_solution_text: str
+
+
+def _serialize_solver_output_attempt(
+    row: SolverOutputAttempt,
+    include_full_output: bool = False,
+) -> Dict[str, Any]:
+    preview = (row.raw_solution_text or "")[:400]
+    payload: Dict[str, Any] = {
+        "id": int(row.id or 0),
+        "request_id": row.request_id,
+        "user_id": row.user_id,
+        "session_id": row.session_id,
+        "message_id": row.message_id,
+        "output_format": row.output_format,
+        "prompt_id": row.prompt_id,
+        "prompt_version": row.prompt_version,
+        "attempt_number": row.attempt_number,
+        "provider": row.provider,
+        "model": row.model,
+        "latency_ms": row.latency_ms,
+        "char_count": row.char_count,
+        "status": row.status,
+        "archive_path": row.archive_path,
+        "created_at": row.created_at.isoformat() if row.created_at else "",
+        "output_preview": preview,
+    }
+    if include_full_output:
+        payload.update(
+            {
+                "extracted_answer": row.extracted_answer,
+                "validation_json": row.validation_json,
+                "error_message": row.error_message,
+                "raw_solution_text": row.raw_solution_text or "",
+            }
+        )
+    return payload
+
+
+@api_router.get("/admin/solver-output-attempts", response_model=List[SolverOutputAttemptListItem])
+async def admin_list_solver_output_attempts(
+    limit: int = Query(200, ge=1, le=2000),
+    offset: int = Query(0, ge=0),
+    request_id: Optional[str] = Query(None),
+    user_id: Optional[int] = Query(None),
+    status: Optional[str] = Query(None),
+    output_format: Optional[str] = Query(None),
+    db: Session = Depends(get_session),
+):
+    query = select(SolverOutputAttempt)
+    if request_id:
+        query = query.where(SolverOutputAttempt.request_id.contains(request_id.strip()))
+    if user_id is not None:
+        query = query.where(SolverOutputAttempt.user_id == user_id)
+    if status:
+        query = query.where(SolverOutputAttempt.status == status.strip().lower())
+    if output_format:
+        query = query.where(SolverOutputAttempt.output_format == output_format.strip().lower())
+    rows = db.exec(
+        query.order_by(SolverOutputAttempt.created_at.desc()).offset(offset).limit(limit)
+    ).all()
+    return [_serialize_solver_output_attempt(row) for row in rows]
+
+
+@api_router.get("/admin/solver-output-attempts/{attempt_id}", response_model=SolverOutputAttemptDetail)
+async def admin_get_solver_output_attempt(
+    attempt_id: int,
+    db: Session = Depends(get_session),
+):
+    row = db.get(SolverOutputAttempt, attempt_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Solver output attempt not found")
+    return _serialize_solver_output_attempt(row, include_full_output=True)
+
+
 @api_router.get("/admin/solve-traces", response_model=List[SolveTraceEntry])
 async def admin_get_solve_traces(
     limit: int = Query(100, ge=1, le=1000)
