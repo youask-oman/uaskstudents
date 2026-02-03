@@ -1704,3 +1704,68 @@ extract_questions applying crop: x=114 y=214 w=404 h=155 image=1091x1139
 extract_questions input metrics: size=404x155 stddev=59.20 white=0.921
 OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmpg18o30o4.png
 ocr_attempt request_id=795edb67-cb70-47a3-9f46-ac9118052a58 provider=pix2txt model=pix2text-local duration_ms=720 validation_passed=True fail_reason=None
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Failed to seed OCR extract prompts: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "prompt_templates_prompt_id_version_key"
+DETAIL:  Key (prompt_id, version)=(ocr_extract_qwen_system_v1, 2) already exists.
+
+[SQL: INSERT INTO prompt_templates (id, prompt_id, tier, mode, role, content, version, is_active, created_at, updated_at, updated_by) VALUES (%(id)s, %(prompt_id)s, %(tier)s, %(mode)s, %(role)s, %(content)s, %(version)s, %(is_active)s, %(created_at)s, %(updated_at)s, %(updated_by)s)]
+[parameters: {'id': '6aaa57f3-d678-4993-a380-b0ea46feb122', 'prompt_id': 'ocr_extract_qwen_system_v1', 'tier': None, 'mode': 'SOLVE', 'role': 'SYSTEM', 'content': 'You are a strict JSON extraction engine for math worksheets and textbook pages.\nOutput ONLY valid JSON that matches the provided JSON schema exactly ... (229 characters truncated) ... where allowed and explain uncertainty in "notes".\nIf the image/page is not a math page, set is_math_page=false and return questions=[] with ok=true.', 'version': 2, 'is_active': True, 'created_at': datetime.datetime(2026, 2, 3, 2, 10, 34, 676539), 'updated_at': datetime.datetime(2026, 2, 3, 2, 10, 34, 676821), 'updated_by': 'startup'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+Failed to audit prompt bindings: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "prompt_templates_prompt_id_version_key"
+DETAIL:  Key (prompt_id, version)=(ocr_extract_qwen_system_v1, 2) already exists.
+
+[SQL: INSERT INTO prompt_templates (id, prompt_id, tier, mode, role, content, version, is_active, created_at, updated_at, updated_by) VALUES (%(id)s, %(prompt_id)s, %(tier)s, %(mode)s, %(role)s, %(content)s, %(version)s, %(is_active)s, %(created_at)s, %(updated_at)s, %(updated_by)s)]
+[parameters: {'id': '6aaa57f3-d678-4993-a380-b0ea46feb122', 'prompt_id': 'ocr_extract_qwen_system_v1', 'tier': None, 'mode': 'SOLVE', 'role': 'SYSTEM', 'content': 'You are a strict JSON extraction engine for math worksheets and textbook pages.\nOutput ONLY valid JSON that matches the provided JSON schema exactly ... (229 characters truncated) ... where allowed and explain uncertainty in "notes".\nIf the image/page is not a math page, set is_math_page=false and return questions=[] with ok=true.', 'version': 2, 'is_active': True, 'created_at': datetime.datetime(2026, 2, 3, 2, 10, 34, 676539), 'updated_at': datetime.datetime(2026, 2, 3, 2, 10, 34, 676821), 'updated_by': 'startup'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Failed to seed OCR extract prompts: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "prompt_templates_prompt_id_version_key"
+DETAIL:  Key (prompt_id, version)=(ocr_extract_qwen_system_v1, 2) already exists.
+
+[SQL: INSERT INTO prompt_templates (id, prompt_id, tier, mode, role, content, version, is_active, created_at, updated_at, updated_by) VALUES (%(id)s, %(prompt_id)s, %(tier)s, %(mode)s, %(role)s, %(content)s, %(version)s, %(is_active)s, %(created_at)s, %(updated_at)s, %(updated_by)s)]
+[parameters: {'id': 'b43d3a51-98de-4f55-b1ad-5787312f809c', 'prompt_id': 'ocr_extract_qwen_system_v1', 'tier': None, 'mode': 'SOLVE', 'role': 'SYSTEM', 'content': 'You are a strict JSON extraction engine for math worksheets and textbook pages.\nOutput ONLY valid JSON that matches the provided JSON schema exactly ... (229 characters truncated) ... where allowed and explain uncertainty in "notes".\nIf the image/page is not a math page, set is_math_page=false and return questions=[] with ok=true.', 'version': 2, 'is_active': True, 'created_at': datetime.datetime(2026, 2, 3, 2, 10, 45, 263874), 'updated_at': datetime.datetime(2026, 2, 3, 2, 10, 45, 263874), 'updated_by': 'startup'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+Failed to audit prompt bindings: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "prompt_templates_prompt_id_version_key"
+DETAIL:  Key (prompt_id, version)=(ocr_extract_qwen_system_v1, 2) already exists.
+
+[SQL: INSERT INTO prompt_templates (id, prompt_id, tier, mode, role, content, version, is_active, created_at, updated_at, updated_by) VALUES (%(id)s, %(prompt_id)s, %(tier)s, %(mode)s, %(role)s, %(content)s, %(version)s, %(is_active)s, %(created_at)s, %(updated_at)s, %(updated_by)s)]
+[parameters: {'id': 'b43d3a51-98de-4f55-b1ad-5787312f809c', 'prompt_id': 'ocr_extract_qwen_system_v1', 'tier': None, 'mode': 'SOLVE', 'role': 'SYSTEM', 'content': 'You are a strict JSON extraction engine for math worksheets and textbook pages.\nOutput ONLY valid JSON that matches the provided JSON schema exactly ... (229 characters truncated) ... where allowed and explain uncertainty in "notes".\nIf the image/page is not a math page, set is_math_page=false and return questions=[] with ok=true.', 'version': 2, 'is_active': True, 'created_at': datetime.datetime(2026, 2, 3, 2, 10, 45, 263874), 'updated_at': datetime.datetime(2026, 2, 3, 2, 10, 45, 263874), 'updated_by': 'startup'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+extract_questions applying crop: x=113 y=222 w=442 h=140 image=1091x1139
+extract_questions input metrics: size=442x140 stddev=59.53 white=0.920
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmpsibs4o2a.png
+Initializing Local Pix2Text engine...
+Use DocLayout-YOLO model for Layout Analysis: C:\Users\loaia\AppData\Roaming\pix2text\1.1\layout-docyolo\doclayout_yolo_docstructbench_imgsz1024.pt
+use model: C:\Users\loaia\AppData\Roaming\cnocr\2.3\densenet_lite_136-gru\cnocr-v2.3-densenet_lite_136-gru-epoch=004-ft-model.onnx
+use model: C:\Users\loaia\AppData\Roaming\cnstd\1.2\ppocr\ch_PP-OCRv5_det\ch_PP-OCRv5_det_infer.onnx
+Use model path for MFD: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfd-1.5-onnx\pix2text-mfd-1.5.onnx
+Use model dir for LatexOCR: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfr-1.5-onnx
+Loaded Pix2Text MFR model mfr-1.5 to: backend-onnx, device-cpu
+Pix2Text initialized successfully
+ocr_attempt request_id=9d28e3a1-0991-4f4f-86aa-a934b13e12cf provider=pix2txt model=pix2text-local duration_ms=2412 validation_passed=True fail_reason=None
+[QUESTION_CACHE] Stored: fc0b819195a8706a...
+[QUESTION_CACHE] Stored: 9cb5b7a7e84cc07c...
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+extract_questions applying crop: x=101 y=587 w=641 h=159 image=1091x1139
+extract_questions input metrics: size=641x159 stddev=51.18 white=0.939
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmpn64jzakg.png
+Initializing Local Pix2Text engine...
+Use DocLayout-YOLO model for Layout Analysis: C:\Users\loaia\AppData\Roaming\pix2text\1.1\layout-docyolo\doclayout_yolo_docstructbench_imgsz1024.pt
+use model: C:\Users\loaia\AppData\Roaming\cnocr\2.3\densenet_lite_136-gru\cnocr-v2.3-densenet_lite_136-gru-epoch=004-ft-model.onnx
+use model: C:\Users\loaia\AppData\Roaming\cnstd\1.2\ppocr\ch_PP-OCRv5_det\ch_PP-OCRv5_det_infer.onnx
+Use model path for MFD: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfd-1.5-onnx\pix2text-mfd-1.5.onnx
+Use model dir for LatexOCR: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfr-1.5-onnx
+Loaded Pix2Text MFR model mfr-1.5 to: backend-onnx, device-cpu
+Pix2Text initialized successfully
+ocr_attempt request_id=29cc1852-f766-4109-b54b-4c6c9d2874ba provider=pix2txt model=pix2text-local duration_ms=2474 validation_passed=True fail_reason=None
+[QUESTION_CACHE] Already exists: 9cb5b7a7e84cc07c...
+[QUESTION_CACHE] Stored: b65d28b3b864f223...

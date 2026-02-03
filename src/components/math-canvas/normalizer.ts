@@ -24,6 +24,26 @@ const asStringArray = (value: unknown): string[] => {
     .filter((item) => item.length > 0);
 };
 
+const getHintsList = (obj: Record<string, unknown>): Array<Record<string, unknown>> => {
+  const direct = obj.hints;
+  const spaced = obj[" hints"];
+  const value = Array.isArray(direct) ? direct : Array.isArray(spaced) ? spaced : [];
+  return value
+    .map((item, index) => {
+      const asObj = asRecord(item);
+      if (asObj) return asObj;
+      const asText = asString(item);
+      if (asText) {
+        return {
+          key: `step_${index + 1}`,
+          value: asText,
+        } as Record<string, unknown>;
+      }
+      return null;
+    })
+    .filter((item): item is Record<string, unknown> => item !== null);
+};
+
 const parsePointArray = (value: unknown): ChartPayload["points"] => {
   if (!Array.isArray(value)) return [];
   return value
@@ -113,6 +133,15 @@ const parseStepsFromObject = (value: unknown): StepRow[] => {
 
   if (directSteps.length > 0) return directSteps;
 
+  const hints = getHintsList(obj);
+  if (hints.length > 0) {
+    const hintSteps: StepRow[] = hints.map((hint, index) => ({
+      title: asString(hint.key) || `Step ${index + 1}`,
+      explanation: asString(hint.value) || undefined,
+    }));
+    if (hintSteps.length > 0) return hintSteps;
+  }
+
   const outputBlocks = Array.isArray(obj.output) ? obj.output : [];
   const mappedFromBlocks: StepRow[] = [];
   outputBlocks.forEach((block, index) => {
@@ -152,6 +181,12 @@ const parseResultFromObject = (value: unknown): string | undefined => {
     return asString(answer.final_latex) || asString(answer.final_text) || undefined;
   }
 
+  const hints = getHintsList(obj);
+  for (let i = hints.length - 1; i >= 0; i -= 1) {
+    const hintValue = asString(hints[i].value);
+    if (hintValue && hintValue.trim().length > 0) return hintValue.trim();
+  }
+
   return asString(obj.result) || undefined;
 };
 
@@ -166,6 +201,11 @@ const parseRecognizedLatexFromObject = (value: unknown): string | undefined => {
       asString(problem.original_text) ||
       undefined
     );
+  }
+  const hints = getHintsList(obj);
+  if (hints.length > 0) {
+    const firstHint = asString(hints[0].value);
+    if (firstHint && firstHint.trim()) return firstHint.trim();
   }
   return asString(obj.problem_text) || asString(obj.input) || undefined;
 };

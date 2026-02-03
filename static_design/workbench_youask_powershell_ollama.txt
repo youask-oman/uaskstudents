@@ -174,3 +174,8 @@ Changed .env / service config and it’s not taking effect? → docker compose u
 Want fresh containers from scratch? → docker compose down && docker compose up -d --build
 
 Docker itself is broken or networking is haunted? → restart Docker daemon
+
+
+
+PS E:\uaskstudents> docker compose exec -T postgres pg_dump -U uask_user -Fc -d uask_db > uask_db_$(Get-Date -Format "yyyyMMdd_HHmmss").dump
+PS E:\uaskstudents> docker compose exec -T postgres pg_dump -U uask_user -d clear  

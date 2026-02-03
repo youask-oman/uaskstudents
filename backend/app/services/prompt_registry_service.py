@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
@@ -26,6 +27,11 @@ class PromptRegistryService:
     OCR_EXTRACT_QWEN_USER_PROMPT_ID = "ocr_extract_qwen_user_v1"
     OCR_EXTRACT_OPENAI_SYSTEM_PROMPT_ID = "openai_ocr_system_prompt_v1"
     OCR_EXTRACT_OPENAI_SCHEMA_ID = "youask_math_solver_openai_ocr_v1"
+    STANDARD_SOLVE_PROMPT_V2_ID = "solve_standard_moderate_v2"
+    STANDARD_SOLVE_SCHEMA_V2_ID = "youask_math_solver_standard_solve_v2"
+    STANDARD_SOLVE_PROMPT_V1_ID = "solve_standard_moderate_v1"
+    STANDARD_SOLVE_SCHEMA_V1_ID = "youask_math_solver_standard_solve_v1"
+    STANDARD_SOLVE_GLOBAL_SYSTEM_ID = "global_system_prompt_v1"
 
     OCR_EXTRACT_QWEN_SYSTEM_PROMPT_DEFAULT = (
         "You are a strict JSON extraction engine for math worksheets and textbook pages.\n"
@@ -46,6 +52,8 @@ class PromptRegistryService:
         "(2) create separate questions with ids p{page}-q{n}-part{letter}.\n"
         "Return JSON only."
     )
+    STANDARD_SOLVE_V2_PROMPT_ASSET = "static_design/sug_prompts_qwen/solve_standard_moderate_v2.txt"
+    STANDARD_SOLVE_V2_SCHEMA_ASSET = "static_design/sug_prompts_qwen/youask_math_solver_standard_solve_v2.json"
 
     def _repo_root(self) -> Path:
         return Path(__file__).resolve().parents[3]
@@ -63,7 +71,7 @@ class PromptRegistryService:
         Ensure OCR Qwen post-processing prompts exist in prompt_templates.
         These IDs are read by runtime extraction flow and can be edited via registry admin APIs.
         """
-        self.update_prompt(
+        self._ensure_prompt_exists(
             session=session,
             prompt_id=self.OCR_EXTRACT_QWEN_SYSTEM_PROMPT_ID,
             content=self.OCR_EXTRACT_QWEN_SYSTEM_PROMPT_DEFAULT,
@@ -72,7 +80,7 @@ class PromptRegistryService:
             role=PromptRoleEnum.SYSTEM,
             updated_by=updated_by,
         )
-        self.update_prompt(
+        self._ensure_prompt_exists(
             session=session,
             prompt_id=self.OCR_EXTRACT_QWEN_USER_PROMPT_ID,
             content=self.OCR_EXTRACT_QWEN_USER_PROMPT_DEFAULT,
@@ -87,7 +95,7 @@ class PromptRegistryService:
         openai_schema = self._load_asset_json(
             "static_design/sug_prompts_qwen/youask_math_solver_openai_ocr_v1.json"
         )
-        self.update_prompt(
+        self._ensure_prompt_exists(
             session=session,
             prompt_id=self.OCR_EXTRACT_OPENAI_SYSTEM_PROMPT_ID,
             content=openai_system_prompt,
@@ -96,10 +104,140 @@ class PromptRegistryService:
             role=PromptRoleEnum.SYSTEM,
             updated_by=updated_by,
         )
-        self.update_schema(
+        self._ensure_schema_exists(
             session=session,
             schema_id=self.OCR_EXTRACT_OPENAI_SCHEMA_ID,
             content=openai_schema,
+            updated_by=updated_by,
+        )
+
+    def ensure_standard_solve_binding(
+        self,
+        session: Session,
+        updated_by: Optional[str] = "system",
+    ) -> None:
+        """
+        Ensure STANDARD/SOLVE defaults to the configured prompt/schema version.
+        Runtime solve path still reads prompts/schemas from DB bindings only.
+        """
+        global_prompt = self.get_active_prompt(session, self.STANDARD_SOLVE_GLOBAL_SYSTEM_ID)
+        if not global_prompt:
+            raise PromptRegistryError(
+                f"Missing required global system prompt: {self.STANDARD_SOLVE_GLOBAL_SYSTEM_ID}"
+            )
+
+        target_version = os.environ.get("STANDARD_SOLVE_SCHEMA_VERSION", "v2").strip().lower()
+        if target_version == "v1":
+            target_prompt_id = self.STANDARD_SOLVE_PROMPT_V1_ID
+            target_schema_id = self.STANDARD_SOLVE_SCHEMA_V1_ID
+        else:
+            v2_prompt = self._load_asset_text(self.STANDARD_SOLVE_V2_PROMPT_ASSET)
+            v2_schema = self._load_asset_json(self.STANDARD_SOLVE_V2_SCHEMA_ASSET)
+            self.update_prompt(
+                session=session,
+                prompt_id=self.STANDARD_SOLVE_PROMPT_V2_ID,
+                content=v2_prompt,
+                tier=PromptTierEnum.STANDARD,
+                mode=PromptModeEnum.SOLVE,
+                role=PromptRoleEnum.DEVELOPER,
+                updated_by=updated_by,
+            )
+            self.update_schema(
+                session=session,
+                schema_id=self.STANDARD_SOLVE_SCHEMA_V2_ID,
+                content=v2_schema,
+                updated_by=updated_by,
+            )
+            target_prompt_id = self.STANDARD_SOLVE_PROMPT_V2_ID
+            target_schema_id = self.STANDARD_SOLVE_SCHEMA_V2_ID
+
+        prompt_entry = self.get_active_prompt(session, target_prompt_id)
+        if not prompt_entry:
+            raise PromptRegistryError(f"Missing developer prompt for STANDARD/SOLVE: {target_prompt_id}")
+        schema_entry = self.get_active_schema(session, target_schema_id)
+        if not schema_entry:
+            raise PromptRegistryError(f"Missing output schema for STANDARD/SOLVE: {target_schema_id}")
+
+        current = self.get_active_binding(session, PromptTierEnum.STANDARD, PromptModeEnum.SOLVE)
+        if (
+            current
+            and current.global_system_prompt_id == self.STANDARD_SOLVE_GLOBAL_SYSTEM_ID
+            and current.developer_prompt_id == target_prompt_id
+            and current.output_schema_id == target_schema_id
+        ):
+            return
+
+        self.activate_binding(
+            session=session,
+            tier=PromptTierEnum.STANDARD,
+            mode=PromptModeEnum.SOLVE,
+            global_system_prompt_id=self.STANDARD_SOLVE_GLOBAL_SYSTEM_ID,
+            developer_prompt_id=target_prompt_id,
+            output_schema_id=target_schema_id,
+            updated_by=updated_by,
+        )
+
+    def _ensure_prompt_exists(
+        self,
+        session: Session,
+        prompt_id: str,
+        content: str,
+        tier: Optional[PromptTierEnum],
+        mode: PromptModeEnum,
+        role: str,
+        updated_by: Optional[str],
+    ) -> PromptTemplateEntry:
+        active = self.get_active_prompt(session, prompt_id)
+        if active:
+            return active
+
+        versions = self.get_prompt_versions(session, prompt_id)
+        if versions:
+            latest = versions[0]
+            latest.is_active = True
+            latest.updated_at = datetime.utcnow()
+            latest.updated_by = updated_by
+            session.add(latest)
+            session.commit()
+            session.refresh(latest)
+            return latest
+
+        return self.update_prompt(
+            session=session,
+            prompt_id=prompt_id,
+            content=content,
+            tier=tier,
+            mode=mode,
+            role=role,
+            updated_by=updated_by,
+        )
+
+    def _ensure_schema_exists(
+        self,
+        session: Session,
+        schema_id: str,
+        content: Dict[str, Any],
+        updated_by: Optional[str],
+    ) -> JsonSchemaEntry:
+        active = self.get_active_schema(session, schema_id)
+        if active:
+            return active
+
+        versions = self.get_schema_versions(session, schema_id)
+        if versions:
+            latest = versions[0]
+            latest.is_active = True
+            latest.updated_at = datetime.utcnow()
+            latest.updated_by = updated_by
+            session.add(latest)
+            session.commit()
+            session.refresh(latest)
+            return latest
+
+        return self.update_schema(
+            session=session,
+            schema_id=schema_id,
+            content=content,
             updated_by=updated_by,
         )
 
@@ -282,7 +420,9 @@ class PromptRegistryService:
         if current and current.content.strip() == content.strip():
             return current
 
-        next_version = self._next_version(current.version if current else 0)
+        versions = self.get_prompt_versions(session, prompt_id)
+        max_version = max((entry.version for entry in versions), default=0)
+        next_version = self._next_version(max_version)
         if current:
             current.is_active = False
             current.updated_at = datetime.utcnow()
@@ -313,7 +453,9 @@ class PromptRegistryService:
         if current and json.dumps(current.content, sort_keys=True) == json.dumps(content, sort_keys=True):
             return current
 
-        next_version = self._next_version(current.version if current else 0)
+        versions = self.get_schema_versions(session, schema_id)
+        max_version = max((entry.version for entry in versions), default=0)
+        next_version = self._next_version(max_version)
         if current:
             current.is_active = False
             current.updated_at = datetime.utcnow()

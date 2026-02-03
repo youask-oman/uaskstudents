@@ -99,3 +99,55 @@ def test_ensure_ocr_extract_prompts(tmp_path):
     assert system_prompt is not None
     assert user_prompt is not None
     assert "Extract ALL math questions from the provided image or PDF page image(s)." in user_prompt.content
+
+
+def test_ensure_standard_solve_binding_sets_v2_default(tmp_path, monkeypatch):
+    session = _make_session(tmp_path)
+    monkeypatch.delenv("STANDARD_SOLVE_SCHEMA_VERSION", raising=False)
+
+    prompt_registry_service.update_prompt(
+        session=session,
+        prompt_id="global_system_prompt_v1",
+        content="GLOBAL_SYSTEM",
+        tier=None,
+        mode=PromptModeEnum.SOLVE,
+        role=PromptRoleEnum.SYSTEM,
+        updated_by="tester",
+    )
+    prompt_registry_service.update_prompt(
+        session=session,
+        prompt_id="solve_standard_moderate_v1",
+        content="STD_V1",
+        tier=PromptTierEnum.STANDARD,
+        mode=PromptModeEnum.SOLVE,
+        role=PromptRoleEnum.DEVELOPER,
+        updated_by="tester",
+    )
+    prompt_registry_service.update_schema(
+        session=session,
+        schema_id="youask_math_solver_standard_solve_v1",
+        content={"type": "object"},
+        updated_by="tester",
+    )
+    prompt_registry_service.activate_binding(
+        session=session,
+        tier=PromptTierEnum.STANDARD,
+        mode=PromptModeEnum.SOLVE,
+        global_system_prompt_id="global_system_prompt_v1",
+        developer_prompt_id="solve_standard_moderate_v1",
+        output_schema_id="youask_math_solver_standard_solve_v1",
+        updated_by="tester",
+    )
+
+    prompt_registry_service.ensure_standard_solve_binding(session, updated_by="tester")
+
+    binding = prompt_registry_service.get_active_binding(
+        session,
+        PromptTierEnum.STANDARD,
+        PromptModeEnum.SOLVE,
+    )
+    assert binding is not None
+    assert binding.developer_prompt_id == "solve_standard_moderate_v2"
+    assert binding.output_schema_id == "youask_math_solver_standard_solve_v2"
+    assert prompt_registry_service.get_active_prompt(session, "solve_standard_moderate_v2") is not None
+    assert prompt_registry_service.get_active_schema(session, "youask_math_solver_standard_solve_v2") is not None

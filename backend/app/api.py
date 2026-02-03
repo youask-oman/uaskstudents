@@ -180,6 +180,70 @@ def _clamp_requested_tier(requested_tier: Optional[str], entitled_tier_slug: str
     }
 
 
+def _schema_object_for_validation(schema_config: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    if not isinstance(schema_config, dict):
+        return {}
+    inner = schema_config.get("schema")
+    if isinstance(inner, dict):
+        return inner
+    return schema_config
+
+
+def _format_json_schema_errors(errors: List[ValidationError]) -> List[str]:
+    formatted: List[str] = []
+    for err in errors[:20]:
+        path = "$"
+        for part in err.absolute_path:
+            if isinstance(part, int):
+                path += f"[{part}]"
+            else:
+                path += f".{part}"
+        formatted.append(f"{path}: {err.message}")
+    return formatted
+
+
+def _collect_stream_business_rule_errors(payload: Dict[str, Any]) -> List[str]:
+    errors: List[str] = []
+    solution = payload.get("solution")
+    if isinstance(solution, dict):
+        status = str(solution.get("status") or "").strip().lower()
+        steps = solution.get("steps")
+        step_count = len(steps) if isinstance(steps, list) else 0
+        if status == "ok" and step_count < 4:
+            errors.append("business_rule: solution.status='ok' requires at least 4 steps.")
+        if status == "needs_clarification" and step_count != 0:
+            errors.append("business_rule: solution.status='needs_clarification' requires steps=[].")
+
+    plot = payload.get("plot")
+    if isinstance(plot, dict) and plot.get("plot_specs", None) is not None:
+        errors.append("business_rule: plot.plot_specs must be null in SOLVE mode.")
+
+    verification = payload.get("verification")
+    if isinstance(verification, dict) and verification.get("requested") is False:
+        checks = verification.get("checks")
+        check_count = len(checks) if isinstance(checks, list) else 0
+        if verification.get("status") != "not_requested":
+            errors.append("business_rule: verification.status must be 'not_requested' when verification.requested=false.")
+        if check_count > 0:
+            errors.append("business_rule: verification.checks must be empty when verification.requested=false.")
+
+    return errors
+
+
+def _validate_stream_payload(payload: Dict[str, Any], schema_config: Optional[Dict[str, Any]]) -> List[str]:
+    schema = _schema_object_for_validation(schema_config)
+    if not schema:
+        return ["schema_error: missing schema configuration for stream validation."]
+
+    try:
+        validator = Draft202012Validator(schema)
+    except Exception as exc:
+        return [f"schema_error: invalid JSON schema: {exc}"]
+
+    schema_errors = _format_json_schema_errors(list(validator.iter_errors(payload)))
+    return schema_errors + _collect_stream_business_rule_errors(payload)
+
+
 def _detect_image_kind(raw: bytes) -> Optional[str]:
     guessed = filetype.guess(raw)
     if not guessed:
@@ -5092,6 +5156,7 @@ async def solve_v3_stream_endpoint(
         solver = get_solver_v3()
         full_content = ""
         openai_telemetry = {}
+        repair_attempted = False
         
         # Stage: Waiting for model...
         yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': 'Waiting for model...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
@@ -5191,105 +5256,205 @@ async def solve_v3_stream_endpoint(
 
             # Stage: Validating response...
             yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': 'Validating response...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
-            
+
             # Post-stream persistence and validation (Part E1)
-            final_data = {}
+            final_data: Dict[str, Any] = {}
             is_truncated = openai_telemetry.get("truncated", False)
-            print(f"[SOLVER_V3_STREAM] Stream finished. Content length: {len(full_content)} chars, truncated: {is_truncated}")
-            
-            def try_recover_json(content: str) -> dict:
-                """Attempt to recover truncated JSON by removing incomplete elements and closing brackets."""
-                import re
-                
-                # Step 1: Find the last complete key-value pair by removing trailing incomplete string
-                # Remove incomplete string at end (e.g., `"key": "incomplete text` without closing quote)
-                content = re.sub(r':\s*"[^"]*$', ': ""', content)  # Close incomplete string values
-                content = re.sub(r',\s*"[^"]*$', '', content)  # Remove trailing incomplete keys
-                content = re.sub(r',\s*$', '', content)  # Remove trailing comma
-                
-                # Step 2: Close all open brackets/braces
-                open_braces = content.count('{') - content.count('}')
-                open_brackets = content.count('[') - content.count(']')
-                content += '""' * (content.count('"') % 2)  # Close open quote if odd
-                content += ']' * max(0, open_brackets)
-                content += '}' * max(0, open_braces)
-                
-                return json.loads(content)
-            
-            try:
-                if not full_content.strip():
-                    raise ValueError("Empty content received from LLM")
-                
-                # Attempt direct parse first
+            raw_llm_output = full_content or ""
+            validation_errors: List[str] = []
+            schema_valid = False
+            repair_attempted = False
+
+            print(f"[SOLVER_V3_STREAM] Stream finished. Content length: {len(raw_llm_output)} chars, truncated: {is_truncated}")
+
+            if not raw_llm_output.strip():
+                validation_errors.append("parse_error: empty content received from LLM")
+            else:
                 try:
-                    final_data = json.loads(full_content)
-                    print(f"[SOLVER_V3_STREAM] ✅ JSON parsed directly")
+                    final_data = json.loads(raw_llm_output)
                 except json.JSONDecodeError as parse_err:
-                    print(f"[SOLVER_V3_STREAM] ⚠️ Direct parse failed: {parse_err}. Attempting recovery...")
-                    try:
-                        final_data = try_recover_json(full_content)
-                        print(f"[SOLVER_V3_STREAM] ✅ JSON recovered successfully")
-                        is_truncated = True  # Mark as truncated since we had to recover
-                    except Exception as recovery_err:
-                        print(f"[SOLVER_V3_STREAM] ⚠️ Recovery failed: {recovery_err}. Fallback to plain text.")
-                        # Emergency Fallback: Treat content as plain text final answer
-                        final_data = {
-                            "problem": {"original_text": problem_text, "normalized_text": problem_text},
-                            "classification": {"topic": "General", "difficulty": "Standard"},
-                            "steps": [],
-                            "final_answer": {"answer_text": full_content, "answer_latex": ""},
-                            "visuals": {"should_visualize": False, "plots": []},
-                            "quality": {"confidence": 0.5, "common_mistakes": []},
-                            "assumptions": [],
-                            "refusal": {"is_refusal": False},
-                            "_truncated": False
-                        }
-                        # We don't raise parse_err anymore, ensuring the user sees something
+                    validation_errors.append(
+                        f"parse_error: invalid JSON at line {parse_err.lineno}, col {parse_err.colno}: {parse_err.msg}"
+                    )
 
-                
-                if profile.mode == "minimal":
-                    from app.services.response_mapper import map_minimal_to_canonical
-                    try:
-                        final_data = map_minimal_to_canonical(final_data, problem_text)
-                    except Exception as e:
-                        print(f"[SOLVER_V3_STREAM] Warning: Mapping failed: {e}")
+            if final_data and not validation_errors:
+                validation_errors = _validate_stream_payload(final_data, profile.json_schema_content)
+                schema_valid = len(validation_errors) == 0
 
-                # Robustness: Strip deprecated fields that might cause schema validation failure
-                if "verification" in final_data:
-                    del final_data["verification"]
-                if "quick_check" in final_data:
-                    del final_data["quick_check"]
-                if "quality" in final_data and "next_practice" in final_data["quality"]:
-                    del final_data["quality"]["next_practice"]
+            if validation_errors:
+                repair_attempted = True
+                openai_telemetry["repair_attempted"] = True
+                openai_telemetry["repair_attempts"] = 1
+                try:
+                    repaired_data, repaired_text = await solver._repair_response(
+                        problem=problem_text,
+                        context=context,
+                        system_prompt=profile.system_prompt_content,
+                        invalid_data=final_data if final_data else raw_llm_output,
+                        validation_error="schema_validation_failed",
+                        error_list=validation_errors,
+                        json_schema_config={"schema": _schema_object_for_validation(profile.json_schema_content)},
+                        max_output_tokens=min(1200, max_output_tokens or 1200),
+                        requested_mode=requested_mode,
+                        trace=True,
+                        provider=stream_provider,
+                        model=stream_model,
+                    )
+                    if isinstance(repaired_text, str) and repaired_text.strip():
+                        raw_llm_output = repaired_text
+                    final_data = repaired_data if isinstance(repaired_data, dict) else {}
+                    validation_errors = (
+                        _validate_stream_payload(final_data, profile.json_schema_content)
+                        if final_data
+                        else ["repair_error: repair output was not a JSON object"]
+                    )
+                    schema_valid = len(validation_errors) == 0
+                    if schema_valid:
+                        openai_telemetry["repaired"] = True
+                except Exception as repair_err:
+                    validation_errors.append(f"repair_error: {repair_err}")
+                    schema_valid = False
 
-                final_data = solver.normalize_solver_response(final_data)
-                if is_truncated:
-                    final_data["_truncated"] = True
-                    final_data["_truncation_warning"] = "Response was truncated due to output token limit"
-                print(f"[SOLVER_V3_STREAM] ✅ Normalized. Steps: {len(final_data.get('steps', []))}")
-            except Exception as e:
-                # Refund on failure
-                subscription_service.refund_credits(session, sub_id, debit_cost, f"Stream Error: {str(e)}", request_id)
-                print(f"[SOLVER_V3_STREAM] ❌ All parsing failed. Error: {e}")
-                print(f"[SOLVER_V3_STREAM] Partial content (first 500 chars): {full_content[:500]}")
-                # Create minimal valid structure even on complete failure
-                final_data = {
-                    "problem": {"original_text": problem_text, "normalized_text": problem_text},
-                    "classification": {"topic": "Unknown", "difficulty": "Unknown"},
-                    "steps": [],
-                    "final_answer": {
-                        "answer_text": full_content if full_content and len(full_content.strip()) > 0 else "Solution generation failed - response was truncated or malformed", 
-                        "answer_latex": "" if full_content and len(full_content.strip()) > 0 else "\\text{Error}"
+            if not schema_valid:
+                error_message = "Unable to generate a valid structured solution. Please try again."
+                error_payload = {
+                    "problem": {"raw_text": problem_text, "normalized_text": problem_text},
+                    "solution": {
+                        "status": "error",
+                        "steps": [],
+                        "final_answer": {"value": error_message, "latex": "", "units": None},
+                        "key_idea": None,
+                        "notes": [],
                     },
-                    # verification removed
-                    "visuals": {"should_visualize": False, "plots": []},
-                    "quality": {"confidence": 0.0, "common_mistakes": [] },
-                    "assumptions": [],
-                    "refusal": {"is_refusal": False, "reason": "", "safe_alternative": ""},
-                    "_truncated": True,
-                    "_parse_error": str(e),
-                    "_raw_partial": full_content[:1000] if len(full_content) > 1000 else full_content
+                    "plot": {"plot_needed": False, "plot_reason": None, "plot_specs": None},
+                    "verification": {"requested": False, "status": "not_requested", "checks": []},
+                    "meta": {
+                        "provider": openai_telemetry.get("provider") or stream_provider,
+                        "model": openai_telemetry.get("model") or stream_model,
+                        "debug": {
+                            "schema_valid": False,
+                            "fallback_used": False,
+                            "validation_errors": validation_errors[:20],
+                        },
+                    },
+                    "_raw_llm_output": raw_llm_output[:20000],
                 }
+                placeholder_msg.content = error_message
+                placeholder_msg.structured_data = error_payload
+                openai_telemetry["schema_valid"] = False
+                openai_telemetry["validation_errors"] = validation_errors[:20]
+                openai_telemetry["raw_llm_output"] = raw_llm_output[:20000]
+                placeholder_msg.telemetry = openai_telemetry
+                placeholder_msg.tokens_used = openai_telemetry.get("total_tokens", 0)
+                session.commit()
+
+                if deduct_committed and debit_cost > 0:
+                    subscription_service.refund_credits(
+                        session,
+                        sub_id,
+                        debit_cost,
+                        "Stream schema validation failed",
+                        request_id,
+                    )
+
+                log_solve_trace({
+                    "request_id": request_id,
+                    "user_id": user_id,
+                    "seat_id": None,
+                    "plan_key": plan_key,
+                    "ui_goal": learning_mode,
+                    "ui_style": requested_mode,
+                    "resolved_profile_key": profile_key,
+                    "resolved_system_file_path": profile.system_asset_path or profile.system_relative_path,
+                    "resolved_schema_file_path": profile.schema_asset_path or profile.schema_relative_path,
+                    "schema_name": (openai_telemetry.get("openai_payload") or {}).get("response_format_schema_name"),
+                    "max_output_tokens_sent": effective_max_tokens,
+                    "model_sent": openai_telemetry.get("model") or stream_model,
+                    "cache_hit": False,
+                    "openai_calls_count": openai_telemetry.get("openai_calls_count", 0),
+                    "repair_attempted": repair_attempted,
+                    "prompt_tokens_estimate": None,
+                    "input_tokens": openai_telemetry.get("input_tokens"),
+                    "output_tokens": openai_telemetry.get("output_tokens"),
+                    "cached_tokens": openai_telemetry.get("cached_tokens"),
+                    "deduct_attempted": deduct_attempted,
+                    "deduct_committed": deduct_committed,
+                    "openai_payload": openai_telemetry.get("openai_payload"),
+                    "problem_text": problem_text,
+                    "error": "schema_validation_failed",
+                    "validation_errors": validation_errors[:20],
+                    "prompt_binding_id": binding_meta.get("binding_id"),
+                    "global_system_prompt_id": binding_meta.get("global_system_prompt_id"),
+                    "developer_prompt_id": binding_meta.get("developer_prompt_id"),
+                    "output_schema_id": binding_meta.get("output_schema_id"),
+                    "global_system_prompt_version": binding_meta.get("global_system_prompt_version"),
+                    "developer_prompt_version": binding_meta.get("developer_prompt_version"),
+                    "output_schema_version": binding_meta.get("output_schema_version"),
+                })
+                record_request_event(session, {
+                    "request_id": request_id,
+                    "user_id": user_id,
+                    "mode": requested_mode,
+                    "learning_mode": learning_mode,
+                    "subject": body.subject,
+                    "grade_level": user_obj.grade_level if user_obj else None,
+                    "model": openai_telemetry.get("model") or stream_model,
+                    "provider": openai_telemetry.get("provider") or stream_provider,
+                    "route": "solve_v3_stream",
+                    "tokens_in": openai_telemetry.get("input_tokens"),
+                    "tokens_out": openai_telemetry.get("output_tokens"),
+                    "tokens_total": openai_telemetry.get("total_tokens"),
+                    "cost_usd": _calc_cost(
+                        openai_telemetry.get("total_tokens"),
+                        openai_telemetry.get("model"),
+                        openai_telemetry.get("input_tokens"),
+                        openai_telemetry.get("output_tokens"),
+                    ),
+                    "latency_ms": openai_telemetry.get("latency_ms_total") or openai_telemetry.get("latency_ms_openai"),
+                    "status": "error",
+                    "error_type": "schema_validation_failed",
+                    "schema_valid": False,
+                    "verification_pass": False,
+                    "is_stream": True,
+                    "is_cached": False,
+                    "credit_deducted": deduct_committed,
+                    "credit_amount": debit_cost if deduct_committed else None,
+                    "ocr_used": action_req["has_ocr"],
+                    "voice_used": action_req["has_voice"],
+                    "response_truncated": bool(openai_telemetry.get("truncated") or is_truncated),
+                })
+                yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': False, 'error': {'code': 'schema_validation_failed', 'message': error_message, 'validation_errors': validation_errors[:20], 'request_id': request_id}})}\n\n"
+                return
+
+            if profile.mode == "minimal" and "solution" not in final_data:
+                from app.services.response_mapper import map_minimal_to_canonical
+                try:
+                    final_data = map_minimal_to_canonical(final_data, problem_text)
+                except Exception as e:
+                    print(f"[SOLVER_V3_STREAM] Warning: Mapping failed: {e}")
+
+            if isinstance(final_data.get("meta"), dict):
+                debug_meta = final_data["meta"].get("debug")
+                if not isinstance(debug_meta, dict):
+                    debug_meta = {}
+                debug_meta["schema_valid"] = True
+                debug_meta["validation_errors"] = []
+                final_data["meta"]["debug"] = debug_meta
+
+            # Normalize only legacy payload shapes; v2 structured payloads are already strict-schema validated.
+            if "solution" not in final_data:
+                final_data = solver.normalize_solver_response(final_data)
+
+            if is_truncated:
+                final_data["_truncated"] = True
+                final_data["_truncation_warning"] = "Response was truncated due to output token limit"
+            final_data["_raw_llm_output"] = raw_llm_output[:20000]
+            steps_count = 0
+            if isinstance(final_data.get("solution"), dict) and isinstance(final_data["solution"].get("steps"), list):
+                steps_count = len(final_data["solution"].get("steps") or [])
+            elif isinstance(final_data.get("steps"), list):
+                steps_count = len(final_data.get("steps") or [])
+            print(f"[SOLVER_V3_STREAM] Validated response. Steps: {steps_count}")
 
             if True: # Always attempt to save what we have
                 # Stage: Rendering plot...
@@ -5312,14 +5477,51 @@ async def solve_v3_stream_endpoint(
                 yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': 'Finalizing...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
 
                 # Update DB (Part E1)
-                # Safe extraction of answer_text (handles both dict and string final_answer)
+                # Safe extraction of answer_text (supports both legacy and v2 payload shapes)
                 final_answer_obj = final_data.get("final_answer", {})
+                if not final_answer_obj and isinstance(final_data.get("solution"), dict):
+                    final_answer_obj = final_data.get("solution", {}).get("final_answer", {})
                 if isinstance(final_answer_obj, dict):
-                    answer_text = final_answer_obj.get("answer_text", "Solution complete")
+                    answer_text = (
+                        final_answer_obj.get("answer_text")
+                        or final_answer_obj.get("value")
+                        or ""
+                    ).strip()
+                    if not answer_text and (final_answer_obj.get("answer_latex") or final_answer_obj.get("latex")):
+                        answer_text = str(
+                            final_answer_obj.get("answer_latex") or final_answer_obj.get("latex") or ""
+                        ).strip()
                 else:
-                    answer_text = str(final_answer_obj) if final_answer_obj else "Solution complete"
+                    answer_text = str(final_answer_obj).strip() if final_answer_obj else ""
+
+                # Defensive fallback: never persist an empty assistant content.
+                if not answer_text:
+                    hints = final_data.get("hints") or final_data.get(" hints")
+                    if isinstance(hints, list):
+                        for hint in reversed(hints):
+                            if isinstance(hint, dict):
+                                hint_value = str(hint.get("value", "")).strip()
+                                if hint_value:
+                                    answer_text = hint_value
+                                    break
+                if not answer_text:
+                    answer_text = (raw_llm_output or "").strip()
+                if not answer_text:
+                    answer_text = "Solution complete"
+
+                # Keep structured payload consistent with fallback answer text.
+                if isinstance(final_data.get("final_answer"), dict) and not final_data["final_answer"].get("answer_text"):
+                    final_data["final_answer"]["answer_text"] = answer_text
+                if (
+                    isinstance(final_data.get("solution"), dict)
+                    and isinstance(final_data["solution"].get("final_answer"), dict)
+                    and not final_data["solution"]["final_answer"].get("value")
+                ):
+                    final_data["solution"]["final_answer"]["value"] = answer_text
+
                 placeholder_msg.content = answer_text
                 placeholder_msg.structured_data = final_data
+                openai_telemetry["schema_valid"] = schema_valid
                 placeholder_msg.telemetry = openai_telemetry
                 placeholder_msg.tokens_used = openai_telemetry.get("total_tokens", 0)
                 
@@ -5369,7 +5571,7 @@ async def solve_v3_stream_endpoint(
                 "model_sent": openai_telemetry.get("model") or stream_model,
                 "cache_hit": False,
                 "openai_calls_count": openai_telemetry.get("openai_calls_count", 0),
-                "repair_attempted": False,
+                "repair_attempted": repair_attempted,
                 "prompt_tokens_estimate": None,
                 "input_tokens": openai_telemetry.get("input_tokens"),
                 "output_tokens": openai_telemetry.get("output_tokens"),
@@ -5412,7 +5614,7 @@ async def solve_v3_stream_endpoint(
                 "latency_ms": openai_telemetry.get("latency_ms_total") or openai_telemetry.get("latency_ms_openai"),
                 "status": "ok",
                 "error_type": None,
-                "schema_valid": not final_data.get("_parse_error"),
+                "schema_valid": schema_valid,
                 "verification_pass": None,
                 "is_stream": True,
                 "is_cached": False,
@@ -5451,7 +5653,7 @@ async def solve_v3_stream_endpoint(
                 "model_sent": openai_telemetry.get("model") or stream_model,
                 "cache_hit": False,
                 "openai_calls_count": openai_telemetry.get("openai_calls_count", 0),
-                "repair_attempted": False,
+                "repair_attempted": repair_attempted,
                 "prompt_tokens_estimate": None,
                 "input_tokens": openai_telemetry.get("input_tokens"),
                 "output_tokens": openai_telemetry.get("output_tokens"),

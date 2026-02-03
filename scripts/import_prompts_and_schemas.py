@@ -93,7 +93,7 @@ def run_import(source_dir: Path, updated_by: str = "import_script"):
         # Bindings
         bindings = [
             (PromptTierEnum.FREE, PromptModeEnum.SOLVE, "global_system_prompt_v1", "solve_free_minimal_v1", "youask_math_solver_response_v1"),
-            (PromptTierEnum.STANDARD, PromptModeEnum.SOLVE, "global_system_prompt_v1", "solve_standard_moderate_v1", "youask_math_solver_standard_solve_v1"),
+            (PromptTierEnum.STANDARD, PromptModeEnum.SOLVE, "global_system_prompt_v1", "solve_standard_moderate_v2", "youask_math_solver_standard_solve_v2"),
             (PromptTierEnum.RESEARCH, PromptModeEnum.SOLVE, "global_system_prompt_v1", "solve_research_v1", "youask_math_solver_research_solve_v1"),
             (PromptTierEnum.FREE, PromptModeEnum.VERIFY, "global_system_prompt_v1", "verify_v1", "youask_math_solver_verify_v1"),
             (PromptTierEnum.STANDARD, PromptModeEnum.VERIFY, "global_system_prompt_v1", "verify_v1", "youask_math_solver_verify_v1"),

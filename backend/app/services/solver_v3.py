@@ -948,6 +948,7 @@ class SolverV3:
         requested_mode: str = "minimal",
         trace=False,
         provider: str = "openai",
+        model: Optional[str] = None,
     ):
         if trace:
              print(f"[SOLVER_V3] Attempting repair...")
@@ -990,7 +991,7 @@ class SolverV3:
             {"role": "user", "content": repair_prompt},
         ]
 
-        llm_client = self._llm_manager.get_client(provider)
+        llm_client = self.client_manager.get_client(provider)
         llm_response = await llm_client.generate(
             messages=messages,
             system_prompt=system_for_provider,
@@ -1000,6 +1001,7 @@ class SolverV3:
             temperature=None,
             stream=False,
             request_id=None,
+            model=model if provider == "ollama" else None,
         )
 
         if not llm_response.content:

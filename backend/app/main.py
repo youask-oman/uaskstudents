@@ -105,10 +105,17 @@ def on_startup():
             subscription_service.ensure_plans_exist(session)
         except Exception as e:
             logging.error(f"Failed to initialize plans: {e}")
+            session.rollback()
         try:
             prompt_registry_service.ensure_ocr_extract_prompts(session, updated_by="startup")
         except Exception as e:
             logging.error(f"Failed to seed OCR extract prompts: {e}")
+            session.rollback()
+        try:
+            prompt_registry_service.ensure_standard_solve_binding(session, updated_by="startup")
+        except Exception as e:
+            logging.error(f"Failed to enforce STANDARD/SOLVE binding defaults: {e}")
+            session.rollback()
         try:
             report = prompt_registry_service.audit_active_bindings(session)
             if report.get("ok"):
@@ -126,6 +133,7 @@ def on_startup():
                     logging.warning("Prompt binding issue: %s", issue)
         except Exception as e:
             logging.error(f"Failed to audit prompt bindings: {e}")
+            session.rollback()
 
     manager = get_llm_manager()
     if manager.primary_provider == "ollama":
