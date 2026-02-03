@@ -39,7 +39,7 @@ def _seed_base_system_and_schema(session: Session, schema_id: str) -> None:
 
 
 def test_resolve_prompt_bundle_standard_solve_prefers_standard_template(session: Session):
-    _seed_base_system_and_schema(session, "youask_math_solver_standard_solve_v1")
+    _seed_base_system_and_schema(session, "youask_math_solver_standard_solve_extreme_v1")
     prompt_registry_service.update_prompt(
         session=session,
         prompt_id="solve_standard_v1",
@@ -55,7 +55,7 @@ def test_resolve_prompt_bundle_standard_solve_prefers_standard_template(session:
         PromptModeEnum.SOLVE,
         "global_system_prompt_v1",
         "solve_standard_v1",
-        "youask_math_solver_standard_solve_v1",
+        "youask_math_solver_standard_solve_extreme_v1",
         "tester",
     )
 
@@ -67,7 +67,7 @@ def test_resolve_prompt_bundle_standard_solve_prefers_standard_template(session:
     )
     assert bundle.developer_prompt_id == "solve_standard_v1"
     assert bundle.developer_prompt_content == "STANDARD_DEVELOPER_PROMPT"
-    assert bundle.output_schema_id == "youask_math_solver_standard_solve_v1"
+    assert bundle.output_schema_id == "youask_math_solver_standard_solve_extreme_v1"
 
 
 def test_resolve_prompt_bundle_research_solve_uses_research_ids(session: Session):
@@ -109,7 +109,7 @@ def test_resolve_prompt_bundle_missing_binding_returns_structured_error(session:
 
 
 def test_resolve_prompt_bundle_solve_requires_tier_specific_developer_template(session: Session):
-    _seed_base_system_and_schema(session, "youask_math_solver_standard_solve_v1")
+    _seed_base_system_and_schema(session, "youask_math_solver_standard_solve_extreme_v1")
     prompt_registry_service.update_prompt(
         session=session,
         prompt_id="solve_standard_v1",
@@ -125,7 +125,7 @@ def test_resolve_prompt_bundle_solve_requires_tier_specific_developer_template(s
         PromptModeEnum.SOLVE,
         "global_system_prompt_v1",
         "solve_standard_v1",
-        "youask_math_solver_standard_solve_v1",
+        "youask_math_solver_standard_solve_extreme_v1",
         "tester",
     )
 

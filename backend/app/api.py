@@ -191,7 +191,7 @@ def _schema_object_for_validation(schema_config: Optional[Dict[str, Any]]) -> Di
 
 def _format_json_schema_errors(errors: List[ValidationError]) -> List[str]:
     formatted: List[str] = []
-    for err in errors[:20]:
+    for err in errors[:10]:
         path = "$"
         for part in err.absolute_path:
             if isinstance(part, int):
@@ -215,16 +215,23 @@ def _collect_stream_business_rule_errors(payload: Dict[str, Any]) -> List[str]:
             errors.append("business_rule: solution.status='needs_clarification' requires steps=[].")
 
     plot = payload.get("plot")
-    if isinstance(plot, dict) and plot.get("plot_specs", None) is not None:
-        errors.append("business_rule: plot.plot_specs must be null in SOLVE mode.")
+    if isinstance(plot, dict):
+        plot_needed = plot.get("plot_needed")
+        plot_specs = plot.get("plot_specs")
+        if plot_needed is True:
+            if not isinstance(plot_specs, list) or len(plot_specs) < 1:
+                errors.append("business_rule: plot.plot_needed=true requires at least one plot spec.")
+        if plot_needed is False and isinstance(plot_specs, list) and len(plot_specs) > 0:
+            errors.append("business_rule: plot.plot_needed=false requires plot_specs to be empty or null.")
 
     verification = payload.get("verification")
-    if isinstance(verification, dict) and verification.get("requested") is False:
+    if isinstance(verification, dict):
+        requested = verification.get("requested")
         checks = verification.get("checks")
         check_count = len(checks) if isinstance(checks, list) else 0
-        if verification.get("status") != "not_requested":
-            errors.append("business_rule: verification.status must be 'not_requested' when verification.requested=false.")
-        if check_count > 0:
+        if requested is True and check_count < 3:
+            errors.append("business_rule: verification.requested=true requires at least 3 checks.")
+        if requested is False and check_count > 0:
             errors.append("business_rule: verification.checks must be empty when verification.requested=false.")
 
     return errors
@@ -242,6 +249,132 @@ def _validate_stream_payload(payload: Dict[str, Any], schema_config: Optional[Di
 
     schema_errors = _format_json_schema_errors(list(validator.iter_errors(payload)))
     return schema_errors + _collect_stream_business_rule_errors(payload)
+
+
+def _build_schema_valid_stream_error_payload(
+    *,
+    problem_text: str,
+    provider: str,
+    model: str,
+    tier: str,
+    mode: str,
+    prompt_id: Optional[str],
+    validation_errors: List[str],
+    schema_config: Optional[Dict[str, Any]],
+) -> Dict[str, Any]:
+    message = "Unable to generate a valid structured solution. Please try again."
+    errors_top = [str(err) for err in (validation_errors or [])[:10]]
+    evidence = [r"\text{validation failed}"]
+    schema_obj = _schema_object_for_validation(schema_config)
+    schema_version = "v1"
+    response_type = "standard_solve_extreme"
+    prompt_const = prompt_id or "solve_standard_extreme_detailed_v1"
+    if isinstance(schema_obj, dict):
+        schema_version = (
+            (schema_obj.get("properties") or {}).get("schema_version", {}).get("const")
+            or schema_version
+        )
+        response_type = (
+            (schema_obj.get("properties") or {}).get("response_type", {}).get("const")
+            or response_type
+        )
+        prompt_const = (
+            (
+                ((schema_obj.get("properties") or {}).get("meta", {}).get("properties") or {})
+                .get("debug", {})
+                .get("properties", {})
+                .get("prompt_id", {})
+            ).get("const")
+            or prompt_const
+        )
+    return {
+        "schema_version": schema_version,
+        "response_type": response_type,
+        "question_id": None,
+        "tier": (tier or "STANDARD").upper(),
+        "mode": (mode or "SOLVE").upper(),
+        "language": {
+            "response_language": "en",
+            "english_only_enforced": True,
+            "input_language_hint": "en",
+        },
+        "question": {
+            "raw_text": (problem_text or "N/A").strip() or "N/A",
+            "normalized_text": (problem_text or "N/A").strip() or "N/A",
+            "assumptions": [],
+            "constraints": [],
+        },
+        "solution": {
+            "status": "error",
+            "steps": [],
+            "final_answer": {
+                "value": message,
+                "latex": r"\text{Unable to generate a valid structured solution. Please try again.}",
+                "units": None,
+            },
+            "key_idea": None,
+            "notes": ["Automatic schema repair failed."],
+        },
+        "plot": {
+            "plot_needed": True,
+            "plot_reason": "Validation fallback placeholder plot.",
+            "plot_specs": [
+                {
+                    "plot_id": "fallback_plot",
+                    "library": "plotly",
+                    "spec": {
+                        "data": [{"type": "scatter", "mode": "lines", "x": [0, 1], "y": [0, 0]}],
+                        "layout": {"title": "Fallback plot"},
+                    },
+                    "attach_to_step_id": None,
+                }
+            ],
+        },
+        "verification": {
+            "requested": True,
+            "status": "error",
+            "checks": [
+                {
+                    "check_id": "domain_check",
+                    "verdict": "warn",
+                    "message": "Domain check unavailable because schema validation failed.",
+                    "related_step_id": None,
+                    "evidence_math": evidence,
+                },
+                {
+                    "check_id": "algebra_check",
+                    "verdict": "warn",
+                    "message": "Algebraic transformation check unavailable because schema validation failed.",
+                    "related_step_id": None,
+                    "evidence_math": evidence,
+                },
+                {
+                    "check_id": "substitution_check",
+                    "verdict": "warn",
+                    "message": "Substitution check unavailable because schema validation failed.",
+                    "related_step_id": None,
+                    "evidence_math": evidence,
+                },
+            ],
+        },
+        "meta": {
+            "provider": provider or "ollama",
+            "model": model or "unknown",
+            "timestamps": {
+                "started_at": None,
+                "completed_at": datetime.utcnow().isoformat() + "Z",
+            },
+            "latency_ms": None,
+            "fingerprint": {"normalized_sha256": ""},
+            "cache": {"hit": False, "type": "none", "source_question_id": None},
+            "debug": {
+                "prompt_id": prompt_const,
+                "schema_valid": False,
+                "fallback_used": True,
+                "validation_errors": errors_top,
+            },
+        },
+    }
 
 
 def _detect_image_kind(raw: bytes) -> Optional[str]:
@@ -1288,7 +1421,7 @@ OCR_V5_SCHEMA = {
 
 EXTRACT_MODEL = os.getenv("EXTRACT_MODEL", "gpt-5-mini")
 EXTRACT_MAX_MB = int(os.getenv("EXTRACT_MAX_MB", "10"))
-EXTRACT_CACHE_REV = os.getenv("EXTRACT_CACHE_REV", "2026-02-03-pix2txt-crop-v2")
+EXTRACT_CACHE_REV = os.getenv("EXTRACT_CACHE_REV", "2026-02-03-pix2txt-latex-normalize-v3")
 
 EXTRACT_SYSTEM_PROMPT = (
     "You are a robust Math JSON OCR EXTRACTOR.\n\n"
@@ -1541,6 +1674,7 @@ def _sanitize_trimmed_keys(value: Any) -> Tuple[Any, bool]:
 
 _CJK_CHAR_RE = re.compile(r"[\u3400-\u4DBF\u4E00-\u9FFF]")
 _CJK_RUN_RE = re.compile(r"(?:(?<=\s)|^)([\u3400-\u4DBF\u4E00-\u9FFF]{1,3})(?=(?:\s|[0-9A-Za-z\\(\\[\\{]|$))")
+_LATEX_STYLE_MACRO_RE = re.compile(r"\\(boldsymbol|mathbf|mathbb)\s*\{([^{}]+)\}")
 
 
 def _strip_likely_cjk_ocr_noise(text: str) -> str:
@@ -1568,6 +1702,70 @@ def _strip_likely_cjk_ocr_noise(text: str) -> str:
     return cleaned.strip()
 
 
+def _repair_root_notation_ocr_noise(text: str) -> str:
+    s = text
+    # Common Pix2Text corruption for indexed roots: "oot4 \of{...}" / "root4 of {...}".
+    s = re.sub(r"(?i)\b(?:root|oot)\s*(\d+)\s*\\of\s*\{", r"\\sqrt[\1]{", s)
+    s = re.sub(r"(?i)\b(?:root|oot)\s*(\d+)\s*of\s*\{", r"\\sqrt[\1]{", s)
+    s = re.sub(r"(?i)\\root\s*(\d+)\s*\\of\s*\{", r"\\sqrt[\1]{", s)
+    s = re.sub(r"(?i)(\\sqrt(?:\[[^\]]+\])?)\s*\\of\s*\{", r"\1{", s)
+    # Last-resort cleanup for stray "\of{...}" fragments.
+    s = re.sub(r"\\of\s*\{", "{", s)
+    return s
+
+
+def _unwrap_latex_style_macros(text: str) -> str:
+    s = text
+    for _ in range(4):
+        replaced = False
+
+        def _replace(match: re.Match[str]) -> str:
+            nonlocal replaced
+            replaced = True
+            macro = match.group(1)
+            inner = (match.group(2) or "").strip()
+            if macro == "mathbb" and inner in {"R", "N", "Z", "Q", "C"}:
+                return f"\\mathbb{{{inner}}}"
+            return inner
+
+        next_s = _LATEX_STYLE_MACRO_RE.sub(_replace, s)
+        s = next_s
+        if not replaced:
+            break
+    return s
+
+
+def _normalize_math_ocr_text(text: str) -> str:
+    if not text:
+        return ""
+    s = (
+        text.replace("\r\n", "\n")
+        .replace("\r", "\n")
+        .replace("âˆ’", "-")
+        .replace("−", "-")
+        .replace("—", "-")
+        .replace("–", "-")
+        .replace("÷", "\\div ")
+        .replace("×", "\\times ")
+        .replace("∗", "*")
+    )
+    s = _repair_root_notation_ocr_noise(s)
+    s = _unwrap_latex_style_macros(s)
+    s = re.sub(r"\\bf\s+([A-Za-z0-9])", r"\\mathbf{\1}", s)
+    s = re.sub(r"\\\s+([A-Za-z])", r"\\\1", s)
+    s = re.sub(r"[ \t]{2,}", " ", s)
+    s = re.sub(r"\n{3,}", "\n\n", s)
+    return s.strip()
+
+
+def _looks_like_latex_math(text: str) -> bool:
+    if not text:
+        return False
+    if any(token in text for token in ("\\[", "\\]", "\\(", "\\)", "$$", "$")):
+        return True
+    return bool(re.search(r"\\[A-Za-z]+|[=+\-*/^_]", text))
+
+
 def _normalize_extract_payload_shape(payload: Dict[str, Any], page_hint: int = 0) -> Dict[str, Any]:
     """
     Normalize legacy extract payload variants into ExtractQuestionsResponse schema shape.
@@ -1585,6 +1783,7 @@ def _normalize_extract_payload_shape(payload: Dict[str, Any], page_hint: int = 0
         if qtype not in {"word_problem", "equation", "multiple_choice", "graph", "table", "geometry", "other"}:
             qtype = "other"
         text = _strip_likely_cjk_ocr_noise(str(q.get("text") or "").strip())
+        text = _normalize_math_ocr_text(text)
         if not text:
             continue
         page = q.get("page")
@@ -1592,9 +1791,11 @@ def _normalize_extract_payload_shape(payload: Dict[str, Any], page_hint: int = 0
             page = page_hint
         latex = q.get("latex")
         if isinstance(latex, str):
-            latex = _strip_likely_cjk_ocr_noise(latex.strip()) or None
+            latex = _normalize_math_ocr_text(_strip_likely_cjk_ocr_noise(latex.strip())) or None
         else:
             latex = None
+        if latex is None and _looks_like_latex_math(text):
+            latex = text
         confidence = q.get("confidence")
         if isinstance(confidence, (int, float)):
             confidence = max(0.0, min(1.0, float(confidence)))
@@ -1835,6 +2036,12 @@ async def _call_extract_questions(
         if not text:
             return True
         if len(text) < 16:
+            return True
+        if re.search(r"(?i)\boot\s*\d+\s*\\?of\s*\{", text):
+            return True
+        if text.count("\\of{") >= 1:
+            return True
+        if text.count("\\boldsymbol{") >= 3:
             return True
         brace_pairs = text.count("{}")
         slash_count = text.count("\\")
@@ -5317,32 +5524,21 @@ async def solve_v3_stream_endpoint(
 
             if not schema_valid:
                 error_message = "Unable to generate a valid structured solution. Please try again."
-                error_payload = {
-                    "problem": {"raw_text": problem_text, "normalized_text": problem_text},
-                    "solution": {
-                        "status": "error",
-                        "steps": [],
-                        "final_answer": {"value": error_message, "latex": "", "units": None},
-                        "key_idea": None,
-                        "notes": [],
-                    },
-                    "plot": {"plot_needed": False, "plot_reason": None, "plot_specs": None},
-                    "verification": {"requested": False, "status": "not_requested", "checks": []},
-                    "meta": {
-                        "provider": openai_telemetry.get("provider") or stream_provider,
-                        "model": openai_telemetry.get("model") or stream_model,
-                        "debug": {
-                            "schema_valid": False,
-                            "fallback_used": False,
-                            "validation_errors": validation_errors[:20],
-                        },
-                    },
-                    "_raw_llm_output": raw_llm_output[:20000],
-                }
+                error_payload = _build_schema_valid_stream_error_payload(
+                    problem_text=problem_text,
+                    provider=openai_telemetry.get("provider") or stream_provider,
+                    model=openai_telemetry.get("model") or stream_model,
+                    tier=effective_tier,
+                    mode="SOLVE",
+                    prompt_id=binding_meta.get("developer_prompt_id"),
+                    validation_errors=validation_errors,
+                    schema_config=profile.json_schema_content,
+                )
+                error_payload["_raw_llm_output"] = raw_llm_output[:20000]
                 placeholder_msg.content = error_message
                 placeholder_msg.structured_data = error_payload
                 openai_telemetry["schema_valid"] = False
-                openai_telemetry["validation_errors"] = validation_errors[:20]
+                openai_telemetry["validation_errors"] = validation_errors[:10]
                 openai_telemetry["raw_llm_output"] = raw_llm_output[:20000]
                 placeholder_msg.telemetry = openai_telemetry
                 placeholder_msg.tokens_used = openai_telemetry.get("total_tokens", 0)
@@ -5382,7 +5578,7 @@ async def solve_v3_stream_endpoint(
                     "openai_payload": openai_telemetry.get("openai_payload"),
                     "problem_text": problem_text,
                     "error": "schema_validation_failed",
-                    "validation_errors": validation_errors[:20],
+                    "validation_errors": validation_errors[:10],
                     "prompt_binding_id": binding_meta.get("binding_id"),
                     "global_system_prompt_id": binding_meta.get("global_system_prompt_id"),
                     "developer_prompt_id": binding_meta.get("developer_prompt_id"),
@@ -5423,7 +5619,7 @@ async def solve_v3_stream_endpoint(
                     "voice_used": action_req["has_voice"],
                     "response_truncated": bool(openai_telemetry.get("truncated") or is_truncated),
                 })
-                yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': False, 'error': {'code': 'schema_validation_failed', 'message': error_message, 'validation_errors': validation_errors[:20], 'request_id': request_id}})}\n\n"
+                yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': False, 'error': {'code': 'schema_validation_failed', 'message': error_message, 'validation_errors': validation_errors[:10], 'request_id': request_id}})}\n\n"
                 return
 
             if profile.mode == "minimal" and "solution" not in final_data:

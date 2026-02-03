@@ -16,18 +16,19 @@ class FakeResponse:
 
 class FakeClient:
     async def generate(self, **kwargs):
-        system = kwargs["messages"][0]["content"]
-        if "DEV_FREE_SOLVE" in system:
+        messages = kwargs.get("messages") or []
+        combined = " ".join(str(msg.get("content", "")) for msg in messages if isinstance(msg, dict))
+        if "DEV_FREE_SOLVE" in combined:
             payload = {"answer_text": "3", "steps": []}
-        elif "DEV_STANDARD_SOLVE" in system:
+        elif "DEV_STANDARD_SOLVE" in combined:
             payload = {"answer_text": "x=7", "steps": [{"id": 1}]}
-        elif "DEV_RESEARCH_SOLVE" in system:
+        elif "DEV_RESEARCH_SOLVE" in combined:
             payload = {"answer_text": "complex", "steps": [{"id": 1}, {"id": 2}]}
-        elif "DEV_VERIFY" in system:
+        elif "DEV_VERIFY" in combined:
             payload = {"is_valid": True, "checks": ["ok"]}
-        elif "DEV_PLOT_TRIGGER" in system:
+        elif "DEV_PLOT_TRIGGER" in combined:
             payload = {"should_plot": True, "reason": "graphable"}
-        elif "DEV_PLOT_SPEC" in system:
+        elif "DEV_PLOT_SPEC" in combined:
             payload = {"attach_to_step_id": 1, "data": [], "layout": {}}
         else:
             payload = {"unknown": True}
@@ -72,21 +73,21 @@ def session(tmp_path):
 def seed_registry(session: Session):
     prompt_registry_service.update_prompt(session, "global_system_prompt_v1", "GLOBAL", None, PromptModeEnum.SOLVE, PromptRoleEnum.SYSTEM, "test")
     prompt_registry_service.update_prompt(session, "solve_free_minimal_v1", "DEV_FREE_SOLVE", PromptTierEnum.FREE, PromptModeEnum.SOLVE, PromptRoleEnum.DEVELOPER, "test")
-    prompt_registry_service.update_prompt(session, "solve_standard_moderate_v1", "DEV_STANDARD_SOLVE", PromptTierEnum.STANDARD, PromptModeEnum.SOLVE, PromptRoleEnum.DEVELOPER, "test")
+    prompt_registry_service.update_prompt(session, "solve_standard_extreme_detailed_v1", "DEV_STANDARD_SOLVE", PromptTierEnum.STANDARD, PromptModeEnum.SOLVE, PromptRoleEnum.DEVELOPER, "test")
     prompt_registry_service.update_prompt(session, "solve_research_v1", "DEV_RESEARCH_SOLVE", PromptTierEnum.RESEARCH, PromptModeEnum.SOLVE, PromptRoleEnum.DEVELOPER, "test")
     prompt_registry_service.update_prompt(session, "verify_v1", "DEV_VERIFY", None, PromptModeEnum.VERIFY, PromptRoleEnum.DEVELOPER, "test")
     prompt_registry_service.update_prompt(session, "plot_trigger_v1", "DEV_PLOT_TRIGGER", None, PromptModeEnum.PLOT_TRIGGER, PromptRoleEnum.DEVELOPER, "test")
     prompt_registry_service.update_prompt(session, "plot_spec_v1", "DEV_PLOT_SPEC", None, PromptModeEnum.PLOT_SPEC, PromptRoleEnum.DEVELOPER, "test")
 
     prompt_registry_service.update_schema(session, "youask_math_solver_response_v1", {"type": "object", "required": ["answer_text", "steps"], "properties": {"answer_text": {"type": "string"}, "steps": {"type": "array"}}}, "test")
-    prompt_registry_service.update_schema(session, "youask_math_solver_standard_solve_v1", {"type": "object", "required": ["answer_text", "steps"], "properties": {"answer_text": {"type": "string"}, "steps": {"type": "array"}}}, "test")
+    prompt_registry_service.update_schema(session, "youask_math_solver_standard_solve_extreme_v1", {"type": "object", "required": ["answer_text", "steps"], "properties": {"answer_text": {"type": "string"}, "steps": {"type": "array"}}}, "test")
     prompt_registry_service.update_schema(session, "youask_math_solver_research_solve_v1", {"type": "object", "required": ["answer_text", "steps"], "properties": {"answer_text": {"type": "string"}, "steps": {"type": "array"}}}, "test")
     prompt_registry_service.update_schema(session, "youask_math_solver_verify_v1", {"type": "object", "required": ["is_valid", "checks"], "properties": {"is_valid": {"type": "boolean"}, "checks": {"type": "array"}}}, "test")
     prompt_registry_service.update_schema(session, "youask_plot_trigger_v1", {"type": "object", "required": ["should_plot", "reason"], "properties": {"should_plot": {"type": "boolean"}, "reason": {"type": "string"}}}, "test")
     prompt_registry_service.update_schema(session, "youask_plot_spec_v1", {"type": "object", "required": ["attach_to_step_id", "data", "layout"], "properties": {"attach_to_step_id": {"type": "integer"}, "data": {"type": "array"}, "layout": {"type": "object"}}}, "test")
 
     prompt_registry_service.activate_binding(session, PromptTierEnum.FREE, PromptModeEnum.SOLVE, "global_system_prompt_v1", "solve_free_minimal_v1", "youask_math_solver_response_v1", "test")
-    prompt_registry_service.activate_binding(session, PromptTierEnum.STANDARD, PromptModeEnum.SOLVE, "global_system_prompt_v1", "solve_standard_moderate_v1", "youask_math_solver_standard_solve_v1", "test")
+    prompt_registry_service.activate_binding(session, PromptTierEnum.STANDARD, PromptModeEnum.SOLVE, "global_system_prompt_v1", "solve_standard_extreme_detailed_v1", "youask_math_solver_standard_solve_extreme_v1", "test")
     prompt_registry_service.activate_binding(session, PromptTierEnum.RESEARCH, PromptModeEnum.SOLVE, "global_system_prompt_v1", "solve_research_v1", "youask_math_solver_research_solve_v1", "test")
     prompt_registry_service.activate_binding(session, PromptTierEnum.FREE, PromptModeEnum.VERIFY, "global_system_prompt_v1", "verify_v1", "youask_math_solver_verify_v1", "test")
     prompt_registry_service.activate_binding(session, PromptTierEnum.FREE, PromptModeEnum.PLOT_TRIGGER, "global_system_prompt_v1", "plot_trigger_v1", "youask_plot_trigger_v1", "test")

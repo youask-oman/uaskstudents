@@ -98,6 +98,14 @@ export interface StepRow {
   mathLatex?: string;
 }
 
+export interface VerificationCheck {
+  checkId: string;
+  verdict: "pass" | "warn" | "fail" | "unknown";
+  message: string;
+  relatedStepId?: number | null;
+  evidenceMath?: string;
+}
+
 export interface PlotPoint {
   x: number;
   y: number;
@@ -116,6 +124,7 @@ export interface MathSolutionPayload {
   steps: StepRow[];
   result?: string;
   plots?: ChartPayload[];
+  verificationChecks?: VerificationCheck[];
 }
 
 export type NormalizedContentItem =

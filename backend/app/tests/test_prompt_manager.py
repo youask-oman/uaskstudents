@@ -39,14 +39,14 @@ def seed_schema(session, schema_id):
 def test_prompt_selection_map(session):
     seed_prompt(session, "global_system_prompt_v1", None, PromptModeEnum.SOLVE, PromptRoleEnum.SYSTEM, "sys")
     seed_prompt(session, "solve_free_minimal_v1", PromptTierEnum.FREE, PromptModeEnum.SOLVE, PromptRoleEnum.DEVELOPER, "free")
-    seed_prompt(session, "solve_standard_moderate_v1", PromptTierEnum.STANDARD, PromptModeEnum.SOLVE, PromptRoleEnum.DEVELOPER, "std")
+    seed_prompt(session, "solve_standard_extreme_detailed_v1", PromptTierEnum.STANDARD, PromptModeEnum.SOLVE, PromptRoleEnum.DEVELOPER, "std")
     seed_prompt(session, "solve_research_v1", PromptTierEnum.RESEARCH, PromptModeEnum.SOLVE, PromptRoleEnum.DEVELOPER, "res")
     seed_prompt(session, "verify_v1", None, PromptModeEnum.VERIFY, PromptRoleEnum.DEVELOPER, "verify")
     seed_prompt(session, "plot_trigger_v1", None, PromptModeEnum.PLOT_TRIGGER, PromptRoleEnum.DEVELOPER, "plot_trigger")
     seed_prompt(session, "plot_spec_v1", None, PromptModeEnum.PLOT_SPEC, PromptRoleEnum.DEVELOPER, "plot_spec")
 
     seed_schema(session, "youask_math_solver_response_v1")
-    seed_schema(session, "youask_math_solver_standard_solve_v1")
+    seed_schema(session, "youask_math_solver_standard_solve_extreme_v1")
     seed_schema(session, "youask_math_solver_research_solve_v1")
     seed_schema(session, "youask_math_solver_verify_v1")
     seed_schema(session, "youask_plot_trigger_v1")
@@ -56,7 +56,13 @@ def test_prompt_selection_map(session):
         session, PromptTierEnum.FREE, PromptModeEnum.SOLVE, "global_system_prompt_v1", "solve_free_minimal_v1", "youask_math_solver_response_v1", "tester"
     )
     prompt_registry_service.activate_binding(
-        session, PromptTierEnum.STANDARD, PromptModeEnum.SOLVE, "global_system_prompt_v1", "solve_standard_moderate_v1", "youask_math_solver_standard_solve_v1", "tester"
+        session,
+        PromptTierEnum.STANDARD,
+        PromptModeEnum.SOLVE,
+        "global_system_prompt_v1",
+        "solve_standard_extreme_detailed_v1",
+        "youask_math_solver_standard_solve_extreme_v1",
+        "tester",
     )
     prompt_registry_service.activate_binding(
         session, PromptTierEnum.RESEARCH, PromptModeEnum.SOLVE, "global_system_prompt_v1", "solve_research_v1", "youask_math_solver_research_solve_v1", "tester"

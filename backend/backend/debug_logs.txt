@@ -1802,3 +1802,35 @@ Prompt binding integrity OK: active_bindings=12 active_pairs=12
 HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
 HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
 HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+extract_questions applying crop: x=95 y=773 w=591 h=178 image=1091x1139
+extract_questions input metrics: size=591x178 stddev=48.94 white=0.944
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmpjry6yh8o.png
+Initializing Local Pix2Text engine...
+Use DocLayout-YOLO model for Layout Analysis: C:\Users\loaia\AppData\Roaming\pix2text\1.1\layout-docyolo\doclayout_yolo_docstructbench_imgsz1024.pt
+use model: C:\Users\loaia\AppData\Roaming\cnocr\2.3\densenet_lite_136-gru\cnocr-v2.3-densenet_lite_136-gru-epoch=004-ft-model.onnx
+use model: C:\Users\loaia\AppData\Roaming\cnstd\1.2\ppocr\ch_PP-OCRv5_det\ch_PP-OCRv5_det_infer.onnx
+Use model path for MFD: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfd-1.5-onnx\pix2text-mfd-1.5.onnx
+Use model dir for LatexOCR: C:\Users\loaia\AppData\Roaming\pix2text\1.1\mfr-1.5-onnx
+Loaded Pix2Text MFR model mfr-1.5 to: backend-onnx, device-cpu
+Pix2Text initialized successfully
+ocr_attempt request_id=6a485f97-92c5-4bb8-b4c6-194775374973 provider=pix2txt model=pix2text-local duration_ms=2660 validation_passed=True fail_reason=None
+extract_questions applying crop: x=89 y=385 w=465 h=173 image=1091x1139
+extract_questions input metrics: size=465x173 stddev=49.34 white=0.945
+OCR processing: engine=local, image=C:\Users\loaia\AppData\Local\Temp\tmpl6l7azqn.png
+ocr_attempt request_id=f49c5e2a-b9e6-4f18-9af7-5236dfd81df4 provider=pix2txt model=pix2text-local duration_ms=779 validation_passed=True fail_reason=None
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Failed to enforce STANDARD/SOLVE binding defaults: [Errno 2] No such file or directory: '/backend/app/prompts/solve_standard_extreme_detailed_v1.txt'
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"

@@ -48,7 +48,11 @@ const RenderAssistantItem = ({ item }: { item: NormalizedContentItem }) => {
       <div className={styles.chatBubbleAssistant}>
         {item.payload.recognizedLatex ? <RecognitionBox latex={item.payload.recognizedLatex} /> : null}
         <div style={{ marginTop: item.payload.recognizedLatex ? 10 : 0 }}>
-          <SolutionStepsBlock steps={item.payload.steps} result={item.payload.result} />
+          <SolutionStepsBlock
+            steps={item.payload.steps}
+            result={item.payload.result}
+            verificationChecks={item.payload.verificationChecks}
+          />
         </div>
       </div>
     );

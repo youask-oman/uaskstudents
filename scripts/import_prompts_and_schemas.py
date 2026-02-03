@@ -14,6 +14,8 @@ from app.services.prompt_registry_service import prompt_registry_service
 
 
 DEFAULT_SOURCE = ROOT / "static_design" / "sug_prompts_qwen"
+DEPRECATED_PROMPT_IDS = {"solve_standard_moderate_v1", "solve_standard_moderate_v2"}
+DEPRECATED_SCHEMA_IDS = {"youask_math_solver_standard_solve_v1", "youask_math_solver_standard_solve_v2"}
 
 
 def _load_text(path: Path) -> str:
@@ -63,6 +65,8 @@ def run_import(source_dir: Path, updated_by: str = "import_script"):
 
         for path in prompts:
             prompt_id = path.stem
+            if prompt_id in DEPRECATED_PROMPT_IDS:
+                continue
             tier, mode, role = _prompt_meta(prompt_id)
             content = _load_text(path)
             entry = prompt_registry_service.update_prompt(
@@ -78,6 +82,8 @@ def run_import(source_dir: Path, updated_by: str = "import_script"):
 
         for path in schemas:
             schema_id = path.stem
+            if schema_id in DEPRECATED_SCHEMA_IDS:
+                continue
             content = _load_json(path)
             error = prompt_registry_service.validate_schema(content)
             if error:
@@ -93,7 +99,13 @@ def run_import(source_dir: Path, updated_by: str = "import_script"):
         # Bindings
         bindings = [
             (PromptTierEnum.FREE, PromptModeEnum.SOLVE, "global_system_prompt_v1", "solve_free_minimal_v1", "youask_math_solver_response_v1"),
-            (PromptTierEnum.STANDARD, PromptModeEnum.SOLVE, "global_system_prompt_v1", "solve_standard_moderate_v2", "youask_math_solver_standard_solve_v2"),
+            (
+                PromptTierEnum.STANDARD,
+                PromptModeEnum.SOLVE,
+                "global_system_prompt_v1",
+                "solve_standard_extreme_detailed_v1",
+                "youask_math_solver_standard_solve_extreme_v1",
+            ),
             (PromptTierEnum.RESEARCH, PromptModeEnum.SOLVE, "global_system_prompt_v1", "solve_research_v1", "youask_math_solver_research_solve_v1"),
             (PromptTierEnum.FREE, PromptModeEnum.VERIFY, "global_system_prompt_v1", "verify_v1", "youask_math_solver_verify_v1"),
             (PromptTierEnum.STANDARD, PromptModeEnum.VERIFY, "global_system_prompt_v1", "verify_v1", "youask_math_solver_verify_v1"),
@@ -116,6 +128,8 @@ def run_import(source_dir: Path, updated_by: str = "import_script"):
                 updated_by=updated_by,
             )
             print(f"[binding] {tier.value}/{mode.value} -> {binding.global_system_prompt_id} + {binding.developer_prompt_id} => {binding.output_schema_id}")
+
+        prompt_registry_service.ensure_standard_solve_binding(session, updated_by=updated_by)
 
 
 if __name__ == "__main__":

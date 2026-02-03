@@ -1,6 +1,5 @@
 import hashlib
 import json
-import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
@@ -27,11 +26,17 @@ class PromptRegistryService:
     OCR_EXTRACT_QWEN_USER_PROMPT_ID = "ocr_extract_qwen_user_v1"
     OCR_EXTRACT_OPENAI_SYSTEM_PROMPT_ID = "openai_ocr_system_prompt_v1"
     OCR_EXTRACT_OPENAI_SCHEMA_ID = "youask_math_solver_openai_ocr_v1"
-    STANDARD_SOLVE_PROMPT_V2_ID = "solve_standard_moderate_v2"
-    STANDARD_SOLVE_SCHEMA_V2_ID = "youask_math_solver_standard_solve_v2"
-    STANDARD_SOLVE_PROMPT_V1_ID = "solve_standard_moderate_v1"
-    STANDARD_SOLVE_SCHEMA_V1_ID = "youask_math_solver_standard_solve_v1"
+    STANDARD_SOLVE_PROMPT_ID = "solve_standard_extreme_detailed_v1"
+    STANDARD_SOLVE_SCHEMA_ID = "youask_math_solver_standard_solve_extreme_v1"
     STANDARD_SOLVE_GLOBAL_SYSTEM_ID = "global_system_prompt_v1"
+    LEGACY_STANDARD_SOLVE_PROMPT_IDS = (
+        "solve_standard_moderate_v1",
+        "solve_standard_moderate_v2",
+    )
+    LEGACY_STANDARD_SOLVE_SCHEMA_IDS = (
+        "youask_math_solver_standard_solve_v1",
+        "youask_math_solver_standard_solve_v2",
+    )
 
     OCR_EXTRACT_QWEN_SYSTEM_PROMPT_DEFAULT = (
         "You are a strict JSON extraction engine for math worksheets and textbook pages.\n"
@@ -52,8 +57,8 @@ class PromptRegistryService:
         "(2) create separate questions with ids p{page}-q{n}-part{letter}.\n"
         "Return JSON only."
     )
-    STANDARD_SOLVE_V2_PROMPT_ASSET = "static_design/sug_prompts_qwen/solve_standard_moderate_v2.txt"
-    STANDARD_SOLVE_V2_SCHEMA_ASSET = "static_design/sug_prompts_qwen/youask_math_solver_standard_solve_v2.json"
+    STANDARD_SOLVE_PROMPT_ASSET = "backend/app/prompts/solve_standard_extreme_detailed_v1.txt"
+    STANDARD_SOLVE_SCHEMA_ASSET = "backend/app/schemas/youask_math_solver_standard_solve_extreme_v1.json"
 
     def _repo_root(self) -> Path:
         return Path(__file__).resolve().parents[3]
@@ -126,30 +131,35 @@ class PromptRegistryService:
                 f"Missing required global system prompt: {self.STANDARD_SOLVE_GLOBAL_SYSTEM_ID}"
             )
 
-        target_version = os.environ.get("STANDARD_SOLVE_SCHEMA_VERSION", "v2").strip().lower()
-        if target_version == "v1":
-            target_prompt_id = self.STANDARD_SOLVE_PROMPT_V1_ID
-            target_schema_id = self.STANDARD_SOLVE_SCHEMA_V1_ID
-        else:
-            v2_prompt = self._load_asset_text(self.STANDARD_SOLVE_V2_PROMPT_ASSET)
-            v2_schema = self._load_asset_json(self.STANDARD_SOLVE_V2_SCHEMA_ASSET)
-            self.update_prompt(
-                session=session,
-                prompt_id=self.STANDARD_SOLVE_PROMPT_V2_ID,
-                content=v2_prompt,
-                tier=PromptTierEnum.STANDARD,
-                mode=PromptModeEnum.SOLVE,
-                role=PromptRoleEnum.DEVELOPER,
-                updated_by=updated_by,
-            )
-            self.update_schema(
-                session=session,
-                schema_id=self.STANDARD_SOLVE_SCHEMA_V2_ID,
-                content=v2_schema,
-                updated_by=updated_by,
-            )
-            target_prompt_id = self.STANDARD_SOLVE_PROMPT_V2_ID
-            target_schema_id = self.STANDARD_SOLVE_SCHEMA_V2_ID
+        standard_prompt = self._load_asset_text(self.STANDARD_SOLVE_PROMPT_ASSET)
+        standard_schema = self._load_asset_json(self.STANDARD_SOLVE_SCHEMA_ASSET)
+        self.update_prompt(
+            session=session,
+            prompt_id=self.STANDARD_SOLVE_PROMPT_ID,
+            content=standard_prompt,
+            tier=PromptTierEnum.STANDARD,
+            mode=PromptModeEnum.SOLVE,
+            role=PromptRoleEnum.DEVELOPER,
+            updated_by=updated_by,
+        )
+        self.update_schema(
+            session=session,
+            schema_id=self.STANDARD_SOLVE_SCHEMA_ID,
+            content=standard_schema,
+            updated_by=updated_by,
+        )
+        self._deactivate_prompt_ids(
+            session=session,
+            prompt_ids=self.LEGACY_STANDARD_SOLVE_PROMPT_IDS,
+            updated_by=updated_by,
+        )
+        self._deactivate_schema_ids(
+            session=session,
+            schema_ids=self.LEGACY_STANDARD_SOLVE_SCHEMA_IDS,
+            updated_by=updated_by,
+        )
+        target_prompt_id = self.STANDARD_SOLVE_PROMPT_ID
+        target_schema_id = self.STANDARD_SOLVE_SCHEMA_ID
 
         prompt_entry = self.get_active_prompt(session, target_prompt_id)
         if not prompt_entry:
@@ -176,6 +186,50 @@ class PromptRegistryService:
             output_schema_id=target_schema_id,
             updated_by=updated_by,
         )
+
+    def _deactivate_prompt_ids(
+        self,
+        session: Session,
+        prompt_ids: Tuple[str, ...],
+        updated_by: Optional[str],
+    ) -> None:
+        if not prompt_ids:
+            return
+        rows = session.exec(
+            select(PromptTemplateEntry).where(PromptTemplateEntry.prompt_id.in_(prompt_ids))
+        ).all()
+        changed = False
+        for row in rows:
+            if row.is_active:
+                row.is_active = False
+                row.updated_at = datetime.utcnow()
+                row.updated_by = updated_by
+                session.add(row)
+                changed = True
+        if changed:
+            session.commit()
+
+    def _deactivate_schema_ids(
+        self,
+        session: Session,
+        schema_ids: Tuple[str, ...],
+        updated_by: Optional[str],
+    ) -> None:
+        if not schema_ids:
+            return
+        rows = session.exec(
+            select(JsonSchemaEntry).where(JsonSchemaEntry.schema_id.in_(schema_ids))
+        ).all()
+        changed = False
+        for row in rows:
+            if row.is_active:
+                row.is_active = False
+                row.updated_at = datetime.utcnow()
+                row.updated_by = updated_by
+                session.add(row)
+                changed = True
+        if changed:
+            session.commit()
 
     def _ensure_prompt_exists(
         self,
@@ -528,11 +582,17 @@ class PromptRegistryService:
         output_schema_id: str,
         updated_by: Optional[str],
     ) -> PromptBinding:
-        current = self.get_active_binding(session, tier, mode)
-        if current:
-            current.is_active = False
-            current.updated_at = datetime.utcnow()
-            current.updated_by = updated_by
+        active_rows = session.exec(
+            select(PromptBinding)
+            .where(PromptBinding.tier == tier)
+            .where(PromptBinding.mode == mode)
+            .where(PromptBinding.is_active == True)
+        ).all()
+        for row in active_rows:
+            row.is_active = False
+            row.updated_at = datetime.utcnow()
+            row.updated_by = updated_by
+            session.add(row)
 
         entry = PromptBinding(
             tier=tier,

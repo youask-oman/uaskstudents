@@ -134,7 +134,7 @@ describe("SnapSolveInputPanel", () => {
                 target: { files: [new File(["img"], "equation.png", { type: "image/png" })] },
             });
         });
-        fireEvent.change(screen.getByDisplayValue("Auto (Pix2Text -> Qwen -> OpenAI gpt-5-mini)"), { target: { value: "qwen_math" } });
+        fireEvent.change(screen.getByRole("combobox"), { target: { value: "qwen_math" } });
         await act(async () => {
             fireEvent.click(screen.getByRole("button", { name: "Extract" }));
         });
@@ -142,6 +142,50 @@ describe("SnapSolveInputPanel", () => {
         const requestInit = fetchMock.mock.calls[0][1] as RequestInit;
         const form = requestInit.body as FormData;
         expect(form.get("ocr_engine_choice")).toBe("qwen_math");
+    });
+
+    test("auto-retries with Qwen Math when Pix2Text output looks garbled", async () => {
+        const fetchMock = jest
+            .fn()
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({
+                    ok: true,
+                    is_math_page: true,
+                    notes: ["Extracted using Pix2Text (Local)"],
+                    questions: [{ id: "q1", text: "## 2x 2Nx", confidence: 0.8, is_valid_math: true }],
+                }),
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({
+                    ok: true,
+                    is_math_page: true,
+                    notes: ["Extracted with Qwen Math vision OCR."],
+                    questions: [{ id: "q1", text: "x=2\\sqrt{x-1}", confidence: 0.93, is_valid_math: true }],
+                }),
+            });
+        global.fetch = fetchMock as unknown as typeof fetch;
+        render(<SnapSolveInputPanel />);
+
+        await act(async () => {
+            fireEvent.change(screen.getByTestId("snap-upload-input"), {
+                target: { files: [new File(["img"], "equation.png", { type: "image/png" })] },
+            });
+        });
+        fireEvent.change(screen.getByRole("combobox"), { target: { value: "pix2text" } });
+
+        await act(async () => {
+            fireEvent.click(screen.getByRole("button", { name: "Extract" }));
+        });
+
+        await waitFor(() => {
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+            expect(screen.getByTestId("snap-image-extract-plain")).toHaveTextContent(/x=2\\sqrt\{x-1\}/);
+        });
+
+        const retryForm = (fetchMock.mock.calls[1][1] as RequestInit).body as FormData;
+        expect(retryForm.get("ocr_engine_choice")).toBe("qwen_math");
     });
 
     test("paste handler supports clipboard files image payloads", async () => {

@@ -14,9 +14,8 @@ from typing import Dict, Any, List, Optional, Tuple, AsyncIterator
 from datetime import datetime
 from jsonschema import Draft202012Validator
 
-from app.schemas.na_math_solver_v3 import get_json_schema_for_openai_v3
 from app.utils.schema_cleaner import enforce_strict
-from app.services.validation_v3 import validate_response, create_error_response
+from app.services.validation_v3 import create_error_response
 from app.utils.schema_deref import deref_json_schema, validate_no_refs
 from app.llm_profiles.profiles import get_prompt_profile
 from app.services.response_mapper import map_minimal_to_canonical
@@ -210,18 +209,18 @@ class SolverV3:
             def prepare_schema(config_schema: Optional[Dict[str, Any]]) -> Dict[str, Any]:
                 candidate = config_schema
                 if not isinstance(candidate, dict) or not candidate:
-                    candidate = get_json_schema_for_openai_v3()
-                
+                    raise ValueError("Missing schema from DB prompt binding.")
                 if "schema" in candidate and isinstance(candidate["schema"], dict):
-                     candidate = candidate["schema"]
+                    candidate = candidate["schema"]
+                if not isinstance(candidate, dict) or not candidate:
+                    raise ValueError("Invalid schema payload from DB prompt binding.")
 
                 try:
                     deref = deref_json_schema(candidate)
                 except Exception as exc:
-                    print(f"[SOLVER_V3] Schema dereference failed: {exc}")
-                    deref = deref_json_schema(get_json_schema_for_openai_v3())
+                    raise ValueError(f"Schema dereference failed: {exc}") from exc
                 if not isinstance(deref, dict):
-                    deref = deref_json_schema(get_json_schema_for_openai_v3())
+                    raise ValueError("Schema dereference produced non-object schema.")
 
                 deref = enforce_strict(deref)
                 if deref.get("type") is None:
@@ -769,12 +768,6 @@ class SolverV3:
         if schema_issues:
             return False, "Schema Validation Failed", None, schema_issues
 
-        # Optional strict checks
-        validation = validate_response(data, strict=True)
-        if not validation.valid:
-            extra_issues = [{"type": "schema_error", "message": e, "path": "$"} for e in validation.errors[:20]]
-            return False, "Schema Validation Failed", None, extra_issues
-
         return True, None, data, []
 
 
@@ -1007,7 +1000,6 @@ class SolverV3:
         if not llm_response.content:
             raise ValueError("Empty repair output")
         data = json.loads(llm_response.content)
-        data["_repaired"] = True
         return data, llm_response.content
 
 import asyncio

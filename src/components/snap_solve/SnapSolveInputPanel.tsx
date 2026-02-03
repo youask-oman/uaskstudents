@@ -124,6 +124,9 @@ export default function SnapSolveInputPanel({ onResolveText }: SnapSolveInputPan
             .replace(/\\r/g, "\r")
             .replace(/\\t/g, "\t")
             .replace(/\\\\/g, "\\")
+            .replace(/âˆ’|−|—|–/g, "-")
+            .replace(/÷/g, "\\div ")
+            .replace(/×/g, "\\times ")
             .replace(/ratio\s+AB:\s*\\?\(\{\\bf\s*B\s*C\}\s*,?\\?\)\s*is:/gi, "ratio \\(\\mathbf{AB}:\\mathbf{BC}\\) is:")
             .replace(/ratio\s+AB:\s*BC\s*,?\s*is:/gi, "ratio \\(\\mathbf{AB}:\\mathbf{BC}\\) is:")
             .trim();
@@ -131,7 +134,13 @@ export default function SnapSolveInputPanel({ onResolveText }: SnapSolveInputPan
     const normalizeLatexForReview = React.useCallback((value: string): string => {
         if (!value) return "";
         return normalizeExtractText(value)
+            .replace(/(?<![A-Za-z])(?:root|oot)\s*(\d+)\s*\\of\s*\{/gi, "\\\\sqrt[$1]{")
+            .replace(/(?<![A-Za-z])(?:root|oot)\s*(\d+)\s*of\s*\{/gi, "\\\\sqrt[$1]{")
+            .replace(/\\of\s*\{/g, "{")
             .replace(/\\\\/g, "\\")
+            .replace(/\\boldsymbol\{([^{}]+)\}/g, "$1")
+            .replace(/\\mathbf\{([^{}]+)\}/g, "$1")
+            .replace(/\\mathbb\{([A-PR-Za-pr-z0-9])\}/g, "$1")
             .replace(/\{\\bf\s+([^}]+)\}/g, "\\mathbf{$1}")
             .replace(/\\bf\s+([A-Za-z0-9]+)/g, "\\mathbf{$1}")
             .replace(/\\\[/g, "$$")
@@ -155,7 +164,14 @@ export default function SnapSolveInputPanel({ onResolveText }: SnapSolveInputPan
         [imageExtractedQuestions, normalizeExtractText]
     );
     const imageLatexReviewText = React.useMemo(
-        () => imageExtractedQuestions.map((q, index) => `${index + 1}. ${normalizeLatexForReview(q.text || "")}`).filter(Boolean).join("\n\n"),
+        () => imageExtractedQuestions
+            .map((q, index) => {
+                const source = q.latex || q.text || "";
+                const normalized = normalizeLatexForReview(source);
+                return normalized ? `Q${index + 1}\n\n${normalized}` : "";
+            })
+            .filter(Boolean)
+            .join("\n\n"),
         [imageExtractedQuestions, normalizeLatexForReview]
     );
     const isSubmitEnabled = React.useMemo(() => {
@@ -252,9 +268,25 @@ export default function SnapSolveInputPanel({ onResolveText }: SnapSolveInputPan
 
                 if (imageExtractEngine === "pix2text") {
                     const mergedText = questions.map((q) => q.text || "").join("\n");
+                    const mergedTextNoWs = mergedText.replace(/\s+/g, " ").trim();
+                    const hasMathOperator = /[=+\-*/^]|\\(?:sqrt|frac|div|times|cdot)|[()]/.test(mergedTextNoWs);
+                    const looksLikeHeadingNoise = /(^|\n)\s*#{1,6}\s*[A-Za-z0-9]/.test(mergedText);
+                    const looksLikeRootNoise = /\b\d*Nx\b/i.test(mergedTextNoWs) || /\bN[xya-z]\b/i.test(mergedTextNoWs);
+                    const shortTokenSoup =
+                        mergedTextNoWs.length > 0 &&
+                        mergedTextNoWs.length <= 32 &&
+                        !hasMathOperator &&
+                        /[0-9]/.test(mergedTextNoWs) &&
+                        /[A-Za-z]/.test(mergedTextNoWs);
                     const looksGarbled =
                         questions.length === 0 ||
+                        looksLikeHeadingNoise ||
+                        looksLikeRootNoise ||
+                        shortTokenSoup ||
                         ((mergedText.match(/\{\}/g) || []).length >= 8) ||
+                        /(?:^|\s)(?:oot|root)\s*\d+\s*\\?of\s*\{/i.test(mergedText) ||
+                        (mergedText.match(/\\boldsymbol\{/g) || []).length >= 3 ||
+                        mergedText.includes("\\of{") ||
                         ((mergedText.match(/\\/g) || []).length > 30 &&
                             mergedText.replace(/[A-Za-z]/g, "").length > mergedText.replace(/[^A-Za-z]/g, "").length);
                     if (looksGarbled) {

@@ -101,9 +101,8 @@ def test_ensure_ocr_extract_prompts(tmp_path):
     assert "Extract ALL math questions from the provided image or PDF page image(s)." in user_prompt.content
 
 
-def test_ensure_standard_solve_binding_sets_v2_default(tmp_path, monkeypatch):
+def test_ensure_standard_solve_binding_sets_extreme_default_and_deactivates_legacy(tmp_path):
     session = _make_session(tmp_path)
-    monkeypatch.delenv("STANDARD_SOLVE_SCHEMA_VERSION", raising=False)
 
     prompt_registry_service.update_prompt(
         session=session,
@@ -147,7 +146,9 @@ def test_ensure_standard_solve_binding_sets_v2_default(tmp_path, monkeypatch):
         PromptModeEnum.SOLVE,
     )
     assert binding is not None
-    assert binding.developer_prompt_id == "solve_standard_moderate_v2"
-    assert binding.output_schema_id == "youask_math_solver_standard_solve_v2"
-    assert prompt_registry_service.get_active_prompt(session, "solve_standard_moderate_v2") is not None
-    assert prompt_registry_service.get_active_schema(session, "youask_math_solver_standard_solve_v2") is not None
+    assert binding.developer_prompt_id == "solve_standard_extreme_detailed_v1"
+    assert binding.output_schema_id == "youask_math_solver_standard_solve_extreme_v1"
+    assert prompt_registry_service.get_active_prompt(session, "solve_standard_extreme_detailed_v1") is not None
+    assert prompt_registry_service.get_active_schema(session, "youask_math_solver_standard_solve_extreme_v1") is not None
+    assert prompt_registry_service.get_active_prompt(session, "solve_standard_moderate_v1") is None
+    assert prompt_registry_service.get_active_schema(session, "youask_math_solver_standard_solve_v1") is None

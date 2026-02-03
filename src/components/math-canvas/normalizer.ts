@@ -4,6 +4,7 @@ import {
   NormalizedChatMessage,
   SessionMessage,
   StepRow,
+  VerificationCheck,
 } from "./types";
 
 const JSON_SIZE_LIMIT = 200_000;
@@ -62,9 +63,49 @@ const parsePointArray = (value: unknown): ChartPayload["points"] => {
     .filter((item): item is NonNullable<typeof item> => item !== null);
 };
 
+const parsePlotlySpecPoints = (value: unknown): ChartPayload["points"] => {
+  const spec = asRecord(value);
+  if (!spec) return [];
+  const data = Array.isArray(spec.data) ? spec.data : [];
+  for (const traceLike of data) {
+    const trace = asRecord(traceLike);
+    if (!trace) continue;
+    const xs = Array.isArray(trace.x) ? trace.x : [];
+    const ys = Array.isArray(trace.y) ? trace.y : [];
+    const points: ChartPayload["points"] = [];
+    const length = Math.min(xs.length, ys.length, 200);
+    for (let i = 0; i < length; i += 1) {
+      const x = Number(xs[i]);
+      const y = Number(ys[i]);
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        points.push({ x, y });
+      }
+    }
+    if (points.length >= 2) return points;
+  }
+  return [];
+};
+
 const parsePlotFromObject = (value: unknown): ChartPayload[] => {
   const obj = asRecord(value);
   if (!obj) return [];
+
+  const plotObject = asRecord(obj.plot);
+  const plotSpecs = Array.isArray(plotObject?.plot_specs) ? plotObject?.plot_specs : [];
+  const parsedFromPlotSpecs: ChartPayload[] = [];
+  plotSpecs.forEach((specLike, index) => {
+    const specEntry = asRecord(specLike);
+    if (!specEntry) return;
+    const specPoints = parsePlotlySpecPoints(specEntry.spec);
+    if (specPoints.length < 2) return;
+    parsedFromPlotSpecs.push({
+      title: asString(specEntry.plot_id) || `Plot ${index + 1}`,
+      xLabel: "x",
+      yLabel: "y",
+      points: specPoints,
+    });
+  });
+  if (parsedFromPlotSpecs.length > 0) return parsedFromPlotSpecs;
 
   const plotsValue = asRecord(obj.visuals)?.plots ?? obj.plots ?? obj.plot;
   const plots = Array.isArray(plotsValue) ? plotsValue : plotsValue ? [plotsValue] : [];
@@ -113,14 +154,18 @@ const parseStepsFromObject = (value: unknown): StepRow[] => {
   const obj = asRecord(value);
   if (!obj) return [];
 
-  const stepsLike = Array.isArray(obj.steps) ? obj.steps : [];
+  const solution = asRecord(obj.solution);
+  const stepsContainer = solution ?? obj;
+  const stepsLike = Array.isArray(stepsContainer.steps) ? stepsContainer.steps : [];
   const directSteps: StepRow[] = [];
   stepsLike.forEach((step, index) => {
     const entry = asRecord(step);
     if (!entry) return;
-    const title = asString(entry.title) || `Step ${index + 1}`;
+    const stepId = Number(entry.step_id);
+    const fallbackIndex = Number.isFinite(stepId) && stepId > 0 ? stepId : index + 1;
+    const title = asString(entry.title) || `Step ${fallbackIndex}`;
     const explanation = asString(entry.explanation) || undefined;
-    const mathRaw = entry.math_latex;
+    const mathRaw = entry.math ?? entry.math_latex;
     const mathLatex = Array.isArray(mathRaw)
       ? mathRaw.map((item) => asString(item) || "").filter(Boolean).join(" \\\\ ")
       : asString(mathRaw) || undefined;
@@ -165,9 +210,11 @@ const parseResultFromObject = (value: unknown): string | undefined => {
   const obj = asRecord(value);
   if (!obj) return undefined;
 
-  const finalAnswer = asRecord(obj.final_answer);
+  const finalAnswer = asRecord(asRecord(obj.solution)?.final_answer) || asRecord(obj.final_answer);
   if (finalAnswer) {
     return (
+      asString(finalAnswer.latex) ||
+      asString(finalAnswer.value) ||
       asString(finalAnswer.answer_latex) ||
       asString(finalAnswer.answer_text) ||
       asString(finalAnswer.value_latex) ||
@@ -193,7 +240,7 @@ const parseResultFromObject = (value: unknown): string | undefined => {
 const parseRecognizedLatexFromObject = (value: unknown): string | undefined => {
   const obj = asRecord(value);
   if (!obj) return undefined;
-  const problem = asRecord(obj.problem);
+  const problem = asRecord(obj.problem) || asRecord(obj.question);
   if (problem) {
     return (
       asString(problem.normalized_text) ||
@@ -210,6 +257,35 @@ const parseRecognizedLatexFromObject = (value: unknown): string | undefined => {
   return asString(obj.problem_text) || asString(obj.input) || undefined;
 };
 
+const parseVerificationChecks = (value: unknown): VerificationCheck[] => {
+  const obj = asRecord(value);
+  if (!obj) return [];
+  const verification = asRecord(obj.verification);
+  if (!verification) return [];
+  const checks = Array.isArray(verification.checks) ? verification.checks : [];
+  const parsed: VerificationCheck[] = [];
+  checks.forEach((check, index) => {
+    const entry = asRecord(check);
+    if (!entry) return;
+    const checkId = asString(entry.check_id) || `check_${index + 1}`;
+    const verdictRaw = (asString(entry.verdict) || "unknown").toLowerCase();
+    const verdict: VerificationCheck["verdict"] =
+      verdictRaw === "pass" || verdictRaw === "warn" || verdictRaw === "fail" ? verdictRaw : "unknown";
+    const message = asString(entry.message) || "";
+    if (!message) return;
+    const evidenceMath = asStringArray(entry.evidence_math).join(" \\\\ ");
+    const relatedStepIdRaw = Number(entry.related_step_id);
+    parsed.push({
+      checkId,
+      verdict,
+      message,
+      relatedStepId: Number.isFinite(relatedStepIdRaw) ? relatedStepIdRaw : null,
+      evidenceMath: evidenceMath || undefined,
+    });
+  });
+  return parsed;
+};
+
 const parseMathSolutionFromObject = (value: unknown): MathSolutionPayload | null => {
   const obj = asRecord(value);
   if (!obj) return null;
@@ -218,8 +294,9 @@ const parseMathSolutionFromObject = (value: unknown): MathSolutionPayload | null
   const result = parseResultFromObject(obj);
   const recognizedLatex = parseRecognizedLatexFromObject(obj);
   const plots = parsePlotFromObject(obj);
+  const verificationChecks = parseVerificationChecks(obj);
 
-  if (!recognizedLatex && steps.length === 0 && !result && plots.length === 0) {
+  if (!recognizedLatex && steps.length === 0 && !result && plots.length === 0 && verificationChecks.length === 0) {
     return null;
   }
 
@@ -228,6 +305,7 @@ const parseMathSolutionFromObject = (value: unknown): MathSolutionPayload | null
     steps,
     result,
     plots,
+    verificationChecks,
   };
 };
 
