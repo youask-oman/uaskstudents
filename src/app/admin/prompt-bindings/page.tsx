@@ -14,11 +14,28 @@ interface BindingEntry {
     updated_by?: string | null;
 }
 
+interface PromptEntry {
+    prompt_id: string;
+    tier: string | null;
+    mode: string;
+    role: string;
+    version: number;
+    is_active: boolean;
+}
+
+interface SchemaEntry {
+    schema_id: string;
+    version: number;
+    is_active: boolean;
+}
+
 const DEFAULT_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
 
 export default function AdminPromptBindingsPage() {
     const baseUrl = useMemo(() => DEFAULT_API_BASE_URL, []);
     const [bindings, setBindings] = useState<BindingEntry[]>([]);
+    const [prompts, setPrompts] = useState<PromptEntry[]>([]);
+    const [schemas, setSchemas] = useState<SchemaEntry[]>([]);
     const [form, setForm] = useState({
         tier: "FREE",
         mode: "SOLVE",
@@ -28,6 +45,7 @@ export default function AdminPromptBindingsPage() {
     });
     const [error, setError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
+    const [deletingBindingId, setDeletingBindingId] = useState<string | null>(null);
     const [testRunning, setTestRunning] = useState(false);
     const [testResult, setTestResult] = useState<string | null>(null);
 
@@ -39,21 +57,103 @@ export default function AdminPromptBindingsPage() {
     };
 
     const loadBindings = async () => {
-        try {
-            setError(null);
-            const res = await fetch(`${baseUrl}/api/v1/admin/prompt-registry/bindings`, { headers: headers() });
-            if (!res.ok) throw new Error("Failed to load bindings");
-            const data: BindingEntry[] = await res.json();
-            setBindings(data);
-        } catch {
-            setError("Unable to load bindings.");
-        }
+        const res = await fetch(`${baseUrl}/api/v1/admin/prompt-registry/bindings`, { headers: headers() });
+        if (!res.ok) throw new Error("Failed to load bindings");
+        const data: BindingEntry[] = await res.json();
+        setBindings(data);
+    };
+
+    const loadPrompts = async () => {
+        const res = await fetch(`${baseUrl}/api/v1/admin/prompt-registry/prompts`, { headers: headers() });
+        if (!res.ok) throw new Error("Failed to load prompts");
+        const data: PromptEntry[] = await res.json();
+        setPrompts(data);
+    };
+
+    const loadSchemas = async () => {
+        const res = await fetch(`${baseUrl}/api/v1/admin/prompt-registry/schemas`, { headers: headers() });
+        if (!res.ok) throw new Error("Failed to load schemas");
+        const data: SchemaEntry[] = await res.json();
+        setSchemas(data);
+    };
+
+    const getGlobalPromptOptions = (tier: string, mode: string) =>
+        prompts.filter((p) => p.role === "SYSTEM" && p.mode === mode && (p.tier === null || p.tier === tier));
+
+    const getDeveloperPromptOptions = (tier: string, mode: string) =>
+        prompts.filter((p) => p.role === "DEVELOPER" && p.mode === mode && (p.tier === null || p.tier === tier));
+
+    const pickValidOption = (
+        preferred: string,
+        options: string[],
+    ) => (preferred && options.includes(preferred) ? preferred : options[0] || "");
+
+    const normalizeFormSelection = (nextTier: string, nextMode: string, currentForm: typeof form) => {
+        const activeBinding = bindings.find((b) => b.is_active && b.tier === nextTier && b.mode === nextMode) || null;
+        const globalOptions = getGlobalPromptOptions(nextTier, nextMode).map((p) => p.prompt_id);
+        const developerOptions = getDeveloperPromptOptions(nextTier, nextMode).map((p) => p.prompt_id);
+        const schemaOptions = schemas.map((s) => s.schema_id);
+
+        return {
+            tier: nextTier,
+            mode: nextMode,
+            global_system_prompt_id: pickValidOption(
+                activeBinding?.global_system_prompt_id || currentForm.global_system_prompt_id,
+                globalOptions,
+            ),
+            developer_prompt_id: pickValidOption(
+                activeBinding?.developer_prompt_id || currentForm.developer_prompt_id,
+                developerOptions,
+            ),
+            output_schema_id: pickValidOption(
+                activeBinding?.output_schema_id || currentForm.output_schema_id,
+                schemaOptions,
+            ),
+        };
     };
 
     useEffect(() => {
-        loadBindings();
+        const loadAll = async () => {
+            try {
+                setError(null);
+                await Promise.all([loadBindings(), loadPrompts(), loadSchemas()]);
+            } catch {
+                setError("Unable to load binding options.");
+            }
+        };
+        loadAll();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [baseUrl]);
+
+    useEffect(() => {
+        if (prompts.length === 0 && schemas.length === 0 && bindings.length === 0) return;
+        setForm((current) => {
+            const normalized = normalizeFormSelection(current.tier, current.mode, current);
+            if (
+                normalized.tier === current.tier &&
+                normalized.mode === current.mode &&
+                normalized.global_system_prompt_id === current.global_system_prompt_id &&
+                normalized.developer_prompt_id === current.developer_prompt_id &&
+                normalized.output_schema_id === current.output_schema_id
+            ) {
+                return current;
+            }
+            return normalized;
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [prompts, schemas, bindings]);
+
+    const globalPromptOptions = useMemo(
+        () => getGlobalPromptOptions(form.tier, form.mode),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [prompts, form.tier, form.mode],
+    );
+    const developerPromptOptions = useMemo(
+        () => getDeveloperPromptOptions(form.tier, form.mode),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [prompts, form.tier, form.mode],
+    );
+    const schemaOptions = useMemo(() => schemas, [schemas]);
 
     const handleSubmit = async () => {
         setSaving(true);
@@ -68,7 +168,7 @@ export default function AdminPromptBindingsPage() {
                 }),
             });
             if (!res.ok) throw new Error("Activate failed");
-            await loadBindings();
+            await Promise.all([loadBindings(), loadPrompts(), loadSchemas()]);
         } catch {
             setError("Unable to activate binding.");
         } finally {
@@ -100,6 +200,34 @@ export default function AdminPromptBindingsPage() {
         }
     };
 
+    const handleDeleteBinding = async (binding: BindingEntry) => {
+        const confirmed = window.confirm(
+            `Delete binding "${binding.tier} - ${binding.mode}" from the table?`
+        );
+        if (!confirmed) return;
+
+        setDeletingBindingId(binding.id);
+        try {
+            setError(null);
+            const res = await fetch(
+                `${baseUrl}/api/v1/admin/prompt-registry/bindings/${encodeURIComponent(binding.id)}`,
+                {
+                    method: "DELETE",
+                    headers: headers(),
+                }
+            );
+            if (!res.ok) {
+                const payload = await res.json().catch(() => null);
+                throw new Error(payload?.detail || "Delete failed");
+            }
+            await loadBindings();
+        } catch (err) {
+            setError((err as Error)?.message || "Unable to delete binding.");
+        } finally {
+            setDeletingBindingId(null);
+        }
+    };
+
     return (
         <div className="w-full p-6 xl:p-8 flex flex-col gap-6">
             <header className="space-y-2">
@@ -114,7 +242,7 @@ export default function AdminPromptBindingsPage() {
                     <select
                         className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
                         value={form.tier}
-                        onChange={(e) => setForm({ ...form, tier: e.target.value })}
+                        onChange={(e) => setForm((current) => normalizeFormSelection(e.target.value, current.mode, current))}
                     >
                         <option value="FREE">FREE</option>
                         <option value="STANDARD">STANDARD</option>
@@ -123,35 +251,58 @@ export default function AdminPromptBindingsPage() {
                     <select
                         className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
                         value={form.mode}
-                        onChange={(e) => setForm({ ...form, mode: e.target.value })}
+                        onChange={(e) => setForm((current) => normalizeFormSelection(current.tier, e.target.value, current))}
                     >
                         <option value="SOLVE">SOLVE</option>
                         <option value="VERIFY">VERIFY</option>
                         <option value="PLOT_TRIGGER">PLOT_TRIGGER</option>
                         <option value="PLOT_SPEC">PLOT_SPEC</option>
                     </select>
-                    <input
+                    <select
                         className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
-                        placeholder="global_system_prompt_id"
                         value={form.global_system_prompt_id}
                         onChange={(e) => setForm({ ...form, global_system_prompt_id: e.target.value })}
-                    />
-                    <input
+                    >
+                        {globalPromptOptions.length === 0 && <option value="">No system prompts available</option>}
+                        {globalPromptOptions.map((prompt) => (
+                            <option key={`${prompt.prompt_id}-${prompt.version}`} value={prompt.prompt_id}>
+                                {prompt.prompt_id} (v{prompt.version})
+                            </option>
+                        ))}
+                    </select>
+                    <select
                         className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
-                        placeholder="developer_prompt_id"
                         value={form.developer_prompt_id}
                         onChange={(e) => setForm({ ...form, developer_prompt_id: e.target.value })}
-                    />
-                    <input
+                    >
+                        {developerPromptOptions.length === 0 && <option value="">No developer prompts available</option>}
+                        {developerPromptOptions.map((prompt) => (
+                            <option key={`${prompt.prompt_id}-${prompt.version}`} value={prompt.prompt_id}>
+                                {prompt.prompt_id} (v{prompt.version}{prompt.tier ? `, ${prompt.tier}` : ""})
+                            </option>
+                        ))}
+                    </select>
+                    <select
                         className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
-                        placeholder="output_schema_id"
                         value={form.output_schema_id}
                         onChange={(e) => setForm({ ...form, output_schema_id: e.target.value })}
-                    />
+                    >
+                        {schemaOptions.length === 0 && <option value="">No schemas available</option>}
+                        {schemaOptions.map((schema) => (
+                            <option key={`${schema.schema_id}-${schema.version}`} value={schema.schema_id}>
+                                {schema.schema_id} (v{schema.version})
+                            </option>
+                        ))}
+                    </select>
                     <button
                         className="w-full px-4 py-2 rounded-lg bg-admin-primary text-white text-xs font-semibold disabled:opacity-60"
                         onClick={handleSubmit}
-                        disabled={saving}
+                        disabled={
+                            saving ||
+                            !form.global_system_prompt_id ||
+                            !form.developer_prompt_id ||
+                            !form.output_schema_id
+                        }
                     >
                         {saving ? "Saving..." : "Activate Binding"}
                     </button>
@@ -174,7 +325,16 @@ export default function AdminPromptBindingsPage() {
                                 key={binding.id || `${binding.tier}-${binding.mode}-${binding.updated_at}-${index}`}
                                 className="rounded-lg border border-slate-200 dark:border-slate-800 px-3 py-2 text-xs text-slate-600 dark:text-slate-300"
                             >
-                                <div className="font-semibold">{binding.tier} - {binding.mode}</div>
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="font-semibold">{binding.tier} - {binding.mode}</div>
+                                    <button
+                                        className="px-2 py-1 rounded bg-rose-600 text-white text-[10px] font-semibold disabled:opacity-60"
+                                        onClick={() => handleDeleteBinding(binding)}
+                                        disabled={deletingBindingId === binding.id}
+                                    >
+                                        {deletingBindingId === binding.id ? "Deleting..." : "Delete"}
+                                    </button>
+                                </div>
                                 <div>global: {binding.global_system_prompt_id}</div>
                                 <div>developer: {binding.developer_prompt_id}</div>
                                 <div>schema: {binding.output_schema_id}</div>

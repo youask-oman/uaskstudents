@@ -8332,6 +8332,24 @@ class RegistryBindingAuditReport(BaseModel):
     active_binding_pairs: int
     issues: List[RegistryBindingAuditIssue]
 
+class PromptRegistryDeleteResponse(BaseModel):
+    status: str
+    prompt_id: str
+    deleted_versions: int
+    rebound_bindings: int
+    deactivated_bindings: int
+
+class SchemaRegistryDeleteResponse(BaseModel):
+    status: str
+    schema_id: str
+    deleted_versions: int
+    rebound_bindings: int
+    deactivated_bindings: int
+
+class BindingRegistryDeleteResponse(BaseModel):
+    status: str
+    binding_id: str
+
 class PromptRegistryUpdateRequest(BaseModel):
     content: str
     tier: Optional[str] = None
@@ -8374,12 +8392,31 @@ def _parse_role(value: str) -> PromptRoleEnum:
     return PromptRoleEnum(value.upper())
 
 @api_router.get("/admin/prompt-registry/prompts", response_model=List[RegistryPromptItem])
-async def admin_list_prompt_registry_prompts(db: Session = Depends(get_session)):
-    rows = db.exec(
-        select(PromptTemplateEntry)
-        .where(PromptTemplateEntry.is_active == True)
-        .order_by(PromptTemplateEntry.prompt_id.asc())
-    ).all()
+async def admin_list_prompt_registry_prompts(
+    include_inactive: bool = Query(False),
+    db: Session = Depends(get_session),
+):
+    if not include_inactive:
+        rows = db.exec(
+            select(PromptTemplateEntry)
+            .where(PromptTemplateEntry.is_active == True)
+            .order_by(PromptTemplateEntry.prompt_id.asc())
+        ).all()
+    else:
+        all_rows = db.exec(
+            select(PromptTemplateEntry)
+            .order_by(PromptTemplateEntry.prompt_id.asc(), PromptTemplateEntry.version.desc())
+        ).all()
+        latest_by_id: Dict[str, PromptTemplateEntry] = {}
+        for row in all_rows:
+            chosen = latest_by_id.get(row.prompt_id)
+            if chosen is None:
+                latest_by_id[row.prompt_id] = row
+                continue
+            if (not chosen.is_active) and row.is_active:
+                latest_by_id[row.prompt_id] = row
+        rows = sorted(latest_by_id.values(), key=lambda item: item.prompt_id)
+
     return [
         RegistryPromptItem(
             prompt_id=row.prompt_id,
@@ -8451,13 +8488,55 @@ async def admin_rollback_prompt_registry_prompt(prompt_id: str, req: RegistryRol
         updated_by=entry.updated_by,
     )
 
+@api_router.delete("/admin/prompt-registry/prompts/{prompt_id}", response_model=PromptRegistryDeleteResponse)
+async def admin_delete_prompt_registry_prompt(
+    prompt_id: str,
+    updated_by: Optional[str] = Query(None),
+    db: Session = Depends(get_session),
+):
+    try:
+        result = prompt_registry_service.delete_prompt(
+            session=db,
+            prompt_id=prompt_id,
+            updated_by=updated_by,
+        )
+    except PromptRegistryError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    return PromptRegistryDeleteResponse(
+        status="ok",
+        prompt_id=prompt_id,
+        deleted_versions=result["deleted_versions"],
+        rebound_bindings=result["rebound_bindings"],
+        deactivated_bindings=result["deactivated_bindings"],
+    )
+
 @api_router.get("/admin/prompt-registry/schemas", response_model=List[RegistrySchemaItem])
-async def admin_list_prompt_registry_schemas(db: Session = Depends(get_session)):
-    rows = db.exec(
-        select(JsonSchemaEntry)
-        .where(JsonSchemaEntry.is_active == True)
-        .order_by(JsonSchemaEntry.schema_id.asc())
-    ).all()
+async def admin_list_prompt_registry_schemas(
+    include_inactive: bool = Query(False),
+    db: Session = Depends(get_session),
+):
+    if not include_inactive:
+        rows = db.exec(
+            select(JsonSchemaEntry)
+            .where(JsonSchemaEntry.is_active == True)
+            .order_by(JsonSchemaEntry.schema_id.asc())
+        ).all()
+    else:
+        all_rows = db.exec(
+            select(JsonSchemaEntry)
+            .order_by(JsonSchemaEntry.schema_id.asc(), JsonSchemaEntry.version.desc())
+        ).all()
+        latest_by_id: Dict[str, JsonSchemaEntry] = {}
+        for row in all_rows:
+            chosen = latest_by_id.get(row.schema_id)
+            if chosen is None:
+                latest_by_id[row.schema_id] = row
+                continue
+            if (not chosen.is_active) and row.is_active:
+                latest_by_id[row.schema_id] = row
+        rows = sorted(latest_by_id.values(), key=lambda item: item.schema_id)
+
     return [
         RegistrySchemaItem(
             schema_id=row.schema_id,
@@ -8512,6 +8591,29 @@ async def admin_rollback_prompt_registry_schema(schema_id: str, req: RegistryRol
         updated_by=entry.updated_by,
     )
 
+@api_router.delete("/admin/prompt-registry/schemas/{schema_id}", response_model=SchemaRegistryDeleteResponse)
+async def admin_delete_prompt_registry_schema(
+    schema_id: str,
+    updated_by: Optional[str] = Query(None),
+    db: Session = Depends(get_session),
+):
+    try:
+        result = prompt_registry_service.delete_schema(
+            session=db,
+            schema_id=schema_id,
+            updated_by=updated_by,
+        )
+    except PromptRegistryError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    return SchemaRegistryDeleteResponse(
+        status="ok",
+        schema_id=schema_id,
+        deleted_versions=result["deleted_versions"],
+        rebound_bindings=result["rebound_bindings"],
+        deactivated_bindings=result["deactivated_bindings"],
+    )
+
 @api_router.get("/admin/prompt-registry/bindings", response_model=List[RegistryBindingItem])
 async def admin_list_prompt_registry_bindings(db: Session = Depends(get_session)):
     rows = db.exec(select(PromptBinding).order_by(PromptBinding.updated_at.desc())).all()
@@ -8562,6 +8664,15 @@ async def admin_activate_prompt_registry_binding(req: BindingActivateRequest, db
         updated_at=entry.updated_at.isoformat(),
         updated_by=entry.updated_by,
     )
+
+@api_router.delete("/admin/prompt-registry/bindings/{binding_id}", response_model=BindingRegistryDeleteResponse)
+async def admin_delete_prompt_registry_binding(binding_id: str, db: Session = Depends(get_session)):
+    row = db.get(PromptBinding, binding_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Binding not found.")
+    db.delete(row)
+    db.commit()
+    return BindingRegistryDeleteResponse(status="ok", binding_id=binding_id)
 
 @api_router.post("/admin/prompt-registry/test")
 async def admin_prompt_registry_test(req: PromptRegistryTestRequest, db: Session = Depends(get_session)):

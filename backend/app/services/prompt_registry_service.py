@@ -524,8 +524,9 @@ class PromptRegistryService:
         return system_prompt, schema_entry.content, binding
 
     def validate_schema(self, schema_content: Dict[str, Any]) -> Optional[str]:
+        normalized = self.normalize_schema_content(schema_content)
         try:
-            Draft202012Validator.check_schema(schema_content)
+            Draft202012Validator.check_schema(normalized)
             return None
         except Exception as e:
             return str(e)
@@ -569,6 +570,202 @@ class PromptRegistryService:
         session.refresh(entry)
         return entry
 
+    def _pick_replacement_prompt(
+        self,
+        session: Session,
+        *,
+        role: PromptRoleEnum,
+        mode: PromptModeEnum,
+        tier: Optional[PromptTierEnum],
+        exclude_prompt_id: str,
+    ) -> Optional[PromptTemplateEntry]:
+        candidates = session.exec(
+            select(PromptTemplateEntry)
+            .where(PromptTemplateEntry.is_active == True)
+            .where(PromptTemplateEntry.role == role)
+            .where(PromptTemplateEntry.mode == mode)
+            .where(PromptTemplateEntry.prompt_id != exclude_prompt_id)
+            .order_by(PromptTemplateEntry.updated_at.desc(), PromptTemplateEntry.id.desc())
+        ).all()
+        if not candidates:
+            return None
+
+        def _tier_rank(entry: PromptTemplateEntry) -> int:
+            if tier is None:
+                return 0 if entry.tier is None else 1
+            if entry.tier == tier:
+                return 0
+            if entry.tier is None:
+                return 1
+            return 2
+
+        candidates.sort(key=_tier_rank)
+        return candidates[0]
+
+    def delete_prompt(
+        self,
+        session: Session,
+        prompt_id: str,
+        updated_by: Optional[str],
+    ) -> Dict[str, int]:
+        rows = session.exec(
+            select(PromptTemplateEntry)
+            .where(PromptTemplateEntry.prompt_id == prompt_id)
+            .order_by(PromptTemplateEntry.version.desc())
+        ).all()
+        if not rows:
+            raise PromptRegistryError("Prompt not found.")
+
+        active_bindings = session.exec(
+            select(PromptBinding).where(PromptBinding.is_active == True)
+        ).all()
+        impacted_bindings = [
+            binding
+            for binding in active_bindings
+            if (
+                binding.global_system_prompt_id == prompt_id
+                or binding.developer_prompt_id == prompt_id
+            )
+        ]
+
+        rebound_bindings = 0
+        deactivated_bindings = 0
+
+        for binding in impacted_bindings:
+            changed = False
+            replaced = False
+            deactivate = False
+
+            if binding.global_system_prompt_id == prompt_id:
+                replacement = self._pick_replacement_prompt(
+                    session=session,
+                    role=PromptRoleEnum.SYSTEM,
+                    mode=binding.mode,
+                    tier=None,
+                    exclude_prompt_id=prompt_id,
+                )
+                if replacement:
+                    binding.global_system_prompt_id = replacement.prompt_id
+                    replaced = True
+                    changed = True
+                else:
+                    deactivate = True
+
+            if not deactivate and binding.developer_prompt_id == prompt_id:
+                replacement = self._pick_replacement_prompt(
+                    session=session,
+                    role=PromptRoleEnum.DEVELOPER,
+                    mode=binding.mode,
+                    tier=binding.tier,
+                    exclude_prompt_id=prompt_id,
+                )
+                if replacement:
+                    binding.developer_prompt_id = replacement.prompt_id
+                    replaced = True
+                    changed = True
+                else:
+                    deactivate = True
+
+            if deactivate:
+                binding.is_active = False
+                changed = True
+                deactivated_bindings += 1
+            elif replaced:
+                rebound_bindings += 1
+
+            if changed:
+                binding.updated_at = datetime.utcnow()
+                binding.updated_by = updated_by
+                session.add(binding)
+
+        deleted_versions = len(rows)
+        for row in rows:
+            session.delete(row)
+
+        session.commit()
+        return {
+            "deleted_versions": deleted_versions,
+            "rebound_bindings": rebound_bindings,
+            "deactivated_bindings": deactivated_bindings,
+        }
+
+    def _pick_replacement_schema(
+        self,
+        session: Session,
+        *,
+        mode: PromptModeEnum,
+        exclude_schema_id: str,
+    ) -> Optional[JsonSchemaEntry]:
+        same_mode_bindings = session.exec(
+            select(PromptBinding)
+            .where(PromptBinding.is_active == True)
+            .where(PromptBinding.mode == mode)
+            .where(PromptBinding.output_schema_id != exclude_schema_id)
+            .order_by(PromptBinding.updated_at.desc(), PromptBinding.id.desc())
+        ).all()
+        for binding in same_mode_bindings:
+            schema_entry = self.get_active_schema(session, binding.output_schema_id)
+            if schema_entry:
+                return schema_entry
+
+        return session.exec(
+            select(JsonSchemaEntry)
+            .where(JsonSchemaEntry.is_active == True)
+            .where(JsonSchemaEntry.schema_id != exclude_schema_id)
+            .order_by(JsonSchemaEntry.updated_at.desc(), JsonSchemaEntry.id.desc())
+        ).first()
+
+    def delete_schema(
+        self,
+        session: Session,
+        schema_id: str,
+        updated_by: Optional[str],
+    ) -> Dict[str, int]:
+        rows = session.exec(
+            select(JsonSchemaEntry)
+            .where(JsonSchemaEntry.schema_id == schema_id)
+            .order_by(JsonSchemaEntry.version.desc())
+        ).all()
+        if not rows:
+            raise PromptRegistryError("Schema not found.")
+
+        impacted_bindings = session.exec(
+            select(PromptBinding)
+            .where(PromptBinding.is_active == True)
+            .where(PromptBinding.output_schema_id == schema_id)
+            .order_by(PromptBinding.updated_at.desc(), PromptBinding.id.desc())
+        ).all()
+
+        rebound_bindings = 0
+        deactivated_bindings = 0
+
+        for binding in impacted_bindings:
+            replacement = self._pick_replacement_schema(
+                session=session,
+                mode=binding.mode,
+                exclude_schema_id=schema_id,
+            )
+            if replacement:
+                binding.output_schema_id = replacement.schema_id
+                rebound_bindings += 1
+            else:
+                binding.is_active = False
+                deactivated_bindings += 1
+            binding.updated_at = datetime.utcnow()
+            binding.updated_by = updated_by
+            session.add(binding)
+
+        deleted_versions = len(rows)
+        for row in rows:
+            session.delete(row)
+
+        session.commit()
+        return {
+            "deleted_versions": deleted_versions,
+            "rebound_bindings": rebound_bindings,
+            "deactivated_bindings": deactivated_bindings,
+        }
+
     def update_schema(
         self,
         session: Session,
@@ -576,8 +773,9 @@ class PromptRegistryService:
         content: Dict[str, Any],
         updated_by: Optional[str],
     ) -> JsonSchemaEntry:
+        normalized_content = self.normalize_schema_content(content)
         current = self.get_active_schema(session, schema_id)
-        if current and json.dumps(current.content, sort_keys=True) == json.dumps(content, sort_keys=True):
+        if current and json.dumps(current.content, sort_keys=True) == json.dumps(normalized_content, sort_keys=True):
             return current
 
         versions = self.get_schema_versions(session, schema_id)
@@ -589,7 +787,7 @@ class PromptRegistryService:
 
         entry = JsonSchemaEntry(
             schema_id=schema_id,
-            content=content,
+            content=normalized_content,
             version=next_version,
             is_active=True,
             updated_by=updated_by,
@@ -598,6 +796,32 @@ class PromptRegistryService:
         session.commit()
         session.refresh(entry)
         return entry
+
+    def normalize_schema_content(self, schema_content: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Accept either raw JSON Schema or OpenAI response_format wrappers and
+        normalize to a plain JSON Schema object.
+        """
+        if not isinstance(schema_content, dict):
+            return schema_content
+
+        # OpenAI wrapper style: {"type":"json_schema","schema":{...}}
+        if schema_content.get("type") == "json_schema" and isinstance(schema_content.get("schema"), dict):
+            return schema_content["schema"]
+
+        # OpenAI wrapper style: {"type":"json_schema","json_schema":{"schema":{...}}}
+        json_schema_block = schema_content.get("json_schema")
+        if schema_content.get("type") == "json_schema" and isinstance(json_schema_block, dict):
+            if isinstance(json_schema_block.get("schema"), dict):
+                return json_schema_block["schema"]
+            return json_schema_block
+
+        # Wrapper style without explicit `type`: {"name": "...", "schema": {...}, "strict": true}
+        wrapper_keys = {"name", "schema", "strict", "description"}
+        if isinstance(schema_content.get("schema"), dict) and set(schema_content.keys()).issubset(wrapper_keys):
+            return schema_content["schema"]
+
+        return schema_content
 
     def rollback_prompt(self, session: Session, prompt_id: str, version: int, updated_by: Optional[str]) -> PromptTemplateEntry:
         target = session.exec(

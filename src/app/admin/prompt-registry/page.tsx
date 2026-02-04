@@ -24,6 +24,15 @@ export default function AdminPromptRegistryPage() {
     const [editedContent, setEditedContent] = useState("");
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [creating, setCreating] = useState(false);
+    const [newPrompt, setNewPrompt] = useState({
+        prompt_id: "",
+        tier: "NONE",
+        mode: "SOLVE",
+        role: "DEVELOPER",
+        content: "",
+    });
     const [error, setError] = useState<string | null>(null);
 
     const headers = (includeJson = false) => {
@@ -35,12 +44,36 @@ export default function AdminPromptRegistryPage() {
         return h;
     };
 
+    const loadPromptVersions = async (promptId: string, signal?: AbortSignal) => {
+        const res = await fetch(
+            `${baseUrl}/api/v1/admin/prompt-registry/prompts/${encodeURIComponent(promptId)}/versions`,
+            { headers: headers(), signal }
+        );
+        if (!res.ok) throw new Error("Failed to load versions");
+        const data: PromptEntry[] = await res.json();
+        return data;
+    };
+
+    const refreshPromptDetails = async (promptId: string) => {
+        const data = await loadPromptVersions(promptId);
+        setVersions(data);
+        const active = data.find((v) => v.is_active) || data[0] || null;
+        setSelected(active);
+        setEditedContent(active?.content ?? "");
+        if (active) {
+            setPrompts((prev) => {
+                const next = prev.map((p) => (p.prompt_id === active.prompt_id ? active : p));
+                return next.some((p) => p.prompt_id === active.prompt_id) ? next : [...next, active];
+            });
+        }
+    };
+
     useEffect(() => {
         const controller = new AbortController();
         const load = async () => {
             try {
                 setError(null);
-                const res = await fetch(`${baseUrl}/api/v1/admin/prompt-registry/prompts`, { headers: headers(), signal: controller.signal });
+                const res = await fetch(`${baseUrl}/api/v1/admin/prompt-registry/prompts?include_inactive=true`, { headers: headers(), signal: controller.signal });
                 if (!res.ok) throw new Error("Failed to load prompts");
                 const data: PromptEntry[] = await res.json();
                 setPrompts(data);
@@ -63,12 +96,7 @@ export default function AdminPromptRegistryPage() {
         const loadVersions = async () => {
             try {
                 setError(null);
-                const res = await fetch(`${baseUrl}/api/v1/admin/prompt-registry/prompts/${selected.prompt_id}/versions`, {
-                    headers: headers(),
-                    signal: controller.signal,
-                });
-                if (!res.ok) throw new Error("Failed to load versions");
-                const data: PromptEntry[] = await res.json();
+                const data = await loadPromptVersions(selected.prompt_id, controller.signal);
                 setVersions(data);
                 const active = data.find((v) => v.is_active) || data[0] || null;
                 setSelected(active);
@@ -89,7 +117,7 @@ export default function AdminPromptRegistryPage() {
         setSaving(true);
         try {
             setError(null);
-            const res = await fetch(`${baseUrl}/api/v1/admin/prompt-registry/prompts/${selected.prompt_id}/update`, {
+            const res = await fetch(`${baseUrl}/api/v1/admin/prompt-registry/prompts/${encodeURIComponent(selected.prompt_id)}/update`, {
                 method: "POST",
                 headers: headers(true),
                 body: JSON.stringify({
@@ -100,14 +128,13 @@ export default function AdminPromptRegistryPage() {
                     updated_by: localStorage.getItem("user_name") || "admin",
                 }),
             });
-            if (!res.ok) throw new Error("Save failed");
-            const data: PromptEntry = await res.json();
-            setSelected(data);
-            setEditedContent(data.content ?? editedContent);
-            const updated = prompts.map((p) => (p.prompt_id === data.prompt_id ? data : p));
-            setPrompts(updated);
-        } catch {
-            setError("Unable to save prompt.");
+            if (!res.ok) {
+                const payload = await res.json().catch(() => null);
+                throw new Error(payload?.detail || "Save failed");
+            }
+            await refreshPromptDetails(selected.prompt_id);
+        } catch (err) {
+            setError((err as Error)?.message || "Unable to save prompt.");
         } finally {
             setSaving(false);
         }
@@ -117,7 +144,7 @@ export default function AdminPromptRegistryPage() {
         if (!selected) return;
         try {
             setError(null);
-            const res = await fetch(`${baseUrl}/api/v1/admin/prompt-registry/prompts/${selected.prompt_id}/rollback`, {
+            const res = await fetch(`${baseUrl}/api/v1/admin/prompt-registry/prompts/${encodeURIComponent(selected.prompt_id)}/rollback`, {
                 method: "POST",
                 headers: headers(true),
                 body: JSON.stringify({
@@ -126,11 +153,98 @@ export default function AdminPromptRegistryPage() {
                 }),
             });
             if (!res.ok) throw new Error("Activate failed");
+            await refreshPromptDetails(selected.prompt_id);
+        } catch (err) {
+            setError((err as Error)?.message || "Unable to activate version.");
+        }
+    };
+
+    const handleDeletePrompt = async () => {
+        if (!selected) return;
+        const promptId = selected.prompt_id;
+        const confirmed = window.confirm(
+            `Delete prompt "${promptId}" and all its versions? This cannot be undone.`
+        );
+        if (!confirmed) return;
+
+        setDeleting(true);
+        try {
+            setError(null);
+            const updatedBy = localStorage.getItem("user_name") || "admin";
+            const qs = updatedBy ? `?updated_by=${encodeURIComponent(updatedBy)}` : "";
+            const res = await fetch(`${baseUrl}/api/v1/admin/prompt-registry/prompts/${encodeURIComponent(promptId)}${qs}`, {
+                method: "DELETE",
+                headers: headers(),
+            });
+            if (!res.ok) {
+                const payload = await res.json().catch(() => null);
+                throw new Error(payload?.detail || "Delete failed");
+            }
+
+            const remaining = prompts.filter((p) => p.prompt_id !== promptId);
+            setPrompts(remaining);
+            const nextSelected = remaining[0] || null;
+            setSelected(nextSelected);
+            if (!nextSelected) {
+                setVersions([]);
+                setEditedContent("");
+            }
+        } catch (err) {
+            setError((err as Error)?.message || "Unable to delete prompt.");
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    const handleCreatePrompt = async () => {
+        const promptId = newPrompt.prompt_id.trim();
+        if (!promptId) {
+            setError("Prompt ID is required.");
+            return;
+        }
+        if (prompts.some((p) => p.prompt_id === promptId)) {
+            setError("Prompt ID already exists. Select it from the list to update.");
+            return;
+        }
+
+        setCreating(true);
+        try {
+            setError(null);
+            const tierValue = newPrompt.tier === "NONE" ? null : newPrompt.tier;
+            const res = await fetch(`${baseUrl}/api/v1/admin/prompt-registry/prompts/${encodeURIComponent(promptId)}/update`, {
+                method: "POST",
+                headers: headers(true),
+                body: JSON.stringify({
+                    content: newPrompt.content,
+                    tier: tierValue,
+                    mode: newPrompt.mode,
+                    role: newPrompt.role,
+                    updated_by: localStorage.getItem("user_name") || "admin",
+                }),
+            });
+            if (!res.ok) {
+                const payload = await res.json().catch(() => null);
+                throw new Error(payload?.detail || "Create failed");
+            }
+
             const data: PromptEntry = await res.json();
+            setPrompts((prev) =>
+                [...prev, data].sort((a, b) => a.prompt_id.localeCompare(b.prompt_id))
+            );
             setSelected(data);
-            setEditedContent(data.content ?? editedContent);
-        } catch {
-            setError("Unable to activate version.");
+            setEditedContent(data.content ?? "");
+            setVersions([data]);
+            setNewPrompt({
+                prompt_id: "",
+                tier: "NONE",
+                mode: "SOLVE",
+                role: "DEVELOPER",
+                content: "",
+            });
+        } catch (err) {
+            setError((err as Error)?.message || "Unable to create prompt.");
+        } finally {
+            setCreating(false);
         }
     };
 
@@ -144,6 +258,60 @@ export default function AdminPromptRegistryPage() {
             {error && <div className="rounded-lg border border-rose-200 bg-rose-50 text-rose-700 px-4 py-2 text-sm">{error}</div>}
             <div className="grid grid-cols-1 xl:grid-cols-[360px_minmax(0,1fr)] gap-6 w-full">
                 <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+                    <div className="rounded-lg border border-slate-200 dark:border-slate-800 p-3 mb-4 space-y-2">
+                        <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-200">Create Prompt</h3>
+                        <input
+                            className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs"
+                            placeholder="prompt_id"
+                            value={newPrompt.prompt_id}
+                            onChange={(e) => setNewPrompt({ ...newPrompt, prompt_id: e.target.value })}
+                        />
+                        <div className="grid grid-cols-3 gap-2">
+                            <select
+                                className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-2 py-2 text-xs"
+                                value={newPrompt.tier}
+                                onChange={(e) => setNewPrompt({ ...newPrompt, tier: e.target.value })}
+                            >
+                                <option value="NONE">NO_TIER</option>
+                                <option value="FREE">FREE</option>
+                                <option value="STANDARD">STANDARD</option>
+                                <option value="RESEARCH">RESEARCH</option>
+                            </select>
+                            <select
+                                className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-2 py-2 text-xs"
+                                value={newPrompt.mode}
+                                onChange={(e) => setNewPrompt({ ...newPrompt, mode: e.target.value })}
+                            >
+                                <option value="SOLVE">SOLVE</option>
+                                <option value="VERIFY">VERIFY</option>
+                                <option value="PLOT_TRIGGER">PLOT_TRIGGER</option>
+                                <option value="PLOT_SPEC">PLOT_SPEC</option>
+                            </select>
+                            <select
+                                className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-2 py-2 text-xs"
+                                value={newPrompt.role}
+                                onChange={(e) => setNewPrompt({ ...newPrompt, role: e.target.value })}
+                            >
+                                <option value="SYSTEM">SYSTEM</option>
+                                <option value="DEVELOPER">DEVELOPER</option>
+                                <option value="USER">USER</option>
+                                <option value="INTERNAL">INTERNAL</option>
+                            </select>
+                        </div>
+                        <textarea
+                            className="w-full min-h-[84px] rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs font-mono"
+                            placeholder="Prompt content"
+                            value={newPrompt.content}
+                            onChange={(e) => setNewPrompt({ ...newPrompt, content: e.target.value })}
+                        />
+                        <button
+                            className="w-full px-3 py-2 rounded-lg bg-slate-800 text-white text-xs font-semibold disabled:opacity-60"
+                            onClick={handleCreatePrompt}
+                            disabled={creating}
+                        >
+                            {creating ? "Creating..." : "Create Prompt"}
+                        </button>
+                    </div>
                     <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">Prompts</h2>
                     {loading ? (
                         <p className="text-xs text-slate-500">Loading...</p>
@@ -159,7 +327,7 @@ export default function AdminPromptRegistryPage() {
                                         onClick={() => setSelected(prompt)}
                                     >
                                         <div className="font-medium">{prompt.prompt_id}</div>
-                                        <div className="text-[11px] text-slate-400">{prompt.mode}</div>
+                                        <div className="text-[11px] text-slate-400">{prompt.mode} - {prompt.is_active ? "active" : "inactive"}</div>
                                     </button>
                                 </li>
                             ))}
@@ -174,13 +342,59 @@ export default function AdminPromptRegistryPage() {
                                     <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">{selected.prompt_id}</h2>
                                     <p className="text-xs text-slate-500">Mode: {selected.mode} - Role: {selected.role}</p>
                                 </div>
-                                <button
-                                    className="px-4 py-2 rounded-lg bg-admin-primary text-white text-xs font-semibold disabled:opacity-60"
-                                    onClick={handleSave}
-                                    disabled={saving}
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        className="px-4 py-2 rounded-lg bg-rose-600 text-white text-xs font-semibold disabled:opacity-60"
+                                        onClick={handleDeletePrompt}
+                                        disabled={deleting || saving}
+                                    >
+                                        {deleting ? "Deleting..." : "Delete Prompt"}
+                                    </button>
+                                    <button
+                                        className="px-4 py-2 rounded-lg bg-admin-primary text-white text-xs font-semibold disabled:opacity-60"
+                                        onClick={handleSave}
+                                        disabled={saving || deleting}
+                                    >
+                                        {saving ? "Saving..." : "Save New Version"}
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="mt-3 grid grid-cols-3 gap-2">
+                                <select
+                                    className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-2 py-2 text-xs"
+                                    value={selected.tier ?? "NONE"}
+                                    onChange={(e) =>
+                                        setSelected({
+                                            ...selected,
+                                            tier: e.target.value === "NONE" ? null : e.target.value,
+                                        })
+                                    }
                                 >
-                                    {saving ? "Saving..." : "Save New Version"}
-                                </button>
+                                    <option value="NONE">NO_TIER</option>
+                                    <option value="FREE">FREE</option>
+                                    <option value="STANDARD">STANDARD</option>
+                                    <option value="RESEARCH">RESEARCH</option>
+                                </select>
+                                <select
+                                    className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-2 py-2 text-xs"
+                                    value={selected.mode}
+                                    onChange={(e) => setSelected({ ...selected, mode: e.target.value })}
+                                >
+                                    <option value="SOLVE">SOLVE</option>
+                                    <option value="VERIFY">VERIFY</option>
+                                    <option value="PLOT_TRIGGER">PLOT_TRIGGER</option>
+                                    <option value="PLOT_SPEC">PLOT_SPEC</option>
+                                </select>
+                                <select
+                                    className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-2 py-2 text-xs"
+                                    value={selected.role}
+                                    onChange={(e) => setSelected({ ...selected, role: e.target.value })}
+                                >
+                                    <option value="SYSTEM">SYSTEM</option>
+                                    <option value="DEVELOPER">DEVELOPER</option>
+                                    <option value="USER">USER</option>
+                                    <option value="INTERNAL">INTERNAL</option>
+                                </select>
                             </div>
                             <textarea
                                 className="mt-4 w-full min-h-[320px] rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-3 text-xs font-mono text-slate-800 dark:text-slate-200"
