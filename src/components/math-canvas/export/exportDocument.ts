@@ -394,14 +394,57 @@ export const buildExportHtml = (payload: SolutionExportPayload): string => {
 </html>`;
 };
 
+const exportViaHiddenFrame = (html: string): void => {
+  if (typeof document === "undefined" || typeof window === "undefined" || !document.body) {
+    throw new Error("PDF export is unavailable in this environment.");
+  }
+
+  const frame = document.createElement("iframe");
+  frame.setAttribute("aria-hidden", "true");
+  frame.tabIndex = -1;
+  frame.style.position = "fixed";
+  frame.style.width = "0";
+  frame.style.height = "0";
+  frame.style.border = "0";
+  frame.style.opacity = "0";
+  frame.style.pointerEvents = "none";
+
+  const cleanup = () => {
+    if (frame.parentElement) frame.parentElement.removeChild(frame);
+  };
+
+  const cleanupTimer = window.setTimeout(cleanup, 60_000);
+  frame.addEventListener(
+    "load",
+    () => {
+      const frameWindow = frame.contentWindow;
+      if (!frameWindow) return;
+      const finish = () => {
+        window.clearTimeout(cleanupTimer);
+        cleanup();
+        frameWindow.removeEventListener("afterprint", finish);
+      };
+      frameWindow.addEventListener("afterprint", finish);
+    },
+    { once: true },
+  );
+
+  document.body.appendChild(frame);
+  frame.srcdoc = html;
+};
+
 export const exportCanvasToPdf = (payload: SolutionExportPayload): void => {
   if (typeof window === "undefined") return;
-  const popup = window.open("", "_blank", "noopener,noreferrer");
-  if (!popup) throw new Error("Popup blocked. Please allow popups for exports.");
   const html = buildExportHtml(payload);
-  popup.document.open();
-  popup.document.write(html);
-  popup.document.close();
+  const popup = window.open("", "_blank", "noopener,noreferrer");
+  if (popup?.document) {
+    popup.document.open();
+    popup.document.write(html);
+    popup.document.close();
+    return;
+  }
+
+  exportViaHiddenFrame(html);
 };
 
 export const exportCanvasToDocx = async (payload: SolutionExportPayload): Promise<void> => {

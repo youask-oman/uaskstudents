@@ -2481,3 +2481,27 @@ HTTP Request: POST http://172.26.131.128:11434/api/generate "HTTP/1.1 200 OK"
 request_id=183e5af7-8f75-47a2-91bf-0f24331e0add freeform_archive_failed error=[Errno 30] Read-only file system: '/storage'
 HTTP Request: POST http://172.26.131.128:11434/api/generate "HTTP/1.1 200 OK"
 request_id=82fb80d1-d8a4-47a3-ade7-2a8284d29053 freeform_archive_failed error=[Errno 30] Read-only file system: '/storage'
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Failed to enforce STANDARD/SOLVE binding defaults: [Errno 2] No such file or directory: '/backend/app/prompts/solve_standard_extreme_detailed_v1.txt'
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+HTTP Request: POST http://172.26.131.128:11434/api/generate "HTTP/1.1 200 OK"
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Failed to enforce STANDARD/SOLVE binding defaults: [Errno 2] No such file or directory: '/backend/app/prompts/solve_standard_extreme_detailed_v1.txt'
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+HTTP Request: GET http://172.26.131.128:11434/api/tags "HTTP/1.1 200 OK"
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
+Attempting to connect to database (Attempt 1/10)...
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=12 active_pairs=12
