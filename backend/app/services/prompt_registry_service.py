@@ -368,7 +368,7 @@ class PromptRegistryService:
             updated_by=updated_by,
         )
 
-    def audit_active_bindings(self, session: Session) -> Dict[str, Any]:
+    def audit_active_bindings(self, session: Session, expect_full_matrix: bool = True) -> Dict[str, Any]:
         """
         Validate that active prompt bindings are complete and resolvable.
         Returns a report with issues but does not mutate data.
@@ -423,14 +423,15 @@ class PromptRegistryService:
                     "schema_id": binding.output_schema_id,
                 })
 
-        expected_pairs = {(tier.value, mode.value) for tier in PromptTierEnum for mode in PromptModeEnum}
         found_pairs = set(key_latest.keys())
-        for tier_value, mode_value in sorted(expected_pairs - found_pairs):
-            issues.append({
-                "type": "missing_binding_pair",
-                "tier": tier_value,
-                "mode": mode_value,
-            })
+        if expect_full_matrix:
+            expected_pairs = {(tier.value, mode.value) for tier in PromptTierEnum for mode in PromptModeEnum}
+            for tier_value, mode_value in sorted(expected_pairs - found_pairs):
+                issues.append({
+                    "type": "missing_binding_pair",
+                    "tier": tier_value,
+                    "mode": mode_value,
+                })
 
         return {
             "ok": len(issues) == 0,
@@ -449,6 +450,8 @@ class PromptRegistryService:
 
     def _resolve_mode(self, mode: str) -> PromptModeEnum:
         mode = (mode or "solve").lower()
+        if mode in {"ocr_extract", "ocr"}:
+            return PromptModeEnum.OCR_EXTRACT
         if mode in {"verify"}:
             return PromptModeEnum.VERIFY
         if mode in {"plot_trigger"}:
@@ -524,9 +527,9 @@ class PromptRegistryService:
         return system_prompt, schema_entry.content, binding
 
     def validate_schema(self, schema_content: Dict[str, Any]) -> Optional[str]:
-        normalized = self.normalize_schema_content(schema_content)
+        schema_for_validation = self.schema_object_for_validation(schema_content)
         try:
-            Draft202012Validator.check_schema(normalized)
+            Draft202012Validator.check_schema(schema_for_validation)
             return None
         except Exception as e:
             return str(e)
@@ -773,9 +776,8 @@ class PromptRegistryService:
         content: Dict[str, Any],
         updated_by: Optional[str],
     ) -> JsonSchemaEntry:
-        normalized_content = self.normalize_schema_content(content)
         current = self.get_active_schema(session, schema_id)
-        if current and json.dumps(current.content, sort_keys=True) == json.dumps(normalized_content, sort_keys=True):
+        if current and json.dumps(current.content, sort_keys=True) == json.dumps(content, sort_keys=True):
             return current
 
         versions = self.get_schema_versions(session, schema_id)
@@ -787,7 +789,7 @@ class PromptRegistryService:
 
         entry = JsonSchemaEntry(
             schema_id=schema_id,
-            content=normalized_content,
+            content=content,
             version=next_version,
             is_active=True,
             updated_by=updated_by,
@@ -797,29 +799,23 @@ class PromptRegistryService:
         session.refresh(entry)
         return entry
 
-    def normalize_schema_content(self, schema_content: Dict[str, Any]) -> Dict[str, Any]:
+    def schema_object_for_validation(self, schema_content: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Accept either raw JSON Schema or OpenAI response_format wrappers and
-        normalize to a plain JSON Schema object.
+        Accept either raw JSON Schema or OpenAI wrapper payloads and return the
+        JSON Schema object used for validation, without mutating stored content.
         """
         if not isinstance(schema_content, dict):
             return schema_content
 
-        # OpenAI wrapper style: {"type":"json_schema","schema":{...}}
-        if schema_content.get("type") == "json_schema" and isinstance(schema_content.get("schema"), dict):
-            return schema_content["schema"]
+        direct = schema_content.get("schema")
+        if isinstance(direct, dict):
+            return direct
 
-        # OpenAI wrapper style: {"type":"json_schema","json_schema":{"schema":{...}}}
         json_schema_block = schema_content.get("json_schema")
-        if schema_content.get("type") == "json_schema" and isinstance(json_schema_block, dict):
+        if isinstance(json_schema_block, dict):
             if isinstance(json_schema_block.get("schema"), dict):
                 return json_schema_block["schema"]
             return json_schema_block
-
-        # Wrapper style without explicit `type`: {"name": "...", "schema": {...}, "strict": true}
-        wrapper_keys = {"name", "schema", "strict", "description"}
-        if isinstance(schema_content.get("schema"), dict) and set(schema_content.keys()).issubset(wrapper_keys):
-            return schema_content["schema"]
 
         return schema_content
 

@@ -183,6 +183,12 @@ def _schema_object_for_validation(schema_config: Optional[Dict[str, Any]]) -> Di
     inner = schema_config.get("schema")
     if isinstance(inner, dict):
         return inner
+    json_schema_block = schema_config.get("json_schema")
+    if isinstance(json_schema_block, dict):
+        nested = json_schema_block.get("schema")
+        if isinstance(nested, dict):
+            return nested
+        return json_schema_block
     return schema_config
 
 

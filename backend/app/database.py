@@ -3,6 +3,7 @@ from app.models import User, ChatSession, ChatMessage, UsageLog, OCRJob
 import os
 import time
 from sqlalchemy.exc import OperationalError
+from sqlalchemy import text
 import logging
 
 # Configure logging
@@ -13,6 +14,16 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://uask_user:uask_passw
 
 engine = create_engine(DATABASE_URL, echo=False)
 
+def _ensure_prompt_mode_enum_ocr_extract():
+    if not DATABASE_URL.lower().startswith("postgresql"):
+        return
+    try:
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+            conn.execute(text("ALTER TYPE promptmodeenum ADD VALUE IF NOT EXISTS 'OCR_EXTRACT'"))
+            logger.info("Ensured promptmodeenum includes OCR_EXTRACT")
+    except Exception as e:
+        logger.warning(f"Could not ensure promptmodeenum OCR_EXTRACT value: {e}")
+
 def create_db_and_tables():
     max_retries = 10
     retry_delay = 2  # seconds
@@ -22,6 +33,7 @@ def create_db_and_tables():
             logger.info(f"Attempting to connect to database (Attempt {attempt + 1}/{max_retries})...")
             # Try to connect and create tables
             SQLModel.metadata.create_all(engine)
+            _ensure_prompt_mode_enum_ocr_extract()
             logger.info("Database connection successful and tables created.")
             return
         except OperationalError as e:

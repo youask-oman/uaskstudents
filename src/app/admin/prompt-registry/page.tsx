@@ -283,6 +283,7 @@ export default function AdminPromptRegistryPage() {
                                 onChange={(e) => setNewPrompt({ ...newPrompt, mode: e.target.value })}
                             >
                                 <option value="SOLVE">SOLVE</option>
+                                <option value="OCR_EXTRACT">OCR_EXTRACT</option>
                                 <option value="VERIFY">VERIFY</option>
                                 <option value="PLOT_TRIGGER">PLOT_TRIGGER</option>
                                 <option value="PLOT_SPEC">PLOT_SPEC</option>
@@ -381,6 +382,7 @@ export default function AdminPromptRegistryPage() {
                                     onChange={(e) => setSelected({ ...selected, mode: e.target.value })}
                                 >
                                     <option value="SOLVE">SOLVE</option>
+                                    <option value="OCR_EXTRACT">OCR_EXTRACT</option>
                                     <option value="VERIFY">VERIFY</option>
                                     <option value="PLOT_TRIGGER">PLOT_TRIGGER</option>
                                     <option value="PLOT_SPEC">PLOT_SPEC</option>

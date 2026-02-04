@@ -606,6 +606,7 @@ class PromptModeEnum(str, Enum):
     VERIFY = "VERIFY"
     PLOT_TRIGGER = "PLOT_TRIGGER"
     PLOT_SPEC = "PLOT_SPEC"
+    OCR_EXTRACT = "OCR_EXTRACT"
 
 class PromptRoleEnum(str, Enum):
     SYSTEM = "SYSTEM"

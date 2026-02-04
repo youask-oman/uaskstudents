@@ -106,28 +106,38 @@ def on_startup():
         except Exception as e:
             logging.error(f"Failed to initialize plans: {e}")
             session.rollback()
+
+        bootstrap_from_files = os.environ.get("PROMPT_REGISTRY_BOOTSTRAP_FROM_FILES", "false").lower() in {"1", "true", "yes"}
+        if bootstrap_from_files:
+            try:
+                prompt_registry_service.ensure_ocr_extract_prompts(session, updated_by="startup")
+            except Exception as e:
+                logging.error(f"Failed to seed OCR extract prompts: {e}")
+                session.rollback()
+            try:
+                prompt_registry_service.ensure_standard_solve_binding(session, updated_by="startup")
+            except Exception as e:
+                logging.error(f"Failed to enforce STANDARD/SOLVE binding defaults: {e}")
+                session.rollback()
+            try:
+                prompt_registry_service.ensure_freeform_solve_prompt(session, updated_by="startup")
+            except Exception as e:
+                logging.error(f"Failed to seed free-form solve prompt: {e}")
+                session.rollback()
+            try:
+                prompt_registry_service.ensure_freeform_solve_prompts_by_tier(session, updated_by="startup")
+            except Exception as e:
+                logging.error(f"Failed to seed tiered free-form solve prompts: {e}")
+                session.rollback()
+        else:
+            logging.info("Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.")
+
+        strict_binding_matrix = os.environ.get("PROMPT_REGISTRY_AUDIT_EXPECT_FULL_MATRIX", "false").lower() in {"1", "true", "yes"}
         try:
-            prompt_registry_service.ensure_ocr_extract_prompts(session, updated_by="startup")
-        except Exception as e:
-            logging.error(f"Failed to seed OCR extract prompts: {e}")
-            session.rollback()
-        try:
-            prompt_registry_service.ensure_standard_solve_binding(session, updated_by="startup")
-        except Exception as e:
-            logging.error(f"Failed to enforce STANDARD/SOLVE binding defaults: {e}")
-            session.rollback()
-        try:
-            prompt_registry_service.ensure_freeform_solve_prompt(session, updated_by="startup")
-        except Exception as e:
-            logging.error(f"Failed to seed free-form solve prompt: {e}")
-            session.rollback()
-        try:
-            prompt_registry_service.ensure_freeform_solve_prompts_by_tier(session, updated_by="startup")
-        except Exception as e:
-            logging.error(f"Failed to seed tiered free-form solve prompts: {e}")
-            session.rollback()
-        try:
-            report = prompt_registry_service.audit_active_bindings(session)
+            report = prompt_registry_service.audit_active_bindings(
+                session,
+                expect_full_matrix=strict_binding_matrix,
+            )
             if report.get("ok"):
                 logging.info(
                     "Prompt binding integrity OK: active_bindings=%s active_pairs=%s",

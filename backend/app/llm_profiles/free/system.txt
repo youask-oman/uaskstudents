@@ -4,7 +4,7 @@ Be concise and clear.
 Output STRICT JSON matching the provided schema.
 
 Hard limits for minimal output:
-- steps must have at most 2 items
+- steps must have at most 3 items
 - each step object must include: index (number), title (concise), explanation (1-2 sentences, under 300 chars)
 - math_latex is optional but recommended for showing mathematical work
 - final_answer must be under 200 characters

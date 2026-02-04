@@ -78,10 +78,18 @@ export default function AdminPromptBindingsPage() {
     };
 
     const getGlobalPromptOptions = (tier: string, mode: string) =>
-        prompts.filter((p) => p.role === "SYSTEM" && p.mode === mode && (p.tier === null || p.tier === tier));
+        prompts.filter((p) => {
+            if (p.role !== "SYSTEM") return false;
+            if (mode === "OCR_EXTRACT") return true;
+            return p.mode === mode && (p.tier === null || p.tier === tier);
+        });
 
     const getDeveloperPromptOptions = (tier: string, mode: string) =>
-        prompts.filter((p) => p.role === "DEVELOPER" && p.mode === mode && (p.tier === null || p.tier === tier));
+        prompts.filter((p) => {
+            if (p.role !== "DEVELOPER") return false;
+            if (mode === "OCR_EXTRACT") return true;
+            return p.mode === mode && (p.tier === null || p.tier === tier);
+        });
 
     const pickValidOption = (
         preferred: string,
@@ -254,6 +262,7 @@ export default function AdminPromptBindingsPage() {
                         onChange={(e) => setForm((current) => normalizeFormSelection(current.tier, e.target.value, current))}
                     >
                         <option value="SOLVE">SOLVE</option>
+                        <option value="OCR_EXTRACT">OCR_EXTRACT</option>
                         <option value="VERIFY">VERIFY</option>
                         <option value="PLOT_TRIGGER">PLOT_TRIGGER</option>
                         <option value="PLOT_SPEC">PLOT_SPEC</option>
@@ -309,9 +318,9 @@ export default function AdminPromptBindingsPage() {
                     <button
                         className="w-full px-4 py-2 rounded-lg bg-slate-700 text-white text-xs font-semibold disabled:opacity-60"
                         onClick={runTestPrompt}
-                        disabled={testRunning}
+                        disabled={testRunning || form.mode === "OCR_EXTRACT"}
                     >
-                        {testRunning ? "Running..." : "Test Prompt"}
+                        {testRunning ? "Running..." : form.mode === "OCR_EXTRACT" ? "Test Not Available (OCR_EXTRACT)" : "Test Prompt"}
                     </button>
                     {testResult && (
                         <pre className="text-[10px] whitespace-pre-wrap break-words rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-2">{testResult}</pre>
