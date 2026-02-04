@@ -156,7 +156,9 @@ const normalizeInlineDollars = (line: string) => {
 
     if (dollarIndexes.length === 0) return line;
     if (dollarIndexes.length % 2 === 1) {
-        return escapeAllDollars(line);
+        const lastDollar = dollarIndexes[dollarIndexes.length - 1];
+        const escapedLine = `${line.slice(0, lastDollar)}\\$${line.slice(lastDollar + 1)}`;
+        return normalizeInlineDollars(escapedLine);
     }
 
     let output = "";

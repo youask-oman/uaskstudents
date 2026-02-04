@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useEffect, useMemo, useReducer, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import DashboardNavBar from "@/components/DashboardNavBar";
 import MathCanvasLayout from "@/components/math-canvas/MathCanvasLayout";
 import LeftNotebookSidebar from "@/components/math-canvas/LeftNotebookSidebar";
@@ -136,6 +137,8 @@ const buildInitialPages = (messages: ReturnType<typeof normalizeSessionMessages>
       steps: solution.steps,
       result: solution.result,
       verificationChecks: solution.verificationChecks,
+      domainConstraints: solution.domainConstraints,
+      autocorrectApplied: solution.autocorrectApplied,
     });
   }
 
@@ -195,6 +198,7 @@ const buildInitialPages = (messages: ReturnType<typeof normalizeSessionMessages>
 
 export default function ChatPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const searchParams = useSearchParams();
   const [session, setSession] = useState<ChatSessionPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [documentState, dispatch] = useReducer(
@@ -378,6 +382,8 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   const notebookTitle = session.subject || "Math Notebook";
   const notebookSubtitle = session.title || "Untitled Session";
   const usagePercent = Math.max(15, Math.min(90, Math.round((normalizedMessages.length / 20) * 100)));
+  const viewMode: "edit" | "student_report" =
+    (searchParams.get("view") || "").toLowerCase() === "student_report" ? "student_report" : "edit";
 
   return (
     <>
@@ -397,6 +403,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             savedVersions={savedPaperVersions}
             state={documentState}
             dispatch={dispatch}
+            viewMode={viewMode}
           />
         }
         rightSidebar={

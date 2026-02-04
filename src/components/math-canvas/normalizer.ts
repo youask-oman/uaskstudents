@@ -353,6 +353,98 @@ const parseVerificationChecks = (value: unknown): VerificationCheck[] => {
   return parsed;
 };
 
+const parseChartPayloadFromPlotly = (value: unknown): ChartPayload[] => {
+  const obj = asRecord(value);
+  if (!obj) return [];
+  const data = Array.isArray(obj.data) ? obj.data : [];
+  const layout = asRecord(obj.layout);
+  const title =
+    asString(layout?.title) ||
+    asString(asRecord(layout?.title)?.text) ||
+    "Graph";
+  const charts: ChartPayload[] = [];
+  data.forEach((traceLike, index) => {
+    const trace = asRecord(traceLike);
+    if (!trace) return;
+    const xs = Array.isArray(trace.x) ? trace.x : [];
+    const ys = Array.isArray(trace.y) ? trace.y : [];
+    const points: ChartPayload["points"] = [];
+    const len = Math.min(xs.length, ys.length, 400);
+    for (let i = 0; i < len; i += 1) {
+      const x = Number(xs[i]);
+      const y = Number(ys[i]);
+      if (Number.isFinite(x) && Number.isFinite(y)) points.push({ x, y });
+    }
+    if (points.length >= 2) {
+      charts.push({
+        title: `${title}${data.length > 1 ? ` (${index + 1})` : ""}`,
+        xLabel: asString(asRecord(layout?.xaxis)?.title) || "x",
+        yLabel: asString(asRecord(layout?.yaxis)?.title) || "y",
+        points,
+      });
+    }
+  });
+  return charts;
+};
+
+const parseSolutionDocFromStructured = (value: unknown): MathSolutionPayload | null => {
+  const structured = asRecord(value);
+  const doc = asRecord(structured?.solution_doc);
+  if (!doc) return null;
+
+  const recognized = asRecord(doc.recognized_problem);
+  const stepsRaw = Array.isArray(doc.steps) ? doc.steps : [];
+  const steps: StepRow[] = stepsRaw
+    .map((row) => {
+      const step = asRecord(row);
+      if (!step) return null;
+      const kRaw = Number(step.k);
+      const k = Number.isFinite(kRaw) && kRaw > 0 ? kRaw : undefined;
+      const title = asString(step.title) || (k ? `Step ${k}` : "Step");
+      const body = asString(step.body_markdown) || "";
+      return {
+        k,
+        title,
+        bodyMarkdown: body || undefined,
+        explanation: body || undefined,
+      } as StepRow;
+    })
+    .filter((row): row is StepRow => Boolean(row));
+
+  const finalAnswer = asRecord(doc.final_answer);
+  const verification = Array.isArray(doc.verification) ? doc.verification : [];
+  const verificationChecks: VerificationCheck[] = [];
+  verification.forEach((v, idx) => {
+    const text = asString(v);
+    if (!text) return;
+    verificationChecks.push({
+      checkId: `check_${idx + 1}`,
+      verdict: "unknown",
+      message: text,
+    });
+  });
+
+  const plotsRaw = Array.isArray(doc.plots) ? doc.plots : [];
+  const plots = plotsRaw.flatMap((entry) => parseChartPayloadFromPlotly(asRecord(entry)?.plotly));
+  const autocorrect = asRecord(doc.autocorrect);
+  const parseStatusRaw = asString(doc.parse_status);
+  const parseStatus =
+    parseStatusRaw === "ok" || parseStatusRaw === "partial" || parseStatusRaw === "failed"
+      ? parseStatusRaw
+      : undefined;
+
+  return {
+    recognizedLatex: asString(recognized?.latex) || asString(recognized?.text) || undefined,
+    domainConstraints: asStringArray(doc.domain_constraints),
+    steps,
+    result: cleanAnswerCandidate(asString(finalAnswer?.latex) || asString(finalAnswer?.text) || undefined),
+    plots,
+    verificationChecks,
+    autocorrectApplied: Boolean(autocorrect?.applied),
+    parseStatus,
+  };
+};
+
 const parseMathSolutionFromObject = (value: unknown): MathSolutionPayload | null => {
   const obj = asRecord(value);
   if (!obj) return null;
@@ -492,11 +584,15 @@ const cleanAnswerCandidate = (value: string | undefined): string | undefined => 
     .replace(/\s{2,}/g, " ")
     .trim();
   if (!cleaned) return undefined;
+  if (/^(?:n\/?a|none|null|not provided|unknown|-+)$/i.test(cleaned)) return undefined;
   if (/^(step|verification|domain|check|plotly)\b/i.test(cleaned)) return undefined;
   if (/^sub(?:stitution)?\.?$/i.test(cleaned)) return undefined;
   if (/^\(?\d+\)?[.)-]?\s*[A-Za-z]{1,20}$/.test(cleaned)) return undefined;
   return cleaned;
 };
+
+const isPlaceholderLine = (value: string): boolean =>
+  /^(?:none|n\/?a|null|not provided|unknown|-+)$/i.test((value || "").trim());
 
 const detectStepsFromText = (text: string): StepRow[] => {
   const lines = text
@@ -541,7 +637,7 @@ const detectStepsFromText = (text: string): StepRow[] => {
     if (current) {
       const bullet = line.replace(/^[-*]\s+/, "").trim();
       if (/^[-*]\s+/.test(line)) {
-        if (bullet) current.explanationParts.push(bullet);
+        if (bullet && !isPlaceholderLine(bullet)) current.explanationParts.push(bullet);
         return;
       }
       if (isDelimiterOnlyLine(line)) {
@@ -557,7 +653,7 @@ const detectStepsFromText = (text: string): StepRow[] => {
 
     if (/^\(?\d+\)?[.)\-–—]\s+/.test(line)) {
       const textLine = line.replace(/^\(?\d+\)?[.)\-–—]\s+/, "").trim();
-      if (textLine) {
+      if (textLine && !isPlaceholderLine(textLine)) {
         steps.push({
           title: `Step ${steps.length + 1}`,
           explanation: textLine,
@@ -568,7 +664,7 @@ const detectStepsFromText = (text: string): StepRow[] => {
 
     if (/^[-*]\s+/.test(line)) {
       const bullet = line.replace(/^[-*]\s+/, "").trim();
-      if (bullet) {
+      if (bullet && !isPlaceholderLine(bullet)) {
         steps.push({
           title: `Step ${steps.length + 1}`,
           explanation: bullet,
@@ -605,7 +701,7 @@ const detectResultFromText = (text: string): string | undefined => {
     const candidate = cleanAnswerCandidate(boxedMatches[i][1]);
     if (candidate) return candidate;
   }
-  const blocks = [...text.matchAll(/\\\[(.*?)\\\]/gs)];
+  const blocks = [...text.matchAll(/\\\[((?:.|\n)*?)\\\]/g)];
   for (let i = blocks.length - 1; i >= 0; i -= 1) {
     const candidate = cleanAnswerCandidate(blocks[i][1]);
     if (candidate && /[=<>]|\\(frac|sqrt|pi|theta|boxed)/i.test(candidate)) {
@@ -741,8 +837,32 @@ export const normalizeAssistantMessage = (
   }
 
   const extractedFromContent = contentText.trim() ? extractSolutionFromText(contentText) : { solution: null, remainingText: contentText };
+  const solutionDocPayload = parseSolutionDocFromStructured(message.structured_data);
   const structuredSolution = parseMathSolutionFromObject(message.structured_data);
-  const mergedSolution = structuredSolution
+  const allowFallbackFromContent = solutionDocPayload ? solutionDocPayload.parseStatus !== "ok" : true;
+  const mergedSolution = solutionDocPayload
+    ? {
+        ...solutionDocPayload,
+        recognizedLatex:
+          solutionDocPayload.recognizedLatex ||
+          (allowFallbackFromContent ? extractedFromContent.solution?.recognizedLatex : undefined),
+        steps:
+          solutionDocPayload.steps.length > 0
+            ? solutionDocPayload.steps
+            : (allowFallbackFromContent ? extractedFromContent.solution?.steps || [] : []),
+        result:
+          cleanAnswerCandidate(solutionDocPayload.result) ||
+          (allowFallbackFromContent ? cleanAnswerCandidate(extractedFromContent.solution?.result) : undefined),
+        verificationChecks:
+          (solutionDocPayload.verificationChecks?.length || 0) > 0
+            ? solutionDocPayload.verificationChecks
+            : (allowFallbackFromContent ? extractedFromContent.solution?.verificationChecks || [] : []),
+        plots:
+          (solutionDocPayload.plots?.length || 0) > 0
+            ? solutionDocPayload.plots
+            : (allowFallbackFromContent ? extractedFromContent.solution?.plots || [] : []),
+      }
+    : structuredSolution
     ? {
         ...structuredSolution,
         recognizedLatex: structuredSolution.recognizedLatex || extractedFromContent.solution?.recognizedLatex,
@@ -754,11 +874,11 @@ export const normalizeAssistantMessage = (
           cleanAnswerCandidate(structuredSolution.result) ||
           cleanAnswerCandidate(extractedFromContent.solution?.result),
         verificationChecks:
-          structuredSolution.verificationChecks.length > 0
+          (structuredSolution.verificationChecks?.length || 0) > 0
             ? structuredSolution.verificationChecks
             : (extractedFromContent.solution?.verificationChecks || []),
         plots:
-          structuredSolution.plots.length > 0
+          (structuredSolution.plots?.length || 0) > 0
             ? structuredSolution.plots
             : (extractedFromContent.solution?.plots || []),
       }
@@ -769,6 +889,14 @@ export const normalizeAssistantMessage = (
     mergedSolution.plots?.forEach((plot) => {
       base.items.push({ type: "chart", payload: plot });
     });
+    const hasMeaningfulSolution =
+      (mergedSolution.steps?.length || 0) > 0 ||
+      Boolean(cleanAnswerCandidate(mergedSolution.result)) ||
+      (mergedSolution.plots?.length || 0) > 0 ||
+      (mergedSolution.verificationChecks?.length || 0) > 0;
+    if (!hasMeaningfulSolution && contentText.trim()) {
+      base.items.push({ type: "text", text: contentText.trim() });
+    }
   }
 
   const explicitPlotPayloads = [
@@ -779,7 +907,7 @@ export const normalizeAssistantMessage = (
     base.items.push({ type: "chart", payload: plot });
   });
 
-  if (contentText.trim()) {
+  if (contentText.trim() && !mergedSolution) {
     const remaining = extractedFromContent.remainingText.trim();
     if (remaining) {
       base.items.push({ type: "text", text: remaining });

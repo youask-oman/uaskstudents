@@ -1,94 +1,31 @@
-Solve the math problem below with EXTREME detail. Follow these rules EXACTLY.
+Solve the math problem below in clear, student-friendly markdown.
 
-RULE 0: MATH RENDERING COMPATIBILITY (CRITICAL)
-Your answer is rendered as Markdown with KaTeX/MathJax-style math support.
-You MUST follow this formatting contract:
+Output rules (strict):
+- Output markdown only (no JSON wrapper).
+- Use these exact section headers in this exact order:
+  1) # Recognized Problem
+  2) # Domain Constraints
+  3) # Steps
+  4) # Graphs
+  5) # Verification
+  6) # Final Answer
+- In # Steps, every step must start with: ## Step k: Title
+- Use 6 to 10 steps total.
+- Step titles must be 3-9 words, verb-first, Title Case.
+- Step bodies may be multiline markdown (paragraphs, bullets, and math).
+- Use standard LaTeX only:
+  - Inline: $...$
+  - Display: $$...$$
+  - Never use \( \) or \[ \].
+- In # Graphs:
+  - If graphing is not requested, output exactly: - None
+  - If graphing is requested, include valid Plotly JSON in fenced ```plotly blocks.
+- In # Verification, provide 1 to 3 bullet checks.
+- In # Final Answer, output exactly:
+  **Text:** ...
+  **LaTeX:** $$...$$
+- Do not output schema keys like "steps": [...].
+- Do not output labels like [Plotly JSON].
 
-A) Inline math: use ONLY $ ... $
-B) Display math: use ONLY $$ ... $$ (use rarely)
-C) NEVER use \( \) or \[ \] (not allowed)
-D) Line breaks:
-   - NEVER use \\ in normal text
-   - The ONLY place \\ is allowed is INSIDE an aligned display block:
-     $$\begin{aligned} ... \\ ... \end{aligned}$$
-   - Do NOT put \\ right after $$ or right before $$ (forbidden)
-E) Display blocks $$ ... $$ must contain ONLY math (no English inside)
-
-If you violate Rule 0, the output is invalid.
-
-RULE 1: STEPS
-- Output EXACTLY 12-18 numbered steps (Step 1, Step 2, ..., Step N).
-- Each step must be ONE complete sentence describing ONE micro-operation (no multi-action steps).
-- Each step MUST be on ONE line and MUST follow this exact pattern:
-  Step k: title: <short specific description ≤120 chars> — <one sentence micro-operation>
-- NO skipping steps; expand every algebra/calculus transformation into micro-operations.
-
-RULE 2: DOMAIN CONSTRAINTS
-- BEFORE Step 1, state ALL domain constraints in a dedicated section (even if trivial).
-- Format exactly:
-  Domain constraints:
-  • <constraint 1>
-  • <constraint 2>
-  • <combined conclusion if relevant>
-- Include all applicable types:
-  • Square roots / even roots: radicand ≥ 0
-  • Denominators: expression ≠ 0
-  • Logs: argument > 0 (and base constraints if relevant)
-  • Inverse trig: principal-value restrictions if relevant
-  • Any other restriction implied by the problem
-
-RULE 3: VERIFICATION (MANDATORY)
-- AFTER the steps, include EXACTLY 3 checks in this exact format:
-
-Verification:
-(1) Domain check: <show the final answer satisfies ALL constraints>
-(2) Substitution/check: <plug into the original OR differentiate/compare to confirm>
-(3) Extraneous/edge-case rejection: <show why any rejected candidate fails, or state none exist and why>
-
-RULE 4: FINAL ANSWER (MANDATORY)
-- End with EXACTLY these two lines:
-
-Final Answer: <plain English, concise>
-LaTeX: <clean LaTeX final result ONLY, with NO delimiters like $...$, \( \), \[ \], or $$...$$>
-
-RULE 5: PLOTLY SPEC (MANDATORY, EXACTLY ONE CODE BLOCK TOTAL)
-- Include EXACTLY ONE fenced code block labeled json containing valid Plotly JSON.
-- This must be the ONLY code block in the entire response.
-- Use 5–9 sample points per series (arrays length 5–9).
-- Choose a meaningful plot:
-  • For equations: plot LHS and RHS as two series.
-  • For integrals: plot the integrand over a reasonable interval.
-  • For series/limits: plot partial sums or function behavior.
-- The JSON must be a single object with keys "data" and "layout" using this structure (fill with real numbers):
-- Include ONE fenced code block with valid Plotly JSON:
-  "```json
-  {
-    "data": [
-      {"type": "scatter", "x": [-3,0,3,6,9], "y": [0,1.73,2.45,3,3.46], "name": "y=√(x+3)"},
-      {"type": "scatter", "x": [-3,0,3,6,9], "y": [-6,-3,0,3,6], "name": "y=x-3"}
-    ],
-    "layout": {"title": "Solution of √(x+3)=x-3"}
-  }
-  ```"
-
-Rule 5: LANGUAGE
-- English ONLY (no other languages)
-- Write in Markdown.
-- Use LaTeX in $...$ for math, like $\sqrt{x+3}$ and $x \ge 3$.
-- NO extra code blocks and no extra JSON blocks (only the single Plotly json block is allowed).
-- No schema fields, no key-value objects, no “question.constraints”, no “final_answer.*”.
-
-Rule 6: LENGTH
-- Minimum 1500 characters total output
-
-PENALTY WARNING:
-- Missing step numbers → rejection
-- Missing domain constraints → rejection
-- Missing Final Answer lines → rejection
-- Missing Plotly code block → rejection
-
-
-NOW SOLVE THIS PROBLEM:
+Problem:
 {PROBLEM}
-
-START YOUR RESPONSE WITH "Step 1:"

@@ -10,31 +10,35 @@ from pathlib import Path
 from typing import Any, AsyncIterator, Dict, List, Optional, Sequence
 
 import httpx
+from app.services.solve.solution_doc import build_solution_doc, latex_normalize, render_solution_doc_markdown
 
 FREEFORM_OUTPUT_MODE = "FREEFORM"
 FREEFORM_PROMPT_ID = "free_form_math_standard_detailed_v1"
 FREEFORM_PROMPT_VERSION = "v1"
 
-_STEP_RE = re.compile(r"(?mi)^\s*(?:[-*]\s*)?(?:\*{1,2}\s*)?Step\s+(\d+)\s*[:.\-]")
+_STEP_RE_STRICT = re.compile(r"(?mi)^\s*##\s*Step\s+(\d+)\s*:\s+.+$")
+_STEP_RE_LOOSE = re.compile(r"(?mi)^\s*(?:##\s*)?(?:[-*]\s*)?(?:\*{1,2}\s*)?Step\s+(\d+)\s*[:.\-]")
 _DOMAIN_RE = re.compile(r"(?i)domain\s+(constraints?|restrictions?)")
 _VERIFY_RE = re.compile(r"(?i)\bverification\b")
 _VERIFY_CHECK_RE = re.compile(
     r"(?mi)^\s*(?:[-*]\s*)?(?:\*{1,2}\s*)?(?:\(\d+\)|\d+[.)]|verification\s+check\s+\d+)\s*(?:[:.\-])?\s+"
 )
-_PLOTLY_BLOCK_RE = re.compile(r"```json[\s\S]*?```", re.IGNORECASE)
+_PLOTLY_BLOCK_RE = re.compile(r"```(?:plotly|json)[\s\S]*?```", re.IGNORECASE)
 _PLOTLY_LABEL_RE = re.compile(r"(?i)\bplotly\s+json\b")
 _GRAPH_KEYWORDS_RE = re.compile(r"(?i)\b(graph|plot|sketch|draw|visuali[sz]e)\b")
 _DOMAIN_TRIGGER_RE = re.compile(r"(?i)(sqrt|\\sqrt|log|\\log|ln|denominator|/x|x\^?2\s*-\s*\d)")
 _MATH_MARKER_RE = re.compile(r"(?i)(=|\\frac|\\sqrt|\\int|\\sum|\\prod|\\lim|[\d][\+\-\*/\^])")
-_GENERIC_STEP_LINE_RE = re.compile(r"(?mi)^\s*(?:Step\s+\d+|(?:\d+[\)\.\-]))\s+")
+_GENERIC_STEP_LINE_RE = re.compile(r"(?mi)^\s*(?:(?:##\s*)?Step\s+\d+|(?:\d+[\)\.\-]))\s+")
 _FINAL_ANSWER_RE_LIST = [
     re.compile(r"(?im)^[ \t]*final answer[ \t]*[:\-][ \t]*(.+?)[ \t]*$"),
     re.compile(r"(?im)^[ \t]*answer[ \t]*[:\-][ \t]*(.+?)[ \t]*$"),
+    re.compile(r"(?im)^[ \t]*\*\*text:\*\*[ \t]*(.+?)[ \t]*$"),
     re.compile(r"\\boxed\{([^}]+)\}"),
 ]
 _FINAL_ANSWER_HEADER_RE = re.compile(r"(?im)^\s*\*{0,2}\s*final answer\s*\*{0,2}\s*:?\s*$")
 _DISPLAY_BLOCK_RE = re.compile(r"\\\[(.*?)\\\]", re.DOTALL)
 _EQUATION_LINE_RE = re.compile(r"(?m)^\s*([^\n]{1,260}[=<>][^\n]{1,260})\s*$")
+_PLACEHOLDER_ANSWER_RE = re.compile(r"^(?:n/?a|none|null|not\s+provided|unknown|-+)$", re.IGNORECASE)
 
 
 @dataclass
@@ -48,6 +52,7 @@ class FreeformAttemptResult:
     prompt_id: str = FREEFORM_PROMPT_ID
     prompt_version: str = FREEFORM_PROMPT_VERSION
     provider: str = "openai"
+    solution_doc: Optional[Dict[str, Any]] = None
 
 
 def _normalize_tier(value: Optional[str]) -> str:
@@ -68,41 +73,30 @@ def _problem_requires_domain_constraints(problem_text: str) -> bool:
 def _coerce_research_plotly_block(output_text: str, tier: str) -> str:
     if _normalize_tier(tier) != "RESEARCH":
         return output_text
-    if _PLOTLY_BLOCK_RE.search(output_text):
-        return output_text
-    label_match = _PLOTLY_LABEL_RE.search(output_text or "")
-    candidate: Optional[str] = None
-    if label_match:
-        start = output_text.find("{", label_match.start())
-        if start >= 0:
-            depth = 0
-            end = -1
-            for idx, ch in enumerate(output_text[start:], start=start):
-                if ch == "{":
-                    depth += 1
-                elif ch == "}":
-                    depth -= 1
-                    if depth == 0:
-                        end = idx
-                        break
-            if end >= start:
-                maybe_candidate = output_text[start : end + 1].strip()
-                has_data_key = bool(re.search(r'"\s*data\s*"', maybe_candidate))
-                has_layout_key = bool(re.search(r'"\s*layout\s*"', maybe_candidate))
-                if has_data_key and has_layout_key:
-                    candidate = maybe_candidate
-    fallback_block = (
-        candidate
-        or (
-            "{\n"
-            '  "data": [\n'
-            '    {"type": "scatter", "mode": "lines", "x": [-2, -1, 0, 1, 2], "y": [4, 1, 0, 1, 4], "name": "reference"}\n'
-            "  ],\n"
-            '  "layout": {"title": "Supporting visualization"}\n'
-            "}"
-        )
+    # Never inject random labels or fallback plot blocks.
+    # If model emitted "[Plotly JSON]" with a fenced json block, normalize to fenced plotly only.
+    normalized = re.sub(r"(?im)^\s*\[plotly json\]\s*$", "", output_text or "")
+    normalized = re.sub(r"```json", "```plotly", normalized, flags=re.IGNORECASE)
+    return normalized
+
+
+def _normalize_to_markdown_contract(raw_text: str, problem_text: str) -> str:
+    doc = build_solution_doc(raw_text or "", problem_text or "")
+    parse_status = str(doc.get("parse_status") or "").strip().lower()
+    has_structured_signal = bool(
+        (doc.get("steps") or [])
+        or (doc.get("plots") or [])
+        or (doc.get("domain_constraints") or [])
+        or (doc.get("verification") or [])
+        or str((doc.get("final_answer") or {}).get("text") or "").strip()
+        or str((doc.get("final_answer") or {}).get("latex") or "").strip()
     )
-    return f"{output_text.rstrip()}\n\n[Plotly JSON]\n```json\n{fallback_block}\n```\n"
+    # Keep raw output only when parsing failed or when partial parse has no useful structured signal.
+    if parse_status == "failed" or (parse_status == "partial" and not has_structured_signal):
+        raw = latex_normalize(raw_text or "").strip()
+        if raw:
+            return raw + ("\n" if not raw.endswith("\n") else "")
+    return render_solution_doc_markdown(doc)
 
 
 def resolve_num_predict(
@@ -185,43 +179,47 @@ def build_freeform_prompt(
     requires_graph: bool = False,
 ) -> str:
     tier_norm = _normalize_tier(tier)
-    mode_norm = (requested_mode or "minimal").strip().lower()
+    if tier_norm == "RESEARCH":
+        step_range = "12 to 18"
+        verification_rule = "Include exactly 3 verification bullet checks."
+    elif tier_norm == "STANDARD":
+        step_range = "6 to 10"
+        verification_rule = "Include 1 to 3 verification bullet checks."
+    else:
+        step_range = "6 to 10"
+        verification_rule = "Include 1 to 2 verification bullet checks."
+
+    plot_rule = (
+        "- In # Graphs, include one or more fenced ```plotly blocks with valid Plotly JSON only when graphing is explicitly requested.\n"
+        if requires_graph
+        else "- In # Graphs, output exactly '- None'. Do not include Plotly JSON unless graphing is explicitly requested.\n"
+    )
+
     concise_guardrail = (
         "\n\n[RUNTIME CONSTRAINTS - FOLLOW STRICTLY]\n"
-        "- Be concise and direct.\n"
-        "- FREE tier: include 6 to 10 short numbered steps.\n"
-        "- Include 1 to 2 quick verification checks.\n"
-        "- Include a clear final answer line near the end.\n"
-        "- Do NOT include Plotly/graph JSON blocks.\n"
-        "- Stop as soon as the final answer is stated.\n"
+        "- Output MUST be MARKDOWN only.\n"
+        "- Use these exact section headers in order:\n"
+        "  # Recognized Problem\n"
+        "  # Domain Constraints\n"
+        "  # Steps\n"
+        "  # Graphs\n"
+        "  # Verification\n"
+        "  # Final Answer\n"
+        "- In # Steps, each step must start with: ## Step k: Title\n"
+        "- Step title must be 3-9 words, verb-first, Title Case.\n"
+        "- Step body is multiline markdown until the next step header.\n"
+        f"- Include {step_range} steps.\n"
+        f"- {verification_rule}\n"
+        "- In # Final Answer, output exactly:\n"
+        "  **Text:** ...\n"
+        "  **LaTeX:** $$...$$\n"
+        "- Use only standard LaTeX delimiters: inline $...$ and display $$...$$.\n"
+        "- Never output \\( \\) or \\[ \\].\n"
+        "- Do NOT output a JSON object wrapper.\n"
+        "- Do NOT output raw schema keys like \"steps\": [...].\n"
+        "- Do NOT output '[Plotly JSON]' labels.\n"
+        + plot_rule
     )
-    if tier_norm == "STANDARD":
-        concise_guardrail = (
-            "\n\n[RUNTIME CONSTRAINTS - FOLLOW STRICTLY]\n"
-            "- Be structured and concise.\n"
-            "- Include 6 to 10 short numbered steps.\n"
-            "- Include at least one verification check when meaningful.\n"
-            "- Include a clear final answer line near the end.\n"
-            "- Include Plotly/graph JSON only when the user asks for graphing.\n"
-            "- Stop once the final answer and verification are complete.\n"
-        )
-    if tier_norm == "RESEARCH" or mode_norm == "improve":
-        concise_guardrail = (
-            "\n\n[RUNTIME CONSTRAINTS - FOLLOW STRICTLY]\n"
-            "- Be exhaustive and explicit.\n"
-            "- Include 12 to 18 numbered steps.\n"
-            "- Do not stop before Step 12.\n"
-            "- Use the literal format: Step N: title: <short title> - <one complete sentence>.\n"
-            "- Include a domain constraints section.\n"
-            "- Include exactly 3 verification checks.\n"
-            "- Include exactly one Plotly JSON code block.\n"
-            "- Include a final answer section.\n"
-            "- Start with `Domain constraints:` then `Step 1:`.\n"
-            "- If any required section is missing, continue generating until it is included.\n"
-            "- Plotly block must be fenced with ```json ... ```.\n"
-        )
-    if requires_graph and tier_norm != "FREE":
-        concise_guardrail += "- Graphing is explicitly requested, so the Plotly block must reflect the problem.\n"
     if "{PROBLEM}" not in template:
         return f"{template.rstrip()}\n\n{problem_text.strip()}\n{concise_guardrail}"
     return template.replace("{PROBLEM}", problem_text.strip()) + concise_guardrail
@@ -241,6 +239,7 @@ async def generate_freeform_solution(
     requires_graph: Optional[bool] = None,
     requires_domain_constraints: Optional[bool] = None,
     stop_sequences: Optional[Sequence[str]] = None,
+    system_prompt: Optional[str] = None,
 ) -> AsyncIterator[Dict[str, Any]]:
     if requires_graph is None:
         requires_graph = _problem_requires_graph(problem_text)
@@ -264,11 +263,16 @@ async def generate_freeform_solution(
     from app.services.llm import get_llm_manager
 
     client = get_llm_manager().get_client("openai")
+    resolved_system_prompt = (
+        (system_prompt or "").strip()
+        or (os.environ.get("FREEFORM_SYSTEM_PROMPT") or "").strip()
+        or ""
+    )
+    messages_payload = [{"role": "user", "content": prompt}]
+    if resolved_system_prompt:
+        messages_payload.insert(0, {"role": "system", "content": resolved_system_prompt})
     response = await client.generate(
-        messages=[
-            {"role": "system", "content": "You are a rigorous math tutor. Follow the prompt exactly."},
-            {"role": "user", "content": prompt},
-        ],
+        messages=messages_payload,
         system_prompt=None,
         prompt=None,
         json_schema=None,
@@ -282,11 +286,12 @@ async def generate_freeform_solution(
     raw_text = response.content or ""
     if first_token_at is None and raw_text:
         first_token_at = time.perf_counter()
-    if len(raw_text) > max_output_chars:
-        output_text = raw_text[:max_output_chars]
+    normalized_output = _normalize_to_markdown_contract(raw_text, problem_text)
+    if len(normalized_output) > max_output_chars:
+        output_text = normalized_output[:max_output_chars]
         truncated = True
     else:
-        output_text = raw_text
+        output_text = normalized_output
 
     chunk_size = 512
     for idx in range(0, len(output_text), chunk_size):
@@ -295,7 +300,14 @@ async def generate_freeform_solution(
     latency_ms = int((time.perf_counter() - started) * 1000)
     time_to_first_token_ms = int((first_token_at - started) * 1000) if first_token_at else None
     output_text = _coerce_research_plotly_block(output_text, tier)
+    solution_doc = build_solution_doc(output_text, problem_text)
     extracted_answer = extract_answer_from_freeform(output_text)
+    if not extracted_answer:
+        extracted_answer = (
+            (solution_doc.get("final_answer") or {}).get("latex")
+            or (solution_doc.get("final_answer") or {}).get("text")
+            or ""
+        )
     validation = validate_freeform_output(
         output_text,
         tier=tier,
@@ -317,6 +329,7 @@ async def generate_freeform_solution(
             extracted_answer=extracted_answer,
             prompt_id=prompt_id,
             prompt_version=prompt_version,
+            solution_doc=solution_doc,
         ),
     }
 
@@ -332,25 +345,29 @@ def validate_freeform_output(
     truncated: bool = False,
 ) -> Dict[str, Any]:
     char_count = len(output_text)
-    step_matches = _STEP_RE.findall(output_text)
+    strict_step_matches = _STEP_RE_STRICT.findall(output_text)
+    loose_step_matches = _STEP_RE_LOOSE.findall(output_text)
+    step_matches = strict_step_matches or loose_step_matches
     unique_steps = sorted({int(step) for step in step_matches})
     explicit_step_count = len(unique_steps)
     generic_step_count = len(_GENERIC_STEP_LINE_RE.findall(output_text))
-    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", output_text) if p.strip()]
-    section_count = max(len(unique_steps), generic_step_count, len(paragraphs))
-    step_count = explicit_step_count if explicit_step_count > 0 else section_count
+    step_count = explicit_step_count if explicit_step_count > 0 else generic_step_count
     has_domain = bool(_DOMAIN_RE.search(output_text))
     has_verification = bool(_VERIFY_RE.search(output_text))
     verification_checks = len(_VERIFY_CHECK_RE.findall(output_text))
     has_plotly = bool(_PLOTLY_BLOCK_RE.search(output_text))
-    starts_with_step_1 = bool(re.match(r"(?mi)^\s*Step\s+1\s*[:.\-]", output_text))
+    starts_with_step_1 = bool(re.match(r"(?mi)^\s*(?:##\s*)?Step\s+1\s*[:.\-]", output_text))
     has_math_work = bool(_MATH_MARKER_RE.search(output_text))
+    extracted_answer_value = (extracted_answer or "").strip()
+    has_extracted_answer = bool(extracted_answer_value) and not bool(_PLACEHOLDER_ANSWER_RE.match(extracted_answer_value))
     has_final_answer_marker = bool(any(pattern.search(output_text) for pattern in _FINAL_ANSWER_RE_LIST))
-    has_extracted_answer = bool((extracted_answer or "").strip())
-    has_final_answer = has_final_answer_marker or has_extracted_answer
+    has_placeholder_final = bool(
+        re.search(r"(?im)^\s*(?:\*\*text:\*\*|final\s*answer\s*:)\s*(?:n/?a|none|null|not\s+provided)\s*$", output_text)
+    )
+    has_final_answer = (has_final_answer_marker or has_extracted_answer) and not has_placeholder_final
     coherent = char_count >= 80 and step_count >= 2 and has_final_answer and not truncated
     steps_range_free = 6 <= step_count <= 10
-    steps_range_standard = 6 <= step_count <= 12
+    steps_range_standard = 6 <= step_count <= 10
     steps_range_research = 12 <= explicit_step_count <= 18
     verification_checks_min_1 = verification_checks >= 1
     verification_checks_max_2 = verification_checks <= 2
@@ -401,9 +418,9 @@ def validate_freeform_output(
             "has_domain_constraints",
             "has_verification_section",
             "verification_checks_min_3",
-            "has_plotly_json_block",
             "not_truncated",
         ]
+        required.append("has_graph_payload_if_required" if requires_graph else "no_plotly_json_block")
     elif tier_norm == "STANDARD":
         required = [
             "has_final_answer",
@@ -411,6 +428,7 @@ def validate_freeform_output(
             "has_math_work",
             "not_truncated",
         ]
+        required.append("has_graph_payload_if_required" if requires_graph else "no_plotly_json_block")
     else:
         required = [
             "has_final_answer",
@@ -418,9 +436,9 @@ def validate_freeform_output(
             "has_math_work",
             "verification_checks_min_1",
             "verification_checks_max_2",
-            "no_plotly_json_block",
             "not_truncated",
         ]
+        required.append("has_graph_payload_if_required" if requires_graph else "no_plotly_json_block")
     failed_checks = [name for name in required if not checks.get(name, False)]
     passed_count = len(required) - len(failed_checks)
     quality_parts = [
@@ -457,11 +475,17 @@ def validate_freeform_output(
             missing_items.append("verification_checks_min_1")
         if not checks["verification_checks_max_2"]:
             missing_items.append("verification_checks_max_2")
-        if not checks["no_plotly_json_block"]:
+        if requires_graph and not checks["has_graph_payload_if_required"]:
+            missing_items.append("graph_payload")
+        if not requires_graph and not checks["no_plotly_json_block"]:
             missing_items.append("no_plotly_json_block")
     if tier_norm == "STANDARD":
         if not checks["steps_range_standard"]:
             missing_items.append("steps_range_standard")
+        if requires_graph and not checks["has_graph_payload_if_required"]:
+            missing_items.append("graph_payload")
+        if not requires_graph and not checks["no_plotly_json_block"]:
+            missing_items.append("no_plotly_json_block")
     if tier_norm == "RESEARCH":
         if not checks["steps_range_research"]:
             missing_items.append("steps_range_research")
@@ -473,8 +497,10 @@ def validate_freeform_output(
             missing_items.append("verification_section")
         if not checks["verification_checks_min_3"]:
             missing_items.append("verification_checks_min_3")
-        if not checks["has_plotly_json_block"]:
+        if requires_graph and not checks["has_graph_payload_if_required"]:
             missing_items.append("graph_payload")
+        if not requires_graph and not checks["no_plotly_json_block"]:
+            missing_items.append("no_plotly_json_block")
 
     return {
         "is_valid": len(failed_checks) == 0,

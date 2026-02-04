@@ -28,6 +28,7 @@ interface CanvasWorkspaceProps {
   savedVersions?: SavedPaperVersion[];
   state: CanvasDocumentState;
   dispatch: React.Dispatch<DocumentAction>;
+  viewMode?: "edit" | "student_report";
 }
 
 interface MathEditorTarget {
@@ -43,7 +44,13 @@ const isInputLikeTarget = (target: EventTarget | null): boolean => {
   return false;
 };
 
-export default function CanvasWorkspace({ sessionId, savedVersions = [], state, dispatch }: CanvasWorkspaceProps) {
+export default function CanvasWorkspace({
+  sessionId,
+  savedVersions = [],
+  state,
+  dispatch,
+  viewMode = "edit",
+}: CanvasWorkspaceProps) {
   const [latexEditorTarget, setLatexEditorTarget] = useState<MathEditorTarget | null>(null);
   const [graphEditorOpen, setGraphEditorOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -228,6 +235,7 @@ export default function CanvasWorkspace({ sessionId, savedVersions = [], state, 
   }, [dispatch, selectedVersion, state.activeTool]);
 
   useEffect(() => {
+    if (viewMode === "student_report") return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
       if (isInputLikeTarget(event.target)) return;
@@ -281,9 +289,10 @@ export default function CanvasWorkspace({ sessionId, savedVersions = [], state, 
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activePage, dispatch, state.activePageId]);
+  }, [activePage, dispatch, state.activePageId, viewMode]);
 
   useEffect(() => {
+    if (viewMode === "student_report") return;
     const onDelete = (event: KeyboardEvent) => {
       if (event.key !== "Delete" && event.key !== "Backspace") return;
       if (isInputLikeTarget(event.target)) return;
@@ -293,7 +302,7 @@ export default function CanvasWorkspace({ sessionId, savedVersions = [], state, 
     };
     window.addEventListener("keydown", onDelete);
     return () => window.removeEventListener("keydown", onDelete);
-  }, [dispatch, state.selection.elementIds]);
+  }, [dispatch, state.selection.elementIds, viewMode]);
 
   const canUndo = state.past.length > 0;
   const canRedo = state.future.length > 0;
@@ -344,36 +353,56 @@ export default function CanvasWorkspace({ sessionId, savedVersions = [], state, 
 
   return (
     <section className={styles.centerColumn}>
-      <EditorToolbar
-        activeTool={state.activeTool}
-        canUndo={canUndo}
-        canRedo={canRedo}
-        canPaste={canPaste}
-        hasSelection={hasSelection}
-        paletteOpen={paletteOpen}
-        onSelectTool={handleSelectTool}
-        onUndo={() => dispatch({ type: "UNDO" })}
-        onRedo={() => dispatch({ type: "REDO" })}
-        onCut={handleCut}
-        onCopy={handleCopy}
-        onPaste={handlePaste}
-        onAddPage={handleAddPage}
-        onSaveVersion={handleSaveVersion}
-        savingVersion={savingVersion}
-        canExport={canExport}
-        exportingDocx={exportingDocx}
-        onExportPdf={handleExportPdf}
-        onExportDocx={handleExportDocx}
-      />
-      <RichTextToolbar
-        key={activeTextEditorId || "no-active-editor"}
-        activeEditor={activeTextEditor}
-        onNotice={(message) => setSaveMessage(message)}
-      />
+      {viewMode === "edit" ? (
+        <>
+          <EditorToolbar
+            activeTool={state.activeTool}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            canPaste={canPaste}
+            hasSelection={hasSelection}
+            paletteOpen={paletteOpen}
+            onSelectTool={handleSelectTool}
+            onUndo={() => dispatch({ type: "UNDO" })}
+            onRedo={() => dispatch({ type: "REDO" })}
+            onCut={handleCut}
+            onCopy={handleCopy}
+            onPaste={handlePaste}
+            onAddPage={handleAddPage}
+            onSaveVersion={handleSaveVersion}
+            savingVersion={savingVersion}
+            canExport={canExport}
+            exportingDocx={exportingDocx}
+            onExportPdf={handleExportPdf}
+            onExportDocx={handleExportDocx}
+          />
+          <RichTextToolbar
+            key={activeTextEditorId || "no-active-editor"}
+            activeEditor={activeTextEditor}
+            onNotice={(message) => setSaveMessage(message)}
+          />
+        </>
+      ) : (
+        <div className={styles.toolbar}>
+          <div className={styles.toolbarActionsRight}>
+            <button type="button" className={styles.secondaryActionButton} disabled={!canExport} onClick={handleExportPdf}>
+              Export PDF
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryActionButton}
+              disabled={!canExport || exportingDocx}
+              onClick={() => void handleExportDocx()}
+            >
+              {exportingDocx ? "Exporting..." : "Export DOCX"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {saveMessage ? <div className={styles.versionSaveNotice}>{saveMessage}</div> : null}
 
-      {versionOptions.length > 0 ? (
+      {viewMode === "edit" && versionOptions.length > 0 ? (
         <div className={styles.versionLoadPanel}>
           <span className={styles.versionLoadLabel}>Saved versions</span>
           <select
@@ -401,7 +430,7 @@ export default function CanvasWorkspace({ sessionId, savedVersions = [], state, 
         </div>
       ) : null}
 
-      {paletteOpen ? (
+      {viewMode === "edit" && paletteOpen ? (
         <div className={styles.palettePanel} role="region" aria-label="Style palette">
           <label className={styles.paletteControl}>
             <span>Text</span>
@@ -508,11 +537,12 @@ export default function CanvasWorkspace({ sessionId, savedVersions = [], state, 
             onActiveTextEditorChange={handleActiveTextEditorChange}
             onUpdateBlock={(blockId, updater) => dispatch({ type: "UPDATE_BLOCK", pageId: page.id, blockId, updater })}
             onDeleteBlock={(blockId) => dispatch({ type: "DELETE_BLOCK", pageId: page.id, blockId })}
+            viewMode={viewMode}
           />
         ))}
       </div>
 
-      {latexEditorTarget ? (
+      {viewMode === "edit" && latexEditorTarget ? (
         <LatexEditor
           initialValue={latexEditorTarget.initialLatex}
           onClose={() => setLatexEditorTarget(null)}
@@ -520,7 +550,7 @@ export default function CanvasWorkspace({ sessionId, savedVersions = [], state, 
         />
       ) : null}
 
-      {graphEditorOpen ? <GraphEditor onClose={() => setGraphEditorOpen(false)} onInsert={handleInsertPlot} /> : null}
+      {viewMode === "edit" && graphEditorOpen ? <GraphEditor onClose={() => setGraphEditorOpen(false)} onInsert={handleInsertPlot} /> : null}
     </section>
   );
 }

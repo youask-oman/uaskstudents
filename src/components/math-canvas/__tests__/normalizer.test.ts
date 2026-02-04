@@ -209,4 +209,68 @@ To verify the identity, we can consider a specific value of \\(x\\). Let's choos
     expect(solutionItem.payload.steps[0].explanation).toContain("specific value");
     expect(solutionItem.payload.steps[0].mathLatex).toContain("\\sin^2(0)");
   });
+
+  test("does not inject content-derived plots when solution_doc parse_status is ok", () => {
+    const assistant: SessionMessage = {
+      role: "assistant",
+      content: `
+\`\`\`json
+{
+  "data": [
+    { "type": "scatter", "mode": "lines", "x": [-2,-1,0,1,2], "y": [4,1,0,1,4] }
+  ],
+  "layout": { "title": "fallback plot" }
+}
+\`\`\`
+      `,
+      structured_data: {
+        solution_doc: {
+          parse_status: "ok",
+          recognized_problem: { text: "x^2=4" },
+          domain_constraints: [],
+          steps: [{ k: 1, title: "Solve Equation", body_markdown: "Use square roots." }],
+          plots: [],
+          verification: ["Substitute x=2 and x=-2."],
+          final_answer: { text: "x = -2 or x = 2", latex: "x \\in \\{-2,2\\}" },
+          autocorrect: { applied: false },
+          raw_fallback: "",
+        },
+      },
+    };
+
+    const normalized = normalizeAssistantMessage(assistant, 6);
+    const solutionItem = normalized.items.find((item) => item.type === "math_solution");
+    expect(solutionItem).toBeDefined();
+    if (!solutionItem || solutionItem.type !== "math_solution") return;
+    expect(solutionItem.payload.steps).toHaveLength(1);
+    expect(solutionItem.payload.plots || []).toHaveLength(0);
+    const chartItems = normalized.items.filter((item) => item.type === "chart");
+    expect(chartItems).toHaveLength(0);
+  });
+
+  test("falls back to content extraction when solution_doc is partial with no meaningful content", () => {
+    const assistant: SessionMessage = {
+      role: "assistant",
+      content: "# Recognized Problem\nSolve x+1=3\n\nFinal Answer: x=2",
+      structured_data: {
+        solution_doc: {
+          parse_status: "partial",
+          recognized_problem: { text: "Solve x+1=3" },
+          domain_constraints: [],
+          steps: [],
+          plots: [],
+          verification: [],
+          final_answer: { text: "", latex: "" },
+          autocorrect: { applied: false },
+        },
+      },
+    };
+
+    const normalized = normalizeAssistantMessage(assistant, 7);
+    const solutionItem = normalized.items.find((item) => item.type === "math_solution");
+    expect(solutionItem).toBeDefined();
+    if (!solutionItem || solutionItem.type !== "math_solution") return;
+    expect(solutionItem.payload.steps.length).toBeGreaterThan(0);
+    expect(solutionItem.payload.result).toContain("x=2");
+  });
 });

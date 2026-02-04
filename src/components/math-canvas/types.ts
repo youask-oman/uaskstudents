@@ -104,7 +104,9 @@ export interface PlotElement extends ElementBase {
 export type CanvasElement = TextElement | MathElement | ShapeElement | LineElement | CircleElement | PlotElement;
 
 export interface StepRow {
+  k?: number;
   title: string;
+  bodyMarkdown?: string;
   explanation?: string;
   explanationRichHtml?: string;
   explanationRichJson?: Record<string, unknown>;
@@ -135,10 +137,13 @@ export interface ChartPayload {
 export interface MathSolutionPayload {
   layoutTitle?: string;
   recognizedLatex?: string;
+  domainConstraints?: string[];
   steps: StepRow[];
   result?: string;
   plots?: ChartPayload[];
   verificationChecks?: VerificationCheck[];
+  autocorrectApplied?: boolean;
+  parseStatus?: "ok" | "partial" | "failed";
 }
 
 export type NormalizedContentItem =
@@ -157,7 +162,15 @@ export interface NormalizedChatMessage {
 
 export type CanvasBlock =
   | { id: string; type: "recognition"; latex: string; badge?: string }
-  | { id: string; type: "steps"; steps: StepRow[]; result?: string; verificationChecks?: VerificationCheck[] }
+  | {
+      id: string;
+      type: "steps";
+      steps: StepRow[];
+      result?: string;
+      verificationChecks?: VerificationCheck[];
+      domainConstraints?: string[];
+      autocorrectApplied?: boolean;
+    }
   | { id: string; type: "text"; text: string };
 
 export interface SelectionState {

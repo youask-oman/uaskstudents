@@ -5498,6 +5498,7 @@ async def solve_v3_stream_endpoint(
                         prompt_version=freeform_prompt_version,
                         tier=effective_tier,
                         requested_mode=freeform_requested_mode,
+                        system_prompt=(os.environ.get("FREEFORM_SYSTEM_PROMPT") or "").strip() or None,
                     ):
                         event_type = stream_event.get("type")
                         if event_type == "delta":
@@ -5553,7 +5554,7 @@ async def solve_v3_stream_endpoint(
                             "failed_checks": attempt_result.validation.get("failed_checks", []),
                         }
                     )
-                    if attempt_result.output_text:
+                    if attempt_result.output_text and attempt_result.validation.get("is_usable"):
                         latest_nonempty_result = (attempt_number, attempt_result)
                     if attempt_result.validation.get("is_valid"):
                         selected_result = (attempt_number, attempt_result)
@@ -5665,6 +5666,7 @@ async def solve_v3_stream_endpoint(
                 "validation_quality_score": final_result.validation.get("quality_score"),
                 "validation_failed_checks": final_result.validation.get("failed_checks", []),
                 "validation_missing_items": final_result.validation.get("missing_items", []),
+                "autocorrect_applied": bool((final_result.solution_doc or {}).get("autocorrect", {}).get("applied")),
                 "schema_valid": None,
                 "hide_from_tutor": True,
                 "channel": "canvas_primary",
@@ -5676,6 +5678,7 @@ async def solve_v3_stream_endpoint(
                 "raw_solution_text": output_text,
                 "extracted_answer": extracted_answer,
                 "validation_json": final_result.validation,
+                "solution_doc": final_result.solution_doc,
                 "attempts": attempt_summaries,
                 "archive_path": archive_path,
                 "prompt_id": freeform_prompt_id,

@@ -12,6 +12,8 @@ interface SolutionStepsBlockProps {
   steps: StepRow[];
   result?: string;
   verificationChecks?: VerificationCheck[];
+  domainConstraints?: string[];
+  autocorrectApplied?: boolean;
   sectionId?: string;
   editable?: boolean;
   exportMode?: boolean;
@@ -53,6 +55,8 @@ export default function SolutionStepsBlock({
   steps,
   result,
   verificationChecks,
+  domainConstraints,
+  autocorrectApplied,
   sectionId = "steps-block",
   editable = false,
   exportMode = false,
@@ -114,13 +118,26 @@ export default function SolutionStepsBlock({
 
   return (
     <div className={styles.stepsBlock}>
+      {Array.isArray(domainConstraints) && domainConstraints.length > 0 ? (
+        <div className={styles.stepRow} id={`${sectionId}-domain`}>
+          <span className={styles.stepLabel}>DOMAIN</span>
+          <div className={styles.stepValue}>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>Domain constraints:</div>
+            {domainConstraints.map((constraint, index) => (
+              <div key={`${sectionId}-domain-${index}`} style={{ marginBottom: index < domainConstraints.length - 1 ? 6 : 0 }}>
+                <MathRenderer content={constraint} mode="prose" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
       {steps.map((step, index) => (
         <div key={`${sectionId}-step-${index}`} className={styles.stepRow} id={`${sectionId}-step-${index + 1}`}>
-          <span className={styles.stepLabel}>STEP {index + 1}</span>
+          <span className={styles.stepLabel}>STEP {step.k || index + 1}</span>
           <div className={styles.stepValue}>
             {editingStepIndex !== index ? (
               <span className={styles.stepTitleTag}>
-                <strong>{!isGenericStepTitle(step.title, index) ? step.title : `Step ${index + 1}`}</strong>
+                <strong>{!isGenericStepTitle(step.title, index) ? step.title : `Step ${step.k || index + 1}`}</strong>
               </span>
             ) : null}
             {editingStepIndex === index ? (
@@ -173,6 +190,10 @@ export default function SolutionStepsBlock({
                 ) : step.explanation ? (
                   <div style={{ marginTop: 3, fontSize: 13 }}>
                     <MathRenderer content={step.explanation} mode="prose" />
+                  </div>
+                ) : step.bodyMarkdown ? (
+                  <div style={{ marginTop: 3, fontSize: 13 }}>
+                    <MathRenderer content={step.bodyMarkdown} mode="prose" />
                   </div>
                 ) : null}
                 {step.mathLatex ? (
@@ -233,6 +254,7 @@ export default function SolutionStepsBlock({
               <span className={styles.resultBadge}>
                 <strong>Final Answer:</strong>{" "}
                 {result ? <MathRenderer content={result} mode="inline" /> : "Not provided."}
+                {autocorrectApplied ? <span style={{ marginLeft: 8, fontWeight: 700, color: "#0f6b3f" }}>Verified</span> : null}
               </span>
               {editable && !exportMode ? (
                 <div className={styles.blockActions}>

@@ -224,12 +224,12 @@ const renderPlotSvg = (element: CanvasElement): string => {
 
 const renderStep = (step: StepRow, index: number): string => `
   <article class="step-card">
-    <h4>Step ${index + 1}${step.title ? ` - ${escapeHtml(step.title)}` : ""}</h4>
+    <h4>Step ${step.k || index + 1}${step.title ? ` - ${escapeHtml(step.title)}` : ""}</h4>
     ${
       step.explanationRichHtml
         ? `<div class="step-prose rich-text">${sanitizeRichHtmlFragment(step.explanationRichHtml)}</div>`
-        : step.explanation
-          ? `<div class="step-prose">${proseWithMathToHtml(step.explanation)}</div>`
+        : (step.bodyMarkdown || step.explanation)
+          ? `<div class="step-prose">${proseWithMathToHtml(step.bodyMarkdown || step.explanation || "")}</div>`
           : ""
     }
     ${step.mathLatex ? `<div class="step-math">${latexToHtml(step.mathLatex, true)}</div>` : ""}
@@ -252,6 +252,13 @@ const renderPage = (page: CanvasPageData, pageIndex: number): string => {
         return `
           <section class="section steps-section">
             <h3>Step-by-step Solution</h3>
+            ${
+              block.domainConstraints && block.domainConstraints.length > 0
+                ? `<div class="verification"><h4>Domain constraints</h4>${block.domainConstraints
+                    .map((item) => `<div class="verification-item">${proseWithMathToHtml(item)}</div>`)
+                    .join("")}</div>`
+                : ""
+            }
             ${block.steps.map((step, idx) => renderStep(step, idx)).join("")}
             ${
               block.verificationChecks && block.verificationChecks.length > 0
@@ -269,7 +276,7 @@ const renderPage = (page: CanvasPageData, pageIndex: number): string => {
             }
             ${
               block.result
-                ? `<section class="section final-answer"><h3>Final Answer</h3><div class="final-answer-content">${richMathToHtml(
+                ? `<section class="section final-answer"><h3>Final Answer${block.autocorrectApplied ? " (Verified)" : ""}</h3><div class="final-answer-content">${richMathToHtml(
                     block.result,
                     true,
                   )}</div></section>`
@@ -487,14 +494,20 @@ export const exportCanvasToDocx = async (payload: SolutionExportPayload): Promis
 
       if (block.type === "steps") {
         children.push(new Paragraph({ text: "Step-by-step Solution", heading: HeadingLevel.HEADING_3 }));
+        if (block.domainConstraints && block.domainConstraints.length > 0) {
+          children.push(new Paragraph({ text: "Domain constraints", heading: HeadingLevel.HEADING_4 }));
+          block.domainConstraints.forEach((item) => {
+            children.push(new Paragraph({ text: plainText(item) }));
+          });
+        }
         block.steps.forEach((step, idx) => {
           children.push(
             new Paragraph({
-              text: `Step ${idx + 1}${step.title ? ` - ${plainText(step.title)}` : ""}`,
+              text: `Step ${step.k || idx + 1}${step.title ? ` - ${plainText(step.title)}` : ""}`,
               heading: HeadingLevel.HEADING_4,
             }),
           );
-          const stepExplanation = plainTextFromHtml(step.explanationRichHtml) || plainText(step.explanation || "");
+          const stepExplanation = plainTextFromHtml(step.explanationRichHtml) || plainText(step.bodyMarkdown || step.explanation || "");
           if (stepExplanation) children.push(new Paragraph({ text: stepExplanation }));
           if (step.mathLatex) children.push(new Paragraph({ text: plainText(step.mathLatex), alignment: AlignmentType.CENTER }));
         });
@@ -506,7 +519,7 @@ export const exportCanvasToDocx = async (payload: SolutionExportPayload): Promis
           });
         }
         if (block.result) {
-          children.push(new Paragraph({ text: "Final Answer", heading: HeadingLevel.HEADING_3 }));
+          children.push(new Paragraph({ text: `Final Answer${block.autocorrectApplied ? " (Verified)" : ""}`, heading: HeadingLevel.HEADING_3 }));
           children.push(new Paragraph({ text: plainText(block.result), alignment: AlignmentType.CENTER }));
         }
         continue;

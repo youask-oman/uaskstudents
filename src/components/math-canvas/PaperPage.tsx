@@ -29,6 +29,7 @@ interface PaperPageProps {
   onUpdateBlock: (blockId: string, updater: (block: CanvasBlock) => CanvasBlock) => void;
   onDeleteBlock: (blockId: string) => void;
   exportMode?: boolean;
+  viewMode?: "edit" | "student_report";
 }
 
 interface Point {
@@ -285,6 +286,7 @@ export default function PaperPage({
   onUpdateBlock,
   onDeleteBlock,
   exportMode = false,
+  viewMode = "edit",
 }: PaperPageProps) {
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -299,6 +301,7 @@ export default function PaperPage({
   const [editingText, setEditingText] = useState<EditDraft | null>(null);
   const [editingRecognition, setEditingRecognition] = useState<{ blockId: string; value: string } | null>(null);
   const [editingTextBlock, setEditingTextBlock] = useState<{ blockId: string; value: string } | null>(null);
+  const readOnly = exportMode || viewMode === "student_report";
 
   const selectedSet = useMemo(() => new Set(selectedElementIds), [selectedElementIds]);
 
@@ -551,7 +554,7 @@ export default function PaperPage({
   }, []);
 
   const onCanvasPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (exportMode) return;
+    if (readOnly) return;
     if (typeof event.button === "number" && event.button !== 0) return;
     onActivate();
 
@@ -595,7 +598,7 @@ export default function PaperPage({
   };
 
   const onElementPointerDown = (event: React.PointerEvent, element: CanvasElement) => {
-    if (exportMode) return;
+    if (readOnly) return;
     if (typeof event.button === "number" && event.button !== 0) return;
     event.stopPropagation();
     onActivate();
@@ -640,7 +643,7 @@ export default function PaperPage({
   };
 
   const onResizePointerDown = (event: React.PointerEvent, element: CanvasElement) => {
-    if (exportMode) return;
+    if (readOnly) return;
     event.preventDefault();
     event.stopPropagation();
 
@@ -658,7 +661,7 @@ export default function PaperPage({
   };
 
   const onElementDoubleClick = (element: CanvasElement) => {
-    if (exportMode) return;
+    if (readOnly) return;
     if (element.type === "text") {
       setEditingText({ elementId: element.id });
       return;
@@ -692,7 +695,7 @@ export default function PaperPage({
             if (block.type === "recognition") {
               return (
                 <div key={block.id} id={block.id} className={styles.paperBlockWrap}>
-                  {!exportMode ? <div className={styles.paperBlockActions} data-no-export="true">
+                  {!exportMode && viewMode === "edit" ? <div className={styles.paperBlockActions} data-no-export="true">
                     <button
                       type="button"
                       className={styles.blockActionButton}
@@ -752,7 +755,7 @@ export default function PaperPage({
             if (block.type === "steps") {
               return (
                 <div key={block.id} id={block.id} className={styles.paperBlockWrap}>
-                  {!exportMode ? <div className={styles.paperBlockActions} data-no-export="true">
+                  {!exportMode && viewMode === "edit" ? <div className={styles.paperBlockActions} data-no-export="true">
                     <button
                       type="button"
                       className={styles.blockActionButton}
@@ -766,7 +769,9 @@ export default function PaperPage({
                     steps={block.steps}
                     result={block.result}
                     verificationChecks={block.verificationChecks}
-                    editable={!exportMode}
+                    domainConstraints={block.domainConstraints}
+                    autocorrectApplied={block.autocorrectApplied}
+                    editable={!exportMode && viewMode === "edit"}
                     exportMode={exportMode}
                     onActiveTextEditorChange={onActiveTextEditorChange}
                     onChange={(next) =>
@@ -777,6 +782,8 @@ export default function PaperPage({
                               steps: next.steps,
                               result: next.result,
                               verificationChecks: next.verificationChecks,
+                              domainConstraints: current.domainConstraints,
+                              autocorrectApplied: current.autocorrectApplied,
                             }
                           : current
                       )
@@ -787,7 +794,7 @@ export default function PaperPage({
             }
             return (
               <div key={block.id} id={block.id} className={styles.paperBlockWrap}>
-                {!exportMode ? <div className={styles.paperBlockActions} data-no-export="true">
+                {!exportMode && viewMode === "edit" ? <div className={styles.paperBlockActions} data-no-export="true">
                   <button
                     type="button"
                     className={styles.blockActionButton}
@@ -803,7 +810,7 @@ export default function PaperPage({
                     Delete
                   </button>
                 </div> : null}
-                {editingTextBlock?.blockId === block.id ? (
+                {editingTextBlock?.blockId === block.id && viewMode === "edit" ? (
                   <div className={styles.inlineEditWrap}>
                     <textarea
                       className={styles.inlineEditTextArea}
