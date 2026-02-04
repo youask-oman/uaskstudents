@@ -118,7 +118,9 @@ RULES:
 """
 
         max_retries = int(os.environ.get("OPENAI_SOLVER_MAX_RETRIES", "2"))
-        model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini")
+        model = os.environ.get("OPENAI_MODEL_DEFAULT")
+        if not model:
+            raise RuntimeError("OPENAI_MODEL_DEFAULT is required")
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Problem: {problem_text}\nContext: {context}"}
@@ -212,7 +214,9 @@ Respond in plain text. Be conversational and helpful."""
 
 
         try:
-            model = os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-4o-mini")
+            model = os.environ.get("OPENAI_MODEL_DEFAULT")
+            if not model:
+                raise RuntimeError("OPENAI_MODEL_DEFAULT is required")
             messages = [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": query}

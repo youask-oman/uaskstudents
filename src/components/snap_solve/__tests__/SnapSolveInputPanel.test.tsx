@@ -115,13 +115,13 @@ describe("SnapSolveInputPanel", () => {
         );
     });
 
-    test("supports selecting Qwen Math extraction engine", async () => {
+    test("supports selecting OpenAI OCR extraction engine", async () => {
         const fetchMock = jest.fn().mockResolvedValue({
             ok: true,
             json: async () => ({
                 ok: true,
                 is_math_page: true,
-                notes: ["Refined with Qwen Math"],
+                notes: ["Refined with OpenAI OCR"],
                 cache_hit: false,
                 questions: [{ id: "q1", text: "x^2=9", confidence: 0.9, is_valid_math: true }],
             }),
@@ -134,17 +134,17 @@ describe("SnapSolveInputPanel", () => {
                 target: { files: [new File(["img"], "equation.png", { type: "image/png" })] },
             });
         });
-        fireEvent.change(screen.getByRole("combobox"), { target: { value: "qwen_math" } });
+        fireEvent.change(screen.getByRole("combobox"), { target: { value: "openai" } });
         await act(async () => {
             fireEvent.click(screen.getByRole("button", { name: "Extract" }));
         });
 
         const requestInit = fetchMock.mock.calls[0][1] as RequestInit;
         const form = requestInit.body as FormData;
-        expect(form.get("ocr_engine_choice")).toBe("qwen_math");
+        expect(form.get("ocr_engine_choice")).toBe("openai");
     });
 
-    test("auto-retries with Qwen Math when Pix2Text output looks garbled", async () => {
+    test("auto-retries with OpenAI OCR when Pix2Text output looks garbled", async () => {
         const fetchMock = jest
             .fn()
             .mockResolvedValueOnce({
@@ -161,7 +161,7 @@ describe("SnapSolveInputPanel", () => {
                 json: async () => ({
                     ok: true,
                     is_math_page: true,
-                    notes: ["Extracted with Qwen Math vision OCR."],
+                    notes: ["Extracted with OpenAI OCR vision OCR."],
                     questions: [{ id: "q1", text: "x=2\\sqrt{x-1}", confidence: 0.93, is_valid_math: true }],
                 }),
             });
@@ -185,7 +185,7 @@ describe("SnapSolveInputPanel", () => {
         });
 
         const retryForm = (fetchMock.mock.calls[1][1] as RequestInit).body as FormData;
-        expect(retryForm.get("ocr_engine_choice")).toBe("qwen_math");
+        expect(retryForm.get("ocr_engine_choice")).toBe("openai");
     });
 
     test("paste handler supports clipboard files image payloads", async () => {

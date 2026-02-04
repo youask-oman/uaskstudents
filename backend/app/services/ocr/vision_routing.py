@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
@@ -8,13 +8,9 @@ from typing import Any, Dict, List, Optional, Protocol
 VISION_PROVIDER_ALIASES = {
     "pix2txt": "pix2txt",
     "pix2text": "pix2txt",
-    "qwen": "qwen",
-    "qwen_math": "qwen",
     "openai": "openai",
     "lmm": "openai",
 }
-
-VISION_FALLBACK_DEFAULT = ["pix2txt", "qwen", "openai"]
 
 
 @dataclass
@@ -73,22 +69,23 @@ class VisionRoutingConfig:
 
     @classmethod
     def from_env(cls) -> "VisionRoutingConfig":
-        enabled_raw = os.getenv("VISION_OCR_ENABLED_PROVIDERS", "pix2txt,qwen,openai")
+        enabled_raw = os.getenv("VISION_OCR_ENABLED_PROVIDERS") or "pix2txt,openai"
         enabled = [_normalize_provider_token(token) for token in enabled_raw.split(",")]
         enabled = [token for token in enabled if token]
         if not enabled:
-            enabled = VISION_FALLBACK_DEFAULT.copy()
+            raise RuntimeError("VISION_OCR_ENABLED_PROVIDERS must include at least one provider")
+
         if not os.getenv("OPENAI_API_KEY"):
             enabled = [provider for provider in enabled if provider != "openai"]
 
-        fallback_raw = os.getenv("VISION_OCR_FALLBACK_ORDER", "pix2txt,qwen,openai")
+        fallback_raw = os.getenv("VISION_OCR_FALLBACK_ORDER") or ",".join(enabled)
         fallback = [_normalize_provider_token(token) for token in fallback_raw.split(",")]
         fallback = [token for token in fallback if token in enabled]
         if not fallback:
-            fallback = [token for token in VISION_FALLBACK_DEFAULT if token in enabled] or enabled
+            fallback = enabled.copy()
 
-        mode = (os.getenv("VISION_OCR_DEFAULT_MODE", "AUTO") or "AUTO").strip().upper()
-        if mode not in {"AUTO", "AUTO_WITH_FALLBACK", "PIX2TXT", "QWEN", "OPENAI"}:
+        mode = (os.getenv("VISION_OCR_DEFAULT_MODE") or "AUTO").strip().upper()
+        if mode not in {"AUTO", "AUTO_WITH_FALLBACK", "PIX2TXT", "OPENAI"}:
             mode = "AUTO"
 
         return cls(
@@ -101,12 +98,14 @@ class VisionRoutingConfig:
 def _normalize_provider_token(value: Optional[str]) -> str:
     if not value:
         return ""
-    key = value.strip().lower()
-    return VISION_PROVIDER_ALIASES.get(key, "")
+    return VISION_PROVIDER_ALIASES.get(value.strip().lower(), "")
 
 
 def get_openai_ocr_model() -> str:
-    return os.getenv("VLM_MODEL_OPENA_AI_OCR", "gpt-5-mini")
+    model = (os.getenv("VLM_MODEL_OPENA_AI_OCR") or "").strip()
+    if not model:
+        raise RuntimeError("VLM_MODEL_OPENA_AI_OCR is required")
+    return model
 
 
 def normalize_engine_choice(raw_choice: Optional[str], config: VisionRoutingConfig) -> str:

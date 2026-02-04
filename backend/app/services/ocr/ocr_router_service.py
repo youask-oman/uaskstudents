@@ -21,7 +21,7 @@ class OCRRouterService:
 
     def get_env_engine(self) -> str:
         """Get engine preference from environment variable."""
-        return os.getenv("OCR_ENGINE", "vlm").lower()
+        return (os.getenv("OCR_ENGINE") or "").lower()
 
     def decide_engine(
         self, 
@@ -33,7 +33,7 @@ class OCRRouterService:
         """
         Determine which OCR engine to use.
         
-        Returns: (chosen_engine, vlm_type, reasons)
+        Returns: (chosen_engine, openai_type, reasons)
         
         Priority:
         1. OCR_ENGINE env var (if not "auto")
@@ -48,8 +48,8 @@ class OCRRouterService:
         # "vlm" or "local", use that regardless of other logic.
         # This allows operators to force a specific engine globally.
         # ============================================================
-        if env_engine == "vlm":
-            return "vlm", "text_formula", ["ENV_OVERRIDE_VLM"]
+        if env_engine in {"openai", "vlm"}:
+            return "openai", "text_formula", ["ENV_OVERRIDE_OPENAI"]
         elif env_engine == "local":
             return "local", None, ["ENV_OVERRIDE_LOCAL"]
         
@@ -58,11 +58,11 @@ class OCRRouterService:
         # ============================================================
         # USER EXPLICIT REQUEST
         # ============================================================
-        if preferred_engine == "vlm":
+        if preferred_engine in {"openai", "vlm"}:
             if self._check_budget(user):
-                return "vlm", "text_formula", ["USER_EXPLICIT_VLM"]
+                return "openai", "text_formula", ["USER_EXPLICIT_OPENAI"]
             else:
-                return "local", None, ["BUDGET_BLOCKED_VLM_REQUESTED"]
+                return "local", None, ["BUDGET_BLOCKED_OPENAI_REQUESTED"]
         
         if preferred_engine == "local":
             return "local", None, ["USER_EXPLICIT_LOCAL"]
@@ -77,16 +77,16 @@ class OCRRouterService:
                 return "vlm", "text_formula", ["INTENT_HIGH_ACCURACY"]
             reasons.append("BUDGET_BLOCKED_INTENT")
 
-        # Case B: Paid plans default to VLM
+        # Case B: Paid plans default to OpenAI OCR
         if self._check_budget(user):
-            return "vlm", "text_formula", ["SUBSCRIPTION_VLM"]
+            return "openai", "text_formula", ["SUBSCRIPTION_OPENAI"]
         
         # Default: Local engine
         return "local", None, ["DEFAULT_LOCAL"]
 
     def _check_budget(self, user: User) -> bool:
         """
-        Check if user has budget for VLM usage.
+        Check if user has budget for OpenAI OCR usage.
         
         Returns True for paid tiers (non-free).
         """

@@ -32,7 +32,7 @@ class ProfileResolver:
         learning_mode: str = "solve",  # "solve" or "study"
         force_tier: Optional[str] = None,
         mode_family: str = "SOLVE",
-        provider: str = "ollama",
+        provider: str = "openai",
     ) -> PromptProfile:
         plan = None
         tier_slug = "free"

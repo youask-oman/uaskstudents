@@ -29,17 +29,17 @@ DEFAULT_TARGETS: List[PromptAssetTarget] = [
     PromptAssetTarget(
         prompt_id="free_form_math_free_fast_v1",
         tier=PromptTierEnum.FREE,
-        asset_path=REPO_ROOT / "static_design" / "sug_prompts_qwen" / "free_form_math_free_fast_v1.txt",
+        asset_path=REPO_ROOT / "static_design" / "sug_prompts_openai" / "free_form_math_free_fast_v1.txt",
     ),
     PromptAssetTarget(
         prompt_id="free_form_math_standard_detailed_v1",
         tier=PromptTierEnum.STANDARD,
-        asset_path=REPO_ROOT / "static_design" / "sug_prompts_qwen" / "free_form_math_standard_detailed.txt",
+        asset_path=REPO_ROOT / "static_design" / "sug_prompts_openai" / "free_form_math_standard_detailed.txt",
     ),
     PromptAssetTarget(
         prompt_id="free_form_math_research_rigorous_v1",
         tier=PromptTierEnum.RESEARCH,
-        asset_path=REPO_ROOT / "static_design" / "sug_prompts_qwen" / "free_form_math_research_rigorous_v1.txt",
+        asset_path=REPO_ROOT / "static_design" / "sug_prompts_openai" / "free_form_math_research_rigorous_v1.txt",
     ),
 ]
 
@@ -111,7 +111,7 @@ def sync_freeform_prompt_templates(
                         {
                             "prompt_id": target.prompt_id,
                             "tier": target.tier.value,
-                            "provider": "ollama",
+                            "provider": "openai",
                             "mode": PromptModeEnum.SOLVE.value,
                             "version": active_primary.version,
                             "row_id": active_primary.id,
@@ -144,7 +144,7 @@ def sync_freeform_prompt_templates(
                     {
                         "prompt_id": entry.prompt_id,
                         "tier": entry.tier.value if entry.tier else None,
-                        "provider": "ollama",
+                        "provider": "openai",
                         "mode": entry.mode.value if entry.mode else None,
                         "version": entry.version,
                         "row_id": entry.id,
@@ -167,7 +167,7 @@ def sync_freeform_prompt_templates(
                     {
                         "prompt_id": row.prompt_id,
                         "tier": row.tier.value if row.tier else None,
-                        "provider": "ollama",
+                        "provider": "openai",
                         "mode": row.mode.value if row.mode else None,
                         "role": row.role.value if row.role else None,
                         "version": row.version,

@@ -63,13 +63,7 @@ These are OFF by default and must be explicitly enabled:
 
 Rollback: set `WHATSAPP_LATEX_RENDER_ENABLED=false`.
 
-## Ollama Connectivity
+## OpenAI Connectivity
 
-- Prefer `OLLAMA_BASE_URL=http://ollama:11434` when backend and Ollama share Docker network.
-- Backend auto-detection fallback order:
-  - `http://ollama:11434`
-  - `http://localhost:11434`
-  - `http://127.0.0.1:11434`
-  - `http://host.docker.internal:11434`
-  - `http://172.17.0.1:11434`
-- You can override explicitly with `OLLAMA_BASE_URL`; invalid values are ignored with a warning.
+- Set `OPENAI_API_KEY` and `OPENAI_MODEL_DEFAULT` in `.env`.
+- OCR uses `VLM_MODEL_OPENA_AI_OCR` and provider routing via `VISION_OCR_ENABLED_PROVIDERS` / `VISION_OCR_FALLBACK_ORDER`.

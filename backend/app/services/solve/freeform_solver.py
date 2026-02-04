@@ -47,7 +47,7 @@ class FreeformAttemptResult:
     extracted_answer: Optional[str]
     prompt_id: str = FREEFORM_PROMPT_ID
     prompt_version: str = FREEFORM_PROMPT_VERSION
-    provider: str = "ollama"
+    provider: str = "openai"
 
 
 def _normalize_tier(value: Optional[str]) -> str:
@@ -166,7 +166,7 @@ def resolve_max_output_chars(*, tier: str, env_default: int) -> int:
 
 def load_default_freeform_prompt_template() -> str:
     app_dir = Path(__file__).resolve().parents[2]
-    prompt_path = Path(__file__).resolve().parents[4] / "static_design" / "sug_prompts_qwen" / "free_form_math_standard_detailed.txt"
+    prompt_path = Path(__file__).resolve().parents[4] / "static_design" / "sug_prompts_openai" / "free_form_math_standard_detailed.txt"
     if not prompt_path.exists():
         fallback = app_dir / "prompts" / "free_form_math_standard_detailed.txt"
         if fallback.exists():
@@ -232,7 +232,6 @@ async def generate_freeform_solution(
     problem_text: str,
     prompt_template: str,
     model: str,
-    base_url: str,
     num_predict: int = 2500,
     timeout_seconds: int = 120,
     prompt_id: str = FREEFORM_PROMPT_ID,
@@ -254,69 +253,48 @@ async def generate_freeform_solution(
         requested_mode=requested_mode,
         requires_graph=bool(requires_graph),
     )
-    normalized_stop = [s for s in (stop_sequences or []) if isinstance(s, str) and s.strip()]
-    if not normalized_stop:
-        raw_stop = os.environ.get("FREEFORM_STOP_SEQUENCES", "").strip()
-        if raw_stop:
-            normalized_stop = [p.strip() for p in raw_stop.split("||") if p.strip()]
-    if not normalized_stop:
-        normalized_stop = ["<|eot_id|>", "<|endoftext|>"]
-    payload = {
-        "model": model,
-        "prompt": prompt,
-        "stream": True,
-        "options": {
-            "num_predict": num_predict,
-            "temperature": 0.3,
-            "top_p": 0.9,
-            "stop": normalized_stop,
-        },
-    }
-
     started = time.perf_counter()
     first_token_at: Optional[float] = None
-    output_parts: List[str] = []
-    output_chars = 0
+    output_text = ""
     truncated = False
     max_output_chars = resolve_max_output_chars(
         tier=tier,
         env_default=int(os.environ.get("FREEFORM_MAX_OUTPUT_CHARS", "30000")),
     )
+    from app.services.llm import get_llm_manager
 
-    async with httpx.AsyncClient(timeout=httpx.Timeout(timeout_seconds)) as client:
-        async with client.stream("POST", f"{base_url.rstrip('/')}/api/generate", json=payload) as response:
-            response.raise_for_status()
-            async for line in response.aiter_lines():
-                if not line:
-                    continue
-                try:
-                    parsed = json.loads(line)
-                except Exception:
-                    continue
+    client = get_llm_manager().get_client("openai")
+    response = await client.generate(
+        messages=[
+            {"role": "system", "content": "You are a rigorous math tutor. Follow the prompt exactly."},
+            {"role": "user", "content": prompt},
+        ],
+        system_prompt=None,
+        prompt=None,
+        json_schema=None,
+        max_tokens=max(256, num_predict),
+        temperature=None,
+        stream=False,
+        request_id=None,
+        model=model,
+        verbosity="high" if (requested_mode or "").lower() in {"detailed", "improve"} else "low",
+    )
+    raw_text = response.content or ""
+    if first_token_at is None and raw_text:
+        first_token_at = time.perf_counter()
+    if len(raw_text) > max_output_chars:
+        output_text = raw_text[:max_output_chars]
+        truncated = True
+    else:
+        output_text = raw_text
 
-                chunk = parsed.get("response")
-                if isinstance(chunk, str) and chunk:
-                    if first_token_at is None:
-                        first_token_at = time.perf_counter()
-                    remaining = max_output_chars - output_chars
-                    if remaining <= 0:
-                        truncated = True
-                        break
-                    if len(chunk) > remaining:
-                        chunk = chunk[:remaining]
-                        truncated = True
-                    output_parts.append(chunk)
-                    output_chars += len(chunk)
-                    yield {"type": "delta", "text": chunk}
-                    if truncated:
-                        break
-
-                if parsed.get("done"):
-                    break
+    chunk_size = 512
+    for idx in range(0, len(output_text), chunk_size):
+        yield {"type": "delta", "text": output_text[idx : idx + chunk_size]}
 
     latency_ms = int((time.perf_counter() - started) * 1000)
     time_to_first_token_ms = int((first_token_at - started) * 1000) if first_token_at else None
-    output_text = _coerce_research_plotly_block("".join(output_parts), tier)
+    output_text = _coerce_research_plotly_block(output_text, tier)
     extracted_answer = extract_answer_from_freeform(output_text)
     validation = validate_freeform_output(
         output_text,
@@ -603,7 +581,7 @@ def should_use_freeform_output(provider: str, model: str) -> bool:
     default_mode = os.environ.get("SOLVER_OUTPUT_MODE_DEFAULT", FREEFORM_OUTPUT_MODE).strip().upper()
     if default_mode != FREEFORM_OUTPUT_MODE:
         return False
-    if (provider or "").strip().lower() != "ollama":
+    if (provider or "").strip().lower() != "openai":
         return False
-    configured_ollama = os.environ.get("OLLAMA_MODEL", "mightykatun/qwen2.5-math:7b").strip().lower()
-    return (model or "").strip().lower() == configured_ollama
+    configured_model = (os.environ.get("OPENAI_MODEL_DEFAULT") or "").strip().lower()
+    return bool(configured_model and (model or "").strip().lower() == configured_model)

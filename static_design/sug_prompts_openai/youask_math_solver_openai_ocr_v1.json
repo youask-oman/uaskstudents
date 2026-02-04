@@ -71,7 +71,7 @@
       "additionalProperties": false,
       "required": ["provider", "model", "tokens_in", "tokens_out"],
       "properties": {
-        "provider": { "type": "string", "enum": ["pix2txt", "qwen", "openai"] },
+        "provider": { "type": "string", "enum": ["pix2txt", "openai"] },
         "model": { "type": "string", "minLength": 1 },
         "tokens_in": { "type": ["integer", "null"], "minimum": 0 },
         "tokens_out": { "type": ["integer", "null"], "minimum": 0 }

@@ -72,7 +72,6 @@ from app.services.prompt_registry_service import prompt_registry_service, Prompt
 from app.services.tier_utils import get_user_effective_tier_slug
 from app.services.mode_execution_service import mode_execution_service, ModeExecutionError
 from app.services.llm import get_llm_manager, LLMProviderError
-from app.services.ollama import detect_ollama_base_url
 from app.services.whatsapp.whatsapp_state import get_redis
 from app.services.whatsapp.whatsapp_send import send_whatsapp_logo
 from app.services.whatsapp.step_delivery import handle_navigation
@@ -113,14 +112,6 @@ api_router.include_router(local_router, tags=["local_math"])
 api_router.include_router(snap_solve_pdf_router, tags=["snap_solve_pdf"])
 api_router.include_router(credits_router, tags=["credits"])
 
-OCR_QWEN_SYSTEM_PROMPT_ID = os.environ.get(
-    "OCR_QWEN_SYSTEM_PROMPT_ID",
-    prompt_registry_service.OCR_EXTRACT_QWEN_SYSTEM_PROMPT_ID,
-)
-OCR_QWEN_USER_PROMPT_ID = os.environ.get(
-    "OCR_QWEN_USER_PROMPT_ID",
-    prompt_registry_service.OCR_EXTRACT_QWEN_USER_PROMPT_ID,
-)
 OCR_OPENAI_SYSTEM_PROMPT_ID = os.environ.get(
     "OCR_OPENAI_SYSTEM_PROMPT_ID",
     prompt_registry_service.OCR_EXTRACT_OPENAI_SYSTEM_PROMPT_ID,
@@ -134,7 +125,7 @@ OCR_OPENAI_SCHEMA_ID = os.environ.get(
 @api_router.get("/health/llm")
 async def health_llm():
     """
-    Check availability of LLM provider (Ollama).
+    Check availability of the active LLM provider.
     """
     try:
         mgr = get_llm_manager()
@@ -154,11 +145,6 @@ async def health_llm():
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
 
-
-@api_router.get("/health/ollama")
-async def health_ollama():
-    base_url = detect_ollama_base_url(os.environ.get("OLLAMA_BASE_URL"))
-    return {"reachable": bool(base_url), "base_url": base_url}
 
 # --- Helper Functions ---
 def _resolve_runtime_tier_slug(user: Optional[User]) -> str:
@@ -414,7 +400,7 @@ def _build_schema_valid_stream_error_payload(
             ],
         },
         "meta": {
-            "provider": provider or "ollama",
+            "provider": provider or "openai",
             "model": model or "unknown",
             "timestamps": {
                 "started_at": None,
@@ -679,7 +665,7 @@ class SolveResponse(BaseModel):
     concepts: Optional[List[Any]] = []
     visuals: Optional[List[Any]] = []
     # verification removed in v1.1
-    model_used: Optional[str] = "OpenAI GPT-4o Mini"
+    model_used: Optional[str] = None
     tokens_used: Optional[int] = 500
     has_image: Optional[bool] = False
     telemetry: Optional[Dict[str, Any]] = None # Added telemetry
@@ -1485,7 +1471,7 @@ class LatexResponse(BaseModel):
 # OCR Subsystem Endpoints
 # ------------------------------------------------------------------
 
-OCR_V5_MODEL = os.getenv("OCR_V5_MODEL", "gpt-5-mini")
+OCR_V5_MODEL = os.getenv("OCR_V5_MODEL") or os.environ.get("OPENAI_MODEL_DEFAULT")
 OCR_V5_MAX_MB = int(os.getenv("OCR_V5_MAX_MB", "10"))
 
 OCR_CONFIDENCE_THRESHOLD = float(os.getenv("OCR_CONFIDENCE_THRESHOLD", "0.65"))
@@ -1521,7 +1507,7 @@ OCR_V5_SCHEMA = {
 # Snap & Solve v2 - Extract Questions
 # ------------------------------------------------------------------
 
-EXTRACT_MODEL = os.getenv("EXTRACT_MODEL", "gpt-5-mini")
+EXTRACT_MODEL = os.getenv("EXTRACT_MODEL") or os.environ.get("OPENAI_MODEL_DEFAULT")
 EXTRACT_MAX_MB = int(os.getenv("EXTRACT_MAX_MB", "10"))
 EXTRACT_CACHE_REV = os.getenv("EXTRACT_CACHE_REV", "2026-02-03-pix2txt-latex-normalize-v3")
 
@@ -2070,16 +2056,6 @@ async def _call_extract_questions(
     crop_meta: Optional[Dict[str, Any]] = None,
     debug: bool = False
 ) -> Dict[str, Any]:
-    def _load_qwen_extract_prompts() -> Tuple[str, str]:
-        system_entry = prompt_registry_service.get_active_prompt(session, OCR_QWEN_SYSTEM_PROMPT_ID)
-        user_entry = prompt_registry_service.get_active_prompt(session, OCR_QWEN_USER_PROMPT_ID)
-        if not system_entry or not user_entry:
-            raise PromptRegistryError(
-                "Missing OCR extract prompts in prompt_templates. "
-                f"Expected prompt_ids: {OCR_QWEN_SYSTEM_PROMPT_ID}, {OCR_QWEN_USER_PROMPT_ID}"
-            )
-        return system_entry.content, user_entry.content
-
     def _load_openai_ocr_assets() -> Tuple[str, Dict[str, Any]]:
         system_entry = prompt_registry_service.get_active_prompt(session, OCR_OPENAI_SYSTEM_PROMPT_ID)
         schema_entry = prompt_registry_service.get_active_schema(session, OCR_OPENAI_SCHEMA_ID)
@@ -2235,84 +2211,6 @@ async def _call_extract_questions(
                 if tmp_path and os.path.exists(tmp_path):
                     os.unlink(tmp_path)
 
-    class QwenVisionProvider(VisionOcrProvider):
-        name = "qwen"
-        supports_pdf = True
-        supports_image = True
-
-        async def extract(self, vision_input: VisionInput, options: VisionOptions) -> VisionExtractionResult:
-            base = await Pix2TextProvider().extract(vision_input, options)
-            markdown = base.extracted_text
-            confidence = float(base.confidence or 0.8)
-            manager = get_llm_manager()
-            ollama_client = manager.get_client("ollama")
-            qwen_model = os.environ.get("OLLAMA_OCR_MODEL", os.environ.get("OLLAMA_MODEL", "qwen2.5vl:3b"))
-            qwen_system_prompt, qwen_user_prompt = _load_qwen_extract_prompts()
-            image_b64 = base64.b64encode(vision_input.images[0]).decode("utf-8")
-            qwen_request = {
-                "model": qwen_model,
-                "stream": False,
-                "messages": [
-                    {"role": "system", "content": qwen_system_prompt},
-                    {"role": "user", "content": qwen_user_prompt, "images": [image_b64]},
-                ],
-                "format": EXTRACT_SCHEMA["schema"],
-                "options": {
-                    "temperature": float(os.environ.get("OLLAMA_TEMPERATURE", "0.2")),
-                    "top_p": float(os.environ.get("OLLAMA_TOP_P", "0.9")),
-                    "num_ctx": int(os.environ.get("OLLAMA_CONTEXT_TOKENS", "4096")),
-                    "num_predict": options.max_output_tokens,
-                },
-            }
-            async with httpx.AsyncClient(
-                timeout=httpx.Timeout(float(os.environ.get("OLLAMA_TIMEOUT_SECONDS", "60")))
-            ) as http_client:
-                response = await http_client.post(f"{ollama_client.base_url}/api/chat", json=qwen_request)
-                if response.status_code >= 400:
-                    raise RuntimeError(f"Ollama OCR chat error: {response.status_code} {response.text[:200]}")
-                qwen_data = response.json()
-            content = (
-                (qwen_data.get("message") or {}).get("content")
-                if isinstance(qwen_data, dict)
-                else None
-            )
-            if not isinstance(content, str) or not content.strip():
-                raise RuntimeError("empty_extraction")
-            try:
-                qwen_payload = json.loads(content.strip())
-            except Exception:
-                payload_bundle = _pix2text_extract_payload(
-                    markdown,
-                    confidence,
-                    page_num,
-                    notes=["Qwen Math returned invalid JSON; using Pix2Text OCR fallback."],
-                )
-                return VisionExtractionResult(
-                    provider="qwen",
-                    model=qwen_model,
-                    extracted_text=markdown,
-                    payload=payload_bundle["payload"],
-                    blocks=payload_bundle["payload"].get("questions") or [],
-                    confidence=confidence,
-                    diagnostics={"fallback": "pix2txt_json_recovery"},
-                )
-            qwen_payload = _validate_extract_payload(qwen_payload, page_hint=page_num)
-            notes = qwen_payload.get("notes") or []
-            if _looks_like_garbled_pix2text(markdown):
-                notes.append("Pix2Text output looked noisy; refined with Qwen Math.")
-            else:
-                notes.append("Extracted with Qwen Math vision OCR.")
-            qwen_payload["notes"] = notes
-            return VisionExtractionResult(
-                provider="qwen",
-                model=qwen_model,
-                extracted_text="\n".join((q.get("text") or "") for q in (qwen_payload.get("questions") or [])).strip(),
-                payload=qwen_payload,
-                blocks=qwen_payload.get("questions") or [],
-                confidence=confidence,
-                diagnostics={"base_provider": "pix2txt"},
-            )
-
     class OpenAIVisionProvider(VisionOcrProvider):
         name = "openai"
         supports_pdf = True
@@ -2413,7 +2311,6 @@ async def _call_extract_questions(
 
     providers: Dict[str, VisionOcrProvider] = {
         "pix2txt": Pix2TextProvider(),
-        "qwen": QwenVisionProvider(),
         "openai": OpenAIVisionProvider(),
     }
     routing_cfg = VisionRoutingConfig.from_env()
@@ -2469,7 +2366,7 @@ async def _call_extract_questions(
             attempts.append(
                 VisionProviderAttempt(
                     provider=provider_name,
-                    model=(os.environ.get("VLM_MODEL_OPENA_AI_OCR", "gpt-5-mini") if provider_name == "openai" else provider_name),
+                    model=(get_openai_ocr_model() if provider_name == "openai" else provider_name),
                     duration_ms=duration_ms,
                     success=False,
                     reason=reason,
@@ -2479,7 +2376,7 @@ async def _call_extract_questions(
                 "ocr_attempt request_id=%s provider=%s model=%s duration_ms=%s validation_passed=%s fail_reason=%s",
                 request_id,
                 provider_name,
-                (os.environ.get("VLM_MODEL_OPENA_AI_OCR", "gpt-5-mini") if provider_name == "openai" else provider_name),
+                (get_openai_ocr_model() if provider_name == "openai" else provider_name),
                 duration_ms,
                 False,
                 reason[:200],
@@ -3931,7 +3828,7 @@ async def solve_problem(
         cached_solution = get_canonical_solution(problem_hash, session)
 
     # Determine metadata (will be overridden by actual model from OpenAI response)
-    model_name_fallback = "YouAsk AI (Multimodal)" if (body.image_url or body.artifact_id) else "gpt-5-mini"
+    model_name_fallback = "YouAsk AI (Multimodal)" if (body.image_url or body.artifact_id) else (os.environ.get("OPENAI_MODEL_DEFAULT") or "unknown_model")
     is_image = bool(body.image_url or body.artifact_id)
     extra_images = 0
     if body.artifact_id:
@@ -4262,15 +4159,15 @@ async def solve_v3_runtime_meta(
     session: Session = Depends(get_session),
 ):
     from app.llm_profiles.profile_resolver import ProfileResolver, ProfileResolutionError
-    from app.services.llm.manager import get_configured_ollama_model
+    from app.services.llm.manager import get_configured_openai_model
 
     user = session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
     request_id = str(uuid.uuid4())
-    provider = "ollama"
-    model = get_configured_ollama_model()
+    provider = "openai"
+    model = get_configured_openai_model()
     entitled_tier_slug = _resolve_runtime_tier_slug(user)
     tier_policy = _clamp_requested_tier(tier, entitled_tier_slug)
     tier_requested = tier_policy["tier_requested"]
@@ -4417,13 +4314,13 @@ async def solve_v3_endpoint(
     user = session.get(User, user_id)
     from app.llm_profiles.profile_resolver import ProfileResolver
     from app.llm_profiles.profile_resolver import ProfileResolutionError
-    from app.services.llm.manager import get_configured_ollama_model
+    from app.services.llm.manager import get_configured_openai_model
     entitled_tier_slug = _resolve_runtime_tier_slug(user)
     tier_policy = _clamp_requested_tier(body.tier, entitled_tier_slug)
     requested_tier = tier_policy["tier_requested"]
     effective_tier = tier_policy["tier_effective"]
-    solve_provider = "ollama"
-    configured_model = get_configured_ollama_model()
+    solve_provider = "openai"
+    configured_model = get_configured_openai_model()
     try:
         resolved_profile = ProfileResolver.resolve_profile(
             session,
@@ -4811,7 +4708,7 @@ async def solve_v3_endpoint(
             role="assistant",
             content=final_answer,
             structured_data=result,
-            model_used=result.get("_model", "gpt-5-mini"),
+            model_used=result.get("_model", os.environ.get("OPENAI_MODEL_DEFAULT") or "unknown_model"),
             tokens_used=tokens_actual,
             telemetry=result.get("telemetry")
         ))
@@ -4869,7 +4766,7 @@ async def solve_v3_endpoint(
             "resolved_schema_file_path": (resolved_profile.schema_asset_path if resolved_profile else None) or (resolved_profile.schema_relative_path if resolved_profile else None),
             "schema_name": openai_payload.get("response_format_schema_name"),
             "max_output_tokens_sent": effective_max_tokens,
-            "model_sent": telemetry.get("model") or os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+            "model_sent": telemetry.get("model") or os.environ.get("OPENAI_MODEL_DEFAULT"),
             "cache_hit": bool(was_cached or question_cache_hit),
             "openai_calls_count": telemetry.get("openai_calls_count", 0),
             "repair_attempted": telemetry.get("repair_attempted", False),
@@ -4948,7 +4845,7 @@ async def solve_v3_endpoint(
                 "resolved_schema_file_path": (resolved_profile.schema_asset_path if resolved_profile else None) or (resolved_profile.schema_relative_path if resolved_profile else None),
                 "schema_name": None,
                 "max_output_tokens_sent": None,
-                "model_sent": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                "model_sent": os.environ.get("OPENAI_MODEL_DEFAULT"),
                 "cache_hit": bool(was_cached or question_cache_hit),
                 "openai_calls_count": 0,
                 "repair_attempted": False,
@@ -5035,7 +4932,7 @@ async def solve_v3_stream_endpoint(
 
     from app.services.subscription_service import subscription_service
     from app.services.tier_utils import get_user_effective_tier_slug
-    from app.services.llm.manager import get_configured_ollama_model
+    from app.services.llm.manager import get_configured_openai_model
     from app.llm_profiles.profile_resolver import ProfileResolutionError
 
     # 0. Phase 3: Idempotency & Debit (Audit/Billing)
@@ -5048,8 +4945,8 @@ async def solve_v3_stream_endpoint(
     tier_policy = _clamp_requested_tier(body.tier, effective_tier_slug)
     requested_tier = tier_policy["tier_requested"]
     effective_tier = tier_policy["tier_effective"]
-    stream_provider = "ollama"
-    stream_model = get_configured_ollama_model()
+    stream_provider = "openai"
+    stream_model = get_configured_openai_model()
     effective_billing_tier = effective_tier.lower()
 
     action_req = {
@@ -5224,7 +5121,7 @@ async def solve_v3_stream_endpoint(
                 "learning_mode": learning_mode,
                 "subject": body.subject,
                 "grade_level": user_obj.grade_level if user_obj else None,
-                "model": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                "model": os.environ.get("OPENAI_MODEL_DEFAULT"),
                 "provider": stream_provider,
                 "route": "solve_v3_stream",
                 "tokens_in": None,
@@ -5310,7 +5207,7 @@ async def solve_v3_stream_endpoint(
                 "learning_mode": learning_mode,
                 "subject": body.subject,
                 "grade_level": user_obj.grade_level if user_obj else None,
-                "model": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                "model": os.environ.get("OPENAI_MODEL_DEFAULT"),
                 "provider": stream_provider,
                 "route": "solve_v3_stream",
                 "tokens_in": None,
@@ -5477,7 +5374,7 @@ async def solve_v3_stream_endpoint(
                 "learning_mode": learning_mode,
                 "subject": body.subject,
                 "grade_level": user_obj.grade_level if user_obj else None,
-                "model": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+                "model": os.environ.get("OPENAI_MODEL_DEFAULT"),
                 "provider": stream_provider,
                 "route": "solve_v3_stream",
                 "tokens_in": None,
@@ -5546,17 +5443,16 @@ async def solve_v3_stream_endpoint(
         yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': 'Waiting for model...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
 
         if output_format == FREEFORM_OUTPUT_MODE.lower():
-            base_url = detect_ollama_base_url(os.environ.get("OLLAMA_BASE_URL"))
-            if not base_url:
+            if not os.environ.get("OPENAI_API_KEY"):
                 if deduct_committed and debit_cost > 0:
                     subscription_service.refund_credits(
                         session,
                         sub_id,
                         debit_cost,
-                        "Free-form solve failed: Ollama not reachable",
+                        "Free-form solve failed: OPENAI_API_KEY missing",
                         request_id,
                     )
-                yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': False, 'error': {'code': 'ollama_unreachable', 'message': 'Ollama base URL is not reachable', 'request_id': request_id}})}\n\n"
+                yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': False, 'error': {'code': 'openai_not_configured', 'message': 'OPENAI_API_KEY is not configured', 'request_id': request_id}})}\n\n"
                 return
 
             max_attempts = _resolve_freeform_max_attempts(
@@ -5596,7 +5492,6 @@ async def solve_v3_stream_endpoint(
                         problem_text=problem_text,
                         prompt_template=freeform_prompt_template or "",
                         model=stream_model,
-                        base_url=base_url,
                         num_predict=num_predict,
                         timeout_seconds=timeout_seconds,
                         prompt_id=freeform_prompt_id,
@@ -7134,7 +7029,7 @@ async def ask_question(request: QuestionRequest, db: Session = Depends(get_sessi
         session_id=request.session_id,
         role="assistant",
         content=result.get("content", "I am sorry, I could not process that."),
-        model_used="OpenAI GPT-4o Mini",
+        model_used=os.environ.get("OPENAI_MODEL_DEFAULT") or "unknown_model",
         tokens_used=100 # Standard flat rate for chat
     )
     db.add(ai_msg)
@@ -7209,7 +7104,7 @@ async def session_chat(
         session_id=session_id,
         role="assistant",
         content=ai_content,
-        model_used="OpenAI GPT-4o Mini",
+        model_used=os.environ.get("OPENAI_MODEL_DEFAULT") or "unknown_model",
         tokens_used=100  # Flat rate for chat
     )
     db.add(ai_msg)
@@ -8685,7 +8580,7 @@ async def admin_prompt_registry_test(req: PromptRegistryTestRequest, db: Session
 
 
 @api_router.post("/admin/llm/circuit-breaker/reset")
-async def admin_reset_llm_circuit_breaker(provider: str = Query("ollama")):
+async def admin_reset_llm_circuit_breaker(provider: str = Query("openai")):
     manager = get_llm_manager()
     try:
         result = manager.reset_circuit_breaker(provider)

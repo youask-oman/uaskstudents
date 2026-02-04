@@ -102,7 +102,10 @@ def whatsapp_ocr_extract(self, upload_id: str, user_id: int, phone: str, message
         return "missing_path"
 
     try:
-        result = ocr_service.process_job(image_path, engine_name="local")
+        configured_ocr_engine = (os.getenv("WHATSAPP_OCR_ENGINE") or os.getenv("OCR_ENGINE") or "").strip().lower()
+        if not configured_ocr_engine:
+            raise RuntimeError("WHATSAPP_OCR_ENGINE or OCR_ENGINE must be configured")
+        result = ocr_service.process_job(image_path, engine_name=configured_ocr_engine)
         extracted = _clean_extracted_text(result.get("plain_text") or result.get("markdown") or "")
     except Exception as e:
         print(f"[WhatsApp OCR] Failed: {e}")

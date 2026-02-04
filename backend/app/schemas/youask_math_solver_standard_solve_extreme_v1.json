@@ -1,4 +1,4 @@
-{
+﻿{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://youask.ai/schemas/youask_math_solver_standard_solve_extreme_v1.json",
   "title": "YouAsk Math Solver Standard Solve Extreme v1",
@@ -374,7 +374,7 @@
         "provider": {
           "type": "string",
           "enum": [
-            "ollama",
+            "openai",
             "openai",
             "other"
           ]
@@ -571,3 +571,4 @@
     }
   ]
 }
+

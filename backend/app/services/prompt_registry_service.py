@@ -22,8 +22,6 @@ class PromptRegistryError(Exception):
 
 
 class PromptRegistryService:
-    OCR_EXTRACT_QWEN_SYSTEM_PROMPT_ID = "ocr_extract_qwen_system_v1"
-    OCR_EXTRACT_QWEN_USER_PROMPT_ID = "ocr_extract_qwen_user_v1"
     OCR_EXTRACT_OPENAI_SYSTEM_PROMPT_ID = "openai_ocr_system_prompt_v1"
     OCR_EXTRACT_OPENAI_SCHEMA_ID = "youask_math_solver_openai_ocr_v1"
     STANDARD_SOLVE_PROMPT_ID = "solve_standard_extreme_detailed_v1"
@@ -46,30 +44,11 @@ class PromptRegistryService:
         "youask_math_solver_standard_solve_v2",
     )
 
-    OCR_EXTRACT_QWEN_SYSTEM_PROMPT_DEFAULT = (
-        "You are a strict JSON extraction engine for math worksheets and textbook pages.\n"
-        "Output ONLY valid JSON that matches the provided JSON schema exactly.\n"
-        "Do not output markdown. Do not add commentary. Do not wrap in code fences.\n"
-        "Do not include any keys not defined in the schema.\n"
-        "Keys must have no leading or trailing whitespace.\n"
-        "If you are uncertain about any field, use null where allowed and explain uncertainty in \"notes\".\n"
-        "If the image/page is not a math page, set is_math_page=false and return questions=[] with ok=true."
-    )
-    OCR_EXTRACT_QWEN_USER_PROMPT_DEFAULT = (
-        "Extract ALL math questions from the provided image or PDF page image(s).\n\n"
-        "If there are multiple questions, split them into separate items in questions[].\n\n"
-        "Preserve math notation. If you can express an equation in LaTeX confidently, put it in \"latex\"; otherwise set latex=null.\n\n"
-        "Include page number for each question (0-based).\n\n"
-        "If the page contains multiple subparts (a), (b), (c), either:\n"
-        "(1) keep them in one question text, OR\n"
-        "(2) create separate questions with ids p{page}-q{n}-part{letter}.\n"
-        "Return JSON only."
-    )
     STANDARD_SOLVE_PROMPT_ASSET = "backend/app/prompts/solve_standard_extreme_detailed_v1.txt"
     STANDARD_SOLVE_SCHEMA_ASSET = "backend/app/schemas/youask_math_solver_standard_solve_extreme_v1.json"
-    FREEFORM_SOLVE_PROMPT_ASSET = "static_design/sug_prompts_qwen/free_form_math_standard_detailed.txt"
-    FREEFORM_SOLVE_FREE_PROMPT_ASSET = "static_design/sug_prompts_qwen/free_form_math_free_fast_v1.txt"
-    FREEFORM_SOLVE_RESEARCH_PROMPT_ASSET = "static_design/sug_prompts_qwen/free_form_math_research_rigorous_v1.txt"
+    FREEFORM_SOLVE_PROMPT_ASSET = "static_design/sug_prompts_openai/free_form_math_standard_detailed.txt"
+    FREEFORM_SOLVE_FREE_PROMPT_ASSET = "static_design/sug_prompts_openai/free_form_math_free_fast_v1.txt"
+    FREEFORM_SOLVE_RESEARCH_PROMPT_ASSET = "static_design/sug_prompts_openai/free_form_math_research_rigorous_v1.txt"
 
     def _repo_root(self) -> Path:
         return Path(__file__).resolve().parents[3]
@@ -80,36 +59,18 @@ class PromptRegistryService:
 
     def _load_asset_json(self, rel_path: str) -> Dict[str, Any]:
         path = self._repo_root() / rel_path
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(path.read_text(encoding="utf-8-sig"))
 
     def ensure_ocr_extract_prompts(self, session: Session, updated_by: Optional[str] = "system") -> None:
         """
-        Ensure OCR Qwen post-processing prompts exist in prompt_templates.
+        Ensure OpenAI OCR prompts/schema exist in prompt_templates.
         These IDs are read by runtime extraction flow and can be edited via registry admin APIs.
         """
-        self._ensure_prompt_exists(
-            session=session,
-            prompt_id=self.OCR_EXTRACT_QWEN_SYSTEM_PROMPT_ID,
-            content=self.OCR_EXTRACT_QWEN_SYSTEM_PROMPT_DEFAULT,
-            tier=None,
-            mode=PromptModeEnum.SOLVE,
-            role=PromptRoleEnum.SYSTEM,
-            updated_by=updated_by,
-        )
-        self._ensure_prompt_exists(
-            session=session,
-            prompt_id=self.OCR_EXTRACT_QWEN_USER_PROMPT_ID,
-            content=self.OCR_EXTRACT_QWEN_USER_PROMPT_DEFAULT,
-            tier=None,
-            mode=PromptModeEnum.SOLVE,
-            role=PromptRoleEnum.DEVELOPER,
-            updated_by=updated_by,
-        )
         openai_system_prompt = self._load_asset_text(
-            "static_design/sug_prompts_qwen/openai_ocr_system_prompt_v1.txt"
+            "static_design/sug_prompts_openai/openai_ocr_system_prompt_v1.txt"
         )
         openai_schema = self._load_asset_json(
-            "static_design/sug_prompts_qwen/youask_math_solver_openai_ocr_v1.json"
+            "static_design/sug_prompts_openai/youask_math_solver_openai_ocr_v1.json"
         )
         self._ensure_prompt_exists(
             session=session,
@@ -257,7 +218,7 @@ class PromptRegistryService:
         model: str,
         mode: PromptModeEnum = PromptModeEnum.SOLVE,
     ) -> Optional[PromptTemplateEntry]:
-        if (provider or "").strip().lower() != "ollama":
+        if (provider or "").strip().lower() != "openai":
             return None
         prompt_id = self.FREEFORM_SOLVE_TIER_PROMPT_IDS.get(tier)
         if not prompt_id:

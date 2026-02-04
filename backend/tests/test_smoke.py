@@ -61,8 +61,7 @@ def test_health_llm():
     data = response.json()
     assert "status" in data
     assert "provider" in data
-    # Local only mode -> provider should be ollama usually, or mocked
-    # assert data["provider"] == "ollama" 
+    # Local-only mode can still resolve provider from mocks/config.
 
 def test_credits_estimate(smoke_setup):
     user = smoke_setup

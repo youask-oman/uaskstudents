@@ -1,4 +1,4 @@
-name: uaskstudents
+﻿name: uaskstudents
 
 services:
   orchestrator:
@@ -72,9 +72,9 @@ services:
       ULTRALYTICS_CONFIG_DIR: /tmp/Ultralytics
       YOLO_RUNS_DIR: /tmp/Ultralytics/runs
       RUNS_DIR: /tmp/Ultralytics/runs
-      # OCR Engine: vlm (default, fast), local (private), auto (vlm with fallback)
-      OCR_ENGINE: ${OCR_ENGINE:-vlm}
-      VLM_MODEL_OCR: ${VLM_MODEL_OCR:-gpt-4o}
+      # OCR Engine: openai or local (pix2text)
+      OCR_ENGINE: ${OCR_ENGINE:-openai}
+      VLM_MODEL_OCR: ${VLM_MODEL_OCR}
     depends_on:
       postgres:
         condition: service_healthy
@@ -117,8 +117,8 @@ services:
       ULTRALYTICS_CONFIG_DIR: /tmp/Ultralytics
       YOLO_RUNS_DIR: /tmp/Ultralytics/runs
       RUNS_DIR: /tmp/Ultralytics/runs
-      OCR_ENGINE: ${OCR_ENGINE:-vlm}
-      VLM_MODEL_OCR: ${VLM_MODEL_OCR:-gpt-4o}
+      OCR_ENGINE: ${OCR_ENGINE:-openai}
+      VLM_MODEL_OCR: ${VLM_MODEL_OCR}
     depends_on:
       postgres:
         condition: service_healthy
@@ -189,3 +189,4 @@ volumes:
   redis_data:
 
   storage_data:
+

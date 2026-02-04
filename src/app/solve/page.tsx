@@ -989,7 +989,7 @@ export default function DashboardPage() {
                                                     }
                                                     return handleSolve(text, {
                                                         ocr_used: true,
-                                                        ocr_engine: "qwen_math",
+                                                        ocr_engine: "openai",
                                                         ...(featureOverrides || {}),
                                                     });
                                                 }}
@@ -1656,7 +1656,7 @@ export default function DashboardPage() {
                             <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
                                 <div>Tier: {runtimeDebugMeta?.effective_tier || selectedSolveTier}</div>
                                 <div>Mode: {runtimeDebugMeta?.mode_family || "SOLVE"}</div>
-                                <div>LLM Provider: {runtimeDebugMeta?.provider || "ollama"}</div>
+                                <div>LLM Provider: {runtimeDebugMeta?.provider || "openai"}</div>
                                 <div>Model: {runtimeDebugMeta?.model || "unknown"}</div>
                                 <div>Prompt Binding ID: {runtimeDebugMeta?.prompt_binding_id || "-"}</div>
                                 <div>Global System Prompt ID: {runtimeDebugMeta?.global_system_prompt_id || "-"}</div>
@@ -1779,7 +1779,7 @@ export default function DashboardPage() {
                                         <div>Tier Requested: {streamingMeta?.tier_requested || selectedSolveTier}</div>
                                         <div>Tier: {streamingMeta?.effective_tier || accountTier}</div>
                                         <div>Mode: {streamingMeta?.mode_family || "SOLVE"}</div>
-                                        <div>LLM Provider: {streamingMeta?.provider || streamingTelemetry?.provider || "ollama"}</div>
+                                        <div>LLM Provider: {streamingMeta?.provider || streamingTelemetry?.provider || "openai"}</div>
                                         <div>Model: {streamingMeta?.model || streamingTelemetry?.model || "unknown"}</div>
                                         <div>Prompt Binding ID: {streamingMeta?.prompt_binding_id || "-"}</div>
                                         <div>Global System Prompt ID: {streamingMeta?.global_system_prompt_id || "-"}</div>

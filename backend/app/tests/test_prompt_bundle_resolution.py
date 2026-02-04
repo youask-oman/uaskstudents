@@ -60,7 +60,7 @@ def test_resolve_prompt_bundle_standard_solve_prefers_standard_template(session:
     )
 
     bundle = resolve_prompt_bundle(
-        provider="ollama",
+        provider="openai",
         tier="STANDARD",
         mode="SOLVE",
         db_session=session,
@@ -92,7 +92,7 @@ def test_resolve_prompt_bundle_research_solve_uses_research_ids(session: Session
     )
 
     bundle = resolve_prompt_bundle(
-        provider="ollama",
+        provider="openai",
         tier="RESEARCH",
         mode="SOLVE",
         db_session=session,
@@ -104,7 +104,7 @@ def test_resolve_prompt_bundle_research_solve_uses_research_ids(session: Session
 
 def test_resolve_prompt_bundle_missing_binding_returns_structured_error(session: Session):
     with pytest.raises(PromptBindingLookupError) as exc:
-        resolve_prompt_bundle(provider="ollama", tier="STANDARD", mode="SOLVE", db_session=session)
+        resolve_prompt_bundle(provider="openai", tier="STANDARD", mode="SOLVE", db_session=session)
     assert exc.value.code == "PROMPT_BINDING_NOT_FOUND"
 
 
@@ -131,7 +131,7 @@ def test_resolve_prompt_bundle_solve_requires_tier_specific_developer_template(s
 
     with pytest.raises(PromptBindingLookupError) as exc:
         resolve_prompt_bundle(
-            provider="ollama",
+            provider="openai",
             tier="STANDARD",
             mode="SOLVE",
             db_session=session,

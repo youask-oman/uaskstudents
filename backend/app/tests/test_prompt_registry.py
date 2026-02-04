@@ -73,7 +73,7 @@ def test_import_script_loads_assets(tmp_path, monkeypatch):
     db_path = tmp_path / "import.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path}")
 
-    source_dir = repo_root / "static_design" / "sug_prompts_qwen"
+    source_dir = repo_root / "static_design" / "sug_prompts_openai"
     run_import(source_dir)
 
     engine = create_engine(f"sqlite:///{db_path}")
@@ -90,15 +90,14 @@ def test_ensure_ocr_extract_prompts(tmp_path):
     prompt_registry_service.ensure_ocr_extract_prompts(session, updated_by="tester")
 
     system_prompt = prompt_registry_service.get_active_prompt(
-        session, prompt_registry_service.OCR_EXTRACT_QWEN_SYSTEM_PROMPT_ID
+        session, prompt_registry_service.OCR_EXTRACT_OPENAI_SYSTEM_PROMPT_ID
     )
-    user_prompt = prompt_registry_service.get_active_prompt(
-        session, prompt_registry_service.OCR_EXTRACT_QWEN_USER_PROMPT_ID
+    schema = prompt_registry_service.get_active_schema(
+        session, prompt_registry_service.OCR_EXTRACT_OPENAI_SCHEMA_ID
     )
 
     assert system_prompt is not None
-    assert user_prompt is not None
-    assert "Extract ALL math questions from the provided image or PDF page image(s)." in user_prompt.content
+    assert schema is not None
 
 
 def test_ensure_standard_solve_binding_sets_extreme_default_and_deactivates_legacy(tmp_path):
@@ -162,15 +161,15 @@ def test_ensure_freeform_solve_prompts_by_tier_uses_updated_assets(tmp_path):
     expected_assets = {
         prompt_registry_service.FREEFORM_SOLVE_FREE_PROMPT_ID: repo_root
         / "static_design"
-        / "sug_prompts_qwen"
+        / "sug_prompts_openai"
         / "free_form_math_free_fast_v1.txt",
         prompt_registry_service.FREEFORM_SOLVE_PROMPT_ID: repo_root
         / "static_design"
-        / "sug_prompts_qwen"
+        / "sug_prompts_openai"
         / "free_form_math_standard_detailed.txt",
         prompt_registry_service.FREEFORM_SOLVE_RESEARCH_PROMPT_ID: repo_root
         / "static_design"
-        / "sug_prompts_qwen"
+        / "sug_prompts_openai"
         / "free_form_math_research_rigorous_v1.txt",
     }
 

@@ -37,12 +37,12 @@ class FakeClient:
 
 class FakeManager:
     def __init__(self):
-        self.primary_provider = "ollama"
+        self.primary_provider = "openai"
         self.fallback_enabled = False
         self.last_error = {}
 
     def get_provider_chain(self):
-        return ["ollama"]
+        return ["openai"]
 
     def get_client(self, provider):
         return FakeClient()

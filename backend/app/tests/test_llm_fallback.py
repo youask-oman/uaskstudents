@@ -29,7 +29,7 @@ class FakeLLMManager:
 
 class FailingClient:
     async def generate(self, **kwargs):
-        raise LLMProviderError("ollama down", provider="ollama", is_transient=True)
+        raise LLMProviderError("openai down", provider="openai", is_transient=True)
 
 
 class SuccessClient:
@@ -47,11 +47,11 @@ class SuccessClient:
 
 
 @pytest.mark.asyncio
-async def test_fallback_to_openai_when_ollama_fails():
+async def test_fallback_to_openai_when_openai_fails():
     manager = FakeLLMManager(
-        primary="ollama",
+        primary="openai",
         fallback="openai",
-        clients={"ollama": FailingClient(), "openai": SuccessClient()},
+        clients={"openai": FailingClient(), "openai": SuccessClient()},
     )
     solver = SolverV3(llm_manager=manager)
 

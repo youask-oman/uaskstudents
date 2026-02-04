@@ -70,12 +70,12 @@ def test_db_binding_loader_resolves_prompt_and_schema(session: Session):
 class _FakeStreamingClient:
     async def generate_stream(self, **kwargs):
         del kwargs
-        yield LLMStreamResponse(content='{"final_answer":"', provider="ollama", model="qwen", done=False)
-        yield LLMStreamResponse(content='ok"}', provider="ollama", model="qwen", done=False)
+        yield LLMStreamResponse(content='{"final_answer":"', provider="openai", model="gpt-5-mini", done=False)
+        yield LLMStreamResponse(content='ok"}', provider="openai", model="gpt-5-mini", done=False)
         yield LLMStreamResponse(
             content="",
-            provider="ollama",
-            model="qwen",
+            provider="openai",
+            model="gpt-5-mini",
             usage={"input": 1, "output": 2, "total": 3, "cached": None},
             status={"status": "completed"},
             done=True,
@@ -83,10 +83,10 @@ class _FakeStreamingClient:
 
 
 class _FakeManager:
-    primary_provider = "ollama"
+    primary_provider = "openai"
 
     def get_client(self, provider):
-        assert provider == "ollama"
+        assert provider == "openai"
         return _FakeStreamingClient()
 
 

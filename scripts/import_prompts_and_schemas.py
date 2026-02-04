@@ -13,7 +13,7 @@ from app.models import PromptTierEnum, PromptModeEnum, PromptRoleEnum
 from app.services.prompt_registry_service import prompt_registry_service
 
 
-DEFAULT_SOURCE = ROOT / "static_design" / "sug_prompts_qwen"
+DEFAULT_SOURCE = ROOT / "static_design" / "sug_prompts_openai"
 DEPRECATED_PROMPT_IDS = {"solve_standard_moderate_v1", "solve_standard_moderate_v2"}
 DEPRECATED_SCHEMA_IDS = {"youask_math_solver_standard_solve_v1", "youask_math_solver_standard_solve_v2"}
 

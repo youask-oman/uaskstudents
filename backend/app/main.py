@@ -11,7 +11,7 @@ from slowapi.errors import RateLimitExceeded
 from app.api import limiter
 from pathlib import Path
 from app.services.llm import get_llm_manager
-from app.services.llm.manager import get_configured_ollama_model
+from app.services.llm.manager import get_configured_openai_model
 
 load_dotenv()
 
@@ -145,41 +145,8 @@ def on_startup():
             logging.error(f"Failed to audit prompt bindings: {e}")
             session.rollback()
 
-    manager = get_llm_manager()
-    if manager.primary_provider == "ollama":
-        _enforce_ollama_model_availability(manager)
+    _ = get_llm_manager()
 
-
-def _is_production_env() -> bool:
-    for key in ("APP_ENV", "ENV", "ENVIRONMENT", "NODE_ENV"):
-        value = os.environ.get(key, "")
-        if value.lower() in {"prod", "production"}:
-            return True
-    return False
-
-
-def _enforce_ollama_model_availability(manager) -> None:
-    logger = logging.getLogger("uvicorn")
-    probe = manager.check_ollama_sync(timeout_seconds=2.0)
-    if not probe.get("reachable"):
-        logger.warning(
-            "OLLAMA STARTUP SELF-CHECK FAILED: base_url=%s error=%s",
-            probe.get("base_url"),
-            probe.get("error"),
-        )
-        return
-
-    expected_model = probe.get("expected_model") or get_configured_ollama_model()
-    if probe.get("expected_model_available"):
-        return
-
-    remediation = (
-        f"Ollama model '{expected_model}' is missing. "
-        f"Run: ollama pull {expected_model} and restart backend."
-    )
-    if _is_production_env():
-        raise RuntimeError(remediation)
-    logger.error("%s Available models: %s", remediation, ", ".join(probe.get("models", [])))
 
 # Monitoring Endpoints
 @app.get("/health")
@@ -201,17 +168,14 @@ def readiness_check():
 @app.get("/health/llm")
 async def llm_health_check():
     manager = get_llm_manager()
-    ollama = await manager.check_ollama()
     openai = await manager.check_openai()
-    breaker = manager.get_circuit_breaker_state("ollama")
+    breaker = manager.get_circuit_breaker_state("openai")
     return {
         "provider": manager.primary_provider,
         "fallback_enabled": manager.fallback_enabled,
         "models": {
-            "ollama_default": get_configured_ollama_model(),
-            "openai_default": os.environ.get("OPENAI_MODEL_DEFAULT", "gpt-5-mini"),
+            "openai_default": get_configured_openai_model(),
         },
-        "ollama": ollama,
         "openai": openai,
         "circuit_breaker": breaker,
         "last_error": manager.last_error,

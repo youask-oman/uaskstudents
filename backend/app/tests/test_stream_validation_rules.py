@@ -47,8 +47,8 @@ def test_stream_error_payload_is_schema_valid_and_limits_debug_errors():
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
     error_payload = _build_schema_valid_stream_error_payload(
         problem_text="x^2=9",
-        provider="ollama",
-        model="mightykatun/qwen2.5-math:7b",
+        provider="openai",
+        model="mightykatun/gpt-5-mini",
         tier="STANDARD",
         mode="SOLVE",
         prompt_id="solve_standard_extreme_detailed_v1",

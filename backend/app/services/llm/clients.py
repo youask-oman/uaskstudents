@@ -1,13 +1,10 @@
-import asyncio
-import hashlib
+﻿import hashlib
 import json
 import logging
 import os
 import time
 from dataclasses import dataclass
 from typing import Any, AsyncIterator, Dict, List, Optional
-
-import httpx
 
 
 class LLMProviderError(Exception):
@@ -49,7 +46,6 @@ class LLMStreamResponse:
     done: bool = False
 
 
-
 class CircuitBreaker:
     def __init__(self, failure_threshold: int = 3, reset_seconds: int = 30):
         self.failure_threshold = failure_threshold
@@ -85,12 +81,12 @@ class CircuitBreaker:
     def reset_in_seconds(self) -> int:
         if self.open_until <= 0.0:
             return 0
-        remaining = int(self.open_until - time.time())
-        return max(0, remaining)
+        return max(0, int(self.open_until - time.time()))
+
 
 
 def _debug_enabled() -> bool:
-    return os.environ.get("LLM_DEBUG_LOGS", "false").lower() in {"1", "true", "yes"}
+    return (os.environ.get("LLM_DEBUG_LOGS") or "").lower() in {"1", "true", "yes"}
 
 
 def _hash_text(text: str) -> str:
@@ -99,82 +95,14 @@ def _hash_text(text: str) -> str:
 
 def _sanitize_prompt_preview(text: str, limit: int = 200) -> Dict[str, str]:
     text = text or ""
-    preview = text[:limit]
-    return {"preview": preview, "sha256": _hash_text(text)}
+    return {"preview": text[:limit], "sha256": _hash_text(text)}
 
 
 def _log_llm(event: str, payload: Dict[str, Any]) -> None:
     if not _debug_enabled():
         return
     logger = logging.getLogger("llm")
-    safe_payload = {"event": event, **payload}
-    logger.info(json.dumps(safe_payload))
-
-
-def _normalize_messages_for_ollama(messages: List[Dict[str, Any]]) -> List[Dict[str, str]]:
-    normalized: List[Dict[str, str]] = []
-    for msg in messages:
-        role = msg.get("role")
-        if role == "developer":
-            role = "system"
-        content = msg.get("content", "")
-        if isinstance(content, list):
-            text_parts: List[str] = []
-            for part in content:
-                part_type = part.get("type")
-                if part_type in {"text", "input_text"}:
-                    text_parts.append(part.get("text", ""))
-                elif part_type in {"image_url", "input_image"}:
-                    raise LLMProviderError(
-                        "Ollama does not support image inputs.",
-                        provider="ollama",
-                        is_transient=False,
-                    )
-            content = "".join(text_parts).strip()
-        normalized.append({"role": role, "content": str(content)})
-    return normalized
-
-
-def build_ollama_chat_payload(
-    model: str,
-    messages: List[Dict[str, str]],
-    stream: bool,
-    options: Dict[str, Any],
-    keep_alive: Optional[str],
-    fmt: Optional[str] = None,
-) -> Dict[str, Any]:
-    payload: Dict[str, Any] = {
-        "model": model,
-        "messages": messages,
-        "stream": stream,
-        "options": options,
-    }
-    if fmt:
-        payload["format"] = fmt
-    if keep_alive:
-        payload["keep_alive"] = keep_alive
-    return payload
-
-
-def build_ollama_generate_payload(
-    model: str,
-    prompt: str,
-    stream: bool,
-    options: Dict[str, Any],
-    keep_alive: Optional[str],
-    fmt: Optional[str] = None,
-) -> Dict[str, Any]:
-    payload: Dict[str, Any] = {
-        "model": model,
-        "prompt": prompt,
-        "stream": stream,
-        "options": options,
-    }
-    if fmt:
-        payload["format"] = fmt
-    if keep_alive:
-        payload["keep_alive"] = keep_alive
-    return payload
+    logger.info(json.dumps({"event": event, **payload}))
 
 
 class OpenAIClient:
@@ -190,18 +118,46 @@ class OpenAIClient:
         self.timeout_seconds = timeout_seconds
         self.default_model = default_model
         self._client = None
+        self._breaker = CircuitBreaker(
+            failure_threshold=int((os.environ.get("OPENAI_BREAKER_FAILURE_THRESHOLD") or "3").strip()),
+            reset_seconds=int((os.environ.get("OPENAI_BREAKER_RESET_SECONDS") or "30").strip()),
+        )
+        self._last_error_details: Optional[Dict[str, Any]] = None
 
     @property
     def client(self):
         if self._client is None:
             from openai import AsyncOpenAI
 
-            kwargs: Dict[str, Any] = {"api_key": self.api_key}
+            kwargs: Dict[str, Any] = {"api_key": self.api_key, "timeout": self.timeout_seconds}
             if self.base_url:
                 kwargs["base_url"] = self.base_url
-            kwargs["timeout"] = self.timeout_seconds
             self._client = AsyncOpenAI(**kwargs)
         return self._client
+
+    def get_circuit_breaker_state(self) -> Dict[str, Any]:
+        return {
+            "failure_count": self._breaker.failure_count,
+            "open": not self._breaker.allow_request(),
+            "reset_in_seconds": self._breaker.reset_in_seconds(),
+            "last_failure": self._breaker.last_failure or self._last_error_details,
+        }
+
+    def reset_circuit_breaker(self) -> None:
+        self._breaker.reset()
+        self._last_error_details = None
+
+    def _record_failure(self, category: str, exc: Exception, status_code: Optional[int] = None) -> Dict[str, Any]:
+        details = {
+            "category": category,
+            "exception_class": exc.__class__.__name__,
+            "message": str(exc).strip() or repr(exc),
+        }
+        if status_code is not None:
+            details["status_code"] = status_code
+        self._last_error_details = details
+        self._breaker.record_failure(details)
+        return details
 
     async def generate(
         self,
@@ -217,12 +173,25 @@ class OpenAIClient:
         model: Optional[str] = None,
         verbosity: Optional[str] = None,
     ) -> LLMResponse:
+        del stream
         if not self.api_key:
             raise LLMProviderError("OPENAI_API_KEY not configured.", provider="openai")
+        if not self.default_model and not model:
+            raise LLMProviderError("OPENAI_MODEL_DEFAULT not configured.", provider="openai")
+        if not self._breaker.allow_request():
+            raise LLMProviderError(
+                "OpenAI circuit breaker open.",
+                provider="openai",
+                status_code=503,
+                is_transient=True,
+                details={
+                    "reset_in_seconds": self._breaker.reset_in_seconds(),
+                    "last_failure": self._breaker.last_failure or self._last_error_details,
+                },
+            )
 
-        model_name = model or self.default_model
+        model_name = (model or self.default_model).strip()
         start = time.perf_counter()
-
         if messages is None:
             messages = []
             if system_prompt:
@@ -230,15 +199,14 @@ class OpenAIClient:
             if prompt is not None:
                 messages.append({"role": "user", "content": prompt})
 
-        prompt_text = json.dumps(messages, ensure_ascii=True)
         _log_llm(
             "request",
             {
                 "request_id": request_id,
                 "provider": "openai",
                 "model": model_name,
-                "prompt": _sanitize_prompt_preview(prompt_text),
-                "input_length": len(prompt_text),
+                "prompt": _sanitize_prompt_preview(json.dumps(messages, ensure_ascii=True)),
+                "input_length": len(json.dumps(messages, ensure_ascii=True)),
             },
         )
 
@@ -246,106 +214,127 @@ class OpenAIClient:
         usage: Dict[str, Any] = {"input": 0, "output": 0, "total": 0, "cached": None}
         payload: Dict[str, Any] = {}
 
-        if "gpt-5" in model_name.lower():
-            verbosity = verbosity or "low"
+        try:
+            if "gpt-5" in model_name.lower():
+                verbosity = verbosity or "low"
+                input_items: List[Dict[str, Any]] = []
+                for msg in messages:
+                    role = msg.get("role")
+                    content = msg.get("content", "")
+                    if isinstance(content, list):
+                        converted: List[Dict[str, Any]] = []
+                        for part in content:
+                            part_type = part.get("type")
+                            if part_type in {"text", "input_text"}:
+                                converted.append({"type": "input_text", "text": part.get("text", "")})
+                            elif part_type in {"image_url", "input_image"}:
+                                image_url = part.get("image_url")
+                                if isinstance(image_url, dict):
+                                    image_url = image_url.get("url")
+                                converted.append({"type": "input_image", "image_url": image_url})
+                        content_list = converted
+                    else:
+                        content_list = [{"type": "input_text", "text": str(content)}]
+                    input_items.append({"role": role, "content": content_list})
 
-            input_items: List[Dict[str, Any]] = []
-            for msg in messages:
-                role = msg.get("role")
-                content = msg.get("content", "")
-                if isinstance(content, list):
-                    converted = []
-                    for part in content:
-                        part_type = part.get("type")
-                        if part_type == "text":
-                            converted.append({"type": "input_text", "text": part.get("text", "")})
-                        elif part_type == "image_url":
-                            converted.append({"type": "input_image", "image_url": part.get("image_url", {}).get("url")})
-                    content_list = converted
-                else:
-                    content_list = [{"type": "input_text", "text": str(content)}]
-                input_items.append({"role": role, "content": content_list})
+                text_format = None
+                if json_schema:
+                    text_format = {
+                        "type": "json_schema",
+                        "name": json_schema.get("name", "schema"),
+                        "schema": json_schema.get("schema", json_schema),
+                        "strict": json_schema.get("strict", True),
+                    }
 
-            text_format = None
-            if json_schema:
-                text_format = {
-                    "type": "json_schema",
-                    "name": json_schema.get("name", "schema"),
-                    "schema": json_schema.get("schema", json_schema),
-                    "strict": json_schema.get("strict", True),
+                params: Dict[str, Any] = {
+                    "model": model_name,
+                    "input": input_items,
+                    "max_output_tokens": max_tokens,
+                }
+                text_payload: Dict[str, Any] = {"verbosity": verbosity}
+                if text_format:
+                    text_payload["format"] = text_format
+                params["text"] = text_payload
+                reasoning_effort = (os.environ.get("OPENAI_REASONING_EFFORT") or "minimal").strip().lower()
+                if reasoning_effort in {"minimal", "low", "medium", "high"}:
+                    params["reasoning"] = {"effort": reasoning_effort}
+
+                response = await self.client.responses.create(**params)
+                status_info["status"] = getattr(response, "status", "completed")
+                if status_info["status"] == "incomplete":
+                    details = getattr(response, "incomplete_details", None)
+                    reason = getattr(details, "reason", None) if details else None
+                    status_info["incomplete_reason"] = reason or "unknown"
+
+                usage_obj = getattr(response, "usage", None)
+                if usage_obj is not None:
+                    usage["input"] = getattr(usage_obj, "prompt_tokens", None) or getattr(usage_obj, "input_tokens", 0)
+                    usage["output"] = getattr(usage_obj, "completion_tokens", None) or getattr(usage_obj, "output_tokens", 0)
+                    usage["total"] = getattr(usage_obj, "total_tokens", 0)
+                    prompt_details = getattr(usage_obj, "prompt_tokens_details", None)
+                    input_details = getattr(usage_obj, "input_token_details", None)
+                    if prompt_details is not None:
+                        usage["cached"] = getattr(prompt_details, "cached_tokens", None)
+                    elif input_details is not None:
+                        usage["cached"] = getattr(input_details, "cached_tokens", None)
+
+                content = (getattr(response, "output_text", None) or "").strip()
+                if not content:
+                    for item in (getattr(response, "output", None) or []):
+                        for block in (getattr(item, "content", None) or []):
+                            text_value = getattr(block, "text", None)
+                            if isinstance(text_value, str) and text_value:
+                                content = text_value
+                                break
+                        if content:
+                            break
+
+                payload = {
+                    "max_output_tokens": max_tokens,
+                    "full_input": input_items,
+                    "response_format_schema_name": json_schema.get("name") if json_schema else None,
+                    "reasoning_effort": reasoning_effort,
+                }
+            else:
+                params = {
+                    "model": model_name,
+                    "messages": messages,
+                    "max_completion_tokens": max_tokens,
+                }
+                if json_schema:
+                    params["response_format"] = {"type": "json_schema", "json_schema": json_schema}
+                if temperature is not None:
+                    params["temperature"] = temperature
+
+                response = await self.client.chat.completions.create(**params)
+                status_info["status"] = "completed"
+                status_info["finish_reason"] = response.choices[0].finish_reason
+
+                usage_obj = getattr(response, "usage", None)
+                if usage_obj is not None:
+                    usage["input"] = getattr(usage_obj, "prompt_tokens", 0)
+                    usage["output"] = getattr(usage_obj, "completion_tokens", 0)
+                    usage["total"] = getattr(usage_obj, "total_tokens", 0)
+                    details = getattr(usage_obj, "prompt_tokens_details", None)
+                    if details is not None:
+                        usage["cached"] = getattr(details, "cached_tokens", None)
+
+                content = response.choices[0].message.content or ""
+                payload = {
+                    "max_output_tokens": max_tokens,
+                    "full_input": messages,
+                    "response_format_schema_name": json_schema.get("name") if json_schema else None,
                 }
 
-            params: Dict[str, Any] = {
-                "model": model_name,
-                "input": input_items,
-                "max_output_tokens": max_tokens,
-            }
-            if text_format:
-                params["text"] = {"verbosity": verbosity, "format": text_format}
-            response = await self.client.responses.create(**params)
-
-            if hasattr(response, "status"):
-                status_info["status"] = response.status
-                if response.status == "incomplete":
-                    details = getattr(response, "incomplete_details", None) or {}
-                    status_info["incomplete_reason"] = details.get("reason", "unknown")
-
-            if hasattr(response, "usage"):
-                if hasattr(response.usage, "prompt_tokens"):
-                    usage["input"] = response.usage.prompt_tokens
-                    usage["output"] = response.usage.completion_tokens
-                    usage["total"] = response.usage.total_tokens
-                elif hasattr(response.usage, "input_tokens"):
-                    usage["input"] = response.usage.input_tokens
-                    usage["output"] = response.usage.output_tokens
-                    usage["total"] = response.usage.total_tokens
-                if hasattr(response.usage, "prompt_tokens_details"):
-                    usage["cached"] = getattr(response.usage.prompt_tokens_details, "cached_tokens", 0)
-                elif hasattr(response.usage, "input_token_details"):
-                    usage["cached"] = getattr(response.usage.input_token_details, "cached_tokens", 0)
-
-            content = ""
-            if hasattr(response, "output") and response.output:
-                for item in response.output:
-                    if hasattr(item, "content") and item.content:
-                        content = item.content[0].text
-                        break
-
-            payload = {
-                "max_output_tokens": max_tokens,
-                "full_input": input_items,
-                "response_format_schema_name": json_schema.get("name") if json_schema else None,
-            }
-        else:
-            params: Dict[str, Any] = {
-                "model": model_name,
-                "messages": messages,
-                "max_completion_tokens": max_tokens,
-            }
-            if json_schema:
-                params["response_format"] = {"type": "json_schema", "json_schema": json_schema}
-            if temperature is not None and "gpt-5" not in model_name.lower():
-                params["temperature"] = temperature
-
-            response = await self.client.chat.completions.create(**params)
-            status_info["status"] = "completed"
-            status_info["finish_reason"] = response.choices[0].finish_reason
-
-            if hasattr(response, "usage"):
-                usage["input"] = response.usage.prompt_tokens
-                usage["output"] = response.usage.completion_tokens
-                usage["total"] = response.usage.total_tokens
-                if hasattr(response.usage, "prompt_tokens_details") and response.usage.prompt_tokens_details:
-                    usage["cached"] = getattr(response.usage.prompt_tokens_details, "cached_tokens", 0)
-                if usage["cached"] is None and hasattr(response.usage, "cached_tokens"):
-                    usage["cached"] = response.usage.cached_tokens
-
-            content = response.choices[0].message.content or ""
-            payload = {
-                "max_output_tokens": max_tokens,
-                "full_input": messages,
-                "response_format_schema_name": json_schema.get("name") if json_schema else None,
-            }
+            self._breaker.record_success()
+        except Exception as exc:
+            details = self._record_failure("request_failed", exc)
+            raise LLMProviderError(
+                f"OpenAI request failed: {details['message']}",
+                provider="openai",
+                is_transient=True,
+                details=details,
+            ) from exc
 
         latency_ms = int((time.perf_counter() - start) * 1000)
         _log_llm(
@@ -384,7 +373,6 @@ class OpenAIClient:
         model: Optional[str] = None,
         verbosity: Optional[str] = None,
     ) -> AsyncIterator[LLMStreamResponse]:
-        # Degrade gracefully for providers without native streaming in this client.
         response = await self.generate(
             messages=messages,
             system_prompt=system_prompt,
@@ -404,512 +392,5 @@ class OpenAIClient:
             usage=response.usage,
             status=response.status,
             latency_ms=response.latency_ms,
-            done=True,
-        )
-
-
-class OllamaClient:
-    def __init__(
-        self,
-        base_url: str,
-        model: str,
-        timeout_seconds: int,
-        max_retries: int,
-        keep_alive: Optional[str],
-        temperature: float,
-        top_p: float,
-        context_tokens: Optional[int],
-        base_urls: Optional[List[str]] = None,
-        transport: Optional[httpx.BaseTransport] = None,
-    ):
-        normalized_base_urls: List[str] = []
-        for url in (base_urls or [base_url]):
-            normalized = (url or "").strip().rstrip("/")
-            if normalized and normalized not in normalized_base_urls:
-                normalized_base_urls.append(normalized)
-        if not normalized_base_urls:
-            normalized_base_urls = [base_url.rstrip("/")]
-        self.base_urls = normalized_base_urls
-        self.base_url = self.base_urls[0]
-        self.model = model
-        self.timeout_seconds = timeout_seconds
-        self.max_retries = max_retries
-        self.keep_alive = keep_alive
-        self.temperature = temperature
-        self.top_p = top_p
-        self.context_tokens = context_tokens
-        self._breaker = CircuitBreaker()
-        self._last_error_details: Optional[Dict[str, Any]] = None
-        self._client = httpx.AsyncClient(
-            timeout=httpx.Timeout(timeout_seconds),
-            transport=transport,
-        )
-
-    @staticmethod
-    def _stringify_exception(exc: Exception) -> str:
-        message = str(exc).strip()
-        if message:
-            return message
-        return repr(exc)
-
-    def _build_error_details(
-        self,
-        category: str,
-        exc: Exception,
-        status_code: Optional[int] = None,
-        base_url: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        details: Dict[str, Any] = {
-            "category": category,
-            "exception_class": exc.__class__.__name__,
-            "message": self._stringify_exception(exc),
-            "base_url": (base_url or self.base_url),
-        }
-        if status_code is not None:
-            details["status_code"] = status_code
-        return details
-
-    def _record_transient_failure(self, details: Dict[str, Any]) -> None:
-        self._last_error_details = details
-        self._breaker.record_failure(details)
-
-    def get_circuit_breaker_state(self) -> Dict[str, Any]:
-        return {
-            "failure_count": self._breaker.failure_count,
-            "open": not self._breaker.allow_request(),
-            "reset_in_seconds": self._breaker.reset_in_seconds(),
-            "last_failure": self._breaker.last_failure or self._last_error_details,
-        }
-
-    def reset_circuit_breaker(self) -> None:
-        self._breaker.reset()
-        self._last_error_details = None
-
-    def _build_options(self, max_tokens: int, temperature: Optional[float]) -> Dict[str, Any]:
-        temp = self.temperature if temperature is None else temperature
-        options: Dict[str, Any] = {
-            "temperature": temp,
-            "top_p": self.top_p,
-            "num_predict": max_tokens,
-        }
-        if self.context_tokens:
-            options["num_ctx"] = self.context_tokens
-        return options
-
-    async def generate(
-        self,
-        *,
-        messages: Optional[List[Dict[str, Any]]],
-        system_prompt: Optional[str],
-        prompt: Optional[str],
-        json_schema: Optional[Dict[str, Any]],
-        max_tokens: int,
-        temperature: Optional[float],
-        stream: bool,
-        request_id: Optional[str],
-        model: Optional[str] = None,
-        verbosity: Optional[str] = None,
-    ) -> LLMResponse:
-        if not self._breaker.allow_request():
-            reset_in_seconds = self._breaker.reset_in_seconds()
-            failure_details = self._breaker.last_failure or self._last_error_details or {
-                "base_url": self.base_url,
-            }
-            raise LLMProviderError(
-                "Ollama circuit breaker open.",
-                provider="ollama",
-                status_code=503,
-                is_transient=True,
-                details={
-                    "base_url": self.base_url,
-                    "reset_in_seconds": reset_in_seconds,
-                    "last_failure": failure_details,
-                },
-            )
-
-        model_name = model or self.model
-        start = time.perf_counter()
-        attempts = 0
-        last_error: Optional[Exception] = None
-
-        if messages is None:
-            messages = []
-            if system_prompt:
-                messages.append({"role": "system", "content": system_prompt})
-            if prompt is not None:
-                messages.append({"role": "user", "content": prompt})
-
-        use_chat = len(messages) > 0
-        normalized_messages = _normalize_messages_for_ollama(messages) if use_chat else []
-        prompt_text = json.dumps(normalized_messages, ensure_ascii=True) if use_chat else (prompt or "")
-        _log_llm(
-            "request",
-            {
-                "request_id": request_id,
-                "provider": "ollama",
-                "model": model_name,
-                "prompt": _sanitize_prompt_preview(prompt_text),
-                "input_length": len(prompt_text),
-            },
-        )
-
-        # Determine format (e.g. "json")
-        fmt = None
-        if json_schema:
-             # If a schema is provided, we can imply "json" format
-             # Note: Ollama supports "json" string. Future versions might support full schema.
-             fmt = "json"
-        
-        options = self._build_options(max_tokens, temperature)
-        if use_chat:
-            endpoint = "/api/chat"
-            payload = build_ollama_chat_payload(
-                model=model_name,
-                messages=normalized_messages,
-                stream=stream,
-                options=options,
-                keep_alive=self.keep_alive,
-                fmt=fmt,
-            )
-        else:
-            endpoint = "/api/generate"
-            payload = build_ollama_generate_payload(
-                model=model_name,
-                prompt=prompt or "",
-                stream=stream,
-                options=options,
-                keep_alive=self.keep_alive,
-                fmt=fmt,
-            )
-
-        for attempt in range(self.max_retries + 1):
-            attempts = attempt + 1
-            for idx, candidate_base_url in enumerate(self.base_urls):
-                self.base_url = candidate_base_url
-                try:
-                    response = await self._client.post(f"{self.base_url}{endpoint}", json=payload)
-                    if response.status_code >= 500:
-                        details = self._build_error_details(
-                            "http_5xx",
-                            Exception(f"Ollama server error {response.status_code}"),
-                            status_code=response.status_code,
-                            base_url=self.base_url,
-                        )
-                        raise LLMProviderError(
-                            f"Ollama server error: {response.status_code}",
-                            provider="ollama",
-                            status_code=response.status_code,
-                            is_transient=True,
-                            details=details,
-                        )
-                    if response.status_code >= 400:
-                        details = self._build_error_details(
-                            "http_4xx",
-                            Exception(f"Ollama client error {response.status_code}"),
-                            status_code=response.status_code,
-                            base_url=self.base_url,
-                        )
-                        raise LLMProviderError(
-                            f"Ollama client error: {response.status_code}",
-                            provider="ollama",
-                            status_code=response.status_code,
-                            is_transient=False,
-                            details=details,
-                        )
-
-                    content = ""
-                    if stream:
-                        async for line in response.aiter_lines():
-                            if not line:
-                                continue
-                            data = json.loads(line)
-                            if data.get("done"):
-                                break
-                            delta = data.get("message", {}).get("content") or data.get("response", "")
-                            if delta:
-                                content += delta
-                    else:
-                        try:
-                            data = response.json()
-                        except ValueError as e:
-                            raise LLMProviderError(
-                                "Invalid JSON response from Ollama.",
-                                provider="ollama",
-                                status_code=502,
-                                is_transient=False,
-                                details=self._build_error_details("invalid_json", e, base_url=self.base_url),
-                            ) from e
-                        content = data.get("message", {}).get("content")
-                        if content is None:
-                            content = data.get("response")
-
-                    if not isinstance(content, str) or not content.strip():
-                        raise LLMProviderError(
-                            "Empty response from Ollama.",
-                            provider="ollama",
-                            is_transient=False,
-                            details={
-                                "base_url": self.base_url,
-                                "category": "empty_response",
-                            },
-                        )
-
-                    self._breaker.record_success()
-                    latency_ms = int((time.perf_counter() - start) * 1000)
-                    usage = {"input": 0, "output": 0, "total": 0, "cached": None}
-                    status_info = {"status": "completed", "finish_reason": "stop"}
-                    payload_summary = {
-                        "max_output_tokens": max_tokens,
-                        "response_format_schema_name": json_schema.get("name") if json_schema else None,
-                    }
-
-                    _log_llm(
-                        "response",
-                        {
-                            "request_id": request_id,
-                            "provider": "ollama",
-                            "model": model_name,
-                            "base_url": self.base_url,
-                            "latency_ms": latency_ms,
-                            "output_length": len(content),
-                        },
-                    )
-
-                    return LLMResponse(
-                        content=content,
-                        provider="ollama",
-                        model=model_name,
-                        usage=usage,
-                        status=status_info,
-                        payload=payload_summary,
-                        attempts=attempts,
-                        latency_ms=latency_ms,
-                    )
-                except LLMProviderError as e:
-                    last_error = e
-                    if idx < len(self.base_urls) - 1:
-                        continue
-                    if not e.is_transient:
-                        raise
-                    if attempt >= self.max_retries:
-                        self._record_transient_failure(
-                            e.details
-                            or {
-                                "base_url": self.base_url,
-                                "exception_class": e.__class__.__name__,
-                                "message": str(e),
-                            }
-                        )
-                        raise
-                except (httpx.TimeoutException, httpx.ConnectError, httpx.RemoteProtocolError) as e:
-                    last_error = e
-                    if idx < len(self.base_urls) - 1:
-                        continue
-                    if attempt >= self.max_retries:
-                        if isinstance(e, httpx.ConnectTimeout):
-                            category = "connect_timeout"
-                        elif isinstance(e, httpx.ReadTimeout):
-                            category = "read_timeout"
-                        elif isinstance(e, httpx.TimeoutException):
-                            category = "timeout"
-                        else:
-                            category = "connection_error"
-                        details = self._build_error_details(category, e, base_url=self.base_url)
-                        self._record_transient_failure(details)
-                        raise LLMProviderError(
-                            f"Ollama connection error: {self._stringify_exception(e)}",
-                            provider="ollama",
-                            is_transient=True,
-                            details=details,
-                        ) from e
-                except httpx.HTTPError as e:
-                    last_error = e
-                    if idx < len(self.base_urls) - 1:
-                        continue
-                    if attempt >= self.max_retries:
-                        details = self._build_error_details("http_error", e, base_url=self.base_url)
-                        raise LLMProviderError(
-                            f"Ollama HTTP error: {self._stringify_exception(e)}",
-                            provider="ollama",
-                            is_transient=False,
-                            details=details,
-                        ) from e
-            await asyncio.sleep(min(2 ** attempt, 4))
-
-        raise LLMProviderError(
-            f"Ollama request failed: {last_error}",
-            provider="ollama",
-            is_transient=True,
-        )
-
-    async def generate_stream(
-        self,
-        *,
-        messages: Optional[List[Dict[str, Any]]],
-        system_prompt: Optional[str],
-        prompt: Optional[str],
-        json_schema: Optional[Dict[str, Any]],
-        max_tokens: int,
-        temperature: Optional[float],
-        request_id: Optional[str],
-        model: Optional[str] = None,
-        verbosity: Optional[str] = None,
-    ) -> AsyncIterator[LLMStreamResponse]:
-        del verbosity  # unused by Ollama transport
-        if not self._breaker.allow_request():
-            raise LLMProviderError(
-                "Ollama circuit breaker open.",
-                provider="ollama",
-                status_code=503,
-                is_transient=True,
-                details={
-                    "base_url": self.base_url,
-                    "reset_in_seconds": self._breaker.reset_in_seconds(),
-                    "last_failure": self._breaker.last_failure or self._last_error_details,
-                },
-            )
-
-        model_name = model or self.model
-        start = time.perf_counter()
-
-        if messages is None:
-            messages = []
-            if system_prompt:
-                messages.append({"role": "system", "content": system_prompt})
-            if prompt is not None:
-                messages.append({"role": "user", "content": prompt})
-
-        use_chat = len(messages) > 0
-        normalized_messages = _normalize_messages_for_ollama(messages) if use_chat else []
-        options = self._build_options(max_tokens, temperature)
-        fmt = "json" if json_schema else None
-
-        endpoint = "/api/chat" if use_chat else "/api/generate"
-        payload = (
-            build_ollama_chat_payload(
-                model=model_name,
-                messages=normalized_messages,
-                stream=True,
-                options=options,
-                keep_alive=self.keep_alive,
-                fmt=fmt,
-            )
-            if use_chat
-            else build_ollama_generate_payload(
-                model=model_name,
-                prompt=prompt or "",
-                stream=True,
-                options=options,
-                keep_alive=self.keep_alive,
-                fmt=fmt,
-            )
-        )
-
-        response: Optional[httpx.Response] = None
-        for attempt in range(self.max_retries + 1):
-            for idx, candidate_base_url in enumerate(self.base_urls):
-                self.base_url = candidate_base_url
-                try:
-                    response = await self._client.post(f"{self.base_url}{endpoint}", json=payload)
-                    if response.status_code >= 500:
-                        raise LLMProviderError(
-                            f"Ollama server error: {response.status_code}",
-                            provider="ollama",
-                            status_code=response.status_code,
-                            is_transient=True,
-                            details={"base_url": self.base_url},
-                        )
-                    if response.status_code >= 400:
-                        raise LLMProviderError(
-                            f"Ollama client error: {response.status_code}",
-                            provider="ollama",
-                            status_code=response.status_code,
-                            is_transient=False,
-                            details={"base_url": self.base_url},
-                        )
-                    break
-                except LLMProviderError:
-                    if idx < len(self.base_urls) - 1:
-                        continue
-                    if attempt >= self.max_retries:
-                        raise
-            if response is not None:
-                break
-            await asyncio.sleep(min(2 ** attempt, 4))
-
-        if response is None:
-            # Fallback to one-shot generation if stream transport never established.
-            one_shot = await self.generate(
-                messages=messages,
-                system_prompt=system_prompt,
-                prompt=prompt,
-                json_schema=json_schema,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                stream=False,
-                request_id=request_id,
-                model=model,
-            )
-            yield LLMStreamResponse(
-                content=one_shot.content,
-                provider=one_shot.provider,
-                model=one_shot.model,
-                usage=one_shot.usage,
-                status=one_shot.status,
-                latency_ms=one_shot.latency_ms,
-                done=True,
-            )
-            return
-
-        usage = {"input": 0, "output": 0, "total": 0, "cached": None}
-        status = {"status": "completed", "finish_reason": "stop"}
-        try:
-            async for line in response.aiter_lines():
-                if not line:
-                    continue
-                data = json.loads(line)
-                if data.get("done"):
-                    self._breaker.record_success()
-                    break
-                delta = data.get("message", {}).get("content") or data.get("response", "")
-                if delta:
-                    yield LLMStreamResponse(
-                        content=delta,
-                        provider="ollama",
-                        model=model_name,
-                        done=False,
-                    )
-        except Exception:
-            # Graceful degradation: emit one full chunk instead of failing stream contract.
-            one_shot = await self.generate(
-                messages=messages,
-                system_prompt=system_prompt,
-                prompt=prompt,
-                json_schema=json_schema,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                stream=False,
-                request_id=request_id,
-                model=model,
-            )
-            yield LLMStreamResponse(
-                content=one_shot.content,
-                provider=one_shot.provider,
-                model=one_shot.model,
-                usage=one_shot.usage,
-                status=one_shot.status,
-                latency_ms=one_shot.latency_ms,
-                done=True,
-            )
-            return
-
-        latency_ms = int((time.perf_counter() - start) * 1000)
-        yield LLMStreamResponse(
-            content="",
-            provider="ollama",
-            model=model_name,
-            usage=usage,
-            status=status,
-            latency_ms=latency_ms,
             done=True,
         )

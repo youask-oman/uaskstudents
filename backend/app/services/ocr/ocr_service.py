@@ -2,12 +2,12 @@
 Hybrid OCR Service
 ==================
 Production-grade OCR service supporting multiple engines:
-- VLM (GPT-4o Vision): Fast, accurate, cloud-based (default)
+- OpenAI Vision OCR: Fast, accurate, cloud-based
 - Local (Pix2Text): Private, slower, runs on-premise
 
 Configuration via environment variables:
-- OCR_ENGINE: "vlm" (default), "local", or "auto" (VLM with local fallback)
-- VLM_MODEL_OCR: Model to use for VLM engine (default: gpt-5-mini)
+- OCR_ENGINE: "openai", "local", or "auto"
+- VLM_MODEL_OCR: Model to use for OpenAI OCR
 """
 
 import os
@@ -414,7 +414,9 @@ class VlmEngine(OCREngine):
     # Cons: Requires API key, costs per image, data sent to cloud
     
     def __init__(self):
-        self.model = os.getenv("VLM_MODEL_OCR", "gpt-5-mini")
+        self.model = os.getenv("VLM_MODEL_OCR") or os.getenv("OPENAI_MODEL_DEFAULT")
+        if not self.model:
+            raise RuntimeError("VLM_MODEL_OCR or OPENAI_MODEL_DEFAULT is required")
 
     @property
     def engine_name(self) -> str:
@@ -562,8 +564,8 @@ class OCREngineError(Exception):
 class OCRService:
     # Hybrid OCR service with multiple engine support.
     # Configuration:
-    # - OCR_ENGINE env var: "vlm" (default), "local", or "auto"
-    # - Auto mode: tries VLM first, falls back to local on failure
+    # - OCR_ENGINE env var: "openai", "local", or "auto"
+    # - Auto mode follows OCR_ENGINE_RESOLVE_AUTO_TO (defaults to openai)
     
     def __init__(self):
         self._local_engine = None
@@ -584,18 +586,19 @@ class OCRService:
         return self._vlm_engine
 
     def get_default_engine(self) -> str:
-        # Get default engine from environment.
-        return "local" # Force local engine
+        configured = (os.getenv("OCR_ENGINE") or "").strip().lower()
+        if configured in {"openai", "vlm", "local", "auto"}:
+            return "openai" if configured == "vlm" else configured
+        return "auto"
 
     def get_engine(self, engine_name: str) -> OCREngine:
         # Get engine instance by name.
         if engine_name == "local":
             return self.local_engine
-        elif engine_name in ("vlm", "auto"):
+        elif engine_name in ("vlm", "openai", "auto"):
             return self.vlm_engine
         else:
-            # Default to VLM
-            return self.vlm_engine
+            raise OCREngineError(f"Unsupported OCR engine: {engine_name}", engine=engine_name)
 
     def process_job(self, image_path: str, engine_name: str = "auto", crop_meta: Optional[Dict[str, Any]] = None, debug: bool = False, **kwargs) -> Dict[str, Any]:
         # Process an image with the specified or default engine.
@@ -607,13 +610,14 @@ class OCRService:
         #     **kwargs: Additional arguments
         # Returns:
         #     Dict with OCR results including markdown, confidence, timing, etc.
-        # Resolve "auto" to env default
+        # Resolve "auto" to configured target
         if engine_name == "auto":
-            engine_name = self.get_default_engine()
+            auto_target = (os.getenv("OCR_ENGINE_RESOLVE_AUTO_TO") or "openai").strip().lower()
+            engine_name = "openai" if auto_target in {"openai", "vlm"} else "local"
+        elif engine_name == "openai":
+            engine_name = "vlm"
         
-        # Special handling for "auto" mode with fallback
-        # use_fallback = self.get_default_engine() == "auto" and engine_name == "vlm"
-        use_fallback = False # Disable fallback for now
+        use_fallback = (os.getenv("OCR_ENGINE_FALLBACK_ENABLED") or "false").lower() in {"1", "true", "yes"}
         
         logger.info(f"OCR processing: engine={engine_name}, image={image_path}")
         
@@ -626,18 +630,17 @@ class OCRService:
             
             result = engine.process(image_path, **process_kwargs)
             result["engine_used"] = engine.engine_name
-            # If local OCR returns empty/weak content, optionally fall back to VLM.
+            # If local OCR returns empty/weak content, optionally fall back to OpenAI OCR.
             if engine_name == "local":
                 enable_lmm_fallback = os.getenv("ENABLE_LMM_FALLBACK", "true").lower() == "true"
                 content = (result.get("markdown") or result.get("plain_text") or "").strip()
                 confidence = float(result.get("confidence") or 0.0)
-                if enable_lmm_fallback and (not content or confidence <= 0.1):
-                    logger.warning("Local OCR returned empty/low-confidence result. (VLM Fallback Disabled)")
-                    # vlm_res = self.vlm_engine.process(image_path, **kwargs)
-                    # vlm_res["engine_used"] = "vlm"
-                    # vlm_res["fallback_from"] = "local"
-                    # return vlm_res
-                    pass
+                if enable_lmm_fallback and use_fallback and (not content or confidence <= 0.1):
+                    logger.warning("Local OCR returned empty/low-confidence result. Falling back to OpenAI OCR.")
+                    vlm_res = self.vlm_engine.process(image_path, **kwargs)
+                    vlm_res["engine_used"] = "vlm"
+                    vlm_res["fallback_from"] = "local"
+                    return vlm_res
             return result
 
         except Exception as e:

@@ -33,7 +33,7 @@ def _good_freeform_text() -> str:
 def test_validate_freeform_output_accepts_contract_shape():
     text = _good_freeform_text()
     result = validate_freeform_output(text)
-    assert result["is_valid"] is True
+    assert result["is_usable"] is True
     assert result["checks"]["steps_min_12"] is True
     assert result["checks"]["char_count_min_1800"] is True
 
@@ -53,8 +53,8 @@ def test_default_freeform_template_exists():
 def test_archive_freeform_output_writes_utf8_file():
     path = archive_freeform_output(
         request_id="req-123",
-        provider="ollama",
-        model="mightykatun/qwen2.5-math:7b",
+        provider="openai",
+        model="gpt-5-mini",
         attempt_number=1,
         output_text="Step 1: √x = 2",
     )
@@ -64,8 +64,8 @@ def test_archive_freeform_output_writes_utf8_file():
     assert "solver_outputs" in str(output_path)
 
 
-def test_should_use_freeform_output_for_default_ollama_model(monkeypatch):
+def test_should_use_freeform_output_for_default_openai_model(monkeypatch):
     monkeypatch.setenv("SOLVER_OUTPUT_MODE_DEFAULT", "FREEFORM")
-    monkeypatch.setenv("OLLAMA_MODEL", "mightykatun/qwen2.5-math:7b")
-    assert should_use_freeform_output("ollama", "mightykatun/qwen2.5-math:7b") is True
-    assert should_use_freeform_output("openai", "gpt-5-mini") is False
+    monkeypatch.setenv("OPENAI_MODEL_DEFAULT", "gpt-5-mini")
+    assert should_use_freeform_output("openai", "gpt-5-mini") is True
+    assert should_use_freeform_output("openai", "gpt-4o-mini") is False

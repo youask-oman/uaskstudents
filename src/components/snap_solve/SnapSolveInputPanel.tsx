@@ -56,7 +56,7 @@ type SolvedQuestion = {
     error?: string;
 };
 
-type ImageExtractEngine = "auto" | "pix2text" | "qwen_math" | "openai";
+type ImageExtractEngine = "auto" | "pix2text" | "openai";
 
 const ACCEPTED_UPLOAD = "image/png,image/jpeg,image/webp,application/pdf";
 const PDF_ENABLED = process.env.NEXT_PUBLIC_SNAP_SOLVE_PDF_ENABLED !== "false";
@@ -157,7 +157,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
     React.useEffect(() => {
         if (typeof window === "undefined") return;
         const saved = localStorage.getItem("snapsolve_ocr_engine");
-        if (saved === "auto" || saved === "pix2text" || saved === "qwen_math" || saved === "openai") {
+        if (saved === "auto" || saved === "pix2text" || saved === "openai") {
             setImageExtractEngine(saved);
         }
     }, []);
@@ -318,7 +318,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                         retryForm.append("file", file);
                         retryForm.append("source", "image");
                         retryForm.append("user_selection", isCropMode ? "crop" : "whole_page");
-                        retryForm.append("ocr_engine_choice", "qwen_math");
+                        retryForm.append("ocr_engine_choice", "openai");
                         if (isCropMode && imageCrop && imageRender) {
                             retryForm.append("crop_x", String(imageCrop.x));
                             retryForm.append("crop_y", String(imageCrop.y));
@@ -335,7 +335,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                         if (retryRes.ok) {
                             questions = Array.isArray(retryPayload.questions) ? retryPayload.questions : questions;
                             notes = Array.isArray(retryPayload.notes) ? retryPayload.notes : notes;
-                            notes = ["Pix2Text looked noisy, switched to Qwen Math.", ...notes];
+                            notes = ["Pix2Text looked noisy, switched to OpenAI OCR.", ...notes];
                         }
                     }
                 }
@@ -611,7 +611,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                 await onResolveText(resolveText, {
                     ocr_used: true,
                     ocr_source: uploadedFile?.type === "application/pdf" ? "pdf" : "image",
-                    ocr_engine: "qwen_math",
+                    ocr_engine: "openai",
                 });
             } catch (err) {
                 setError(err instanceof Error ? err.message : "Unexpected error");
@@ -804,9 +804,8 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                                         }}
                                         className="rounded-lg border border-slate-600 bg-slate-900 px-2 py-1 text-xs text-slate-100"
                                     >
-                                        <option value="auto">Auto (Pix2Text -&gt; Qwen -&gt; OpenAI gpt-5-mini)</option>
+                                        <option value="auto">Auto (Pix2Text -&gt; OpenAI)</option>
                                         <option value="pix2text">Pix2Text (local)</option>
-                                        <option value="qwen_math">Qwen Math (Ollama)</option>
                                         <option value="openai">OpenAI (gpt-5-mini)</option>
                                     </select>
                                     <button

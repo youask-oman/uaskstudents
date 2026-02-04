@@ -21,7 +21,7 @@ from app.llm_profiles.profiles import get_prompt_profile
 from app.services.response_mapper import map_minimal_to_canonical
 from app.utils.token_limits import get_effective_max_tokens, get_effective_max_steps
 from app.services.token_policy import get_token_policy, TokenPolicy
-from app.services.llm.manager import LLMManager, LLMProviderError, _default_provider, get_configured_ollama_model
+from app.services.llm.manager import LLMManager, LLMProviderError, _default_provider, get_configured_openai_model
 from app.services.llm.clients import LLMResponse, LLMStreamResponse
 from app.services.prompt_registry_service import prompt_registry_service, PromptRegistryError
 from app.services.prompt_manager import prompt_manager
@@ -38,9 +38,9 @@ class SolverV3:
         """Initialize solver with LLM provider manager."""
         self.client_manager = llm_manager or LLMManager()
 
-        # Hardcode Qwen Math for now or use env
-        self.default_model = get_configured_ollama_model()
-        # Ensure we are using Ollama client:
+        # Resolve model from environment
+        self.default_model = get_configured_openai_model()
+        # Ensure we are using OpenAI client:
         # self.client = ... (access via manager now)
         print(f"[SOLVER_V3_INIT] LLM provider: {self.client_manager.primary_provider}")
         self._logger = logging.getLogger("solver_v3")
@@ -246,7 +246,7 @@ class SolverV3:
             
             # Helper for clamping tokens
             def _clamp_tokens_for_provider(provider: str, tokens: int) -> int:
-                if provider == "ollama":
+                if provider == "openai":
                     tier_slug = (user_tier or "").lower()
                     cap = 1200
                     if "free" in tier_slug:
@@ -586,7 +586,7 @@ class SolverV3:
         telemetry = {
             "request_id": request_id,
             "model": self.default_model, # Changed to default_model
-            "provider": "ollama", # Changed to ollama
+            "provider": "openai", # Changed to openai
             "input_tokens": 0,
             "output_tokens": 0,
             "total_tokens": 0,
@@ -602,7 +602,7 @@ class SolverV3:
         }
 
         try:
-            provider = "ollama"
+            provider = "openai"
             client = self.client_manager.get_client(provider)
             if not system_prompt:
                 yield {
@@ -638,7 +638,7 @@ class SolverV3:
             messages.append({"role": "user", "content": user_message})
 
             if trace:
-                print(f"[SOLVER_V3_STREAM] Calling Ollama with model={self.default_model}")
+                print(f"[SOLVER_V3_STREAM] Calling OpenAI with model={self.default_model}")
 
             schema_payload = json_schema_config.get("schema") if isinstance(json_schema_config, dict) and "schema" in json_schema_config else json_schema_config
             response_stream = client.generate_stream(
@@ -825,7 +825,7 @@ class SolverV3:
              messages.append({"role": "user", "content": user_message})
              
              # If image_url provided (Snap Mode), we need to inject it.
-             # Standard OpenAI / Ollama vision handling: content can be list.
+             # Standard OpenAI / OpenAI vision handling: content can be list.
              if image_url:
                  # Check if client supports vision or we simply rely on text extraction?
                  # V3 design passes text mostly. If image_url is here, we might need to use vision model.
@@ -843,7 +843,7 @@ class SolverV3:
                 temperature=0.4,
                 stream=False,
                 request_id=request_id,
-                model=self.default_model if provider == "ollama" else None 
+                model=self.default_model if provider == "openai" else None 
              )
 
              # Adapt response
@@ -877,7 +877,7 @@ class SolverV3:
         except Exception as e:
              raise e
         system_for_provider = system_prompt
-        if provider == "ollama":
+        if provider == "openai":
             schema_text = json.dumps(schema_payload.get("schema", schema_payload), separators=(",", ":"))
             system_for_provider = (
                 f"{system_prompt}\n\nJSON_SCHEMA:\n{schema_text}\n\n"
@@ -886,8 +886,8 @@ class SolverV3:
 
         user_content = user_message
         if image_url:
-            if provider == "ollama":
-                raise LLMProviderError("Ollama does not support image inputs.", provider="ollama")
+            if provider == "openai":
+                raise LLMProviderError("OpenAI does not support image inputs.", provider="openai")
             user_content = [
                 {"type": "text", "text": user_message},
                 {"type": "image_url", "image_url": {"url": image_url, "detail": "high"}},
@@ -972,7 +972,7 @@ class SolverV3:
         
         provider = provider.lower()
         system_for_provider = system_prompt
-        if provider == "ollama":
+        if provider == "openai":
             schema_text = json.dumps(json_schema_config.get("schema", json_schema_config), separators=(",", ":"))
             system_for_provider = (
                 f"{system_prompt}\n\nJSON_SCHEMA:\n{schema_text}\n\n"
@@ -994,7 +994,7 @@ class SolverV3:
             temperature=None,
             stream=False,
             request_id=None,
-            model=model if provider == "ollama" else None,
+            model=model if provider == "openai" else None,
         )
 
         if not llm_response.content:

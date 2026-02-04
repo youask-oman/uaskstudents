@@ -226,7 +226,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
                   ? (DEMO_SOLUTION as Record<string, unknown>)
                   : null,
               created_at: new Date().toISOString(),
-              model_used: "mightykatun/qwen2.5-math:7b",
+              model_used: "gpt-5-mini",
             },
           ],
         });

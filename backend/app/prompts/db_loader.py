@@ -99,7 +99,7 @@ def resolve_prompt_bundle(
 
     tier_enum = _resolve_tier(tier)
     mode_enum = _resolve_mode(mode)
-    provider_normalized = (provider or "ollama").strip().lower()
+    provider_normalized = (provider or "openai").strip().lower()
     cache_key = f"bundle:{provider_normalized}:{tier_enum.value}:{mode_enum.value}"
     cached = _cache_get(cache_key)
     if cached is not None:
@@ -228,7 +228,7 @@ def get_active_binding(
     tier: str,
     mode: str,
     session: Optional[Session] = None,
-    provider: str = "ollama",
+    provider: str = "openai",
 ) -> PromptBinding:
     with _session_scope(session) as db:
         bundle = resolve_prompt_bundle(provider=provider, tier=tier, mode=mode, db_session=db)
@@ -292,7 +292,7 @@ def load_prompt_bundle(
     tier: str,
     mode: str,
     session: Optional[Session] = None,
-    provider: str = "ollama",
+    provider: str = "openai",
 ) -> Dict[str, Any]:
     with _session_scope(session) as db:
         bundle = resolve_prompt_bundle(
