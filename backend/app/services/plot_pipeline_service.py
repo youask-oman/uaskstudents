@@ -339,11 +339,12 @@ class PlotPipelineService:
                 model="gpt-4o-mini",
                 messages=messages,
                 temperature=0.1,
+                max_tokens=1400,  # Enforce separate budget for plot spec
                 response_format={
                     "type": "json_schema",
                     "json_schema": {
                         "name": "plot_spec",
-                        "strict": False,  # Disable strict for complex plot schemas
+                        "strict": False,
                         "schema": schema
                     }
                 }

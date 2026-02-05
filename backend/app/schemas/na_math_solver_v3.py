@@ -27,6 +27,8 @@ class TaskEnum(str, Enum):
     FIND_EXTREMA = "find_extrema"
     FIND_ROOTS = "find_roots"
     SYSTEM_SOLVE = "system_solve"
+    SYSTEM = "system"  # Fallback alias returned by some LLM responses
+    SOLVE = "solve"  # Fallback alias returned by some LLM responses
     WORD_PROBLEM = "word_problem"
     GEOMETRY = "geometry"
     TRIGONOMETRY = "trigonometry"
@@ -149,7 +151,7 @@ class StepV3(BaseModel):
     index: int = Field(..., ge=1)
     title: str
     explanation: str
-    math_latex: str
+    math_latex: Union[str, List[str]]  # Supports both minimal (str) and detailed (List[str]) schemas
     rules_used: List[str]
     checkpoint: CheckpointV3
 

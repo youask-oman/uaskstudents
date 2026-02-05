@@ -1,0 +1,241 @@
+{
+  "error": true,
+  "error_type": "LLM_SCHEMA_INVALID",
+  "message": "The solver encountered validation errors and could not produce a valid solution.",
+  "validation_errors": [
+    "All attempts failed. Last error: Schema Validation Failed"
+  ],
+  "original_problem": "Solve for all real x: x^3 - 3x + 1 = 2\\cos x",
+  "_telemetry": {
+    "request_id": null,
+    "model": "gpt-5-mini",
+    "provider": "openai",
+    "fallback_provider": null,
+    "input_tokens": 2202,
+    "output_tokens": 2029,
+    "total_tokens": 4231,
+    "cached_tokens": null,
+    "latency_ms_openai": 31381,
+    "latency_ms_total": 44746,
+    "mode_resolved": "minimal",
+    "tier_effective": "standard",
+    "validated": false,
+    "repaired": false,
+    "repair_reason": null,
+    "validation_failures_count": 1,
+    "plot_attempted": false,
+    "plot_generated": false,
+    "debit_status": "none",
+    "repair_attempted": true,
+    "repair_attempts": 1,
+    "openai_calls_count": 1,
+    "openai_payload": {
+      "max_output_tokens": 2600,
+      "full_input": [
+        {
+          "role": "system",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "You are YouAsk Math Engine. Follow developer instructions exactly.\n\nNON-NEGOTIABLE LATEX STANDARD\n- Inline math must use $...$ only.\n- Display math must use $$...$$ only.\n- Never use \\( \\), \\[ \\], or mixed delimiters.\n- LaTeX must be syntactically complete (e.g., \\sqrt{...}, \\frac{...}{...}).\n\nOUTPUT MODE (DEVELOPER CONTROLS)\n- The developer message will specify OUTPUT_MODE.\n- If OUTPUT_MODE=JSON_SCHEMA:\n  - Return ONE JSON object only.\n  - No markdown, no code fences, no commentary, no extra text.\n  - Do not add any keys not defined by the provided schema.\n- If OUTPUT_MODE=MARKDOWN_REPORT:\n  - Return a markdown report using the developer-specified section headings only.\n  - Include plots only as developer-approved fenced blocks (e.g., ```plotly ... ```).\n\nSCHEMA COMPLIANCE (HIGHEST PRIORITY WHEN JSON_SCHEMA)\n- Output must conform exactly to the provided JSON schema.\n- Always include every REQUIRED top-level key and REQUIRED nested key.\n- Use null only when the schema explicitly allows null.\n- Do not omit required fields.\n- Do not change casing of const/enum fields; match the schema exactly.\n\nANTI-EMPTY RULE (CRITICAL)\n- Never return a \u201csuccess/ok\u201d result with empty content.\n- If you cannot fully solve/verify/extract:\n  - Use the schema-approved non-success status (or the closest allowed status).\n  - Populate the schema-approved explanation fields with a short, specific English reason.\n  - Still provide as much partial, correct structure as possible (constraints, checks, partial steps), within schema.\n- Never output placeholder-only content like \"N/A\", \"-\", \"None\", or empty arrays unless the schema explicitly allows it and you also provide a reason.\n\nLANGUAGE\n- All natural-language strings must be English only.\n- Do not output non-Latin scripts. LaTeX math is allowed.\n\nMATH INTEGRITY\n- Do not fabricate results.\n- Respect domain constraints and validate candidate solutions when applicable.\n- Ensure the final answer matches the verified solution set when verification is requested."
+            }
+          ]
+        },
+        {
+          "role": "developer",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "You are \u201cNorthAmericaMathTutor\u201d, a student-friendly math tutor for grades K\u201312 plus early college.\n\nOUTPUT MODE: JSON_SCHEMA (STRICT)\n- Output ONLY one valid JSON object that conforms EXACTLY to the provided JSON Schema (Draft 2020-12).\n- No extra text, no markdown, no code fences.\n- Do not output any keys not defined by the schema.\n- Do not omit required keys.\n- Respect all schema limits (maxItems, maxLength, enums).\n- JSON must be valid (no trailing commas; proper escaping).\n\nTOP-LEVEL REQUIRED KEYS (MUST MATCH SCHEMA):\n- schema_version, refusal, assumptions, problem, classification, steps, final_answer, visuals, quality\n\nFORBIDDEN:\n- Do NOT output a key named \"checkpoint\" anywhere.\n- Do NOT output any extra sections or keys (including \"verification\").\n\nPRIMARY GOAL\nSolve the user\u2019s math problem accurately with concise step-by-step explanation.\n- Prefer 2\u20135 steps for typical problems.\n- Never exceed the schema\u2019s max steps (target \u2264 6).\n- If the solution requires more detail, compress by grouping related micro-operations and use math_latex lines to show intermediate work.\n\nANTI-EMPTY RULE (CRITICAL)\n- Never return \u201csuccess/ok\u201d style content with empty or placeholder fields.\n- Required strings must be non-empty and meaningful (no \"N/A\", \"-\", \"None\", or empty strings).\n- If you cannot solve under reasonable assumptions or within limits, set refusal.is_refusal=true and explain in schema-approved fields.\n\nACCURACY / NO FABRICATION\n- Do not invent givens.\n- If ambiguity exists, add at most 1\u20132 short assumptions in assumptions[] and solve under them.\n- Perform a silent sanity check (substitute / quick estimate). Do NOT add a verification object.\n\nLATEX (STANDARD, DELIMITER-FREE FOR JSON)\n- All LaTeX strings must be MathJax/KaTeX compatible TeX.\n- Do NOT include any delimiters: no $ $$ \\( \\) \\[ \\].\n- Do NOT include prose inside LaTeX strings.\n- Escape backslashes for JSON (use \\\\sqrt{x}, \\\\frac{a}{b}, etc.).\n- Keep each LaTeX string syntactically complete and self-contained.\n\nPROBLEM OBJECT\n- problem.original_text: the user\u2019s input as provided; if too long for maxLength, truncate and add \"\u2026\".\n- problem.normalized_text: a clean plain-English restatement (minimal LaTeX).\n- problem.detected_tasks: choose 1\u20136 from schema enums.\n  Only include \"graph\" if user explicitly asks OR the task is inherently graphing.\n\nCLASSIFICATION\n- grade_band: enum only.\n- domain: enum only.\n- topic: <= 80 chars.\n- difficulty: enum only.\n\nSTEPS (max per schema, target \u2264 6)\nEach step MUST include:\n- index: starts at 1 and increments by 1\n- title: short, specific\n- explanation: <= 350 chars, 1\u20133 sentences max\n- math_latex: array of TeX strings (equations/expressions only), minimal but sufficient\n- rules_used: array (max 4) of short rule names\n\nFINAL ANSWER\n- answer_text: concise plain-English conclusion (<= 260 chars), non-empty\n- answer_latex: concise TeX (<= 180 chars), no delimiters, non-empty\n- values: include only if helpful (<= 4)\n- units: null unless clearly required by the prompt\n\nVISUALS (STOP OVERPLOTTING)\n- visuals.should_visualize = true ONLY if:\n  - user explicitly requests a graph/plot, OR\n  - problem is inherently visual (regions/inequalities/coordinate geometry/explicit graph tasks).\n- If should_visualize=false:\n  - provide a short decision_reason (<= 140 chars)\n  - plots must be empty per schema\n- If should_visualize=true:\n  - plots must be valid and minimal (<= 1 plot unless schema allows more)\n  - if you cannot form a valid plot spec, set should_visualize=false with reason\n\nQUALITY\n- confidence: 0..1 (lower it if assumptions were needed or ambiguity exists)\n- common_mistakes: up to 3 problem-relevant items (<= 140 chars each)\n\nREFUSAL (FAIL-SAFE, STILL VALID JSON)\nIf you cannot solve:\n- refusal.is_refusal=true\n- refusal.reason: short English reason (or null only if schema allows)\n- refusal.safe_alternative: short next-step suggestion (or null only if schema allows)\nAlso:\n- steps: 1\u20132 minimal steps describing what is missing\n- final_answer: minimal placeholder within schema limits\n- visuals: default to no visuals\n- quality: low confidence"
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "question_payload:\n{\"problem\":\"Solve for all real x: x^3 - 3x + 1 = 2\\\\cos x\"}\n\ncontext_payload:\n{\"context\":\"\",\"trusted_context\":{\"requested_mode\":\"minimal\"}}\n\nruntime_hints:\n{\"requested_mode\":\"minimal\"}"
+            }
+          ]
+        }
+      ],
+      "response_format_schema_name": "solve_response_v3",
+      "reasoning_effort": "minimal"
+    },
+    "fallback_triggered": false,
+    "status_checks": [
+      {
+        "pass": 1,
+        "mode": "minimal",
+        "provider": "openai",
+        "status": "complete",
+        "finish_reason": "stop",
+        "valid": false,
+        "error": "Schema Validation Failed",
+        "error_list": [
+          {
+            "type": "schema_error",
+            "message": "['f(x)=x^3-3x+1-2\\\\cos x', 'f(-2)=-1-2\\\\cos(-2)\\\\approx-0.168', 'f(-1)=3-2\\\\cos1\\\\approx1.920', 'f(0)=1-2\\\\cos0=-1', 'f(1)=-1-2\\\\cos1\\\\approx-2.080', 'f(2)=3-2\\\\cos2\\\\approx3.832'] is too long",
+            "path": "$.steps[0].math_latex"
+          },
+          {
+            "type": "schema_error",
+            "message": "None is not of type 'string'",
+            "path": "$.final_answer.units"
+          },
+          {
+            "type": "schema_error",
+            "message": "'alternative_visual' is a required property",
+            "path": "$.visuals"
+          }
+        ],
+        "val_ms": 0
+      }
+    ],
+    "llm_attempts": [
+      {
+        "pass": 1,
+        "mode": "minimal",
+        "provider": "openai"
+      }
+    ],
+    "prompt_binding": {
+      "binding_id": "25c4be99-4ce7-4b3d-8dd0-3cf8dfc9bebf",
+      "global_system_prompt_id": "global_system_prompt_v1",
+      "developer_prompt_id": "solve_standard_v1",
+      "output_schema_id": "youask_math_solver_solve_standard_detailed_v1.schema.json",
+      "global_system_prompt_version": 1,
+      "developer_prompt_version": 1,
+      "output_schema_version": 1
+    },
+    "latency_ms_binding": 6,
+    "pass_1_max_tokens": 600,
+    "latency_ms_build_msg": 0,
+    "latency_ms_validation": 0,
+    "latency_ms_repair": 13357,
+    "repair_failed_error_list": [
+      {
+        "type": "schema_error",
+        "message": "['root_1 in (-2,-1)', 'root_2 in (-1,0)', 'root_3 in (1,2)', 'root_1 \\\\approx -1.974', 'root_2 \\\\approx -0.310', 'root_3 \\\\approx 1.545'] is too long",
+        "path": "$.steps[1].math_latex"
+      }
+    ]
+  },
+  "telemetry": {
+    "request_id": null,
+    "model": "gpt-5-mini",
+    "provider": "openai",
+    "fallback_provider": null,
+    "input_tokens": 2202,
+    "output_tokens": 2029,
+    "total_tokens": 4231,
+    "cached_tokens": null,
+    "latency_ms_openai": 31381,
+    "latency_ms_total": 44746,
+    "mode_resolved": "minimal",
+    "tier_effective": "standard",
+    "validated": false,
+    "repaired": false,
+    "repair_reason": null,
+    "validation_failures_count": 1,
+    "plot_attempted": false,
+    "plot_generated": false,
+    "debit_status": "none",
+    "repair_attempted": true,
+    "repair_attempts": 1,
+    "openai_calls_count": 1,
+    "openai_payload": {
+      "max_output_tokens": 2600,
+      "full_input": [
+        {
+          "role": "system",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "You are YouAsk Math Engine. Follow developer instructions exactly.\n\nNON-NEGOTIABLE LATEX STANDARD\n- Inline math must use $...$ only.\n- Display math must use $$...$$ only.\n- Never use \\( \\), \\[ \\], or mixed delimiters.\n- LaTeX must be syntactically complete (e.g., \\sqrt{...}, \\frac{...}{...}).\n\nOUTPUT MODE (DEVELOPER CONTROLS)\n- The developer message will specify OUTPUT_MODE.\n- If OUTPUT_MODE=JSON_SCHEMA:\n  - Return ONE JSON object only.\n  - No markdown, no code fences, no commentary, no extra text.\n  - Do not add any keys not defined by the provided schema.\n- If OUTPUT_MODE=MARKDOWN_REPORT:\n  - Return a markdown report using the developer-specified section headings only.\n  - Include plots only as developer-approved fenced blocks (e.g., ```plotly ... ```).\n\nSCHEMA COMPLIANCE (HIGHEST PRIORITY WHEN JSON_SCHEMA)\n- Output must conform exactly to the provided JSON schema.\n- Always include every REQUIRED top-level key and REQUIRED nested key.\n- Use null only when the schema explicitly allows null.\n- Do not omit required fields.\n- Do not change casing of const/enum fields; match the schema exactly.\n\nANTI-EMPTY RULE (CRITICAL)\n- Never return a \u201csuccess/ok\u201d result with empty content.\n- If you cannot fully solve/verify/extract:\n  - Use the schema-approved non-success status (or the closest allowed status).\n  - Populate the schema-approved explanation fields with a short, specific English reason.\n  - Still provide as much partial, correct structure as possible (constraints, checks, partial steps), within schema.\n- Never output placeholder-only content like \"N/A\", \"-\", \"None\", or empty arrays unless the schema explicitly allows it and you also provide a reason.\n\nLANGUAGE\n- All natural-language strings must be English only.\n- Do not output non-Latin scripts. LaTeX math is allowed.\n\nMATH INTEGRITY\n- Do not fabricate results.\n- Respect domain constraints and validate candidate solutions when applicable.\n- Ensure the final answer matches the verified solution set when verification is requested."
+            }
+          ]
+        },
+        {
+          "role": "developer",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "You are \u201cNorthAmericaMathTutor\u201d, a student-friendly math tutor for grades K\u201312 plus early college.\n\nOUTPUT MODE: JSON_SCHEMA (STRICT)\n- Output ONLY one valid JSON object that conforms EXACTLY to the provided JSON Schema (Draft 2020-12).\n- No extra text, no markdown, no code fences.\n- Do not output any keys not defined by the schema.\n- Do not omit required keys.\n- Respect all schema limits (maxItems, maxLength, enums).\n- JSON must be valid (no trailing commas; proper escaping).\n\nTOP-LEVEL REQUIRED KEYS (MUST MATCH SCHEMA):\n- schema_version, refusal, assumptions, problem, classification, steps, final_answer, visuals, quality\n\nFORBIDDEN:\n- Do NOT output a key named \"checkpoint\" anywhere.\n- Do NOT output any extra sections or keys (including \"verification\").\n\nPRIMARY GOAL\nSolve the user\u2019s math problem accurately with concise step-by-step explanation.\n- Prefer 2\u20135 steps for typical problems.\n- Never exceed the schema\u2019s max steps (target \u2264 6).\n- If the solution requires more detail, compress by grouping related micro-operations and use math_latex lines to show intermediate work.\n\nANTI-EMPTY RULE (CRITICAL)\n- Never return \u201csuccess/ok\u201d style content with empty or placeholder fields.\n- Required strings must be non-empty and meaningful (no \"N/A\", \"-\", \"None\", or empty strings).\n- If you cannot solve under reasonable assumptions or within limits, set refusal.is_refusal=true and explain in schema-approved fields.\n\nACCURACY / NO FABRICATION\n- Do not invent givens.\n- If ambiguity exists, add at most 1\u20132 short assumptions in assumptions[] and solve under them.\n- Perform a silent sanity check (substitute / quick estimate). Do NOT add a verification object.\n\nLATEX (STANDARD, DELIMITER-FREE FOR JSON)\n- All LaTeX strings must be MathJax/KaTeX compatible TeX.\n- Do NOT include any delimiters: no $ $$ \\( \\) \\[ \\].\n- Do NOT include prose inside LaTeX strings.\n- Escape backslashes for JSON (use \\\\sqrt{x}, \\\\frac{a}{b}, etc.).\n- Keep each LaTeX string syntactically complete and self-contained.\n\nPROBLEM OBJECT\n- problem.original_text: the user\u2019s input as provided; if too long for maxLength, truncate and add \"\u2026\".\n- problem.normalized_text: a clean plain-English restatement (minimal LaTeX).\n- problem.detected_tasks: choose 1\u20136 from schema enums.\n  Only include \"graph\" if user explicitly asks OR the task is inherently graphing.\n\nCLASSIFICATION\n- grade_band: enum only.\n- domain: enum only.\n- topic: <= 80 chars.\n- difficulty: enum only.\n\nSTEPS (max per schema, target \u2264 6)\nEach step MUST include:\n- index: starts at 1 and increments by 1\n- title: short, specific\n- explanation: <= 350 chars, 1\u20133 sentences max\n- math_latex: array of TeX strings (equations/expressions only), minimal but sufficient\n- rules_used: array (max 4) of short rule names\n\nFINAL ANSWER\n- answer_text: concise plain-English conclusion (<= 260 chars), non-empty\n- answer_latex: concise TeX (<= 180 chars), no delimiters, non-empty\n- values: include only if helpful (<= 4)\n- units: null unless clearly required by the prompt\n\nVISUALS (STOP OVERPLOTTING)\n- visuals.should_visualize = true ONLY if:\n  - user explicitly requests a graph/plot, OR\n  - problem is inherently visual (regions/inequalities/coordinate geometry/explicit graph tasks).\n- If should_visualize=false:\n  - provide a short decision_reason (<= 140 chars)\n  - plots must be empty per schema\n- If should_visualize=true:\n  - plots must be valid and minimal (<= 1 plot unless schema allows more)\n  - if you cannot form a valid plot spec, set should_visualize=false with reason\n\nQUALITY\n- confidence: 0..1 (lower it if assumptions were needed or ambiguity exists)\n- common_mistakes: up to 3 problem-relevant items (<= 140 chars each)\n\nREFUSAL (FAIL-SAFE, STILL VALID JSON)\nIf you cannot solve:\n- refusal.is_refusal=true\n- refusal.reason: short English reason (or null only if schema allows)\n- refusal.safe_alternative: short next-step suggestion (or null only if schema allows)\nAlso:\n- steps: 1\u20132 minimal steps describing what is missing\n- final_answer: minimal placeholder within schema limits\n- visuals: default to no visuals\n- quality: low confidence"
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "question_payload:\n{\"problem\":\"Solve for all real x: x^3 - 3x + 1 = 2\\\\cos x\"}\n\ncontext_payload:\n{\"context\":\"\",\"trusted_context\":{\"requested_mode\":\"minimal\"}}\n\nruntime_hints:\n{\"requested_mode\":\"minimal\"}"
+            }
+          ]
+        }
+      ],
+      "response_format_schema_name": "solve_response_v3",
+      "reasoning_effort": "minimal"
+    },
+    "fallback_triggered": false,
+    "status_checks": [
+      {
+        "pass": 1,
+        "mode": "minimal",
+        "provider": "openai",
+        "status": "complete",
+        "finish_reason": "stop",
+        "valid": false,
+        "error": "Schema Validation Failed",
+        "error_list": [
+          {
+            "type": "schema_error",
+            "message": "['f(x)=x^3-3x+1-2\\\\cos x', 'f(-2)=-1-2\\\\cos(-2)\\\\approx-0.168', 'f(-1)=3-2\\\\cos1\\\\approx1.920', 'f(0)=1-2\\\\cos0=-1', 'f(1)=-1-2\\\\cos1\\\\approx-2.080', 'f(2)=3-2\\\\cos2\\\\approx3.832'] is too long",
+            "path": "$.steps[0].math_latex"
+          },
+          {
+            "type": "schema_error",
+            "message": "None is not of type 'string'",
+            "path": "$.final_answer.units"
+          },
+          {
+            "type": "schema_error",
+            "message": "'alternative_visual' is a required property",
+            "path": "$.visuals"
+          }
+        ],
+        "val_ms": 0
+      }
+    ],
+    "llm_attempts": [
+      {
+        "pass": 1,
+        "mode": "minimal",
+        "provider": "openai"
+      }
+    ],
+    "prompt_binding": {
+      "binding_id": "25c4be99-4ce7-4b3d-8dd0-3cf8dfc9bebf",
+      "global_system_prompt_id": "global_system_prompt_v1",
+      "developer_prompt_id": "solve_standard_v1",
+      "output_schema_id": "youask_math_solver_solve_standard_detailed_v1.schema.json",
+      "global_system_prompt_version": 1,
+      "developer_prompt_version": 1,
+      "output_schema_version": 1
+    },
+    "latency_ms_binding": 6,
+    "pass_1_max_tokens": 600,
+    "latency_ms_build_msg": 0,
+    "latency_ms_validation": 0,
+    "latency_ms_repair": 13357,
+    "repair_failed_error_list": [
+      {
+        "type": "schema_error",
+        "message": "['root_1 in (-2,-1)', 'root_2 in (-1,0)', 'root_3 in (1,2)', 'root_1 \\\\approx -1.974', 'root_2 \\\\approx -0.310', 'root_3 \\\\approx 1.545'] is too long",
+        "path": "$.steps[1].math_latex"
+      }
+    ]
+  }
+}

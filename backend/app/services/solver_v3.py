@@ -17,7 +17,7 @@ from jsonschema import Draft202012Validator
 from app.utils.schema_cleaner import enforce_strict
 from app.services.validation_v3 import create_error_response
 from app.utils.schema_deref import deref_json_schema, validate_no_refs
-from app.llm_profiles.profiles import get_prompt_profile
+# from app.llm_profiles.profiles import get_prompt_profile # Removed: module deleted
 from app.services.response_mapper import map_minimal_to_canonical
 from app.utils.token_limits import get_effective_max_tokens, get_effective_max_steps
 from app.services.token_policy import get_token_policy, TokenPolicy
@@ -26,8 +26,26 @@ from app.services.llm.clients import LLMResponse, LLMStreamResponse
 from app.services.prompt_registry_service import prompt_registry_service, PromptRegistryError
 from app.services.prompt_manager import prompt_manager
 from app.services.message_builder import build_user_message
-from app.llm_profiles.profiles import PromptProfile
+# from app.llm_profiles.profiles import PromptProfile # Removed: module deleted
 from app.prompts.db_loader import PromptBindingLookupError, load_prompt_bundle
+from app.services.plot_pipeline_service import get_plot_pipeline_service
+from pydantic import BaseModel
+
+class PromptProfile(BaseModel):
+    """
+    Local definition of PromptProfile to replace missing module.
+    Holds resolved configuration for a solve request.
+    """
+    tier: str
+    system_prompt_content: str
+    developer_prompt_content: Optional[str] = None
+    json_schema_content: Dict[str, Any]
+    max_output_tokens: int
+    max_steps: int
+    mode: str
+    allow_detailed: bool
+    allow_visuals_only_if_asked: bool
+    prompt_binding_meta: Optional[Dict[str, Any]] = None
 
 class SolverV3:
     """
@@ -116,6 +134,7 @@ class SolverV3:
         db_session: Optional[Any] = None,  # SQLModel Session
         requested_mode: str = "minimal",
         db_plan: Optional[Any] = None,
+        requests_graph_mode: Optional[str] = "auto",
         # Tier-aware payload fields (normalized at frontend)
         trusted_context: Optional[Dict[str, Any]] = None,
         learning_mode: Optional[str] = None,  # "solve" | "study"
@@ -157,7 +176,7 @@ class SolverV3:
         
         if trace:
             print(f"\n[SOLVER_V3] ==================== START ====================")
-            print(f"[SOLVER_V3] Request ID: {request_id}")
+          #  print(f"[SOLVER_V3] Request ID: {request_id}")
 
         profile = None
         token_policy: Optional[TokenPolicy] = None
@@ -166,7 +185,7 @@ class SolverV3:
             # Step 1: Resolve Profile
             t_binding_start = time.perf_counter()
             if db_session:
-                from app.llm_profiles.profile_resolver import ProfileResolver
+                # from app.llm_profiles.profile_resolver import ProfileResolver # Removed: module deleted
                 from app.models import User
                 from app.services.tier_utils import get_user_effective_tier_slug
                 
@@ -177,16 +196,37 @@ class SolverV3:
 
                 try:
                     effective_tier_slug = get_user_effective_tier_slug(user_obj) if user_obj else user_tier
+                    
+                    # --- RULE 1 (UPDATED): Use Real DB Bindings ---
+                    # User explicitly requested to use the ACTUAL tier binding from DB, 
+                    # even for minimal mode. We rely on the generic 'unwrap' fix 
+                    # to handle the detailed schema if it is wrapped.
+                    binding_tier_slug = effective_tier_slug
+                    
+                    # (Removed forced 'free' override)
+
                     binding_bundle = load_prompt_bundle(
-                        tier=effective_tier_slug,
+                        tier=binding_tier_slug,
                         mode="solve",
                         session=db_session,
                     )
                     token_policy = get_token_policy(db_session)
+                    
+                    # --- RULE 3: Strict Token Budgets ---
+                    # Solve gets its own budget, independent of Plotting.
                     max_tokens = get_effective_max_tokens(requested_mode, learning_mode or "solve", token_policy)
+                    
+                    # Cap minimal solve to prevent rambling, but allow enough for 
+                    # detailed schema boilerplate if the DB forces a large schema.
+                    if requested_mode == "minimal":
+                        # Increased from 650 to 1200 to accommodate 'standard_detailed' schema 
+                        # structure overhead while still enforcing conciseness via system prompt.
+                        max_tokens = min(max_tokens, 1200)
+
                     max_steps = get_effective_max_steps(requested_mode, learning_mode or "solve", token_policy)
+                    
                     profile = PromptProfile(
-                        tier=effective_tier_slug,
+                        tier=binding_tier_slug,
                         system_prompt_content=binding_bundle["system_prompt"],
                         developer_prompt_content=binding_bundle["developer_prompt"],
                         json_schema_content=binding_bundle["schema"] if isinstance(binding_bundle["schema"], dict) else {},
@@ -194,16 +234,16 @@ class SolverV3:
                         max_steps=max_steps,
                         mode=requested_mode,
                         allow_detailed=(requested_mode == "detailed"),
-                        allow_visuals_only_if_asked=(requested_mode == "minimal" and "free" in effective_tier_slug),
+                        allow_visuals_only_if_asked=False, # Rule 1: Minimal never has visuals inside solve
                         prompt_binding_meta=binding_bundle.get("meta"),
                     )
                     telemetry["prompt_binding"] = binding_bundle.get("meta")
 
                     telemetry["mode_resolved"] = profile.mode
-                    telemetry["tier_effective"] = profile.tier
+                    telemetry["tier_effective"] = effective_tier_slug # Log the REAL tier for billing/tracking
 
                     if trace:
-                        print(f"[SOLVER_V3] Resolved Profile: Tier={profile.tier}, Mode={profile.mode}")
+                        print(f"[SOLVER_V3] Resolved Profile: Tier={profile.tier} (Effective={effective_tier_slug}), Mode={profile.mode}")
 
                 except Exception as e:
                     return self._handle_error(problem_text, f"Profile resolution failed: {e}", "config_error", telemetry, start_time_perf)
@@ -248,10 +288,32 @@ class SolverV3:
                 if deref.get("type") is None:
                     deref["type"] = "object"
                     
+                # [FIX] Unwrap schema if it is already in OpenAI wrapper format
+                # The schema loaded from the DB/File (e.g. canonical_schema.json) might already be 
+                # a full "json_schema" object. We need the raw inner "schema" here.
+                real_schema = deref
+                schema_name_arg = "solve_response_v3" # Default name
+                if isinstance(deref, dict):
+                    # Check for "Wrapper" signatures
+                    # 1. Standard OpenAI "json_schema" wrapper (type: json_schema, json_schema: {...})
+                    if deref.get("type") == "json_schema" and "json_schema" in deref:
+                        # Wrapped in top-level type
+                        if isinstance(deref["json_schema"], dict):
+                            real_schema = deref["json_schema"].get("schema", deref)
+                            schema_name_arg = deref["json_schema"].get("name", schema_name_arg)
+                    # 2. Direct wrapper (type: json_schema, schema: {...}) - often used in our internal files
+                    elif deref.get("type") == "json_schema" and "schema" in deref:
+                        real_schema = deref["schema"]
+                        schema_name_arg = deref.get("name", schema_name_arg)
+                    # 3. Just "schema" and "name" keys (sometimes used in free/schema.json)
+                    elif "schema" in deref and "name" in deref and len(deref) <= 4:
+                        real_schema = deref["schema"]
+                        schema_name_arg = deref.get("name", schema_name_arg)
+
                 return {
-                     "name": "solve_response_v3",
+                     "name": schema_name_arg,
                      "strict": True,
-                     "schema": deref
+                     "schema": real_schema
                 }
 
             openai_schema_wrapper = prepare_schema(json_schema_config)
@@ -266,18 +328,20 @@ class SolverV3:
             last_error = None
             providers_to_try = self.client_manager.get_provider_chain()
             
-            # Helper for clamping tokens
-            def _clamp_tokens_for_provider(provider: str, tokens: int) -> int:
+            # Helper for ensuring minimum tokens per tier (paid tiers need more for detailed schemas)
+            def _ensure_tier_tokens(provider: str, tokens: int) -> int:
                 if provider == "openai":
                     tier_slug = (user_tier or "").lower()
-                    cap = 1200
+                    # Minimum token budgets for each tier's schema complexity
+                    tier_minimum = 900  # Default fallback
                     if "free" in tier_slug:
-                        cap = 900
+                        tier_minimum = 900  # Minimal schema
                     elif "standard" in tier_slug or "pro" in tier_slug or "family" in tier_slug:
-                        cap = 1100
+                        tier_minimum = 2600  # Detailed schema needs more tokens
                     elif "research" in tier_slug:
-                        cap = 1200
-                    return min(tokens, cap)
+                        tier_minimum = 3500  # Detailed schema with study mode
+                    # Use the HIGHER of requested or tier minimum to ensure schema fits
+                    return max(tokens, tier_minimum)
                 return tokens
             
             for pass_idx, current_mode in enumerate(passes):
@@ -300,20 +364,19 @@ class SolverV3:
                 if max_output_tokens and max_output_tokens > 0:
                     effective_max_tokens = max_output_tokens
                 else:
-                    if db_session and not token_policy:
-                        token_policy = get_token_policy(db_session)
-                    
-                    if token_policy:
-                        effective_max_tokens = get_effective_max_tokens(current_mode, effective_learning_mode, token_policy)
-                    else:
-                        effective_max_tokens = 4096
+                    # Use profile's token limit (which we capped above)
+                     effective_max_tokens = profile.max_output_tokens
+                
+                # Fallback safety if profile is None (should cover all paths)
+                if not effective_max_tokens or effective_max_tokens <= 0:
+                    effective_max_tokens = 4096
                 
                 telemetry[f"pass_{pass_idx+1}_max_tokens"] = effective_max_tokens
                 self._logger.debug(f"[SOLVER_V3] Pass {pass_idx+1}: mode={current_mode}, max_tokens={effective_max_tokens}, learning_mode={effective_learning_mode}")
 
                 for provider_idx, provider in enumerate(providers_to_try):
                     llm_start_perf = time.perf_counter()
-                    effective_tokens = _clamp_tokens_for_provider(provider, effective_max_tokens)
+                    effective_tokens = _ensure_tier_tokens(provider, effective_max_tokens)
                     self._logger.debug(f"[SOLVER_V3] Attempting provider {provider} (idx {provider_idx}) with {effective_tokens} tokens")
                     
                     if provider_idx > 0:
@@ -358,6 +421,13 @@ class SolverV3:
                         )
 
                         llm_end_perf = time.perf_counter()
+                        if trace:
+                            try:
+                                print(f"[SOLVER_V3_RAW_DEBUG] Raw Output: {raw_output_text}")
+                            except Exception:
+                                print(f"[SOLVER_V3_RAW_DEBUG] Raw Output: [Unprintable characters]")
+                            # Also self log it in case
+                            self._logger.info(f"[SOLVER_V3_RAW] Raw output: {raw_output_text}")
 
                         # Accumulate/Update telemetry
                         telemetry["latency_ms_openai"] = int((llm_end_perf - llm_start_perf) * 1000)
@@ -514,11 +584,65 @@ class SolverV3:
             # Step 2.6: Normalize with Defaults (Part C1)
             response_data = self.normalize_solver_response(response_data)
 
-            # Step 5: Visuals Telemetry
-            visuals = response_data.get("visuals", {})
-            if visuals.get("should_visualize", False):
-                telemetry["plot_attempted"] = True
-                telemetry["plot_generated"] = True
+            # --- RULE 2: Separate Plot Pipeline ---
+            # Now run plotting independently if needed.
+            graph_mode_param = requests_graph_mode # "auto" by default
+            
+            # If context string had "Graph Mode = on", we might have wanted to catch that,
+            # but user says: "Remove or do not inject graph mode into text prompt".
+            # We assume the caller passes the correct requests_graph_mode arg.
+
+            if graph_mode_param != "off":
+                try:
+                    plot_svc = get_plot_pipeline_service(db_session)
+                    # We pass the FULL effective tier to plotting, so Research users get better plots
+                    # even if the solve was minimal/free-schema.
+                    trig_res, spec_res = await plot_svc.execute_plotting_pipeline(
+                        problem_text=problem_text,
+                        solve_result=response_data,
+                        graph_mode=graph_mode_param,
+                        attach_to_step_id=None,
+                        tier=effective_tier_slug, # Use REAL tier here
+                        question_id=request_id
+                    )
+                    
+                    if spec_res and spec_res.plotly_json:
+                        if trace:
+                            print(f"[SOLVER_V3] Plot Generated: {spec_res.plot_id}")
+                        
+                        # Merge into response
+                        # We can either put it in visuals.plots or a top-level plot_spec
+                        # Existing minimal schema might not have complex visuals.
+                        # But we normalized response_data above.
+                        
+                        if "visuals" not in response_data:
+                            response_data["visuals"] = {}
+                        
+                        # Populate standardized visuals object
+                        # (This works even if the solve schema didn't allow complex visuals,
+                        #  because we are modifying the dict AFTER validation).
+                        response_data["visuals"]["should_visualize"] = True
+                        response_data["visuals"]["plots"] = [spec_res.plotly_json]
+                        
+                        # Add legacy field if frontend expects it
+                        response_data["plot_spec"] = spec_res.plotly_json
+
+                        # Update telemetry
+                        telemetry["plot_attempted"] = True
+                        telemetry["plot_generated"] = True
+                        telemetry["plot_pipeline"] = {
+                            "trigger": trig_res.raw_response if trig_res else None,
+                            "spec_id": spec_res.plot_id,
+                            "error": spec_res.error
+                        }
+                    else:
+                         if trace:
+                            print(f"[SOLVER_V3] Plot Pipeline ran but no plot produced (trigger={trig_res.plot_needed if trig_res else 'SKIP'})")
+
+                except Exception as plot_err:
+                    self._logger.error(f"Plot pipeline failed: {plot_err}")
+                    if trace:
+                        print(f"[SOLVER_V3] Plot Pipeline Exception: {plot_err}")
 
             # Finalize
             telemetry["latency_ms_total"] = int((time.perf_counter() - start_time_perf) * 1000)
@@ -831,7 +955,7 @@ class SolverV3:
                 messages=messages,
                 system_prompt=None, # In messages
                 prompt=None,
-                json_schema=schema_payload.get("schema") if schema_payload else None,
+                json_schema=schema_payload,  # Pass FULL wrapper with name, strict, schema
                 max_tokens=max_output_tokens,
                 temperature=0.4,
                 stream=False,

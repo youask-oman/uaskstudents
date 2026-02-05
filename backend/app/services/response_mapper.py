@@ -161,7 +161,7 @@ def map_minimal_to_canonical(
     
     # Construct Root Object
     response = SolveResponseV3(
-        schema_version="v1.1",
+        schema_version="v1.0",
         problem=problem,
         classification=classification,
         refusal=refusal,
