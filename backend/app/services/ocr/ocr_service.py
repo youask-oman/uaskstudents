@@ -27,7 +27,7 @@ _TEMP_DIR = tempfile.gettempdir()
 os.environ.setdefault("TENSORBOARD_LOGDIR", os.path.join(_TEMP_DIR, "tensorboard_logs"))
 os.environ.setdefault("MPLCONFIGDIR", os.path.join(_TEMP_DIR, "matplotlib"))
 os.environ.setdefault("HF_HOME", os.path.join(_TEMP_DIR, "huggingface"))
-os.environ.setdefault("TRANSFORMERS_CACHE", os.path.join(_TEMP_DIR, "transformers_cache"))
+
 os.environ.setdefault("TORCH_HOME", os.path.join(_TEMP_DIR, "torch"))
 os.environ.setdefault("XDG_CACHE_HOME", os.path.join(_TEMP_DIR, "xdg_cache"))
 os.environ.setdefault("PIX2TEXT_MODEL_DIR", os.path.join(_TEMP_DIR, "pix2text_models"))

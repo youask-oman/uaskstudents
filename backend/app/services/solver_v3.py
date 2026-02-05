@@ -60,6 +60,16 @@ class PromptProfile(BaseModel):
     allow_detailed: bool
     allow_visuals_only_if_asked: bool
     prompt_binding_meta: Optional[Dict[str, Any]] = None
+    
+    # New Budget Fields
+    system_schema_budget_tokens: int = 1000
+    context_budget_tokens: int = 3000
+    json_retry_max_output_tokens: int = 1200
+    json_retry_max_attempts: int = 1
+    timeout_ms: int = 60000
+    trim_strategy: str = "trim_context_first"
+    plot_points_cap: Optional[int] = None
+    plot_traces_cap: Optional[int] = None
 
 class SolverV3:
     """
@@ -142,7 +152,7 @@ class SolverV3:
         trace: bool = False,
         include_plot_base64: bool = False,
         request_id: str = None,
-        user_tier: str = "free",
+        user_tier: Optional[str] = None,
         # New Context Params
         user_id: Optional[int] = None,
         db_session: Optional[Any] = None,  # SQLModel Session
@@ -161,7 +171,7 @@ class SolverV3:
         # Default telemetry
         telemetry = {
             "request_id": request_id,
-            "tier": user_tier,
+            "tier": user_tier or "auto",
             "mode": requested_mode,
             "binding_id": None,
             "system_prompt_id": None,
@@ -180,7 +190,7 @@ class SolverV3:
             "latency_ms_openai": 0,
             "latency_ms_total": 0,
             "mode_resolved": "unknown",
-            "tier_effective": user_tier,
+            "tier_effective": "unknown",
             "validated": False,
             "repaired": False,
             "repair_reason": None,
@@ -218,7 +228,9 @@ class SolverV3:
                      user_obj = db_session.get(User, user_id)
 
                 try:
-                    effective_tier_slug = get_user_effective_tier_slug(user_obj) if user_obj else user_tier
+                    effective_tier_slug = user_tier
+                    if not effective_tier_slug:
+                        effective_tier_slug = get_user_effective_tier_slug(user_obj) if user_obj else "free"
                     
                     # --- RULE 1 (UPDATED): Use Real DB Bindings ---
                     # User explicitly requested to use the ACTUAL tier binding from DB, 
@@ -477,6 +489,7 @@ class SolverV3:
                             top_p=profile.top_p,
                             max_input_tokens=profile.max_input_tokens,
                             trim_strategy=profile.trim_strategy,
+                            timeout=float(profile.timeout_ms) / 1000.0 if profile.timeout_ms else 60.0
                         )
 
                         llm_end_perf = time.perf_counter()
@@ -964,7 +977,9 @@ class SolverV3:
         top_p: float = 1.0,
         max_input_tokens: int = 30000,
         trim_strategy: str = "trim_context_first",
+        timeout: float = 60.0,
     ) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], str, str, int]:
+        
         # Build compact JSON user message with normalized trusted_context
         if trace:
             print(f"[SOLVER_DEBUG] _call_llm_with_schema requested_mode={requested_mode}")
@@ -1064,58 +1079,9 @@ class SolverV3:
              return response_data, tokens, status_info, model_used, content, build_ms
 
         except Exception as e:
-             raise e
-        system_for_provider = system_prompt
-        if provider == "openai":
-            schema_text = json.dumps(schema_payload.get("schema", schema_payload), separators=(",", ":"))
-            system_for_provider = (
-                f"{system_prompt}\n\nJSON_SCHEMA:\n{schema_text}\n\n"
-                "Output only valid JSON that matches the schema."
-            )
+            raise e
 
-        user_content = user_message
-        if image_url:
-            if provider == "openai":
-                raise LLMProviderError("OpenAI does not support image inputs.", provider="openai")
-            user_content = [
-                {"type": "text", "text": user_message},
-                {"type": "image_url", "image_url": {"url": image_url, "detail": "high"}},
-            ]
 
-        messages = [
-            {"role": "system", "content": system_for_provider},
-            {"role": "user", "content": user_content},
-        ]
-
-        llm_client = self._llm_manager.get_client(provider)
-        verbosity = "low" if requested_mode == "minimal" else "high"
-        llm_response = await llm_client.generate(
-            messages=messages,
-            system_prompt=system_for_provider,
-            prompt=None,
-            json_schema=schema_payload if provider == "openai" else None,
-            max_tokens=max_output_tokens,
-            temperature=None,
-            stream=False,
-            request_id=request_id,
-            verbosity=verbosity,
-        )
-
-        status_info.update(llm_response.status or {})
-        tokens["input"] = llm_response.usage.get("input", 0)
-        tokens["output"] = llm_response.usage.get("output", 0)
-        tokens["total"] = llm_response.usage.get("total", 0)
-        tokens["cached"] = llm_response.usage.get("cached", None)
-        tokens["payload"] = llm_response.payload
-
-        data = None
-        if llm_response.content:
-            try:
-                data = json.loads(llm_response.content)
-            except Exception:
-                data = {"_raw": llm_response.content}
-
-        return data, tokens, status_info, llm_response.model, llm_response.content
 
     async def _repair_response(
         self,

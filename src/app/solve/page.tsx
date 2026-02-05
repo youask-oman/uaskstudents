@@ -83,6 +83,14 @@ interface StreamingRuntimeMeta {
     global_system_prompt_version?: number;
     developer_prompt_version?: number;
     output_schema_version?: number;
+    token_config?: {
+        max_output_tokens?: number;
+        max_input_tokens?: number;
+        temperature?: number;
+        top_p?: number;
+        timeout_ms?: number;
+        trim_strategy?: string;
+    }
 }
 
 interface OcrMetadata {
@@ -142,7 +150,7 @@ export default function DashboardPage() {
     // Input mode state
     const [selectedInputMode, setSelectedInputMode] = useState<InputModeId>('expression');
     const [graphingOptions, setGraphingOptions] = useState<GraphingOptions>(DEFAULT_GRAPHING_OPTIONS);
-    
+
     // Plot/Graph inclusion state
     const [graphMode, setGraphMode] = useState<'off' | 'auto' | 'on'>('auto');
     const [attachToStepId] = useState<number | null>(null);
@@ -202,6 +210,7 @@ export default function DashboardPage() {
             output_schema_version:
                 (payloadObj.output_schema_version as number | undefined) ??
                 (versions.schema as number | undefined),
+            token_config: (payloadObj.token_config as any) ?? (nested.token_config as any),
         };
     };
 
@@ -1050,11 +1059,10 @@ export default function DashboardPage() {
                                                             key={mode}
                                                             type="button"
                                                             onClick={() => setGraphMode(mode)}
-                                                            className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
-                                                                graphMode === mode
+                                                            className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${graphMode === mode
                                                                     ? "bg-white dark:bg-slate-600 text-primary shadow-sm"
                                                                     : "text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-                                                            }`}
+                                                                }`}
                                                         >
                                                             {mode.charAt(0).toUpperCase() + mode.slice(1)}
                                                         </button>
@@ -1703,6 +1711,17 @@ export default function DashboardPage() {
                                 <div>Developer Prompt ID: {runtimeDebugMeta?.developer_prompt_id || "-"}</div>
                                 <div>Output Schema ID: {runtimeDebugMeta?.output_schema_id || "-"}</div>
                                 <div>Request ID: {runtimeDebugMeta?.request_id || "-"}</div>
+                                {runtimeDebugMeta?.token_config && (
+                                    <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                                        <div className="font-semibold mb-1">Token Config:</div>
+                                        <div>Max Output: {runtimeDebugMeta.token_config.max_output_tokens ?? "Auto"}</div>
+                                        <div>Max Input: {runtimeDebugMeta.token_config.max_input_tokens ?? "Auto"}</div>
+                                        <div>Temp: {runtimeDebugMeta.token_config.temperature ?? "Default"}</div>
+                                        <div>Top P: {runtimeDebugMeta.token_config.top_p ?? "Default"}</div>
+                                        <div>Timeout: {runtimeDebugMeta.token_config.timeout_ms ? `${runtimeDebugMeta.token_config.timeout_ms}ms` : "Default"}</div>
+                                        <div>Trim: {runtimeDebugMeta.token_config.trim_strategy ?? "None"}</div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>

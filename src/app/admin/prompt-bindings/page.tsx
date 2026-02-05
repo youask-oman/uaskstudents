@@ -322,280 +322,308 @@ export default function AdminPromptBindingsPage() {
     };
 
     return (
-        <div className="w-full p-6 xl:p-8 flex flex-col gap-6">
+        <div className="w-full p-6 xl:p-8 flex flex-col gap-6 max-w-[1920px] mx-auto">
             <header className="space-y-2">
-                <p className="text-sm uppercase tracking-[0.4em] text-slate-400">Admin</p>
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Prompt Bindings</h1>
-                <p className="text-sm text-slate-500">Map tiers and modes to prompt + schema IDs.</p>
-            </header>
-            {error && <div className="rounded-lg border border-rose-200 bg-rose-50 text-rose-700 px-4 py-2 text-sm">{error}</div>}
-            <div className="grid grid-cols-1 xl:grid-cols-[380px_minmax(0,1fr)] gap-6 w-full">
-                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-3">
-                    <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Activate Binding</h2>
-                    <select
-                        className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
-                        value={form.tier}
-                        onChange={(e) => setForm((current) => normalizeFormSelection(e.target.value, current.mode, current))}
-                    >
-                        <option value="FREE">FREE</option>
-                        <option value="STANDARD">STANDARD</option>
-                        <option value="RESEARCH">RESEARCH</option>
-                    </select>
-                    <select
-                        className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
-                        value={form.mode}
-                        onChange={(e) => setForm((current) => normalizeFormSelection(current.tier, e.target.value, current))}
-                    >
-                        <option value="SOLVE">SOLVE</option>
-                        <option value="OCR_EXTRACT">OCR_EXTRACT</option>
-                        <option value="VERIFY">VERIFY</option>
-                        <option value="PLOT_TRIGGER">PLOT_TRIGGER</option>
-                        <option value="PLOT_SPEC">PLOT_SPEC</option>
-                    </select>
-                    <select
-                        className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
-                        value={form.global_system_prompt_id}
-                        onChange={(e) => setForm({ ...form, global_system_prompt_id: e.target.value })}
-                    >
-                        {globalPromptOptions.length === 0 && <option value="">No system prompts available</option>}
-                        {globalPromptOptions.map((prompt) => (
-                            <option key={`${prompt.prompt_id}-${prompt.version}`} value={prompt.prompt_id}>
-                                {prompt.prompt_id} (v{prompt.version})
-                            </option>
-                        ))}
-                    </select>
-                    <select
-                        className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
-                        value={form.developer_prompt_id}
-                        onChange={(e) => setForm({ ...form, developer_prompt_id: e.target.value })}
-                    >
-                        {developerPromptOptions.length === 0 && <option value="">No developer prompts available</option>}
-                        {developerPromptOptions.map((prompt) => (
-                            <option key={`${prompt.prompt_id}-${prompt.version}`} value={prompt.prompt_id}>
-                                {prompt.prompt_id} (v{prompt.version}{prompt.tier ? `, ${prompt.tier}` : ""})
-                            </option>
-                        ))}
-                    </select>
-                    <select
-                        className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
-                        value={form.output_schema_id}
-                        onChange={(e) => setForm({ ...form, output_schema_id: e.target.value })}
-                    >
-                        {schemaOptions.length === 0 && <option value="">No schemas available</option>}
-                        {schemaOptions.map((schema) => (
-                            <option key={`${schema.schema_id}-${schema.version}`} value={schema.schema_id}>
-                                {schema.schema_id} (v{schema.version})
-                            </option>
-                        ))}
-                    </select>
-
-                    <div className="grid grid-cols-2 gap-2 mt-2">
-                        <div className="space-y-1">
-                            <label className="text-[10px] text-slate-400">Max Input Tokens</label>
-                            <input
-                                type="number"
-                                placeholder="Auto"
-                                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
-                                value={form.max_input_tokens}
-                                onChange={(e) => setForm({ ...form, max_input_tokens: e.target.value })}
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[10px] text-slate-400">Trim Strategy</label>
-                            <select
-                                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
-                                value={form.trim_strategy}
-                                onChange={(e) => setForm({ ...form, trim_strategy: e.target.value })}
-                            >
-                                <option value="none">none</option>
-                                <option value="trim_context_first">trim_context_first</option>
-                                <option value="trim_user_first">trim_user_first</option>
-                                <option value="summarize_context">summarize_context</option>
-                            </select>
-                        </div>
+                <p className="text-sm uppercase tracking-[0.4em] text-slate-400 font-semibold">Admin Panel</p>
+                <div className="flex items-baseline justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Prompt Bindings</h1>
+                        <p className="text-sm text-slate-500 mt-1">Configure tier-specific runtime constraints and prompt linking.</p>
                     </div>
-
-                    <div className="grid grid-cols-3 gap-2">
-                        <div className="space-y-1">
-                            <label className="text-[10px] text-slate-400">Max Out</label>
-                            <input
-                                type="number"
-                                placeholder="Auto"
-                                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
-                                value={form.max_output_tokens}
-                                onChange={(e) => setForm({ ...form, max_output_tokens: e.target.value })}
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[10px] text-slate-400">Temp</label>
-                            <input
-                                type="number"
-                                step="0.1"
-                                placeholder="0.1"
-                                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
-                                value={form.temperature}
-                                onChange={(e) => setForm({ ...form, temperature: e.target.value })}
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[10px] text-slate-400">Timeout</label>
-                            <input
-                                type="number"
-                                placeholder="60000"
-                                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
-                                value={form.timeout_ms}
-                                onChange={(e) => setForm({ ...form, timeout_ms: e.target.value })}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-1">
-                            <label className="text-[10px] text-slate-400">Retry Max Tokens</label>
-                            <input
-                                type="number"
-                                placeholder="Auto"
-                                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
-                                value={form.json_retry_max_output_tokens}
-                                onChange={(e) => setForm({ ...form, json_retry_max_output_tokens: e.target.value })}
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[10px] text-slate-400">Retry Attempts</label>
-                            <input
-                                type="number"
-                                placeholder="1"
-                                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
-                                value={form.json_retry_max_attempts}
-                                onChange={(e) => setForm({ ...form, json_retry_max_attempts: e.target.value })}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                        <label className="text-[10px] font-bold text-slate-500 block mb-1 uppercase tracking-wider">Plot Pipeline Caps</label>
-                        <div className="grid grid-cols-3 gap-2">
-                            <div className="space-y-1">
-                                <label className="text-[10px] text-slate-400">Pts</label>
-                                <input
-                                    type="number"
-                                    placeholder="25"
-                                    className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
-                                    value={form.plot_points_cap}
-                                    onChange={(e) => setForm({ ...form, plot_points_cap: e.target.value })}
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] text-slate-400">Traces</label>
-                                <input
-                                    type="number"
-                                    placeholder="5"
-                                    className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
-                                    value={form.plot_traces_cap}
-                                    onChange={(e) => setForm({ ...form, plot_traces_cap: e.target.value })}
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] text-slate-400">Anno</label>
-                                <input
-                                    type="number"
-                                    placeholder="5"
-                                    className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
-                                    value={form.plot_annotations_cap}
-                                    onChange={(e) => setForm({ ...form, plot_annotations_cap: e.target.value })}
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-1">
-                            <label className="text-[10px] text-slate-400">Max Steps</label>
-                            <input
-                                type="number"
-                                placeholder="Auto"
-                                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
-                                value={form.max_steps}
-                                onChange={(e) => setForm({ ...form, max_steps: e.target.value })}
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[10px] text-slate-400">Retry Cap (Legacy)</label>
-                            <input
-                                type="number"
-                                placeholder="Auto"
-                                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
-                                value={form.retry_cap_tokens}
-                                onChange={(e) => setForm({ ...form, retry_cap_tokens: e.target.value })}
-                            />
-                        </div>
-                    </div>
-                    <button
-                        className="w-full px-4 py-2 rounded-lg bg-admin-primary text-white text-xs font-semibold disabled:opacity-60"
-                        onClick={handleSubmit}
-                        disabled={
-                            saving ||
-                            !form.global_system_prompt_id ||
-                            !form.developer_prompt_id ||
-                            !form.output_schema_id
-                        }
-                    >
-                        {saving ? "Saving..." : "Activate Binding"}
-                    </button>
-                    <button
-                        className="w-full px-4 py-2 rounded-lg bg-slate-700 text-white text-xs font-semibold disabled:opacity-60"
-                        onClick={runTestPrompt}
-                        disabled={testRunning || form.mode === "OCR_EXTRACT"}
-                    >
-                        {testRunning ? "Running..." : form.mode === "OCR_EXTRACT" ? "Test Not Available (OCR_EXTRACT)" : "Test Prompt"}
-                    </button>
-                    {testResult && (
-                        <pre className="text-[10px] whitespace-pre-wrap break-words rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-2">{testResult}</pre>
-                    )}
                 </div>
-                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
-                    <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">Active Bindings</h2>
-                    <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-1">
-                        {bindings.map((binding, index) => (
-                            <div
-                                key={binding.id || `${binding.tier}-${binding.mode}-${binding.updated_at}-${index}`}
-                                className="rounded-lg border border-slate-200 dark:border-slate-800 px-3 py-2 text-xs text-slate-600 dark:text-slate-300"
-                            >
-                                <div className="flex items-center justify-between gap-2">
-                                    <div className="font-semibold">{binding.tier} - {binding.mode}</div>
-                                    <div className="flex gap-2">
-                                        <button
-                                            className="px-2 py-1 rounded bg-admin-primary text-white text-[10px] font-semibold"
-                                            onClick={() => handleEditBinding(binding)}
-                                        >
-                                            Edit
-                                        </button>
-                                        <button
-                                            className="px-2 py-1 rounded bg-rose-600 text-white text-[10px] font-semibold disabled:opacity-60"
-                                            onClick={() => handleDeleteBinding(binding)}
-                                            disabled={deletingBindingId === binding.id}
-                                        >
-                                            {deletingBindingId === binding.id ? "Deleting..." : "Delete"}
-                                        </button>
+            </header>
+
+            {error && (
+                <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm font-medium flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                    {error}
+                </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+                {/* --- Left Column: Configuration Form --- */}
+                <div className="lg:col-span-5 space-y-6">
+
+                    {/* section: Context Definition */}
+                    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50">
+                            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Core Context</h2>
+                        </div>
+                        <div className="p-5 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Subscription Tier</label>
+                                    <select
+                                        className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                        value={form.tier}
+                                        onChange={(e) => setForm((current) => normalizeFormSelection(e.target.value, current.mode, current))}
+                                    >
+                                        <option value="FREE">FREE</option>
+                                        <option value="STANDARD">STANDARD</option>
+                                        <option value="RESEARCH">RESEARCH</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Execution Mode</label>
+                                    <select
+                                        className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                        value={form.mode}
+                                        onChange={(e) => setForm((current) => normalizeFormSelection(current.tier, e.target.value, current))}
+                                    >
+                                        <option value="SOLVE">SOLVE</option>
+                                        <option value="OCR_EXTRACT">OCR_EXTRACT</option>
+                                        <option value="VERIFY">VERIFY</option>
+                                        <option value="PLOT_TRIGGER">PLOT_TRIGGER</option>
+                                        <option value="PLOT_SPEC">PLOT_SPEC</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">System Prompt</label>
+                                <select
+                                    className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm text-slate-700 dark:text-slate-200"
+                                    value={form.global_system_prompt_id}
+                                    onChange={(e) => setForm({ ...form, global_system_prompt_id: e.target.value })}
+                                >
+                                    {globalPromptOptions.length === 0 && <option value="">No system prompts available</option>}
+                                    {globalPromptOptions.map((prompt) => (
+                                        <option key={`${prompt.prompt_id}-${prompt.version}`} value={prompt.prompt_id}>
+                                            {prompt.prompt_id} (v{prompt.version})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Developer Prompt</label>
+                                <select
+                                    className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm text-slate-700 dark:text-slate-200"
+                                    value={form.developer_prompt_id}
+                                    onChange={(e) => setForm({ ...form, developer_prompt_id: e.target.value })}
+                                >
+                                    {developerPromptOptions.length === 0 && <option value="">No developer prompts available</option>}
+                                    {developerPromptOptions.map((prompt) => (
+                                        <option key={`${prompt.prompt_id}-${prompt.version}`} value={prompt.prompt_id}>
+                                            {prompt.prompt_id} (v{prompt.version}{prompt.tier ? `, ${prompt.tier}` : ""})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Output Schema</label>
+                                <select
+                                    className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm text-slate-700 dark:text-slate-200"
+                                    value={form.output_schema_id}
+                                    onChange={(e) => setForm({ ...form, output_schema_id: e.target.value })}
+                                >
+                                    {schemaOptions.length === 0 && <option value="">No schemas available</option>}
+                                    {schemaOptions.map((schema) => (
+                                        <option key={`${schema.schema_id}-${schema.version}`} value={schema.schema_id}>
+                                            {schema.schema_id} (v{schema.version})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Section: Tokens & Limits */}
+                    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50">
+                            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Limits & Budgets</h2>
+                        </div>
+                        <div className="p-5 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-slate-500">Max Input Tokens</label>
+                                    <input type="number" placeholder="Auto" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.max_input_tokens} onChange={(e) => setForm({ ...form, max_input_tokens: e.target.value })} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-slate-500">Max Output Tokens</label>
+                                    <input type="number" placeholder="Auto" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.max_output_tokens} onChange={(e) => setForm({ ...form, max_output_tokens: e.target.value })} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-slate-500">System Budget</label>
+                                    <input type="number" placeholder="Auto" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.system_schema_budget_tokens} onChange={(e) => setForm({ ...form, system_schema_budget_tokens: e.target.value })} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-slate-500">Context Budget</label>
+                                    <input type="number" placeholder="Auto" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.context_budget_tokens} onChange={(e) => setForm({ ...form, context_budget_tokens: e.target.value })} />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Section: Inference Parameters */}
+                    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50">
+                            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Inference Parameters</h2>
+                        </div>
+                        <div className="p-5 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-slate-500">Temperature</label>
+                                    <input type="number" step="0.1" placeholder="0.1" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.temperature} onChange={(e) => setForm({ ...form, temperature: e.target.value })} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-slate-500">Top P</label>
+                                    <input type="number" step="0.1" placeholder="1.0" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.top_p} onChange={(e) => setForm({ ...form, top_p: e.target.value })} />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-slate-500">Timeout (ms)</label>
+                                    <input type="number" placeholder="60000" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.timeout_ms} onChange={(e) => setForm({ ...form, timeout_ms: e.target.value })} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-slate-500">Trim Strategy</label>
+                                    <select className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.trim_strategy} onChange={(e) => setForm({ ...form, trim_strategy: e.target.value })}>
+                                        <option value="none">None</option>
+                                        <option value="trim_context_first">Trim Context First</option>
+                                        <option value="trim_user_first">Trim User First</option>
+                                        <option value="summarize_context">Summarize Context</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Section: Retry & Plots (2 col for better spacing) */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50">
+                                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Retry Logic</h2>
+                            </div>
+                            <div className="p-4 space-y-3">
+                                <div className="space-y-1">
+                                    <label className="text-[11px] font-medium text-slate-400">JSON Retry Max Output</label>
+                                    <input type="number" placeholder="Auto" className="w-full rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2.5 py-1.5 text-sm" value={form.json_retry_max_output_tokens} onChange={(e) => setForm({ ...form, json_retry_max_output_tokens: e.target.value })} />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[11px] font-medium text-slate-400">Retry Attempts</label>
+                                    <input type="number" placeholder="1" className="w-full rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2.5 py-1.5 text-sm" value={form.json_retry_max_attempts} onChange={(e) => setForm({ ...form, json_retry_max_attempts: e.target.value })} />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[11px] font-medium text-slate-400">Max Steps</label>
+                                    <input type="number" placeholder="Auto" className="w-full rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2.5 py-1.5 text-sm" value={form.max_steps} onChange={(e) => setForm({ ...form, max_steps: e.target.value })} />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50">
+                                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Plotting</h2>
+                            </div>
+                            <div className="p-4 space-y-3">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <label className="text-[11px] font-medium text-slate-400">Points Cap</label>
+                                        <input type="number" placeholder="25" className="w-full rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2.5 py-1.5 text-sm" value={form.plot_points_cap} onChange={(e) => setForm({ ...form, plot_points_cap: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[11px] font-medium text-slate-400">Traces Cap</label>
+                                        <input type="number" placeholder="5" className="w-full rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2.5 py-1.5 text-sm" value={form.plot_traces_cap} onChange={(e) => setForm({ ...form, plot_traces_cap: e.target.value })} />
                                     </div>
                                 </div>
-                                <div>global: {binding.global_system_prompt_id}</div>
-                                <div>developer: {binding.developer_prompt_id}</div>
-                                <div>schema: {binding.output_schema_id}</div>
-                                <div className="flex flex-wrap gap-2 text-[10px] text-slate-400 mt-1">
-                                    {binding.max_output_tokens && <span>Out: {binding.max_output_tokens}</span>}
-                                    {binding.max_input_tokens && <span>In: {binding.max_input_tokens}</span>}
-                                    {binding.temperature && <span>T: {binding.temperature}</span>}
-                                    {binding.plot_points_cap && <span>Pts: {binding.plot_points_cap}</span>}
-                                    {binding.trim_strategy && <span>Trim: {binding.trim_strategy}</span>}
-                                    {binding.max_steps && <span>Steps: {binding.max_steps}</span>}
+                                <div className="space-y-1">
+                                    <label className="text-[11px] font-medium text-slate-400">Annotations Cap</label>
+                                    <input type="number" placeholder="5" className="w-full rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2.5 py-1.5 text-sm" value={form.plot_annotations_cap} onChange={(e) => setForm({ ...form, plot_annotations_cap: e.target.value })} />
                                 </div>
-                                <div className="text-[10px] text-slate-400">{binding.is_active ? "active" : "inactive"}</div>
                             </div>
-                        ))}
+                        </div>
+                    </div>
+
+
+                    <div className="pt-4 flex gap-3">
+                        <button
+                            className="flex-1 px-4 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            onClick={handleSubmit}
+                            disabled={saving || !form.global_system_prompt_id || !form.developer_prompt_id || !form.output_schema_id}
+                        >
+                            {saving ? "Saving Changes..." : "Activate / Update Binding"}
+                        </button>
+                        <button
+                            className="px-6 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold transition-colors disabled:opacity-50"
+                            onClick={runTestPrompt}
+                            disabled={testRunning || form.mode === "OCR_EXTRACT"}
+                        >
+                            {testRunning ? "Testing..." : "Test"}
+                        </button>
+                    </div>
+
+                    {testResult && (
+                        <div className="bg-slate-900 rounded-xl p-4 overflow-x-auto border border-slate-800">
+                            <h4 className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Test Result</h4>
+                            <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap leading-relaxed">{testResult}</pre>
+                        </div>
+                    )}
+
+                </div>
+
+                {/* --- Right Column: List --- */}
+                <div className="lg:col-span-7 space-y-4">
+                    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col h-[calc(100vh-140px)]">
+                        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-950/50 rounded-t-xl">
+                            <h2 className="font-semibold text-slate-800 dark:text-slate-100">Active Bindings</h2>
+                            <span className="text-xs text-slate-500 bg-slate-200 dark:bg-slate-800 px-2 py-1 rounded-full">{bindings.length} configured</span>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                            {bindings.length === 0 && (
+                                <div className="text-center py-12 text-slate-400 text-sm">No active bindings found. Configure one on the left.</div>
+                            )}
+                            {bindings.map((binding, index) => (
+                                <div
+                                    key={binding.id || `${binding.tier}-${binding.mode}-${index}`}
+                                    className="group relative bg-white dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 p-4 hover:border-blue-400 transition-colors"
+                                >
+                                    <div className="flex items-start justify-between mb-3">
+                                        <div className="flex items-center gap-3">
+                                            <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide ${binding.tier === 'FREE' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                                    binding.tier === 'STANDARD' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                                        'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                                                }`}>
+                                                {binding.tier}
+                                            </span>
+                                            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{binding.mode}</span>
+                                        </div>
+                                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={() => handleEditBinding(binding)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="Edit">
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                            </button>
+                                            <button onClick={() => handleDeleteBinding(binding)} disabled={deletingBindingId === binding.id} className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Delete">
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4 text-xs text-slate-600 dark:text-slate-400 mb-3">
+                                        <div className="space-y-1">
+                                            <div className="flex gap-2"><span className="text-slate-400 w-16">Global:</span> <span className="font-mono text-slate-700 dark:text-slate-300 truncate">{binding.global_system_prompt_id}</span></div>
+                                            <div className="flex gap-2"><span className="text-slate-400 w-16">Dev:</span> <span className="font-mono text-slate-700 dark:text-slate-300 truncate">{binding.developer_prompt_id}</span></div>
+                                            <div className="flex gap-2"><span className="text-slate-400 w-16">Schema:</span> <span className="font-mono text-slate-700 dark:text-slate-300 truncate">{binding.output_schema_id}</span></div>
+                                        </div>
+                                        <div className="space-y-1 border-l pl-4 border-slate-100 dark:border-slate-800">
+                                            <div className="flex justify-between"><span>Out Tokens:</span> <span className="font-medium">{binding.max_output_tokens || 'Auto'}</span></div>
+                                            <div className="flex justify-between"><span>Timeout:</span> <span className="font-medium">{binding.timeout_ms ? `${binding.timeout_ms}ms` : 'Default'}</span></div>
+                                            <div className="flex justify-between"><span>Temp:</span> <span className="font-medium">{binding.temperature ?? '0.1'}</span></div>
+                                        </div>
+                                    </div>
+
+                                    {/* Mini badges for active features */}
+                                    <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                        {binding.trim_strategy && binding.trim_strategy !== 'none' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">Trim: {binding.trim_strategy}</span>}
+                                        {binding.plot_points_cap && <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600">Plot Cap: {binding.plot_points_cap}</span>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     );
+
 }

@@ -4213,6 +4213,14 @@ async def solve_v3_runtime_meta(
             "developer": binding_meta.get("developer_prompt_version"),
             "schema": binding_meta.get("output_schema_version"),
         },
+        "token_config": {
+            "max_output_tokens": binding_meta.get("max_output_tokens"),
+            "max_input_tokens": binding_meta.get("max_input_tokens"),
+            "temperature": binding_meta.get("temperature"),
+            "top_p": binding_meta.get("top_p"),
+            "timeout_ms": binding_meta.get("timeout_ms"),
+            "trim_strategy": binding_meta.get("trim_strategy"),
+        },
     }
 
 
@@ -4508,7 +4516,9 @@ async def solve_v3_endpoint(
                     trusted_context=body.trusted_context,
                     learning_mode=learning_mode,
                     image_url=body.image_url,
-                    max_output_tokens=effective_max_tokens
+                    max_output_tokens=effective_max_tokens,
+                    user_tier=effective_tier,
+                    requests_graph_mode=getattr(body, "graph_mode", "auto")
                 )
                 
                 # --- PLOTTING PIPELINE INTEGRATION ---

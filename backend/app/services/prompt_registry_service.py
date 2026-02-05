@@ -15,6 +15,7 @@ from app.models import (
     PromptTierEnum,
     PromptModeEnum,
     PromptRoleEnum,
+    TrimStrategyEnum,
 )
 
 
