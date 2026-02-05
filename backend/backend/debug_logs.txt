@@ -3281,3 +3281,8 @@ Prompt binding issue: {'type': 'missing_output_schema', 'binding_id': 'd8017588-
 Prompt binding issue: {'type': 'missing_output_schema', 'binding_id': '47bc72e2-5a07-4e8f-97d8-0e12ff3bda60', 'tier': 'STANDARD', 'mode': 'PLOT_SPEC', 'schema_id': 'youask_plot_spec_v1'}
 Prompt binding issue: {'type': 'missing_output_schema', 'binding_id': '78cd310c-256d-407b-8f47-911ea56c71ea', 'tier': 'RESEARCH', 'mode': 'PLOT_TRIGGER', 'schema_id': 'youask_plot_trigger_v1'}
 Prompt binding issue: {'type': 'missing_output_schema', 'binding_id': 'e680c826-2084-47dc-a1b3-f59fb8c58a96', 'tier': 'RESEARCH', 'mode': 'PLOT_SPEC', 'schema_id': 'youask_plot_spec_v1'}
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=9 active_pairs=9
