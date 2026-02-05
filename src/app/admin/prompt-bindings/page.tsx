@@ -9,6 +9,21 @@ interface BindingEntry {
     global_system_prompt_id: string;
     developer_prompt_id: string;
     output_schema_id: string;
+    max_output_tokens?: number | null;
+    max_input_tokens?: number | null;
+    system_schema_budget_tokens?: number | null;
+    context_budget_tokens?: number | null;
+    json_retry_max_output_tokens?: number | null;
+    json_retry_max_attempts?: number | null;
+    timeout_ms?: number | null;
+    temperature?: number | null;
+    top_p?: number | null;
+    plot_points_cap?: number | null;
+    plot_traces_cap?: number | null;
+    plot_annotations_cap?: number | null;
+    trim_strategy?: string | null;
+    max_steps?: number | null;
+    retry_cap_tokens?: number | null;
     is_active: boolean;
     updated_at: string;
     updated_by?: string | null;
@@ -42,6 +57,21 @@ export default function AdminPromptBindingsPage() {
         global_system_prompt_id: "",
         developer_prompt_id: "",
         output_schema_id: "",
+        max_output_tokens: "",
+        max_input_tokens: "",
+        system_schema_budget_tokens: "",
+        context_budget_tokens: "",
+        json_retry_max_output_tokens: "",
+        json_retry_max_attempts: "",
+        timeout_ms: "",
+        temperature: "",
+        top_p: "",
+        plot_points_cap: "",
+        plot_traces_cap: "",
+        plot_annotations_cap: "",
+        trim_strategy: "trim_context_first",
+        max_steps: "",
+        retry_cap_tokens: "",
     });
     const [error, setError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
@@ -117,6 +147,21 @@ export default function AdminPromptBindingsPage() {
                 activeBinding?.output_schema_id || currentForm.output_schema_id,
                 schemaOptions,
             ),
+            max_output_tokens: activeBinding?.max_output_tokens?.toString() || "",
+            max_input_tokens: activeBinding?.max_input_tokens?.toString() || "",
+            system_schema_budget_tokens: activeBinding?.system_schema_budget_tokens?.toString() || "",
+            context_budget_tokens: activeBinding?.context_budget_tokens?.toString() || "",
+            json_retry_max_output_tokens: activeBinding?.json_retry_max_output_tokens?.toString() || "",
+            json_retry_max_attempts: activeBinding?.json_retry_max_attempts?.toString() || "",
+            timeout_ms: activeBinding?.timeout_ms?.toString() || "",
+            temperature: activeBinding?.temperature?.toString() || "",
+            top_p: activeBinding?.top_p?.toString() || "",
+            plot_points_cap: activeBinding?.plot_points_cap?.toString() || "",
+            plot_traces_cap: activeBinding?.plot_traces_cap?.toString() || "",
+            plot_annotations_cap: activeBinding?.plot_annotations_cap?.toString() || "",
+            trim_strategy: activeBinding?.trim_strategy || "trim_context_first",
+            max_steps: activeBinding?.max_steps?.toString() || "",
+            retry_cap_tokens: activeBinding?.retry_cap_tokens?.toString() || "",
         };
     };
 
@@ -172,6 +217,20 @@ export default function AdminPromptBindingsPage() {
                 headers: headers(true),
                 body: JSON.stringify({
                     ...form,
+                    max_output_tokens: form.max_output_tokens === "" ? null : parseInt(form.max_output_tokens),
+                    max_input_tokens: form.max_input_tokens === "" ? null : parseInt(form.max_input_tokens),
+                    system_schema_budget_tokens: form.system_schema_budget_tokens === "" ? null : parseInt(form.system_schema_budget_tokens),
+                    context_budget_tokens: form.context_budget_tokens === "" ? null : parseInt(form.context_budget_tokens),
+                    json_retry_max_output_tokens: form.json_retry_max_output_tokens === "" ? null : parseInt(form.json_retry_max_output_tokens),
+                    json_retry_max_attempts: form.json_retry_max_attempts === "" ? null : parseInt(form.json_retry_max_attempts),
+                    timeout_ms: form.timeout_ms === "" ? null : parseInt(form.timeout_ms),
+                    temperature: form.temperature === "" ? null : parseFloat(form.temperature),
+                    top_p: form.top_p === "" ? null : parseFloat(form.top_p),
+                    plot_points_cap: form.plot_points_cap === "" ? null : parseInt(form.plot_points_cap),
+                    plot_traces_cap: form.plot_traces_cap === "" ? null : parseInt(form.plot_traces_cap),
+                    plot_annotations_cap: form.plot_annotations_cap === "" ? null : parseInt(form.plot_annotations_cap),
+                    max_steps: form.max_steps === "" ? null : parseInt(form.max_steps),
+                    retry_cap_tokens: form.retry_cap_tokens === "" ? null : parseInt(form.retry_cap_tokens),
                     updated_by: localStorage.getItem("user_name") || "admin",
                 }),
             });
@@ -206,6 +265,32 @@ export default function AdminPromptBindingsPage() {
         } finally {
             setTestRunning(false);
         }
+    };
+
+    const handleEditBinding = (binding: BindingEntry) => {
+        setForm({
+            tier: binding.tier,
+            mode: binding.mode,
+            global_system_prompt_id: binding.global_system_prompt_id,
+            developer_prompt_id: binding.developer_prompt_id,
+            output_schema_id: binding.output_schema_id,
+            max_output_tokens: binding.max_output_tokens?.toString() || "",
+            max_input_tokens: binding.max_input_tokens?.toString() || "",
+            system_schema_budget_tokens: binding.system_schema_budget_tokens?.toString() || "",
+            context_budget_tokens: binding.context_budget_tokens?.toString() || "",
+            json_retry_max_output_tokens: binding.json_retry_max_output_tokens?.toString() || "",
+            json_retry_max_attempts: binding.json_retry_max_attempts?.toString() || "",
+            timeout_ms: binding.timeout_ms?.toString() || "",
+            temperature: binding.temperature?.toString() || "",
+            top_p: binding.top_p?.toString() || "",
+            plot_points_cap: binding.plot_points_cap?.toString() || "",
+            plot_traces_cap: binding.plot_traces_cap?.toString() || "",
+            plot_annotations_cap: binding.plot_annotations_cap?.toString() || "",
+            trim_strategy: binding.trim_strategy || "trim_context_first",
+            max_steps: binding.max_steps?.toString() || "",
+            retry_cap_tokens: binding.retry_cap_tokens?.toString() || "",
+        });
+        window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
     const handleDeleteBinding = async (binding: BindingEntry) => {
@@ -303,6 +388,148 @@ export default function AdminPromptBindingsPage() {
                             </option>
                         ))}
                     </select>
+
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                        <div className="space-y-1">
+                            <label className="text-[10px] text-slate-400">Max Input Tokens</label>
+                            <input
+                                type="number"
+                                placeholder="Auto"
+                                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
+                                value={form.max_input_tokens}
+                                onChange={(e) => setForm({ ...form, max_input_tokens: e.target.value })}
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] text-slate-400">Trim Strategy</label>
+                            <select
+                                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
+                                value={form.trim_strategy}
+                                onChange={(e) => setForm({ ...form, trim_strategy: e.target.value })}
+                            >
+                                <option value="none">none</option>
+                                <option value="trim_context_first">trim_context_first</option>
+                                <option value="trim_user_first">trim_user_first</option>
+                                <option value="summarize_context">summarize_context</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                        <div className="space-y-1">
+                            <label className="text-[10px] text-slate-400">Max Out</label>
+                            <input
+                                type="number"
+                                placeholder="Auto"
+                                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
+                                value={form.max_output_tokens}
+                                onChange={(e) => setForm({ ...form, max_output_tokens: e.target.value })}
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] text-slate-400">Temp</label>
+                            <input
+                                type="number"
+                                step="0.1"
+                                placeholder="0.1"
+                                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
+                                value={form.temperature}
+                                onChange={(e) => setForm({ ...form, temperature: e.target.value })}
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] text-slate-400">Timeout</label>
+                            <input
+                                type="number"
+                                placeholder="60000"
+                                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
+                                value={form.timeout_ms}
+                                onChange={(e) => setForm({ ...form, timeout_ms: e.target.value })}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                            <label className="text-[10px] text-slate-400">Retry Max Tokens</label>
+                            <input
+                                type="number"
+                                placeholder="Auto"
+                                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
+                                value={form.json_retry_max_output_tokens}
+                                onChange={(e) => setForm({ ...form, json_retry_max_output_tokens: e.target.value })}
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] text-slate-400">Retry Attempts</label>
+                            <input
+                                type="number"
+                                placeholder="1"
+                                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
+                                value={form.json_retry_max_attempts}
+                                onChange={(e) => setForm({ ...form, json_retry_max_attempts: e.target.value })}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <label className="text-[10px] font-bold text-slate-500 block mb-1 uppercase tracking-wider">Plot Pipeline Caps</label>
+                        <div className="grid grid-cols-3 gap-2">
+                            <div className="space-y-1">
+                                <label className="text-[10px] text-slate-400">Pts</label>
+                                <input
+                                    type="number"
+                                    placeholder="25"
+                                    className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
+                                    value={form.plot_points_cap}
+                                    onChange={(e) => setForm({ ...form, plot_points_cap: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] text-slate-400">Traces</label>
+                                <input
+                                    type="number"
+                                    placeholder="5"
+                                    className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
+                                    value={form.plot_traces_cap}
+                                    onChange={(e) => setForm({ ...form, plot_traces_cap: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] text-slate-400">Anno</label>
+                                <input
+                                    type="number"
+                                    placeholder="5"
+                                    className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
+                                    value={form.plot_annotations_cap}
+                                    onChange={(e) => setForm({ ...form, plot_annotations_cap: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                            <label className="text-[10px] text-slate-400">Max Steps</label>
+                            <input
+                                type="number"
+                                placeholder="Auto"
+                                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
+                                value={form.max_steps}
+                                onChange={(e) => setForm({ ...form, max_steps: e.target.value })}
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] text-slate-400">Retry Cap (Legacy)</label>
+                            <input
+                                type="number"
+                                placeholder="Auto"
+                                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm"
+                                value={form.retry_cap_tokens}
+                                onChange={(e) => setForm({ ...form, retry_cap_tokens: e.target.value })}
+                            />
+                        </div>
+                    </div>
                     <button
                         className="w-full px-4 py-2 rounded-lg bg-admin-primary text-white text-xs font-semibold disabled:opacity-60"
                         onClick={handleSubmit}
@@ -336,17 +563,33 @@ export default function AdminPromptBindingsPage() {
                             >
                                 <div className="flex items-center justify-between gap-2">
                                     <div className="font-semibold">{binding.tier} - {binding.mode}</div>
-                                    <button
-                                        className="px-2 py-1 rounded bg-rose-600 text-white text-[10px] font-semibold disabled:opacity-60"
-                                        onClick={() => handleDeleteBinding(binding)}
-                                        disabled={deletingBindingId === binding.id}
-                                    >
-                                        {deletingBindingId === binding.id ? "Deleting..." : "Delete"}
-                                    </button>
+                                    <div className="flex gap-2">
+                                        <button
+                                            className="px-2 py-1 rounded bg-admin-primary text-white text-[10px] font-semibold"
+                                            onClick={() => handleEditBinding(binding)}
+                                        >
+                                            Edit
+                                        </button>
+                                        <button
+                                            className="px-2 py-1 rounded bg-rose-600 text-white text-[10px] font-semibold disabled:opacity-60"
+                                            onClick={() => handleDeleteBinding(binding)}
+                                            disabled={deletingBindingId === binding.id}
+                                        >
+                                            {deletingBindingId === binding.id ? "Deleting..." : "Delete"}
+                                        </button>
+                                    </div>
                                 </div>
                                 <div>global: {binding.global_system_prompt_id}</div>
                                 <div>developer: {binding.developer_prompt_id}</div>
                                 <div>schema: {binding.output_schema_id}</div>
+                                <div className="flex flex-wrap gap-2 text-[10px] text-slate-400 mt-1">
+                                    {binding.max_output_tokens && <span>Out: {binding.max_output_tokens}</span>}
+                                    {binding.max_input_tokens && <span>In: {binding.max_input_tokens}</span>}
+                                    {binding.temperature && <span>T: {binding.temperature}</span>}
+                                    {binding.plot_points_cap && <span>Pts: {binding.plot_points_cap}</span>}
+                                    {binding.trim_strategy && <span>Trim: {binding.trim_strategy}</span>}
+                                    {binding.max_steps && <span>Steps: {binding.max_steps}</span>}
+                                </div>
                                 <div className="text-[10px] text-slate-400">{binding.is_active ? "active" : "inactive"}</div>
                             </div>
                         ))}

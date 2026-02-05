@@ -29,6 +29,7 @@ from app.services.message_builder import build_user_message
 # from app.llm_profiles.profiles import PromptProfile # Removed: module deleted
 from app.prompts.db_loader import PromptBindingLookupError, load_prompt_bundle
 from app.services.plot_pipeline_service import get_plot_pipeline_service
+from app.utils.token_utils import trim_messages
 from pydantic import BaseModel
 
 class PromptProfile(BaseModel):
@@ -41,7 +42,20 @@ class PromptProfile(BaseModel):
     developer_prompt_content: Optional[str] = None
     json_schema_content: Dict[str, Any]
     max_output_tokens: int
+    max_input_tokens: int
+    system_schema_budget_tokens: int
+    context_budget_tokens: int
+    json_retry_max_output_tokens: int
+    json_retry_max_attempts: int
+    timeout_ms: int
+    temperature: float
+    top_p: float
+    trim_strategy: str
+    plot_points_cap: Optional[int] = None
+    plot_traces_cap: Optional[int] = None
+    plot_annotations_cap: Optional[int] = None
     max_steps: int
+    retry_cap_tokens: Optional[int] = None
     mode: str
     allow_detailed: bool
     allow_visuals_only_if_asked: bool
@@ -147,6 +161,15 @@ class SolverV3:
         # Default telemetry
         telemetry = {
             "request_id": request_id,
+            "tier": user_tier,
+            "mode": requested_mode,
+            "binding_id": None,
+            "system_prompt_id": None,
+            "developer_prompt_id": None,
+            "output_schema_id": None,
+            "max_output_tokens": None,
+            "max_input_tokens": None,
+            "trim_strategy": None,
             "model": None,
             "provider": self.client_manager.primary_provider,
             "fallback_provider": self.client_manager.get_fallback_provider(),
@@ -212,32 +235,74 @@ class SolverV3:
                     )
                     token_policy = get_token_policy(db_session)
                     
-                    # --- RULE 3: Strict Token Budgets ---
-                    # Solve gets its own budget, independent of Plotting.
-                    max_tokens = get_effective_max_tokens(requested_mode, learning_mode or "solve", token_policy)
+                    binding_meta = binding_bundle.get("binding", {})
                     
-                    # Cap minimal solve to prevent rambling, but allow enough for 
-                    # detailed schema boilerplate if the DB forces a large schema.
+                    # --- RULE 3: Dynamic Token Budgets ---
+                    # Resolution Order:
+                    # 1. Binding-specific value (if not None)
+                    # 2. SystemConfig policy (fallback)
+                    # 3. Code-level hard defaults (safety net)
+                    
+                    max_output_tokens = binding_meta.get("max_output_tokens")
+                    if max_output_tokens is None:
+                        max_output_tokens = get_effective_max_tokens(requested_mode, learning_mode or "solve", token_policy)
+                    
+                    # Special minimal cap
                     if requested_mode == "minimal":
-                        # Increased from 650 to 1200 to accommodate 'standard_detailed' schema 
-                        # structure overhead while still enforcing conciseness via system prompt.
-                        max_tokens = min(max_tokens, 1200)
+                        max_output_tokens = min(max_output_tokens, 1200)
 
-                    max_steps = get_effective_max_steps(requested_mode, learning_mode or "solve", token_policy)
+                    max_input_tokens = binding_meta.get("max_input_tokens") or token_policy.text_input_max
+                    system_schema_budget_tokens = binding_meta.get("system_schema_budget_tokens") or 1000
+                    context_budget_tokens = binding_meta.get("context_budget_tokens") or 3000
+                    json_retry_max_output_tokens = binding_meta.get("json_retry_max_output_tokens") or max_output_tokens
+                    json_retry_max_attempts = binding_meta.get("json_retry_max_attempts") or 1
+                    timeout_ms = binding_meta.get("timeout_ms") or 60000
+                    temperature = binding_meta.get("temperature") if binding_meta.get("temperature") is not None else 0.1
+                    top_p = binding_meta.get("top_p") if binding_meta.get("top_p") is not None else 1.0
+                    
+                    max_steps = binding_meta.get("max_steps")
+                    if max_steps is None:
+                        max_steps = get_effective_max_steps(requested_mode, learning_mode or "solve", token_policy)
+                    
+                    retry_cap = binding_meta.get("retry_cap_tokens")
+                    trim_strategy = binding_meta.get("trim_strategy") or "trim_context_first"
                     
                     profile = PromptProfile(
                         tier=binding_tier_slug,
-                        system_prompt_content=binding_bundle["system_prompt"],
-                        developer_prompt_content=binding_bundle["developer_prompt"],
-                        json_schema_content=binding_bundle["schema"] if isinstance(binding_bundle["schema"], dict) else {},
-                        max_output_tokens=max_tokens,
+                        system_prompt_content=binding_bundle.get("system_prompt", ""),
+                        developer_prompt_content=binding_bundle.get("developer_prompt"),
+                        json_schema_content=binding_bundle.get("schema") if isinstance(binding_bundle.get("schema"), dict) else {},
+                        max_output_tokens=max_output_tokens,
+                        max_input_tokens=max_input_tokens,
+                        system_schema_budget_tokens=system_schema_budget_tokens,
+                        context_budget_tokens=context_budget_tokens,
+                        json_retry_max_output_tokens=json_retry_max_output_tokens,
+                        json_retry_max_attempts=json_retry_max_attempts,
+                        timeout_ms=timeout_ms,
+                        temperature=temperature,
+                        top_p=top_p,
+                        trim_strategy=trim_strategy,
+                        plot_points_cap=binding_meta.get("plot_points_cap"),
+                        plot_traces_cap=binding_meta.get("plot_traces_cap"),
+                        plot_annotations_cap=binding_meta.get("plot_annotations_cap"),
                         max_steps=max_steps,
+                        retry_cap_tokens=retry_cap,
                         mode=requested_mode,
                         allow_detailed=(requested_mode == "detailed"),
-                        allow_visuals_only_if_asked=False, # Rule 1: Minimal never has visuals inside solve
+                        allow_visuals_only_if_asked=False,
                         prompt_binding_meta=binding_bundle.get("meta"),
                     )
-                    telemetry["prompt_binding"] = binding_bundle.get("meta")
+                    
+                    # Update telemetry with resolved binding info
+                    telemetry["tier_effective"] = profile.tier
+                    telemetry["binding_id"] = profile.prompt_binding_meta.get("id") if profile.prompt_binding_meta else None
+                    telemetry["system_prompt_id"] = profile.prompt_binding_meta.get("global_system_prompt_id") if profile.prompt_binding_meta else None
+                    telemetry["developer_prompt_id"] = profile.prompt_binding_meta.get("developer_prompt_id") if profile.prompt_binding_meta else None
+                    telemetry["output_schema_id"] = profile.prompt_binding_meta.get("output_schema_id") if profile.prompt_binding_meta else None
+                    telemetry["max_output_tokens"] = profile.max_output_tokens
+                    telemetry["max_input_tokens"] = profile.max_input_tokens
+                    telemetry["trim_strategy"] = profile.trim_strategy
+                    telemetry["prompt_binding"] = profile.prompt_binding_meta
 
                     telemetry["mode_resolved"] = profile.mode
                     telemetry["tier_effective"] = effective_tier_slug # Log the REAL tier for billing/tracking
@@ -328,20 +393,10 @@ class SolverV3:
             last_error = None
             providers_to_try = self.client_manager.get_provider_chain()
             
-            # Helper for ensuring minimum tokens per tier (paid tiers need more for detailed schemas)
+            # Helper for ensuring minimum tokens per tier (NOW DYNAMIC)
             def _ensure_tier_tokens(provider: str, tokens: int) -> int:
-                if provider == "openai":
-                    tier_slug = (user_tier or "").lower()
-                    # Minimum token budgets for each tier's schema complexity
-                    tier_minimum = 900  # Default fallback
-                    if "free" in tier_slug:
-                        tier_minimum = 900  # Minimal schema
-                    elif "standard" in tier_slug or "pro" in tier_slug or "family" in tier_slug:
-                        tier_minimum = 2600  # Detailed schema needs more tokens
-                    elif "research" in tier_slug:
-                        tier_minimum = 3500  # Detailed schema with study mode
-                    # Use the HIGHER of requested or tier minimum to ensure schema fits
-                    return max(tokens, tier_minimum)
+                # [REFACTORED] Removed hardcoded 900/2600/3500 floors.
+                # The floors are now handled via PromptBinding configuration.
                 return tokens
             
             for pass_idx, current_mode in enumerate(passes):
@@ -418,6 +473,10 @@ class SolverV3:
                             image_url=image_url,
                             provider=provider,
                             request_id=request_id,
+                            temperature=profile.temperature,
+                            top_p=profile.top_p,
+                            max_input_tokens=profile.max_input_tokens,
+                            trim_strategy=profile.trim_strategy,
                         )
 
                         llm_end_perf = time.perf_counter()
@@ -490,7 +549,7 @@ class SolverV3:
                         telemetry["validation_failures_count"] += 1
                         repair_enabled = os.environ.get("LLM_REPAIR_ENABLED", "true").lower() in {"1", "true", "yes"}
                         attempts = telemetry.get("repair_attempts", 0)
-                        if repair_enabled and attempts < 1:
+                        if repair_enabled and attempts < profile.json_retry_max_attempts:
                             telemetry["repair_attempted"] = True
                             telemetry["repair_attempts"] = attempts + 1
                             try:
@@ -503,7 +562,7 @@ class SolverV3:
                                     validation_error,
                                     error_list,
                                     json_schema_config=openai_schema_wrapper,
-                                    max_output_tokens=min(1200, effective_tokens),
+                                    max_output_tokens=profile.json_retry_max_output_tokens,
                                     requested_mode=current_mode,
                                     trace=trace,
                                     provider=provider,
@@ -901,7 +960,10 @@ class SolverV3:
         requested_mode: str = "minimal",
         image_url: Optional[str] = None,
         provider: str = "openai",
-        request_id: Optional[str] = None,
+        temperature: float = 0.1,
+        top_p: float = 1.0,
+        max_input_tokens: int = 30000,
+        trim_strategy: str = "trim_context_first",
     ) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], str, str, int]:
         # Build compact JSON user message with normalized trusted_context
         if trace:
@@ -941,6 +1003,15 @@ class SolverV3:
                  messages.append({"role": "developer", "content": developer_prompt})
              messages.append({"role": "user", "content": user_message})
              
+             # Apply input trimming strategy
+             # We use a reasonable model ID for tiktoken
+             messages = trim_messages(
+                 messages=messages,
+                 max_input_tokens=max_input_tokens,
+                 strategy=trim_strategy,
+                 model="gpt-4o"
+             )
+
              # If image_url provided (Snap Mode), we need to inject it.
              # Standard OpenAI / OpenAI vision handling: content can be list.
              if image_url:
@@ -957,7 +1028,8 @@ class SolverV3:
                 prompt=None,
                 json_schema=schema_payload,  # Pass FULL wrapper with name, strict, schema
                 max_tokens=max_output_tokens,
-                temperature=0.4,
+                temperature=temperature,
+                top_p=top_p,
                 stream=False,
                 request_id=request_id,
                 model=self.default_model if provider == "openai" else None 

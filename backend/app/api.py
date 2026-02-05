@@ -7977,6 +7977,21 @@ class RegistryBindingItem(BaseModel):
     global_system_prompt_id: str
     developer_prompt_id: str
     output_schema_id: str
+    max_output_tokens: Optional[int] = None
+    max_input_tokens: Optional[int] = None
+    system_schema_budget_tokens: Optional[int] = None
+    context_budget_tokens: Optional[int] = None
+    json_retry_max_output_tokens: Optional[int] = None
+    json_retry_max_attempts: Optional[int] = None
+    timeout_ms: Optional[int] = None
+    temperature: Optional[float] = None
+    top_p: Optional[float] = None
+    plot_points_cap: Optional[int] = None
+    plot_traces_cap: Optional[int] = None
+    plot_annotations_cap: Optional[int] = None
+    trim_strategy: Optional[str] = None
+    max_steps: Optional[int] = None
+    retry_cap_tokens: Optional[int] = None
     is_active: bool
     updated_at: str
     updated_by: Optional[str]
@@ -8034,6 +8049,21 @@ class BindingActivateRequest(BaseModel):
     global_system_prompt_id: str
     developer_prompt_id: str
     output_schema_id: str
+    max_output_tokens: Optional[int] = None
+    max_input_tokens: Optional[int] = None
+    system_schema_budget_tokens: Optional[int] = None
+    context_budget_tokens: Optional[int] = None
+    json_retry_max_output_tokens: Optional[int] = None
+    json_retry_max_attempts: Optional[int] = None
+    timeout_ms: Optional[int] = None
+    temperature: Optional[float] = None
+    top_p: Optional[float] = None
+    plot_points_cap: Optional[int] = None
+    plot_traces_cap: Optional[int] = None
+    plot_annotations_cap: Optional[int] = None
+    trim_strategy: Optional[str] = None
+    max_steps: Optional[int] = None
+    retry_cap_tokens: Optional[int] = None
     updated_by: Optional[str] = None
 
 class PromptRegistryTestRequest(BaseModel):
@@ -8288,6 +8318,21 @@ async def admin_list_prompt_registry_bindings(db: Session = Depends(get_session)
             global_system_prompt_id=row.global_system_prompt_id,
             developer_prompt_id=row.developer_prompt_id,
             output_schema_id=row.output_schema_id,
+            max_output_tokens=row.max_output_tokens,
+            max_input_tokens=row.max_input_tokens,
+            system_schema_budget_tokens=row.system_schema_budget_tokens,
+            context_budget_tokens=row.context_budget_tokens,
+            json_retry_max_output_tokens=row.json_retry_max_output_tokens,
+            json_retry_max_attempts=row.json_retry_max_attempts,
+            timeout_ms=row.timeout_ms,
+            temperature=row.temperature,
+            top_p=row.top_p,
+            plot_points_cap=row.plot_points_cap,
+            plot_traces_cap=row.plot_traces_cap,
+            plot_annotations_cap=row.plot_annotations_cap,
+            trim_strategy=row.trim_strategy.value if row.trim_strategy else None,
+            max_steps=row.max_steps,
+            retry_cap_tokens=row.retry_cap_tokens,
             is_active=row.is_active,
             updated_at=row.updated_at.isoformat(),
             updated_by=row.updated_by,
@@ -8315,6 +8360,21 @@ async def admin_activate_prompt_registry_binding(req: BindingActivateRequest, db
         developer_prompt_id=req.developer_prompt_id,
         output_schema_id=req.output_schema_id,
         updated_by=req.updated_by,
+        max_output_tokens=req.max_output_tokens,
+        max_input_tokens=req.max_input_tokens,
+        system_schema_budget_tokens=req.system_schema_budget_tokens,
+        context_budget_tokens=req.context_budget_tokens,
+        json_retry_max_output_tokens=req.json_retry_max_output_tokens,
+        json_retry_max_attempts=req.json_retry_max_attempts,
+        timeout_ms=req.timeout_ms,
+        temperature=req.temperature,
+        top_p=req.top_p,
+        plot_points_cap=req.plot_points_cap,
+        plot_traces_cap=req.plot_traces_cap,
+        plot_annotations_cap=req.plot_annotations_cap,
+        trim_strategy=req.trim_strategy,
+        max_steps=req.max_steps,
+        retry_cap_tokens=req.retry_cap_tokens,
     )
     return RegistryBindingItem(
         id=entry.id,
@@ -8323,6 +8383,21 @@ async def admin_activate_prompt_registry_binding(req: BindingActivateRequest, db
         global_system_prompt_id=entry.global_system_prompt_id,
         developer_prompt_id=entry.developer_prompt_id,
         output_schema_id=entry.output_schema_id,
+        max_output_tokens=entry.max_output_tokens,
+        max_input_tokens=entry.max_input_tokens,
+        system_schema_budget_tokens=entry.system_schema_budget_tokens,
+        context_budget_tokens=entry.context_budget_tokens,
+        json_retry_max_output_tokens=entry.json_retry_max_output_tokens,
+        json_retry_max_attempts=entry.json_retry_max_attempts,
+        timeout_ms=entry.timeout_ms,
+        temperature=entry.temperature,
+        top_p=entry.top_p,
+        plot_points_cap=entry.plot_points_cap,
+        plot_traces_cap=entry.plot_traces_cap,
+        plot_annotations_cap=entry.plot_annotations_cap,
+        trim_strategy=entry.trim_strategy.value if entry.trim_strategy else None,
+        max_steps=entry.max_steps,
+        retry_cap_tokens=entry.retry_cap_tokens,
         is_active=entry.is_active,
         updated_at=entry.updated_at.isoformat(),
         updated_by=entry.updated_by,

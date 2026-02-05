@@ -35,6 +35,21 @@ class PromptBundle:
     developer_prompt_content: str
     output_schema_json: Dict[str, Any]
     template_versions: Dict[str, Optional[int]]
+    max_output_tokens: Optional[int] = None
+    max_input_tokens: Optional[int] = None
+    system_schema_budget_tokens: Optional[int] = None
+    context_budget_tokens: Optional[int] = None
+    json_retry_max_output_tokens: Optional[int] = None
+    json_retry_max_attempts: Optional[int] = None
+    timeout_ms: Optional[int] = None
+    temperature: Optional[float] = None
+    top_p: Optional[float] = None
+    plot_points_cap: Optional[int] = None
+    plot_traces_cap: Optional[int] = None
+    plot_annotations_cap: Optional[int] = None
+    trim_strategy: Optional[str] = None
+    max_steps: Optional[int] = None
+    retry_cap_tokens: Optional[int] = None
 
 
 _CACHE_TTL_SECONDS = 60
@@ -230,6 +245,21 @@ def resolve_prompt_bundle(
             "developer": developer_entry.version,
             "schema": schema_entry.version,
         },
+        max_output_tokens=binding.max_output_tokens,
+        max_input_tokens=binding.max_input_tokens,
+        system_schema_budget_tokens=binding.system_schema_budget_tokens,
+        context_budget_tokens=binding.context_budget_tokens,
+        json_retry_max_output_tokens=binding.json_retry_max_output_tokens,
+        json_retry_max_attempts=binding.json_retry_max_attempts,
+        timeout_ms=binding.timeout_ms,
+        temperature=binding.temperature,
+        top_p=binding.top_p,
+        plot_points_cap=binding.plot_points_cap,
+        plot_traces_cap=binding.plot_traces_cap,
+        plot_annotations_cap=binding.plot_annotations_cap,
+        trim_strategy=binding.trim_strategy.value if binding.trim_strategy else None,
+        max_steps=binding.max_steps,
+        retry_cap_tokens=binding.retry_cap_tokens,
     )
     _cache_set(cache_key, bundle)
     return bundle
@@ -319,6 +349,21 @@ def load_prompt_bundle(
             "global_system_prompt_id": bundle.global_system_prompt_id,
             "developer_prompt_id": bundle.developer_prompt_id,
             "output_schema_id": bundle.output_schema_id,
+            "max_output_tokens": bundle.max_output_tokens,
+            "max_input_tokens": bundle.max_input_tokens,
+            "system_schema_budget_tokens": bundle.system_schema_budget_tokens,
+            "context_budget_tokens": bundle.context_budget_tokens,
+            "json_retry_max_output_tokens": bundle.json_retry_max_output_tokens,
+            "json_retry_max_attempts": bundle.json_retry_max_attempts,
+            "timeout_ms": bundle.timeout_ms,
+            "temperature": bundle.temperature,
+            "top_p": bundle.top_p,
+            "plot_points_cap": bundle.plot_points_cap,
+            "plot_traces_cap": bundle.plot_traces_cap,
+            "plot_annotations_cap": bundle.plot_annotations_cap,
+            "trim_strategy": bundle.trim_strategy,
+            "max_steps": bundle.max_steps,
+            "retry_cap_tokens": bundle.retry_cap_tokens,
         },
         "system_prompt": bundle.system_prompt_content,
         "developer_prompt": bundle.developer_prompt_content,

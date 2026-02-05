@@ -608,6 +608,13 @@ class PromptModeEnum(str, Enum):
     PLOT_SPEC = "PLOT_SPEC"
     OCR_EXTRACT = "OCR_EXTRACT"
 
+class TrimStrategyEnum(str, Enum):
+    NONE = "none"
+    TRIM_CONTEXT_FIRST = "trim_context_first"
+    TRIM_USER_FIRST = "trim_user_first"
+    SUMMARIZE_CONTEXT = "summarize_context"
+    TRIM_EVERYTHING_EXCEPT_PLOT_PLAN = "trim_everything_except_plot_plan"
+
 class PromptRoleEnum(str, Enum):
     SYSTEM = "SYSTEM"
     DEVELOPER = "DEVELOPER"
@@ -652,6 +659,29 @@ class PromptBinding(SQLModel, table=True):
     global_system_prompt_id: str = Field(index=True)
     developer_prompt_id: str = Field(index=True)
     output_schema_id: str = Field(index=True)
+
+    # Dynamic Token Configuration (Overrides SystemConfig Defaults if set)
+    max_output_tokens: Optional[int] = Field(default=None)
+    max_input_tokens: Optional[int] = Field(default=None)
+    system_schema_budget_tokens: Optional[int] = Field(default=None)
+    context_budget_tokens: Optional[int] = Field(default=None)
+    json_retry_max_output_tokens: Optional[int] = Field(default=None)
+    json_retry_max_attempts: Optional[int] = Field(default=None)
+    timeout_ms: Optional[int] = Field(default=None)
+    temperature: Optional[float] = Field(default=None)
+    top_p: Optional[float] = Field(default=None)
+
+    # Plot-only caps
+    plot_points_cap: Optional[int] = Field(default=None)
+    plot_traces_cap: Optional[int] = Field(default=None)
+    plot_annotations_cap: Optional[int] = Field(default=None)
+
+    # Trimming
+    trim_strategy: Optional[TrimStrategyEnum] = Field(default=None, sa_column=Column(SAEnum(TrimStrategyEnum)))
+
+    max_steps: Optional[int] = Field(default=None)
+    retry_cap_tokens: Optional[int] = Field(default=None) # Legacy field, keeping for compatibility
+
     is_active: bool = Field(default=True, index=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

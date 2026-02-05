@@ -20,6 +20,7 @@ from sqlmodel import Session
 from app.database import get_session
 from app.models import PromptTemplateEntry, JsonSchemaEntry, PromptBinding, PromptModeEnum
 from app.prompts.db_loader import resolve_prompt_bundle, PromptBindingLookupError, PromptBundle
+from app.utils.token_utils import trim_messages
 
 logger = logging.getLogger(__name__)
 
@@ -196,6 +197,7 @@ class PlotPipelineService:
                 if constraints:
                     user_content["constraints"] = constraints
             
+            # Build messages
             messages = [
                 {"role": "system", "content": system_prompt},
             ]
@@ -206,20 +208,30 @@ class PlotPipelineService:
                 "role": "user",
                 "content": json.dumps(user_content, ensure_ascii=False)
             })
+
+            # Apply input trimming
+            messages = trim_messages(
+                messages=messages,
+                max_input_tokens=bundle.max_input_tokens or 30000,
+                strategy=bundle.trim_strategy or "trim_context_first",
+                model="gpt-4o"
+            )
             
             # Get schema from bundle (comes from DB binding)
             schema = bundle.output_schema_json
             
             # Call OpenAI
             response = await self.openai_client.chat.completions.create(
-                model="gpt-4o-mini",  # Use mini for speed
+                model="gpt-4o-mini",
                 messages=messages,
-                temperature=0.1,
+                temperature=bundle.temperature if bundle.temperature is not None else 0.1,
+                top_p=bundle.top_p if bundle.top_p is not None else 1.0,
+                max_tokens=bundle.max_output_tokens or 800,
                 response_format={
                     "type": "json_schema",
                     "json_schema": {
                         "name": "plot_trigger",
-                        "strict": False,  # Disable strict for complex plot schemas
+                        "strict": False,
                         "schema": schema
                     }
                 }
@@ -311,7 +323,7 @@ class PlotPipelineService:
                 plot_plan = self._infer_plot_plan_from_solve(solve_result)
             
             # Pre-compute sampled points for reliability
-            plot_plan = self._precompute_samples(plot_plan)
+            plot_plan = self._precompute_samples(plot_plan, bundle.plot_points_cap)
             
             user_content = {
                 "question_id": question_id or "unknown",
@@ -320,6 +332,7 @@ class PlotPipelineService:
                 "problem_summary": problem_text[:200],
             }
             
+            # Build messages
             messages = [
                 {"role": "system", "content": system_prompt},
             ]
@@ -330,6 +343,14 @@ class PlotPipelineService:
                 "role": "user",
                 "content": json.dumps(user_content, ensure_ascii=False)
             })
+
+            # Apply input trimming
+            messages = trim_messages(
+                messages=messages,
+                max_input_tokens=bundle.max_input_tokens or 30000,
+                strategy=bundle.trim_strategy or "trim_context_first",
+                model="gpt-4o"
+            )
             
             # Get schema from bundle (comes from DB binding)
             schema = bundle.output_schema_json
@@ -338,8 +359,9 @@ class PlotPipelineService:
             response = await self.openai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=messages,
-                temperature=0.1,
-                max_tokens=1400,  # Enforce separate budget for plot spec
+                temperature=bundle.temperature if bundle.temperature is not None else 0.1,
+                top_p=bundle.top_p if bundle.top_p is not None else 1.0,
+                max_tokens=bundle.max_output_tokens or 1400,
                 response_format={
                     "type": "json_schema",
                     "json_schema": {
@@ -424,10 +446,12 @@ class PlotPipelineService:
             "key_points": []
         }
     
-    def _precompute_samples(self, plot_plan: Dict[str, Any]) -> Dict[str, Any]:
+    def _precompute_samples(self, plot_plan: Dict[str, Any], points_cap: Optional[int] = None) -> Dict[str, Any]:
         """Pre-compute sampled points for numeric stability."""
         series_plan = plot_plan.get("series_plan", [])
         ranges = plot_plan.get("ranges", {})
+        
+        num_points = points_cap or 25
         
         x_range = ranges.get("x", [-10, 10])
         if isinstance(x_range, dict):
@@ -439,8 +463,8 @@ class PlotPipelineService:
                 continue
             
             try:
-                # Generate x points (max 25 per spec)
-                x_vals = np.linspace(x_range[0], x_range[1], 25)
+                # Generate x points
+                x_vals = np.linspace(x_range[0], x_range[1], num_points)
                 
                 # Simple evaluation for common functions
                 y_vals = self._safe_eval(expr, x_vals)
@@ -448,8 +472,8 @@ class PlotPipelineService:
                 # Filter out infinities/NaN
                 valid_mask = np.isfinite(y_vals)
                 series["sampled_points"] = {
-                    "x": x_vals[valid_mask].tolist()[:25],
-                    "y": y_vals[valid_mask].tolist()[:25]
+                    "x": x_vals[valid_mask].tolist()[:num_points],
+                    "y": y_vals[valid_mask].tolist()[:num_points]
                 }
             except Exception as e:
                 logger.warning(f"[PLOT_PIPELINE] Sampling failed for {expr}: {e}")
