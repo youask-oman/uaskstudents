@@ -16,8 +16,9 @@ class ProfileResolver:
     Acts as a bridge between high-level intent and low-level prompt binding.
     """
     
-    def __init__(self, prompt_binding_meta: Dict[str, Any]):
+    def __init__(self, prompt_binding_meta: Dict[str, Any], mode: str):
         self.prompt_binding_meta = prompt_binding_meta
+        self.mode = mode
 
     @classmethod
     def resolve_profile(
@@ -88,7 +89,14 @@ class ProfileResolver:
                 "plot_annotations_cap": binding.plot_annotations_cap,
             }
             
-            return cls(prompt_binding_meta=meta)
+            # api.py expects .mode to be available on the instance.
+            # Usually strict match to requested_mode or binding.mode.
+            # binding.mode is Enum, we convert to str usually or keep enum.
+            # api.py passes 'resolved_profile.mode' to get_effective_max_tokens.
+            # binding.mode is guaranteed to exist.
+            profile_mode = binding.mode.value if hasattr(binding.mode, 'value') else str(binding.mode)
+            
+            return cls(prompt_binding_meta=meta, mode=profile_mode)
 
         except PromptRegistryError as e:
             raise ProfileResolutionError(str(e), details={"original_error": str(e)})

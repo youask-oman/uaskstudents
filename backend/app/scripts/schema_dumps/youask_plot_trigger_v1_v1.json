@@ -1,0 +1,35 @@
+{
+  "name": "plot_trigger_response",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "plot_needed": {
+        "type": "boolean",
+        "description": "Whether a plot is needed to answer the user's request."
+      },
+      "plot_type": {
+        "type": "string",
+        "enum": [
+          "line",
+          "scatter",
+          "bar",
+          "pie",
+          "histogram",
+          "none"
+        ],
+        "description": "The type of plot to generate."
+      },
+      "reason": {
+        "type": "string",
+        "description": "The reason why a plot is needed or not."
+      }
+    },
+    "required": [
+      "plot_needed",
+      "plot_type",
+      "reason"
+    ],
+    "additionalProperties": false
+  },
+  "strict": true
+}

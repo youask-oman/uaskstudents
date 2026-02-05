@@ -1,0 +1,27 @@
+{
+  "name": "plot_spec_response",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "plot_id": {
+        "type": "string",
+        "description": "A unique identifier for the plot."
+      },
+      "plotly_json": {
+        "type": "object",
+        "description": "The full Plotly JSON object representing the plot. Must include 'data' and 'layout'.",
+        "additionalProperties": true
+      },
+      "attach_to_step_id": {
+        "type": "string",
+        "description": "The ID of the step in the solution plan to attach this plot to."
+      }
+    },
+    "required": [
+      "plot_id",
+      "plotly_json"
+    ],
+    "additionalProperties": false
+  },
+  "strict": true
+}

@@ -322,6 +322,18 @@ class PromptRegistryService:
         return system_prompt, schema_entry.content, binding
 
     def validate_schema(self, schema_content: Dict[str, Any]) -> Optional[str]:
+        """
+        Validate schema for both JSON Schema compliance and OpenAI compatibility.
+        Returns error message if invalid, None if valid.
+        """
+        # Check for invalid type declarations first (OpenAI-specific)
+        from app.utils.schema_validator import validate_openai_schema_wrapper
+        type_issues = validate_openai_schema_wrapper(schema_content)
+        if type_issues:
+            error_details = "; ".join([f"{path}: {msg}" for path, msg in type_issues[:3]])
+            return f"Invalid type declarations: {error_details}"
+        
+        # Then validate JSON Schema structure per draft 2020-12
         schema_for_validation = self.schema_object_for_validation(schema_content)
         try:
             Draft202012Validator.check_schema(schema_for_validation)
@@ -571,6 +583,15 @@ class PromptRegistryService:
         content: Dict[str, Any],
         updated_by: Optional[str],
     ) -> JsonSchemaEntry:
+        # Validate schema types before saving (reject invalid types like "None", null)
+        from app.utils.schema_validator import validate_openai_schema_wrapper, SchemaValidationError
+        type_issues = validate_openai_schema_wrapper(content)
+        if type_issues:
+            error_details = "; ".join([f"{path}: {msg}" for path, msg in type_issues[:3]])
+            raise PromptRegistryError(
+                f"Schema contains invalid type declarations: {error_details}"
+            )
+        
         current = self.get_active_schema(session, schema_id)
         if current and json.dumps(current.content, sort_keys=True) == json.dumps(content, sort_keys=True):
             return current

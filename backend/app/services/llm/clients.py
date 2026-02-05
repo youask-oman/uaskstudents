@@ -6,6 +6,8 @@ import time
 from dataclasses import dataclass
 from typing import Any, AsyncIterator, Dict, List, Optional
 
+from app.utils.structured_output_builder import build_openai_structured_output, log_openai_request_trace
+
 
 class LLMProviderError(Exception):
     def __init__(
@@ -239,12 +241,12 @@ class OpenAIClient:
 
                 text_format = None
                 if json_schema:
-                    text_format = {
-                        "type": "json_schema",
-                        "name": json_schema.get("name", "schema"),
-                        "schema": json_schema.get("schema", json_schema),
-                        "strict": json_schema.get("strict", True),
-                    }
+                    # Use shared helper to build structured output param for Responses API
+                    text_format = build_openai_structured_output(
+                        db_wrapper=json_schema,
+                        endpoint="responses",
+                        call_name=None  # Caller can provide via trace logging
+                    )
 
                 params: Dict[str, Any] = {
                     "model": model_name,
@@ -302,7 +304,12 @@ class OpenAIClient:
                     "max_completion_tokens": max_tokens,
                 }
                 if json_schema:
-                    params["response_format"] = {"type": "json_schema", "json_schema": json_schema}
+                    # Use shared helper to build structured output param for Chat Completions API
+                    params["response_format"] = build_openai_structured_output(
+                        db_wrapper=json_schema,
+                        endpoint="chat_completions",
+                        call_name=None  # Caller can provide via trace logging
+                    )
                 if temperature is not None:
                     params["temperature"] = temperature
 

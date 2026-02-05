@@ -18,7 +18,7 @@ from app.utils.schema_cleaner import enforce_strict
 from app.services.validation_v3 import create_error_response
 from app.utils.schema_deref import deref_json_schema, validate_no_refs
 # from app.llm_profiles.profiles import get_prompt_profile # Removed: module deleted
-from app.services.response_mapper import map_minimal_to_canonical
+from app.services.response_mapper import map_minimal_to_canonical, normalize_raw_llm_response
 from app.utils.token_limits import get_effective_max_tokens, get_effective_max_steps
 from app.services.token_policy import get_token_policy, TokenPolicy
 from app.services.llm.manager import LLMManager, LLMProviderError, _default_provider, get_configured_openai_model
@@ -634,6 +634,9 @@ class SolverV3:
             # --- Success Processing ---
             response_data = final_response_data
             
+            # Step 3.5: Normalize raw LLM response (fix enum variations)
+            response_data = normalize_raw_llm_response(response_data)
+            
             # Step 4: Map Minimal Response (if needed)
             if successful_mode == "minimal":
                  try:
@@ -978,6 +981,7 @@ class SolverV3:
         max_input_tokens: int = 30000,
         trim_strategy: str = "trim_context_first",
         timeout: float = 60.0,
+        request_id: Optional[str] = None,
     ) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], str, str, int]:
         
         # Build compact JSON user message with normalized trusted_context
@@ -1044,7 +1048,6 @@ class SolverV3:
                 json_schema=schema_payload,  # Pass FULL wrapper with name, strict, schema
                 max_tokens=max_output_tokens,
                 temperature=temperature,
-                top_p=top_p,
                 stream=False,
                 request_id=request_id,
                 model=self.default_model if provider == "openai" else None 

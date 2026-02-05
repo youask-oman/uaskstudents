@@ -21,6 +21,7 @@ from app.database import get_session
 from app.models import PromptTemplateEntry, JsonSchemaEntry, PromptBinding, PromptModeEnum
 from app.prompts.db_loader import resolve_prompt_bundle, PromptBindingLookupError, PromptBundle
 from app.utils.token_utils import trim_messages
+from app.utils.structured_output_builder import build_openai_structured_output, log_openai_request_trace
 
 logger = logging.getLogger(__name__)
 
@@ -217,24 +218,36 @@ class PlotPipelineService:
                 model="gpt-4o"
             )
             
-            # Get schema from bundle (comes from DB binding)
-            schema = bundle.output_schema_json
+            # Get schema from bundle and build structured output using shared helper
+            schema_wrapper = bundle.output_schema_json
+            response_format = build_openai_structured_output(
+                db_wrapper=schema_wrapper,
+                endpoint="chat_completions",
+                call_name="PLOT_TRIGGER"
+            )
             
             # Call OpenAI
+            log_openai_request_trace(
+                call_name="PLOT_TRIGGER",
+                user_id=None,
+                tier=tier,
+                binding_id=bundle.prompt_binding_id,
+                model="gpt-4o-mini",
+                endpoint="chat_completions",
+                max_output_tokens=bundle.max_output_tokens or 800,
+                schema_wrapper=schema_wrapper,
+                structured_output_param=response_format,
+                messages_info={"count": len(messages), "system": system_prompt[:50] if system_prompt else ""},
+                request_id=question_id
+            )
+
             response = await self.openai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=messages,
                 temperature=bundle.temperature if bundle.temperature is not None else 0.1,
                 top_p=bundle.top_p if bundle.top_p is not None else 1.0,
                 max_tokens=bundle.max_output_tokens or 800,
-                response_format={
-                    "type": "json_schema",
-                    "json_schema": {
-                        "name": "plot_trigger",
-                        "strict": False,
-                        "schema": schema
-                    }
-                }
+                response_format=response_format
             )
             
             result_json = self._extract_json_from_response(response.choices[0].message.content)
@@ -352,24 +365,36 @@ class PlotPipelineService:
                 model="gpt-4o"
             )
             
-            # Get schema from bundle (comes from DB binding)
-            schema = bundle.output_schema_json
+            # Get schema from bundle and build structured output using shared helper
+            schema_wrapper = bundle.output_schema_json
+            response_format = build_openai_structured_output(
+                db_wrapper=schema_wrapper,
+                endpoint="chat_completions",
+                call_name="PLOT_SPEC"
+            )
             
             # Call OpenAI
+            log_openai_request_trace(
+                call_name="PLOT_SPEC",
+                user_id=None, 
+                tier=tier,
+                binding_id=bundle.prompt_binding_id,
+                model="gpt-4o-mini",
+                endpoint="chat_completions",
+                max_output_tokens=bundle.max_output_tokens or 1400,
+                schema_wrapper=schema_wrapper,
+                structured_output_param=response_format,
+                messages_info={"count": len(messages), "system": system_prompt[:50] if system_prompt else ""},
+                request_id=question_id
+            )
+
             response = await self.openai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=messages,
                 temperature=bundle.temperature if bundle.temperature is not None else 0.1,
                 top_p=bundle.top_p if bundle.top_p is not None else 1.0,
                 max_tokens=bundle.max_output_tokens or 1400,
-                response_format={
-                    "type": "json_schema",
-                    "json_schema": {
-                        "name": "plot_spec",
-                        "strict": False,
-                        "schema": schema
-                    }
-                }
+                response_format=response_format
             )
             
             result_json = self._extract_json_from_response(response.choices[0].message.content)

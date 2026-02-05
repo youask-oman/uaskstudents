@@ -6,6 +6,177 @@ from app.schemas.na_math_solver_v3 import (
     VisualKindEnum, FinalValueV3, AlternativeMethodV3, AlternativeVisualV3
 )
 
+# ============================================================================
+# LLM Output Normalization Maps
+# ============================================================================
+# The LLM sometimes returns slightly different task/domain names than
+# the strict enum values. These maps normalize common variations.
+
+TASK_NORMALIZATION_MAP = {
+    # Common LLM variations -> valid TaskEnum values
+    "equation": "solve_equation",
+    "inequality": "solve_inequality",
+    "solving": "solve_equation",
+    "simplification": "simplify",
+    "factoring": "factor",
+    "factorize": "factor",
+    "expansion": "expand",
+    "evaluation": "evaluate",
+    "graphing": "graph",
+    "plot": "graph",
+    "roots": "find_roots",
+    "intercepts": "find_intercepts",
+    "vertex": "find_vertex",
+    "extrema": "find_extrema",
+    "system_of_equations": "system_solve",
+    "systems": "system_solve",
+    "derivative": "calculus_derivative",
+    "differentiate": "calculus_derivative",
+    "integral": "calculus_integral",
+    "integrate": "calculus_integral",
+    "word": "word_problem",
+    "trig": "trigonometry",
+    "stats": "statistics",
+    "prob": "probability",
+    "sequences": "sequence_series",
+    "series": "sequence_series",
+}
+
+DOMAIN_NORMALIZATION_MAP = {
+    # Common LLM variations -> valid DomainEnum values
+    "pre_algebra": "algebra",
+    "pre-algebra": "algebra",
+    "prealgebra": "algebra", 
+    "linear_algebra": "algebra",
+    "abstract_algebra": "algebra",
+    "number_theory": "discrete",
+    "combinatorics": "discrete",
+    "trig": "trigonometry",
+    "calc": "calculus",
+    "stats": "statistics",
+    "prob": "probability",
+    "geom": "geometry",
+    "arith": "arithmetic",
+}
+
+GRADE_BAND_NORMALIZATION_MAP = {
+    # Common LLM variations -> valid GradeBandEnum values
+    "k-2": "K-2",
+    "k2": "K-2",
+    "kindergarten": "K-2",
+    "3-5": "3-5",
+    "elementary": "3-5",
+    "6-8": "6-8",
+    "middle_school": "6-8",
+    "middle school": "6-8",
+    "9-10": "9-10",
+    "high_school": "9-10",
+    "high school": "9-10",
+    "11-12": "11-12",
+    "advanced_high_school": "11-12",
+    "college": "college_intro",
+    "university": "college_intro",
+    "undergraduate": "college_intro",
+}
+
+DIFFICULTY_NORMALIZATION_MAP = {
+    "basic": "easy",
+    "simple": "easy",
+    "beginner": "easy",
+    "medium": "standard",
+    "moderate": "standard",
+    "intermediate": "standard",
+    "hard": "challenging",
+    "difficult": "challenging",
+    "advanced": "challenging",
+}
+
+
+def _normalize_task(task: str) -> str:
+    """Normalize a task string to a valid TaskEnum value."""
+    task_lower = task.lower().strip()
+    # First check if already valid
+    valid_tasks = {e.value for e in TaskEnum}
+    if task_lower in valid_tasks:
+        return task_lower
+    # Try normalization map
+    if task_lower in TASK_NORMALIZATION_MAP:
+        return TASK_NORMALIZATION_MAP[task_lower]
+    # Default to 'other'
+    return "other"
+
+
+def _normalize_domain(domain: str) -> str:
+    """Normalize a domain string to a valid DomainEnum value."""
+    domain_lower = domain.lower().strip()
+    valid_domains = {e.value for e in DomainEnum}
+    if domain_lower in valid_domains:
+        return domain_lower
+    if domain_lower in DOMAIN_NORMALIZATION_MAP:
+        return DOMAIN_NORMALIZATION_MAP[domain_lower]
+    return "unknown"
+
+
+def _normalize_grade_band(grade: str) -> str:
+    """Normalize a grade band string to a valid GradeBandEnum value."""
+    grade_lower = grade.lower().strip()
+    valid_grades = {e.value for e in GradeBandEnum}
+    # Direct match (case-insensitive for some)
+    for valid in valid_grades:
+        if grade_lower == valid.lower():
+            return valid
+    if grade_lower in GRADE_BAND_NORMALIZATION_MAP:
+        return GRADE_BAND_NORMALIZATION_MAP[grade_lower]
+    return "unknown"
+
+
+def _normalize_difficulty(difficulty: str) -> str:
+    """Normalize a difficulty string to a valid DifficultyEnum value."""
+    diff_lower = difficulty.lower().strip()
+    valid_diffs = {e.value for e in DifficultyEnum}
+    if diff_lower in valid_diffs:
+        return diff_lower
+    if diff_lower in DIFFICULTY_NORMALIZATION_MAP:
+        return DIFFICULTY_NORMALIZATION_MAP[diff_lower]
+    return "unknown"
+
+
+def normalize_raw_llm_response(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Normalize raw LLM response data in-place before Pydantic validation.
+    
+    This handles variations in enum values that the LLM might produce,
+    converting them to values that match the strict Pydantic enums.
+    
+    Safe to call on both minimal and detailed responses.
+    """
+    if not isinstance(data, dict):
+        return data
+    
+    # Normalize problem.detected_tasks
+    if "problem" in data and isinstance(data["problem"], dict):
+        raw_tasks = data["problem"].get("detected_tasks", [])
+        if isinstance(raw_tasks, list):
+            data["problem"]["detected_tasks"] = [
+                _normalize_task(t) for t in raw_tasks if isinstance(t, str)
+            ]
+    
+    # Normalize classification fields
+    if "classification" in data and isinstance(data["classification"], dict):
+        cls = data["classification"]
+        
+        if "domain" in cls and isinstance(cls["domain"], str):
+            cls["domain"] = _normalize_domain(cls["domain"])
+        
+        if "grade_band" in cls and isinstance(cls["grade_band"], str):
+            cls["grade_band"] = _normalize_grade_band(cls["grade_band"])
+        
+        if "difficulty" in cls and isinstance(cls["difficulty"], str):
+            cls["difficulty"] = _normalize_difficulty(cls["difficulty"])
+    
+    return data
+
+
 def map_minimal_to_canonical(
     minimal_data: Dict[str, Any], 
     original_problem_text: str
@@ -17,19 +188,27 @@ def map_minimal_to_canonical(
     
     # 1. Problem Definition (Partial Map)
     prob_data = minimal_data.get("problem", {})
+    # Normalize detected_tasks before Pydantic validation
+    raw_tasks = prob_data.get("detected_tasks", [])
+    normalized_tasks = [_normalize_task(t) for t in raw_tasks if isinstance(t, str)]
+    
     problem = ProblemDefinitionV3(
         original_text=prob_data.get("original_text", original_problem_text),
         normalized_text=prob_data.get("normalized_text", original_problem_text),
-        detected_tasks=prob_data.get("detected_tasks", [])
+        detected_tasks=normalized_tasks
     )
     
-    # 2. Classification
+    # 2. Classification - normalize enum values
     class_data = minimal_data.get("classification", {})
+    raw_grade = class_data.get("grade_band", "unknown")
+    raw_domain = class_data.get("domain", "unknown")
+    raw_difficulty = class_data.get("difficulty", "unknown")
+    
     classification = ClassificationV3(
-        grade_band=class_data.get("grade_band", GradeBandEnum.UNKNOWN),
-        domain=class_data.get("domain", DomainEnum.UNKNOWN),
+        grade_band=_normalize_grade_band(raw_grade) if isinstance(raw_grade, str) else raw_grade,
+        domain=_normalize_domain(raw_domain) if isinstance(raw_domain, str) else raw_domain,
         topic=class_data.get("topic", "General"),
-        difficulty=class_data.get("difficulty", DifficultyEnum.UNKNOWN)
+        difficulty=_normalize_difficulty(raw_difficulty) if isinstance(raw_difficulty, str) else raw_difficulty
     )
     
     # 3. Refusal

@@ -1,0 +1,212 @@
+{
+  "type": "json_schema",
+  "name": "youask_plot_spec_v1",
+  "strict": true,
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "YouAsk Plot Spec v1",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "plot"
+    ],
+    "properties": {
+      "plot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "plot_id",
+          "attach_to_step_id",
+          "plotly"
+        ],
+        "properties": {
+          "plot_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "attach_to_step_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "maximum": 99
+          },
+          "plotly": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "data",
+              "layout",
+              "config"
+            ],
+            "properties": {
+              "data": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 3,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "required": [
+                    "type"
+                  ],
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "scatter",
+                        "histogram",
+                        "box"
+                      ]
+                    },
+                    "mode": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "lines",
+                        "markers",
+                        "lines+markers",
+                        null
+                      ]
+                    },
+                    "name": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 60
+                    },
+                    "x": {
+                      "type": [
+                        "array",
+                        "null"
+                      ],
+                      "minItems": 0,
+                      "maxItems": 50,
+                      "items": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      }
+                    },
+                    "y": {
+                      "type": [
+                        "array",
+                        "null"
+                      ],
+                      "minItems": 0,
+                      "maxItems": 50,
+                      "items": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              "layout": {
+                "type": "object",
+                "additionalProperties": true,
+                "required": [
+                  "title",
+                  "xaxis",
+                  "yaxis"
+                ],
+                "properties": {
+                  "title": {
+                    "type": [
+                      "string",
+                      "object"
+                    ],
+                    "maxLength": 120
+                  },
+                  "xaxis": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "properties": {
+                      "title": {
+                        "type": [
+                          "string",
+                          "object",
+                          "null"
+                        ],
+                        "maxLength": 60
+                      },
+                      "range": {
+                        "type": [
+                          "array",
+                          "null"
+                        ],
+                        "minItems": 2,
+                        "maxItems": 2,
+                        "items": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "yaxis": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "properties": {
+                      "title": {
+                        "type": [
+                          "string",
+                          "object",
+                          "null"
+                        ],
+                        "maxLength": 60
+                      },
+                      "range": {
+                        "type": [
+                          "array",
+                          "null"
+                        ],
+                        "minItems": 2,
+                        "maxItems": 2,
+                        "items": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "config": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "responsive",
+                  "displayModeBar"
+                ],
+                "properties": {
+                  "responsive": {
+                    "type": "boolean",
+                    "const": true
+                  },
+                  "displayModeBar": {
+                    "type": "boolean",
+                    "const": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
