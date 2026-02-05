@@ -19,16 +19,9 @@ from sqlmodel import Session
 
 from app.database import get_session
 from app.models import PromptTemplateEntry, JsonSchemaEntry, PromptBinding, PromptModeEnum
-from app.prompts.db_loader import resolve_prompt_bundle, PromptBindingLookupError
+from app.prompts.db_loader import resolve_prompt_bundle, PromptBindingLookupError, PromptBundle
 
 logger = logging.getLogger(__name__)
-
-# Prompt/Schema IDs (must match DB entries)
-PLOT_TRIGGER_PROMPT_ID = "plot_trigger_v1"
-PLOT_SPEC_PROMPT_ID = "plot_spec_v1"
-PLOT_TRIGGER_SCHEMA_ID = "youask_plot_trigger_v1.schema.json"
-PLOT_SPEC_SCHEMA_ID = "youask_plot_spec_v1.schema.json"
-GLOBAL_SYSTEM_PROMPT_ID = "global_system_prompt_v1"
 
 
 @dataclass
@@ -171,18 +164,17 @@ class PlotPipelineService:
     ) -> PlotTriggerResult:
         """Call plot_trigger_v1 using DB-loaded prompts."""
         try:
-            # Load prompt bundle from DB
+            # Load prompt bundle from DB (looks up binding by tier+mode)
             bundle = resolve_prompt_bundle(
                 db_session=self.db,
                 provider="openai",
                 tier=tier,
                 mode=PromptModeEnum.PLOT_TRIGGER,
-                prompt_id=PLOT_TRIGGER_PROMPT_ID,
             )
             
-            system_prompt = bundle.get("system", "You are a plotting assistant.")
-            developer_prompt = bundle.get("developer", "")
-            schema_config = bundle.get("schema_config", {})
+            system_prompt = bundle.system_prompt_content
+            developer_prompt = bundle.developer_prompt_content
+            schema_config = bundle.output_schema_json
             
             # Build user message
             final_answer = solve_result.get("final_answer", {})
@@ -215,8 +207,8 @@ class PlotPipelineService:
                 "content": json.dumps(user_content, ensure_ascii=False)
             })
             
-            # Get schema for structured output
-            schema = self._get_schema(PLOT_TRIGGER_SCHEMA_ID)
+            # Get schema from bundle (comes from DB binding)
+            schema = bundle.output_schema_json
             
             # Call OpenAI
             response = await self.openai_client.chat.completions.create(
@@ -294,17 +286,16 @@ class PlotPipelineService:
     ) -> PlotSpecResult:
         """Call plot_spec_v1 using DB-loaded prompts."""
         try:
-            # Load prompt bundle from DB
+            # Load prompt bundle from DB (looks up binding by tier+mode)
             bundle = resolve_prompt_bundle(
                 db_session=self.db,
                 provider="openai",
                 tier=tier,
                 mode=PromptModeEnum.PLOT_SPEC,
-                prompt_id=PLOT_SPEC_PROMPT_ID,
             )
             
-            system_prompt = bundle.get("system", "You are a plotting assistant.")
-            developer_prompt = bundle.get("developer", "")
+            system_prompt = bundle.system_prompt_content
+            developer_prompt = bundle.developer_prompt_content
             
             # Build plot plan
             if trigger_result:
@@ -340,8 +331,8 @@ class PlotPipelineService:
                 "content": json.dumps(user_content, ensure_ascii=False)
             })
             
-            # Get schema
-            schema = self._get_schema(PLOT_SPEC_SCHEMA_ID)
+            # Get schema from bundle (comes from DB binding)
+            schema = bundle.output_schema_json
             
             # Call OpenAI
             response = await self.openai_client.chat.completions.create(

@@ -109,26 +109,7 @@ def on_startup():
 
         bootstrap_from_files = os.environ.get("PROMPT_REGISTRY_BOOTSTRAP_FROM_FILES", "false").lower() in {"1", "true", "yes"}
         if bootstrap_from_files:
-            try:
-                prompt_registry_service.ensure_ocr_extract_prompts(session, updated_by="startup")
-            except Exception as e:
-                logging.error(f"Failed to seed OCR extract prompts: {e}")
-                session.rollback()
-            try:
-                prompt_registry_service.ensure_standard_solve_binding(session, updated_by="startup")
-            except Exception as e:
-                logging.error(f"Failed to enforce STANDARD/SOLVE binding defaults: {e}")
-                session.rollback()
-            try:
-                prompt_registry_service.ensure_freeform_solve_prompt(session, updated_by="startup")
-            except Exception as e:
-                logging.error(f"Failed to seed free-form solve prompt: {e}")
-                session.rollback()
-            try:
-                prompt_registry_service.ensure_freeform_solve_prompts_by_tier(session, updated_by="startup")
-            except Exception as e:
-                logging.error(f"Failed to seed tiered free-form solve prompts: {e}")
-                session.rollback()
+            logging.warning("Prompt registry bootstrap from files is deprecated. Use admin UI to manage prompts.")
         else:
             logging.info("Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.")
 

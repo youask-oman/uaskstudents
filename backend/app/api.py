@@ -104,14 +104,8 @@ api_router.include_router(snap_solve_pdf_router, tags=["snap_solve_pdf"])
 api_router.include_router(credits_router, tags=["credits"])
 api_router.include_router(plot_router, prefix="/v1", tags=["plotting"])
 
-OCR_OPENAI_SYSTEM_PROMPT_ID = os.environ.get(
-    "OCR_OPENAI_SYSTEM_PROMPT_ID",
-    prompt_registry_service.OCR_EXTRACT_OPENAI_SYSTEM_PROMPT_ID,
-)
-OCR_OPENAI_SCHEMA_ID = os.environ.get(
-    "OCR_OPENAI_SCHEMA_ID",
-    prompt_registry_service.OCR_EXTRACT_OPENAI_SCHEMA_ID,
-)
+OCR_OPENAI_SYSTEM_PROMPT_ID = os.environ.get("OCR_OPENAI_SYSTEM_PROMPT_ID", "")
+OCR_OPENAI_SCHEMA_ID = os.environ.get("OCR_OPENAI_SCHEMA_ID", "")
 
 
 @api_router.get("/health/llm")
@@ -4174,11 +4168,8 @@ async def solve_v3_runtime_meta(
     tier_requested = tier_policy["tier_requested"]
     tier_effective = tier_policy["tier_effective"]
     mode_label = (mode_family or "SOLVE").strip().upper()
-    output_format = (
-        FREEFORM_OUTPUT_MODE.lower()
-        if should_use_freeform_output(provider, model) and mode_label == "SOLVE"
-        else "json_schema"
-    )
+    # Free-form mode disabled - always use json_schema
+    output_format = "json_schema"
 
     try:
         profile = ProfileResolver.resolve_profile(

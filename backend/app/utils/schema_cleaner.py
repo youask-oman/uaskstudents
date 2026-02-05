@@ -14,11 +14,16 @@ def enforce_strict(node: Any) -> Any:
     if not isinstance(node, dict):
         return node
     
-    # Remove unsupported keys for strict mode validation
+    # Remove unsupported keys for OpenAI strict mode validation
     node.pop('title', None)
     node.pop('description', None)
-    node.pop('default', None) 
+    node.pop('default', None)
     node.pop('examples', None)
+    # OpenAI strict mode doesn't support these keywords at all
+    node.pop('allOf', None)
+    node.pop('if', None)
+    node.pop('then', None)
+    node.pop('else', None)
     
     # Handle 'type' normalization
     if "type" in node:
@@ -82,7 +87,7 @@ def enforce_strict(node: Any) -> Any:
             enforce_strict(def_schema)
             
     # Handle anyOf, allOf, oneOf
-    for key in ["anyOf", "allOf", "oneOf"]:
+    for key in ["anyOf", "oneOf"]:
          if key in node:
             cleaned_nodes = []
             for sub_node in node[key]:
