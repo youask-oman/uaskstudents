@@ -55,15 +55,37 @@ class SolverV3:
         text = text.replace(os.environ.get("OPENAI_API_KEY", ""), "[REDACTED]") if os.environ.get("OPENAI_API_KEY") else text
         text = text.replace(os.environ.get("WHATSAPP_INTERNAL_KEY", ""), "[REDACTED]") if os.environ.get("WHATSAPP_INTERNAL_KEY") else text
         return text[:limit]
-    # Module-level validator cache
-    _validator_cache: Dict[str, Draft202012Validator] = {}
+    # Module-level validator cache with size limits and expiration
+    _validator_cache: Dict[str, Tuple[Draft202012Validator, float]] = {}
+    _MAX_CACHE_SIZE = 100
+    _CACHE_TTL_SECONDS = 3600  # 1 hour
 
     def _get_cached_validator(self, schema: Dict[str, Any]) -> Draft202012Validator:
-        """Get or create cached validator for schema."""
+        """Get or create cached validator for schema with size limits and expiration."""
         schema_hash = hashlib.sha256(json.dumps(schema, sort_keys=True).encode()).hexdigest()[:16]
-        if schema_hash not in self._validator_cache:
-            self._validator_cache[schema_hash] = Draft202012Validator(schema)
-        return self._validator_cache[schema_hash]
+        current_time = time.time()
+        
+        # Check if cached and not expired
+        if schema_hash in self._validator_cache:
+            validator, timestamp = self._validator_cache[schema_hash]
+            if current_time - timestamp < self._CACHE_TTL_SECONDS:
+                return validator
+            else:
+                # Remove expired entry
+                del self._validator_cache[schema_hash]
+        
+        # Enforce cache size limit
+        if len(self._validator_cache) >= self._MAX_CACHE_SIZE:
+            # Remove oldest entry
+            oldest_key = min(self._validator_cache.keys(), 
+                          key=lambda k: self._validator_cache[k][1])
+            del self._validator_cache[oldest_key]
+            self._logger.info(f"[SOLVER_V3] Cache limit reached, removed oldest validator: {oldest_key}")
+        
+        # Create new validator
+        validator = Draft202012Validator(schema)
+        self._validator_cache[schema_hash] = (validator, current_time)
+        return validator
 
     def _validate_with_draft202012(self, data: Dict[str, Any], schema: Dict[str, Any]) -> List[Dict[str, str]]:
         validator = self._get_cached_validator(schema)
@@ -262,7 +284,13 @@ class SolverV3:
                 is_fallback = (pass_idx > 0)
                 if is_fallback:
                     telemetry["fallback_triggered"] = True
-                    if trace: print(f"[SOLVER_V3] Triggering Fallback to mode={current_mode}")
+                    self._logger.info(f"[SOLVER_V3] Triggering Fallback to mode={current_mode} (pass {pass_idx+1})")
+                    if trace: 
+                        print(f"[SOLVER_V3] Triggering Fallback to mode={current_mode}")
+                else:
+                    self._logger.info(f"[SOLVER_V3] Primary attempt with mode={current_mode} (pass {pass_idx+1})")
+                    if trace: 
+                        print(f"[SOLVER_V3] Primary attempt with mode={current_mode}")
 
                 if current_mode == "minimal":
                     effective_learning_mode = "solve"
@@ -281,10 +309,16 @@ class SolverV3:
                         effective_max_tokens = 4096
                 
                 telemetry[f"pass_{pass_idx+1}_max_tokens"] = effective_max_tokens
+                self._logger.debug(f"[SOLVER_V3] Pass {pass_idx+1}: mode={current_mode}, max_tokens={effective_max_tokens}, learning_mode={effective_learning_mode}")
 
                 for provider_idx, provider in enumerate(providers_to_try):
                     llm_start_perf = time.perf_counter()
                     effective_tokens = _clamp_tokens_for_provider(provider, effective_max_tokens)
+                    self._logger.debug(f"[SOLVER_V3] Attempting provider {provider} (idx {provider_idx}) with {effective_tokens} tokens")
+                    
+                    if provider_idx > 0:
+                        self._logger.warning(f"[SOLVER_V3] Falling back to provider {provider} after previous provider failed")
+                        telemetry["provider_fallback_triggered"] = True
                     try:
                         # Build user message with timing
                         t_build_start = time.perf_counter()
@@ -518,49 +552,8 @@ class SolverV3:
         # refusal defaults
         if "refusal" not in obj or not isinstance(obj["refusal"], dict):
             obj["refusal"] = {"is_refusal": False, "refusal_reason": None, "safe_alternative": None}
-        else:
-            if "is_refusal" not in obj["refusal"]: obj["refusal"]["is_refusal"] = False
-            if "refusal_reason" not in obj["refusal"]: obj["refusal"]["refusal_reason"] = None
-            if "safe_alternative" not in obj["refusal"]: obj["refusal"]["safe_alternative"] = None
-
-        # visuals defaults
-        if "visuals" not in obj or not isinstance(obj["visuals"], dict):
-            obj["visuals"] = {"should_visualize": False, "decision_reason": "Default", "plots": [], "alternative_visual": None}
-        else:
-            if "should_visualize" not in obj["visuals"]: obj["visuals"]["should_visualize"] = False
-            if "decision_reason" not in obj["visuals"]: obj["visuals"]["decision_reason"] = ""
-            if "plots" not in obj["visuals"] or obj["visuals"]["plots"] is None: obj["visuals"]["plots"] = []
-            if "alternative_visual" not in obj["visuals"]: obj["visuals"]["alternative_visual"] = None
-
-        # quality defaults
-        if "quality" not in obj or not isinstance(obj["quality"], dict):
-            obj["quality"] = {"confidence": 0.5, "common_mistakes": [], "next_practice": []}
-        else:
-            if "confidence" not in obj["quality"]: obj["quality"]["confidence"] = 0.5
-            if "common_mistakes" not in obj["quality"] or obj["quality"]["common_mistakes"] is None: obj["quality"]["common_mistakes"] = []
-            if "next_practice" not in obj["quality"] or obj["quality"]["next_practice"] is None: obj["quality"]["next_practice"] = []
-
-        # verification defaults
-        if "verification" not in obj or not isinstance(obj["verification"], dict):
-             obj["verification"] = {"method": "Self-Consistency", "work_latex": "Verified internally", "conclusion": "Stable", "alternative_method": None}
-        elif "alternative_method" not in obj["verification"]:
-             obj["verification"]["alternative_method"] = None
-
-        # assumptions
-        if "assumptions" not in obj or obj["assumptions"] is None:
-            obj["assumptions"] = []
-
-        # final_answer - ensure it's always a dict with required fields
-        if "final_answer" not in obj or obj["final_answer"] is None:
-            obj["final_answer"] = {"answer_text": "", "answer_latex": "", "values": [], "units": ""}
-        elif isinstance(obj["final_answer"], str):
-            # Convert string to proper object
-            obj["final_answer"] = {"answer_text": obj["final_answer"], "answer_latex": "", "values": [], "units": ""}
-        elif isinstance(obj["final_answer"], dict):
-            if "answer_text" not in obj["final_answer"]: obj["final_answer"]["answer_text"] = ""
-            if "answer_latex" not in obj["final_answer"]: obj["final_answer"]["answer_latex"] = ""
-            if "values" not in obj["final_answer"] or obj["final_answer"]["values"] is None: obj["final_answer"]["values"] = []
-            if "units" not in obj["final_answer"]: obj["final_answer"]["units"] = ""
+        elif "safe_alternative" not in obj["refusal"] or obj["refusal"]["safe_alternative"] is None:
+            obj["refusal"]["safe_alternative"] = None
 
         return obj
 

@@ -149,6 +149,17 @@ def resolve_prompt_bundle(
             .where(PromptTemplateEntry.tier == tier_enum)
             .order_by(PromptTemplateEntry.version.desc(), PromptTemplateEntry.id.desc())
         ).first()
+        # Fallback: try without tier filter if tier-specific not found
+        if not developer_entry:
+            developer_entry = db_session.exec(
+                select(PromptTemplateEntry)
+                .where(PromptTemplateEntry.prompt_id == binding.developer_prompt_id)
+                .where(PromptTemplateEntry.is_active == True)
+                .where(PromptTemplateEntry.role == PromptRoleEnum.DEVELOPER)
+                .where(PromptTemplateEntry.mode == mode_enum)
+                .where(or_(PromptTemplateEntry.tier == tier_enum, PromptTemplateEntry.tier.is_(None)))
+                .order_by(PromptTemplateEntry.version.desc(), PromptTemplateEntry.id.desc())
+            ).first()
         if not developer_entry:
             raise PromptBindingLookupError(
                 "PROMPT_TEMPLATE_TIER_MISSING",

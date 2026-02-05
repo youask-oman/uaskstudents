@@ -492,15 +492,21 @@ class VlmEngine(OCREngine):
                 max_tokens=4096,  # Ensure enough tokens for complex documents
             )
         except Exception as e:
-            error_msg = str(e).lower()
-            if "timeout" in error_msg:
+            error_type = type(e).__name__
+            error_msg_lower = str(e).lower()
+            
+            if isinstance(e, TimeoutError) or "timeout" in error_msg_lower:
                 raise OCREngineError("Request timed out", engine="vlm", is_timeout=True)
-            elif "api_key" in error_msg or "authentication" in error_msg:
+            elif "api_key" in error_msg_lower or "authentication" in error_msg_lower or "unauthorized" in error_msg_lower:
                 raise OCREngineError("API key invalid or missing", engine="vlm", is_auth_error=True)
-            elif "rate_limit" in error_msg or "429" in error_msg:
+            elif "rate_limit" in error_msg_lower or "429" in error_msg_lower or "too many requests" in error_msg_lower:
                 raise OCREngineError("Rate limit exceeded", engine="vlm", is_rate_limit=True)
+            elif "connection" in error_msg_lower or "network" in error_msg_lower:
+                raise OCREngineError(f"Network connection error: {e}", engine="vlm")
+            elif "quota" in error_msg_lower or "billing" in error_msg_lower:
+                raise OCREngineError(f"API quota exceeded: {e}", engine="vlm")
             else:
-                raise OCREngineError(f"API request failed: {e}", engine="vlm")
+                raise OCREngineError(f"API request failed ({error_type}): {e}", engine="vlm")
         
         content = response.choices[0].message.content or ""
         

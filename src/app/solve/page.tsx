@@ -107,6 +107,7 @@ type FeaturesUsed = Partial<OcrMetadata & VoiceFeatures> & {
     ocr_source?: string;
     ocr_warnings?: string[];
     voice_used?: boolean;
+    plot_requested?: boolean;
 };
 
 export default function DashboardPage() {
@@ -141,6 +142,10 @@ export default function DashboardPage() {
     // Input mode state
     const [selectedInputMode, setSelectedInputMode] = useState<InputModeId>('expression');
     const [graphingOptions, setGraphingOptions] = useState<GraphingOptions>(DEFAULT_GRAPHING_OPTIONS);
+    
+    // Plot/Graph inclusion state
+    const [graphMode, setGraphMode] = useState<'off' | 'auto' | 'on'>('auto');
+    const [attachToStepId] = useState<number | null>(null);
 
     // Streaming Solve States (Part F1)
     const [streamingContent, setStreamingContent] = useState("");
@@ -664,6 +669,7 @@ export default function DashboardPage() {
             const featuresUsed: FeaturesUsed = {
                 ocr_used: activeTab === 'snap',
                 voice_used: activeTab === 'voice',
+                plot_requested: graphMode !== 'off',
                 ...(activeTab === 'snap' ? ocrMetadata : {}),
                 ...(activeTab === 'voice' ? voiceFeatures : {}),
                 ...featureOverrides,
@@ -691,7 +697,10 @@ export default function DashboardPage() {
                                 region_state_province: trustedProfile?.region_state_province || undefined
                             },
                             // Feature flags for accounting (not sent to OpenAI)
-                            features_used: featuresUsed
+                            features_used: featuresUsed,
+                            // Plot/Graph inclusion settings
+                            graph_mode: graphMode,
+                            attach_to_step_id: attachToStepId
                         })
                     });
                     break;
@@ -1027,6 +1036,37 @@ export default function DashboardPage() {
                                                 if (inputError) setInputError(null);
                                             }}
                                         />
+
+                                        {/* Include Graph Toggle */}
+                                        <div className="flex flex-col gap-3 px-1 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                                            <div className="flex items-center gap-3">
+                                                <span className="material-symbols-outlined text-primary text-lg">area_chart</span>
+                                                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                                                    Graph Mode
+                                                </span>
+                                                <div className="flex bg-slate-200 dark:bg-slate-700 rounded-lg p-1">
+                                                    {(['off', 'auto', 'on'] as const).map((mode) => (
+                                                        <button
+                                                            key={mode}
+                                                            type="button"
+                                                            onClick={() => setGraphMode(mode)}
+                                                            className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                                                                graphMode === mode
+                                                                    ? "bg-white dark:bg-slate-600 text-primary shadow-sm"
+                                                                    : "text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                                                            }`}
+                                                        >
+                                                            {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <p className="text-xs text-slate-500 ml-8">
+                                                {graphMode === 'off' && "No plots will be generated"}
+                                                {graphMode === 'auto' && "AI will generate plots when helpful"}
+                                                {graphMode === 'on' && "Force plot generation when possible"}
+                                            </p>
+                                        </div>
 
                                         {/* Math Symbol Mode Bar */}
                                         <div className="flex items-center gap-2">

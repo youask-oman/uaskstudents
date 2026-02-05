@@ -2,7 +2,9 @@ from typing import Dict, Any, Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel, Field
 from sqlmodel import Session
-from jose import jwt, JWTError
+from jose import jwt, JWTError, ExpiredSignatureError
+from datetime import datetime, timezone
+import logging
 
 from app.database import get_session
 from app.models import User, Subscription, Plan
@@ -11,48 +13,122 @@ from app.auth import SECRET_KEY, ALGORITHM
 # from app.auth import get_current_user # Not available in auth.py, defining locally
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # --- Auth Helper ---
 def get_current_user_optional(
     authorization: Optional[str] = Header(None),
     session: Session = Depends(get_session)
 ) -> Optional[User]:
-    """Extract user from JWT token if present."""
+    """Extract user from JWT token if present with proper validation."""
     if not authorization or not authorization.startswith("Bearer "):
         return None
     
-    token = authorization.replace("Bearer ", "")
+    token = authorization.replace("Bearer ", "").strip()
+    if not token:
+        return None
+        
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
+        # Decode JWT with expiration verification
+        payload = jwt.decode(
+            token, 
+            SECRET_KEY, 
+            algorithms=[ALGORITHM],
+            options={"verify_exp": True}  # Explicitly verify expiration
+        )
+        
+        # Check required claims
+        email = payload.get("sub")
+        if not email:
+            logger.warning(f"JWT token missing 'sub' claim: {payload.keys()}")
             return None
-        return session.exec(from_user_email_query(email)).first() # Pseudo query, using simple get
-        # Actually, let's just find by email if possible, or ID if we stored ID
-        # Converting to standard logic:
-        # Assuming payload has "sub" as email.
-    except JWTError:
+            
+        # Check token issuance time (optional but recommended)
+        iat = payload.get("iat")
+        if iat and isinstance(iat, (int, float)):
+            # Ensure token wasn't issued in the future (clock skew tolerance)
+            now = datetime.now(timezone.utc).timestamp()
+            if iat > now + 300:  # 5 minute tolerance
+                logger.warning(f"JWT token issued in future: {iat} > {now}")
+                return None
+        
+        # Query user
+        from sqlmodel import select
+        statement = select(User).where(User.email == email)
+        user = session.exec(statement).first()
+        
+        if user:
+            logger.debug(f"Successfully authenticated user: {email}")
+        else:
+            logger.warning(f"User not found for email: {email}")
+            
+        return user
+        
+    except ExpiredSignatureError:
+        logger.warning("JWT token has expired")
+        return None
+    except JWTError as e:
+        logger.warning(f"JWT claims error: {e}")
+        return None
+    except JWTError as e:
+        logger.warning(f"JWT validation error: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error during JWT validation: {e}")
         return None
 
 def get_current_user_from_token(token: str, session: Session) -> Optional[User]:
+    """Extract user from JWT token with proper validation."""
+    if not token or not token.strip():
+        return None
+        
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        # Decode JWT with expiration verification
+        payload = jwt.decode(
+            token.strip(), 
+            SECRET_KEY, 
+            algorithms=[ALGORITHM],
+            options={"verify_exp": True}
+        )
+        
         email = payload.get("sub")
         if not email:
+            logger.warning(f"JWT token missing 'sub' claim")
             return None
-        # Safe way: scan all users? No, assume email index or lookup
-        # For efficiency, let's assume we can query User by email
-        # Since I don't recall if User has email index, I'll iterate or use SQLModel select
+            
+        # Check expiration
+        exp = payload.get("exp")
+        if exp and isinstance(exp, (int, float)):
+            now = datetime.now(timezone.utc).timestamp()
+            if exp < now:
+                logger.warning(f"JWT token expired: {exp} < {now}")
+                return None
+        
+        # Query user
         from sqlmodel import select
         statement = select(User).where(User.email == email)
-        return session.exec(statement).first()
-    except:
+        user = session.exec(statement).first()
+        
+        return user
+        
+    except ExpiredSignatureError:
+        logger.warning("JWT token has expired")
+        return None
+    except JWTError as e:
+        logger.warning(f"JWT claims error: {e}")
+        return None
+    except JWTError as e:
+        logger.warning(f"JWT validation error: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error during JWT validation: {e}")
         return None
 
 def get_optional_user(
     authorization: Optional[str] = Header(None),
     session: Session = Depends(get_session)
 ) -> Optional[User]:
+    """Get user from authorization header if present."""
     if not authorization:
         return None
     token = authorization.replace("Bearer ", "").strip()

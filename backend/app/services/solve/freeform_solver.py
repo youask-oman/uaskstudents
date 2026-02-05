@@ -604,10 +604,5 @@ def archive_freeform_output(
 
 
 def should_use_freeform_output(provider: str, model: str) -> bool:
-    default_mode = os.environ.get("SOLVER_OUTPUT_MODE_DEFAULT", FREEFORM_OUTPUT_MODE).strip().upper()
-    if default_mode != FREEFORM_OUTPUT_MODE:
-        return False
-    if (provider or "").strip().lower() != "openai":
-        return False
-    configured_model = (os.environ.get("OPENAI_MODEL_DEFAULT") or "").strip().lower()
-    return bool(configured_model and (model or "").strip().lower() == configured_model)
+    # Temporarily disabled - using JSON schema mode only
+    return False

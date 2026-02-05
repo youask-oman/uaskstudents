@@ -537,11 +537,25 @@ connectToWhatsApp();
             # Ensure no stale Node process is holding the internal port.
             if self.process and self.process.poll() is None:
                 try:
+                    print(f"[WhatsApp] Terminating existing process PID: {self.process.pid}")
                     self.process.terminate()
-                    self.process.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    self.process.kill()
-                self.process = None
+                    try:
+                        self.process.wait(timeout=5)
+                        print(f"[WhatsApp] Process terminated gracefully")
+                    except subprocess.TimeoutExpired:
+                        print(f"[WhatsApp] Process did not terminate gracefully, force killing")
+                        self.process.kill()
+                        try:
+                            self.process.wait(timeout=2)
+                            print(f"[WhatsApp] Process killed successfully")
+                        except subprocess.TimeoutExpired:
+                            print(f"[WhatsApp] Process still running after kill, may be zombie")
+                            # Force cleanup of process resources
+                            self.process.terminate()
+                except Exception as e:
+                    print(f"[WhatsApp] Error during process cleanup: {e}")
+                finally:
+                    self.process = None
 
             # If previously logged out, clear auth to force a fresh QR code.
             if self.logged_out:

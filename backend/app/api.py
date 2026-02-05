@@ -77,16 +77,6 @@ from app.services.whatsapp.whatsapp_send import send_whatsapp_logo
 from app.services.whatsapp.step_delivery import handle_navigation
 from app.worker import celery_app
 from app.services.solve.cache_service import cache_service
-from app.services.solve.freeform_solver import (
-    FREEFORM_OUTPUT_MODE,
-    FREEFORM_PROMPT_ID,
-    FREEFORM_PROMPT_VERSION,
-    archive_freeform_output,
-    generate_freeform_solution,
-    resolve_num_predict,
-    resolve_timeout_seconds,
-    should_use_freeform_output,
-)
 from app.services.token_policy import get_token_policy, serialize_token_policy
 from app.config import get_settings
 from app.services.school_import_service import normalize_country_code
@@ -103,6 +93,7 @@ from app.bg_routers.voice_router import router as voice_router
 from app.bg_routers.local_router import router as local_router
 from app.bg_routers.snap_solve_pdf import router as snap_solve_pdf_router
 from app.bg_routers.credits_router import router as credits_router
+from app.bg_routers.plot_router import router as plot_router
 
 limiter = Limiter(key_func=get_remote_address)
 api_router = APIRouter()
@@ -111,6 +102,7 @@ api_router.include_router(voice_router, tags=["voice"])
 api_router.include_router(local_router, tags=["local_math"])
 api_router.include_router(snap_solve_pdf_router, tags=["snap_solve_pdf"])
 api_router.include_router(credits_router, tags=["credits"])
+api_router.include_router(plot_router, prefix="/v1", tags=["plotting"])
 
 OCR_OPENAI_SYSTEM_PROMPT_ID = os.environ.get(
     "OCR_OPENAI_SYSTEM_PROMPT_ID",
@@ -661,6 +653,9 @@ class SolveRequest(BaseModel):
     input_modality: Optional[str] = Field(None, description="one of 'text', 'ocr_image', 'ocr_pdf', 'voice'")
     token_policy: Optional[str] = Field(None, description="policy key applied for this request, for auditing")
     verification_level: Optional[str] = Field(None, description="expected verification rigor: light|moderate|strict")
+    include_graph: Optional[bool] = Field(False, description="Whether to include a visualization/graph in the solution")
+    graph_mode: Optional[str] = Field("auto", description="Graph mode: off | auto | on")
+    attach_to_step_id: Optional[int] = Field(None, description="Step ID to attach plot to, or null for standalone")
 
 from app.models import Plan, Subscription, UsageLedger
 from app.services.subscription_service import subscription_service
@@ -4525,6 +4520,40 @@ async def solve_v3_endpoint(
                     max_output_tokens=effective_max_tokens
                 )
                 
+                # --- PLOTTING PIPELINE INTEGRATION ---
+                # Call new plotting pipeline if graph_mode is enabled
+                graph_mode = getattr(body, 'graph_mode', 'auto')
+                if graph_mode in ('on', 'auto'):
+                    try:
+                        from app.services.plot_pipeline_service import get_plot_pipeline_service
+                        plot_service = get_plot_pipeline_service(session)
+                        
+                        trigger_result, spec_result = await plot_service.execute_plotting_pipeline(
+                            problem_text=problem_text,
+                            solve_result=result,
+                            graph_mode=graph_mode,
+                            attach_to_step_id=getattr(body, 'attach_to_step_id', None),
+                            tier=effective_tier,
+                            question_id=question_key or request_id
+                        )
+                        
+                        # Add plot data to result if plot was generated
+                        if spec_result and spec_result.plotly_json:
+                            result['plot'] = {
+                                'plot_id': spec_result.plot_id,
+                                'plotly': spec_result.plotly_json,
+                                'attach_to_step_id': spec_result.attach_to_step_id
+                            }
+                            result['plot_trigger'] = {
+                                'plot_needed': trigger_result.plot_needed if trigger_result else False,
+                                'plot_type': trigger_result.plot_type if trigger_result else None,
+                                'reason': trigger_result.reason if trigger_result else None
+                            }
+                            print(f"[API_V3] Plot generated: {spec_result.plot_id}")
+                    except Exception as plot_err:
+                        print(f"[API_V3] Plot generation failed (non-critical): {plot_err}")
+                        # Continue without plot - non-critical error
+                
                 # --- BILLING: STAGE 2 (SETTLE) ---
                 # Extract actual usage from result
                 telemetry = result.get("telemetry", {})
@@ -5247,47 +5276,7 @@ async def solve_v3_stream_endpoint(
         session.commit()
         deduct_committed = True
 
-        output_format = (
-            FREEFORM_OUTPUT_MODE.lower()
-            if should_use_freeform_output(stream_provider, stream_model)
-            else "json_schema"
-        )
-        freeform_prompt_template: Optional[str] = None
-        freeform_prompt_id = FREEFORM_PROMPT_ID
-        freeform_prompt_version = FREEFORM_PROMPT_VERSION
-        if output_format == FREEFORM_OUTPUT_MODE.lower():
-            tier_enum = PromptTierEnum((effective_tier or "FREE").upper())
-            freeform_prompt_entry = prompt_registry_service.get_active_freeform_prompt_for_tier(
-                session=session,
-                tier=tier_enum,
-                provider=stream_provider,
-                model=stream_model,
-                mode=PromptModeEnum.SOLVE,
-            )
-            if not freeform_prompt_entry or not (freeform_prompt_entry.content or "").strip():
-                if deduct_committed and debit_cost > 0:
-                    subscription_service.refund_credits(
-                        session,
-                        sub_id,
-                        debit_cost,
-                        "Free-form solve failed: prompt not configured",
-                        request_id,
-                    )
-                yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': False, 'error': {'code': 'freeform_prompt_not_found', 'message': f'Missing active tiered free-form prompt in prompt_templates for tier={effective_tier}', 'request_id': request_id}})}\n\n"
-                return
-            freeform_prompt_template = freeform_prompt_entry.content
-            freeform_prompt_id = freeform_prompt_entry.prompt_id
-            freeform_prompt_version = str(freeform_prompt_entry.version)
-            logging.getLogger(__name__).debug(
-                "request_id=%s freeform_prompt_selected tier=%s provider=%s model=%s prompt_id=%s prompt_row_id=%s version=%s",
-                request_id,
-                effective_tier,
-                stream_provider,
-                stream_model,
-                freeform_prompt_entry.prompt_id,
-                freeform_prompt_entry.id,
-                freeform_prompt_entry.version,
-            )
+        output_format = "json_schema"
 
         # Meta Event (Part A1)
         meta_data = {
@@ -5303,11 +5292,11 @@ async def solve_v3_stream_endpoint(
             "effective_tier": effective_tier,
             "prompt_binding_id": binding_meta.get("binding_id"),
             "global_system_prompt_id": binding_meta.get("global_system_prompt_id"),
-            "developer_prompt_id": freeform_prompt_id if output_format == FREEFORM_OUTPUT_MODE.lower() else binding_meta.get("developer_prompt_id"),
-            "output_schema_id": None if output_format == FREEFORM_OUTPUT_MODE.lower() else binding_meta.get("output_schema_id"),
+            "developer_prompt_id": binding_meta.get("developer_prompt_id"),
+            "output_schema_id": binding_meta.get("output_schema_id"),
             "global_system_prompt_version": binding_meta.get("global_system_prompt_version"),
-            "developer_prompt_version": freeform_prompt_version if output_format == FREEFORM_OUTPUT_MODE.lower() else binding_meta.get("developer_prompt_version"),
-            "output_schema_version": None if output_format == FREEFORM_OUTPUT_MODE.lower() else binding_meta.get("output_schema_version"),
+            "developer_prompt_version": binding_meta.get("developer_prompt_version"),
+            "output_schema_version": binding_meta.get("output_schema_version"),
             "output_format": output_format,
         }
         meta_data["input_modality"] = modality
@@ -5322,13 +5311,13 @@ async def solve_v3_stream_endpoint(
             "mode": "SOLVE",
             "prompt_binding_id": binding_meta.get("binding_id"),
             "global_system_prompt_id": binding_meta.get("global_system_prompt_id"),
-            "developer_prompt_id": freeform_prompt_id if output_format == FREEFORM_OUTPUT_MODE.lower() else binding_meta.get("developer_prompt_id"),
-            "output_schema_id": None if output_format == FREEFORM_OUTPUT_MODE.lower() else binding_meta.get("output_schema_id"),
+            "developer_prompt_id": binding_meta.get("developer_prompt_id"),
+            "output_schema_id": binding_meta.get("output_schema_id"),
             "output_format": output_format,
             "prompt_versions": {
                 "system": binding_meta.get("global_system_prompt_version"),
-                "developer": freeform_prompt_version if output_format == FREEFORM_OUTPUT_MODE.lower() else binding_meta.get("developer_prompt_version"),
-                "schema": None if output_format == FREEFORM_OUTPUT_MODE.lower() else binding_meta.get("output_schema_version"),
+                "developer": binding_meta.get("developer_prompt_version"),
+                "schema": binding_meta.get("output_schema_version"),
             },
         }
         
@@ -5447,329 +5436,6 @@ async def solve_v3_stream_endpoint(
 
         # Stage: Waiting for model...
         yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': 'Waiting for model...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
-
-        if output_format == FREEFORM_OUTPUT_MODE.lower():
-            if not os.environ.get("OPENAI_API_KEY"):
-                if deduct_committed and debit_cost > 0:
-                    subscription_service.refund_credits(
-                        session,
-                        sub_id,
-                        debit_cost,
-                        "Free-form solve failed: OPENAI_API_KEY missing",
-                        request_id,
-                    )
-                yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': False, 'error': {'code': 'openai_not_configured', 'message': 'OPENAI_API_KEY is not configured', 'request_id': request_id}})}\n\n"
-                return
-
-            max_attempts = _resolve_freeform_max_attempts(
-                effective_tier=effective_tier,
-                trusted_context=body.trusted_context,
-                is_make_it_right=bool(getattr(body, "is_make_it_right", False)),
-            )
-            freeform_requested_mode = requested_mode
-            if (
-                (effective_tier or "").strip().upper() == "RESEARCH"
-                and requested_mode.strip().lower() in {"", "minimal", "concise"}
-                and os.environ.get("FREEFORM_RESEARCH_FORCE_IMPROVE_MODE", "1").strip().lower() in {"1", "true", "yes", "on"}
-            ):
-                freeform_requested_mode = "improve"
-            base_num_predict = int(os.environ.get("FREEFORM_NUM_PREDICT", "2500"))
-            num_predict = resolve_num_predict(
-                tier=effective_tier,
-                difficulty=body.difficulty,
-                requested_mode=freeform_requested_mode,
-                env_default=base_num_predict,
-            )
-            timeout_seconds = resolve_timeout_seconds(
-                tier=effective_tier,
-                env_default=int(os.environ.get("FREEFORM_TIMEOUT_SECONDS", "120")),
-            )
-
-            attempt_summaries: List[Dict[str, Any]] = []
-            selected_result = None
-            latest_nonempty_result = None
-            first_delta_emitted = False
-            for attempt_number in range(1, max_attempts + 1):
-                yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': f'Free-form attempt {attempt_number}/{max_attempts}...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
-                try:
-                    attempt_result = None
-                    streamed_parts: List[str] = []
-                    async for stream_event in generate_freeform_solution(
-                        problem_text=problem_text,
-                        prompt_template=freeform_prompt_template or "",
-                        model=stream_model,
-                        num_predict=num_predict,
-                        timeout_seconds=timeout_seconds,
-                        prompt_id=freeform_prompt_id,
-                        prompt_version=freeform_prompt_version,
-                        tier=effective_tier,
-                        requested_mode=freeform_requested_mode,
-                        system_prompt=(os.environ.get("FREEFORM_SYSTEM_PROMPT") or "").strip() or None,
-                    ):
-                        event_type = stream_event.get("type")
-                        if event_type == "delta":
-                            chunk_text = str(stream_event.get("text") or "")
-                            if chunk_text:
-                                streamed_parts.append(chunk_text)
-                                yield f"event: delta\ndata: {json.dumps({'type': 'delta', 'text': chunk_text})}\n\n"
-                                if not first_delta_emitted:
-                                    first_delta_emitted = True
-                                    if perf_enabled():
-                                        perf_emit(
-                                            label="sse_first_delta",
-                                            file_function="backend/app/api.py:solve_v3_stream_endpoint._inner_generate",
-                                            elapsed_ms=(time.perf_counter() - start_total) * 1000.0,
-                                            request_id=request_id,
-                                            extra=f"attempt={attempt_number}",
-                                        )
-                        elif event_type == "result":
-                            attempt_result = stream_event.get("result")
-                    if attempt_result is None:
-                        raise RuntimeError("freeform_stream_missing_result")
-                    streamed_text = "".join(streamed_parts)
-                    if attempt_result.output_text and attempt_result.output_text != streamed_text:
-                        if attempt_result.output_text.startswith(streamed_text):
-                            tail = attempt_result.output_text[len(streamed_text) :]
-                            if tail:
-                                yield f"event: delta\ndata: {json.dumps({'type': 'delta', 'text': tail})}\n\n"
-                                if not first_delta_emitted:
-                                    first_delta_emitted = True
-                                    if perf_enabled():
-                                        perf_emit(
-                                            label="sse_first_delta",
-                                            file_function="backend/app/api.py:solve_v3_stream_endpoint._inner_generate",
-                                            elapsed_ms=(time.perf_counter() - start_total) * 1000.0,
-                                            request_id=request_id,
-                                            extra=f"attempt={attempt_number}|postprocess_tail=1",
-                                        )
-                    if attempt_result.validation.get("is_valid"):
-                        status = "ok"
-                    elif attempt_result.validation.get("is_usable"):
-                        status = "usable"
-                    else:
-                        status = "invalid"
-                    attempt_summaries.append(
-                        {
-                            "attempt_number": attempt_number,
-                            "status": status,
-                            "latency_ms": attempt_result.latency_ms,
-                            "time_to_first_token_ms": attempt_result.time_to_first_token_ms,
-                            "truncated": attempt_result.truncated,
-                            "char_count": len(attempt_result.output_text or ""),
-                            "validation_score": attempt_result.validation.get("score"),
-                            "failed_checks": attempt_result.validation.get("failed_checks", []),
-                        }
-                    )
-                    if attempt_result.output_text and attempt_result.validation.get("is_usable"):
-                        latest_nonempty_result = (attempt_number, attempt_result)
-                    if attempt_result.validation.get("is_valid"):
-                        selected_result = (attempt_number, attempt_result)
-                        break
-                    if attempt_result.validation.get("is_usable") and attempt_result.extracted_answer:
-                        selected_result = (attempt_number, attempt_result)
-                        break
-                    if attempt_result.validation.get("is_usable"):
-                        selected_result = (attempt_number, attempt_result)
-                        break
-                except Exception as attempt_error:
-                    error_text = str(attempt_error)
-                    attempt_summaries.append(
-                        {
-                            "attempt_number": attempt_number,
-                            "status": "error",
-                            "latency_ms": None,
-                            "char_count": 0,
-                            "validation_score": "0/0",
-                            "failed_checks": ["generation_error"],
-                            "error": error_text,
-                        }
-                    )
-                if attempt_number >= max_attempts:
-                    break
-
-            final_choice = selected_result or latest_nonempty_result
-            if final_choice is None:
-                if deduct_committed and debit_cost > 0:
-                    subscription_service.refund_credits(
-                        session,
-                        sub_id,
-                        debit_cost,
-                        "Free-form solve failed after retries",
-                        request_id,
-                    )
-                yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': False, 'error': {'code': 'freeform_generation_failed', 'message': 'Unable to generate free-form solution.', 'request_id': request_id}})}\n\n"
-                return
-
-            final_attempt_number, final_result = final_choice
-            output_text = final_result.output_text
-            extracted_answer = final_result.extracted_answer or ""
-            archive_path = None
-            try:
-                archive_path = archive_freeform_output(
-                    request_id=request_id,
-                    provider=stream_provider,
-                    model=stream_model,
-                    attempt_number=final_attempt_number,
-                    output_text=output_text,
-                )
-            except Exception as archive_exc:
-                logging.getLogger(__name__).warning(
-                    "request_id=%s freeform_archive_failed error=%s",
-                    request_id,
-                    archive_exc,
-                )
-            final_status = "ok" if final_result.validation.get("is_valid") else "invalid"
-            _persist_freeform_attempt(
-                session=session,
-                request_id=request_id,
-                user_id=user_id,
-                session_id=new_chat.id,
-                message_id=placeholder_msg.id,
-                attempt_number=final_attempt_number,
-                provider=stream_provider,
-                model=stream_model,
-                prompt_id=final_result.prompt_id,
-                prompt_version=final_result.prompt_version,
-                raw_solution_text=output_text,
-                extracted_answer=extracted_answer,
-                validation_json=final_result.validation,
-                latency_ms=final_result.latency_ms,
-                archive_path=archive_path,
-                status=final_status,
-            )
-            if output_text and not first_delta_emitted:
-                yield f"event: delta\ndata: {json.dumps({'type': 'delta', 'text': output_text})}\n\n"
-                if perf_enabled():
-                    perf_emit(
-                        label="sse_first_delta",
-                        file_function="backend/app/api.py:solve_v3_stream_endpoint._inner_generate",
-                        elapsed_ms=(time.perf_counter() - start_total) * 1000.0,
-                        request_id=request_id,
-                        extra=f"attempt={final_attempt_number}|fallback=1",
-                    )
-                first_delta_emitted = True
-
-            yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': 'Finalizing...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
-
-            freeform_telemetry = {
-                "provider": stream_provider,
-                "model": stream_model,
-                "output_format": FREEFORM_OUTPUT_MODE.lower(),
-                "request_id": request_id,
-                "latency_ms_total": int((time.perf_counter() - start_total) * 1000),
-                "latency_ms_generation": final_result.latency_ms,
-                "char_count": len(output_text),
-                "attempts": attempt_summaries,
-                "attempt_count": len(attempt_summaries),
-                "final_attempt_number": final_attempt_number,
-                "archive_path": archive_path,
-                "prompt_id": freeform_prompt_id,
-                "prompt_version": freeform_prompt_version,
-                "requested_mode_model": freeform_requested_mode,
-                "validated": final_result.validation.get("is_valid", False),
-                "is_usable": final_result.validation.get("is_usable", False),
-                "validation_score": final_result.validation.get("score"),
-                "validation_quality_score": final_result.validation.get("quality_score"),
-                "validation_failed_checks": final_result.validation.get("failed_checks", []),
-                "validation_missing_items": final_result.validation.get("missing_items", []),
-                "autocorrect_applied": bool((final_result.solution_doc or {}).get("autocorrect", {}).get("applied")),
-                "schema_valid": None,
-                "hide_from_tutor": True,
-                "channel": "canvas_primary",
-            }
-
-            placeholder_msg.content = output_text
-            placeholder_msg.structured_data = {
-                "output_format": FREEFORM_OUTPUT_MODE.lower(),
-                "raw_solution_text": output_text,
-                "extracted_answer": extracted_answer,
-                "validation_json": final_result.validation,
-                "solution_doc": final_result.solution_doc,
-                "attempts": attempt_summaries,
-                "archive_path": archive_path,
-                "prompt_id": freeform_prompt_id,
-                "prompt_version": freeform_prompt_version,
-                "request_id": request_id,
-                "solve_meta": meta_data.get("solve_meta"),
-                "hide_from_tutor": True,
-            }
-            placeholder_msg.telemetry = freeform_telemetry
-            placeholder_msg.tokens_used = max(len(output_text) // 4, 1)
-            placeholder_msg.subject = body.subject or "General"
-            placeholder_msg.grade_level = context_user.grade_level if context_user else None
-            placeholder_msg.difficulty = body.difficulty
-
-            tokens_estimate = max(len(output_text) // 4, 1)
-            add_tokens_to_user(user_id, tokens_estimate, session)
-            session.add(UsageLog(user_id=user_id, action_type="solve_v3_stream", tokens_used=tokens_estimate))
-            session.commit()
-
-            log_solve_trace({
-                "request_id": request_id,
-                "user_id": user_id,
-                "seat_id": None,
-                "plan_key": plan_key,
-                "ui_goal": learning_mode,
-                "ui_style": requested_mode,
-                "resolved_profile_key": profile_key,
-                "resolved_system_file_path": profile.system_asset_path or profile.system_relative_path,
-                "resolved_schema_file_path": profile.schema_asset_path or profile.schema_relative_path,
-                "schema_name": None,
-                "max_output_tokens_sent": effective_max_tokens,
-                "model_sent": stream_model,
-                "cache_hit": False,
-                "openai_calls_count": 0,
-                "repair_attempted": False,
-                "prompt_tokens_estimate": None,
-                "input_tokens": 0,
-                "output_tokens": tokens_estimate,
-                "cached_tokens": None,
-                "deduct_attempted": deduct_attempted,
-                "deduct_committed": deduct_committed,
-                "openai_payload": None,
-                "problem_text": problem_text,
-                "input_modality": modality,
-                "verification_level": verification_level,
-                "token_policy_key": policy_key,
-                "prompt_binding_id": binding_meta.get("binding_id"),
-                "global_system_prompt_id": binding_meta.get("global_system_prompt_id"),
-                "developer_prompt_id": freeform_prompt_id,
-                "output_schema_id": None,
-                "global_system_prompt_version": binding_meta.get("global_system_prompt_version"),
-                "developer_prompt_version": freeform_prompt_version,
-                "output_schema_version": None,
-                "output_format": FREEFORM_OUTPUT_MODE.lower(),
-            })
-            record_request_event(session, {
-                "request_id": request_id,
-                "user_id": user_id,
-                "mode": requested_mode,
-                "learning_mode": learning_mode,
-                "subject": body.subject,
-                "grade_level": user_obj.grade_level if user_obj else None,
-                "model": stream_model,
-                "provider": stream_provider,
-                "route": "solve_v3_stream",
-                "tokens_in": 0,
-                "tokens_out": tokens_estimate,
-                "tokens_total": tokens_estimate,
-                "cost_usd": _calc_cost(tokens_estimate, stream_model, 0, tokens_estimate),
-                "latency_ms": freeform_telemetry["latency_ms_total"],
-                "status": "ok",
-                "error_type": None,
-                "schema_valid": None,
-                "verification_pass": bool(final_result.validation.get("checks", {}).get("verification_checks_min_3")),
-                "is_stream": True,
-                "is_cached": False,
-                "credit_deducted": deduct_committed,
-                "credit_amount": debit_cost if deduct_committed else None,
-                "ocr_used": action_req["has_ocr"],
-                "voice_used": action_req["has_voice"],
-                "response_truncated": False,
-            })
-            yield f"event: telemetry\ndata: {json.dumps({'type': 'telemetry', 'telemetry': freeform_telemetry})}\n\n"
-            yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': True, 'session_id': new_chat.id, 'message_id': placeholder_msg.id})}\n\n"
-            return
 
         solver = get_solver_v3()
         full_content = ""
