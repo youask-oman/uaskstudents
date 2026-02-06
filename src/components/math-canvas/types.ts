@@ -13,6 +13,7 @@ export interface SessionMessage {
 }
 
 export type ToolType =
+  | "none"
   | "text"
   | "math"
   | "shape"
@@ -32,7 +33,7 @@ export interface ElementStyle {
 
 export interface ElementBase {
   id: string;
-  type: "text" | "math" | "shape" | "line" | "circle" | "plot";
+  type: "text" | "math" | "shape" | "line" | "circle" | "plot" | "image";
   pageId: string;
   x: number;
   y: number;
@@ -101,7 +102,15 @@ export interface PlotElement extends ElementBase {
   points: PlotDataPoint[];
 }
 
-export type CanvasElement = TextElement | MathElement | ShapeElement | LineElement | CircleElement | PlotElement;
+export interface ImageElement extends ElementBase {
+  type: "image";
+  src: string;
+  alt?: string;
+  aspectRatio?: number;
+}
+
+export type CanvasElement = TextElement | MathElement | ShapeElement | LineElement | CircleElement | PlotElement | ImageElement;
+
 
 export interface StepRow {
   k?: number;
@@ -163,14 +172,14 @@ export interface NormalizedChatMessage {
 export type CanvasBlock =
   | { id: string; type: "recognition"; latex: string; badge?: string }
   | {
-      id: string;
-      type: "steps";
-      steps: StepRow[];
-      result?: string;
-      verificationChecks?: VerificationCheck[];
-      domainConstraints?: string[];
-      autocorrectApplied?: boolean;
-    }
+    id: string;
+    type: "steps";
+    steps: StepRow[];
+    result?: string;
+    verificationChecks?: VerificationCheck[];
+    domainConstraints?: string[];
+    autocorrectApplied?: boolean;
+  }
   | { id: string; type: "text"; text: string };
 
 export interface SelectionState {

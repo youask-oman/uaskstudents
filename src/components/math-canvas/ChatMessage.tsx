@@ -10,6 +10,7 @@ import styles from "./MathCanvas.module.css";
 
 interface ChatMessageProps {
   message: NormalizedChatMessage;
+  originalProblem?: string;
 }
 
 const toVisualSpec = (chart: ChartPayload): Record<string, unknown> => {
@@ -35,7 +36,7 @@ const toVisualSpec = (chart: ChartPayload): Record<string, unknown> => {
   };
 };
 
-const RenderAssistantItem = ({ item }: { item: NormalizedContentItem }) => {
+const RenderAssistantItem = ({ item, originalProblem }: { item: NormalizedContentItem, originalProblem?: string }) => {
   if (item.type === "text") {
     return (
       <div className={styles.chatBubbleAssistant}>
@@ -44,15 +45,13 @@ const RenderAssistantItem = ({ item }: { item: NormalizedContentItem }) => {
     );
   }
   if (item.type === "math_solution") {
+    // Prefer originalProblem > layoutTitle > recognizedLatex > "this problem"
+    const contextContent = originalProblem || item.payload.layoutTitle || item.payload.recognizedLatex || "this problem";
+
     return (
       <div className={styles.chatBubbleAssistant}>
-        {item.payload.recognizedLatex ? <RecognitionBox latex={item.payload.recognizedLatex} /> : null}
-        <div style={{ marginTop: item.payload.recognizedLatex ? 10 : 0 }}>
-          <SolutionStepsBlock
-            steps={item.payload.steps}
-            result={item.payload.result}
-            verificationChecks={item.payload.verificationChecks}
-          />
+        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
+          Uask about anything related to <MathRenderer content={contextContent} mode="inline" />
         </div>
       </div>
     );
@@ -67,7 +66,7 @@ const RenderAssistantItem = ({ item }: { item: NormalizedContentItem }) => {
   return <div className={styles.chatBubbleAssistant}>{item.message}</div>;
 };
 
-export default function ChatMessage({ message }: ChatMessageProps) {
+export default function ChatMessage({ message, originalProblem }: ChatMessageProps) {
   if (message.role === "user") {
     const text = message.items.find((item) => item.type === "text");
     return (
@@ -84,7 +83,7 @@ export default function ChatMessage({ message }: ChatMessageProps) {
       <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4 }}>AI TUTOR</div>
       <div style={{ display: "grid", gap: 8 }}>
         {message.items.map((item, index) => (
-          <RenderAssistantItem key={`${message.id}-${index}`} item={item} />
+          <RenderAssistantItem key={`${message.id}-${index}`} item={item} originalProblem={originalProblem} />
         ))}
       </div>
       <div className={styles.chatSolutionSignature}>Uask.ai</div>

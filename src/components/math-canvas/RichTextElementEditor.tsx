@@ -83,6 +83,7 @@ export default function RichTextElementEditor({
   const editor = useEditor({
     extensions: buildRichTextExtensions(),
     content: initialContent,
+    autofocus: "end",
     immediatelyRender: false,
     editorProps: {
       attributes: {
@@ -136,7 +137,6 @@ export default function RichTextElementEditor({
     if (!editor) return;
     const onBlur = () => {
       commitIfChanged("blur");
-      onActivateEvent(null, null);
     };
     editor.on("blur", onBlur);
     return () => {

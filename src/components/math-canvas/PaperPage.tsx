@@ -58,6 +58,7 @@ interface DragDraft {
 
 interface ResizeDraft {
   elementId: string;
+  handle: "tl" | "tr" | "bl" | "br";
   startClientX: number;
   startClientY: number;
   originalWidth: number;
@@ -66,6 +67,8 @@ interface ResizeDraft {
   originalY: number;
   width: number;
   height: number;
+  x: number;
+  y: number;
 }
 
 interface EditDraft {
@@ -139,6 +142,39 @@ const snapLinePoint = (start: Point, current: Point) => {
   };
 };
 
+const ResizeHandles = ({
+  element,
+  onResizePointerDown
+}: {
+  element: CanvasElement,
+  onResizePointerDown: (e: React.PointerEvent, element: CanvasElement, handle: "tl" | "tr" | "bl" | "br") => void
+}) => {
+  return (
+    <>
+      <div
+        key={`${element.id}-tl`}
+        className={`${styles.resizeHandle} ${styles.handleTL}`}
+        onPointerDown={(e) => onResizePointerDown(e, element, "tl")}
+      />
+      <div
+        key={`${element.id}-tr`}
+        className={`${styles.resizeHandle} ${styles.handleTR}`}
+        onPointerDown={(e) => onResizePointerDown(e, element, "tr")}
+      />
+      <div
+        key={`${element.id}-bl`}
+        className={`${styles.resizeHandle} ${styles.handleBL}`}
+        onPointerDown={(e) => onResizePointerDown(e, element, "bl")}
+      />
+      <div
+        key={`${element.id}-br`}
+        className={`${styles.resizeHandle} ${styles.handleBR}`}
+        onPointerDown={(e) => onResizePointerDown(e, element, "br")}
+      />
+    </>
+  );
+};
+
 const ElementView = React.memo(function ElementView({
   element,
   selected,
@@ -151,18 +187,21 @@ const ElementView = React.memo(function ElementView({
   element: CanvasElement;
   selected: boolean;
   dragPreview?: { dx: number; dy: number };
-  resizePreview?: { width: number; height: number };
+  resizePreview?: { width: number; height: number; x: number; y: number };
   onPointerDown: (event: React.PointerEvent, element: CanvasElement) => void;
   onDoubleClick: (element: CanvasElement) => void;
-  onResizePointerDown: (event: React.PointerEvent, element: CanvasElement) => void;
+  onResizePointerDown: (event: React.PointerEvent, element: CanvasElement, handle: "tl" | "tr" | "bl" | "br") => void;
 }) {
   const width = resizePreview?.width ?? element.width;
   const height = resizePreview?.height ?? element.height;
+  const x = resizePreview?.x ?? element.x;
+  const y = resizePreview?.y ?? element.y;
+
   const richTextHtml = element.type === "text" ? sanitizeRichTextHtml(element.richTextHtml || "") : "";
 
   const style: React.CSSProperties = {
-    left: element.x,
-    top: element.y,
+    left: x,
+    top: y,
     width,
     height,
     zIndex: element.zIndex,
@@ -177,6 +216,7 @@ const ElementView = React.memo(function ElementView({
       id={element.id}
       style={style}
       onPointerDown={(event) => onPointerDown(event, element)}
+      onClick={(e) => e.stopPropagation()}
       onDoubleClick={() => onDoubleClick(element)}
       data-element-id={element.id}
       data-element-type={element.type}
@@ -184,7 +224,15 @@ const ElementView = React.memo(function ElementView({
       {element.type === "text" ? (
         <div
           className={styles.textElementBody}
-          style={{ color: element.style.color, fontSize: element.style.fontSize, lineHeight: 1.45 }}
+          style={{
+            color: element.style.color,
+            fontSize: typeof element.style.fontSize === "number" ? `${element.style.fontSize}px` : element.style.fontSize,
+            lineHeight: 1.45,
+            backgroundColor: element.style.fillColor !== "transparent" ? element.style.fillColor : undefined,
+            borderColor: element.style.strokeColor,
+            borderWidth: typeof element.style.strokeWidth === "number" ? `${element.style.strokeWidth}px` : element.style.strokeWidth,
+            borderStyle: element.style.strokeWidth && element.style.strokeWidth > 0 ? "solid" : "none",
+          }}
         >
           {richTextHtml ? (
             <div
@@ -198,7 +246,15 @@ const ElementView = React.memo(function ElementView({
       ) : null}
 
       {element.type === "math" ? (
-        <div className={styles.mathElementBody}>
+        <div
+          className={styles.mathElementBody}
+          style={{
+            background: element.style.fillColor !== "#f0f7ff" ? element.style.fillColor : undefined,
+            borderColor: element.style.strokeColor !== "#1e293b" ? element.style.strokeColor : undefined,
+            borderWidth: typeof element.style.strokeWidth === "number" && element.style.strokeWidth !== 2 ? `${element.style.strokeWidth}px` : undefined,
+            borderStyle: element.style.strokeWidth && element.style.strokeWidth > 0 ? "solid" : undefined,
+          }}
+        >
           <MathRenderer content={element.latexRaw} mode={element.renderMode} />
           <div className={styles.recognizedBadge}>
             <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
@@ -256,13 +312,17 @@ const ElementView = React.memo(function ElementView({
         </div>
       ) : null}
 
-      {selected && element.type !== "line" && element.type !== "circle" ? (
-        <button
-          type="button"
-          className={styles.resizeHandle}
-          aria-label="Resize element"
-          onPointerDown={(event) => onResizePointerDown(event, element)}
+      {element.type === "image" ? (
+        <img
+          src={element.src}
+          alt={element.alt || "User image"}
+          draggable={false}
+          style={{ width: "100%", height: "100%", objectFit: "contain", userSelect: "none" }}
         />
+      ) : null}
+
+      {selected ? (
+        <ResizeHandles element={element} onResizePointerDown={onResizePointerDown} />
       ) : null}
     </div>
   );
@@ -291,6 +351,7 @@ export default function PaperPage({
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const pendingPointerRef = useRef<{ clientX: number; clientY: number; shiftKey: boolean } | null>(null);
+
   const drawingRef = useRef<DrawingDraft | null>(null);
   const draggingRef = useRef<DragDraft | null>(null);
   const resizingRef = useRef<ResizeDraft | null>(null);
@@ -314,30 +375,26 @@ export default function PaperPage({
     [page.elements]
   );
 
-  const getLocalPoint = (clientX: number, clientY: number): Point => {
+  const getLocalPoint = useCallback((clientX: number, clientY: number): Point => {
     const canvas = canvasRef.current;
-    const safeClientX = Number.isFinite(clientX) ? clientX : 0;
-    const safeClientY = Number.isFinite(clientY) ? clientY : 0;
-    if (!canvas) {
-      return { x: 0, y: 0, clientX: safeClientX, clientY: safeClientY };
-    }
+    if (!canvas) return { x: 0, y: 0, clientX, clientY };
     const bounds = canvas.getBoundingClientRect();
     return {
-      x: clamp(safeClientX - bounds.left, 0, bounds.width),
-      y: clamp(safeClientY - bounds.top, 0, bounds.height),
-      clientX: safeClientX,
-      clientY: safeClientY,
+      x: clamp(clientX - bounds.left, 0, bounds.width),
+      y: clamp(clientY - bounds.top, 0, bounds.height),
+      clientX,
+      clientY,
     };
-  };
+  }, []);
 
-  const clearTransientState = () => {
+  const clearTransientState = useCallback(() => {
     setDrawing(null);
     setDragging(null);
     setResizing(null);
-  };
+  }, []);
 
   const queuePointerUpdate = useCallback(
-    (event: PointerEvent | MouseEvent) => {
+    (event: PointerEvent | MouseEvent | React.PointerEvent) => {
       pendingPointerRef.current = {
         clientX: event.clientX,
         clientY: event.clientY,
@@ -357,10 +414,10 @@ export default function PaperPage({
           setDrawing((previous) =>
             previous
               ? {
-                  ...previous,
-                  current: point,
-                  shiftSnap: latest.shiftKey,
-                }
+                ...previous,
+                current: point,
+                shiftSnap: latest.shiftKey,
+              }
               : previous
           );
         }
@@ -372,10 +429,10 @@ export default function PaperPage({
           setDragging((previous) =>
             previous
               ? {
-                  ...previous,
-                  dx,
-                  dy,
-                }
+                ...previous,
+                dx,
+                dy,
+              }
               : previous
           );
         }
@@ -384,19 +441,35 @@ export default function PaperPage({
         if (resizingNow) {
           const dx = latest.clientX - resizingNow.startClientX;
           const dy = latest.clientY - resizingNow.startClientY;
-          setResizing((previous) =>
-            previous
-              ? {
-                  ...previous,
-                  width: Math.max(40, Math.round(previous.originalWidth + dx)),
-                  height: Math.max(40, Math.round(previous.originalHeight + dy)),
-                }
-              : previous
-          );
+
+          setResizing((previous) => {
+            if (!previous) return null;
+            let { x, y, width, height } = previous;
+
+            if (previous.handle === "br") {
+              width = Math.max(40, previous.originalWidth + dx);
+              height = Math.max(40, previous.originalHeight + dy);
+            } else if (previous.handle === "tr") {
+              width = Math.max(40, previous.originalWidth + dx);
+              height = Math.max(40, previous.originalHeight - dy);
+              y = previous.originalY + (previous.originalHeight - height);
+            } else if (previous.handle === "bl") {
+              width = Math.max(40, previous.originalWidth - dx);
+              height = Math.max(40, previous.originalHeight + dy);
+              x = previous.originalX + (previous.originalWidth - width);
+            } else if (previous.handle === "tl") {
+              width = Math.max(40, previous.originalWidth - dx);
+              height = Math.max(40, previous.originalHeight - dy);
+              x = previous.originalX + (previous.originalWidth - width);
+              y = previous.originalY + (previous.originalHeight - height);
+            }
+
+            return { ...previous, x, y, width, height };
+          });
         }
       });
     },
-    []
+    [getLocalPoint]
   );
 
   useEffect(() => {
@@ -411,28 +484,33 @@ export default function PaperPage({
     resizingRef.current = resizing;
   }, [resizing]);
 
-  useEffect(() => {
-    if (!drawing && !dragging && !resizing) return;
+  const hasActiveAction = !!(drawing || dragging || resizing);
 
-    const onMove = (event: PointerEvent | MouseEvent) => {
+  useEffect(() => {
+    if (!hasActiveAction) return;
+
+    const onMove = (event: PointerEvent) => {
       queuePointerUpdate(event);
     };
 
-    const onUp = (event: PointerEvent | MouseEvent) => {
-      if (drawing) {
-        const start = drawing.start;
+    const onUp = (event: PointerEvent) => {
+      const drawingFinal = drawingRef.current;
+      const draggingFinal = draggingRef.current;
+      const resizingFinal = resizingRef.current;
+
+      if (drawingFinal) {
+        const start = drawingFinal.start;
         const rawCurrent = getLocalPoint(event.clientX, event.clientY);
-        const current = drawing.type === "ruler" && drawing.shiftSnap
+        const current = drawingFinal.type === "ruler" && drawingFinal.shiftSnap
           ? { ...rawCurrent, ...snapLinePoint(start, rawCurrent) }
           : rawCurrent;
 
-        if (drawing.type === "shape") {
+        if (drawingFinal.type === "shape") {
           const x = Math.min(start.x, current.x);
           const y = Math.min(start.y, current.y);
           const width = Math.abs(current.x - start.x);
           const height = Math.abs(current.y - start.y);
           if (width >= 12 && height >= 12) {
-            const now = Date.now();
             onInsertElement({
               id: createElementId(),
               type: "shape",
@@ -442,20 +520,14 @@ export default function PaperPage({
               width,
               height,
               zIndex: nextZIndex,
-              style: {
-                ...DEFAULT_ELEMENT_STYLE,
-                fillColor: "#e8f2ff",
-              },
-              createdAt: now,
-              updatedAt: now,
+              style: { ...DEFAULT_ELEMENT_STYLE, fillColor: "#e8f2ff" },
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
               shapeKind: "rect",
             });
           }
-        }
-
-        if (drawing.type === "compass") {
+        } else if (drawingFinal.type === "compass") {
           const radius = Math.max(12, Math.hypot(current.x - start.x, current.y - start.y));
-          const now = Date.now();
           onInsertElement({
             id: createElementId(),
             type: "circle",
@@ -466,21 +538,18 @@ export default function PaperPage({
             height: radius * 2,
             zIndex: nextZIndex,
             style: { ...DEFAULT_ELEMENT_STYLE, fillColor: "transparent" },
-            createdAt: now,
-            updatedAt: now,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
             radius,
             centerX: radius,
             centerY: radius,
           });
-        }
-
-        if (drawing.type === "ruler") {
-          const x2y2 = drawing.shiftSnap ? snapLinePoint(start, current) : { x: current.x, y: current.y };
+        } else if (drawingFinal.type === "ruler") {
+          const x2y2 = drawingFinal.shiftSnap ? snapLinePoint(start, current) : { x: current.x, y: current.y };
           const x = Math.min(start.x, x2y2.x);
           const y = Math.min(start.y, x2y2.y);
           const width = Math.max(1, Math.abs(x2y2.x - start.x));
           const height = Math.max(1, Math.abs(x2y2.y - start.y));
-          const now = Date.now();
           const x1Local = start.x - x;
           const y1Local = start.y - y;
           const x2Local = x2y2.x - x;
@@ -496,8 +565,8 @@ export default function PaperPage({
             height,
             zIndex: nextZIndex,
             style: { ...DEFAULT_ELEMENT_STYLE, fillColor: "transparent" },
-            createdAt: now,
-            updatedAt: now,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
             x1: x1Local,
             y1: y1Local,
             x2: x2Local,
@@ -507,16 +576,16 @@ export default function PaperPage({
         }
       }
 
-      if (dragging) {
-        const dx = Math.round(dragging.dx);
-        const dy = Math.round(dragging.dy);
+      if (draggingFinal) {
+        const dx = Math.round(draggingFinal.dx);
+        const dy = Math.round(draggingFinal.dy);
         if (Math.abs(dx) > 0 || Math.abs(dy) > 0) {
-          onMoveElements(dragging.elementIds, dx, dy);
+          onMoveElements(draggingFinal.elementIds, dx, dy);
         }
       }
 
-      if (resizing) {
-        onResizeElement(resizing.elementId, resizing.width, resizing.height, resizing.originalX, resizing.originalY);
+      if (resizingFinal) {
+        onResizeElement(resizingFinal.elementId, resizingFinal.width, resizingFinal.height, resizingFinal.x, resizingFinal.y);
       }
 
       clearTransientState();
@@ -524,36 +593,24 @@ export default function PaperPage({
 
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
 
     return () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
     };
   }, [
-    drawing,
-    dragging,
-    nextZIndex,
+    hasActiveAction,
+    getLocalPoint,
     onInsertElement,
     onMoveElements,
     onResizeElement,
     page.id,
+    nextZIndex,
     queuePointerUpdate,
-    resizing,
+    clearTransientState
   ]);
 
-  useEffect(() => {
-    return () => {
-      if (rafRef.current !== null) {
-        window.cancelAnimationFrame(rafRef.current);
-      }
-    };
-  }, []);
-
-  const onCanvasPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+  const onCanvasPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (readOnly) return;
     if (typeof event.button === "number" && event.button !== 0) return;
     onActivate();
@@ -562,7 +619,6 @@ export default function PaperPage({
 
     if (activeTool === "text") {
       const id = createElementId();
-      const now = Date.now();
       onInsertElement({
         id,
         type: "text",
@@ -573,17 +629,17 @@ export default function PaperPage({
         height: 80,
         zIndex: nextZIndex,
         style: { ...DEFAULT_ELEMENT_STYLE, fillColor: "transparent" },
-        createdAt: now,
-        updatedAt: now,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
         text: "Double-click to edit",
       });
       onSelectElements([id]);
       return;
     }
 
-    if (activeTool === "shape" || activeTool === "compass" || activeTool === "ruler") {
+    if (["shape", "compass", "ruler"].includes(activeTool as string)) {
       setDrawing({
-        type: activeTool,
+        type: activeTool as DrawingType,
         start: point,
         current: point,
         shiftSnap: event.shiftKey,
@@ -595,9 +651,9 @@ export default function PaperPage({
       onSelectElements([]);
       setEditingText(null);
     }
-  };
+  }, [activeTool, getLocalPoint, nextZIndex, onActivate, onInsertElement, onSelectElements, page.id, readOnly]);
 
-  const onElementPointerDown = (event: React.PointerEvent, element: CanvasElement) => {
+  const onElementPointerDown = useCallback((event: React.PointerEvent, element: CanvasElement) => {
     if (readOnly) return;
     if (typeof event.button === "number" && event.button !== 0) return;
     event.stopPropagation();
@@ -623,7 +679,7 @@ export default function PaperPage({
     const nextSelection = Array.from(currentSelection);
     onSelectElements(nextSelection);
 
-    if (activeTool === "shape" || activeTool === "compass" || activeTool === "ruler") {
+    if (["shape", "compass", "ruler"].includes(activeTool as string)) {
       return;
     }
 
@@ -640,15 +696,23 @@ export default function PaperPage({
       dx: 0,
       dy: 0,
     });
-  };
+  }, [activeTool, onActivate, onDeleteElements, onSelectElements, readOnly, selectedElementIds]);
 
-  const onResizePointerDown = (event: React.PointerEvent, element: CanvasElement) => {
+  const onResizePointerDown = useCallback((
+    event: React.PointerEvent,
+    element: CanvasElement,
+    handle: "tl" | "tr" | "bl" | "br"
+  ) => {
     if (readOnly) return;
     event.preventDefault();
     event.stopPropagation();
 
+    // Explicitly set capture on the handle
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+
     setResizing({
       elementId: element.id,
+      handle,
       startClientX: event.clientX,
       startClientY: event.clientY,
       originalWidth: element.width,
@@ -657,10 +721,12 @@ export default function PaperPage({
       originalY: element.y,
       width: element.width,
       height: element.height,
+      x: element.x,
+      y: element.y,
     });
-  };
+  }, [readOnly]);
 
-  const onElementDoubleClick = (element: CanvasElement) => {
+  const onElementDoubleClick = useCallback((element: CanvasElement) => {
     if (readOnly) return;
     if (element.type === "text") {
       setEditingText({ elementId: element.id });
@@ -669,19 +735,25 @@ export default function PaperPage({
     if (element.type === "math") {
       onRequestMathEdit(element.id, element.latexRaw);
     }
-  };
+  }, [onRequestMathEdit, readOnly]);
 
   const editingElement = useMemo(() => {
     if (!editingText) return null;
-    const element = page.elements.find(
-      (candidate): candidate is Extract<CanvasElement, { type: "text" }> =>
-        candidate.id === editingText.elementId && candidate.type === "text"
-    );
-    return element ?? null;
+    return (page.elements.find(e => e.id === editingText.elementId && e.type === "text") as Extract<CanvasElement, { type: "text" }>) || null;
   }, [editingText, page.elements]);
 
+  const getCursorClass = () => {
+    if (activeTool === "eraser") return styles.cursorEraser;
+    if (activeTool === "text") return styles.cursorText;
+    if (["shape", "compass", "ruler", "graph"].includes(activeTool as string)) return styles.cursorCrosshair;
+    return "";
+  };
+
   return (
-    <article className={`${styles.paperPage} ${active ? styles.paperPageActive : ""}`.trim()} onClick={onActivate}>
+    <article
+      className={`${styles.paperPage} ${active ? styles.paperPageActive : ""} ${getCursorClass()}`.trim()}
+      onClick={onActivate}
+    >
       <div className={styles.paperPageHeader}>
         <span className={styles.paperPageTitle}>
           Page {index + 1}
@@ -695,22 +767,24 @@ export default function PaperPage({
             if (block.type === "recognition") {
               return (
                 <div key={block.id} id={block.id} className={styles.paperBlockWrap}>
-                  {!exportMode && viewMode === "edit" ? <div className={styles.paperBlockActions} data-no-export="true">
-                    <button
-                      type="button"
-                      className={styles.blockActionButton}
-                      onClick={() => setEditingRecognition({ blockId: block.id, value: block.latex })}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.blockActionButton}
-                      onClick={() => onDeleteBlock(block.id)}
-                    >
-                      Delete
-                    </button>
-                  </div> : null}
+                  {!exportMode && viewMode === "edit" ? (
+                    <div className={styles.paperBlockActions} data-no-export="true">
+                      <button
+                        type="button"
+                        className={styles.blockActionButton}
+                        onClick={() => setEditingRecognition({ blockId: block.id, value: block.latex })}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.blockActionButton}
+                        onClick={() => onDeleteBlock(block.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  ) : null}
                   {editingRecognition?.blockId === block.id ? (
                     <div className={styles.inlineEditWrap}>
                       <textarea
@@ -755,103 +829,99 @@ export default function PaperPage({
             if (block.type === "steps") {
               return (
                 <div key={block.id} id={block.id} className={styles.paperBlockWrap}>
-                  {!exportMode && viewMode === "edit" ? <div className={styles.paperBlockActions} data-no-export="true">
-                    <button
-                      type="button"
-                      className={styles.blockActionButton}
-                      onClick={() => onDeleteBlock(block.id)}
-                    >
-                      Delete
-                    </button>
-                  </div> : null}
+                  {!exportMode && viewMode === "edit" ? (
+                    <div className={styles.paperBlockActions} data-no-export="true">
+                      <button
+                        type="button"
+                        className={styles.blockActionButton}
+                        onClick={() => onDeleteBlock(block.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  ) : null}
                   <SolutionStepsBlock
-                    sectionId={block.id}
                     steps={block.steps}
                     result={block.result}
                     verificationChecks={block.verificationChecks}
                     domainConstraints={block.domainConstraints}
                     autocorrectApplied={block.autocorrectApplied}
-                    editable={!exportMode && viewMode === "edit"}
+                    sectionId={block.id}
                     exportMode={exportMode}
+                    editable={viewMode === "edit"}
                     onActiveTextEditorChange={onActiveTextEditorChange}
                     onChange={(next) =>
                       onUpdateBlock(block.id, (current) =>
-                        current.type === "steps"
-                          ? {
-                              ...current,
-                              steps: next.steps,
-                              result: next.result,
-                              verificationChecks: next.verificationChecks,
-                              domainConstraints: current.domainConstraints,
-                              autocorrectApplied: current.autocorrectApplied,
-                            }
-                          : current
+                        current.type === "steps" ? { ...current, ...next } : current
                       )
                     }
                   />
                 </div>
               );
             }
-            return (
-              <div key={block.id} id={block.id} className={styles.paperBlockWrap}>
-                {!exportMode && viewMode === "edit" ? <div className={styles.paperBlockActions} data-no-export="true">
-                  <button
-                    type="button"
-                    className={styles.blockActionButton}
-                    onClick={() => setEditingTextBlock({ blockId: block.id, value: block.text })}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.blockActionButton}
-                    onClick={() => onDeleteBlock(block.id)}
-                  >
-                    Delete
-                  </button>
-                </div> : null}
-                {editingTextBlock?.blockId === block.id && viewMode === "edit" ? (
-                  <div className={styles.inlineEditWrap}>
-                    <textarea
-                      className={styles.inlineEditTextArea}
-                      value={editingTextBlock.value}
-                      onChange={(event) =>
-                        setEditingTextBlock((prev) =>
-                          prev ? { ...prev, value: event.target.value } : prev
-                        )
-                      }
-                    />
-                    <div className={styles.blockActions}>
+            if (block.type === "text") {
+              return (
+                <div key={block.id} id={block.id} className={styles.paperBlockWrap}>
+                  {!exportMode && viewMode === "edit" ? (
+                    <div className={styles.paperBlockActions} data-no-export="true">
                       <button
                         type="button"
                         className={styles.blockActionButton}
-                        onClick={() => {
-                          onUpdateBlock(block.id, (current) =>
-                            current.type === "text"
-                              ? { ...current, text: editingTextBlock.value.trim() || current.text }
-                              : current
-                          );
-                          setEditingTextBlock(null);
-                        }}
+                        onClick={() => setEditingTextBlock({ blockId: block.id, value: block.text })}
                       >
-                        Save
+                        Edit
                       </button>
                       <button
                         type="button"
                         className={styles.blockActionButton}
-                        onClick={() => setEditingTextBlock(null)}
+                        onClick={() => onDeleteBlock(block.id)}
                       >
-                        Cancel
+                        Delete
                       </button>
                     </div>
-                  </div>
-                ) : (
-                  <div style={{ fontSize: 14, color: "var(--text-main)" }}>
-                    <MathRenderer content={block.text} mode="prose" />
-                  </div>
-                )}
-              </div>
-            );
+                  ) : null}
+                  {editingTextBlock?.blockId === block.id && viewMode === "edit" ? (
+                    <div className={styles.inlineEditWrap}>
+                      <textarea
+                        className={styles.inlineEditTextArea}
+                        value={editingTextBlock.value}
+                        onChange={(event) =>
+                          setEditingTextBlock((prev) =>
+                            prev ? { ...prev, value: event.target.value } : prev
+                          )
+                        }
+                      />
+                      <div className={styles.blockActions}>
+                        <button
+                          type="button"
+                          className={styles.blockActionButton}
+                          onClick={() => {
+                            onUpdateBlock(block.id, (current) =>
+                              current.type === "text"
+                                ? { ...current, text: editingTextBlock.value.trim() || current.text }
+                                : current
+                            );
+                            setEditingTextBlock(null);
+                          }}
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.blockActionButton}
+                          onClick={() => setEditingTextBlock(null)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className={styles.paperTextBlock}>{block.text}</div>
+                  )}
+                </div>
+              );
+            }
+            return null;
           })}
         </div>
       ) : null}
@@ -860,16 +930,15 @@ export default function PaperPage({
         className={styles.paperCanvas}
         ref={canvasRef}
         onPointerDown={onCanvasPointerDown}
-        data-testid={`paper-canvas-${page.id}`}
+        style={{ minHeight: page.elements.length > 0 ? "800px" : "400px" }}
       >
-        {page.elements.length === 0 ? (
-          <div className={styles.paperCanvasHint}>Blank page. Use the toolbar to add math blocks.</div>
-        ) : null}
-
         {sortedElements.map((element) => {
           const selected = selectedSet.has(element.id);
           const dragPreview = dragging && dragging.elementIds.includes(element.id) ? { dx: dragging.dx, dy: dragging.dy } : undefined;
-          const resizePreview = resizing && resizing.elementId === element.id ? { width: resizing.width, height: resizing.height } : undefined;
+          const resizePreview =
+            resizing && resizing.elementId === element.id
+              ? { width: resizing.width, height: resizing.height, x: resizing.x, y: resizing.y }
+              : undefined;
 
           return (
             <ElementView
@@ -899,37 +968,30 @@ export default function PaperPage({
               />
             ) : null}
 
-            {drawing.type === "ruler" ? (
-              <svg className={styles.draftSvg}>
-                {(() => {
-                  const snapped = drawing.shiftSnap
-                    ? snapLinePoint(drawing.start, drawing.current)
-                    : { x: drawing.current.x, y: drawing.current.y };
-                  return (
-                    <line
-                      x1={drawing.start.x}
-                      y1={drawing.start.y}
-                      x2={snapped.x}
-                      y2={snapped.y}
-                      stroke="var(--primary-color)"
-                      strokeWidth={2}
-                      strokeDasharray="5 4"
-                    />
-                  );
-                })()}
-              </svg>
-            ) : null}
-
             {drawing.type === "compass" ? (
               <svg className={styles.draftSvg}>
                 <circle
                   cx={drawing.start.x}
                   cy={drawing.start.y}
-                  r={Math.max(8, Math.hypot(drawing.current.x - drawing.start.x, drawing.current.y - drawing.start.y))}
-                  fill="none"
+                  r={Math.hypot(drawing.current.x - drawing.start.x, drawing.current.y - drawing.start.y)}
+                  fill="rgba(74, 144, 226, 0.15)"
                   stroke="var(--primary-color)"
-                  strokeWidth={2}
-                  strokeDasharray="5 4"
+                  strokeWidth="2"
+                  strokeDasharray="4 4"
+                />
+              </svg>
+            ) : null}
+
+            {drawing.type === "ruler" ? (
+              <svg className={styles.draftSvg}>
+                <line
+                  x1={drawing.start.x}
+                  y1={drawing.start.y}
+                  x2={drawing.shiftSnap ? snapLinePoint(drawing.start, drawing.current).x : drawing.current.x}
+                  y2={drawing.shiftSnap ? snapLinePoint(drawing.start, drawing.current).y : drawing.current.y}
+                  stroke="var(--primary-color)"
+                  strokeWidth="2"
+                  strokeDasharray="4 4"
                 />
               </svg>
             ) : null}
@@ -945,13 +1007,14 @@ export default function PaperPage({
               width: editingElement.width,
               height: editingElement.height,
             }}
+            onPointerDown={(e) => e.stopPropagation()}
           >
             <RichTextElementEditor
               elementId={editingElement.id}
               initialText={editingElement.text || ""}
               initialHtml={editingElement.richTextHtml}
               initialJson={editingElement.richTextJson}
-              onActivate={(editor, elementId) => onActiveTextEditorChange?.(editor, elementId)}
+              onActivate={onActiveTextEditorChange || (() => { })}
               onCommit={(payload) => onCommitText(editingElement.id, payload)}
               onRequestClose={() => setEditingText(null)}
             />

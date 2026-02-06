@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Editor } from "@tiptap/core";
 import EditorToolbar from "./EditorToolbar";
 import GraphEditor from "./GraphEditor";
@@ -242,6 +242,16 @@ export default function CanvasWorkspace({
 
       const key = event.key.toLowerCase();
 
+      if (key === "escape") {
+        event.preventDefault();
+        if (state.activeTool !== "none") {
+          dispatch({ type: "SET_TOOL", tool: "none" });
+        } else if (state.selection.elementIds.length > 0) {
+          dispatch({ type: "SELECT_ELEMENTS", elementIds: [] });
+        }
+        return;
+      }
+
       if (key === "z" && event.shiftKey) {
         event.preventDefault();
         dispatch({ type: "REDO" });
@@ -346,6 +356,48 @@ export default function CanvasWorkspace({
     }
   }, [buildExportPayload, exportingDocx]);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleInsertImage = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const src = e.target?.result as string;
+      if (src) {
+        const id = createElementId();
+        // Determine placement - center of view or offset? Defaults to 100,100 for now or clipboard copy style
+        dispatch({
+          type: "INSERT_ELEMENT",
+          pageId: state.activePageId,
+          element: {
+            id,
+            type: "image",
+            pageId: state.activePageId,
+            x: 100,
+            y: 100,
+            width: 300,
+            height: 200,
+            zIndex: (state.pages.find((p) => p.id === state.activePageId)?.elements.length || 10) + 1,
+            style: { ...DEFAULT_ELEMENT_STYLE, strokeWidth: 0, fillColor: "transparent" },
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            src,
+            alt: file.name,
+          } as CanvasElement, // cast to handle discriminated union strictly if needed
+          select: true,
+        });
+      }
+    };
+    reader.readAsDataURL(file);
+    // Reset input
+    event.target.value = "";
+  }, [dispatch, state.activePageId, state.pages]);
+
   const handleActiveTextEditorChange = useCallback((editor: Editor | null, elementId: string | null) => {
     setActiveTextEditor(editor);
     setActiveTextEditorId(elementId);
@@ -368,18 +420,19 @@ export default function CanvasWorkspace({
             onCut={handleCut}
             onCopy={handleCopy}
             onPaste={handlePaste}
-            onAddPage={handleAddPage}
-            onSaveVersion={handleSaveVersion}
-            savingVersion={savingVersion}
-            canExport={canExport}
-            exportingDocx={exportingDocx}
-            onExportPdf={handleExportPdf}
-            onExportDocx={handleExportDocx}
           />
           <RichTextToolbar
             key={activeTextEditorId || "no-active-editor"}
             activeEditor={activeTextEditor}
             onNotice={(message) => setSaveMessage(message)}
+            canExport={canExport}
+            exportingDocx={exportingDocx}
+            savingVersion={savingVersion}
+            onExportPdf={handleExportPdf}
+            onExportDocx={handleExportDocx}
+            onSaveVersion={handleSaveVersion}
+            onAddPage={handleAddPage}
+            onInsertImage={handleInsertImage}
           />
         </>
       ) : (
@@ -545,12 +598,33 @@ export default function CanvasWorkspace({
       {viewMode === "edit" && latexEditorTarget ? (
         <LatexEditor
           initialValue={latexEditorTarget.initialLatex}
-          onClose={() => setLatexEditorTarget(null)}
+          onClose={() => {
+            setLatexEditorTarget(null);
+            dispatch({ type: "SET_TOOL", tool: "none" });
+          }}
           onInsert={handleInsertMath}
         />
       ) : null}
 
-      {viewMode === "edit" && graphEditorOpen ? <GraphEditor onClose={() => setGraphEditorOpen(false)} onInsert={handleInsertPlot} /> : null}
+      {viewMode === "edit" && graphEditorOpen ? (
+        <GraphEditor
+          onClose={() => {
+            setGraphEditorOpen(false);
+            dispatch({ type: "SET_TOOL", tool: "none" });
+          }}
+          onInsert={handleInsertPlot}
+        />
+      ) : null}
+      {viewMode === "edit" ? (
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          accept="image/*"
+          style={{ display: "none" }}
+          aria-hidden="true"
+        />
+      ) : null}
     </section>
   );
 }

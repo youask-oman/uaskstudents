@@ -108,7 +108,39 @@ const getSavedPaperVersions = (messages: SessionMessage[]): SavedPaperVersion[] 
   return [];
 };
 
-const buildInitialPages = (messages: ReturnType<typeof normalizeSessionMessages>): CanvasPageData[] => {
+const heuristicallyWrapMath = (text: string): string => {
+  if (!text) return "";
+  // If already has delimiters, leave it alone
+  if (text.includes("\\(") || text.includes("\\[") || text.includes("$")) return text;
+
+  // Pattern: "Solve for x, 2x + 7 = 19"
+  const solveMatch = text.match(/^(Solve for\s+)([a-zA-Z])([,:]?\s*)(.+)$/i);
+  if (solveMatch) {
+    return `${solveMatch[1]}\\(${solveMatch[2]}\\)${solveMatch[3]}\\(${solveMatch[4].trim()}\\)`;
+  }
+
+  // Pattern: "Evaluate [math]"
+  const evalMatch = text.match(/^(Evaluate|Simplify|Factor|Expand|Solve)([:\s]+)(.+)$/i);
+  if (evalMatch) {
+    return `${evalMatch[1]}${evalMatch[2]}\\(${evalMatch[3].trim()}\\)`;
+  }
+
+  // If it's just an equation like "y = mx + b" with no words
+  if (/^[0-9a-zA-Z\s+\-*/^=().,]+$/.test(text) && /[=<>]=?/.test(text)) {
+    // Check if it has too many words
+    const words = text.split(/\s+/).filter(w => /[a-zA-Z]{2,}/.test(w));
+    if (words.length <= 1) {
+      return `\\(${text}\\)`;
+    }
+  }
+
+  return text;
+};
+
+const buildInitialPages = (
+  messages: ReturnType<typeof normalizeSessionMessages>,
+  sessionTitle?: string
+): CanvasPageData[] => {
   const solution = extractPrimarySolution(messages);
   const firstPage = createPage();
   const now = Date.now();
@@ -121,11 +153,21 @@ const buildInitialPages = (messages: ReturnType<typeof normalizeSessionMessages>
   }
   const blocks = firstPage.blocks || [];
 
-  if (solution?.recognizedLatex) {
+  /* Extract first user message text to use as a fallback problem statement */
+  const userMessage = messages.find((m) => m.role === "user");
+  const userText = userMessage ? flattenTextItems(userMessage) : "";
+
+  // Prioritize sessionTitle if valid, then layoutTitle, then recognizedLatex, then userText
+  // Avoid using sessionTitle if it's generic like "Untitled Session"
+  const validSessionTitle = sessionTitle && sessionTitle !== "Untitled Session" ? sessionTitle : undefined;
+  const rawProblemStatement = validSessionTitle || layoutTitle || solution?.recognizedLatex || userText || "";
+  const problemStatement = heuristicallyWrapMath(rawProblemStatement);
+
+  if (solution && problemStatement) {
     blocks.push({
       id: "recognized-block",
       type: "recognition",
-      latex: solution.recognizedLatex,
+      latex: problemStatement,
       badge: "AI recognized",
     });
   }
@@ -203,7 +245,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   const [loading, setLoading] = useState(true);
   const [documentState, dispatch] = useReducer(
     documentReducer,
-    buildInitialDocumentState([createPage()], "text")
+    buildInitialDocumentState([createPage()], "none")
   );
 
   useEffect(() => {
@@ -259,10 +301,15 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     [session?.messages]
   );
 
-  const tutorMessages = useMemo(
-    () => (session?.messages || []).filter((message) => !isSolvePrimaryAssistantMessage(message)),
-    [session?.messages]
-  );
+  const tutorMessages = useMemo(() => {
+    const all = session?.messages || [];
+    const filtered = all.filter((message) => !isSolvePrimaryAssistantMessage(message));
+    // Remove the very first message if it is a user prompt (redundant with canvas)
+    if (filtered.length > 0 && filtered[0].role === "user") {
+      return filtered.slice(1);
+    }
+    return filtered;
+  }, [session?.messages]);
 
   const tutorNormalizedMessages = useMemo(
     () => normalizeSessionMessages(tutorMessages),
@@ -273,6 +320,19 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     () => extractPrimarySolution(normalizedMessages),
     [normalizedMessages]
   );
+
+  /* Compute best-attempt original problem statement */
+  const originalProblemStatement = useMemo(() => {
+    let text = "";
+    if (session?.title && session.title !== "Untitled Session") text = session.title;
+    else if (primarySolution?.layoutTitle) text = primarySolution.layoutTitle;
+    else if (primarySolution?.recognizedLatex) text = primarySolution.recognizedLatex;
+    else {
+      const firstUserMsg = normalizedMessages.find(m => m.role === "user");
+      text = firstUserMsg ? flattenTextItems(firstUserMsg) : "";
+    }
+    return heuristicallyWrapMath(text);
+  }, [session?.title, primarySolution, normalizedMessages]);
 
   const outlineItems = useMemo<OutlineItem[]>(() => {
     const items: OutlineItem[] = [];
@@ -341,7 +401,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
       const topic = typeof entry.topic === "string" ? entry.topic : undefined;
       const grade_band = typeof entry.grade_band === "string" ? entry.grade_band : undefined;
       const difficulty = typeof entry.difficulty === "string" ? entry.difficulty : undefined;
-      
+
       if (domain || topic || grade_band || difficulty) {
         return { domain, topic, grade_band, difficulty };
       }
@@ -359,10 +419,10 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     const latestSavedPages = savedPaperVersions[0]?.pages;
     const initialPages = latestSavedPages && latestSavedPages.length > 0
       ? latestSavedPages
-      : buildInitialPages(normalizedMessages);
+      : buildInitialPages(normalizedMessages, session.title || "");
     dispatch({
       type: "RESET",
-      state: buildInitialDocumentState(initialPages, "text"),
+      state: buildInitialDocumentState(initialPages, "none"),
     });
   }, [normalizedMessages, savedPaperVersions, session]);
 
@@ -414,7 +474,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
           <RightTutorChat
             sessionId={String(session.id)}
             initialMessages={tutorNormalizedMessages}
-            originalProblem={primarySolution?.recognizedLatex || ""}
+            originalProblem={originalProblemStatement}
             stepTitles={stepTitles}
             classification={classification}
           />

@@ -7,7 +7,6 @@ import {
   applyStyleToEditor,
   getActiveListMode,
   getActiveStyle,
-  RICH_TEXT_LIST_OPTIONS,
   RICH_TEXT_STYLE_OPTIONS,
   type RichTextListOption,
 } from "./rich-text/config";
@@ -16,15 +15,33 @@ import { validateAndNormalizeLink } from "./rich-text/linkUtils";
 interface RichTextToolbarProps {
   activeEditor: Editor | null;
   onNotice?: (message: string) => void;
+  canExport: boolean;
+  exportingDocx: boolean;
+  savingVersion: boolean;
+  onExportPdf: () => void;
+  onExportDocx: () => void;
+  onSaveVersion: () => void;
+  onAddPage: () => void;
+  onInsertImage: () => void;
 }
 
-const LIST_NONE: RichTextListOption = "none";
 
 const notify = (handler: ((message: string) => void) | undefined, message: string) => {
   if (handler) handler(message);
 };
 
-export default function RichTextToolbar({ activeEditor, onNotice }: RichTextToolbarProps) {
+export default function RichTextToolbar({
+  activeEditor,
+  onNotice,
+  canExport,
+  exportingDocx,
+  savingVersion,
+  onExportPdf,
+  onExportDocx,
+  onSaveVersion,
+  onAddPage,
+  onInsertImage,
+}: RichTextToolbarProps) {
   const buildViewState = useCallback(
     (editor: Editor | null) => ({
       style: getActiveStyle(editor),
@@ -145,37 +162,38 @@ export default function RichTextToolbar({ activeEditor, onNotice }: RichTextTool
         ))}
       </select>
 
-      <select
-        aria-label="List style"
-        className={styles.richToolbarSelect}
+      <button
+        type="button"
+        aria-label="Bulleted list"
+        className={`${styles.richToolbarButton} ${currentListMode === "bulleted" ? styles.richToolbarButtonActive : ""}`.trim()}
         disabled={!enabled}
-        value={currentListMode}
-        onChange={(event) => {
-          const value = event.target.value as RichTextListOption;
-          if (value === LIST_NONE) {
-            runCommand("list", (editor) => editor.chain().focus().liftListItem("listItem").run());
-            return;
-          }
-          if (value === "bulleted") {
-            runCommand("bulleted list", (editor) => editor.chain().focus().toggleBulletList().run());
-            return;
-          }
-          runCommand("numbered list", (editor) => editor.chain().focus().toggleOrderedList().run());
-        }}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => runCommand("bulleted list", (editor) => editor.chain().focus().toggleBulletList().run())}
       >
-        <option value={LIST_NONE}>List</option>
-        {RICH_TEXT_LIST_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+        <span className="material-symbols-outlined" style={{ fontSize: 18 }} aria-hidden="true">
+          format_list_bulleted
+        </span>
+      </button>
+
+      <button
+        type="button"
+        aria-label="Numbered list"
+        className={`${styles.richToolbarButton} ${currentListMode === "numbered" ? styles.richToolbarButtonActive : ""}`.trim()}
+        disabled={!enabled}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => runCommand("numbered list", (editor) => editor.chain().focus().toggleOrderedList().run())}
+      >
+        <span className="material-symbols-outlined" style={{ fontSize: 18 }} aria-hidden="true">
+          format_list_numbered
+        </span>
+      </button>
 
       <button
         type="button"
         aria-label="Bold"
         className={`${styles.richToolbarButton} ${isBold ? styles.richToolbarButtonActive : ""}`.trim()}
         disabled={!enabled}
+        onMouseDown={(e) => e.preventDefault()}
         onClick={() => runCommand("bold", (editor) => editor.chain().focus().toggleBold().run())}
       >
         B
@@ -185,6 +203,7 @@ export default function RichTextToolbar({ activeEditor, onNotice }: RichTextTool
         aria-label="Italic"
         className={`${styles.richToolbarButton} ${isItalic ? styles.richToolbarButtonActive : ""}`.trim()}
         disabled={!enabled}
+        onMouseDown={(e) => e.preventDefault()}
         onClick={() => runCommand("italic", (editor) => editor.chain().focus().toggleItalic().run())}
       >
         I
@@ -196,6 +215,7 @@ export default function RichTextToolbar({ activeEditor, onNotice }: RichTextTool
           aria-label="Link"
           className={styles.richToolbarButton}
           disabled={!enabled}
+          onMouseDown={(e) => e.preventDefault()}
           onClick={() => {
             setShowTableMenu(false);
             setShowLinkMenu((prev) => !prev);
@@ -241,6 +261,7 @@ export default function RichTextToolbar({ activeEditor, onNotice }: RichTextTool
           aria-label="Table"
           className={styles.richToolbarButton}
           disabled={!enabled}
+          onMouseDown={(e) => e.preventDefault()}
           onClick={() => {
             setShowLinkMenu(false);
             setShowTableMenu((prev) => !prev);
@@ -283,6 +304,91 @@ export default function RichTextToolbar({ activeEditor, onNotice }: RichTextTool
           </div>
         ) : null}
       </div>
+
+      <div className={styles.divider} style={{ height: 20 }} />
+
+      <button
+        type="button"
+        aria-label="Insert Image"
+        className={styles.richToolbarButton}
+        onClick={onInsertImage}
+      >
+        <span className="material-symbols-outlined" style={{ fontSize: 20 }} aria-hidden="true">
+          add_photo_alternate
+        </span>
+      </button>
+
+      <div className={styles.divider} style={{ height: 20 }} />
+
+      <button
+        type="button"
+        className={`${styles.actionButtonDual} ${styles.actionButtonPrimary}`}
+        onClick={onAddPage}
+        aria-label="Add Page"
+        style={{ height: 36, padding: "0 8px", minWidth: 90 }}
+      >
+        <span className="material-symbols-outlined" style={{ fontSize: 20 }} aria-hidden="true">
+          add_circle
+        </span>
+        <div className={styles.actionButtonTextCol}>
+          <span className={styles.actionTop} style={{ fontSize: 9 }}>Add</span>
+          <span className={styles.actionBottom} style={{ fontSize: 12 }}>Page</span>
+        </div>
+      </button>
+
+      {canExport ? (
+        <>
+          <button
+            type="button"
+            className={`${styles.actionButtonDual} ${styles.actionButtonSecondary}`}
+            onClick={onExportPdf}
+            aria-label="Export PDF"
+            style={{ height: 36, padding: "0 8px", minWidth: 90 }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 20 }} aria-hidden="true">
+              picture_as_pdf
+            </span>
+            <div className={styles.actionButtonTextCol}>
+              <span className={styles.actionTop} style={{ fontSize: 9 }}>EXPORT</span>
+              <span className={styles.actionBottom} style={{ fontSize: 12 }}>PDF</span>
+            </div>
+          </button>
+          <button
+            type="button"
+            className={`${styles.actionButtonDual} ${styles.actionButtonSecondary}`}
+            onClick={onExportDocx}
+            aria-label="Export DOCX"
+            disabled={exportingDocx}
+            style={{ height: 36, padding: "0 8px", minWidth: 90 }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 20 }} aria-hidden="true">
+              description
+            </span>
+            <div className={styles.actionButtonTextCol}>
+              <span className={styles.actionTop} style={{ fontSize: 9 }}>EXPORT</span>
+              <span className={styles.actionBottom} style={{ fontSize: 12 }}>{exportingDocx ? "..." : "DOCX"}</span>
+            </div>
+          </button>
+        </>
+      ) : null}
+
+      <button
+        type="button"
+        className={`${styles.actionButtonDual} ${styles.actionButtonSecondary}`}
+        onClick={onSaveVersion}
+        aria-label="Save Version"
+        disabled={savingVersion}
+        style={{ height: 36, padding: "0 8px", minWidth: 90 }}
+      >
+        <span className="material-symbols-outlined" style={{ fontSize: 20 }} aria-hidden="true">
+          save
+        </span>
+        <div className={styles.actionButtonTextCol}>
+          <span className={styles.actionTop} style={{ fontSize: 9 }}>SAVE</span>
+          <span className={styles.actionBottom} style={{ fontSize: 12 }}>{savingVersion ? "..." : "Version"}</span>
+        </div>
+      </button>
+
     </div>
   );
 }

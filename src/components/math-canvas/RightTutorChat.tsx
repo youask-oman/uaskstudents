@@ -135,7 +135,7 @@ export default function RightTutorChat({
 
       <div className={styles.chatScroll}>
         {messages.map((message) => (
-          <ChatMessage key={message.id} message={message} />
+          <ChatMessage key={message.id} message={message} originalProblem={originalProblem} />
         ))}
         {loading ? (
           <div className={styles.chatBubbleRowAssistant}>

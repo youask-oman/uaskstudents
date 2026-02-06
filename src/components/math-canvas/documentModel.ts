@@ -26,9 +26,10 @@ const cloneElement = (element: CanvasElement): CanvasElement => ({
   ...(element.type === "plot" ? { points: element.points.map((point) => ({ ...point })) } : {}),
   ...(element.type === "text" && element.richTextJson
     ? {
-        richTextJson: JSON.parse(JSON.stringify(element.richTextJson)) as Record<string, unknown>,
-      }
+      richTextJson: JSON.parse(JSON.stringify(element.richTextJson)) as Record<string, unknown>,
+    }
     : {}),
+  ...(element.type === "image" ? { src: element.src } : {}),
 });
 
 const cloneBlock = (block: CanvasBlock): CanvasBlock => {
@@ -162,19 +163,19 @@ export const normalizePages = (pages: CanvasPageData[]): CanvasPageData[] =>
     elements: page.elements ? [...page.elements] : [],
   }));
 
-export const buildInitialDocumentState = (pages: CanvasPageData[], activeTool: ToolType = "text"): CanvasDocumentState => {
+export const buildInitialDocumentState = (pages: CanvasPageData[], activeTool: ToolType = "none"): CanvasDocumentState => {
   const normalizedPages = normalizePages(pages);
   const activePageId = normalizedPages[0]?.id || createPageId();
   const safePages =
     normalizedPages.length > 0
       ? normalizedPages
       : [
-          {
-            id: activePageId,
-            blocks: [],
-            elements: [],
-          },
-        ];
+        {
+          id: activePageId,
+          blocks: [],
+          elements: [],
+        },
+      ];
   return {
     pages: safePages,
     activePageId,
@@ -198,12 +199,12 @@ export type DocumentAction =
   | { type: "RESIZE_ELEMENT"; elementId: string; width: number; height: number; x?: number; y?: number }
   | { type: "DELETE_ELEMENTS"; elementIds: string[] }
   | {
-      type: "SET_TEXT_CONTENT";
-      elementId: string;
-      text: string;
-      richTextHtml?: string;
-      richTextJson?: Record<string, unknown>;
-    }
+    type: "SET_TEXT_CONTENT";
+    elementId: string;
+    text: string;
+    richTextHtml?: string;
+    richTextJson?: Record<string, unknown>;
+  }
   | { type: "SET_MATH_LATEX"; elementId: string; latexRaw: string }
   | { type: "UPDATE_BLOCK"; pageId: string; blockId: string; updater: (block: CanvasBlock) => CanvasBlock }
   | { type: "DELETE_BLOCK"; pageId: string; blockId: string }
@@ -221,6 +222,7 @@ export const documentReducer = (state: CanvasDocumentState, action: DocumentActi
     case "SET_TOOL":
       return { ...state, activeTool: action.tool };
     case "SET_ACTIVE_PAGE":
+      if (state.activePageId === action.pageId) return state;
       return { ...state, activePageId: action.pageId, selection: { elementIds: [] } };
     case "SELECT_ELEMENTS":
       return { ...state, selection: { elementIds: [...action.elementIds] } };
@@ -241,11 +243,14 @@ export const documentReducer = (state: CanvasDocumentState, action: DocumentActi
         ...page,
         elements: [...page.elements, cloneElement(action.element)],
       }));
-      return commitSnapshot(state, {
-        pages: nextPages,
-        activePageId: action.pageId,
-        selection: { elementIds: action.select === false ? state.selection.elementIds : [action.element.id] },
-      });
+      return commitSnapshot(
+        { ...state, activeTool: "none" },
+        {
+          pages: nextPages,
+          activePageId: action.pageId,
+          selection: { elementIds: action.select === false ? state.selection.elementIds : [action.element.id] },
+        }
+      );
     }
     case "INSERT_ELEMENTS": {
       const nextPages = updatePage(state.pages, action.pageId, (page) => ({
@@ -253,11 +258,14 @@ export const documentReducer = (state: CanvasDocumentState, action: DocumentActi
         elements: [...page.elements, ...action.elements.map(cloneElement)],
       }));
       const selectedIds = action.select === false ? state.selection.elementIds : action.elements.map((entry) => entry.id);
-      return commitSnapshot(state, {
-        pages: nextPages,
-        activePageId: action.pageId,
-        selection: { elementIds: selectedIds },
-      });
+      return commitSnapshot(
+        { ...state, activeTool: "none" },
+        {
+          pages: nextPages,
+          activePageId: action.pageId,
+          selection: { elementIds: selectedIds },
+        }
+      );
     }
     case "UPDATE_ELEMENT": {
       const nextPages = updateElementInPages(state.pages, action.elementId, (element) => {
@@ -292,21 +300,24 @@ export const documentReducer = (state: CanvasDocumentState, action: DocumentActi
       const ids = new Set(action.elementIds);
       if (ids.size === 0) return state;
       const nextPages = removeElementsFromPages(state.pages, ids);
-      return commitSnapshot(state, {
-        pages: nextPages,
-        selection: { elementIds: [] },
-      });
+      return commitSnapshot(
+        { ...state, activeTool: "none" },
+        {
+          pages: nextPages,
+          selection: { elementIds: [] },
+        }
+      );
     }
     case "SET_TEXT_CONTENT": {
       const nextPages = updateElementInPages(state.pages, action.elementId, (element) =>
         element.type === "text"
           ? {
-              ...element,
-              text: action.text,
-              richTextHtml: action.richTextHtml,
-              richTextJson: action.richTextJson,
-              updatedAt: Date.now(),
-            }
+            ...element,
+            text: action.text,
+            richTextHtml: action.richTextHtml,
+            richTextJson: action.richTextJson,
+            updatedAt: Date.now(),
+          }
           : element
       );
       return commitSnapshot(state, { pages: nextPages });
