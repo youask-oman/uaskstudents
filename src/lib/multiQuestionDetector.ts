@@ -49,12 +49,26 @@ export function detectMultiQuestion(text: string): MultiQuestionResult {
     }
 
     // Check each pattern
+    // Check each pattern
     for (const pattern of MULTI_QUESTION_PATTERNS) {
         // Reset lastIndex for global patterns
         pattern.lastIndex = 0;
         const matches = text.match(pattern);
-        if (matches && matches.length >= 1) {
+
+        if (!matches || matches.length === 0) continue;
+
+        // Distinguish between connectors (also/then/next) and list markers (1), Q1, etc.)
+        // Connectors imply multiplicity even if appearing once.
+        // List markers must appear at least twice to imply a list.
+        const firstMatch = matches[0].trim().toLowerCase();
+        const isConnector = firstMatch.startsWith('also') ||
+            firstMatch.startsWith('then') ||
+            firstMatch.startsWith('next');
+
+        if (isConnector) {
             matchedPatterns.push(`Pattern: ${matches[0]}`);
+        } else if (matches.length >= 2) {
+            matchedPatterns.push(`${matches.length}x pattern '${matches[0]}'`);
         }
     }
 

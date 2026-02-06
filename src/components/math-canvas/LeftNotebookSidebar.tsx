@@ -39,7 +39,7 @@ export default function LeftNotebookSidebar({
       <div className={styles.notebookCard}>
         <div className={styles.notebookTitle}>{notebookTitle}</div>
         <div className={styles.notebookMeta}>
-          <MathRenderer content={notebookSubtitle} mode="inline" />
+          <MathRenderer content={notebookSubtitle} mode="prose" />
         </div>
       </div>
 

@@ -146,6 +146,7 @@ export default function DashboardPage() {
     // Token validation state
     const [showSplitModal, setShowSplitModal] = useState(false);
     const [suggestedSplits, setSuggestedSplits] = useState<string[]>([]);
+    const [multiQuestionConfirmed, setMultiQuestionConfirmed] = useState(false);
 
     // Input mode state
     const [selectedInputMode, setSelectedInputMode] = useState<InputModeId>('expression');
@@ -283,7 +284,7 @@ export default function DashboardPage() {
         ? tokenEstimate.tokens > textInputMaxTokens || query.length > textInputMaxChars
         : true;
     const isRequestTooLarge = !requestFit.fits;
-    const hasMultipleQuestions = multiQuestionResult.isMultiple && multiQuestionResult.confidence !== 'low';
+    const hasMultipleQuestions = !multiQuestionConfirmed && multiQuestionResult.isMultiple && multiQuestionResult.confidence !== 'low';
     const tokenBlockReason = !tokenPolicyReady
         ? "Token policy unavailable. Please refresh."
         : isInputTooLong
@@ -460,6 +461,7 @@ export default function DashboardPage() {
 
     const handleClear = () => {
         setQuery("");
+        setMultiQuestionConfirmed(false);
         setInputError(null);
         if (mathInputRef.current) {
             mathInputRef.current.setValue("");
@@ -1060,8 +1062,8 @@ export default function DashboardPage() {
                                                             type="button"
                                                             onClick={() => setGraphMode(mode)}
                                                             className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${graphMode === mode
-                                                                    ? "bg-white dark:bg-slate-600 text-primary shadow-sm"
-                                                                    : "text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                                                                ? "bg-white dark:bg-slate-600 text-primary shadow-sm"
+                                                                : "text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
                                                                 }`}
                                                         >
                                                             {mode.charAt(0).toUpperCase() + mode.slice(1)}
@@ -1175,6 +1177,7 @@ export default function DashboardPage() {
                                                             // Enforce character limit
                                                             if (textInputMaxChars <= 0 || value.length <= textInputMaxChars) {
                                                                 setQuery(value);
+                                                                setMultiQuestionConfirmed(false);
                                                                 if (inputError) setInputError(null);
                                                             }
                                                         }}
@@ -1183,6 +1186,7 @@ export default function DashboardPage() {
                                                             if (textInputMaxChars > 0 && pastedText.length > textInputMaxChars) {
                                                                 setInputError(`Pasted text was truncated to ${textInputMaxChars} characters.`);
                                                             }
+                                                            setMultiQuestionConfirmed(false);
                                                             // Check for multi-question on paste
                                                             const checkResult = detectMultiQuestion(pastedText);
                                                             if (checkResult.isMultiple && checkResult.confidence !== 'low') {
@@ -1200,6 +1204,7 @@ export default function DashboardPage() {
                                                             // Enforce character limit
                                                             if (textInputMaxChars <= 0 || value.length <= textInputMaxChars) {
                                                                 setQuery(value);
+                                                                setMultiQuestionConfirmed(false);
                                                                 if (inputError) setInputError(null);
                                                             }
                                                         }}
@@ -1211,6 +1216,7 @@ export default function DashboardPage() {
                                                                 setQuery(truncated);
                                                                 setInputError(`Pasted text was truncated to ${textInputMaxChars} characters.`);
                                                             }
+                                                            setMultiQuestionConfirmed(false);
                                                             // Check for multi-question on paste
                                                             const checkResult = detectMultiQuestion(pastedText);
                                                             if (checkResult.isMultiple && checkResult.confidence !== 'low') {
@@ -1238,6 +1244,7 @@ export default function DashboardPage() {
                                                         maxInputTokens={textInputMaxTokens}
                                                         maxInputChars={textInputMaxChars}
                                                         multiQuestionResult={multiQuestionResult}
+                                                        isConfirmed={multiQuestionConfirmed}
                                                         onSplitClick={() => {
                                                             setSuggestedSplits(autoSplitQuestions(query));
                                                             setShowSplitModal(true);
@@ -1884,6 +1891,11 @@ export default function DashboardPage() {
                 splits={suggestedSplits}
                 onSelectQuestion={(question) => {
                     setQuery(question);
+                    setMultiQuestionConfirmed(false);
+                    setShowSplitModal(false);
+                }}
+                onConfirmSingleQuestion={() => {
+                    setMultiQuestionConfirmed(true);
                     setShowSplitModal(false);
                 }}
             />

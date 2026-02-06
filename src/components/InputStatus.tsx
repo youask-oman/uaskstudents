@@ -24,6 +24,8 @@ interface InputStatusProps {
     onSplitClick?: () => void;
     /** Whether the component is in a dark container */
     darkContainer?: boolean;
+    /** Whether multi-question detected has been confirmed as single */
+    isConfirmed?: boolean;
 }
 
 export default function InputStatus({
@@ -34,6 +36,7 @@ export default function InputStatus({
     multiQuestionResult,
     onSplitClick,
     darkContainer = false,
+    isConfirmed = false,
 }: InputStatusProps) {
     const charCount = text.length;
     const tokenStatus = getTokenStatus(tokenEstimate, maxInputTokens);
@@ -53,7 +56,7 @@ export default function InputStatus({
         return darkContainer ? 'text-slate-400' : 'text-slate-500';
     };
 
-    const showMultiQuestionWarning = multiQuestionResult?.isMultiple && multiQuestionResult.confidence !== 'low';
+    const showMultiQuestionWarning = !isConfirmed && multiQuestionResult?.isMultiple && multiQuestionResult.confidence !== 'low';
 
     return (
         <div className="flex flex-wrap items-center justify-between gap-2 mt-2 text-xs">
@@ -108,6 +111,14 @@ export default function InputStatus({
                                 Split
                             </button>
                         )}
+                    </div>
+                )}
+
+                {/* Confirmed Single Question Badge */}
+                {isConfirmed && (
+                    <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-md animate-in fade-in duration-300">
+                        <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                        <span>Confirmed one question</span>
                     </div>
                 )}
             </div>

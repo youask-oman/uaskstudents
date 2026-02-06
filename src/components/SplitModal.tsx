@@ -19,6 +19,8 @@ interface SplitModalProps {
     splits: string[];
     /** Handler when user selects a question to solve */
     onSelectQuestion: (question: string, index: number) => void;
+    /** Handler when user confirms it is a single question */
+    onConfirmSingleQuestion?: () => void;
 }
 
 export default function SplitModal({
@@ -26,6 +28,7 @@ export default function SplitModal({
     onClose,
     splits,
     onSelectQuestion,
+    onConfirmSingleQuestion,
 }: SplitModalProps) {
     if (!isOpen) return null;
 
@@ -88,7 +91,7 @@ export default function SplitModal({
                                 <span className="material-symbols-outlined text-3xl text-amber-600 dark:text-amber-400">edit_note</span>
                             </div>
                             <p className="text-slate-600 dark:text-slate-300 mb-2">
-                            We couldn&apos;t automatically split your input.
+                                We couldn&apos;t automatically split your input.
                             </p>
                             <p className="text-sm text-slate-500 dark:text-slate-400">
                                 Please manually separate your questions and solve them one at a time.
@@ -98,16 +101,24 @@ export default function SplitModal({
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
                     <p className="text-xs text-slate-500 dark:text-slate-400">
                         Tip: Solving one question at a time gives more accurate results
                     </p>
-                    <button
-                        onClick={onClose}
-                        className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
-                    >
-                        Cancel
-                    </button>
+                    <div className="flex gap-3">
+                        <button
+                            onClick={onClose}
+                            className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={onConfirmSingleQuestion || onClose}
+                            className="px-4 py-2 text-sm font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors border border-primary/20"
+                        >
+                            This is one question
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

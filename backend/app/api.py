@@ -81,6 +81,7 @@ from app.services.token_policy import get_token_policy, serialize_token_policy
 from app.config import get_settings
 from app.services.school_import_service import normalize_country_code
 from app.utils.perf_timer import perf_emit, perf_enabled
+from app.services.response_mapper import normalize_raw_llm_response
 
 
 
@@ -5582,6 +5583,8 @@ async def solve_v3_stream_endpoint(
                     )
 
             if final_data and not validation_errors:
+                # Normalization pass to fix common enum mishaps before strict validation
+                final_data = normalize_raw_llm_response(final_data)
                 validation_errors = _validate_stream_payload(final_data, profile.json_schema_content)
                 schema_valid = len(validation_errors) == 0
 
