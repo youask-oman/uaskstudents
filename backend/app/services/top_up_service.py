@@ -1,0 +1,104 @@
+
+from typing import List, Optional
+from sqlmodel import Session, select
+from datetime import datetime
+from app.models import TopUpProduct, User, Payment, CreditLot, UsageLedger
+from app.services.credit_wallet_service import credit_wallet_service
+from app.services.subscription_service import subscription_service
+
+class TopUpService:
+    def list_products(self, session: Session) -> List[TopUpProduct]:
+        return session.exec(select(TopUpProduct).where(TopUpProduct.is_active == True)).all()
+
+    def create_checkout_session(self, session: Session, user_id: int, product_code: str) -> dict:
+        """
+        Phase 2: Mock checkout. 
+        In Phase 4 this will return a Stripe Session ID.
+        """
+        product = session.exec(select(TopUpProduct).where(TopUpProduct.code == product_code)).first()
+        if not product:
+            raise ValueError("Invalid product code")
+            
+        # Mock Response
+        return {
+            "checkout_url": f"/api/v1/topups/mock_confirm?code={product.code}",
+            "payment_intent_id": f"pi_mock_{int(datetime.utcnow().timestamp())}"
+        }
+
+    def confirm_topup(
+        self, 
+        session: Session, 
+        user_id: int, 
+        product_code: str, 
+        external_ref: str,
+        source: str = "MANUAL_ADMIN"
+    ) -> dict:
+        """
+        Idempotent confirmation of top-up.
+        1. Check if external_ref used.
+        2. Create Payment (Succeeded).
+        3. Add Credits (Lot + UsageLedger).
+        """
+        # 0. Idempotency on CreditLot via external_ref
+        existing = session.exec(select(CreditLot).where(CreditLot.external_ref == external_ref)).first()
+        if existing:
+            return {"status": "already_processed", "lot_id": existing.id}
+            
+        product = session.exec(select(TopUpProduct).where(TopUpProduct.code == product_code)).first()
+        if not product:
+            raise ValueError("Invalid product code")
+            
+        # 1. Create Payment Record
+        payment = Payment(
+            user_id=user_id,
+            amount=product.price_usd,
+            status="completed", # Phase 2 manual
+            transaction_id=external_ref,
+            payment_method="card" # or mock
+        )
+        session.add(payment)
+        
+        # 2. Add Credits (Creates Lot)
+        lot = credit_wallet_service.add_credits(
+            session,
+            user_id,
+            amount=float(product.credits),
+            source=source,
+            expiry_days=120, # Policy
+            lot_type="TOPUP",
+            external_ref=external_ref
+        )
+        
+        # 3. Create Usage Ledger (CREDIT)
+        # We need to sync Subscription balance here too.
+        # credit_wallet_service.add_credits only creates Lot.
+        # It does NOT update subscription balance in my implementation (Step 354 flush only).
+        # So we must do it here.
+        user = session.get(User, user_id)
+        sub = subscription_service.get_or_create_subscription(session, user)
+        
+        sub.credits_balance += product.credits
+        # Do we reset effective date? No.
+        session.add(sub)
+        
+        ledger = UsageLedger(
+            subscription_id=sub.id,
+            transaction_type="CREDIT",
+            amount=float(product.credits),
+            balance_after=sub.credits_balance,
+            reference_id=external_ref,
+            meta={"product_code": product_code, "type": "TOPUP"}
+        )
+        session.add(ledger)
+        
+        session.commit()
+        session.refresh(lot)
+        
+        return {
+            "status": "success",
+            "lot_id": lot.id,
+            "credits_added": product.credits,
+            "new_balance": sub.credits_balance
+        }
+
+top_up_service = TopUpService()

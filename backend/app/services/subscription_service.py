@@ -358,6 +358,23 @@ class SubscriptionService:
             meta=meta
         )
         session.add(ledger)
+        session.flush() # Get ID for allocation
+        
+        # Phase 2: Allocator Integration
+        if cost > 0:
+            try:
+                from app.services.credit_lot_allocator import credit_lot_allocator
+                credit_lot_allocator.consume_credits(
+                    session,
+                    subscription.user_id,
+                    cost,
+                    usage_ledger_id=ledger.id,
+                    subscription_id=subscription.id
+                )
+            except Exception as e:
+                print(f"[Allocation Error] Failed to allocate lots for sub debit: {e}")
+                raise e
+                
         return ledger
 
     def refund_credits(self, session: Session, subscription_id: int, amount: float, reason: str, ref_id: str):

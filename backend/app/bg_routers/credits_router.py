@@ -10,7 +10,6 @@ from app.database import get_session
 from app.models import User, Subscription, Plan
 from app.schemas.pricing import PlanMultipliers, PlanFeatures, CreditsConfig
 from app.auth import SECRET_KEY, ALGORITHM
-# from app.auth import get_current_user # Not available in auth.py, defining locally
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -192,7 +191,7 @@ async def estimate_credits(
         # Assuming user.subscription is a relationship, or we query it.
         # User <-> Subscription is usually 1:1
         # Let's query active subscription
-        sub_query = select(Subscription).where(Subscription.user_id == user.id).where(Subscription.is_active == True)
+        sub_query = select(Subscription).where(Subscription.user_id == user.id).where(Subscription.status == "active")
         subscription = session.exec(sub_query).first()
         
         if subscription:

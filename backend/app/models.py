@@ -842,16 +842,52 @@ class ProviderModelPricing(SQLModel, table=True):
     created_by: Optional[int] = Field(default=None)
 
 
+
 class CreditLot(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id", index=True)
+    subscription_id: Optional[int] = Field(default=None, foreign_key="subscription.id", index=True)
+    
+    # Core Balance
     credits_total: float
     credits_remaining: float
-    purchased_at: datetime = Field(default_factory=datetime.utcnow)
-    expires_at: datetime
-    source: str = Field(index=True)  # purchase, promo, admin_adjustment
-    is_active: bool = Field(default=True)
     
+    # Metadata
+    lot_type: str = Field(default="TOPUP", index=True) # TOPUP, PROMO, GRANT, MIGRATION, SUBSCRIPTION_MONTHLY
+    status: str = Field(default="ACTIVE", index=True) # ACTIVE, EXPIRED, DEPLETED, VOIDED
+    source: str = Field(default="MANUAL_ADMIN", index=True)
+    external_ref: Optional[str] = Field(default=None, index=True) # PaymentIntent ID or idempotency key
+    
+    currency: str = Field(default="USD")
+    amount_paid: Optional[float] = None
+    
+    purchased_at: datetime = Field(default_factory=datetime.utcnow)
+    expires_at: Optional[datetime] = Field(default=None, index=True)
+    
+    is_active: bool = Field(default=True) # Legacy toggle, use status='ACTIVE' primarily
+
+class CreditLotConsumption(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    subscription_id: Optional[int] = Field(default=None, foreign_key="subscription.id")
+    credit_lot_id: int = Field(foreign_key="creditlot.id", index=True)
+    # Allows nullable for legacy or edge cases, but ideally FK enforced
+    usage_ledger_id: Optional[int] = Field(default=None, foreign_key="usageledger.id", index=True) 
+    
+    direction: str = Field(index=True) # DEBIT, REFUND
+    amount: float
+    
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class TopUpProduct(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    code: str = Field(index=True, unique=True)
+    name: str
+    credits: int
+    price_usd: float
+    is_active: bool = Field(default=True)
+    metadata_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+
 class BillingLedger(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id", index=True)

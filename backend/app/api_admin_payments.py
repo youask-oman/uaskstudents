@@ -4,15 +4,12 @@ from sqlmodel import Session, select, desc, func
 from datetime import datetime, timedelta
 
 from app.database import get_session
-from app.models import User, RequestEvent, ProviderModelPricing, BillingLedger, SolverOutputAttempt
+from app.models import User, RequestEvent, ProviderModelPricing, BillingLedger, SolverOutputAttempt, CreditLot, Payment, CreditLotConsumption
 from app.api_admin import get_staff_user, get_admin_user
 from app.services.provider_pricing_service import provider_pricing_service
 from app.services.cost_estimation_service import cost_estimation_service
-from app.services.admin.analytics_service import _calc_cost
 
 router = APIRouter(prefix="/api/admin/payments", tags=["admin-payments"])
-
-# --- Overview ---
 
 @router.get("/overview")
 def get_payments_overview(
@@ -21,52 +18,33 @@ def get_payments_overview(
     user: User = Depends(get_staff_user)
 ):
     """
-    Overview for Phase 0 Dashboard.
+    Overview for Phase 2 Dashboard.
     """
     now = datetime.utcnow()
     start_date = now - timedelta(days=range_days)
     
-    # 1. Total Estimated Provider Cost (from RequestEvent)
-    # Ideally we'd iterate and sum using cost_estimation_service, but that's slow.
-    # We'll rely on stored `cost_usd` if present, else fallback to _calc_cost (legacy) 
-    # OR better: do an aggregate query if possible.
-    # RequestEvent.cost_usd is populated by `record_request_event`, relying on _calc_cost.
-    # So stored cost is "legacy estimate".
-    # Phase 0 Goal: Show "Estimated Provider Cost".
-    
-    events = session.exec(
-        select(RequestEvent).where(RequestEvent.created_at >= start_date)
-    ).all()
-    
-    total_provider_cost = 0.0
-    total_tokens = 0
+    # 1. Total Estimated Provider Cost
+    events = session.exec(select(RequestEvent).where(RequestEvent.created_at >= start_date)).all()
+    total_provider_cost = sum([e.cost_usd or 0.0 for e in events])
+    total_tokens = sum([e.tokens_total or 0 for e in events])
     request_count = len(events)
     
-    # Simple aggregation loop (can be optimized in SQL later)
-    for e in events:
-        # Use existing cost if available, else estimate
-        c = e.cost_usd
-        if c is None:
-            # Try new estimator first? No, that requires DB lookup per row (N+1).
-            # Fallback to legacy _calc_cost for speed in Phase 0 overview
-            c = _calc_cost(e.tokens_total, e.model, e.tokens_in, e.tokens_out)
-            
-        total_provider_cost += (c or 0.0)
-        total_tokens += (e.tokens_total or 0)
-        
-    # 2. Total User Spend (Credits consumed)
-    # Query UsageLedger (DEBIT)
-    # user_spend = sum(credits_charged)
+    # 2. Total User Spend (Credits consumed form BillingLedger)
+    # Status: 'SETTLED' (legacy) or 'CHARGED' (Phase 1)
+    # Removing transaction_type check as BillingLedger structure changed or was misunderstood.
     usage_query = select(func.sum(BillingLedger.credits_charged)).where(
         BillingLedger.created_at >= start_date,
-        BillingLedger.transaction_type == "DEBIT",
-        BillingLedger.status == "SETTLED"
+        BillingLedger.status.in_(["SETTLED", "CHARGED"])
     )
     total_credits_consumed = session.exec(usage_query).one() or 0.0
     
-    # Convert credits to approx USD for comparison (assuming $1 = 25 credits standard)
-    # This is a rough "Revenue Recognition" metric.
-    estimated_revenue = total_credits_consumed / 25.0
+    # 3. Top-Up Revenue (Real $)
+    # Workaround: Sum valid CreditLots (TOPUP) purchased_at >= start_date
+    topup_revenue_query = select(func.sum(CreditLot.amount_paid)).where(
+        CreditLot.purchased_at >= start_date,
+        CreditLot.lot_type == "TOPUP"
+    )
+    total_revenue_usd = session.exec(topup_revenue_query).one() or 0.0
     
     return {
         "start_date": start_date,
@@ -74,12 +52,62 @@ def get_payments_overview(
         "metrics": {
             "provider_cost_usd": round(total_provider_cost, 4),
             "credits_consumed": round(total_credits_consumed, 2),
-            "estimated_revenue_usd": round(estimated_revenue, 2),
-            "gross_margin_usd": round(estimated_revenue - total_provider_cost, 2),
+            "revenue_usd": round(total_revenue_usd, 2),
+            "gross_margin_usd": round(total_revenue_usd - total_provider_cost, 2),
             "request_count": request_count,
             "total_tokens": total_tokens
         }
     }
+
+@router.get("/topups")
+def list_topups(
+    page: int = 1,
+    page_size: int = 50,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_staff_user)
+):
+    offset = (page - 1) * page_size
+    query = select(CreditLot).where(CreditLot.lot_type == "TOPUP").order_by(desc(CreditLot.purchased_at))
+    lots = session.exec(query.offset(offset).limit(page_size)).all()
+    return lots
+
+@router.get("/lots")
+def list_lots(
+    user_id: Optional[int] = None,
+    page: int = 1,
+    page_size: int = 50,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_staff_user)
+):
+    offset = (page - 1) * page_size
+    query = select(CreditLot).order_by(desc(CreditLot.purchased_at))
+    if user_id:
+        query = query.where(CreditLot.user_id == user_id)
+        
+    lots = session.exec(query.offset(offset).limit(page_size)).all()
+    return lots
+
+@router.get("/consumption/{request_id}")
+def get_consumption_drilldown(
+    request_id: str,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_staff_user)
+):
+    # Link: request_id (reference_id) -> UsageLedger -> CreditLotConsumption
+    from app.models import UsageLedger
+    u_entries = session.exec(select(UsageLedger).where(UsageLedger.reference_id == request_id)).all()
+    
+    results = []
+    for u in u_entries:
+        consumptions = session.exec(select(CreditLotConsumption).where(
+            CreditLotConsumption.usage_ledger_id == u.id
+        )).all()
+        results.append({
+            "usage_ledger": u,
+            "lot_allocations": consumptions
+        })
+        
+    return results
 
 # --- Requests Explorer ---
 
