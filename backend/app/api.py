@@ -651,6 +651,7 @@ class SolveRequest(BaseModel):
     include_graph: Optional[bool] = Field(False, description="Whether to include a visualization/graph in the solution")
     graph_mode: Optional[str] = Field("auto", description="Graph mode: off | auto | on")
     attach_to_step_id: Optional[int] = Field(None, description="Step ID to attach plot to, or null for standalone")
+    force_validity: Optional[bool] = Field(False, description="Whether to bypass strict math validation checks")
 
 from app.models import Plan, Subscription, UsageLedger
 from app.services.subscription_service import subscription_service
@@ -5358,7 +5359,8 @@ async def solve_v3_stream_endpoint(
         )
 
         try:
-            validate_math_query(problem_text)
+            if not body.force_validity:
+                validate_math_query(problem_text)
         except HTTPException as e:
             log_solve_trace({
                 "request_id": request_id,

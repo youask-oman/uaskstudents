@@ -374,61 +374,61 @@ export default function WorkspaceLayout({
                             </div>
                         </section>
 
-                        {/* Final Answer Banner */}
+                        {/* Final Answer Banner (High Contrast & Large) */}
                         {(finalAnswer || (finalAnswerValues && finalAnswerValues.length > 0)) && (
-                            <section className="bg-gradient-to-r from-primary via-emerald-500 to-teal-500 text-white rounded-2xl p-6 mb-6 shadow-xl shadow-primary/30 relative overflow-hidden">
-                                <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-10"></div>
-
-                                <div className="relative z-10 flex flex-col gap-4">
-                                    <div className="flex items-start gap-4">
-                                        <div className="bg-white/20 p-3 rounded-full backdrop-blur-sm shrink-0 shadow-lg">
-                                            <span className="material-symbols-outlined text-[28px]">check_circle</span>
+                            <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none mb-8 overflow-hidden">
+                                <div className="flex flex-col">
+                                    {/* Header - Minimalist */}
+                                    <div className="px-8 py-5 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between bg-slate-50/50 dark:bg-white/5">
+                                        <div className="flex items-center gap-3">
+                                            <div className="size-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                                                <span className="material-symbols-outlined text-[18px]">verified</span>
+                                            </div>
+                                            <span className="text-sm font-bold tracking-widest uppercase text-slate-500 dark:text-slate-400">
+                                                Final Result
+                                            </span>
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex flex-wrap items-center gap-3 mb-3">
-                                                <div className="flex items-center gap-2 bg-white/25 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/30 shadow-sm">
-                                                    <span className="material-symbols-outlined text-[16px] text-white">verified</span>
-                                                    <span className="text-[10px] font-black uppercase tracking-wider text-white">Verified Solution</span>
-                                                </div>
-                                                <div className="flex items-center gap-2 bg-black/10 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/10">
-                                                    <span className="material-symbols-outlined text-[14px] text-emerald-300">psychology</span>
-                                                    <span className="text-[11px] font-bold text-white/95">
-                                                        AI Confidence: {confidence}%
-                                                    </span>
+                                    </div>
+
+                                    {/* Content - Large & Clean */}
+                                    <div className="p-8 md:p-12 flex flex-col items-center text-center">
+
+                                        {/* Main Equation / Answer */}
+                                        {finalAnswer && (
+                                            <div className="w-full overflow-x-auto py-4">
+                                                <div className="text-3xl md:text-5xl font-medium text-slate-900 dark:text-white leading-tight">
+                                                    <MathRenderer content={finalAnswer} mode="block" />
                                                 </div>
                                             </div>
+                                        )}
 
-                                            {finalAnswer && (
-                                                <div className="text-xl md:text-2xl font-bold tracking-tight">
-                                                    <MathRenderer content={finalAnswer} mode={finalAnswerMode} />
-                                                </div>
-                                            )}
+                                        {/* Divider */}
+                                        {((finalAnswerValues?.length ?? 0) > 0 || finalAnswerUnits) && (
+                                            <div className="w-24 h-px bg-slate-200 dark:bg-slate-800 my-8"></div>
+                                        )}
 
-                                            {/* Final Answer Units */}
-                                            {finalAnswerUnits && (
-                                                <div className="mt-1 text-sm font-medium text-white/80">
-                                                    Units: {finalAnswerUnits}
-                                                </div>
-                                            )}
+                                        {/* Variables & Units - Large & Grid Layout */}
+                                        {((finalAnswerValues?.length ?? 0) > 0 || finalAnswerUnits) && (
+                                            <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 text-lg md:text-xl text-slate-600 dark:text-slate-300">
+                                                {finalAnswerUnits && (
+                                                    <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800/50 rounded-lg">
+                                                        <span className="text-sm font-bold text-slate-400 uppercase tracking-wider">Units</span>
+                                                        <span className="font-semibold text-slate-900 dark:text-white">{finalAnswerUnits}</span>
+                                                    </div>
+                                                )}
 
-                                            {/* Final Answer Values */}
-                                            {finalAnswerValues && finalAnswerValues.length > 0 && (
-                                                <div className="mt-4 flex flex-wrap gap-4 pt-4 border-t border-white/20">
-                                                    {finalAnswerValues.map((v, i) => (
-                                                        <div key={i} className="flex flex-col">
-                                                            <span className="text-[10px] font-black uppercase tracking-tighter text-white/70">{v.label}</span>
-                                                            <span className="text-sm font-black whitespace-nowrap">
-                                                                <MathRenderer content={v.value_latex || String(v.value)} mode="inline" />
-                                                                {v.value_latex && v.value !== undefined && v.value !== null && String(v.value) !== '' &&
-                                                                    v.value_latex.replace(/[\\{} ]/g, '') !== String(v.value).replace(/ /g, '') && (
-                                                                        <span className="ml-1.5 text-white/60 font-medium whitespace-nowrap">({v.value})</span>
-                                                                    )}
-                                                            </span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
+                                                {finalAnswerValues?.map((v, i) => (
+                                                    <div key={i} className="flex items-center gap-2 group">
+                                                        <span className="text-sm font-bold text-slate-400 uppercase tracking-wider group-hover:text-primary transition-colors cursor-default">
+                                                            {v.label}
+                                                        </span>
+                                                        <span className="font-serif text-slate-900 dark:text-white font-medium">
+                                                            <MathRenderer content={`= ${v.value_latex}`} mode="inline" />
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </section>

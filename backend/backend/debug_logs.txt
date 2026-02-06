@@ -939,3 +939,16 @@ Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
 Prompt binding integrity OK: active_bindings=8 active_pairs=8
 build_openai_structured_output: call=None endpoint=responses name=solve_standard_detailed_v1 strict=True schema_hash=4a61042ebed70a21
 build_openai_structured_output: call=None endpoint=responses name=solve_standard_detailed_v1 strict=True schema_hash=4a61042ebed70a21
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+build_openai_structured_output: call=None endpoint=responses name=solve_standard_detailed_v1 strict=False schema_hash=5a123dc74dd62ce6
+build_openai_structured_output: call=None endpoint=responses name=solve_standard_detailed_v1 strict=False schema_hash=5a123dc74dd62ce6
+[QUESTION_CACHE] Stored: 0e2adc4a545991ec...

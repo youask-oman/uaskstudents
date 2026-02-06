@@ -21,7 +21,13 @@ import SplitModal from "@/components/SplitModal";
 import InputModeSelector from "@/components/InputModeSelector";
 import LiveMathPreview from "@/components/LiveMathPreview";
 import { InputModeId, INPUT_MODES, GraphingOptions, DEFAULT_GRAPHING_OPTIONS } from "@/lib/inputModes";
-import { validateMathQuery, isBlockingInputError, isInputTooShort } from "@/lib/mathValidation";
+import {
+    validateMathQuery,
+    isBlockingInputError,
+    isInputTooShort,
+    INPUT_ERROR_BLOCKED,
+    INPUT_ERROR_NOT_MATH
+} from "@/lib/mathValidation";
 
 // Tier-aware solve imports
 import SegmentedControl from "@/components/ui/SegmentedControl";
@@ -147,6 +153,7 @@ export default function DashboardPage() {
     const [showSplitModal, setShowSplitModal] = useState(false);
     const [suggestedSplits, setSuggestedSplits] = useState<string[]>([]);
     const [multiQuestionConfirmed, setMultiQuestionConfirmed] = useState(false);
+    const [mathValidityConfirmed, setMathValidityConfirmed] = useState(false);
 
     // Input mode state
     const [selectedInputMode, setSelectedInputMode] = useState<InputModeId>('expression');
@@ -438,6 +445,7 @@ export default function DashboardPage() {
         if (suggestion.insertMode === 'replace') {
             // If Math Mode was off, this state update will initialize MathInput with this value
             setQuery(suggestion.latex);
+            setMathValidityConfirmed(false);
 
             // If checking ref immediately (it might be stale if we just switched mode), try to set it
             if (mathInputRef.current) {
@@ -452,6 +460,7 @@ export default function DashboardPage() {
             } else {
                 // If switching from text mode, just append to state
                 setQuery(prev => prev + suggestion.latex);
+                setMathValidityConfirmed(false);
             }
         }
 
@@ -462,6 +471,7 @@ export default function DashboardPage() {
     const handleClear = () => {
         setQuery("");
         setMultiQuestionConfirmed(false);
+        setMathValidityConfirmed(false);
         setInputError(null);
         if (mathInputRef.current) {
             mathInputRef.current.setValue("");
@@ -650,9 +660,24 @@ export default function DashboardPage() {
         const textToSolve = overrideText ?? (mathFieldValue.trim() ? mathFieldValue : query);
 
         const validationError = validateMathQuery(textToSolve);
+        // Errors that can be overridden by user confirmation
+        const isOverridableError = validationError === INPUT_ERROR_BLOCKED || validationError === INPUT_ERROR_NOT_MATH;
+
         if (validationError) {
-            setInputError(validationError);
-            return;
+            // If it's an error we can override, and the user hasn't confirmed yet, block carefully.
+            // If the user HAS confirmed, we ignore this specific error and proceed.
+            // If it's NOT overridable (empty, too short), we always block.
+            if (isOverridableError) {
+                if (!mathValidityConfirmed) {
+                    setInputError(validationError);
+                    return;
+                }
+                // If confirmed, fall through to solve logic
+            } else {
+                // Hard block for empty/too short
+                setInputError(validationError);
+                return;
+            }
         }
 
         setIsSolving(true);
@@ -711,7 +736,8 @@ export default function DashboardPage() {
                             features_used: featuresUsed,
                             // Plot/Graph inclusion settings
                             graph_mode: graphMode,
-                            attach_to_step_id: attachToStepId
+                            attach_to_step_id: attachToStepId,
+                            force_validity: mathValidityConfirmed
                         })
                     });
                     break;
@@ -1004,6 +1030,7 @@ export default function DashboardPage() {
                                                 requestedMode={selectedSolveTier === "FREE" ? "minimal" : "detailed"}
                                                 onResolveText={(text, featureOverrides) => {
                                                     setQuery(text);
+                                                    setMathValidityConfirmed(false);
                                                     if (mathInputRef.current) {
                                                         mathInputRef.current.setValue(text);
                                                     }
@@ -1018,10 +1045,12 @@ export default function DashboardPage() {
                                             <SnapSolveV2
                                                 onUseText={(text) => {
                                                     setQuery(text);
+                                                    setMathValidityConfirmed(false);
                                                     setActiveTab("text");
                                                 }}
                                                 onSolveText={(text) => {
                                                     setQuery(text);
+                                                    setMathValidityConfirmed(false);
                                                     if (mathInputRef.current) {
                                                         mathInputRef.current.setValue(text);
                                                     }
@@ -1043,6 +1072,7 @@ export default function DashboardPage() {
                                             onGraphingOptionsChange={setGraphingOptions}
                                             onTemplateClick={(template) => {
                                                 setQuery(template);
+                                                setMathValidityConfirmed(false);
                                                 setMathModeEnabled(false); // Switch to regular textarea to show template
                                                 if (inputError) setInputError(null);
                                             }}
@@ -1178,6 +1208,7 @@ export default function DashboardPage() {
                                                             if (textInputMaxChars <= 0 || value.length <= textInputMaxChars) {
                                                                 setQuery(value);
                                                                 setMultiQuestionConfirmed(false);
+                                                                setMathValidityConfirmed(false);
                                                                 if (inputError) setInputError(null);
                                                             }
                                                         }}
@@ -1187,6 +1218,7 @@ export default function DashboardPage() {
                                                                 setInputError(`Pasted text was truncated to ${textInputMaxChars} characters.`);
                                                             }
                                                             setMultiQuestionConfirmed(false);
+                                                            setMathValidityConfirmed(false);
                                                             // Check for multi-question on paste
                                                             const checkResult = detectMultiQuestion(pastedText);
                                                             if (checkResult.isMultiple && checkResult.confidence !== 'low') {
@@ -1217,6 +1249,7 @@ export default function DashboardPage() {
                                                                 setInputError(`Pasted text was truncated to ${textInputMaxChars} characters.`);
                                                             }
                                                             setMultiQuestionConfirmed(false);
+                                                            setMathValidityConfirmed(false);
                                                             // Check for multi-question on paste
                                                             const checkResult = detectMultiQuestion(pastedText);
                                                             if (checkResult.isMultiple && checkResult.confidence !== 'low') {
@@ -1276,7 +1309,27 @@ export default function DashboardPage() {
                                                         )}
                                                     </div>
                                                     {inputError && (
-                                                        <span className="text-xs text-red-500 font-medium">{inputError}</span>
+                                                        <div className="flex flex-col gap-1 mt-1">
+                                                            <span className="text-xs text-red-500 font-medium">{inputError}</span>
+                                                            {(inputError === INPUT_ERROR_BLOCKED || inputError === INPUT_ERROR_NOT_MATH) && (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setMathValidityConfirmed(true);
+                                                                        setInputError(null);
+                                                                    }}
+                                                                    className="text-xs font-bold text-primary hover:underline self-start flex items-center gap-1"
+                                                                >
+                                                                    <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                                                                    This is a valid math question
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    {mathValidityConfirmed && !inputError && (
+                                                        <div className="flex items-center gap-1.5 mt-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium animate-in fade-in duration-300">
+                                                            <span className="material-symbols-outlined text-[14px]">verified_user</span>
+                                                            Validity confirmed
+                                                        </div>
                                                     )}
                                                     <div className="flex items-center gap-2">
                                                         <button
@@ -1892,6 +1945,7 @@ export default function DashboardPage() {
                 onSelectQuestion={(question) => {
                     setQuery(question);
                     setMultiQuestionConfirmed(false);
+                    setMathValidityConfirmed(false);
                     setShowSplitModal(false);
                 }}
                 onConfirmSingleQuestion={() => {
