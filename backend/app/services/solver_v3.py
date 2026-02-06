@@ -30,6 +30,7 @@ from app.services.message_builder import build_user_message
 from app.prompts.db_loader import PromptBindingLookupError, load_prompt_bundle
 from app.services.plot_pipeline_service import get_plot_pipeline_service
 from app.utils.token_utils import trim_messages
+from app.utils.schema_wrapper_validator import validate_schema_wrapper, SchemaWrapperCorruptError
 from pydantic import BaseModel
 
 class PromptProfile(BaseModel):
@@ -493,25 +494,34 @@ class SolverV3:
                 # --- TOKEN POLICY FIX ---
                 # 1. Start with binding's max_output_tokens (which we resolved earlier into profile.max_output_tokens)
                 effective_max_tokens = profile.max_output_tokens
+                binding_max_output = profile.max_output_tokens  # Track original binding value
                 
                 # 2. Check policy limit, BUT allow exemption for RESEARCH tier or explicit binding overrides
                 policy_limit = get_effective_max_tokens(current_mode, effective_learning_mode or "solve", token_policy)
+                policy_source = "binding"  # Default: using binding value
                 
                 if profile.tier.upper() == "RESEARCH":
                     # Research tier trusts the binding
-                    pass 
+                    policy_source = "binding"
                 else:
                     # Non-research tiers are capped by policy, unless binding explicitly requests less
                     if effective_max_tokens > policy_limit:
                          if trace:
                              print(f"[SOLVER_V3] Capping token limit from {effective_max_tokens} to {policy_limit} based on policy (Tier={profile.tier})")
                          effective_max_tokens = policy_limit
+                         policy_source = "policy"
 
                 # Fallback safety if profile is None (should cover all paths)
                 if not effective_max_tokens or effective_max_tokens <= 0:
                     effective_max_tokens = 4096
+                    policy_source = "fallback"
                 
+                # STEP 5: Add runtime meta fields for token policy tracking
                 telemetry[f"pass_{pass_idx+1}_max_tokens"] = effective_max_tokens
+                telemetry["binding_max_output"] = binding_max_output
+                telemetry["effective_max_output_used"] = effective_max_tokens
+                telemetry["policy_source"] = policy_source
+                telemetry["policy_limit"] = policy_limit
                 self._logger.debug(f"[SOLVER_V3] Pass {pass_idx+1}: mode={current_mode}, max_tokens={effective_max_tokens}, learning_mode={effective_learning_mode}")
 
                 for provider_idx, provider in enumerate(providers_to_try):
@@ -758,25 +768,42 @@ class SolverV3:
             # Now run plotting independently if needed.
             graph_mode_param = requests_graph_mode # "auto" by default
             
-            # --- FIX: Consolidate Plotting Flags ---
-            # User request: plot_requested = (include_graph == true) OR (graph_mode == "on")
-            # We don't have 'include_graph' passed as a direct arg here, but it might be consistent with caller.
-            # However, we only have 'requests_graph_mode'.
-            # We assume the caller (API layer) has already handled normalization OR we inspect request_graph_mode.
+            # --- STEP 6: Normalize Plotting Flags (Canonical plot_requested_effective) ---
+            # Create one canonical boolean:
+            # plot_requested_effective = (include_graph == true) OR (graph_mode == "on") OR (features_used.plot_requested == true)
+            # Note: include_graph and features_used.plot_requested are normalized at API layer into graph_mode_param
             
-            # Since strict instruction: "plot_requested = (include_graph == true) OR (graph_mode == "on")"
-            # But we don't have 'include_graph' in signature.
-            # Assuming 'graph_mode_param' actually captures "on" if include_graph was true at API level.
-            # So we check simple equality.
-
-            plot_requested = False
+            # Check trusted_context for additional plot flags
+            features_used_plot = False
+            if trusted_context and isinstance(trusted_context, dict):
+                features_used = trusted_context.get("features_used", {})
+                if isinstance(features_used, dict):
+                    features_used_plot = bool(features_used.get("plot_requested", False))
+                include_graph = trusted_context.get("include_graph", False)
+                if include_graph:
+                    features_used_plot = True
+            
+            # Build canonical plot_requested_effective
+            plot_requested_effective = False
             if graph_mode_param == "on" or graph_mode_param == "force":
-                 plot_requested = True
+                 plot_requested_effective = True
             elif graph_mode_param == "auto" and response_data.get("visuals", {}).get("should_visualize"):
                  # Auto mode respects solver suggestion
-                 plot_requested = True
+                 plot_requested_effective = True
+            elif features_used_plot:
+                 plot_requested_effective = True
+            
+            # TIER GATE: For FREE tier, plots are disabled regardless of flags
+            if profile.tier.upper() == "FREE":
+                plot_requested_effective = False
+                if trace:
+                    print(f"[SOLVER_V3] Plots disabled for FREE tier")
+            
+            # Add to telemetry
+            telemetry["plot_requested_effective"] = plot_requested_effective
+            telemetry["graph_mode_param"] = graph_mode_param
 
-            if plot_requested:
+            if plot_requested_effective:
                 try:
                     plot_svc = get_plot_pipeline_service(db_session)
                     # We pass the FULL effective tier to plotting, so Research users get better plots
@@ -955,46 +982,80 @@ class SolverV3:
             if trace:
                 print(f"[SOLVER_V3_STREAM] Calling OpenAI with model={self.default_model}")
 
-            schema_payload = json_schema_config.get("schema") if isinstance(json_schema_config, dict) and "schema" in json_schema_config else json_schema_config
-            response_stream = client.generate_stream(
-                messages=messages,
-                system_prompt=None,
-                prompt=None,
-                json_schema=schema_payload,
-                max_tokens=effective_max_tokens,
-                temperature=0.4,
-                request_id=request_id,
-                model=self.default_model,
-            )
-
-            full_content = ""
-            first_chunk = True
+            # STEP 1: Stop streaming for structured outputs
+            # If json_schema_config is present, we enforce non-streaming to ensure integrity.
+            is_structured = json_schema_config is not None
             
-            async for chunk_obj in response_stream:
-                if first_chunk:
-                    if trace:
-                        print(f"[SOLVER_V3_STREAM] First chunk received")
-                    first_chunk = False
-                content_delta = ""
-                if hasattr(chunk_obj, "content"):
-                    content_delta = chunk_obj.content
-                elif isinstance(chunk_obj, dict):
-                    content_delta = chunk_obj.get("content", "")
+            if is_structured:
+                # Use non-streaming generate()
+                if trace:
+                    print(f"[SOLVER_V3_STREAM] Structured output detected. Enforcing stream=False for reliability.")
                 
-                if content_delta:
-                    full_content += content_delta
-                    yield {"type": "delta", "text": content_delta}
-                if hasattr(chunk_obj, "usage") and chunk_obj.usage:
-                    telemetry["input_tokens"] = chunk_obj.usage.get("input", 0)
-                    telemetry["output_tokens"] = chunk_obj.usage.get("output", 0)
-                    telemetry["total_tokens"] = chunk_obj.usage.get("total", 0)
-                    telemetry["cached_tokens"] = chunk_obj.usage.get("cached")
-                if hasattr(chunk_obj, "model") and chunk_obj.model:
-                    telemetry["model"] = chunk_obj.model
-                if hasattr(chunk_obj, "provider") and chunk_obj.provider:
-                    telemetry["provider"] = chunk_obj.provider
-                if hasattr(chunk_obj, "status") and chunk_obj.status:
-                    telemetry["status"] = chunk_obj.status
+                # Ensure we pass the FULL wrapper, not just the inner schema
+                # (Fixes half-wrapper bug in streaming path)
+                full_schema_payload = json_schema_config
+                
+                # Fail-fast validation
+                validate_schema_wrapper(full_schema_payload, context="solve_stream (structured)")
+
+                response = await client.generate(
+                    messages=messages,
+                    system_prompt=None,
+                    prompt=None,
+                    json_schema=full_schema_payload,
+                    max_tokens=effective_max_tokens,
+                    temperature=0.4,
+                    request_id=request_id,
+                    model=self.default_model,
+                    stream=False
+                )
+                
+                full_content = response.content
+                if response.usage:
+                    telemetry["input_tokens"] = response.usage.get("input", 0)
+                    telemetry["output_tokens"] = response.usage.get("output", 0)
+                    telemetry["total_tokens"] = response.usage.get("total", 0)
+                    telemetry["cached_tokens"] = response.usage.get("cached")
+                telemetry["model"] = response.model
+                telemetry["provider"] = response.provider
+
+                # Yield as a single large delta to maintain contract
+                yield {"type": "delta", "text": full_content}
+                
+            else:
+                # Fallback to streaming for non-structured text
+                response_stream = client.generate_stream(
+                    messages=messages,
+                    system_prompt=None,
+                    prompt=None,
+                    json_schema=None,
+                    max_tokens=effective_max_tokens,
+                    temperature=0.4,
+                    request_id=request_id,
+                    model=self.default_model,
+                )
+
+                full_content = ""
+                async for chunk_obj in response_stream:
+                    content_delta = ""
+                    if hasattr(chunk_obj, "content"):
+                        content_delta = chunk_obj.content
+                    elif isinstance(chunk_obj, dict):
+                        content_delta = chunk_obj.get("content", "")
+                    
+                    if content_delta:
+                        full_content += content_delta
+                        yield {"type": "delta", "text": content_delta}
+                    
+                    if hasattr(chunk_obj, "usage") and chunk_obj.usage:
+                        telemetry["input_tokens"] = chunk_obj.usage.get("input", 0)
+                        telemetry["output_tokens"] = chunk_obj.usage.get("output", 0)
+                        telemetry["total_tokens"] = chunk_obj.usage.get("total", 0)
+                        telemetry["cached_tokens"] = chunk_obj.usage.get("cached")
+                    if hasattr(chunk_obj, "model") and chunk_obj.model:
+                        telemetry["model"] = chunk_obj.model
+                    if hasattr(chunk_obj, "provider") and chunk_obj.provider:
+                        telemetry["provider"] = chunk_obj.provider
 
             # End of stream
             if not telemetry.get("output_tokens"):
@@ -1139,10 +1200,18 @@ class SolverV3:
         schema_payload = json_schema_config
         provider = provider.lower()
         
-        # ... (rest of function logic needs to be preserved or I need to find end of function to return build_ms)
-        # Checking file content again, I need to see where it returns.
-        # It's better to read the function first to ensure I don't overwrite logic key parts if I can't see them.
-        # But I recall I need to change return statement.
+        # STEP 3: Fail-fast schema wrapper validation before OpenAI call
+        if schema_payload and provider == "openai":
+            try:
+                validate_schema_wrapper(
+                    schema_payload,
+                    context=f"_call_llm_with_schema (request_id={request_id})"
+                )
+                if trace:
+                    print(f"[SOLVER_DEBUG] Schema wrapper validated: name={schema_payload.get('name')}, strict={schema_payload.get('strict')}")
+            except SchemaWrapperCorruptError as e:
+                self._logger.error(f"[SCHEMA_WRAPPER_CORRUPT] Pre-call validation failed: {e}")
+                raise  # Re-raise to fail fast - do not proceed with corrupt schema
         
         try:
              client = self.client_manager.get_client(provider)
@@ -1235,6 +1304,19 @@ class SolverV3:
     ):
         if trace:
              print(f"[SOLVER_V3] Attempting repair...")
+        
+        # STEP 3: Fail-fast schema wrapper validation before repair call
+        if json_schema_config and provider.lower() == "openai":
+            try:
+                validate_schema_wrapper(
+                    json_schema_config,
+                    context="_repair_response"
+                )
+                if trace:
+                    print(f"[SOLVER_V3] Repair schema validated: name={json_schema_config.get('name')}")
+            except SchemaWrapperCorruptError as e:
+                self._logger.error(f"[SCHEMA_WRAPPER_CORRUPT] Repair validation failed: {e}")
+                raise  # Fail fast - do not proceed with corrupt schema
         
         payload = invalid_data if isinstance(invalid_data, dict) else {"_raw": invalid_data}
         raw_text = ""

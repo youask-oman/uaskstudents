@@ -5581,6 +5581,7 @@ async def solve_v3_stream_endpoint(
                 openai_telemetry["repair_attempted"] = True
                 openai_telemetry["repair_attempts"] = 1
                 try:
+                    # FIX: Pass FULL schema wrapper, not just {"schema": ...} which creates half-wrapper bug
                     repaired_data, repaired_text = await solver._repair_response(
                         problem=problem_text,
                         context=context,
@@ -5588,7 +5589,7 @@ async def solve_v3_stream_endpoint(
                         invalid_data=final_data if final_data else raw_llm_output,
                         validation_error="schema_validation_failed",
                         error_list=validation_errors,
-                        json_schema_config={"schema": _schema_object_for_validation(profile.json_schema_content)},
+                        json_schema_config=profile.json_schema_content,  # FULL wrapper, not half-wrapper
                         max_output_tokens=min(1200, max_output_tokens or 1200),
                         requested_mode=requested_mode,
                         trace=True,

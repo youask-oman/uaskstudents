@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any, AsyncIterator, Dict, List, Optional
 
 from app.utils.structured_output_builder import build_openai_structured_output, log_openai_request_trace
+from app.utils.schema_wrapper_validator import validate_schema_wrapper, SchemaWrapperCorruptError
 
 
 class LLMProviderError(Exception):
@@ -114,45 +115,68 @@ def _normalize_openai_schema_wrapper(raw: Optional[Dict[str, Any]]) -> Optional[
     Normalize DB-provided schema wrappers into the canonical internal shape:
       {"type":"json_schema","name":str,"strict":bool,"schema":{...draft...}}
 
-    Defensive behavior:
-    - If a half-wrapper {"schema": {...}} is received, wrap it as name="raw_schema"
-      and strict=True, and log a warning. This avoids crashing in production while
-      still surfacing the upstream bug.
-    - If a chat-completions style wrapper {"type":"json_schema","json_schema":{...}} is received,
-      unwrap it into canonical form.
-    - If a raw Draft schema is received (has "$schema" or "type"/"properties"), wrap it similarly.
+    STRICT BEHAVIOR (NO FALLBACK):
+    - If a half-wrapper {"schema": {...}} is received, RAISE immediately.
+    - If wrapper is missing required keys, RAISE immediately.
+    - We do NOT silently fallback to raw_schema anymore - that hides upstream bugs.
     """
     if raw is None:
         return None
     if not isinstance(raw, dict):
-        raise ValueError(f"json_schema must be a dict, got {type(raw)}")
+        raise SchemaWrapperCorruptError(
+            f"json_schema must be a dict, got {type(raw).__name__}",
+            wrapper_keys=None,
+        )
 
     keys = set(raw.keys())
 
-    # Canonical DB wrapper
+    # Canonical DB wrapper - validate and return
     if {"type", "name", "strict", "schema"}.issubset(keys) and raw.get("type") == "json_schema":
+        # Validate strictly (will raise if corrupt)
+        validate_schema_wrapper(raw, context="normalize_wrapper")
         return raw
 
     # OpenAI chat-completions wrapper variant: {"type":"json_schema","json_schema":{name,strict,schema}}
     if raw.get("type") == "json_schema" and isinstance(raw.get("json_schema"), dict):
         inner = raw["json_schema"]
-        return {
+        if not inner.get("name") or not isinstance(inner.get("name"), str):
+            raise SchemaWrapperCorruptError(
+                f"json_schema.name must be non-empty string, got {inner.get('name')!r}",
+                wrapper_keys=list(inner.keys()),
+            )
+        result = {
             "type": "json_schema",
-            "name": inner.get("name", "raw_schema"),
+            "name": inner.get("name"),
             "strict": bool(inner.get("strict", True)),
             "schema": inner.get("schema", {}),
         }
+        validate_schema_wrapper(result, context="normalize_wrapper (chat variant)")
+        return result
 
-    # Half-wrapper detected: {"schema": {...}} (THIS IS A BUG UPSTREAM)
+    # FATAL: Half-wrapper detected: {"schema": {...}} (THIS IS A BUG UPSTREAM)
     if keys == {"schema"} and isinstance(raw.get("schema"), dict):
-        raise ValueError("Half-wrapper schema detected (only 'schema' key). Upstream logic broken. Aborting to prevent silent fallback.")
+        raise SchemaWrapperCorruptError(
+            "Half-wrapper schema detected (only 'schema' key). "
+            "Upstream logic broken. Aborting to prevent silent fallback.",
+            wrapper_keys=list(keys),
+        )
 
-    # Raw Draft schema
+    # FATAL: Raw Draft schema without proper wrapper
+    # Previously we would silently wrap as raw_schema - now we fail fast
     if "$schema" in raw or raw.get("type") in {"object", "array", "string", "number", "integer", "boolean", "null"} or "properties" in raw:
-        return {"type": "json_schema", "name": "raw_schema", "strict": True, "schema": raw}
+        raise SchemaWrapperCorruptError(
+            "Raw JSON Schema received without proper wrapper. "
+            "DB schemas must always be wrapped with {type, name, strict, schema}.",
+            wrapper_keys=list(keys)[:10],
+        )
 
     # Unknown shape: fail loudly
-    raise ValueError(f"Unknown json_schema format. Keys={sorted(keys)}")
+    raise SchemaWrapperCorruptError(
+        f"Unknown json_schema format. Keys={sorted(keys)[:10]}",
+        wrapper_keys=list(keys)[:10],
+    )
+
+
 
 
 class OpenAIClient:
