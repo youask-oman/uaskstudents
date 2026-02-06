@@ -825,6 +825,23 @@ class SolverOutputAttempt(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
 
 
+class ProviderModelPricing(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    provider: str = Field(index=True) # openai, anthropic
+    model: str = Field(index=True)    # gpt-4o, claude-3-5-sonnet
+    
+    price_in_per_1m: float
+    price_out_per_1m: float
+    price_cached_in_per_1m: Optional[float] = Field(default=0.0)
+    
+    currency: str = Field(default="USD")
+    effective_from: datetime = Field(default_factory=datetime.utcnow)
+    effective_to: Optional[datetime] = None # Null = current
+    
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_by: Optional[int] = Field(default=None)
+
+
 class CreditLot(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id", index=True)
@@ -867,6 +884,15 @@ class BillingLedger(SQLModel, table=True):
     pricing_snapshot_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
     config_version_id: Optional[int] = Field(default=None, index=True) # Linked SystemConfigVersion
     
+    # Phase 1: Definite Billing Fields
+    provider_cost_usd: float = Field(default=0.0)
+    markup_multiplier: float = Field(default=1.0)
+    fixed_fee_usd: float = Field(default=0.0)
+    charge_usd: float = Field(default=0.0)
+    credit_value_usd: float = Field(default=0.0)
+    tier: Optional[str] = Field(default=None) # FREE, STANDARD, RESEARCH
+    finalized_at: Optional[datetime] = None
+
     created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     

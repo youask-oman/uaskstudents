@@ -55,6 +55,16 @@ DEFAULT_PRICING_CONFIG = {
     }
 }
 
+class CreditEconomics(BaseModel):
+    credit_value_usd: float = 0.02
+    minimum_charge_credits: int = 1
+    rounding_policy: str = "CEIL"
+    tiers: Dict[str, Dict[str, float]] = {
+        "FREE": {"multiplier": 1.0, "fixed_fee": 0.0},
+        "STANDARD": {"multiplier": 2.0, "fixed_fee": 0.0},
+        "RESEARCH": {"multiplier": 4.0, "fixed_fee": 0.10}
+    }
+
 class PricingConfig(BaseModel):
     credits: Dict[str, Any]
     token_billing: Dict[str, Any]
@@ -63,6 +73,9 @@ class PricingConfig(BaseModel):
     # token_pricing_metadata: Dict[str, Any] # Removed/Depreciated for flattened token_billing
     policy: Dict[str, Any]
     config_version_id: Optional[int] = None
+    
+    # Phase 1 Config
+    credit_economics: Optional[CreditEconomics] = None
 
 class PricingService:
     def get_pricing_config(self, session: Session) -> PricingConfig:

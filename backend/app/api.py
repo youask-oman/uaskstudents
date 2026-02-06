@@ -4486,24 +4486,23 @@ async def solve_v3_endpoint(
             est_input = len(problem_text) // 3 + 100
             est_output = 4000 if requested_mode == "detailed" else 1500
             
-            op_id_raw = f"{user_id}_{action_type}_{question_key}_{requested_mode}_{request_id}"
-            op_id = hashlib.sha256(op_id_raw.encode()).hexdigest()
-
-            ledger = billing_service.create_pending_transaction(
-                 session,
-                 user_id,
-                 action_type,
-                 estimated_input_tokens=est_input,
-                 estimated_output_tokens=est_output,
-                 request_id=request_id, # Using request_id as key for simplicity in logs
-                 question_id=question_key or str(hash(problem_text))
-            )
+            # Phase 1: Hold Credits
+            from app.services.subscription_service import subscription_service
+            sub_obj = subscription_service.get_or_create_subscription(session, user)
             
-            if not ledger.ok:
-                raise HTTPException(status_code=402, detail=f"Insufficient credits for estimate. Status: {ledger.status}")
+            try:
+                 hold = billing_service.initiate_hold(
+                     session,
+                     user_id,
+                     request_id,
+                     subscription_id=sub_obj.id,
+                     estimated_credits=1.0, # Strict hold
+                     question_id=question_key
+                 )
+            except ValueError as e:
+                 raise HTTPException(status_code=402, detail=f"Insufficient credits: {e}")
                  
-            deduct_committed = True # Flag implies we have an open ledger to settle
-            ledger_id = ledger.id
+            deduct_committed = True
             
             try:
                 solver = get_solver_v3()
@@ -4557,38 +4556,14 @@ async def solve_v3_endpoint(
                         print(f"[API_V3] Plot generation failed (non-critical): {plot_err}")
                         # Continue without plot - non-critical error
                 
-                # --- BILLING: STAGE 2 (SETTLE) ---
-                # Extract actual usage from result
-                telemetry = result.get("telemetry", {})
-                act_in = telemetry.get("input_tokens", 0)
-                act_out = telemetry.get("output_tokens", 0)
-                
-                # If telemetry missing (rare error), fallback to estimate or 0? 
-                # Let's fallback to estimate to avoid free usage exploit if backend glitch.
-                if act_in == 0 and act_out == 0:
-                     act_in, act_out = est_input, est_output
-                
-                billing_service.settle_transaction(
-                    session,
-                    ledger_id,
-                    actual_input_tokens=act_in,
-                    actual_output_tokens=act_out
-                )
-
             except Exception as e:
-                # --- BILLING: STAGE 3 (FAIL) ---
-                billing_service.fail_transaction(session, ledger_id, f"System Error: {str(e)}")
                 raise e
             
-
         
         # Check if it's an error response
         if result.get("error", False):
-            # FAIL ON SOLVER ERROR
-            if not was_cached and 'ledger_id' in locals():
-                 billing_service.fail_transaction(session, ledger_id, f"Solver Error: {result.get('error_type')}")
-
             print(f"[API_V3] Solver V3 returned error: {result.get('error_type')}")
+
             
             # Record error in a chat session for visibility
             new_chat = ChatSession(
@@ -4633,6 +4608,15 @@ async def solve_v3_endpoint(
                 "voice_used": bool(body.has_voice or features_used.get("voice_used")),
                 "response_truncated": bool(result.get("_truncated"))
             })
+            
+            # Phase 1: Finalize (Void/Refund)
+            billing_service.finalize_transaction(
+                 session,
+                 request_id=request_id,
+                 result_status="error",
+                 schema_valid=False
+            )
+            
             return {
                 "session_id": new_chat.id,
                 "error": True,
@@ -4855,6 +4839,17 @@ async def solve_v3_endpoint(
             "verification_level": verification_level,
             "token_policy": token_policy_key
         })
+
+        # Phase 1: Finalize Billing
+        # Must happen AFTER RequestEvent is recorded
+        telemetry_final = result.get("telemetry", {})
+        billing_service.finalize_transaction(
+            session,
+            request_id=request_id,
+            result_status="ok",
+            schema_valid=telemetry_final.get("validated", False),
+            repaired=telemetry_final.get("repair_attempted", False)
+        )
 
         return result
 

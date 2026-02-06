@@ -175,8 +175,11 @@ async def llm_health_check():
 
 from app.api import api_router
 from app.api_admin import admin_router
+from app.api_admin_payments import router as admin_payments_router
+
 app.include_router(api_router, prefix="/api/v1")
 app.include_router(admin_router)
+app.include_router(admin_payments_router)
 
 from fastapi.staticfiles import StaticFiles
 import os

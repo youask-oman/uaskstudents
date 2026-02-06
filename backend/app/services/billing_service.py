@@ -1,13 +1,14 @@
-
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 from datetime import datetime
 from sqlmodel import Session, select
 import json
 import hashlib
+import math
 
-from app.models import BillingLedger, User
+from app.models import BillingLedger, User, CreditHold, UsageLedger, RequestEvent, SolverOutputAttempt
 from app.services.pricing_service import pricing_service, PricingConfig
 from app.services.credit_wallet_service import credit_wallet_service
+from app.services.cost_estimation_service import cost_estimation_service
 
 class BillingService:
     def create_pending_transaction(
@@ -232,6 +233,159 @@ class BillingService:
         )
         session.add(ledger)
         session.commit()
+        return ledger
+
+
+    def initiate_hold(
+        self,
+        session: Session,
+        user_id: int,
+        request_id: str,
+        subscription_id: int,
+        estimated_credits: float = 1.0,
+        question_id: Optional[str] = None
+    ) -> CreditHold:
+        """
+        Phase 1: Reserve credits before execution.
+        """
+        # 1. Check idempotency
+        existing = session.exec(select(CreditHold).where(CreditHold.request_id == request_id)).first()
+        if existing:
+            return existing
+
+        # 2. Check balance
+        balance = credit_wallet_service.get_balance(session, user_id)
+        if balance < estimated_credits:
+             raise ValueError(f"Insufficient credits. Required: {estimated_credits}, Available: {balance}")
+
+        # 3. Create Hold
+        hold = CreditHold(
+            user_id=user_id,
+            subscription_id=subscription_id,
+            request_id=request_id,
+            question_id=question_id,
+            reserved_credits=estimated_credits,
+            status="held"
+        )
+        session.add(hold)
+        session.commit()
+        session.refresh(hold)
+        return hold
+
+    def finalize_transaction(
+        self,
+        session: Session,
+        request_id: str,
+        result_status: str = "ok",
+        schema_valid: bool = True,
+        repaired: bool = False
+    ) -> BillingLedger:
+        """
+        Phase 1: Compute final cost, debit usage, release hold.
+        Idempotent.
+        """
+        # 1. Idempotency Check (BillingLedger existence)
+        existing_ledger = session.exec(select(BillingLedger).where(BillingLedger.request_id == request_id)).first()
+        if existing_ledger and existing_ledger.status in ["CHARGED", "REFUNDED_FULL", "REFUNDED_PARTIAL", "VOIDED"]:
+            return existing_ledger
+
+        # 2. Fetch Context (RequestEvent, Hold)
+        event = session.exec(select(RequestEvent).where(RequestEvent.request_id == request_id)).first()
+        hold = session.exec(select(CreditHold).where(CreditHold.request_id == request_id)).first()
+        
+        if not event:
+             # Fallback if event missing
+             ledger = BillingLedger(
+                 user_id=hold.user_id if hold else 0,
+                 request_id=request_id,
+                 action_type="solve",
+                 status="NEEDS_REVIEW",
+                 ok=False,
+                 error_json={"error": "Missing RequestEvent telemetry"},
+                 credits_before=0, credits_after=0
+             )
+             session.add(ledger)
+             session.commit()
+             return ledger
+
+        # 3. Compute Costs
+        provider_cost, price_id = cost_estimation_service.estimate_provider_cost(session, event)
+        
+        config = pricing_service.get_pricing_config(session)
+        ce = config.credit_economics 
+        
+        if not ce:
+            from app.services.pricing_service import CreditEconomics
+            ce = CreditEconomics()
+
+        tier_key = "STANDARD"
+        if event.mode == 'detailed':
+            tier_key = "RESEARCH"
+        
+        tier_config = ce.tiers.get(tier_key, {"multiplier": 1.0, "fixed_fee": 0.0})
+        multiplier = tier_config.get("multiplier", 1.0)
+        fixed_fee = tier_config.get("fixed_fee", 0.0)
+        
+        charge_usd = (provider_cost * multiplier) + fixed_fee
+        charge_credits_raw = charge_usd / ce.credit_value_usd
+        
+        charge_credits = 0
+        if ce.rounding_policy == "CEIL":
+             charge_credits = math.ceil(charge_credits_raw)
+        else:
+             charge_credits = round(charge_credits_raw)
+             
+        charge_credits = max(charge_credits, ce.minimum_charge_credits)
+        
+        # 4. Determine Billability
+        is_billable = False
+        if result_status == "ok" and schema_valid:
+             is_billable = True
+        elif repaired and schema_valid:
+             is_billable = True
+             
+        # 5. Execute Ledger Updates (Atomic)
+        status = "CHARGED" if is_billable else "VOIDED"
+        
+        if not is_billable:
+             charge_credits = 0 
+        
+        # Get balance for snapshot
+        balance_before = credit_wallet_service.get_balance(session, event.user_id)
+        
+        ledger = BillingLedger(
+             user_id=event.user_id,
+             request_id=request_id,
+             action_type="solve",
+             status=status,
+             provider_cost_usd=provider_cost,
+             markup_multiplier=multiplier,
+             fixed_fee_usd=fixed_fee,
+             charge_usd=charge_usd,
+             credit_value_usd=ce.credit_value_usd,
+             credits_charged=charge_credits,
+             credits_before=balance_before,
+             credits_after=balance_before - charge_credits if is_billable else balance_before,
+             tier=tier_key,
+             finalized_at=datetime.utcnow(),
+             config_version_id=config.config_version_id
+        )
+        
+        session.add(ledger)
+        
+        # Apply to Wallet if Billable
+        if is_billable and charge_credits > 0:
+             # reference_id usage ensures link to request_id
+             credit_wallet_service.deduct_credits(session, event.user_id, charge_credits, reference_id=request_id)
+                 
+        # Release Hold
+        if hold:
+             hold.status = "released" if is_billable else "released_void"
+             hold.finalized_at = datetime.utcnow()
+             session.add(hold)
+             
+        session.commit()
+        session.refresh(ledger)
         return ledger
 
 billing_service = BillingService()
