@@ -339,8 +339,11 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
       const entry = rawClassification as Record<string, unknown>;
       const domain = typeof entry.domain === "string" ? entry.domain : undefined;
       const topic = typeof entry.topic === "string" ? entry.topic : undefined;
-      if (domain || topic) {
-        return { domain, topic };
+      const grade_band = typeof entry.grade_band === "string" ? entry.grade_band : undefined;
+      const difficulty = typeof entry.difficulty === "string" ? entry.difficulty : undefined;
+      
+      if (domain || topic || grade_band || difficulty) {
+        return { domain, topic, grade_band, difficulty };
       }
     }
     return undefined;
@@ -395,6 +398,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             notebookSubtitle={notebookSubtitle}
             usagePercent={usagePercent}
             outlineItems={outlineItems}
+            classification={classification}
           />
         }
         workspace={

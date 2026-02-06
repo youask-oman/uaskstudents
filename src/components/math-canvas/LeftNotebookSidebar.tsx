@@ -13,6 +13,12 @@ interface LeftNotebookSidebarProps {
     label: string;
     tag: string;
   }>;
+  classification?: {
+    domain?: string;
+    topic?: string;
+    grade_band?: string;
+    difficulty?: string;
+  };
 }
 
 const navItems = [
@@ -25,6 +31,7 @@ export default function LeftNotebookSidebar({
   notebookSubtitle,
   usagePercent,
   outlineItems = [],
+  classification,
 }: LeftNotebookSidebarProps) {
   return (
     <aside className={styles.leftSidebar}>
@@ -35,6 +42,31 @@ export default function LeftNotebookSidebar({
           <MathRenderer content={notebookSubtitle} mode="inline" />
         </div>
       </div>
+
+      {classification && (
+        <div style={{ padding: "0 10px 18px", display: "flex", flexWrap: "wrap", gap: "6px" }}>
+          {classification.domain && (
+            <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 12, background: "#e0f2fe", color: "#0369a1", fontWeight: 600, border: "1px solid #bae6fd" }}>
+              {classification.domain}
+            </span>
+          )}
+          {classification.grade_band && (
+            <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 12, background: "#f3e8ff", color: "#7e22ce", fontWeight: 600, border: "1px solid #e9d5ff" }}>
+              {classification.grade_band}
+            </span>
+          )}
+          {classification.topic && (
+            <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 12, background: "#f1f5f9", color: "#475569", fontWeight: 600, border: "1px solid #e2e8f0" }}>
+              {classification.topic}
+            </span>
+          )}
+          {classification.difficulty && (
+            <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 12, background: "#f0fdf4", color: "#15803d", fontWeight: 600, border: "1px solid #bbf7d0", textTransform: "capitalize" }}>
+              {classification.difficulty}
+            </span>
+          )}
+        </div>
+      )}
 
       <nav className={styles.navList} aria-label="Notebook navigation">
         {navItems.map((item) => (

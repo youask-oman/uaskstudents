@@ -198,7 +198,7 @@ export default function SolutionStepsBlock({
                 ) : null}
                 {step.mathLatex ? (
                   <div style={{ marginTop: 4 }}>
-                    <MathRenderer content={step.mathLatex} mode="inline" />
+                    <MathRenderer content={step.mathLatex} mode="block" />
                   </div>
                 ) : null}
                 {editable && !exportMode ? (

@@ -4974,6 +4974,19 @@ async def solve_v3_stream_endpoint(
     # 0. Phase 3: Idempotency & Debit (Audit/Billing)
     # Generate request_id early to use as idempotency key or reference
     request_id = str(uuid.uuid4())
+    
+    # ===== LIVE REQUEST TRACE =====
+    import sys
+    sys.stderr.write("\n" + "="*60 + "\n")
+    sys.stderr.write(f"[SOLVE_V3_STREAM] request_id={request_id}\n")
+    sys.stderr.write("="*60 + "\n")
+    sys.stderr.write(f"user_id: {user_id}\n")
+    sys.stderr.write(f"tier (requested): {body.tier}\n")
+    sys.stderr.write(f"mode (requested): {body.requested_mode}\n")
+    sys.stderr.write(f"problem_text: {(body.confirmed_text or body.text_query or '')[:200]}...\n")
+    sys.stderr.write("="*60 + "\n\n")
+    sys.stderr.flush()
+    # ==============================
 
     # Resolve checks
     user_obj = session.get(User, user_id)
@@ -5598,6 +5611,22 @@ async def solve_v3_stream_endpoint(
                     schema_valid = False
 
             if not schema_valid:
+                # ===== LIVE ERROR TRACE =====
+                import sys
+                sys.stderr.write("\n" + "="*60 + "\n")
+                sys.stderr.write(f"[STREAM_VALIDATION_FAIL] request_id={request_id}\n")
+                sys.stderr.write("="*60 + "\n")
+                sys.stderr.write(f"Tier: {effective_tier}\n")
+                sys.stderr.write(f"Mode: {requested_mode}\n")
+                sys.stderr.write(f"Validation Errors:\n")
+                for err in validation_errors[:10]:
+                    sys.stderr.write(f"  - {err}\n")
+                sys.stderr.write(f"Raw LLM Output (first 1000 chars):\n")
+                sys.stderr.write((raw_llm_output[:1000] if raw_llm_output else "NONE") + "\n")
+                sys.stderr.write("="*60 + "\n\n")
+                sys.stderr.flush()
+                # =============================
+                
                 error_message = "Unable to generate a valid structured solution. Please try again."
                 error_payload = _build_schema_valid_stream_error_payload(
                     problem_text=problem_text,

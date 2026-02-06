@@ -145,10 +145,7 @@ def _normalize_openai_schema_wrapper(raw: Optional[Dict[str, Any]]) -> Optional[
 
     # Half-wrapper detected: {"schema": {...}} (THIS IS A BUG UPSTREAM)
     if keys == {"schema"} and isinstance(raw.get("schema"), dict):
-        logging.getLogger(__name__).warning(
-            "Half-wrapper schema received (only 'schema' key). Wrapping as raw_schema. Upstream must be fixed."
-        )
-        return {"type": "json_schema", "name": "raw_schema", "strict": True, "schema": raw["schema"]}
+        raise ValueError("Half-wrapper schema detected (only 'schema' key). Upstream logic broken. Aborting to prevent silent fallback.")
 
     # Raw Draft schema
     if "$schema" in raw or raw.get("type") in {"object", "array", "string", "number", "integer", "boolean", "null"} or "properties" in raw:

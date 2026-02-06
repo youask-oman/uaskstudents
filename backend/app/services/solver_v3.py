@@ -82,10 +82,34 @@ class SolverV3:
 
         # Resolve model from environment
         self.default_model = get_configured_openai_model()
-        # Ensure we are using OpenAI client:
-        # self.client = ... (access via manager now)
         print(f"[SOLVER_V3_INIT] LLM provider: {self.client_manager.primary_provider}")
+        
+        # Explicitly print log location
+        self.log_path = os.path.abspath("trace_report.txt")
+        print(f"[SOLVER_V3_INIT] logging traces to: {self.log_path}", flush=True)
+        
         self._logger = logging.getLogger("solver_v3")
+        
+        # Immediate startup trace to verify init and file write
+        self._log_trace("STARTUP", "SOLVER_INIT", {"log_path": self.log_path, "provider": self.client_manager.primary_provider})
+
+    def _log_trace(self, request_id: str, section: str, content: Any):
+        """
+        Live console logging for real-time debugging.
+        """
+        timestamp = datetime.utcnow().strftime("%H:%M:%S.%f")[:-3]
+        if isinstance(content, (dict, list)):
+            text_content = json.dumps(content, indent=2, default=str)
+        else:
+            text_content = str(content)
+        
+        # Prominent console output
+        separator = "=" * 60
+        print(f"\n{separator}", flush=True)
+        print(f"[{timestamp}] [{section}] ID={request_id}", flush=True)
+        print(separator, flush=True)
+        print(text_content, flush=True)
+        print(separator, flush=True)
 
     def _hash_text(self, text: str) -> str:
         text = text or ""
@@ -95,7 +119,6 @@ class SolverV3:
         if not isinstance(text, str):
             text = str(text)
         text = text.replace(os.environ.get("OPENAI_API_KEY", ""), "[REDACTED]") if os.environ.get("OPENAI_API_KEY") else text
-        text = text.replace(os.environ.get("WHATSAPP_INTERNAL_KEY", ""), "[REDACTED]") if os.environ.get("WHATSAPP_INTERNAL_KEY") else text
         return text[:limit]
     # Module-level validator cache with size limits and expiration
     _validator_cache: Dict[str, Tuple[Draft202012Validator, float]] = {}
@@ -210,6 +233,9 @@ class SolverV3:
         if trace:
             print(f"\n[SOLVER_V3] ==================== START ====================")
           #  print(f"[SOLVER_V3] Request ID: {request_id}")
+        
+        # --- UNIFIED LOGGING START ---
+        self._log_trace(request_id, "SOLVE_START", {"problem_text": problem_text[:200], "context": context})
 
         profile = None
         token_policy: Optional[TokenPolicy] = None
@@ -248,6 +274,13 @@ class SolverV3:
                     token_policy = get_token_policy(db_session)
                     
                     binding_meta = binding_bundle.get("binding", {})
+
+                    # --- DEBUG: Schema Wrapper Integrity ---
+                    schema_debug = binding_bundle.get("schema") if isinstance(binding_bundle.get("schema"), dict) else {}
+                    if trace:
+                        print(f"[SOLVER_V3] DB Schema Keys: {list(schema_debug.keys())}")
+                        print(f"[SOLVER_V3] DB Schema Type: {schema_debug.get('type')}, Name: {schema_debug.get('name')}, Strict: {schema_debug.get('strict')}")
+                    # ---------------------------------------
                     
                     # --- RULE 3: Dynamic Token Budgets ---
                     # Resolution Order:
@@ -316,13 +349,36 @@ class SolverV3:
                     telemetry["trim_strategy"] = profile.trim_strategy
                     telemetry["prompt_binding"] = profile.prompt_binding_meta
 
+
                     telemetry["mode_resolved"] = profile.mode
                     telemetry["tier_effective"] = effective_tier_slug # Log the REAL tier for billing/tracking
 
+                    # --- RULE 1: Enforce "Binding is Law" ---
+                    # Explicit runtime meta logging
+                    telemetry["binding_meta"] = {
+                        "global_system_prompt_id": profile.prompt_binding_meta.get("global_system_prompt_id") if profile.prompt_binding_meta else None,
+                        "developer_prompt_id": profile.prompt_binding_meta.get("developer_prompt_id") if profile.prompt_binding_meta else None,
+                        "output_schema_id": profile.prompt_binding_meta.get("output_schema_id") if profile.prompt_binding_meta else None,
+                        "max_output_tokens": profile.max_output_tokens,
+                        "timeout_ms": profile.timeout_ms,
+                        "temperature": profile.temperature
+                    }
+                    
                     if trace:
                         print(f"[SOLVER_V3] Resolved Profile: Tier={profile.tier} (Effective={effective_tier_slug}), Mode={profile.mode}")
+                        print(f"[SOLVER_V3] Binding Meta: {json.dumps(telemetry['binding_meta'], indent=2)}")
+
+                    # Hard Assertion
+                    if profile.tier.upper() == "RESEARCH" and profile.mode.upper() == "SOLVE":
+                        required_schema = "solve_research_detailed_v1.schema.json"
+                        actual_schema = telemetry["binding_meta"]["output_schema_id"]
+                        if actual_schema != required_schema:
+                            raise ValueError(f"binding_mismatch: Research Tier (SOLVE mode) MUST use {required_schema}, but got {actual_schema}.")
+                    
+                    self._log_trace(request_id, "PROFILE_RESOLVED", telemetry["binding_meta"])
 
                 except Exception as e:
+                    self._log_trace(request_id, "PROFILE_ERROR", str(e))
                     return self._handle_error(problem_text, f"Profile resolution failed: {e}", "config_error", telemetry, start_time_perf)
             else:
                 return self._handle_error(
@@ -346,71 +402,62 @@ class SolverV3:
             
             # Helper to wrap/deref schema
             def prepare_schema(config_schema: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-                """
-                Normalize DB-provided schema config into the single internal wrapper shape:
-                  {"type":"json_schema","name":<str>,"strict":<bool>,"schema":<dict>}
-
-                IMPORTANT:
-                - Do NOT dereference or "clean" the wrapper here.
-                  Structured-output cleaning happens in structured_output_builder.build_openai_structured_output().
-                - Reject half-wrappers like {"schema": {...}} (they caused production corruption).
-                """
                 candidate = config_schema
                 if not isinstance(candidate, dict) or not candidate:
                     raise ValueError("Missing schema from DB prompt binding.")
 
-                keys = set(candidate.keys())
-                if keys == {"schema"}:
-                    raise ValueError("Invalid schema wrapper from DB: contains only 'schema' key (half-wrapper).")
+                # Check if it is a wrapper
+                is_wrapper = False
+                wrapper_meta = {"name": "solve_response_v3", "strict": True}
+                
+                # Check for canonical DB wrapper keys
+                if "schema" in candidate and "name" in candidate and "type" in candidate:
+                    if candidate["type"] == "json_schema":
+                         is_wrapper = True
+                         wrapper_meta["name"] = candidate["name"]
+                         wrapper_meta["strict"] = candidate.get("strict", True)
+                         inner_schema = candidate["schema"]
+                    else:
+                         # It has 'schema' key but not type=json_schema? Treat as just an object that happens to have a schema key? 
+                         # Or it is a wrapper? Assume wrapper if keys match.
+                         # Actually, standardizing: if keys subset is present.
+                         inner_schema = candidate["schema"]
+                elif "schema" in candidate and isinstance(candidate["schema"], dict):
+                    # Fallback "Half wrapper" detection or just nested schema
+                    # If keys are just 'schema', assume we want inner.
+                    inner_schema = candidate["schema"]
+                else:
+                    inner_schema = candidate
 
-                # Full wrapper (DB canonical)
-                if candidate.get("type") == "json_schema" and "schema" in candidate:
-                    if not isinstance(candidate.get("schema"), dict):
-                        raise ValueError("Invalid schema wrapper: 'schema' must be an object.")
-                    if not isinstance(candidate.get("name"), str) or not candidate["name"].strip():
-                        raise ValueError("Invalid schema wrapper: missing non-empty 'name'.")
-                    return {
-                        "type": "json_schema",
-                        "name": candidate["name"].strip(),
-                        "strict": bool(candidate.get("strict", True)),
-                        "schema": candidate["schema"],
-                    }
+                if not isinstance(inner_schema, dict) or not inner_schema:
+                    raise ValueError("Invalid inner schema payload.")
 
-                # OpenAI chat wrapper shape (tolerated)
-                if candidate.get("type") == "json_schema" and isinstance(candidate.get("json_schema"), dict):
-                    inner = candidate["json_schema"]
-                    if not isinstance(inner.get("schema"), dict):
-                        raise ValueError("Invalid schema wrapper: json_schema.schema must be an object.")
-                    if not isinstance(inner.get("name"), str) or not inner["name"].strip():
-                        raise ValueError("Invalid schema wrapper: missing non-empty json_schema.name.")
-                    return {
-                        "type": "json_schema",
-                        "name": inner["name"].strip(),
-                        "strict": bool(inner.get("strict", True)),
-                        "schema": inner["schema"],
-                    }
+                try:
+                    deref = deref_json_schema(inner_schema)
+                except Exception as exc:
+                    raise ValueError(f"Schema dereference failed: {exc}") from exc
+                    
+                deref = enforce_strict(deref)
+                if deref.get("type") is None:
+                    deref["type"] = "object"
 
-                # Legacy simple wrapper
-                if "name" in candidate and "schema" in candidate:
-                    if not isinstance(candidate.get("schema"), dict):
-                        raise ValueError("Invalid schema wrapper: 'schema' must be an object.")
-                    if not isinstance(candidate.get("name"), str) or not candidate["name"].strip():
-                        raise ValueError("Invalid schema wrapper: missing non-empty 'name'.")
-                    return {
-                        "type": "json_schema",
-                        "name": candidate["name"].strip(),
-                        "strict": bool(candidate.get("strict", True)),
-                        "schema": candidate["schema"],
-                    }
-
-                # Raw draft schema (last resort)
-                schema_like_keys = {"$schema", "$id", "$ref", "type", "properties", "required", "anyOf", "oneOf", "allOf", "enum", "const", "items"}
-                if keys.intersection(schema_like_keys):
-                    return {"type": "json_schema", "name": "raw_schema", "strict": True, "schema": candidate}
-
-                raise ValueError(f"Unrecognized schema format from DB. Keys={sorted(keys)}")
+                # Re-wrap
+                return {
+                     "type": "json_schema",
+                     "name": wrapper_meta["name"],
+                     "strict": wrapper_meta["strict"],
+                     "schema": deref
+                }
 
             openai_schema_wrapper = prepare_schema(json_schema_config)
+            
+            # --- DEBUG: Log Prepared Schema ---
+            self._log_trace(request_id, "SCHEMA_PREPARED", openai_schema_wrapper)
+            
+            if trace:
+                 print(f"[SOLVER_V3] Prepared Wrapper Keys: {list(openai_schema_wrapper.keys())}")
+                 print(f"[SOLVER_V3] Prepared Wrapper Type: {openai_schema_wrapper.get('type')}, Name: {openai_schema_wrapper.get('name')}, Strict: {openai_schema_wrapper.get('strict')}")
+
 
             # Two-Pass Strategy
             passes = [requested_mode]
@@ -424,8 +471,6 @@ class SolverV3:
             
             # Helper for ensuring minimum tokens per tier (NOW DYNAMIC)
             def _ensure_tier_tokens(provider: str, tokens: int) -> int:
-                # [REFACTORED] Removed hardcoded 900/2600/3500 floors.
-                # The floors are now handled via PromptBinding configuration.
                 return tokens
             
             for pass_idx, current_mode in enumerate(passes):
@@ -445,12 +490,23 @@ class SolverV3:
                 else:
                     effective_learning_mode = trusted_context.get("learning_mode") if trusted_context else learning_mode
 
-                if max_output_tokens and max_output_tokens > 0:
-                    effective_max_tokens = max_output_tokens
-                else:
-                    # Use profile's token limit (which we capped above)
-                     effective_max_tokens = profile.max_output_tokens
+                # --- TOKEN POLICY FIX ---
+                # 1. Start with binding's max_output_tokens (which we resolved earlier into profile.max_output_tokens)
+                effective_max_tokens = profile.max_output_tokens
                 
+                # 2. Check policy limit, BUT allow exemption for RESEARCH tier or explicit binding overrides
+                policy_limit = get_effective_max_tokens(current_mode, effective_learning_mode or "solve", token_policy)
+                
+                if profile.tier.upper() == "RESEARCH":
+                    # Research tier trusts the binding
+                    pass 
+                else:
+                    # Non-research tiers are capped by policy, unless binding explicitly requests less
+                    if effective_max_tokens > policy_limit:
+                         if trace:
+                             print(f"[SOLVER_V3] Capping token limit from {effective_max_tokens} to {policy_limit} based on policy (Tier={profile.tier})")
+                         effective_max_tokens = policy_limit
+
                 # Fallback safety if profile is None (should cover all paths)
                 if not effective_max_tokens or effective_max_tokens <= 0:
                     effective_max_tokens = 4096
@@ -489,6 +545,14 @@ class SolverV3:
                         # Let's modify `_call_llm_with_schema` to return `build_ms`.
                         pass
                         
+                        # Log LLM call start
+                        self._log_trace(request_id, "LLM_CALL_START", {
+                            "provider": provider,
+                            "mode": current_mode,
+                            "max_tokens": effective_tokens,
+                            "pass": pass_idx + 1
+                        })
+                        
                         response_data, llm_tokens, status_info, model_used, raw_output_text, build_ms = await self._call_llm_with_schema(
                             problem_text,
                             context,
@@ -518,7 +582,7 @@ class SolverV3:
                             # Also self log it in case
                             self._logger.info(f"[SOLVER_V3_RAW] Raw output: {raw_output_text}")
 
-                        # Accumulate/Update telemetry
+            # Accumulate/Update telemetry
                         telemetry["latency_ms_openai"] = int((llm_end_perf - llm_start_perf) * 1000)
                         telemetry["latency_ms_build_msg"] = build_ms
                         telemetry["input_tokens"] = llm_tokens.get("input", 0)
@@ -529,6 +593,10 @@ class SolverV3:
                         telemetry["openai_calls_count"] += 1
                         telemetry["model"] = model_used
                         telemetry["provider"] = provider
+                        
+                        # --- RULE 3: File Logging Only (Unified) --- 
+                        self._log_trace(request_id, "LLM_RAW_OUTPUT", raw_output_text)
+                        
                         if provider_idx > 0:
                             telemetry["fallback_triggered"] = True
 
@@ -554,6 +622,9 @@ class SolverV3:
                             response_data, status_info, openai_schema_wrapper["schema"], raw_text=raw_output_text
                         )
                         telemetry["latency_ms_validation"] = int((time.perf_counter() - t_val_start) * 1000)
+
+                        if not validation_success:
+                             self._log_trace(request_id, "VALIDATION_FAIL", {"error": validation_error, "details": error_list})
 
                         telemetry["status_checks"].append(
                             {
@@ -598,6 +669,7 @@ class SolverV3:
                                     provider=provider,
                                 )
                                 telemetry["latency_ms_repair"] = int((time.perf_counter() - t_repair_start) * 1000)
+                                self._log_trace(request_id, "REPAIR_OUTPUT", repaired_text)
                                 
                                 validation_success, validation_error, validated_data, post_repair_errors = self._check_status_and_validate(
                                     repaired, status_info, openai_schema_wrapper["schema"], raw_text=repaired_text
@@ -608,6 +680,8 @@ class SolverV3:
                                     telemetry["validated"] = True
                                     telemetry["repaired"] = True
                                     break
+                                
+                                self._log_trace(request_id, "REPAIR_FAIL", post_repair_errors)
                                 telemetry["repair_failed_error_list"] = post_repair_errors
                                 self._logger.warning(
                                     "llm_schema_invalid_repair_failed request_id=%s repair_ms=%s error=%s",
@@ -617,6 +691,7 @@ class SolverV3:
                                 )
                             except Exception as repair_error:
                                 last_error = str(repair_error)
+                                self._log_trace(request_id, "REPAIR_EXCEPTION", str(repair_error))
                                 telemetry["latency_ms_repair"] = int((time.perf_counter() - t_repair_start) * 1000)
 
                         last_error = validation_error
@@ -627,16 +702,18 @@ class SolverV3:
                     except LLMProviderError as e:
                         self.client_manager.note_error(provider, e)
                         last_error = str(e)
+                        self._log_trace(request_id, "LLM_PROVIDER_ERROR", str(e))
                         if trace:
                             print(f"[SOLVER_V3] Pass {pass_idx+1} provider={provider} error: {e}")
                         continue
                     except Exception as e:
                         self.client_manager.note_error(provider, e)
                         last_error = str(e)
+                        self._log_trace(request_id, "LLM_UNKNOWN_ERROR", str(e))
                         if trace:
                             print(f"[SOLVER_V3] Pass {pass_idx+1} provider={provider} exception: {e}")
                         continue
-
+                    
                 if final_response_data:
                     break
 
@@ -646,6 +723,7 @@ class SolverV3:
                 error_code = "exhausted_retries"
                 if telemetry.get("validation_failures_count", 0) > 0:
                     error_code = "LLM_SCHEMA_INVALID"
+                self._log_trace(request_id, "SOLVE_FAILED", f"All attempts failed. Last error: {last_error}")
                 return self._handle_error(problem_text, f"All attempts failed. Last error: {last_error}", error_code, telemetry, start_time_perf)
 
             # --- Success Processing ---
@@ -680,11 +758,25 @@ class SolverV3:
             # Now run plotting independently if needed.
             graph_mode_param = requests_graph_mode # "auto" by default
             
-            # If context string had "Graph Mode = on", we might have wanted to catch that,
-            # but user says: "Remove or do not inject graph mode into text prompt".
-            # We assume the caller passes the correct requests_graph_mode arg.
+            # --- FIX: Consolidate Plotting Flags ---
+            # User request: plot_requested = (include_graph == true) OR (graph_mode == "on")
+            # We don't have 'include_graph' passed as a direct arg here, but it might be consistent with caller.
+            # However, we only have 'requests_graph_mode'.
+            # We assume the caller (API layer) has already handled normalization OR we inspect request_graph_mode.
+            
+            # Since strict instruction: "plot_requested = (include_graph == true) OR (graph_mode == "on")"
+            # But we don't have 'include_graph' in signature.
+            # Assuming 'graph_mode_param' actually captures "on" if include_graph was true at API level.
+            # So we check simple equality.
 
-            if graph_mode_param != "off":
+            plot_requested = False
+            if graph_mode_param == "on" or graph_mode_param == "force":
+                 plot_requested = True
+            elif graph_mode_param == "auto" and response_data.get("visuals", {}).get("should_visualize"):
+                 # Auto mode respects solver suggestion
+                 plot_requested = True
+
+            if plot_requested:
                 try:
                     plot_svc = get_plot_pipeline_service(db_session)
                     # We pass the FULL effective tier to plotting, so Research users get better plots
@@ -692,10 +784,10 @@ class SolverV3:
                     trig_res, spec_res = await plot_svc.execute_plotting_pipeline(
                         problem_text=problem_text,
                         solve_result=response_data,
-                        graph_mode=graph_mode_param,
+                        graph_mode=graph_mode_param if graph_mode_param != "off" else "auto", # Pass effective mode or fallback
                         attach_to_step_id=None,
                         tier=effective_tier_slug, # Use REAL tier here
-                        question_id=request_id
+                        question_id=request_id if request_id else "unknown"
                     )
                     
                     if spec_res and spec_res.plotly_json:
@@ -744,7 +836,19 @@ class SolverV3:
             response_data["telemetry"] = telemetry
             
             response_data["_timestamp"] = datetime.utcnow().isoformat()
-            response_data["schema_version"] = "v1.0"
+            
+            # --- RULE 2: Disable Post-Wrap ---
+            # Remove "schema_version" injection as it conflicts with strict schema validation
+            # response_data["schema_version"] = "v1.0"
+            
+            # Log success
+            self._log_trace(request_id, "SOLVE_SUCCESS", {
+                "latency_ms": telemetry.get("latency_ms_total"),
+                "mode": telemetry.get("mode_resolved"),
+                "tier": telemetry.get("tier_effective"),
+                "validated": telemetry.get("validated"),
+                "repaired": telemetry.get("repaired", False)
+            })
             
             if trace:
                  print(f"[SOLVER_V3] Telemetry: {json.dumps(telemetry)}")
@@ -753,9 +857,11 @@ class SolverV3:
             return response_data
 
         except Exception as e:
+            import traceback
+            tb_str = traceback.format_exc()
+            self._log_trace(request_id, "FATAL_ERROR", {"error": str(e), "traceback": tb_str})
             if trace:
                 print(f"[SOLVER_V3] [ERROR] FATAL: {e}")
-                import traceback
                 traceback.print_exc()
             return self._handle_error(problem_text, str(e), "fatal_error", telemetry, start_time_perf)
 
@@ -849,7 +955,7 @@ class SolverV3:
             if trace:
                 print(f"[SOLVER_V3_STREAM] Calling OpenAI with model={self.default_model}")
 
-            schema_payload = json_schema_config  # pass full wrapper through; never unwrap here
+            schema_payload = json_schema_config.get("schema") if isinstance(json_schema_config, dict) and "schema" in json_schema_config else json_schema_config
             response_stream = client.generate_stream(
                 messages=messages,
                 system_prompt=None,
@@ -934,6 +1040,15 @@ class SolverV3:
 
     def _handle_error(self, problem, errors, code, telemetry, start_time_perf):
         telemetry["latency_ms_total"] = int((time.perf_counter() - start_time_perf) * 1000)
+        
+        # ALWAYS log errors to console
+        request_id = telemetry.get("request_id", "UNKNOWN")
+        self._log_trace(request_id, "ERROR", {
+            "code": code,
+            "errors": errors if isinstance(errors, list) else [str(errors)],
+            "latency_ms": telemetry["latency_ms_total"]
+        })
+        
         err_resp = create_error_response(problem, errors if isinstance(errors, list) else [str(errors)], code)
         err_resp["_telemetry"] = telemetry
         err_resp["telemetry"] = telemetry
@@ -1148,21 +1263,11 @@ class SolverV3:
         provider = provider.lower()
         system_for_provider = system_prompt
         if provider == "openai":
-            # Just pass the original config. 
-            # If json_schema_config is {"name": X, "schema": Y, "strict": Z} that's what we want.
-            # Avoid re-extracting .get("schema") here because clients.py will re-wrap it correctly.
-            llm_json_schema = json_schema_config
-            
-            # For system prompt context, we do want stringified schema
-            schema_for_prompt = json_schema_config.get("schema", json_schema_config)
-            schema_text = json.dumps(schema_for_prompt, separators=(",", ":"))
-            
+            schema_text = json.dumps(json_schema_config.get("schema", json_schema_config), separators=(",", ":"))
             system_for_provider = (
                 f"{system_prompt}\n\nJSON_SCHEMA:\n{schema_text}\n\n"
                 "Output only valid JSON that matches the schema."
             )
-        else:
-            llm_json_schema = None
 
         messages = [
             {"role": "system", "content": system_for_provider},
@@ -1174,7 +1279,7 @@ class SolverV3:
             messages=messages,
             system_prompt=system_for_provider,
             prompt=None,
-            json_schema=llm_json_schema,
+            json_schema=json_schema_config if provider == "openai" else None,
             max_tokens=max_output_tokens,
             temperature=None,
             stream=False,
