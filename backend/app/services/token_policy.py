@@ -83,7 +83,7 @@ def get_token_policy(session: Session) -> TokenPolicy:
     def get_val(key: str) -> int:
         val = config_map.get(key, "0")
         coerced = _coerce_int(val, 0)
-        print(f"[TOKEN_POLICY] Loaded {key} = {coerced} (Raw: {val})")
+    # print(f"[TOKEN_POLICY] Loaded {key} = {coerced} (Raw: {val})")
         return coerced
 
     # Log warning if keys are completely missing

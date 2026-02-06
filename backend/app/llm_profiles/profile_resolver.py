@@ -16,9 +16,43 @@ class ProfileResolver:
     Acts as a bridge between high-level intent and low-level prompt binding.
     """
     
-    def __init__(self, prompt_binding_meta: Dict[str, Any], mode: str):
+    def __init__(
+        self, 
+        prompt_binding_meta: Dict[str, Any], 
+        mode: str,
+        tier: str,
+        system_prompt_content: str,
+        developer_prompt_content: Optional[str],
+        json_schema_content: Dict[str, Any],
+    ):
         self.prompt_binding_meta = prompt_binding_meta
         self.mode = mode
+        self.tier = tier
+        self.system_prompt_content = system_prompt_content
+        self.developer_prompt_content = developer_prompt_content
+        self.json_schema_content = json_schema_content
+
+    @property
+    def max_output_tokens(self) -> Optional[int]:
+        return self.prompt_binding_meta.get("max_output_tokens")
+
+    @property
+    def system_asset_path(self) -> Optional[str]:
+        # DB-backed prompts do not have a file asset path
+        return None
+
+    @property
+    def system_relative_path(self) -> Optional[str]:
+        # Return ID as a proxy for the path for tracing
+        return self.prompt_binding_meta.get("global_system_prompt_id")
+
+    @property
+    def schema_asset_path(self) -> Optional[str]:
+        return None
+
+    @property
+    def schema_relative_path(self) -> Optional[str]:
+        return self.prompt_binding_meta.get("output_schema_id")
 
     @classmethod
     def resolve_profile(
@@ -40,7 +74,7 @@ class ProfileResolver:
             
             # Use resolve_binding_payload to validate and get binding
             # logic from prompt_registry_service handles validation of tier/mode existence
-            _, _, binding = prompt_registry_service.resolve_binding_payload(
+            system_prompt_combined, schema_content, binding = prompt_registry_service.resolve_binding_payload(
                 session=session,
                 tier_slug=tier_slug,
                 mode=requested_mode
@@ -52,7 +86,7 @@ class ProfileResolver:
                     code="NO_BINDING_FOUND"
                 )
 
-            # Fetch prompt details to get versions
+            # Fetch prompt details to get versions and raw developer content
             global_prompt = prompt_registry_service.get_active_prompt(session, binding.global_system_prompt_id)
             developer_prompt = prompt_registry_service.get_active_prompt(session, binding.developer_prompt_id)
             schema_entry = prompt_registry_service.get_active_schema(session, binding.output_schema_id)
@@ -90,13 +124,16 @@ class ProfileResolver:
             }
             
             # api.py expects .mode to be available on the instance.
-            # Usually strict match to requested_mode or binding.mode.
-            # binding.mode is Enum, we convert to str usually or keep enum.
-            # api.py passes 'resolved_profile.mode' to get_effective_max_tokens.
-            # binding.mode is guaranteed to exist.
             profile_mode = binding.mode.value if hasattr(binding.mode, 'value') else str(binding.mode)
             
-            return cls(prompt_binding_meta=meta, mode=profile_mode)
+            return cls(
+                prompt_binding_meta=meta, 
+                mode=profile_mode,
+                tier=tier_slug,
+                system_prompt_content=system_prompt_combined,
+                developer_prompt_content=developer_prompt.content if developer_prompt else None,
+                json_schema_content=schema_content or {}
+            )
 
         except PromptRegistryError as e:
             raise ProfileResolutionError(str(e), details={"original_error": str(e)})

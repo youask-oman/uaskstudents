@@ -34,56 +34,83 @@ def compute_schema_hash(schema: Dict[str, Any]) -> str:
 
 def unwrap_db_schema(db_wrapper: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Extract the core schema object from various DB wrapper formats.
-    
-    Handles these formats:
-    1. Full wrapper: {"type": "json_schema", "name": "...", "schema": {...}}
-    2. Simple wrapper: {"name": "...", "schema": {...}}
-    3. Raw schema: {"type": "object", "properties": {...}}
-    
-    Returns: {"name": <str>, "strict": <bool>, "schema": <dict>}
+    Normalize a schema record from DB into a single internal shape:
+
+      {"type": "json_schema", "name": <str>, "strict": <bool>, "schema": <dict>}
+
+    Accepted inputs:
+    - DB wrapper (preferred):
+        {"type":"json_schema","name":"...","strict":true,"schema":{...}}
+    - OpenAI chat wrapper (should not be stored, but tolerated):
+        {"type":"json_schema","json_schema":{"name":"...","strict":true,"schema":{...}}}
+    - Simple wrapper (legacy):
+        {"name":"...","strict":true,"schema":{...}}
+    - Raw JSON Schema (draft):
+        {"$schema": "...", "type":"object", ...}  OR a schema-like dict containing schema keywords.
+
+    Rejected:
+    - Half-wrapper: {"schema": {...}} (ambiguous and caused production bugs)
     """
-    if not isinstance(db_wrapper, dict):
-        raise ValueError(f"db_wrapper must be dict, got {type(db_wrapper)}")
-    
-    # Case 1: Full DB wrapper with type: json_schema
-    if db_wrapper.get("type") == "json_schema":
-        inner = db_wrapper.get("schema", {})
-        name = db_wrapper.get("name", "unnamed_schema")
-        strict = db_wrapper.get("strict", True)
-        
-        # Nested check: inner might also be a wrapper (shouldn't happen but be safe)
-        if isinstance(inner, dict) and inner.get("type") == "json_schema":
-            # Double-wrapped! Unwrap again
-            logger.warning("Detected double-wrapped schema, unwrapping inner layer")
-            inner = inner.get("schema", inner)
-            name = inner.get("name", name)
-        
-        return {"name": name, "strict": strict, "schema": inner}
-    
-    # Case 2: Simple wrapper with name + schema keys
-    if "schema" in db_wrapper and "name" in db_wrapper:
-        return {
-            "name": db_wrapper["name"],
-            "strict": db_wrapper.get("strict", True),
-            "schema": db_wrapper["schema"]
-        }
-    
-    # Case 3: Raw schema (no wrapper) - assume it's the schema itself
-    if db_wrapper.get("type") in ("object", "array", "string"):
-        return {
-            "name": "raw_schema",
-            "strict": True,
-            "schema": db_wrapper
-        }
-    
-    # Fallback: treat the whole thing as the schema
-    logger.warning(f"Unknown schema format, treating as raw schema. Keys: {list(db_wrapper.keys())}")
-    return {
-        "name": "unknown_schema",
-        "strict": True,
-        "schema": db_wrapper
-    }
+    if not isinstance(db_wrapper, dict) or not db_wrapper:
+        raise ValueError(f"Schema wrapper must be a non-empty dict, got {type(db_wrapper)}")
+
+    keys = set(db_wrapper.keys())
+
+    # Reject the known-bad half-wrapper.
+    if keys == {"schema"}:
+        logger.error("Invalid schema wrapper: only 'schema' key present (half-wrapper).")
+        raise ValueError("Invalid schema wrapper: missing required keys (type/name/strict).")
+
+    def _require_str(v: Any, field: str) -> str:
+        if not isinstance(v, str) or not v.strip():
+            raise ValueError(f"Invalid schema wrapper: '{field}' must be a non-empty string.")
+        return v.strip()
+
+    def _require_bool(v: Any, field: str) -> bool:
+        if isinstance(v, bool):
+            return v
+        # Allow 0/1 or "true"/"false" if DB is messy, but normalize.
+        if isinstance(v, (int, float)) and v in (0, 1):
+            return bool(v)
+        if isinstance(v, str) and v.lower() in ("true", "false"):
+            return v.lower() == "true"
+        raise ValueError(f"Invalid schema wrapper: '{field}' must be boolean.")
+
+    def _require_dict(v: Any, field: str) -> Dict[str, Any]:
+        if not isinstance(v, dict) or not v:
+            raise ValueError(f"Invalid schema wrapper: '{field}' must be a non-empty object.")
+        return v
+
+    # Case 1: Full wrapper (DB canonical)
+    if db_wrapper.get("type") == "json_schema" and "schema" in db_wrapper:
+        name = _require_str(db_wrapper.get("name"), "name")
+        strict = _require_bool(db_wrapper.get("strict", True), "strict")
+        schema = _require_dict(db_wrapper.get("schema"), "schema")
+        return {"type": "json_schema", "name": name, "strict": strict, "schema": schema}
+
+    # Case 2: OpenAI chat wrapper (nested json_schema)
+    if db_wrapper.get("type") == "json_schema" and "json_schema" in db_wrapper and isinstance(db_wrapper["json_schema"], dict):
+        inner = db_wrapper["json_schema"]
+        name = _require_str(inner.get("name"), "json_schema.name")
+        strict = _require_bool(inner.get("strict", True), "json_schema.strict")
+        schema = _require_dict(inner.get("schema"), "json_schema.schema")
+        return {"type": "json_schema", "name": name, "strict": strict, "schema": schema}
+
+    # Case 3: Simple wrapper (legacy)
+    if "name" in db_wrapper and "schema" in db_wrapper:
+        name = _require_str(db_wrapper.get("name"), "name")
+        strict = _require_bool(db_wrapper.get("strict", True), "strict")
+        schema = _require_dict(db_wrapper.get("schema"), "schema")
+        return {"type": "json_schema", "name": name, "strict": strict, "schema": schema}
+
+    # Case 4: Raw JSON Schema (draft / schema-like)
+    schema_like_keys = {"$schema", "$id", "$ref", "type", "properties", "required", "anyOf", "oneOf", "allOf", "enum", "const", "items"}
+    if keys.intersection(schema_like_keys):
+        # Treat as raw schema. Caller must provide a name elsewhere or accept "raw_schema".
+        return {"type": "json_schema", "name": "raw_schema", "strict": True, "schema": db_wrapper}
+
+    logger.error(f"Unrecognized schema wrapper format. Keys={sorted(keys)}")
+    raise ValueError(f"Invalid schema wrapper format. Keys={sorted(keys)}")
 
 
 def build_openai_structured_output(
@@ -111,19 +138,37 @@ def build_openai_structured_output(
     strict = normalized["strict"]
     inner_schema = normalized["schema"]
     
-    # Step 2: Validate inner schema has required fields
-    if not isinstance(inner_schema, dict):
-        raise ValueError(f"inner_schema must be dict, got {type(inner_schema)}")
-    
-    # Check for corruption that would cause type: "None" error
-    if inner_schema.get("type") in (None, "None", "null"):
-        logger.error(f"CORRUPTION DETECTED: inner_schema.type = {inner_schema.get('type')!r}")
-        # Attempt to fix if properties exist
-        if "properties" in inner_schema:
-            logger.warning("Auto-fixing: setting type to 'object' since properties exist")
+    # Step 2: Validate inner schema is a dict and looks like JSON Schema
+    if not isinstance(inner_schema, dict) or not inner_schema:
+        raise ValueError(f"inner_schema must be a non-empty dict, got {type(inner_schema)}")
+
+    # Reject explicit corruption values (this is the actual "type: None" bug class)
+    if "type" in inner_schema and inner_schema.get("type") in (None, "None"):
+        logger.error(f"CORRUPTION DETECTED: inner_schema.type={inner_schema.get('type')!r}")
+        raise ValueError(f"Invalid inner schema: type is {inner_schema.get('type')!r}")
+
+    # If type is missing, only auto-set when the schema clearly represents an object response.
+    if "type" not in inner_schema:
+        if any(k in inner_schema for k in ("properties", "required", "additionalProperties")):
             inner_schema["type"] = "object"
+        # Otherwise allow combinators ($ref/oneOf/anyOf/allOf) to define shape.
+        elif any(k in inner_schema for k in ("$ref", "oneOf", "anyOf", "allOf")):
+            pass
         else:
-            raise ValueError(f"Invalid inner schema type: {inner_schema.get('type')!r}")
+            raise ValueError("Invalid inner schema: missing 'type' and no schema-defining keywords present.")
+
+    # Step 2.5: Clean schema for Strict Mode compliance (remove allOf, defaults, etc.)
+    # We always deep-clean to ensure 'allOf' is removed, as it causes 400 violations.
+    from app.utils.schema_cleaner import enforce_strict
+    # We operate on a deep copy to avoid mutating the cached schema in memory
+    import copy
+    inner_schema = enforce_strict(copy.deepcopy(inner_schema))
+
+    # Ensure enforce_strict did not strip a necessary root type for object responses
+    if isinstance(inner_schema, dict) and inner_schema.get('type') in (None, 'None'):
+        raise ValueError(f"Invalid inner schema after enforce_strict: type={inner_schema.get('type')!r}")
+    if isinstance(inner_schema, dict) and 'type' not in inner_schema and any(k in inner_schema for k in ('properties','required','additionalProperties')):
+        inner_schema['type'] = 'object'
     
     # Step 3: Build output format based on endpoint
     if endpoint == "chat_completions":

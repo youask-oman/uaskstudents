@@ -346,52 +346,69 @@ class SolverV3:
             
             # Helper to wrap/deref schema
             def prepare_schema(config_schema: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+                """
+                Normalize DB-provided schema config into the single internal wrapper shape:
+                  {"type":"json_schema","name":<str>,"strict":<bool>,"schema":<dict>}
+
+                IMPORTANT:
+                - Do NOT dereference or "clean" the wrapper here.
+                  Structured-output cleaning happens in structured_output_builder.build_openai_structured_output().
+                - Reject half-wrappers like {"schema": {...}} (they caused production corruption).
+                """
                 candidate = config_schema
                 if not isinstance(candidate, dict) or not candidate:
                     raise ValueError("Missing schema from DB prompt binding.")
-                if "schema" in candidate and isinstance(candidate["schema"], dict):
-                    candidate = candidate["schema"]
-                if not isinstance(candidate, dict) or not candidate:
-                    raise ValueError("Invalid schema payload from DB prompt binding.")
 
-                try:
-                    deref = deref_json_schema(candidate)
-                except Exception as exc:
-                    raise ValueError(f"Schema dereference failed: {exc}") from exc
-                if not isinstance(deref, dict):
-                    raise ValueError("Schema dereference produced non-object schema.")
+                keys = set(candidate.keys())
+                if keys == {"schema"}:
+                    raise ValueError("Invalid schema wrapper from DB: contains only 'schema' key (half-wrapper).")
 
-                deref = enforce_strict(deref)
-                if deref.get("type") is None:
-                    deref["type"] = "object"
-                    
-                # [FIX] Unwrap schema if it is already in OpenAI wrapper format
-                # The schema loaded from the DB/File (e.g. canonical_schema.json) might already be 
-                # a full "json_schema" object. We need the raw inner "schema" here.
-                real_schema = deref
-                schema_name_arg = "solve_response_v3" # Default name
-                if isinstance(deref, dict):
-                    # Check for "Wrapper" signatures
-                    # 1. Standard OpenAI "json_schema" wrapper (type: json_schema, json_schema: {...})
-                    if deref.get("type") == "json_schema" and "json_schema" in deref:
-                        # Wrapped in top-level type
-                        if isinstance(deref["json_schema"], dict):
-                            real_schema = deref["json_schema"].get("schema", deref)
-                            schema_name_arg = deref["json_schema"].get("name", schema_name_arg)
-                    # 2. Direct wrapper (type: json_schema, schema: {...}) - often used in our internal files
-                    elif deref.get("type") == "json_schema" and "schema" in deref:
-                        real_schema = deref["schema"]
-                        schema_name_arg = deref.get("name", schema_name_arg)
-                    # 3. Just "schema" and "name" keys (sometimes used in free/schema.json)
-                    elif "schema" in deref and "name" in deref and len(deref) <= 4:
-                        real_schema = deref["schema"]
-                        schema_name_arg = deref.get("name", schema_name_arg)
+                # Full wrapper (DB canonical)
+                if candidate.get("type") == "json_schema" and "schema" in candidate:
+                    if not isinstance(candidate.get("schema"), dict):
+                        raise ValueError("Invalid schema wrapper: 'schema' must be an object.")
+                    if not isinstance(candidate.get("name"), str) or not candidate["name"].strip():
+                        raise ValueError("Invalid schema wrapper: missing non-empty 'name'.")
+                    return {
+                        "type": "json_schema",
+                        "name": candidate["name"].strip(),
+                        "strict": bool(candidate.get("strict", True)),
+                        "schema": candidate["schema"],
+                    }
 
-                return {
-                     "name": schema_name_arg,
-                     "strict": True,
-                     "schema": real_schema
-                }
+                # OpenAI chat wrapper shape (tolerated)
+                if candidate.get("type") == "json_schema" and isinstance(candidate.get("json_schema"), dict):
+                    inner = candidate["json_schema"]
+                    if not isinstance(inner.get("schema"), dict):
+                        raise ValueError("Invalid schema wrapper: json_schema.schema must be an object.")
+                    if not isinstance(inner.get("name"), str) or not inner["name"].strip():
+                        raise ValueError("Invalid schema wrapper: missing non-empty json_schema.name.")
+                    return {
+                        "type": "json_schema",
+                        "name": inner["name"].strip(),
+                        "strict": bool(inner.get("strict", True)),
+                        "schema": inner["schema"],
+                    }
+
+                # Legacy simple wrapper
+                if "name" in candidate and "schema" in candidate:
+                    if not isinstance(candidate.get("schema"), dict):
+                        raise ValueError("Invalid schema wrapper: 'schema' must be an object.")
+                    if not isinstance(candidate.get("name"), str) or not candidate["name"].strip():
+                        raise ValueError("Invalid schema wrapper: missing non-empty 'name'.")
+                    return {
+                        "type": "json_schema",
+                        "name": candidate["name"].strip(),
+                        "strict": bool(candidate.get("strict", True)),
+                        "schema": candidate["schema"],
+                    }
+
+                # Raw draft schema (last resort)
+                schema_like_keys = {"$schema", "$id", "$ref", "type", "properties", "required", "anyOf", "oneOf", "allOf", "enum", "const", "items"}
+                if keys.intersection(schema_like_keys):
+                    return {"type": "json_schema", "name": "raw_schema", "strict": True, "schema": candidate}
+
+                raise ValueError(f"Unrecognized schema format from DB. Keys={sorted(keys)}")
 
             openai_schema_wrapper = prepare_schema(json_schema_config)
 
@@ -832,7 +849,7 @@ class SolverV3:
             if trace:
                 print(f"[SOLVER_V3_STREAM] Calling OpenAI with model={self.default_model}")
 
-            schema_payload = json_schema_config.get("schema") if isinstance(json_schema_config, dict) and "schema" in json_schema_config else json_schema_config
+            schema_payload = json_schema_config  # pass full wrapper through; never unwrap here
             response_stream = client.generate_stream(
                 messages=messages,
                 system_prompt=None,
@@ -1131,11 +1148,21 @@ class SolverV3:
         provider = provider.lower()
         system_for_provider = system_prompt
         if provider == "openai":
-            schema_text = json.dumps(json_schema_config.get("schema", json_schema_config), separators=(",", ":"))
+            # Just pass the original config. 
+            # If json_schema_config is {"name": X, "schema": Y, "strict": Z} that's what we want.
+            # Avoid re-extracting .get("schema") here because clients.py will re-wrap it correctly.
+            llm_json_schema = json_schema_config
+            
+            # For system prompt context, we do want stringified schema
+            schema_for_prompt = json_schema_config.get("schema", json_schema_config)
+            schema_text = json.dumps(schema_for_prompt, separators=(",", ":"))
+            
             system_for_provider = (
                 f"{system_prompt}\n\nJSON_SCHEMA:\n{schema_text}\n\n"
                 "Output only valid JSON that matches the schema."
             )
+        else:
+            llm_json_schema = None
 
         messages = [
             {"role": "system", "content": system_for_provider},
@@ -1147,7 +1174,7 @@ class SolverV3:
             messages=messages,
             system_prompt=system_for_provider,
             prompt=None,
-            json_schema=json_schema_config if provider == "openai" else None,
+            json_schema=llm_json_schema,
             max_tokens=max_output_tokens,
             temperature=None,
             stream=False,

@@ -107,6 +107,57 @@ def _log_llm(event: str, payload: Dict[str, Any]) -> None:
     logger.info(json.dumps({"event": event, **payload}))
 
 
+
+
+def _normalize_openai_schema_wrapper(raw: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """
+    Normalize DB-provided schema wrappers into the canonical internal shape:
+      {"type":"json_schema","name":str,"strict":bool,"schema":{...draft...}}
+
+    Defensive behavior:
+    - If a half-wrapper {"schema": {...}} is received, wrap it as name="raw_schema"
+      and strict=True, and log a warning. This avoids crashing in production while
+      still surfacing the upstream bug.
+    - If a chat-completions style wrapper {"type":"json_schema","json_schema":{...}} is received,
+      unwrap it into canonical form.
+    - If a raw Draft schema is received (has "$schema" or "type"/"properties"), wrap it similarly.
+    """
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        raise ValueError(f"json_schema must be a dict, got {type(raw)}")
+
+    keys = set(raw.keys())
+
+    # Canonical DB wrapper
+    if {"type", "name", "strict", "schema"}.issubset(keys) and raw.get("type") == "json_schema":
+        return raw
+
+    # OpenAI chat-completions wrapper variant: {"type":"json_schema","json_schema":{name,strict,schema}}
+    if raw.get("type") == "json_schema" and isinstance(raw.get("json_schema"), dict):
+        inner = raw["json_schema"]
+        return {
+            "type": "json_schema",
+            "name": inner.get("name", "raw_schema"),
+            "strict": bool(inner.get("strict", True)),
+            "schema": inner.get("schema", {}),
+        }
+
+    # Half-wrapper detected: {"schema": {...}} (THIS IS A BUG UPSTREAM)
+    if keys == {"schema"} and isinstance(raw.get("schema"), dict):
+        logging.getLogger(__name__).warning(
+            "Half-wrapper schema received (only 'schema' key). Wrapping as raw_schema. Upstream must be fixed."
+        )
+        return {"type": "json_schema", "name": "raw_schema", "strict": True, "schema": raw["schema"]}
+
+    # Raw Draft schema
+    if "$schema" in raw or raw.get("type") in {"object", "array", "string", "number", "integer", "boolean", "null"} or "properties" in raw:
+        return {"type": "json_schema", "name": "raw_schema", "strict": True, "schema": raw}
+
+    # Unknown shape: fail loudly
+    raise ValueError(f"Unknown json_schema format. Keys={sorted(keys)}")
+
+
 class OpenAIClient:
     def __init__(
         self,
@@ -240,10 +291,11 @@ class OpenAIClient:
                     input_items.append({"role": role, "content": content_list})
 
                 text_format = None
-                if json_schema:
+                json_schema_norm = _normalize_openai_schema_wrapper(json_schema) if json_schema else None
+                if json_schema_norm:
                     # Use shared helper to build structured output param for Responses API
                     text_format = build_openai_structured_output(
-                        db_wrapper=json_schema,
+                        db_wrapper=json_schema_norm,
                         endpoint="responses",
                         call_name=None  # Caller can provide via trace logging
                     )
@@ -294,7 +346,7 @@ class OpenAIClient:
                 payload = {
                     "max_output_tokens": max_tokens,
                     "full_input": input_items,
-                    "response_format_schema_name": json_schema.get("name") if json_schema else None,
+                    "response_format_schema_name": json_schema_norm.get("name") if json_schema_norm else None,
                     "reasoning_effort": reasoning_effort,
                 }
             else:
@@ -303,10 +355,11 @@ class OpenAIClient:
                     "messages": messages,
                     "max_completion_tokens": max_tokens,
                 }
-                if json_schema:
+                json_schema_norm = _normalize_openai_schema_wrapper(json_schema) if json_schema else None
+                if json_schema_norm:
                     # Use shared helper to build structured output param for Chat Completions API
                     params["response_format"] = build_openai_structured_output(
-                        db_wrapper=json_schema,
+                        db_wrapper=json_schema_norm,
                         endpoint="chat_completions",
                         call_name=None  # Caller can provide via trace logging
                     )
@@ -330,7 +383,7 @@ class OpenAIClient:
                 payload = {
                     "max_output_tokens": max_tokens,
                     "full_input": messages,
-                    "response_format_schema_name": json_schema.get("name") if json_schema else None,
+                    "response_format_schema_name": json_schema_norm.get("name") if json_schema_norm else None,
                 }
 
             self._breaker.record_success()
