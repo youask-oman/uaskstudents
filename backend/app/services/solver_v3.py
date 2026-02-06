@@ -1296,7 +1296,7 @@ class SolverV3:
         validation_error,
         error_list,
         json_schema_config,
-        max_output_tokens=1200,
+        max_output_tokens=4096,
         requested_mode: str = "minimal",
         trace=False,
         provider: str = "openai",

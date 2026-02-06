@@ -5133,7 +5133,16 @@ async def solve_v3_stream_endpoint(
         else:
             plan_key = profile.tier
 
-        effective_max_tokens = get_effective_max_tokens(requested_mode, learning_mode, token_policy)
+        # --- TOKEN POLICY FIX (STREAMING) ---
+        profile_max_output = profile.max_output_tokens or 900
+        policy_limit = get_effective_max_tokens(requested_mode, learning_mode, token_policy)
+        
+        if profile.tier.upper() == "RESEARCH":
+            effective_max_tokens = profile_max_output
+        else:
+            # Non-research tiers: cap at policy_limit, but honor binding if it's smaller
+            effective_max_tokens = min(profile_max_output, policy_limit)
+        # ------------------------------------
 
         if not problem_text:
             print("[SOLVER_V3_STREAM] No problem text found in request body")
@@ -5590,7 +5599,7 @@ async def solve_v3_stream_endpoint(
                         validation_error="schema_validation_failed",
                         error_list=validation_errors,
                         json_schema_config=profile.json_schema_content,  # FULL wrapper, not half-wrapper
-                        max_output_tokens=min(1200, max_output_tokens or 1200),
+                        max_output_tokens=max_output_tokens,
                         requested_mode=requested_mode,
                         trace=True,
                         provider=stream_provider,
