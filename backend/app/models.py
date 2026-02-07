@@ -209,20 +209,32 @@ class UsageLedger(SQLModel, table=True):
 
 class Payment(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="user.id")
+    user_id: int = Field(foreign_key="user.id", index=True)
+    subscription_id: Optional[int] = Field(default=None, foreign_key="subscription.id", index=True)
+    
     amount: float
     currency: str = Field(default="USD")
-    status: str = Field(default="pending") # pending, completed, failed
+    status: str = Field(default="pending", index=True) # REQUIRES_ACTION, PROCESSING, SUCCEEDED, FAILED, CANCELED, REFUNDED
     
-    transaction_id: str = Field(index=True) # Stripe ID or similar
-    payment_method: str = Field(default="card") # card, paypal
+    transaction_id: str = Field(index=True) # Legacy alias for external_id
+    payment_method: str = Field(default="card") # card, paypal, stripe
+    
+    # Phase 4 Additions
+    provider: str = Field(default="STRIPE", index=True) # STRIPE, MANUAL, DEV
+    external_id: Optional[str] = Field(default=None, index=True) # Stripe PaymentIntent ID or Invoice ID
+    external_type: Optional[str] = Field(default=None, index=True) # PAYMENT_INTENT, INVOICE, CHECKOUT_SESSION, SUBSCRIPTION
+    idempotency_key: Optional[str] = Field(default=None, index=True)
+    metadata_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
     
     # Security / Auditing
     ip_address: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
     
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    
-    user: User = Relationship(back_populates="payments")
+    user: "User" = Relationship(back_populates="payments")
+
+    __table_args__ = (
+        UniqueConstraint("provider", "external_type", "external_id", name="uq_payment_external"),
+    )
 
 # --- OCR Subsystem Tables ---
 
@@ -952,4 +964,55 @@ class BillingLedger(SQLModel, table=True):
     
     ok: bool = Field(default=True)
     error_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+
+class StripeEvent(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    stripe_event_id: str = Field(unique=True, index=True)
+    type: str = Field(index=True)
+    api_version: Optional[str] = None
+    created_ts: int = Field(index=True)
+    livemode: bool = False
+    payload_json: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    received_at: datetime = Field(default_factory=datetime.utcnow)
+    processed_at: Optional[datetime] = None
+    process_status: str = Field(default="RECEIVED", index=True) # RECEIVED, PROCESSED, FAILED, IGNORED
+    last_error: Optional[str] = Field(default=None, sa_column=Column(Text))
+
+class TopUpOrder(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    topup_product_id: int = Field(foreign_key="topupproduct.id")
+    credits: float
+    price_usd: float
+    currency: str = Field(default="USD")
+    status: str = Field(default="CREATED", index=True) # CREATED, CHECKOUT_CREATED, PAID, FULFILLED, CANCELED, FAILED
+    stripe_checkout_session_id: Optional[str] = Field(default=None, unique=True, index=True)
+    stripe_payment_intent_id: Optional[str] = Field(default=None, unique=True, index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    fulfill_usage_ledger_id: Optional[int] = Field(default=None)
+    fulfill_credit_lot_id: Optional[int] = Field(default=None)
+
+class SubscriptionBillingLink(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    subscription_id: int = Field(foreign_key="subscription.id")
+    user_id: int = Field(foreign_key="user.id", index=True)
+    stripe_customer_id: str = Field(index=True)
+    stripe_subscription_id: str = Field(unique=True, index=True)
+    stripe_price_id: str = Field(index=True)
+    status: str = Field(index=True) # ACTIVE, PAST_DUE, CANCELED, INCOMPLETE, UNPAID
+    current_period_start: datetime
+    current_period_end: datetime
+    cancel_at_period_end: bool = False
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class StripePriceMap(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    kind: str = Field(index=True) # TOPUP, SUBSCRIPTION
+    internal_code: str = Field(index=True) # product code or plan slug
+    stripe_price_id: str = Field(index=True)
+    currency: str = Field(default="USD")
+    active: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 

@@ -52,12 +52,23 @@ export default function AdminSubscriptionsPage() {
     const [periods, setPeriods] = useState<any[]>([]);
     const [periodsLoading, setPeriodsLoading] = useState(false);
 
+    const [page, setPage] = useState(1);
+    const [total, setTotal] = useState(0);
+    const [statusFilter, setStatusFilter] = useState("");
+
     const fetchSubs = async () => {
         setLoading(true);
         setError("");
         try {
-            const data = await fetchAdmin("/subscriptions");
-            setSubs(data);
+            const params = new URLSearchParams({
+                page: page.toString(),
+                page_size: "25"
+            });
+            if (statusFilter) params.append("status", statusFilter);
+
+            const data = await fetchAdmin(`/subscriptions?${params.toString()}`);
+            setSubs(data.data);
+            setTotal(data.total);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -89,12 +100,24 @@ export default function AdminSubscriptionsPage() {
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Subscriptions</h1>
                     <p className="text-slate-500 dark:text-slate-400">Phase 3: Monthly Grants & Overage</p>
                 </div>
-                <button
-                    onClick={fetchSubs}
-                    className="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
-                >
-                    Refresh
-                </button>
+                <div className="flex gap-4">
+                    <select
+                        className="px-4 py-2 rounded-lg border border-slate-200 dark:bg-slate-800 dark:border-slate-700 text-sm"
+                        value={statusFilter}
+                        onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                    >
+                        <option value="">All Statuses</option>
+                        <option value="active">Active</option>
+                        <option value="canceled">Canceled</option>
+                        <option value="expired">Expired</option>
+                    </select>
+                    <button
+                        onClick={fetchSubs}
+                        className="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                    >
+                        Refresh
+                    </button>
+                </div>
             </header>
 
             {error && (
@@ -163,6 +186,21 @@ export default function AdminSubscriptionsPage() {
                             )}
                         </tbody>
                     </table>
+                </div>
+                <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                    <p className="text-xs text-slate-500">Showing {subs.length} of {total} records</p>
+                    <div className="flex gap-2">
+                        <button
+                            disabled={page === 1}
+                            onClick={() => setPage(p => p - 1)}
+                            className="px-3 py-1 rounded border border-slate-200 text-xs font-medium disabled:opacity-50"
+                        >Prev</button>
+                        <button
+                            disabled={subs.length < 25}
+                            onClick={() => setPage(p => p + 1)}
+                            className="px-3 py-1 rounded border border-slate-200 text-xs font-medium disabled:opacity-50"
+                        >Next</button>
+                    </div>
                 </div>
             </div>
 

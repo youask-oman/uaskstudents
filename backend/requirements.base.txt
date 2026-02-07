@@ -22,3 +22,4 @@ sympy>=1.12
 filetype>=1.2.0 # for image type detection we replaced imghdr which is deprecated @luai
 pypdfium2>=4.30.0
 pix2text>=1.1.4
+stripe>=11.0.0

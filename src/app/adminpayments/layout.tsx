@@ -61,6 +61,8 @@ export default function AdminPaymentsLayout({
         { label: "Requests", href: "/adminpayments/requests", icon: "table_view" },
         { label: "Top-Ups", href: "/adminpayments/topups", icon: "add_card" },
         { label: "Subscriptions", href: "/adminpayments/subscriptions", icon: "card_membership" },
+        { label: "Stripe Events", href: "/adminpayments?tab=stripe_events", icon: "receipt_long" },
+        { label: "Reconciliation", href: "/adminpayments?tab=reconciliation", icon: "balance" },
         { label: "Pricing", href: "/adminpayments?tab=pricing", icon: "price_change" },
         { label: "Back to Main Admin", href: "/admin/dashboard", icon: "arrow_back" },
     ];
@@ -77,7 +79,7 @@ export default function AdminPaymentsLayout({
                         <img src="/logo-dark.png" alt="uask.ai" className="h-8 w-auto invert brightness-0 grayscale-0" style={{ filter: "brightness(0) invert(1)" }} />
                         <div className="flex flex-col">
                             <h1 className="text-white text-base font-bold leading-none">Payments</h1>
-                            <p className="text-emerald-400 text-[10px] uppercase tracking-widest font-semibold mt-1">Phase 0 Audit</p>
+                            <p className="text-emerald-400 text-[10px] uppercase tracking-widest font-semibold mt-1">Phase 4 Stripe</p>
                         </div>
                     </div>
                     <nav className="flex flex-col gap-1">

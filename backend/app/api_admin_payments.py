@@ -62,30 +62,47 @@ def get_payments_overview(
 @router.get("/topups")
 def list_topups(
     page: int = 1,
-    page_size: int = 50,
+    page_size: int = 25,
+    search: Optional[str] = None,
     session: Session = Depends(get_session),
     user: User = Depends(get_staff_user)
 ):
     offset = (page - 1) * page_size
-    query = select(CreditLot).where(CreditLot.lot_type == "TOPUP").order_by(desc(CreditLot.purchased_at))
-    lots = session.exec(query.offset(offset).limit(page_size)).all()
-    return lots
+    query = select(CreditLot).where(CreditLot.lot_type == "TOPUP")
+    
+    if search:
+        # Search by external_ref or amount_paid
+        try:
+            val = float(search)
+            query = query.where(CreditLot.amount_paid == val)
+        except ValueError:
+            query = query.where(CreditLot.external_ref.contains(search))
+            
+    total_count = session.exec(select(func.count()).select_from(query.subquery())).one()
+    lots = session.exec(query.order_by(desc(CreditLot.purchased_at)).offset(offset).limit(page_size)).all()
+    
+    return {"total": total_count, "page": page, "page_size": page_size, "data": lots}
 
 @router.get("/lots")
 def list_lots(
     user_id: Optional[int] = None,
     page: int = 1,
-    page_size: int = 50,
+    page_size: int = 25,
+    lot_type: Optional[str] = None,
     session: Session = Depends(get_session),
     user: User = Depends(get_staff_user)
 ):
     offset = (page - 1) * page_size
-    query = select(CreditLot).order_by(desc(CreditLot.purchased_at))
+    query = select(CreditLot)
     if user_id:
         query = query.where(CreditLot.user_id == user_id)
+    if lot_type:
+        query = query.where(CreditLot.lot_type == lot_type)
         
-    lots = session.exec(query.offset(offset).limit(page_size)).all()
-    return lots
+    total_count = session.exec(select(func.count()).select_from(query.subquery())).one()
+    lots = session.exec(query.order_by(desc(CreditLot.purchased_at)).offset(offset).limit(page_size)).all()
+    
+    return {"total": total_count, "page": page, "page_size": page_size, "data": lots}
 
 @router.get("/consumption/{request_id}")
 def get_consumption_drilldown(
@@ -114,31 +131,33 @@ def get_consumption_drilldown(
 @router.get("/requests")
 def list_requests(
     page: int = 1,
-    page_size: int = 50,
+    page_size: int = 25,
     model: Optional[str] = None,
     provider: Optional[str] = None,
+    status: Optional[str] = None,
+    user_id: Optional[int] = None,
     session: Session = Depends(get_session),
     user: User = Depends(get_staff_user)
 ):
-    query = select(RequestEvent).order_by(desc(RequestEvent.created_at))
+    from sqlalchemy import or_
+    query = select(RequestEvent)
     
     if model:
         query = query.where(RequestEvent.model == model)
     if provider:
         query = query.where(RequestEvent.provider == provider)
+    if status:
+        query = query.where(RequestEvent.status == status)
+    if user_id:
+        query = query.where(RequestEvent.user_id == user_id)
         
-    offset = (page - 1) * page_size
-    events = session.exec(query.offset(offset).limit(page_size)).all()
+    total_count = session.exec(select(func.count()).select_from(query.subquery())).one()
+    events = session.exec(query.order_by(desc(RequestEvent.created_at)).offset((page - 1) * page_size).limit(page_size)).all()
     
     # Enrich with Cost Estimate "Live"
     results = []
     for e in events:
         est_cost, price_id = cost_estimation_service.estimate_provider_cost(session, e)
-        
-        # Use stored if reasonable, or override with new estimate?
-        # Dashboard should show "Stored vs Estimated" maybe?
-        # Let's show Estimated based on current Pricing Config for audit
-        
         results.append({
             "request_id": e.request_id,
             "created_at": e.created_at,
@@ -148,11 +167,11 @@ def list_requests(
             "tokens_in": e.tokens_in,
             "tokens_out": e.tokens_out,
             "cost_stored": e.cost_usd,
-            "cost_estimated": est_cost, # The Phase 0 value
+            "cost_estimated": est_cost,
             "status": e.status
         })
         
-    return {"data": results, "page": page, "page_size": page_size}
+    return {"total": total_count, "data": results, "page": page, "page_size": page_size}
 
 # --- Pricing Config ---
 
@@ -193,13 +212,18 @@ from app.models import Subscription, SubscriptionPeriod
 @router.get("/subscriptions")
 def list_subscriptions(
     page: int = 1,
-    page_size: int = 50,
+    page_size: int = 25,
+    status: Optional[str] = None,
     session: Session = Depends(get_session),
     user: User = Depends(get_staff_user)
 ):
     offset = (page - 1) * page_size
-    query = select(Subscription).order_by(desc(Subscription.created_at))
-    subs = session.exec(query.offset(offset).limit(page_size)).all()
+    query = select(Subscription)
+    if status:
+        query = query.where(Subscription.status == status)
+        
+    total_count = session.exec(select(func.count()).select_from(query.subquery())).one()
+    subs = session.exec(query.order_by(desc(Subscription.created_at)).offset(offset).limit(page_size)).all()
     
     # Enrich with current period and plan name
     results = []
@@ -217,7 +241,7 @@ def list_subscriptions(
             "feature_usage": sub.feature_usage,
             "auto_renew": sub.auto_renew
         })
-    return results
+    return {"total": total_count, "page": page, "page_size": page_size, "data": results}
 
 @router.get("/subscriptions/{sub_id}/periods")
 def list_subscription_periods(
@@ -227,3 +251,92 @@ def list_subscription_periods(
 ):
     query = select(SubscriptionPeriod).where(SubscriptionPeriod.subscription_id == sub_id).order_by(desc(SubscriptionPeriod.period_start))
     return session.exec(query).all()
+
+
+# --- Stripe Specific Admin ---
+
+from app.models import StripeEvent, TopUpOrder, SubscriptionBillingLink, SystemErrorEntry
+
+@router.get("/stripe/events")
+def list_stripe_events(
+    page: int = 1,
+    page_size: int = 25,
+    event_type: Optional[str] = None,
+    status: Optional[str] = None,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_staff_user)
+):
+    offset = (page - 1) * page_size
+    query = select(StripeEvent)
+    if event_type:
+        query = query.where(StripeEvent.type == event_type)
+    if status:
+        query = query.where(StripeEvent.process_status == status)
+        
+    total_count = session.exec(select(func.count()).select_from(query.subquery())).one()
+    events = session.exec(query.order_by(desc(StripeEvent.received_at)).offset(offset).limit(page_size)).all()
+    return {"total": total_count, "page": page, "page_size": page_size, "data": events}
+
+@router.post("/stripe/events/{event_id}/replay")
+def replay_stripe_event(
+    event_id: str,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_admin_user)
+):
+    """Admin-only replay of a Stripe event for forensic debugging."""
+    event = session.exec(select(StripeEvent).where(StripeEvent.stripe_event_id == event_id)).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    from app.services.stripe_webhook_processor import stripe_webhook_processor
+    stripe_webhook_processor.process_event(session, event)
+    return {"status": "replayed", "process_status": event.process_status}
+
+@router.get("/stripe/reconciliation")
+def get_reconciliation_errors(
+    session: Session = Depends(get_session),
+    user: User = Depends(get_staff_user)
+):
+    """List issues found by the nightly reconciliation job."""
+    query = select(SystemErrorEntry).where(SystemErrorEntry.component == "StripeReconciler").order_by(desc(SystemErrorEntry.created_at))
+    return session.exec(query.limit(100)).all()
+
+@router.get("/details/{payment_id}")
+def get_payment_detail(
+    payment_id: int,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_staff_user)
+):
+    """Detailed drill-down for a single payment, linking Stripe PI, TopUpOrder, and CreditLot."""
+    payment = session.get(Payment, payment_id)
+    if not payment:
+        raise HTTPException(404, detail="Payment not found")
+        
+    order = None
+    if payment.provider == "STRIPE":
+        order = session.exec(select(TopUpOrder).where(
+            (TopUpOrder.stripe_payment_intent_id == payment.external_id) |
+            (TopUpOrder.stripe_checkout_session_id == payment.external_id)
+        )).first()
+        
+    lot = None
+    if payment.external_id:
+        lot = session.exec(select(CreditLot).where(CreditLot.external_ref == payment.external_id)).first()
+        
+    return {
+        "payment": payment,
+        "order": order,
+        "lot": lot
+    }
+
+@router.get("/subscriptions/{sub_id}/billing")
+def get_subscription_billing_detail(
+    sub_id: int,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_staff_user)
+):
+    """Fetch external billing links (Stripe) for a subscription."""
+    link = session.exec(select(SubscriptionBillingLink).where(SubscriptionBillingLink.subscription_id == sub_id)).first()
+    return {
+        "billing_link": link
+    }

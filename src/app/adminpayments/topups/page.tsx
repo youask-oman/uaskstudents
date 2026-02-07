@@ -53,17 +53,42 @@ async function fetchAdmin(path: string) {
 export default function TopUpsPage() {
     const [lots, setLots] = useState<CreditLot[]>([]);
     const [loading, setLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [total, setTotal] = useState(0);
+    const [search, setSearch] = useState("");
 
     useEffect(() => {
-        fetchAdmin("/topups?page_size=50")
-            .then(data => setLots(data))
+        setLoading(true);
+        const params = new URLSearchParams({
+            page: page.toString(),
+            page_size: "25"
+        });
+        if (search) params.append("search", search);
+
+        fetchAdmin(`/topups?${params.toString()}`)
+            .then(data => {
+                setLots(data.data);
+                setTotal(data.total);
+            })
             .catch(err => console.error(err))
             .finally(() => setLoading(false));
-    }, []);
+    }, [page, search]);
 
     return (
         <div className="p-8">
-            <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Top-Up History</h2>
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Top-Up History</h2>
+                <div className="flex gap-4">
+                    <input
+                        type="text"
+                        placeholder="Search Ref or Amount..."
+                        className="px-4 py-2 rounded-lg border border-slate-200 dark:bg-slate-800 dark:border-slate-700 text-sm"
+                        value={search}
+                        onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                    />
+                </div>
+            </div>
+
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                 <table className="w-full text-sm text-left">
                     <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
@@ -107,6 +132,21 @@ export default function TopUpsPage() {
                         ))}
                     </tbody>
                 </table>
+                <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                    <p className="text-xs text-slate-500">Showing {lots.length} of {total} records</p>
+                    <div className="flex gap-2">
+                        <button
+                            disabled={page === 1}
+                            onClick={() => setPage(p => p - 1)}
+                            className="px-3 py-1 rounded border border-slate-200 text-xs font-medium disabled:opacity-50"
+                        >Prev</button>
+                        <button
+                            disabled={lots.length < 25}
+                            onClick={() => setPage(p => p + 1)}
+                            className="px-3 py-1 rounded border border-slate-200 text-xs font-medium disabled:opacity-50"
+                        >Next</button>
+                    </div>
+                </div>
             </div>
         </div>
     );

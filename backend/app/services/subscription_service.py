@@ -439,4 +439,44 @@ class SubscriptionService:
         self.execute_debit(session, sub, amount, meta, ref_id)
         return type('DebitResult', (object,), {"amount": amount, "status": "debited"})()
 
+    def create_stripe_checkout_session(
+        self, 
+        session: Session, 
+        user_id: int, 
+        plan_slug: str,
+        success_url: str,
+        cancel_url: str
+    ) -> dict:
+        """
+        Phase 4: Create Stripe Subscription Checkout Session.
+        """
+        plan = session.exec(select(Plan).where(Plan.slug == plan_slug)).first()
+        if not plan:
+            raise ValueError("Invalid plan slug")
+            
+        user = session.get(User, user_id)
+        if not user:
+            raise ValueError("User not found")
+            
+        sub = self.get_or_create_subscription(session, user)
+        
+        from app.services.stripe_service import stripe_service
+        price_id = stripe_service.get_price_id(session, "SUBSCRIPTION", plan_slug)
+        if not price_id:
+             raise ValueError(f"No Stripe Price ID mapped for plan {plan_slug}")
+             
+        stripe_session = stripe_service.create_subscription_checkout_session(
+            user_id=user_id,
+            subscription_id=sub.id,
+            price_id=price_id,
+            success_url=success_url,
+            cancel_url=cancel_url
+        )
+        
+        return {
+            "checkout_url": stripe_session.url,
+            "stripe_session_id": stripe_session.id,
+            "subscription_id": sub.id
+        }
+
 subscription_service = SubscriptionService()

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Request, Form
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Request, Form, Body
 from fastapi.responses import StreamingResponse, JSONResponse
 from sqlmodel import Session, SQLModel, select
 from sqlalchemy import text as sql_text, or_
@@ -8667,6 +8667,27 @@ async def get_my_subscription_v2(user_id: int = Query(...), session: Session = D
         school = session.get(School, user.school_id)
         school_name = school.school_name if school else None
     return build_subscription_response(user, subscription, plan, credits_remaining, school_name=school_name)
+
+@api_router.post('/subscriptions/stripe/checkout')
+async def create_subscription_stripe_checkout(
+    plan_slug: str = Body(..., embed=True),
+    success_url: str = Body(..., embed=True),
+    cancel_url: str = Body(..., embed=True),
+    user_id: int = Query(...),
+    session: Session = Depends(get_session)
+):
+    """Initiate Stripe checkout session for a subscription plan."""
+    try:
+        return subscription_service.create_stripe_checkout_session(
+            session, user_id, plan_slug, success_url, cancel_url
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        import logging
+        logging.error(f"Subscription checkout error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @api_router.get('/admin/plans-with-prompts')

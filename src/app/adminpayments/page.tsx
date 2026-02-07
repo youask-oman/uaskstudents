@@ -36,19 +36,35 @@ type PricingItem = {
     effective_to?: string;
 };
 
+type StripeEventItem = {
+    stripe_event_id: string;
+    type: string;
+    process_status: string;
+    received_at: string;
+    last_error?: string;
+};
+
+type ReconciliationItem = {
+    id: number;
+    level: string;
+    message: string;
+    created_at: string;
+};
+
 // --- API Helper ---
-async function fetchAdmin(path: string) {
+async function fetchAdmin(path: string, options: RequestInit = {}) {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) {
         window.location.href = "/login?redirect=" + window.location.pathname;
         return;
     }
 
-    // Use relative URL to leverage Next.js proxy (avoids CORS)
     const res = await fetch(`/api/admin/payments${path}`, {
+        ...options,
         headers: {
             "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            ...options.headers
         }
     });
 
@@ -70,15 +86,29 @@ export default function AdminPaymentsPage() {
     const [overview, setOverview] = useState<OverviewData | null>(null);
     const [requests, setRequests] = useState<RequestItem[]>([]);
     const [pricing, setPricing] = useState<PricingItem[]>([]);
+    const [stripeEvents, setStripeEvents] = useState<StripeEventItem[]>([]);
+    const [reconciliation, setReconciliation] = useState<ReconciliationItem[]>([]);
+
+    // Pagination & Filtering
+    const [page, setPage] = useState(1);
+    const [total, setTotal] = useState(0);
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState("");
+
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         setLoading(true);
         const token = localStorage.getItem("token");
-        if (!token) {
-            // Let layout handle redirect
-            return;
-        }
+        if (!token) return;
+
+        const pageSize = 25;
+        const params = new URLSearchParams({
+            page: page.toString(),
+            page_size: pageSize.toString()
+        });
+        if (search) params.append("search", search);
+        if (statusFilter) params.append("status", statusFilter);
 
         if (tab === "overview") {
             fetchAdmin("/overview?range_days=30")
@@ -86,8 +116,9 @@ export default function AdminPaymentsPage() {
                 .catch(err => console.error(err))
                 .finally(() => setLoading(false));
         } else if (tab === "requests") {
-            fetchAdmin("/requests?page_size=50")
-                .then(data => setRequests(data.data))
+            if (search) params.append("user_id", search); // Special case for requests search by ID
+            fetchAdmin(`/requests?${params.toString()}`)
+                .then(data => { setRequests(data.data); setTotal(data.total); })
                 .catch(err => console.error(err))
                 .finally(() => setLoading(false));
         } else if (tab === "pricing") {
@@ -95,9 +126,28 @@ export default function AdminPaymentsPage() {
                 .then(data => setPricing(data))
                 .catch(err => console.error(err))
                 .finally(() => setLoading(false));
+        } else if (tab === "stripe_events") {
+            if (statusFilter) params.delete("status"); // stripe events use status param differently
+            if (statusFilter) params.append("status", statusFilter);
+            fetchAdmin(`/stripe/events?${params.toString()}`)
+                .then(data => { setStripeEvents(data.data); setTotal(data.total); })
+                .catch(err => console.error(err))
+                .finally(() => setLoading(false));
+        } else if (tab === "reconciliation") {
+            fetchAdmin("/stripe/reconciliation")
+                .then(data => setReconciliation(data))
+                .catch(err => console.error(err))
+                .finally(() => setLoading(false));
         } else {
             setLoading(false);
         }
+    }, [tab, page, search, statusFilter]);
+
+    // Reset page on tab change
+    useEffect(() => {
+        setPage(1);
+        setSearch("");
+        setStatusFilter("");
     }, [tab]);
 
     const renderOverview = () => {
@@ -130,47 +180,6 @@ export default function AdminPaymentsPage() {
             </div>
         );
     };
-
-    const renderRequests = () => (
-        <div className="p-8">
-            <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Request Cost Explorer</h2>
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
-                        <tr>
-                            <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">Time</th>
-                            <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">Request ID</th>
-                            <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">Model</th>
-                            <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400 text-right">Est. Cost</th>
-                            <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                        {requests.map(r => (
-                            <tr key={r.request_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                                <td className="px-6 py-3 text-slate-500">{new Date(r.created_at).toLocaleString()}</td>
-                                <td className="px-6 py-3 font-mono text-xs">{r.request_id.substring(0, 8)}...</td>
-                                <td className="px-6 py-3">
-                                    <span className="inline-flex items-center px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium">
-                                        {r.provider}/{r.model}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-3 text-right font-mono text-slate-700 dark:text-slate-300">
-                                    ${r.cost_estimated?.toFixed(5) || "0.00000"}
-                                </td>
-                                <td className="px-6 py-3">
-                                    <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${r.status === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-                                        }`}>
-                                        {r.status}
-                                    </span>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    );
 
     const renderPricing = () => (
         <div className="p-8">
@@ -209,12 +218,212 @@ export default function AdminPaymentsPage() {
         </div>
     );
 
+    const renderRequests = () => (
+        <div className="p-8">
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Request Cost Explorer</h2>
+                <div className="flex gap-4">
+                    <input
+                        type="text"
+                        placeholder="Search User ID..."
+                        className="px-4 py-2 rounded-lg border border-slate-200 dark:bg-slate-800 dark:border-slate-700 text-sm"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+                    <select
+                        className="px-4 py-2 rounded-lg border border-slate-200 dark:bg-slate-800 dark:border-slate-700 text-sm"
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                    >
+                        <option value="">All Statuses</option>
+                        <option value="success">Success</option>
+                        <option value="error">Error</option>
+                    </select>
+                </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+                        <tr>
+                            <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">Time</th>
+                            <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">Request ID</th>
+                            <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">Model</th>
+                            <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400 text-right">Est. Cost</th>
+                            <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                        {requests.map(r => (
+                            <tr key={r.request_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                <td className="px-6 py-3 text-slate-500">{new Date(r.created_at).toLocaleString()}</td>
+                                <td className="px-6 py-3 font-mono text-xs">{r.request_id.substring(0, 8)}...</td>
+                                <td className="px-6 py-3">
+                                    <span className="inline-flex items-center px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium">
+                                        {r.provider}/{r.model}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-3 text-right font-mono text-slate-700 dark:text-slate-300">
+                                    ${r.cost_estimated?.toFixed(5) || "0.00000"}
+                                </td>
+                                <td className="px-6 py-3">
+                                    <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${r.status === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                                        }`}>
+                                        {r.status}
+                                    </span>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                    <p className="text-xs text-slate-500">Showing {requests.length} of {total} records</p>
+                    <div className="flex gap-2">
+                        <button
+                            disabled={page === 1}
+                            onClick={() => setPage(p => p - 1)}
+                            className="px-3 py-1 rounded border border-slate-200 text-xs font-medium disabled:opacity-50"
+                        >Prev</button>
+                        <button
+                            disabled={requests.length < 25}
+                            onClick={() => setPage(p => p + 1)}
+                            className="px-3 py-1 rounded border border-slate-200 text-xs font-medium disabled:opacity-50"
+                        >Next</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderStripeEvents = () => (
+        <div className="p-8">
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Stripe Webhook Events</h2>
+                <div className="flex gap-4">
+                    <select
+                        className="px-4 py-2 rounded-lg border border-slate-200 dark:bg-slate-800 dark:border-slate-700 text-sm"
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                    >
+                        <option value="">All Process Statuses</option>
+                        <option value="PROCESSED">Processed</option>
+                        <option value="FAILED">Failed</option>
+                        <option value="RECEIVED">Received</option>
+                    </select>
+                </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+                        <tr>
+                            <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">Received At</th>
+                            <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">Event ID</th>
+                            <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">Type</th>
+                            <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">Status</th>
+                            <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                        {stripeEvents.map(e => (
+                            <tr key={e.stripe_event_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                <td className="px-6 py-3 text-slate-500 whitespace-nowrap">{new Date(e.received_at).toLocaleString()}</td>
+                                <td className="px-6 py-3 font-mono text-xs">{e.stripe_event_id}</td>
+                                <td className="px-6 py-3">{e.type}</td>
+                                <td className="px-6 py-3">
+                                    <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${e.process_status === 'PROCESSED' ? 'bg-green-100 text-green-700' :
+                                        e.process_status === 'FAILED' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'
+                                        }`}>
+                                        {e.process_status}
+                                    </span>
+                                    {e.last_error && <p className="text-[10px] text-red-500 mt-1 max-w-xs truncate">{e.last_error}</p>}
+                                </td>
+                                <td className="px-6 py-3 text-right">
+                                    <button
+                                        onClick={() => {
+                                            if (confirm("Replay this event?")) {
+                                                fetchAdmin(`/stripe/events/${e.stripe_event_id}/replay`, { method: "POST" })
+                                                    .then(() => window.location.reload())
+                                                    .catch(err => alert(err));
+                                            }
+                                        }}
+                                        className="text-emerald-600 hover:text-emerald-700 font-medium text-xs"
+                                    >
+                                        Replay
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                    <p className="text-xs text-slate-500">Showing {stripeEvents.length} of {total} records</p>
+                    <div className="flex gap-2">
+                        <button
+                            disabled={page === 1}
+                            onClick={() => setPage(p => p - 1)}
+                            className="px-3 py-1 rounded border border-slate-200 text-xs font-medium disabled:opacity-50"
+                        >Prev</button>
+                        <button
+                            disabled={stripeEvents.length < 25}
+                            onClick={() => setPage(p => p + 1)}
+                            className="px-3 py-1 rounded border border-slate-200 text-xs font-medium disabled:opacity-50"
+                        >Next</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderReconciliation = () => (
+        <div className="p-8">
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Stripe Reconciliation Mismatches</h2>
+            <div className="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900 rounded-xl p-6 mb-8 text-red-700 dark:text-red-400">
+                <div className="flex items-start gap-4">
+                    <span className="material-symbols-outlined text-red-500">warning</span>
+                    <div>
+                        <h4 className="font-bold mb-1">System Alerts</h4>
+                        <p className="text-sm opacity-90">The follow items were identified during nightly background checks as having data mismatches between Stripe and our local ledger.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+                        <tr>
+                            <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">Time</th>
+                            <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">Level</th>
+                            <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">Message</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                        {reconciliation.length === 0 && (
+                            <tr><td colSpan={3} className="px-6 py-8 text-center text-slate-400 italic">No reconciliation errors found. System is balanced.</td></tr>
+                        )}
+                        {reconciliation.map(r => (
+                            <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                <td className="px-6 py-3 text-slate-500 whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td>
+                                <td className="px-6 py-3">
+                                    <span className="text-xs font-bold text-red-600 uppercase tracking-tighter">{r.level}</span>
+                                </td>
+                                <td className="px-6 py-3 text-slate-800 dark:text-slate-200 font-medium">{r.message}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+
     return (
         <div className="min-h-full">
             {loading && <div className="fixed top-0 left-0 w-full h-1 bg-emerald-500 animate-pulse z-50"></div>}
             {tab === "overview" && renderOverview()}
             {tab === "requests" && renderRequests()}
             {tab === "pricing" && renderPricing()}
+            {tab === "stripe_events" && renderStripeEvents()}
+            {tab === "reconciliation" && renderReconciliation()}
             {tab === "credits" && <div className="p-8">Credits View (Coming Soon)</div>}
         </div>
     );

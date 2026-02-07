@@ -86,14 +86,36 @@ async def list_products(session: Session = Depends(get_session)):
 @router.post("/checkout")
 async def create_checkout(
     req: CheckoutRequest, 
-    user_id: int = Body(..., embed=True), # For simple testing without full auth dep chain yet
+    user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    """Initiate checkout (Simulated). returns Mock URL."""
+    """Initiate checkout. Defaults to simulation for now unless stripe is explicitly requested."""
     try:
-        return top_up_service.create_checkout_session(session, user_id, req.product_code)
+        # For simulation compatibility
+        return {
+            "checkout_url": f"/api/v1/topups/mock_confirm?code={req.product_code}",
+            "payment_intent_id": f"pi_mock_{int(datetime.utcnow().timestamp())}"
+        }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/stripe/checkout")
+async def create_stripe_checkout(
+    req: CheckoutRequest,
+    success_url: str = Body(..., embed=True),
+    cancel_url: str = Body(..., embed=True),
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    """Initiate Stripe checkout session."""
+    try:
+        return top_up_service.create_stripe_checkout_session(
+            session, user.id, req.product_code, success_url, cancel_url
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/confirm")
 async def confirm_topup(

@@ -47,13 +47,28 @@ export default function RequestsPage() {
     const [consumptions, setConsumptions] = useState<any[]>([]);
     const [consLoading, setConsLoading] = useState(false);
 
+    const [page, setPage] = useState(1);
+    const [total, setTotal] = useState(0);
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState("");
+
     useEffect(() => {
         setLoading(true);
-        fetchAdmin("/requests?page_size=50")
-            .then(data => setRequests(data.data))
+        const params = new URLSearchParams({
+            page: page.toString(),
+            page_size: "25"
+        });
+        if (search) params.append("user_id", search);
+        if (statusFilter) params.append("status", statusFilter);
+
+        fetchAdmin(`/requests?${params.toString()}`)
+            .then(data => {
+                setRequests(data.data);
+                setTotal(data.total);
+            })
             .catch(err => console.error(err))
             .finally(() => setLoading(false));
-    }, []);
+    }, [page, search, statusFilter]);
 
     const fetchConsumptions = async (requestId: string) => {
         setSelectedRequest(requestId);
@@ -70,7 +85,27 @@ export default function RequestsPage() {
 
     return (
         <div className="p-8 space-y-6">
-            <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Request Cost Explorer</h2>
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Request Cost Explorer</h2>
+                <div className="flex gap-4">
+                    <input
+                        type="text"
+                        placeholder="Search User ID..."
+                        className="px-4 py-2 rounded-lg border border-slate-200 dark:bg-slate-800 dark:border-slate-700 text-sm"
+                        value={search}
+                        onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                    />
+                    <select
+                        className="px-4 py-2 rounded-lg border border-slate-200 dark:bg-slate-800 dark:border-slate-700 text-sm"
+                        value={statusFilter}
+                        onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                    >
+                        <option value="">All Statuses</option>
+                        <option value="success">Success</option>
+                        <option value="error">Error</option>
+                    </select>
+                </div>
+            </div>
 
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                 <table className="w-full text-sm text-left">
@@ -87,6 +122,9 @@ export default function RequestsPage() {
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                         {loading && (
                             <tr><td colSpan={6} className="px-6 py-4 text-center">Loading...</td></tr>
+                        )}
+                        {!loading && requests.length === 0 && (
+                            <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-400 italic">No request history found.</td></tr>
                         )}
                         {requests.map(r => (
                             <tr key={r.request_id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 ${selectedRequest === r.request_id ? 'bg-indigo-50/50 dark:bg-indigo-900/10' : ''}`}>
@@ -121,6 +159,21 @@ export default function RequestsPage() {
                         ))}
                     </tbody>
                 </table>
+                <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                    <p className="text-xs text-slate-500">Showing {requests.length} of {total} records</p>
+                    <div className="flex gap-2">
+                        <button
+                            disabled={page === 1}
+                            onClick={() => setPage(p => p - 1)}
+                            className="px-3 py-1 rounded border border-slate-200 text-xs font-medium disabled:opacity-50"
+                        >Prev</button>
+                        <button
+                            disabled={requests.length < 25}
+                            onClick={() => setPage(p => p + 1)}
+                            className="px-3 py-1 rounded border border-slate-200 text-xs font-medium disabled:opacity-50"
+                        >Next</button>
+                    </div>
+                </div>
             </div>
 
             {selectedRequest && (

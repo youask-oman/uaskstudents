@@ -10,20 +10,63 @@ class TopUpService:
     def list_products(self, session: Session) -> List[TopUpProduct]:
         return session.exec(select(TopUpProduct).where(TopUpProduct.is_active == True)).all()
 
-    def create_checkout_session(self, session: Session, user_id: int, product_code: str) -> dict:
+    def create_stripe_checkout_session(
+        self, 
+        session: Session, 
+        user_id: int, 
+        product_code: str,
+        success_url: str,
+        cancel_url: str
+    ) -> dict:
         """
-        Phase 2: Mock checkout. 
-        In Phase 4 this will return a Stripe Session ID.
+        Phase 4: Create Stripe Checkout Session.
+        - Create TopUpOrder (CREATED).
+        - Call Stripe API.
+        - Update TopUpOrder (CHECKOUT_CREATED).
         """
         product = session.exec(select(TopUpProduct).where(TopUpProduct.code == product_code)).first()
         if not product:
             raise ValueError("Invalid product code")
             
-        # Mock Response
-        return {
-            "checkout_url": f"/api/v1/topups/mock_confirm?code={product.code}",
-            "payment_intent_id": f"pi_mock_{int(datetime.utcnow().timestamp())}"
-        }
+        from app.models import TopUpOrder
+        order = TopUpOrder(
+            user_id=user_id,
+            topup_product_id=product.id,
+            credits=float(product.credits),
+            price_usd=product.price_usd,
+            currency="USD",
+            status="CREATED"
+        )
+        session.add(order)
+        session.commit()
+        session.refresh(order)
+        
+        from app.services.stripe_service import stripe_service
+        try:
+            stripe_session = stripe_service.create_topup_checkout_session(
+                user_id=user_id,
+                order_id=order.id,
+                product_name=product.name,
+                amount_usd=product.price_usd,
+                success_url=success_url,
+                cancel_url=cancel_url
+            )
+            
+            order.status = "CHECKOUT_CREATED"
+            order.stripe_checkout_session_id = stripe_session.id
+            session.add(order)
+            session.commit()
+            
+            return {
+                "checkout_url": stripe_session.url,
+                "stripe_session_id": stripe_session.id,
+                "order_id": order.id
+            }
+        except Exception as e:
+            order.status = "FAILED"
+            session.add(order)
+            session.commit()
+            raise e
 
     def confirm_topup(
         self, 

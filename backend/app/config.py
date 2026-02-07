@@ -13,6 +13,11 @@ class Settings:
         self.PROMPT_VERSION = os.environ.get("PROMPT_VERSION", "v1.0")
         self.SCHEMA_VERSION = os.environ.get("SCHEMA_VERSION", "v3.0")
         self.SOLVER_VERSION = os.environ.get("SOLVER_VERSION", "v1.0")
+        
+        # Stripe Configuration
+        self.STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
+        self.STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+        self.STRIPE_ENABLED = bool(self.STRIPE_SECRET_KEY)
 
 @lru_cache()
 def get_settings():
