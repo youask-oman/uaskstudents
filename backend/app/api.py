@@ -82,6 +82,7 @@ from app.config import get_settings
 from app.services.school_import_service import normalize_country_code
 from app.utils.perf_timer import perf_emit, perf_enabled
 from app.services.response_mapper import normalize_raw_llm_response
+from app.services.solver import solver_service
 
 
 

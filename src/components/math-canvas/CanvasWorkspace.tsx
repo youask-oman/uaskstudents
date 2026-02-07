@@ -58,6 +58,7 @@ export default function CanvasWorkspace({
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [savingVersion, setSavingVersion] = useState(false);
   const [exportingDocx, setExportingDocx] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [activeTextEditor, setActiveTextEditor] = useState<Editor | null>(null);
   const [activeTextEditorId, setActiveTextEditorId] = useState<string | null>(null);
   const versionOptions = savedVersions;
@@ -374,15 +375,19 @@ export default function CanvasWorkspace({
     };
   }, [sessionId, state.pages]);
 
-  const handleExportPdf = useCallback(() => {
+  const handleExportPdf = useCallback(async () => {
+    if (exportingPdf) return;
+    setExportingPdf(true);
     try {
-      exportCanvasToPdf(buildExportPayload());
-      setSaveMessage("Opened print view for PDF export.");
+      await exportCanvasToPdf(buildExportPayload());
+      setSaveMessage("PDF export generated.");
     } catch (error) {
       console.error("Failed to export PDF", error);
       setSaveMessage(error instanceof Error ? error.message : "Failed to export PDF.");
+    } finally {
+      setExportingPdf(false);
     }
-  }, [buildExportPayload]);
+  }, [buildExportPayload, exportingPdf]);
 
   const handleExportDocx = useCallback(async () => {
     if (exportingDocx) return;
@@ -471,6 +476,7 @@ export default function CanvasWorkspace({
             key={activeTextEditorId || "no-active-editor"}
             canExport={canExport}
             exportingDocx={exportingDocx}
+            exportingPdf={exportingPdf}
             savingVersion={savingVersion}
             onExportPdf={handleExportPdf}
             onExportDocx={handleExportDocx}
@@ -488,8 +494,8 @@ export default function CanvasWorkspace({
       ) : (
         <div className={styles.toolbar}>
           <div className={styles.toolbarActionsRight}>
-            <button type="button" className={styles.secondaryActionButton} disabled={!canExport} onClick={handleExportPdf}>
-              Export PDF
+            <button type="button" className={styles.secondaryActionButton} disabled={!canExport || exportingPdf} onClick={() => void handleExportPdf()}>
+              {exportingPdf ? "Exporting..." : "Export PDF"}
             </button>
             <button
               type="button"

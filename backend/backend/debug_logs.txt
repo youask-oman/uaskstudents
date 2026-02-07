@@ -5092,3 +5092,126 @@ Incoming: GET /api/v1/users/me/subscription
 Response: 200 | 10ms
 Incoming: GET /api/v1/users/me/subscription
 Response: 200 | 11ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/admin/db/tables
+Response: 200 | 3ms
+Incoming: GET /api/v1/admin/db/tables
+Response: 200 | 1ms
+Incoming: GET /api/v1/sessions/139
+Incoming: GET /api/admin/db/table/school
+Response: 404 | 1ms
+Response: 200 | 29ms
+Incoming: OPTIONS /api/v1/admin/db/table/school
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/db/table/school
+Response: 200 | 12ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 17ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 11ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 11ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 12ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Incoming: POST /api/v1/sessions/139/chat
+Request Failed: name 'solver_service' is not defined | 6ms
+Traceback (most recent call last):
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\base.py", line 159, in call_next
+    message = await recv_stream.receive()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\streams\memory.py", line 126, in receive
+    raise EndOfStream from None
+anyio.EndOfStream
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\uaskstudents\backend\app\main.py", line 53, in log_requests
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\base.py", line 165, in call_next
+    raise app_exc
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\base.py", line 151, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\cors.py", line 91, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\cors.py", line 146, in simple_response
+    await self.app(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 64, in wrapped_app
+    raise exc
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 762, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 782, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 297, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 77, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 64, in wrapped_app
+    raise exc
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 72, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 299, in app
+    raise e
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 294, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 191, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\uaskstudents\backend\app\api.py", line 6818, in session_chat
+    result = await solver_service.get_chat_response(request.message, context, db)
+                   ^^^^^^^^^^^^^^
+NameError: name 'solver_service' is not defined
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8

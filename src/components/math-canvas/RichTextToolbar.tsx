@@ -7,6 +7,7 @@ import { SavedPaperVersion } from "./types";
 interface RichTextToolbarProps {
   canExport: boolean;
   exportingDocx: boolean;
+  exportingPdf: boolean;
   savingVersion: boolean;
   onExportPdf: () => void;
   onExportDocx: () => void;
@@ -26,6 +27,7 @@ interface RichTextToolbarProps {
 export default function RichTextToolbar({
   canExport,
   exportingDocx,
+  exportingPdf,
   savingVersion,
   onExportPdf,
   onExportDocx,
@@ -87,6 +89,7 @@ export default function RichTextToolbar({
             className={`${styles.actionButtonDual} ${styles.actionButtonSecondary}`}
             onClick={onExportPdf}
             aria-label="Export PDF"
+            disabled={exportingPdf}
             style={{ height: 36, padding: "0 8px", minWidth: 90 }}
           >
             <span className="material-symbols-outlined" style={{ fontSize: 20 }} aria-hidden="true">
@@ -94,7 +97,7 @@ export default function RichTextToolbar({
             </span>
             <div className={styles.actionButtonTextCol}>
               <span className={styles.actionTop} style={{ fontSize: 9 }}>EXPORT</span>
-              <span className={styles.actionBottom} style={{ fontSize: 12 }}>PDF</span>
+              <span className={styles.actionBottom} style={{ fontSize: 12 }}>{exportingPdf ? "..." : "PDF"}</span>
             </div>
           </button>
           <button

@@ -436,18 +436,36 @@ const exportViaHiddenFrame = (html: string): void => {
   frame.srcdoc = html;
 };
 
-export const exportCanvasToPdf = (payload: SolutionExportPayload): void => {
-  if (typeof window === "undefined") return;
-  const html = buildExportHtml(payload);
-  const popup = window.open("", "_blank", "noopener,noreferrer");
-  if (popup?.document) {
-    popup.document.open();
-    popup.document.write(html);
-    popup.document.close();
-    return;
-  }
+export const exportCanvasToPdf = async (payload: SolutionExportPayload): Promise<void> => {
+  try {
+    const exportPayload = mapToExportPayload(payload);
+    const res = await fetch("/api/export/pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(exportPayload),
+    });
 
-  exportViaHiddenFrame(html);
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Export failed: ${errText}`);
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = suggestExportFileName(payload, "pdf");
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
+  } catch (error) {
+    console.error("PDF Export Error:", error);
+    alert("PDF export failed. Check console for details.");
+    throw error;
+  }
 };
 
 const mapToExportPayload = (payload: SolutionExportPayload): ExportSolutionPayload => {
