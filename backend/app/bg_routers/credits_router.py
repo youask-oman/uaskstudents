@@ -10,6 +10,7 @@ from app.database import get_session
 from app.models import User, Subscription, Plan
 from app.schemas.pricing import PlanMultipliers, PlanFeatures, CreditsConfig
 from app.auth import SECRET_KEY, ALGORITHM
+# from app.auth import get_current_user # Not available in auth.py, defining locally
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -66,7 +67,7 @@ def get_current_user_optional(
     except ExpiredSignatureError:
         logger.warning("JWT token has expired")
         return None
-    except JWTError as e:
+    except JWTClaimsError as e:
         logger.warning(f"JWT claims error: {e}")
         return None
     except JWTError as e:
@@ -113,7 +114,7 @@ def get_current_user_from_token(token: str, session: Session) -> Optional[User]:
     except ExpiredSignatureError:
         logger.warning("JWT token has expired")
         return None
-    except JWTError as e:
+    except JWTClaimsError as e:
         logger.warning(f"JWT claims error: {e}")
         return None
     except JWTError as e:
@@ -191,7 +192,7 @@ async def estimate_credits(
         # Assuming user.subscription is a relationship, or we query it.
         # User <-> Subscription is usually 1:1
         # Let's query active subscription
-        sub_query = select(Subscription).where(Subscription.user_id == user.id).where(Subscription.status == "active")
+        sub_query = select(Subscription).where(Subscription.user_id == user.id).where(Subscription.is_active == True)
         subscription = session.exec(sub_query).first()
         
         if subscription:

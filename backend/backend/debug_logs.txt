@@ -5607,3 +5607,784 @@ Incoming: GET /api/v1/users/me/subscription
 Response: 200 | 8ms
 Incoming: POST /api/v1/credits/estimate
 Response: 200 | 4ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/admin/db/tables
+Response: 200 | 1ms
+Incoming: GET /api/v1/admin/db/tables
+Response: 200 | 1ms
+Incoming: GET /api/admin/db/table/school
+Response: 404 | 1ms
+Incoming: OPTIONS /api/v1/admin/db/table/school
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/db/table/school
+Response: 500 | 3ms
+Incoming: GET /api/v1/admin/db/tables
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/db/tables
+Response: 200 | 0ms
+Incoming: GET /api/admin/db/table/school
+Response: 404 | 1ms
+Incoming: GET /api/v1/admin/db/table/school
+Response: 200 | 33ms
+Incoming: OPTIONS /api/v1/admin/stats/dashboard
+Response: 200 | 0ms
+Incoming: OPTIONS /api/v1/admin/stats/model-routing
+Response: 200 | 0ms
+Incoming: OPTIONS /api/v1/admin/solve-traces
+Response: 200 | 0ms
+Incoming: OPTIONS /api/v1/admin/analytics/overview
+Incoming: OPTIONS /api/v1/admin/analytics/errors
+Incoming: OPTIONS /api/v1/admin/analytics/anomalies
+Response: 200 | 1ms
+Response: 200 | 1ms
+Incoming: GET /api/v1/admin/stats/model-routing
+Response: 200 | 2ms
+Incoming: OPTIONS /api/v1/admin/solve-traces
+Incoming: GET /api/v1/admin/stats/dashboard
+Incoming: OPTIONS /api/v1/admin/analytics/overview
+Incoming: OPTIONS /api/v1/admin/analytics/errors
+Incoming: OPTIONS /api/v1/admin/analytics/anomalies
+Response: 200 | 3ms
+Incoming: GET /api/v1/admin/stats/model-routing
+Response: 200 | 2ms
+Response: 200 | 2ms
+Response: 200 | 2ms
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-07&end_date=2026-02-07
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-01&end_date=2026-02-07
+Incoming: OPTIONS /api/v1/config/token-policy
+Response: 200 | 1315ms
+Incoming: GET /api/v1/admin/solve-traces
+Incoming: OPTIONS /api/v1/admin/system-config
+Incoming: OPTIONS /api/v1/config/token-policy
+Response: 200 | 1ms
+Response: 200 | 7ms
+Response: 200 | 7ms
+Response: 200 | 7ms
+Response: 200 | 1320ms
+Response: 200 | 1318ms
+Incoming: OPTIONS /api/v1/admin/system-config
+Incoming: GET /api/v1/admin/analytics/overview
+Response: 200 | 2ms
+Incoming: GET /api/v1/admin/analytics/anomalies
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/admin/analytics/errors
+Incoming: GET /api/v1/admin/system-config
+Response: 200 | 109ms
+Response: 200 | 108ms
+Response: 200 | 108ms
+Response: 200 | 108ms
+Response: 200 | 107ms
+Incoming: OPTIONS /api/v1/login
+Response: 200 | 0ms
+Incoming: POST /api/v1/login
+Response: 200 | 34ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/config/token-policy
+Response: 200 | 9ms
+Incoming: GET /api/v1/config/token-policy
+Response: 200 | 22ms
+Incoming: GET /api/v1/history
+Response: 200 | 22ms
+Response: 200 | 24ms
+Response: 200 | 8ms
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/users/online
+Response: 200 | 9ms
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 13ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 4ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 4ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 4ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 5ms
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 20ms
+Incoming: POST /api/v1/solve_v3_stream
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 59ms
+Response: 200 | 80ms
+build_openai_structured_output: call=None endpoint=responses name=solve_standard_detailed_v1 strict=False schema_hash=5a123dc74dd62ce6
+Incoming: GET /api/v1/user/profile
+Response: 200 | 12ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 6ms
+build_openai_structured_output: call=None endpoint=responses name=solve_standard_detailed_v1 strict=False schema_hash=5a123dc74dd62ce6
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+[QUESTION_CACHE] Stored: 35fa719cfdc2ea60...
+Incoming: GET /api/v1/sessions/141
+Response: 200 | 11ms
+Incoming: GET /api/v1/sessions/141
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/admin/stats/dashboard
+Incoming: GET /api/v1/admin/analytics/overview
+Incoming: GET /api/v1/admin/stats/model-routing
+Incoming: GET /api/v1/admin/solve-traces
+Response: 200 | 13ms
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-07&end_date=2026-02-07
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-01&end_date=2026-02-07
+Incoming: GET /api/v1/admin/analytics/errors
+Incoming: GET /api/v1/admin/analytics/anomalies
+Incoming: GET /api/v1/admin/stats/model-routing
+Incoming: GET /api/v1/admin/analytics/overview
+Incoming: GET /api/v1/admin/analytics/errors
+Incoming: GET /api/v1/admin/solve-traces
+Incoming: GET /api/v1/admin/stats/dashboard
+Incoming: GET /api/v1/admin/analytics/anomalies
+Response: 200 | 1419ms
+Response: 200 | 1426ms
+Response: 200 | 1427ms
+Response: 200 | 11ms
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-07&end_date=2026-02-07
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-01&end_date=2026-02-07
+Response: 200 | 1227ms
+Response: 200 | 1227ms
+Incoming: OPTIONS /api/v1/admin/users
+Incoming: GET /api/v1/config/token-policy
+Incoming: OPTIONS /api/v1/admin/plans
+Incoming: OPTIONS /api/v1/admin/users
+Incoming: OPTIONS /api/v1/admin/plans
+Response: 200 | 1201ms
+Response: 200 | 1202ms
+Response: 200 | 1202ms
+Response: 200 | 1202ms
+Response: 200 | 2ms
+Response: 200 | 1202ms
+Response: 200 | 2ms
+Response: 200 | 2ms
+Response: 200 | 2ms
+Incoming: GET /api/v1/admin/users
+Incoming: GET /api/v1/admin/plans
+Response: 200 | 9ms
+Response: 200 | 29ms
+Response: 200 | 29ms
+Incoming: GET /api/v1/admin/db/tables
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/db/tables
+Response: 200 | 0ms
+Incoming: GET /api/admin/db/table/school
+Response: 404 | 1ms
+Incoming: GET /api/v1/admin/db/table/school
+Response: 200 | 9ms
+Incoming: GET /api/admin/db/table/chatmessage
+Response: 404 | 0ms
+Incoming: OPTIONS /api/v1/admin/db/table/chatmessage
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/db/table/chatmessage
+Response: 200 | 35ms
+Incoming: GET /api/v1/history
+Response: 200 | 94ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 71ms
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 6ms
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/config/token-policy
+Response: 200 | 19ms
+Response: 200 | 21ms
+Response: 200 | 20ms
+Response: 200 | 9ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Response: 200 | 4ms
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Incoming: OPTIONS /api/v1/credits/estimate
+Response: 200 | 0ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 6ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 4ms
+Incoming: POST /api/v1/solve_v3_stream
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 34ms
+Response: 200 | 74ms
+build_openai_structured_output: call=None endpoint=responses name=solve_standard_detailed_v1 strict=False schema_hash=bf8da4c6a4cafbc8
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 14ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 2ms
+Incoming: POST /api/v1/solve_v3_stream
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 27ms
+Response: 200 | 64ms
+build_openai_structured_output: call=None endpoint=responses name=solve_standard_detailed_v1 strict=False schema_hash=bf8da4c6a4cafbc8
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings
+Response: 200 | 1ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings
+Response: 200 | 1ms
+Response: 200 | 1ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Response: 200 | 2ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Response: 200 | 2ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 3ms
+Response: 200 | 21ms
+Response: 200 | 21ms
+Response: 200 | 21ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 10ms
+Response: 200 | 11ms
+Response: 200 | 10ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: OPTIONS /api/v1/admin/plans
+Incoming: OPTIONS /api/v1/admin/plans
+Response: 200 | 0ms
+Response: 200 | 1ms
+Incoming: GET /api/v1/admin/plans
+Response: 200 | 5ms
+Incoming: GET /api/v1/admin/plans
+Response: 200 | 4ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Response: 200 | 0ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Response: 200 | 5ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts/global_system_prompt_v1/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/global_system_prompt_v1/versions
+Response: 200 | 5ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts/solve_standard_v1/versions
+Response: 200 | 1ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/solve_standard_v1/versions
+Response: 200 | 5ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts/solve_research_v1/versions
+Response: 200 | 1ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/solve_research_v1/versions
+Response: 200 | 5ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/solve_standard_v1/versions
+Response: 200 | 4ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/solve_research_v1/versions
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 2ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/solve_standard_v1/versions
+Response: 200 | 7ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/solve_research_v1/versions
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 4ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 6ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Response: 200 | 1ms
+Response: 200 | 1ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 14ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 7ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/update
+Response: 200 | 0ms
+Incoming: POST /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/update
+Response: 200 | 136ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 5ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings
+Response: 200 | 0ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Response: 200 | 2ms
+Response: 200 | 2ms
+Response: 200 | 2ms
+Response: 200 | 2ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Response: 200 | 4ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 18ms
+Response: 200 | 17ms
+Response: 200 | 15ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 12ms
+Response: 200 | 11ms
+Response: 200 | 13ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings/activate
+Response: 200 | 1ms
+Incoming: POST /api/v1/admin/prompt-registry/bindings/activate
+Response: 200 | 20ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Response: 200 | 13ms
+Response: 200 | 12ms
+Response: 200 | 12ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings/ecf0d22f-1f0b-48eb-9bbf-9be337d5e021
+Response: 200 | 0ms
+Incoming: DELETE /api/v1/admin/prompt-registry/bindings/ecf0d22f-1f0b-48eb-9bbf-9be337d5e021
+Response: 200 | 13ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Response: 200 | 14ms
+Response: 200 | 14ms
+Response: 200 | 13ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: OPTIONS /api/v1/credits/estimate
+Response: 200 | 0ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 4ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 5ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 4ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 5ms
+Incoming: POST /api/v1/solve_v3_stream
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 29ms
+Response: 200 | 64ms
+build_openai_structured_output: call=None endpoint=responses name=solve_standard_detailed_v1 strict=True schema_hash=4d733f85fd2dc240
+Incoming: GET /api/v1/user/profile
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 4ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 2ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 12ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 62ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 20ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 6ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 12ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 6ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 11ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 2ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 7ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 6ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
