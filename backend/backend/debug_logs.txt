@@ -3716,3 +3716,566 @@ Incoming: GET /api/admin/payments/pricing
 Incoming: GET /api/admin/payments/config
 Response: 200 | 8ms
 Response: 200 | 10ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/admin/payments/config
+Incoming: GET /api/admin/payments/pricing
+Request Failed: (psycopg2.OperationalError) could not receive data from server: Software caused connection abort (0x00002745/10053)
+
+[SQL: SELECT "user".id, "user".email, "user".full_name, "user".password_hash, "user".created_at, "user".role, "user".academic_level, "user".preferred_language, "user".timezone, "user".theme, "user".solving_mode, "user".subscription_tier, "user".subscription_status, "user".subscription_expiry, "user".quota_questions_total, "user".quota_scans_total, "user".tokens_used_this_month, "user".last_token_reset, "user".avatar_url, "user".bio, "user".is_verified, "user".verification_token, "user".ip_address, "user".country, "user".profile_country, "user".profile_province_state, "user".grade_level, "user".school_id, "user".is_public, "user".learning_interests, "user".last_active_at, "user".session_token, "user".last_ip, "user".whatsapp_number, "user".whatsapp_secret, "user".whatsapp_enabled 
+FROM "user" 
+WHERE "user".email = %(email_1)s]
+[parameters: {'email_1': 'admin@uask.ai'}]
+(Background on this error at: https://sqlalche.me/e/20/e3q8) | 9ms
+Traceback (most recent call last):
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.OperationalError: could not receive data from server: Software caused connection abort (0x00002745/10053)
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\uaskstudents\backend\app\main.py", line 53, in log_requests
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\base.py", line 165, in call_next
+    raise app_exc
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\base.py", line 151, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 64, in wrapped_app
+    raise exc
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 762, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 782, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 297, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 77, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 64, in wrapped_app
+    raise exc
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 72, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 285, in app
+    raise e
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 275, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\dependencies\utils.py", line 570, in solve_dependencies
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\dependencies\utils.py", line 600, in solve_dependencies
+    solved = await run_in_threadpool(call, **sub_values)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\concurrency.py", line 40, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\_backends\_asyncio.py", line 2476, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\_backends\_asyncio.py", line 967, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\uaskstudents\backend\app\api_admin.py", line 58, in get_current_user
+    user = session.exec(select(User).where(User.email == email)).first()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlmodel\orm\session.py", line 68, in exec
+    results = super().execute(
+              ^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) could not receive data from server: Software caused connection abort (0x00002745/10053)
+
+[SQL: SELECT "user".id, "user".email, "user".full_name, "user".password_hash, "user".created_at, "user".role, "user".academic_level, "user".preferred_language, "user".timezone, "user".theme, "user".solving_mode, "user".subscription_tier, "user".subscription_status, "user".subscription_expiry, "user".quota_questions_total, "user".quota_scans_total, "user".tokens_used_this_month, "user".last_token_reset, "user".avatar_url, "user".bio, "user".is_verified, "user".verification_token, "user".ip_address, "user".country, "user".profile_country, "user".profile_province_state, "user".grade_level, "user".school_id, "user".is_public, "user".learning_interests, "user".last_active_at, "user".session_token, "user".last_ip, "user".whatsapp_number, "user".whatsapp_secret, "user".whatsapp_enabled 
+FROM "user" 
+WHERE "user".email = %(email_1)s]
+[parameters: {'email_1': 'admin@uask.ai'}]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+Request Failed: (psycopg2.OperationalError) could not receive data from server: Software caused connection abort (0x00002745/10053)
+
+[SQL: SELECT "user".id, "user".email, "user".full_name, "user".password_hash, "user".created_at, "user".role, "user".academic_level, "user".preferred_language, "user".timezone, "user".theme, "user".solving_mode, "user".subscription_tier, "user".subscription_status, "user".subscription_expiry, "user".quota_questions_total, "user".quota_scans_total, "user".tokens_used_this_month, "user".last_token_reset, "user".avatar_url, "user".bio, "user".is_verified, "user".verification_token, "user".ip_address, "user".country, "user".profile_country, "user".profile_province_state, "user".grade_level, "user".school_id, "user".is_public, "user".learning_interests, "user".last_active_at, "user".session_token, "user".last_ip, "user".whatsapp_number, "user".whatsapp_secret, "user".whatsapp_enabled 
+FROM "user" 
+WHERE "user".email = %(email_1)s]
+[parameters: {'email_1': 'admin@uask.ai'}]
+(Background on this error at: https://sqlalche.me/e/20/e3q8) | 19ms
+Traceback (most recent call last):
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.OperationalError: could not receive data from server: Software caused connection abort (0x00002745/10053)
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\uaskstudents\backend\app\main.py", line 53, in log_requests
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\base.py", line 165, in call_next
+    raise app_exc
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\base.py", line 151, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 64, in wrapped_app
+    raise exc
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 762, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 782, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 297, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 77, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 64, in wrapped_app
+    raise exc
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 72, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 285, in app
+    raise e
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 275, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\dependencies\utils.py", line 570, in solve_dependencies
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\dependencies\utils.py", line 600, in solve_dependencies
+    solved = await run_in_threadpool(call, **sub_values)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\concurrency.py", line 40, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\_backends\_asyncio.py", line 2476, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\_backends\_asyncio.py", line 967, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\uaskstudents\backend\app\api_admin.py", line 58, in get_current_user
+    user = session.exec(select(User).where(User.email == email)).first()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlmodel\orm\session.py", line 68, in exec
+    results = super().execute(
+              ^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) could not receive data from server: Software caused connection abort (0x00002745/10053)
+
+[SQL: SELECT "user".id, "user".email, "user".full_name, "user".password_hash, "user".created_at, "user".role, "user".academic_level, "user".preferred_language, "user".timezone, "user".theme, "user".solving_mode, "user".subscription_tier, "user".subscription_status, "user".subscription_expiry, "user".quota_questions_total, "user".quota_scans_total, "user".tokens_used_this_month, "user".last_token_reset, "user".avatar_url, "user".bio, "user".is_verified, "user".verification_token, "user".ip_address, "user".country, "user".profile_country, "user".profile_province_state, "user".grade_level, "user".school_id, "user".is_public, "user".learning_interests, "user".last_active_at, "user".session_token, "user".last_ip, "user".whatsapp_number, "user".whatsapp_secret, "user".whatsapp_enabled 
+FROM "user" 
+WHERE "user".email = %(email_1)s]
+[parameters: {'email_1': 'admin@uask.ai'}]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+Incoming: GET /api/admin/payments/pricing
+Incoming: GET /api/admin/payments/config
+Response: 200 | 35ms
+Response: 200 | 37ms
+Incoming: GET /api/admin/payments/config
+Incoming: GET /api/admin/payments/pricing
+Response: 200 | 24ms
+Response: 200 | 27ms
+Incoming: GET /api/admin/payments/pricing
+Incoming: GET /api/admin/payments/config
+Response: 200 | 11ms
+Response: 200 | 11ms
+Incoming: GET /api/admin/payments/overview
+Response: 200 | 22ms
+Incoming: GET /api/admin/payments/overview
+Response: 200 | 12ms
+Incoming: GET /api/admin/payments/requests
+Failed to log pricing_missing error: (psycopg2.errors.UndefinedColumn) column systemerrorentry.severity does not exist
+LINE 1: SELECT systemerrorentry.id, systemerrorentry.severity, syste...
+                                    ^
+
+[SQL: SELECT systemerrorentry.id, systemerrorentry.severity, systemerrorentry.error_code, systemerrorentry.component, systemerrorentry.message, systemerrorentry.stack_trace, systemerrorentry.trace_id, systemerrorentry.request_id, systemerrorentry.user_id, systemerrorentry.fingerprint, systemerrorentry.occurrence_count, systemerrorentry.context_json, systemerrorentry.is_resolved, systemerrorentry.created_at, systemerrorentry.last_seen_at 
+FROM systemerrorentry 
+WHERE systemerrorentry.fingerprint = %(fingerprint_1)s AND systemerrorentry.is_resolved = false]
+[parameters: {'fingerprint_1': 'c6f7e4ce3850bde2a867926a15fdc59be198e24b28e8bce143b183bd66b450fd'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+Response: 200 | 42ms
+Incoming: GET /api/admin/payments/requests
+Failed to log pricing_missing error: (psycopg2.errors.UndefinedColumn) column systemerrorentry.severity does not exist
+LINE 1: SELECT systemerrorentry.id, systemerrorentry.severity, syste...
+                                    ^
+
+[SQL: SELECT systemerrorentry.id, systemerrorentry.severity, systemerrorentry.error_code, systemerrorentry.component, systemerrorentry.message, systemerrorentry.stack_trace, systemerrorentry.trace_id, systemerrorentry.request_id, systemerrorentry.user_id, systemerrorentry.fingerprint, systemerrorentry.occurrence_count, systemerrorentry.context_json, systemerrorentry.is_resolved, systemerrorentry.created_at, systemerrorentry.last_seen_at 
+FROM systemerrorentry 
+WHERE systemerrorentry.fingerprint = %(fingerprint_1)s AND systemerrorentry.is_resolved = false]
+[parameters: {'fingerprint_1': 'c6f7e4ce3850bde2a867926a15fdc59be198e24b28e8bce143b183bd66b450fd'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+Response: 200 | 38ms
+Incoming: GET /api/admin/payments/consumption/4bb9c1a2-a5df-4161-937b-e5489d58ccca
+Response: 200 | 15ms
+Incoming: GET /api/admin/payments/consumption/4bb9c1a2-a5df-4161-937b-e5489d58ccca
+Response: 200 | 13ms
+Incoming: GET /api/admin/payments/consumption/4bb9c1a2-a5df-4161-937b-e5489d58ccca
+Response: 200 | 8ms
+Incoming: GET /api/admin/payments/consumption/4bb9c1a2-a5df-4161-937b-e5489d58ccca
+Response: 200 | 8ms
+Incoming: GET /api/admin/payments/consumption/cd1d3697-a28d-483c-b850-0d344fa16240
+Response: 200 | 8ms
+Incoming: GET /api/admin/payments/topups
+Response: 200 | 11ms
+Incoming: GET /api/admin/payments/topups
+Response: 200 | 9ms
+Incoming: GET /api/admin/payments/subscriptions
+Response: 200 | 30ms
+Incoming: GET /api/admin/payments/subscriptions
+Response: 200 | 32ms
+Incoming: GET /api/admin/payments/subscriptions/596/periods
+Response: 200 | 13ms
+Incoming: GET /api/admin/payments/subscriptions/596/periods
+Response: 200 | 9ms
+Incoming: GET /api/admin/payments/subscriptions/596/periods
+Response: 200 | 8ms
+Incoming: GET /api/admin/payments/subscriptions/596/periods
+Response: 200 | 6ms
+Incoming: GET /api/admin/payments/subscriptions/596/periods
+Response: 200 | 8ms
+Incoming: GET /api/admin/payments/subscriptions
+Response: 200 | 36ms
+Incoming: GET /api/admin/payments/invoices
+Response: 200 | 14ms
+Incoming: GET /api/admin/payments/invoices
+Response: 200 | 9ms
+Incoming: GET /api/admin/payments/invoices/13/html
+Response: 401 | 2ms
+Incoming: GET /api/admin/payments/stripe/events
+Response: 200 | 15ms
+Incoming: GET /api/admin/payments/stripe/reconciliation
+Request Failed: (psycopg2.errors.UndefinedColumn) column systemerrorentry.severity does not exist
+LINE 1: SELECT systemerrorentry.id, systemerrorentry.severity, syste...
+                                    ^
+
+[SQL: SELECT systemerrorentry.id, systemerrorentry.severity, systemerrorentry.error_code, systemerrorentry.component, systemerrorentry.message, systemerrorentry.stack_trace, systemerrorentry.trace_id, systemerrorentry.request_id, systemerrorentry.user_id, systemerrorentry.fingerprint, systemerrorentry.occurrence_count, systemerrorentry.context_json, systemerrorentry.is_resolved, systemerrorentry.created_at, systemerrorentry.last_seen_at 
+FROM systemerrorentry 
+WHERE systemerrorentry.component = %(component_1)s ORDER BY systemerrorentry.created_at DESC 
+ LIMIT %(param_1)s]
+[parameters: {'component_1': 'StripeReconciler', 'param_1': 100}]
+(Background on this error at: https://sqlalche.me/e/20/f405) | 8ms
+Traceback (most recent call last):
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.UndefinedColumn: column systemerrorentry.severity does not exist
+LINE 1: SELECT systemerrorentry.id, systemerrorentry.severity, syste...
+                                    ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\uaskstudents\backend\app\main.py", line 53, in log_requests
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\base.py", line 165, in call_next
+    raise app_exc
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\base.py", line 151, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 64, in wrapped_app
+    raise exc
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 762, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 782, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 297, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 77, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 64, in wrapped_app
+    raise exc
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 72, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 299, in app
+    raise e
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 294, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 193, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\concurrency.py", line 40, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\_backends\_asyncio.py", line 2476, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\_backends\_asyncio.py", line 967, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\uaskstudents\backend\app\api_admin_payments.py", line 331, in get_reconciliation_errors
+    return session.exec(query.limit(100)).all()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlmodel\orm\session.py", line 68, in exec
+    results = super().execute(
+              ^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column systemerrorentry.severity does not exist
+LINE 1: SELECT systemerrorentry.id, systemerrorentry.severity, syste...
+                                    ^
+
+[SQL: SELECT systemerrorentry.id, systemerrorentry.severity, systemerrorentry.error_code, systemerrorentry.component, systemerrorentry.message, systemerrorentry.stack_trace, systemerrorentry.trace_id, systemerrorentry.request_id, systemerrorentry.user_id, systemerrorentry.fingerprint, systemerrorentry.occurrence_count, systemerrorentry.context_json, systemerrorentry.is_resolved, systemerrorentry.created_at, systemerrorentry.last_seen_at 
+FROM systemerrorentry 
+WHERE systemerrorentry.component = %(component_1)s ORDER BY systemerrorentry.created_at DESC 
+ LIMIT %(param_1)s]
+[parameters: {'component_1': 'StripeReconciler', 'param_1': 100}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+Incoming: GET /api/admin/payments/pricing
+Response: 200 | 9ms
+Incoming: GET /api/admin/payments/stripe/reconciliation
+Response: 200 | 12ms
+Incoming: GET /api/admin/payments/stripe/events
+Response: 200 | 13ms
+Incoming: GET /api/admin/payments/stripe/events
+Response: 200 | 9ms
+Incoming: GET /api/admin/payments/stripe/events
+Response: 200 | 7ms
+Incoming: GET /api/admin/payments/config
+Incoming: GET /api/admin/payments/pricing
+Response: 200 | 14ms
+Response: 200 | 11ms
+Incoming: GET /api/admin/payments/config
+Incoming: GET /api/admin/payments/pricing
+Response: 200 | 9ms
+Response: 200 | 14ms
+Incoming: GET /api/admin/payments/overview
+Response: 200 | 16ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/admin/payments/invoices
+Response: 200 | 13ms
+Incoming: GET /api/admin/payments/invoices/13/html
+Response: 401 | 3ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Incoming: GET /api/admin/payments/config
+Incoming: GET /api/admin/payments/pricing
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Response: 200 | 17ms
+Incoming: GET /api/admin/payments/config
+Response: 200 | 27ms
+Response: 200 | 11ms
+Incoming: GET /api/admin/payments/pricing
+Response: 200 | 6ms
+Incoming: GET /api/v1/public/plans
+Response: 200 | 9ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/config/token-policy
+Response: 200 | 38ms
+Response: 200 | 46ms
+Incoming: GET /api/v1/history
+Response: 200 | 15ms
+Response: 200 | 16ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 17ms
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 15ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: OPTIONS /api/v1/credits/estimate
+Response: 200 | 0ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 4ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 4ms
+Incoming: GET /api/v1/history
+Response: 200 | 98ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 91ms
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/token-usage
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Response: 200 | 8ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 10ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 7ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 21ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8

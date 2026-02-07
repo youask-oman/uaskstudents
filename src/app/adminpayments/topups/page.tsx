@@ -14,6 +14,7 @@ type TopUpProduct = {
 type CreditLot = {
     id: number;
     user_id: number;
+    user_email: string;
     credits_total: number;
     credits_remaining: number;
     status: string;
@@ -95,6 +96,7 @@ export default function TopUpsPage() {
                         <tr>
                             <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">Date</th>
                             <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">User ID</th>
+                            <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">User Email</th>
                             <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">Credits</th>
                             <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">Amount</th>
                             <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">Status</th>
@@ -103,15 +105,16 @@ export default function TopUpsPage() {
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                         {loading && (
-                            <tr><td colSpan={6} className="px-6 py-4 text-center">Loading...</td></tr>
+                            <tr><td colSpan={7} className="px-6 py-4 text-center">Loading...</td></tr>
                         )}
                         {!loading && lots.length === 0 && (
-                            <tr><td colSpan={6} className="px-6 py-4 text-center">No top-ups found.</td></tr>
+                            <tr><td colSpan={7} className="px-6 py-4 text-center">No top-ups found.</td></tr>
                         )}
                         {lots.map(lot => (
                             <tr key={lot.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                                 <td className="px-6 py-3 text-slate-500">{new Date(lot.purchased_at).toLocaleString()}</td>
                                 <td className="px-6 py-3 font-mono text-xs">{lot.user_id}</td>
+                                <td className="px-6 py-3 text-xs">{lot.user_email}</td>
                                 <td className="px-6 py-3 font-medium">
                                     {lot.credits_remaining} / {lot.credits_total}
                                 </td>

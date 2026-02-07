@@ -1,9 +1,12 @@
 docker-compose down; docker-compose up -d --build
 
+taskkill /IM uvicorn.exe /F
+
+docker-compose down
 docker compose build
 docker compose up -d --force-recreate
 
-
+npm i zod; npm i -D playwright; npx playwright install chromium
 
 # Check database health
 curl http://localhost:8000/api/admin/health/db

@@ -1,4 +1,6 @@
+
 import katex from "katex";
+import type { ExportSolutionPayload } from "@/lib/export/docx/validate";
 import type { CanvasElement, CanvasPageData, StepRow } from "../types";
 
 export interface SolutionExportPayload {
@@ -209,8 +211,8 @@ const renderPlotSvg = (element: CanvasElement): string => {
     <div class="plot-card">
       <div class="plot-title">${escapeHtml(element.title || "Graph")}</div>
       <svg viewBox="0 0 ${width} ${height}" class="plot-svg" role="img" aria-label="${escapeHtml(
-        element.title || "Graph",
-      )}">
+    element.title || "Graph",
+  )}">
         <rect x="0" y="0" width="${width}" height="${height}" fill="#fff" stroke="#d8dee9" />
         <path d="${path}" fill="none" stroke="#1f4f8a" stroke-width="2.2" />
       </svg>
@@ -225,13 +227,12 @@ const renderPlotSvg = (element: CanvasElement): string => {
 const renderStep = (step: StepRow, index: number): string => `
   <article class="step-card">
     <h4>Step ${step.k || index + 1}${step.title ? ` - ${escapeHtml(step.title)}` : ""}</h4>
-    ${
-      step.explanationRichHtml
-        ? `<div class="step-prose rich-text">${sanitizeRichHtmlFragment(step.explanationRichHtml)}</div>`
-        : (step.bodyMarkdown || step.explanation)
-          ? `<div class="step-prose">${proseWithMathToHtml(step.bodyMarkdown || step.explanation || "")}</div>`
-          : ""
-    }
+    ${step.explanationRichHtml
+    ? `<div class="step-prose rich-text">${sanitizeRichHtmlFragment(step.explanationRichHtml)}</div>`
+    : (step.bodyMarkdown || step.explanation)
+      ? `<div class="step-prose">${proseWithMathToHtml(step.bodyMarkdown || step.explanation || "")}</div>`
+      : ""
+  }
     ${step.mathLatex ? `<div class="step-math">${latexToHtml(step.mathLatex, true)}</div>` : ""}
   </article>
 `;
@@ -252,36 +253,32 @@ const renderPage = (page: CanvasPageData, pageIndex: number): string => {
         return `
           <section class="section steps-section">
             <h3>Step-by-step Solution</h3>
-            ${
-              block.domainConstraints && block.domainConstraints.length > 0
-                ? `<div class="verification"><h4>Domain constraints</h4>${block.domainConstraints
-                    .map((item) => `<div class="verification-item">${proseWithMathToHtml(item)}</div>`)
-                    .join("")}</div>`
-                : ""
-            }
+            ${block.domainConstraints && block.domainConstraints.length > 0
+            ? `<div class="verification"><h4>Domain constraints</h4>${block.domainConstraints
+              .map((item) => `<div class="verification-item">${proseWithMathToHtml(item)}</div>`)
+              .join("")}</div>`
+            : ""
+          }
             ${block.steps.map((step, idx) => renderStep(step, idx)).join("")}
-            ${
-              block.verificationChecks && block.verificationChecks.length > 0
-                ? `<div class="verification"><h4>Verification</h4>${block.verificationChecks
-                    .map(
-                      (check) =>
-                        `<div class="verification-item"><strong>${escapeHtml(check.checkId)}:</strong> ${escapeHtml(
-                          check.message,
-                        )}${
-                          check.evidenceMath ? `<div class="verification-math">${latexToHtml(check.evidenceMath, false)}</div>` : ""
-                        }</div>`,
-                    )
-                    .join("")}</div>`
-                : ""
-            }
-            ${
-              block.result
-                ? `<section class="section final-answer"><h3>Final Answer${block.autocorrectApplied ? " (Verified)" : ""}</h3><div class="final-answer-content">${richMathToHtml(
-                    block.result,
-                    true,
-                  )}</div></section>`
-                : ""
-            }
+            ${block.verificationChecks && block.verificationChecks.length > 0
+            ? `<div class="verification"><h4>Verification</h4>${block.verificationChecks
+              .map(
+                (check) =>
+                  `<div class="verification-item"><strong>${escapeHtml(check.checkId)}:</strong> ${escapeHtml(
+                    check.message,
+                  )}${check.evidenceMath ? `<div class="verification-math">${latexToHtml(check.evidenceMath, false)}</div>` : ""
+                  }</div>`,
+              )
+              .join("")}</div>`
+            : ""
+          }
+            ${block.result
+            ? `<section class="section final-answer"><h3>Final Answer${block.autocorrectApplied ? " (Verified)" : ""}</h3><div class="final-answer-content">${richMathToHtml(
+              block.result,
+              true,
+            )}</div></section>`
+            : ""
+          }
           </section>
         `;
       }
@@ -304,9 +301,8 @@ const renderPage = (page: CanvasPageData, pageIndex: number): string => {
       }
       if (element.type === "text") {
         const richHtml = sanitizeRichHtmlFragment(element.richTextHtml || "");
-        return `<section class="section"><h3>Text Block</h3><div class="rich-text-export">${
-          richHtml || proseWithMathToHtml(element.text)
-        }</div></section>`;
+        return `<section class="section"><h3>Text Block</h3><div class="rich-text-export">${richHtml || proseWithMathToHtml(element.text)
+          }</div></section>`;
       }
       if (element.type === "plot") {
         return `<section class="section"><h3>Graph</h3>${renderPlotSvg(element)}</section>`;
@@ -454,121 +450,95 @@ export const exportCanvasToPdf = (payload: SolutionExportPayload): void => {
   exportViaHiddenFrame(html);
 };
 
+const mapToExportPayload = (payload: SolutionExportPayload): ExportSolutionPayload => {
+  return {
+    docTitle: payload.title || "Solution",
+    subtitle: payload.solveId ? `ID: ${payload.solveId}${payload.tier ? ` | ${payload.tier}` : ""}` : undefined,
+    createdAtISO: payload.generatedAt || new Date().toISOString(),
+    pages: payload.pages.map((page, idx) => ({
+      pageTitle: page.title || `Page ${idx + 1}`,
+      blocks: (page.blocks || []).flatMap((block) => {
+        if (block.type === "recognition") {
+          return [{
+            type: "problem",
+            title: "Problem",
+            body: plainText(block.latex),
+            math: [block.latex],
+          }];
+        }
+        if (block.type === "steps") {
+          const out: any[] = [];
+          if (block.domainConstraints?.length) {
+            out.push({
+              type: "note",
+              title: "Domain Constraints",
+              body: block.domainConstraints.map(c => plainText(c)).join("\n")
+            });
+          }
+
+          block.steps.forEach((step, stepIdx) => {
+            const body = plainTextFromHtml(step.explanationRichHtml) || plainText(step.bodyMarkdown || step.explanation || "");
+            out.push({
+              type: "step",
+              k: step.k || stepIdx + 1,
+              title: step.title || "",
+              body: body,
+              math: step.mathLatex ? [step.mathLatex] : undefined
+            });
+          });
+
+          if (block.verificationChecks?.length) {
+            const body = block.verificationChecks.map(c => `${c.checkId}: ${plainText(c.message)}`).join("\n");
+            out.push({ type: "note", title: "Verification", body });
+          }
+
+          if (block.result) {
+            out.push({
+              type: "final",
+              label: "Final Answer",
+              body: block.autocorrectApplied ? "(Verified)" : "",
+              math: [block.result]
+            });
+          }
+          return out;
+        }
+        if (block.type === "text") {
+          return [{ type: "note", title: "Notes", body: plainText(block.text) }];
+        }
+        return [];
+      })
+    }))
+  };
+};
+
 export const exportCanvasToDocx = async (payload: SolutionExportPayload): Promise<void> => {
-  const docxLib = await import("docx");
-  const fileSaverModule = await import("file-saver");
-  const saveAs: ((data: Blob, filename: string) => void) | undefined =
-    (fileSaverModule as { saveAs?: (data: Blob, filename: string) => void }).saveAs ||
-    (fileSaverModule as { default?: { saveAs?: (data: Blob, filename: string) => void } }).default?.saveAs;
-  if (!saveAs) throw new Error("Unable to load file-saver.");
+  try {
+    const exportPayload = mapToExportPayload(payload);
+    const res = await fetch("/api/export/docx", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(exportPayload),
+    });
 
-  const { Document, Packer, Paragraph, HeadingLevel, AlignmentType, Table, TableRow, TableCell, WidthType } = docxLib;
-  const generatedAt = new Date(payload.generatedAt || Date.now());
-  const generatedLabel = generatedAt.toLocaleString();
-
-  const children: import("docx").FileChild[] = [
-    new Paragraph({ text: "uask.ai", heading: HeadingLevel.HEADING_3 }),
-    new Paragraph({ text: payload.title || "Solution", heading: HeadingLevel.TITLE }),
-    new Paragraph({
-      text: `Date: ${generatedLabel}${payload.solveId ? ` | Solve ID: ${payload.solveId}` : ""}${
-        payload.tier ? ` | Tier: ${payload.tier}` : ""
-      }`,
-    }),
-  ];
-
-  payload.pages.forEach((page, pageIdx) => {
-    children.push(
-      new Paragraph({
-        text: `Canvas Page ${pageIdx + 1}${page.title ? ` - ${plainText(page.title)}` : ""}`,
-        heading: HeadingLevel.HEADING_2,
-        pageBreakBefore: pageIdx > 0,
-      }),
-    );
-
-    for (const block of page.blocks || []) {
-      if (block.type === "recognition") {
-        children.push(new Paragraph({ text: "Problem", heading: HeadingLevel.HEADING_3 }));
-        children.push(new Paragraph({ text: plainText(block.latex) }));
-        continue;
-      }
-
-      if (block.type === "steps") {
-        children.push(new Paragraph({ text: "Step-by-step Solution", heading: HeadingLevel.HEADING_3 }));
-        if (block.domainConstraints && block.domainConstraints.length > 0) {
-          children.push(new Paragraph({ text: "Domain constraints", heading: HeadingLevel.HEADING_4 }));
-          block.domainConstraints.forEach((item) => {
-            children.push(new Paragraph({ text: plainText(item) }));
-          });
-        }
-        block.steps.forEach((step, idx) => {
-          children.push(
-            new Paragraph({
-              text: `Step ${step.k || idx + 1}${step.title ? ` - ${plainText(step.title)}` : ""}`,
-              heading: HeadingLevel.HEADING_4,
-            }),
-          );
-          const stepExplanation = plainTextFromHtml(step.explanationRichHtml) || plainText(step.bodyMarkdown || step.explanation || "");
-          if (stepExplanation) children.push(new Paragraph({ text: stepExplanation }));
-          if (step.mathLatex) children.push(new Paragraph({ text: plainText(step.mathLatex), alignment: AlignmentType.CENTER }));
-        });
-        if (block.verificationChecks && block.verificationChecks.length > 0) {
-          children.push(new Paragraph({ text: "Verification", heading: HeadingLevel.HEADING_4 }));
-          block.verificationChecks.forEach((check) => {
-            children.push(new Paragraph({ text: `${check.checkId}: ${plainText(check.message)}` }));
-            if (check.evidenceMath) children.push(new Paragraph({ text: plainText(check.evidenceMath) }));
-          });
-        }
-        if (block.result) {
-          children.push(new Paragraph({ text: `Final Answer${block.autocorrectApplied ? " (Verified)" : ""}`, heading: HeadingLevel.HEADING_3 }));
-          children.push(new Paragraph({ text: plainText(block.result), alignment: AlignmentType.CENTER }));
-        }
-        continue;
-      }
-
-      children.push(new Paragraph({ text: "Notes", heading: HeadingLevel.HEADING_3 }));
-      children.push(new Paragraph({ text: plainText(block.text) }));
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Export failed: ${errText}`);
     }
 
-    for (const element of page.elements) {
-      if (element.type === "text") {
-        children.push(new Paragraph({ text: "Text Block", heading: HeadingLevel.HEADING_3 }));
-        const textValue = plainTextFromHtml(element.richTextHtml) || plainText(element.text);
-        children.push(new Paragraph({ text: textValue }));
-      } else if (element.type === "math") {
-        children.push(new Paragraph({ text: "Math Block", heading: HeadingLevel.HEADING_3 }));
-        children.push(new Paragraph({ text: plainText(element.latexRaw), alignment: AlignmentType.CENTER }));
-      } else if (element.type === "plot") {
-        children.push(new Paragraph({ text: `Graph - ${plainText(element.title || "Plot")}`, heading: HeadingLevel.HEADING_3 }));
-        const rows = [
-          new TableRow({
-            children: [
-              new TableCell({ children: [new Paragraph("x")] }),
-              new TableCell({ children: [new Paragraph("y")] }),
-            ],
-          }),
-          ...element.points.slice(0, 30).map(
-            (point) =>
-              new TableRow({
-                children: [
-                  new TableCell({ children: [new Paragraph(String(point.x))] }),
-                  new TableCell({ children: [new Paragraph(String(point.y))] }),
-                ],
-              }),
-          ),
-        ];
-        children.push(
-          new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            rows,
-          }),
-        );
-      }
-    }
-  });
-
-  const doc = new Document({
-    sections: [{ properties: {}, children }],
-  });
-  const blob = await Packer.toBlob(doc);
-  saveAs(blob, suggestExportFileName(payload, "docx"));
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = suggestExportFileName(payload, "docx");
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
+  } catch (error) {
+    console.error("DOCX Export Error:", error);
+    alert("DOCX export failed. Check console for details.");
+    throw error;
+  }
 };

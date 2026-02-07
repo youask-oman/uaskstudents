@@ -109,6 +109,25 @@ export default function AdminPaymentsPage() {
 
     const [loading, setLoading] = useState(false);
 
+    const viewInvoiceHtml = async (invoiceId: number) => {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        try {
+            const res = await fetch(`/api/admin/payments/invoices/${invoiceId}/html`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+
+            if (!res.ok) throw new Error("Failed to load invoice");
+
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            window.open(url, "_blank");
+        } catch (e: any) {
+            alert("Error loading invoice: " + e.message);
+        }
+    };
+
     useEffect(() => {
         setLoading(true);
         const token = localStorage.getItem("token");
@@ -364,13 +383,12 @@ export default function AdminPaymentsPage() {
                                     </span>
                                 </td>
                                 <td className="px-6 py-3 text-right">
-                                    <a
-                                        href={`/api/admin/payments/invoices/${inv.id}/html`}
-                                        target="_blank"
-                                        className="text-emerald-600 hover:text-emerald-700 font-medium text-xs"
+                                    <button
+                                        onClick={() => viewInvoiceHtml(inv.id)}
+                                        className="text-emerald-600 hover:text-emerald-700 font-medium text-xs underline"
                                     >
                                         View HTML
-                                    </a>
+                                    </button>
                                 </td>
                             </tr>
                         ))}

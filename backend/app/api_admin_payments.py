@@ -69,7 +69,7 @@ def list_topups(
     user: User = Depends(get_staff_user)
 ):
     offset = (page - 1) * page_size
-    query = select(CreditLot).where(CreditLot.lot_type == "TOPUP")
+    query = select(CreditLot, User.email).join(User, CreditLot.user_id == User.id).where(CreditLot.lot_type == "TOPUP")
     
     if search:
         # Search by external_ref or amount_paid
@@ -88,9 +88,17 @@ def list_topups(
             count_stmt = count_stmt.where(CreditLot.external_ref.contains(search))
     
     total_count = session.exec(count_stmt).one()
-    lots = session.exec(query.order_by(desc(CreditLot.purchased_at)).offset(offset).limit(page_size)).all()
+    results = session.exec(query.order_by(desc(CreditLot.purchased_at)).offset(offset).limit(page_size)).all()
     
-    return {"total": total_count, "page": page, "page_size": page_size, "data": lots}
+    # Format response
+    data = []
+    for lot, email in results:
+        # Convert SQLModel to dict
+        d = lot.dict()
+        d["user_email"] = email
+        data.append(d)
+    
+    return {"total": total_count, "page": page, "page_size": page_size, "data": data}
 
 @router.get("/lots")
 def list_lots(
@@ -123,14 +131,36 @@ def get_consumption_drilldown(
     user: User = Depends(get_staff_user)
 ):
     # Link: request_id (reference_id) -> UsageLedger -> CreditLotConsumption
-    from app.models import UsageLedger
-    u_entries = session.exec(select(UsageLedger).where(UsageLedger.reference_id == request_id)).all()
+    # Phase 1: request_id -> BillingLedger
+    from app.models import UsageLedger, BillingLedger, CreditLotConsumption
     
     results = []
+    
+    # 1. Check BillingLedger (New System)
+    b_entry = session.exec(select(BillingLedger).where(BillingLedger.request_id == request_id)).first()
+    if b_entry:
+        # Check for consumption linked to this billing ledger (if any)
+        # Assuming we might link them later, but for now just show the ledger
+        results.append({
+            "usage_ledger": {
+                "id": b_entry.id,
+                "amount": b_entry.credits_charged,
+                "transaction_type": "DEBIT",
+                "created_at": b_entry.created_at,
+                "reference_id": b_entry.request_id
+            },
+            "lot_allocations": [] 
+        })
+        
+    # 2. Check UsageLedger (Legacy / Subscription)
+    # Some older requests might use UsageLedger
+    u_entries = session.exec(select(UsageLedger).where(UsageLedger.reference_id == request_id)).all()
+    
     for u in u_entries:
         consumptions = session.exec(select(CreditLotConsumption).where(
             CreditLotConsumption.usage_ledger_id == u.id
         )).all()
+        # Avoid duplicate if matches BillingLedger ID (unlikely)
         results.append({
             "usage_ledger": u,
             "lot_allocations": consumptions
