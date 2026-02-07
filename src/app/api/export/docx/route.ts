@@ -15,7 +15,7 @@ export async function POST(req: Request) {
         const buf = await docxToBuffer(doc);
 
         const fileName = `${safe.docTitle}`.replace(/[^\w\d-_ ]+/g, "").slice(0, 80) || "export";
-        return new NextResponse(buf, {
+        return new NextResponse(buf as any, {
             status: 200,
             headers: {
                 "Content-Type":

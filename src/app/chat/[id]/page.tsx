@@ -426,6 +426,23 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     });
   }, [normalizedMessages, savedPaperVersions, session]);
 
+  const tokenUsage = useMemo(() => {
+    let input = 0;
+    let output = 0;
+    let total = 0;
+    session?.messages?.forEach((msg: any) => {
+      if (msg.role === "assistant") {
+        const inT = Number(msg.input_tokens || 0);
+        const outT = Number(msg.output_tokens || 0);
+        const usedT = Number(msg.tokens_used || 0);
+        input += inT;
+        output += outT;
+        total += usedT || (inT + outT);
+      }
+    });
+    return { input_tokens: input, output_tokens: output, total_tokens: total };
+  }, [session?.messages]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--app-bg)]">
@@ -444,7 +461,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
 
   const notebookTitle = session.subject || "Math Notebook";
   const notebookSubtitle = session.title || "Untitled Session";
-  const usagePercent = Math.max(15, Math.min(90, Math.round((normalizedMessages.length / 20) * 100)));
+
   const viewMode: "edit" | "student_report" =
     (searchParams.get("view") || "").toLowerCase() === "student_report" ? "student_report" : "edit";
 
@@ -456,7 +473,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
           <LeftNotebookSidebar
             notebookTitle={notebookTitle}
             notebookSubtitle={notebookSubtitle}
-            usagePercent={usagePercent}
+            tokenUsage={tokenUsage}
             outlineItems={outlineItems}
             classification={classification}
           />

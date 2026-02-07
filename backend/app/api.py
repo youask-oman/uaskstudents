@@ -6578,6 +6578,8 @@ class ChatMessageSchema(BaseModel):
     created_at: str
     model_used: Optional[str] = None
     tokens_used: Optional[int] = None
+    input_tokens: Optional[int] = None
+    output_tokens: Optional[int] = None
     telemetry: Optional[dict] = None # Added telemetry
 
 class ChatSessionResponse(BaseModel):
@@ -6623,6 +6625,14 @@ async def get_session_details(session_id: int, session: Session = Depends(get_se
                 created_at=msg.created_at.isoformat(),
                 model_used=getattr(msg, "model_used", None),
                 tokens_used=getattr(msg, "tokens_used", None),
+                input_tokens=(
+                    (msg.telemetry.get("input_tokens") or msg.telemetry.get("prompt_tokens")) if isinstance(msg.telemetry, dict) else
+                    (msg.structured_data.get("input_tokens") or msg.structured_data.get("prompt_tokens")) if isinstance(msg.structured_data, dict) else None
+                ),
+                output_tokens=(
+                    (msg.telemetry.get("output_tokens") or msg.telemetry.get("completion_tokens")) if isinstance(msg.telemetry, dict) else
+                    (msg.structured_data.get("output_tokens") or msg.structured_data.get("completion_tokens")) if isinstance(msg.structured_data, dict) else None
+                ),
                 # Fallback logic for telemetry
                 telemetry=(
                     msg.telemetry if hasattr(msg, "telemetry") and msg.telemetry else

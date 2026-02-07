@@ -215,6 +215,7 @@ export type DocumentAction =
   | { type: "PASTE_CLIPBOARD"; targetPageId?: string; offset?: { x: number; y: number } }
   | { type: "UNDO" }
   | { type: "REDO" }
+  | { type: "DELETE_PAGE"; pageId: string }
   | { type: "RESET"; state: CanvasDocumentState };
 
 export const documentReducer = (state: CanvasDocumentState, action: DocumentAction): CanvasDocumentState => {
@@ -228,6 +229,20 @@ export const documentReducer = (state: CanvasDocumentState, action: DocumentActi
       return { ...state, selection: { elementIds: [...action.elementIds] } };
     case "SET_CLIPBOARD":
       return { ...state, clipboard: action.clipboard };
+    case "DELETE_PAGE": {
+      if (state.pages.length <= 1) return state; // Prevent deleting the last page
+
+      const newPages = state.pages.filter((p) => p.id !== action.pageId);
+      const newActivePageId = state.activePageId === action.pageId
+        ? newPages[Math.max(0, newPages.length - 1)].id
+        : state.activePageId;
+
+      return commitSnapshot(state, {
+        pages: newPages,
+        activePageId: newActivePageId,
+        selection: { elementIds: [] },
+      });
+    }
     case "ADD_PAGE": {
       const nextPage = action.page ?? { id: createPageId(), blocks: [], elements: [] };
       const nextPages = [...state.pages, clonePage(nextPage)];

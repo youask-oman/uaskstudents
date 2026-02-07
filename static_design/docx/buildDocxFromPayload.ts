@@ -85,7 +85,7 @@ async function mathParagraphs(math: string[] | undefined): Promise<Paragraph[]> 
         out.push(
             new Paragraph({
                 alignment: AlignmentType.CENTER,
-                children: [new ImageRun({ data: png, transformation: { width: w, height: h } })],
+                children: [new ImageRun({ data: png, transformation: { width: w, height: h } } as any)],
             })
         );
     }
@@ -230,13 +230,7 @@ export async function buildDocxFromPayload(payload: ExportSolutionPayload): Prom
                             new Paragraph({
                                 children: [new TextRun({ text: block.body, bold: true, color: "FFFFFF" })],
                             }),
-                            ...mathParts.map(
-                                (p) =>
-                                    new Paragraph({
-                                        alignment: AlignmentType.CENTER,
-                                        children: p.children,
-                                    })
-                            ),
+                            ...mathParts,
                         ],
                         "1FA971" // green callout
                     )

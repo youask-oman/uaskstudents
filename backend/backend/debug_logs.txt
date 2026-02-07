@@ -4279,3 +4279,816 @@ Ensured promptmodeenum includes OCR_EXTRACT
 Database connection successful and tables created.
 Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
 Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 23ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 35ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 12ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 11ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/health
+Response: 404 | 1ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 12ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 15ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /api/v1/health
+Response: 404 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/health
+Response: 200 | 2ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 22ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 27ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 6ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 5ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 11ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 14ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 11ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 14ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 16ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 11ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 14ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 11ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: POST /api/v1/sessions/139/paper-versions
+Response: 200 | 69ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 11ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 16ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 11ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 25ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 28ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 12ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 11ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 12ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 9ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Incoming: GET /api/v1/history
+Response: 200 | 108ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 105ms
+Response: 200 | 7ms
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 14ms
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/sessions/138
+Response: 200 | 10ms
+Incoming: GET /api/v1/sessions/138
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Incoming: GET /api/v1/history
+Response: 200 | 101ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 72ms
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/token-usage
+Incoming: GET /api/v1/user/profile
+Response: 200 | 19ms
+Response: 200 | 20ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/config/token-policy
+Response: 200 | 12ms
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/config/token-policy
+Response: 200 | 19ms
+Response: 200 | 20ms
+Response: 200 | 43ms
+Response: 200 | 42ms
+Response: 200 | 42ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Response: 200 | 17ms
+Response: 200 | 17ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/users/online
+Response: 200 | 16ms
+Response: 200 | 19ms
+Response: 200 | 19ms
+Incoming: OPTIONS /api/v1/credits/estimate
+Response: 200 | 0ms
+Incoming: POST /api/v1/credits/estimate
+Incoming: GET /api/v1/users/online
+Response: 200 | 9ms
+Response: 200 | 5ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 5ms
+Incoming: GET /api/v1/history
+Response: 200 | 87ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 90ms
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 8ms
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 6ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: POST /api/v1/sessions/139/paper-versions
+Response: 200 | 69ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 12ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 12ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 12ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 14ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 12ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 11ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: POST /api/v1/sessions/139/chat
+Request Failed: name 'solver_service' is not defined | 5ms
+Traceback (most recent call last):
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\base.py", line 159, in call_next
+    message = await recv_stream.receive()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\streams\memory.py", line 126, in receive
+    raise EndOfStream from None
+anyio.EndOfStream
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\uaskstudents\backend\app\main.py", line 53, in log_requests
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\base.py", line 165, in call_next
+    raise app_exc
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\base.py", line 151, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\cors.py", line 91, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\cors.py", line 146, in simple_response
+    await self.app(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 64, in wrapped_app
+    raise exc
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 762, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 782, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 297, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 77, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 64, in wrapped_app
+    raise exc
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 72, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 299, in app
+    raise e
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 294, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\loaia\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 191, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\uaskstudents\backend\app\api.py", line 6808, in session_chat
+    result = await solver_service.get_chat_response(request.message, context, db)
+                   ^^^^^^^^^^^^^^
+NameError: name 'solver_service' is not defined
+Incoming: GET /api/admin/payments/config
+Incoming: GET /api/admin/payments/pricing
+Response: 200 | 19ms
+Response: 200 | 24ms
+Incoming: GET /api/admin/payments/config
+Incoming: GET /api/admin/payments/pricing
+Response: 200 | 9ms
+Response: 200 | 12ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: GET /api/v1/public/plans
+Response: 200 | 9ms
+Incoming: OPTIONS /api/v1/admin/stats/dashboard
+Response: 200 | 0ms
+Incoming: OPTIONS /api/v1/admin/stats/model-routing
+Incoming: OPTIONS /api/v1/admin/analytics/anomalies
+Response: 200 | 1ms
+Incoming: OPTIONS /api/v1/admin/analytics/overview
+Incoming: OPTIONS /api/v1/admin/analytics/errors
+Incoming: OPTIONS /api/v1/admin/solve-traces
+Response: 200 | 3ms
+Incoming: GET /api/v1/admin/stats/dashboard
+Response: 200 | 3ms
+Response: 200 | 3ms
+Response: 200 | 3ms
+Incoming: OPTIONS /api/v1/admin/solve-traces
+Incoming: OPTIONS /api/v1/admin/analytics/overview
+Incoming: OPTIONS /api/v1/admin/stats/model-routing
+Response: 200 | 2ms
+Incoming: OPTIONS /api/v1/admin/analytics/errors
+Incoming: OPTIONS /api/v1/admin/analytics/anomalies
+Incoming: GET /api/v1/admin/stats/dashboard
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-07&end_date=2026-02-07
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-01&end_date=2026-02-07
+Response: 200 | 1371ms
+Response: 200 | 1371ms
+Response: 200 | 1371ms
+Response: 200 | 1371ms
+Incoming: GET /api/v1/admin/solve-traces
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-07&end_date=2026-02-07
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-01&end_date=2026-02-07
+Incoming: OPTIONS /api/v1/config/token-policy
+Incoming: OPTIONS /api/v1/admin/system-config
+Response: 200 | 2777ms
+Response: 200 | 1395ms
+Incoming: OPTIONS /api/v1/config/token-policy
+Incoming: OPTIONS /api/v1/admin/system-config
+Response: 200 | 3ms
+Response: 200 | 3ms
+Response: 200 | 2ms
+Response: 200 | 2ms
+Response: 200 | 2773ms
+Incoming: GET /api/v1/admin/analytics/overview
+Incoming: GET /api/v1/admin/stats/model-routing
+Incoming: GET /api/v1/admin/analytics/errors
+Incoming: GET /api/v1/admin/analytics/anomalies
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/admin/system-config
+Response: 200 | 77ms
+Response: 200 | 79ms
+Response: 200 | 77ms
+Response: 200 | 77ms
+Response: 200 | 79ms
+Response: 200 | 78ms
+Incoming: GET /api/v1/admin/db/tables
+Response: 200 | 1ms
+Incoming: GET /api/admin/db/table/school
+Response: 404 | 0ms
+Incoming: OPTIONS /api/v1/admin/db/table/school
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/db/table/school
+Response: 200 | 14ms
+Incoming: GET /api/admin/db/table/chatsession
+Response: 404 | 1ms
+Incoming: OPTIONS /api/v1/admin/db/table/chatsession
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/db/table/chatsession
+Response: 200 | 6ms
+Incoming: GET /api/admin/db/table/chatmessage
+Response: 404 | 1ms
+Incoming: OPTIONS /api/v1/admin/db/table/chatmessage
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/db/table/chatmessage
+Response: 200 | 24ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 13ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: GET /api/admin/db/table/chatsession
+Response: 404 | 1ms
+Incoming: GET /api/v1/admin/db/table/chatsession
+Response: 200 | 5ms
+Incoming: GET /api/admin/db/table/creditlot
+Response: 404 | 1ms
+Incoming: OPTIONS /api/v1/admin/db/table/creditlot
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/db/table/creditlot
+Response: 200 | 7ms
+Incoming: GET /api/admin/db/table/creditlotconsumption
+Response: 404 | 1ms
+Incoming: OPTIONS /api/v1/admin/db/table/creditlotconsumption
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/db/table/creditlotconsumption
+Response: 200 | 9ms
+Incoming: GET /api/admin/db/table/usageledger
+Response: 404 | 1ms
+Incoming: OPTIONS /api/v1/admin/db/table/usageledger
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/db/table/usageledger
+Response: 200 | 10ms
+Incoming: GET /api/admin/db/table/billingledger
+Response: 404 | 1ms
+Incoming: OPTIONS /api/v1/admin/db/table/billingledger
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/db/table/billingledger
+Response: 200 | 7ms
+Incoming: GET /api/admin/db/table/canonicalsolution
+Response: 404 | 2ms
+Incoming: OPTIONS /api/v1/admin/db/table/canonicalsolution
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/db/table/canonicalsolution
+Response: 200 | 6ms
+Incoming: GET /api/admin/db/table/chatsession
+Response: 404 | 1ms
+Incoming: GET /api/v1/admin/db/table/chatsession
+Response: 200 | 5ms
+Incoming: GET /api/admin/db/table/creditlotconsumption
+Response: 404 | 1ms
+Incoming: GET /api/v1/admin/db/table/creditlotconsumption
+Response: 200 | 4ms
+Incoming: OPTIONS /api/v1/admin/users
+Response: 200 | 1ms
+Incoming: OPTIONS /api/v1/admin/users
+Incoming: OPTIONS /api/v1/admin/plans
+Incoming: OPTIONS /api/v1/admin/plans
+Response: 200 | 1ms
+Response: 200 | 1ms
+Response: 200 | 1ms
+Incoming: GET /api/v1/admin/users
+Incoming: GET /api/v1/admin/plans
+Response: 200 | 414ms
+Response: 200 | 413ms
+Incoming: OPTIONS /api/v1/admin/users
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/users
+Response: 200 | 35ms
+Incoming: OPTIONS /api/v1/admin/users
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/users
+Response: 200 | 19ms
+Incoming: OPTIONS /api/v1/admin/users
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/users
+Response: 200 | 14ms
+Incoming: OPTIONS /api/v1/admin/users/1
+Response: 200 | 0ms
+Incoming: OPTIONS /api/v1/admin/users/1/activity
+Response: 200 | 0ms
+Incoming: OPTIONS /api/v1/admin/users/1/question-history
+Incoming: OPTIONS /api/v1/admin/users/1/full
+Incoming: OPTIONS /api/v1/admin/users/1/activity
+Incoming: GET /api/v1/admin/users/1
+Incoming: GET /api/v1/admin/plans
+Response: 200 | 2ms
+Response: 200 | 2ms
+Response: 200 | 3ms
+Incoming: OPTIONS /api/v1/admin/users/1/full
+Response: 200 | 1ms
+Incoming: OPTIONS /api/v1/admin/users/1/question-history
+Incoming: GET /api/v1/admin/users/1/activity
+Incoming: GET /api/v1/admin/users/1/question-history
+Response: 200 | 2ms
+Incoming: GET /api/v1/admin/users/1/full
+Response: 200 | 29ms
+Response: 200 | 30ms
+Incoming: GET /api/v1/admin/users/1
+Response: 200 | 110ms
+Incoming: GET /api/v1/admin/plans
+Incoming: GET /api/v1/admin/users/1/full
+Incoming: GET /api/v1/admin/users/1/activity
+Incoming: GET /api/v1/admin/users/1/question-history
+Response: 200 | 111ms
+Response: 200 | 120ms
+Response: 200 | 85ms
+Response: 200 | 83ms
+Response: 200 | 84ms
+Response: 200 | 84ms
+Response: 200 | 84ms
+Incoming: GET /api/v1/admin/users/1
+Incoming: GET /api/v1/admin/users/1/activity
+Incoming: GET /api/v1/admin/users/1/question-history
+Incoming: GET /api/v1/admin/plans
+Incoming: GET /api/v1/admin/users/1/full
+Response: 200 | 73ms
+Response: 200 | 76ms
+Response: 200 | 75ms
+Response: 200 | 76ms
+Response: 200 | 76ms
+Incoming: GET /api/v1/admin/db/tables
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/db/tables
+Response: 200 | 0ms
+Incoming: GET /api/admin/db/table/school
+Response: 404 | 0ms
+Incoming: GET /api/v1/admin/db/table/school
+Response: 200 | 12ms
+Incoming: GET /api/admin/db/table/chatmessage
+Response: 404 | 0ms
+Incoming: GET /api/v1/admin/db/table/chatmessage
+Response: 200 | 22ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 5ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 17ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 4ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 17ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: GET /api/v1/history
+Response: 200 | 111ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 95ms
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 13ms
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/sessions/138
+Response: 200 | 6ms
+Incoming: GET /api/v1/sessions/138
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: GET /api/v1/history
+Response: 200 | 97ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 95ms
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 10ms
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 14ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/history
+Response: 200 | 12ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/user/profile
+Response: 200 | 35ms
+Response: 200 | 35ms
+Incoming: GET /api/v1/history
+Response: 200 | 53ms
+Response: 200 | 52ms
+Response: 200 | 53ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 19ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 13ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 19ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 13ms
+Incoming: OPTIONS /api/v1/credits/estimate
+Response: 200 | 1ms
+Response: 200 | 9ms
+Incoming: POST /api/v1/credits/estimate
+Incoming: GET /api/v1/users/online
+Response: 200 | 11ms
+Response: 200 | 6ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 5ms
+Incoming: GET /api/v1/history
+Response: 200 | 90ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 84ms
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 6ms
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 7ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 12ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 14ms
+Incoming: GET /api/v1/history
+Response: 200 | 104ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 96ms
+Response: 200 | 7ms
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 13ms
+Response: 200 | 13ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 12ms
+Incoming: POST /api/v1/user/heartbeat
+Response: 200 | 12ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 6ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 11ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 11ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 11ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 12ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 11ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 11ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 11ms

@@ -61,7 +61,45 @@ export default function CanvasWorkspace({
   const [activeTextEditor, setActiveTextEditor] = useState<Editor | null>(null);
   const [activeTextEditorId, setActiveTextEditorId] = useState<string | null>(null);
   const versionOptions = savedVersions;
+  const canUndo = state.past.length > 0;
+  const canRedo = state.future.length > 0;
+  const canPaste = Boolean(state.clipboard && state.clipboard.elements.length > 0);
+  const hasSelection = state.selection.elementIds.length > 0;
+  const canExport = useMemo(() => hasExportableSolution(state.pages), [state.pages]);
+
   const [selectedVersionKey, setSelectedVersionKey] = useState<string>(() => savedVersions[0]?.key ?? "");
+
+  useEffect(() => {
+    if (hasSelection) {
+      const firstId = state.selection.elementIds[0];
+      const element = state.pages.flatMap((p) => p.elements).find((e) => e.id === firstId);
+      if (element) {
+        setStyleDraft(element.style);
+      }
+    }
+  }, [state.selection.elementIds, state.pages, hasSelection]);
+
+  const updateDraftAndApply = useCallback(
+    (updater: (prev: typeof styleDraft) => typeof styleDraft) => {
+      setStyleDraft((prev) => {
+        const next = updater(prev);
+        if (state.selection.elementIds.length > 0) {
+          // Defer dispatch to avoid the "Cannot update a component while rendering a different component" error.
+          // This happens because dispatch triggers a state update in the parent (ChatPage) while 
+          // CanvasWorkspace is still processing its own state update.
+          setTimeout(() => {
+            dispatch({
+              type: "APPLY_STYLE",
+              elementIds: state.selection.elementIds,
+              style: next,
+            });
+          }, 0);
+        }
+        return next;
+      });
+    },
+    [dispatch, state.selection.elementIds]
+  );
 
   const activePage = useMemo(
     () => state.pages.find((page) => page.id === state.activePageId) ?? state.pages[0],
@@ -96,6 +134,7 @@ export default function CanvasWorkspace({
     [dispatch]
   );
 
+
   const handleAddPage = useCallback(() => {
     dispatch({
       type: "ADD_PAGE",
@@ -107,6 +146,11 @@ export default function CanvasWorkspace({
       setActive: true,
     });
   }, [dispatch]);
+
+  const handleDeletePage = useCallback(() => {
+    if (state.pages.length <= 1) return;
+    dispatch({ type: "DELETE_PAGE", pageId: state.activePageId });
+  }, [dispatch, state.pages.length, state.activePageId]);
 
   const handleInsertMath = useCallback(
     (latex: string) => {
@@ -202,11 +246,14 @@ export default function CanvasWorkspace({
     setSavingVersion(true);
     setSaveMessage(null);
     try {
+      const versionCount = versionOptions.length;
+      const newTitle = `${sessionId}_V${versionCount + 1}`;
+
       const response = await fetch(`/api/v1/sessions/${sessionId}/paper-versions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: `Canvas Version ${new Date().toISOString()}`,
+          title: newTitle,
           pages: state.pages,
         }),
       });
@@ -314,11 +361,6 @@ export default function CanvasWorkspace({
     return () => window.removeEventListener("keydown", onDelete);
   }, [dispatch, state.selection.elementIds, viewMode]);
 
-  const canUndo = state.past.length > 0;
-  const canRedo = state.future.length > 0;
-  const canPaste = Boolean(state.clipboard && state.clipboard.elements.length > 0);
-  const hasSelection = state.selection.elementIds.length > 0;
-  const canExport = useMemo(() => hasExportableSolution(state.pages), [state.pages]);
 
   const buildExportPayload = useCallback((): SolutionExportPayload => {
     const tier =
@@ -370,7 +412,6 @@ export default function CanvasWorkspace({
       const src = e.target?.result as string;
       if (src) {
         const id = createElementId();
-        // Determine placement - center of view or offset? Defaults to 100,100 for now or clipboard copy style
         dispatch({
           type: "INSERT_ELEMENT",
           pageId: state.activePageId,
@@ -388,19 +429,21 @@ export default function CanvasWorkspace({
             updatedAt: Date.now(),
             src,
             alt: file.name,
-          } as CanvasElement, // cast to handle discriminated union strictly if needed
+          } as CanvasElement,
           select: true,
         });
       }
     };
     reader.readAsDataURL(file);
-    // Reset input
     event.target.value = "";
   }, [dispatch, state.activePageId, state.pages]);
 
   const handleActiveTextEditorChange = useCallback((editor: Editor | null, elementId: string | null) => {
     setActiveTextEditor(editor);
     setActiveTextEditorId(elementId);
+    if (editor && elementId) {
+      // If a text editor is active, we might want to sync style?
+    }
   }, []);
 
   return (
@@ -420,11 +463,12 @@ export default function CanvasWorkspace({
             onCut={handleCut}
             onCopy={handleCopy}
             onPaste={handlePaste}
+            activeEditor={activeTextEditor}
+            onNotice={(message) => setSaveMessage(message)}
+            onInsertImage={handleInsertImage}
           />
           <RichTextToolbar
             key={activeTextEditorId || "no-active-editor"}
-            activeEditor={activeTextEditor}
-            onNotice={(message) => setSaveMessage(message)}
             canExport={canExport}
             exportingDocx={exportingDocx}
             savingVersion={savingVersion}
@@ -432,7 +476,13 @@ export default function CanvasWorkspace({
             onExportDocx={handleExportDocx}
             onSaveVersion={handleSaveVersion}
             onAddPage={handleAddPage}
-            onInsertImage={handleInsertImage}
+            onDeletePage={handleDeletePage}
+            canDeletePage={state.pages.length > 1 && state.activePageId !== state.pages[0].id}
+            versionOptions={versionOptions}
+            selectedVersionKey={selectedVersionKey}
+            setSelectedVersionKey={setSelectedVersionKey}
+            handleLoadVersion={handleLoadVersion}
+            selectedVersion={selectedVersion}
           />
         </>
       ) : (
@@ -455,105 +505,154 @@ export default function CanvasWorkspace({
 
       {saveMessage ? <div className={styles.versionSaveNotice}>{saveMessage}</div> : null}
 
-      {viewMode === "edit" && versionOptions.length > 0 ? (
-        <div className={styles.versionLoadPanel}>
-          <span className={styles.versionLoadLabel}>Saved versions</span>
-          <select
-            className={styles.versionLoadSelect}
-            value={selectedVersionKey}
-            onChange={(event) => setSelectedVersionKey(event.target.value)}
-          >
-            {versionOptions.map((version) => {
-              const savedAtLabel = version.savedAt ? new Date(version.savedAt).toLocaleString() : "";
-              return (
-                <option key={version.key} value={version.key}>
-                  {`v${version.version} - ${version.title}${savedAtLabel ? ` (${savedAtLabel})` : ""}`}
-                </option>
-              );
-            })}
-          </select>
-          <button
-            type="button"
-            className={styles.versionLoadButton}
-            disabled={!selectedVersion}
-            onClick={handleLoadVersion}
-          >
-            Load
-          </button>
-        </div>
-      ) : null}
-
       {viewMode === "edit" && paletteOpen ? (
-        <div className={styles.palettePanel} role="region" aria-label="Style palette">
-          <label className={styles.paletteControl}>
-            <span>Text</span>
-            <input
-              type="color"
-              value={styleDraft.color}
-              aria-label="Text color"
-              onChange={(event) => setStyleDraft((prev) => ({ ...prev, color: event.target.value }))}
-            />
-          </label>
-          <label className={styles.paletteControl}>
-            <span>Stroke</span>
-            <input
-              type="color"
-              value={styleDraft.strokeColor}
-              aria-label="Stroke color"
-              onChange={(event) => setStyleDraft((prev) => ({ ...prev, strokeColor: event.target.value }))}
-            />
-          </label>
-          <label className={styles.paletteControl}>
-            <span>Fill</span>
-            <input
-              type="color"
-              value={styleDraft.fillColor}
-              aria-label="Fill color"
-              onChange={(event) => setStyleDraft((prev) => ({ ...prev, fillColor: event.target.value }))}
-            />
-          </label>
-          <label className={styles.paletteRange}>
-            <span>Stroke width</span>
-            <input
-              type="range"
-              min={1}
-              max={8}
-              step={1}
-              value={styleDraft.strokeWidth}
-              onChange={(event) => setStyleDraft((prev) => ({ ...prev, strokeWidth: Number(event.target.value) }))}
-            />
-          </label>
-          <label className={styles.paletteRange}>
-            <span>Font size</span>
-            <input
-              type="range"
-              min={12}
-              max={36}
-              step={1}
-              value={styleDraft.fontSize}
-              onChange={(event) => setStyleDraft((prev) => ({ ...prev, fontSize: Number(event.target.value) }))}
-            />
-          </label>
+        <div
+          className={styles.palettePanel}
+          role="region"
+          aria-label="Style palette"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
           <button
             type="button"
-            className={`${styles.headerButton} ${styles.headerButtonPrimary}`}
-            disabled={!hasSelection}
-            onClick={() => {
-              dispatch({
-                type: "APPLY_STYLE",
-                elementIds: state.selection.elementIds,
-                style: {
-                  color: styleDraft.color,
-                  strokeColor: styleDraft.strokeColor,
-                  fillColor: styleDraft.fillColor,
-                  strokeWidth: styleDraft.strokeWidth,
-                  fontSize: styleDraft.fontSize,
-                },
-              });
-            }}
+            className={styles.paletteClose}
+            onClick={() => setPaletteOpen(false)}
+            aria-label="Close style palette"
           >
-            Apply to Selection
+            <span className="material-symbols-outlined">close</span>
           </button>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "20px" }}>
+            <div className={styles.colorGridRow}>
+              <span className={styles.colorGridLabel}>
+                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>format_color_text</span>
+                Text
+              </span>
+              <div className={styles.colorGrid}>
+                {["#000000", "#ffffff", "#64748b", "#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#6366f1", "#a855f7"].map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className={`${styles.colorSwatch} ${styleDraft.color === c ? styles.colorSwatchActive : ""}`}
+                    style={{ backgroundColor: c }}
+                    onClick={() => updateDraftAndApply((prev) => ({ ...prev, color: c }))}
+                    title={c}
+                  />
+                ))}
+                <input
+                  type="color"
+                  className={styles.customColorInput}
+                  value={styleDraft.color}
+                  onChange={(e) => updateDraftAndApply((prev) => ({ ...prev, color: e.target.value }))}
+                  title="Custom color"
+                />
+              </div>
+            </div>
+
+            <div className={styles.colorGridRow}>
+              <span className={styles.colorGridLabel}>
+                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>border_color</span>
+                Stroke
+              </span>
+              <div className={styles.colorGrid}>
+                {["#000000", "#ffffff", "#475569", "#dc2626", "#ea580c", "#ca8a04", "#16a34a", "#2563eb", "#4f46e5", "#9333ea"].map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className={`${styles.colorSwatch} ${styleDraft.strokeColor === c ? styles.colorSwatchActive : ""}`}
+                    style={{ backgroundColor: c }}
+                    onClick={() => updateDraftAndApply((prev) => ({ ...prev, strokeColor: c }))}
+                    title={c}
+                  />
+                ))}
+                <input
+                  type="color"
+                  className={styles.customColorInput}
+                  value={styleDraft.strokeColor}
+                  onChange={(e) => updateDraftAndApply((prev) => ({ ...prev, strokeColor: e.target.value }))}
+                  title="Custom color"
+                />
+              </div>
+            </div>
+
+            <div className={styles.colorGridRow}>
+              <span className={styles.colorGridLabel}>
+                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>format_color_fill</span>
+                Fill
+              </span>
+              <div className={styles.colorGrid}>
+                {["transparent", "#ffffff", "#f1f5f9", "#fee2e2", "#ffedd5", "#fef9c3", "#dcfce7", "#dbeafe", "#e0e7ff", "#f3e8ff"].map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className={`${styles.colorSwatch} ${styleDraft.fillColor === c ? styles.colorSwatchActive : ""}`}
+                    style={{
+                      backgroundColor: c === "transparent" ? "white" : c,
+                      backgroundImage: c === "transparent" ? "linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc), linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc)" : "none",
+                      backgroundSize: c === "transparent" ? "8px 8px" : "auto",
+                      backgroundPosition: c === "transparent" ? "0 0, 4px 4px" : "0 0"
+                    }}
+                    onClick={() => updateDraftAndApply((prev) => ({ ...prev, fillColor: c }))}
+                    title={c === "transparent" ? "No fill" : c}
+                  />
+                ))}
+                <input
+                  type="color"
+                  className={styles.customColorInput}
+                  value={styleDraft.fillColor === "transparent" ? "#ffffff" : styleDraft.fillColor}
+                  onChange={(e) => updateDraftAndApply((prev) => ({ ...prev, fillColor: e.target.value }))}
+                  title="Custom color"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", borderTop: "1px solid var(--divider-color)", paddingTop: "20px" }}>
+            <label className={styles.paletteRange}>
+              <span className={styles.colorGridLabel}>
+                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>line_weight</span>
+                Stroke width
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={12}
+                step={1}
+                value={styleDraft.strokeWidth}
+                onChange={(event) => updateDraftAndApply((prev) => ({ ...prev, strokeWidth: Number(event.target.value) }))}
+              />
+            </label>
+            <label className={styles.paletteRange}>
+              <span className={styles.colorGridLabel}>
+                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>format_size</span>
+                Font size
+              </span>
+              <input
+                type="range"
+                min={8}
+                max={72}
+                step={1}
+                value={styleDraft.fontSize}
+                onChange={(event) => updateDraftAndApply((prev) => ({ ...prev, fontSize: Number(event.target.value) }))}
+              />
+            </label>
+          </div>
+
+          <div style={{ borderTop: "1px solid var(--divider-color)", paddingTop: "16px", display: "flex", justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              className={`${styles.headerButton} ${styles.headerButtonPrimary}`}
+              onClick={() => {
+                dispatch({
+                  type: "APPLY_STYLE",
+                  elementIds: state.selection.elementIds,
+                  style: styleDraft,
+                });
+                setPaletteOpen(false);
+              }}
+            >
+              Apply to Selection
+            </button>
+          </div>
         </div>
       ) : null}
 
@@ -595,36 +694,43 @@ export default function CanvasWorkspace({
         ))}
       </div>
 
-      {viewMode === "edit" && latexEditorTarget ? (
-        <LatexEditor
-          initialValue={latexEditorTarget.initialLatex}
-          onClose={() => {
-            setLatexEditorTarget(null);
-            dispatch({ type: "SET_TOOL", tool: "none" });
-          }}
-          onInsert={handleInsertMath}
-        />
-      ) : null}
+      {
+        viewMode === "edit" && latexEditorTarget ? (
+          <LatexEditor
+            initialValue={latexEditorTarget.initialLatex}
+            onClose={() => {
+              setLatexEditorTarget(null);
+              dispatch({ type: "SET_TOOL", tool: "none" });
+            }}
+            onInsert={handleInsertMath}
+          />
+        ) : null
+      }
 
-      {viewMode === "edit" && graphEditorOpen ? (
-        <GraphEditor
-          onClose={() => {
-            setGraphEditorOpen(false);
-            dispatch({ type: "SET_TOOL", tool: "none" });
-          }}
-          onInsert={handleInsertPlot}
-        />
-      ) : null}
-      {viewMode === "edit" ? (
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileChange}
-          accept="image/*"
-          style={{ display: "none" }}
-          aria-hidden="true"
-        />
-      ) : null}
-    </section>
+      {
+        viewMode === "edit" && graphEditorOpen ? (
+          <GraphEditor
+            onClose={() => {
+              setGraphEditorOpen(false);
+              dispatch({ type: "SET_TOOL", tool: "none" });
+            }}
+            onInsert={handleInsertPlot}
+          />
+        ) : null
+      }
+
+      {
+        viewMode === "edit" ? (
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="image/*"
+            style={{ display: "none" }}
+            aria-hidden="true"
+          />
+        ) : null
+      }
+    </section >
   );
 }

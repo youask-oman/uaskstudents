@@ -71,7 +71,18 @@ export default function SolutionStepsBlock({
     (editor: Editor | null, elementId: string | null) => onActiveTextEditorChange?.(editor, elementId),
     [onActiveTextEditorChange],
   );
-  const handleStepEditorCommit = React.useCallback((payload: RichTextCommitPayload) => {
+  const handleStepTitleCommit = React.useCallback((payload: RichTextCommitPayload) => {
+    setStepDraft((prev) => {
+      return {
+        ...prev,
+        title: payload.text,
+        titleRichHtml: payload.richTextHtml,
+        titleRichJson: payload.richTextJson,
+      };
+    });
+  }, []);
+
+  const handleStepExplanationCommit = React.useCallback((payload: RichTextCommitPayload) => {
     setStepDraft((prev) => {
       if (hasSameDraftContent(prev, payload)) return prev;
       return {
@@ -79,6 +90,17 @@ export default function SolutionStepsBlock({
         explanation: payload.text,
         explanationRichHtml: payload.richTextHtml,
         explanationRichJson: payload.richTextJson,
+      };
+    });
+  }, []);
+
+  const handleStepMathCommit = React.useCallback((payload: RichTextCommitPayload) => {
+    setStepDraft((prev) => {
+      return {
+        ...prev,
+        mathLatex: payload.text,
+        mathRichHtml: payload.richTextHtml,
+        mathRichJson: payload.richTextJson,
       };
     });
   }, []);
@@ -137,35 +159,64 @@ export default function SolutionStepsBlock({
           <div className={styles.stepValue}>
             {editingStepIndex !== index ? (
               <span className={styles.stepTitleTag}>
-                <strong>{!isGenericStepTitle(step.title, index) ? step.title : `Step ${step.k || index + 1}`}</strong>
+                {step.titleRichHtml ? (
+                  <div
+                    className={styles.richTextElementContent}
+                    style={{ fontWeight: 700, display: "inline-block" }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(step.titleRichHtml) }}
+                  />
+                ) : (
+                  <strong>{!isGenericStepTitle(step.title, index) ? step.title : `Step ${step.k || index + 1}`}</strong>
+                )}
               </span>
             ) : null}
             {editingStepIndex === index ? (
               <div className={styles.inlineEditWrap}>
-                <input
-                  className={styles.inlineEditInput}
-                  value={stepDraft.title || ""}
-                  placeholder={`Step ${index + 1} title`}
-                  onChange={(event) => setStepDraft((prev) => ({ ...prev, title: event.target.value }))}
-                />
-                <div className={styles.inlineEditRichText}>
-                  <RichTextElementEditor
-                    key={`${sectionId}-step-editor-${index}`}
-                    elementId={`${sectionId}-step-${index}`}
-                    initialText={stepDraft.explanation || ""}
-                    initialHtml={stepDraft.explanationRichHtml}
-                    initialJson={stepDraft.explanationRichJson}
-                    onActivate={handleStepEditorActivate}
-                    onCommit={handleStepEditorCommit}
-                    onRequestClose={handleStepEditorRequestClose}
-                  />
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase" }}>Step Title</div>
+                  <div className={styles.inlineEditRichText} style={{ height: 60, minHeight: 60 }}>
+                    <RichTextElementEditor
+                      key={`${sectionId}-step-title-editor-${index}`}
+                      elementId={`${sectionId}-step-title-${index}`}
+                      initialText={stepDraft.title || ""}
+                      initialHtml={stepDraft.titleRichHtml}
+                      initialJson={stepDraft.titleRichJson}
+                      onActivate={handleStepEditorActivate}
+                      onCommit={handleStepTitleCommit}
+                      onRequestClose={handleStepEditorRequestClose}
+                    />
+                  </div>
                 </div>
-                <textarea
-                  className={styles.inlineEditTextArea}
-                  value={stepDraft.mathLatex || ""}
-                  placeholder="LaTeX (optional)"
-                  onChange={(event) => setStepDraft((prev) => ({ ...prev, mathLatex: event.target.value }))}
-                />
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase" }}>Explanation / Body</div>
+                  <div className={styles.inlineEditRichText} style={{ height: 140 }}>
+                    <RichTextElementEditor
+                      key={`${sectionId}-step-explanation-editor-${index}`}
+                      elementId={`${sectionId}-step-explanation-${index}`}
+                      initialText={stepDraft.explanation || ""}
+                      initialHtml={stepDraft.explanationRichHtml}
+                      initialJson={stepDraft.explanationRichJson}
+                      onActivate={handleStepEditorActivate}
+                      onCommit={handleStepExplanationCommit}
+                      onRequestClose={handleStepEditorRequestClose}
+                    />
+                  </div>
+                </div>
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase" }}>Main Math / LaTeX</div>
+                  <div className={styles.inlineEditRichText} style={{ height: 100, minHeight: 80 }}>
+                    <RichTextElementEditor
+                      key={`${sectionId}-step-math-editor-${index}`}
+                      elementId={`${sectionId}-step-math-${index}`}
+                      initialText={stepDraft.mathLatex || ""}
+                      initialHtml={stepDraft.mathRichHtml}
+                      initialJson={stepDraft.mathRichJson}
+                      onActivate={handleStepEditorActivate}
+                      onCommit={handleStepMathCommit}
+                      onRequestClose={handleStepEditorRequestClose}
+                    />
+                  </div>
+                </div>
                 <div className={styles.blockActions}>
                   <button type="button" className={styles.blockActionButton} onClick={saveStep}>
                     Save
@@ -196,7 +247,13 @@ export default function SolutionStepsBlock({
                     <MathRenderer content={step.bodyMarkdown} mode="prose" />
                   </div>
                 ) : null}
-                {step.mathLatex ? (
+                {step.mathRichHtml ? (
+                  <div
+                    style={{ marginTop: 4 }}
+                    className={styles.richTextElementContent}
+                    dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(step.mathRichHtml) }}
+                  />
+                ) : step.mathLatex ? (
                   <div style={{ marginTop: 4 }}>
                     <MathRenderer content={step.mathLatex} mode="block" />
                   </div>

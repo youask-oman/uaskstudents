@@ -110,4 +110,24 @@ describe("documentModel reducer", () => {
       expect(element.style.fontSize).toBe(22);
     });
   });
+
+  test("supports deleting pages", () => {
+    const page1 = "page-1";
+    const page2 = "page-2";
+    const initial = buildInitialDocumentState([
+      { id: page1, blocks: [], elements: [] },
+      { id: page2, blocks: [], elements: [] },
+    ]);
+
+    // Delete page 2
+    const deleted2 = documentReducer(initial, { type: "DELETE_PAGE", pageId: page2 });
+    expect(deleted2.pages).toHaveLength(1);
+    expect(deleted2.pages[0].id).toBe(page1);
+    expect(deleted2.activePageId).toBe(page1);
+
+    // Try to delete the last page (should do nothing)
+    const deletedLast = documentReducer(deleted2, { type: "DELETE_PAGE", pageId: page1 });
+    expect(deletedLast.pages).toHaveLength(1);
+    expect(deletedLast.pages[0].id).toBe(page1);
+  });
 });

@@ -231,7 +231,7 @@ const ElementView = React.memo(function ElementView({
             backgroundColor: element.style.fillColor !== "transparent" ? element.style.fillColor : undefined,
             borderColor: element.style.strokeColor,
             borderWidth: typeof element.style.strokeWidth === "number" ? `${element.style.strokeWidth}px` : element.style.strokeWidth,
-            borderStyle: element.style.strokeWidth && element.style.strokeWidth > 0 ? "solid" : "none",
+            borderStyle: (element.style.strokeWidth ?? 0) > 0 ? "solid" : "none",
           }}
         >
           {richTextHtml ? (
@@ -249,10 +249,11 @@ const ElementView = React.memo(function ElementView({
         <div
           className={styles.mathElementBody}
           style={{
-            background: element.style.fillColor !== "#f0f7ff" ? element.style.fillColor : undefined,
-            borderColor: element.style.strokeColor !== "#1e293b" ? element.style.strokeColor : undefined,
-            borderWidth: typeof element.style.strokeWidth === "number" && element.style.strokeWidth !== 2 ? `${element.style.strokeWidth}px` : undefined,
-            borderStyle: element.style.strokeWidth && element.style.strokeWidth > 0 ? "solid" : undefined,
+            background: element.style.fillColor !== "transparent" ? element.style.fillColor : undefined,
+            borderColor: element.style.strokeColor,
+            borderWidth: typeof element.style.strokeWidth === "number" ? `${element.style.strokeWidth}px` : element.style.strokeWidth,
+            borderStyle: (element.style.strokeWidth ?? 0) > 0 ? "solid" : "none",
+            fontSize: typeof element.style.fontSize === "number" ? `${element.style.fontSize}px` : element.style.fontSize,
           }}
         >
           <MathRenderer content={element.latexRaw} mode={element.renderMode} />
@@ -271,7 +272,7 @@ const ElementView = React.memo(function ElementView({
           style={{
             background: element.style.fillColor,
             borderColor: strokeColor,
-            borderWidth: element.style.strokeWidth,
+            borderWidth: typeof element.style.strokeWidth === "number" ? `${element.style.strokeWidth}px` : element.style.strokeWidth,
           }}
         />
       ) : null}

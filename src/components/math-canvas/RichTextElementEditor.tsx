@@ -93,12 +93,24 @@ export default function RichTextElementEditor({
     onFocus: ({ editor: focusedEditor }) => {
       onActivateEvent(focusedEditor, elementId);
     },
+    onCreate: ({ editor: createdEditor }) => {
+      onActivateEvent(createdEditor, elementId);
+    },
+    onSelectionUpdate: ({ editor: selectEditor }) => {
+      onActivateEvent(selectEditor, elementId);
+    },
     onUpdate: ({ editor: updatedEditor }) => {
       if (!didHydrateRef.current) return;
       const signature = payloadSignature(buildPayload(updatedEditor));
       dirtyRef.current = signature !== lastCommittedSignatureRef.current;
     },
   }, [elementId, initialContent]);
+
+  useEffect(() => {
+    if (editor) {
+      onActivateEvent(editor, elementId);
+    }
+  }, [editor, elementId, onActivateEvent]);
 
   useEffect(() => {
     if (!editor) return;

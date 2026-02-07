@@ -402,8 +402,8 @@ function DashboardContent() {
                                                                     </span>
                                                                 </div>
                                                                 <div className="min-w-0 flex-1">
-                                                                    <div className="text-sm font-semibold truncate text-slate-700 dark:text-slate-200" title={session.input}>
-                                                                        <MathRenderer content={session.input || "No input"} mode="prose" />
+                                                                    <div className="text-sm font-semibold text-slate-700 dark:text-slate-200" title={session.input}>
+                                                                        <MathRenderer content={session.input && session.input.length > 100 ? session.input.substring(0, 100) + "..." : (session.input || "No input")} mode="prose" />
                                                                     </div>
                                                                     {session.is_saved && (
                                                                         <span className="mt-1 inline-flex px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-[10px] font-bold rounded">Saved</span>

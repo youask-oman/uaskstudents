@@ -14,6 +14,7 @@ export interface SessionMessage {
 
 export type ToolType =
   | "none"
+  | "select"
   | "text"
   | "math"
   | "shape"
@@ -115,11 +116,15 @@ export type CanvasElement = TextElement | MathElement | ShapeElement | LineEleme
 export interface StepRow {
   k?: number;
   title: string;
+  titleRichHtml?: string;
+  titleRichJson?: Record<string, unknown>;
   bodyMarkdown?: string;
   explanation?: string;
   explanationRichHtml?: string;
   explanationRichJson?: Record<string, unknown>;
   mathLatex?: string;
+  mathRichHtml?: string;
+  mathRichJson?: Record<string, unknown>;
 }
 
 export interface VerificationCheck {

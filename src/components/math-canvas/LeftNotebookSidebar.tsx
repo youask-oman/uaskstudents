@@ -7,7 +7,6 @@ import styles from "./MathCanvas.module.css";
 interface LeftNotebookSidebarProps {
   notebookTitle: string;
   notebookSubtitle: string;
-  usagePercent: number;
   outlineItems?: Array<{
     id: string;
     label: string;
@@ -19,6 +18,11 @@ interface LeftNotebookSidebarProps {
     grade_band?: string;
     difficulty?: string;
   };
+  tokenUsage?: {
+    input_tokens: number;
+    output_tokens: number;
+    total_tokens: number;
+  };
 }
 
 const navItems = [
@@ -29,9 +33,9 @@ const navItems = [
 export default function LeftNotebookSidebar({
   notebookTitle,
   notebookSubtitle,
-  usagePercent,
   outlineItems = [],
   classification,
+  tokenUsage = { input_tokens: 0, output_tokens: 0, total_tokens: 0 },
 }: LeftNotebookSidebarProps) {
   return (
     <aside className={styles.leftSidebar}>
@@ -97,13 +101,19 @@ export default function LeftNotebookSidebar({
         </div>
       ) : null}
 
-      <div className={styles.storageWrap}>
-        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Storage used</div>
-        <div className={styles.storageTrack}>
-          <div className={styles.storageValue} style={{ width: `${Math.max(0, Math.min(100, usagePercent))}%` }} />
+      <div className={styles.storageWrap} style={{ padding: "16px", background: "rgba(248, 250, 252, 0.5)", borderRadius: "12px", border: "1px dashed #e2e8f0" }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-main)", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 14, color: "var(--primary-color)" }}>verified</span>
+          Provider: <span style={{ color: "var(--primary-color)" }}>Uask AI</span>
         </div>
-        <div style={{ marginTop: 6, fontSize: 11, color: "var(--text-muted)" }}>
-          {usagePercent}% of quota
+        <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "4px", fontSize: 10, color: "var(--text-muted)" }}>
+          <span>Input Tokens</span>
+          <span style={{ fontWeight: 600 }}>{tokenUsage.input_tokens.toLocaleString()}</span>
+          <span>Output Tokens</span>
+          <span style={{ fontWeight: 600 }}>{tokenUsage.output_tokens.toLocaleString()}</span>
+          <div style={{ gridColumn: "span 2", height: "1px", background: "#e2e8f0", margin: "4px 0" }} />
+          <span style={{ fontWeight: 700, color: "var(--text-main)" }}>Total Tokens</span>
+          <span style={{ fontWeight: 700, color: "var(--text-main)" }}>{tokenUsage.total_tokens.toLocaleString()}</span>
         </div>
       </div>
     </aside>

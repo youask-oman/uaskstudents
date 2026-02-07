@@ -13,8 +13,21 @@ const buildEditor = () =>
 
 describe("RichTextToolbar integration", () => {
   test("disables controls when no active text editor", () => {
-    render(<RichTextToolbar activeEditor={null} />);
-    expect(screen.getByLabelText("Text style")).toBeDisabled();
+    render(
+      <RichTextToolbar
+        activeEditor={null}
+        canExport={false}
+        exportingDocx={false}
+        savingVersion={false}
+        onExportPdf={() => { }}
+        onExportDocx={() => { }}
+        onSaveVersion={() => { }}
+        onAddPage={() => { }}
+        onDeletePage={() => { }}
+        canDeletePage={false}
+        onInsertImage={() => { }}
+      />
+    );
     expect(screen.getByLabelText("Bold")).toBeDisabled();
   });
 
@@ -22,10 +35,22 @@ describe("RichTextToolbar integration", () => {
     const editor = buildEditor();
     editor.commands.focus();
     editor.commands.setTextSelection({ from: 1, to: 5 });
-    render(<RichTextToolbar activeEditor={editor} />);
+    render(
+      <RichTextToolbar
+        activeEditor={editor}
+        canExport={false}
+        exportingDocx={false}
+        savingVersion={false}
+        onExportPdf={() => { }}
+        onExportDocx={() => { }}
+        onSaveVersion={() => { }}
+        onAddPage={() => { }}
+        onDeletePage={() => { }}
+        canDeletePage={true}
+        onInsertImage={() => { }}
+      />
+    );
 
-    fireEvent.change(screen.getByLabelText("Text style"), { target: { value: "title" } });
-    expect(editor.getHTML()).toContain("<h1");
 
     fireEvent.click(screen.getByLabelText("Bold"));
     expect(editor.isActive("bold")).toBe(true);
@@ -33,7 +58,7 @@ describe("RichTextToolbar integration", () => {
     fireEvent.click(screen.getByLabelText("Italic"));
     expect(editor.isActive("italic")).toBe(true);
 
-    fireEvent.change(screen.getByLabelText("List style"), { target: { value: "bulleted" } });
+    fireEvent.click(screen.getByLabelText("Bulleted list"));
     expect(editor.getHTML()).toContain("<ul>");
 
     fireEvent.click(screen.getByLabelText("Link"));
