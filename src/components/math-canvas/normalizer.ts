@@ -842,28 +842,28 @@ export const normalizeAssistantMessage = (
   const allowFallbackFromContent = solutionDocPayload ? solutionDocPayload.parseStatus !== "ok" : true;
   const mergedSolution = solutionDocPayload
     ? {
-        ...solutionDocPayload,
-        recognizedLatex:
-          solutionDocPayload.recognizedLatex ||
-          (allowFallbackFromContent ? extractedFromContent.solution?.recognizedLatex : undefined),
-        steps:
-          solutionDocPayload.steps.length > 0
-            ? solutionDocPayload.steps
-            : (allowFallbackFromContent ? extractedFromContent.solution?.steps || [] : []),
-        result:
-          cleanAnswerCandidate(solutionDocPayload.result) ||
-          (allowFallbackFromContent ? cleanAnswerCandidate(extractedFromContent.solution?.result) : undefined),
-        verificationChecks:
-          (solutionDocPayload.verificationChecks?.length || 0) > 0
-            ? solutionDocPayload.verificationChecks
-            : (allowFallbackFromContent ? extractedFromContent.solution?.verificationChecks || [] : []),
-        plots:
-          (solutionDocPayload.plots?.length || 0) > 0
-            ? solutionDocPayload.plots
-            : (allowFallbackFromContent ? extractedFromContent.solution?.plots || [] : []),
-      }
+      ...solutionDocPayload,
+      recognizedLatex:
+        solutionDocPayload.recognizedLatex ||
+        (allowFallbackFromContent ? extractedFromContent.solution?.recognizedLatex : undefined),
+      steps:
+        solutionDocPayload.steps.length > 0
+          ? solutionDocPayload.steps
+          : (allowFallbackFromContent ? extractedFromContent.solution?.steps || [] : []),
+      result:
+        cleanAnswerCandidate(solutionDocPayload.result) ||
+        (allowFallbackFromContent ? cleanAnswerCandidate(extractedFromContent.solution?.result) : undefined),
+      verificationChecks:
+        (solutionDocPayload.verificationChecks?.length || 0) > 0
+          ? solutionDocPayload.verificationChecks
+          : (allowFallbackFromContent ? extractedFromContent.solution?.verificationChecks || [] : []),
+      plots:
+        (solutionDocPayload.plots?.length || 0) > 0
+          ? solutionDocPayload.plots
+          : (allowFallbackFromContent ? extractedFromContent.solution?.plots || [] : []),
+    }
     : structuredSolution
-    ? {
+      ? {
         ...structuredSolution,
         recognizedLatex: structuredSolution.recognizedLatex || extractedFromContent.solution?.recognizedLatex,
         steps:
@@ -882,7 +882,7 @@ export const normalizeAssistantMessage = (
             ? structuredSolution.plots
             : (extractedFromContent.solution?.plots || []),
       }
-    : extractedFromContent.solution;
+      : extractedFromContent.solution;
 
   if (mergedSolution) {
     base.items.push({ type: "math_solution", payload: mergedSolution });
@@ -931,7 +931,7 @@ export const extractPrimarySolution = (
   messages: NormalizedChatMessage[]
 ): MathSolutionPayload | null => {
   const assistantMessages = messages.filter((message) => message.role === "assistant");
-  for (let i = assistantMessages.length - 1; i >= 0; i -= 1) {
+  for (let i = 0; i < assistantMessages.length; i += 1) {
     const match = assistantMessages[i].items.find((item) => item.type === "math_solution");
     if (match && match.type === "math_solution") return match.payload;
   }

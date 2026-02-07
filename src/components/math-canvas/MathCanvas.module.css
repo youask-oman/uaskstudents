@@ -1448,3 +1448,47 @@
     transform: scale(1);
   }
 }
+
+.chatSolutionSteps {
+  display: grid;
+  gap: 12px;
+  margin-top: 8px;
+  border-top: 1px dashed #dbe3ee;
+  padding-top: 12px;
+}
+
+.chatStepItem {
+  display: grid;
+  gap: 4px;
+}
+
+.chatStepTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f4ea4;
+}
+
+.chatStepExpl {
+  font-size: 13px;
+  color: var(--text-main);
+  line-height: 1.4;
+}
+
+.chatStepMath {
+  margin-top: 4px;
+  background: #f8fafc;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #eef2f6;
+  overflow-x: auto;
+}
+
+.chatSolutionResult {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 10px;
+  background: #ecfdf5;
+  border: 1px solid #d1fae5;
+  color: #064e3b;
+  font-size: 14px;
+}

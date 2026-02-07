@@ -36,8 +36,10 @@ from app.models import (
     RequestEvent, DeviceSignupLog, OcrCache,
     OcrExtractionCache, CreditHold, SolverOutputAttempt,
     PromptTemplateEntry, JsonSchemaEntry, PromptBinding,
-    PromptTierEnum, PromptModeEnum, PromptRoleEnum
+    PromptTierEnum, PromptModeEnum, PromptRoleEnum,
+    SolveSession, FollowupChatTurn, LlmUsageLedger
 )
+from app.utils.token_utils import count_tokens, count_messages_tokens
 from app.services.plot_sampling import process_visuals
 from app.services.rag import rag_service
 from app.services.ocr.upload_service import upload_service
@@ -667,12 +669,51 @@ class SolveResponse(BaseModel):
     tokens_used: Optional[int] = 500
     has_image: Optional[bool] = False
     telemetry: Optional[Dict[str, Any]] = None # Added telemetry
+    solve_session_id: Optional[int] = None # Added for Phase 3 Follow-up
+
 
 
 def validate_math_query(text: str) -> None:
     normalized = (text or "").strip().lower()
     if not normalized:
         raise HTTPException(status_code=400, detail="Please enter a math question.")
+
+class FollowupRequest(BaseModel):
+    message: str
+
+def check_followup_scope(message: str, session: SolveSession) -> bool:
+    """
+    Lightweight scope classifier BEFORE calling the LLM.
+    Allowed if user message references:
+    - “step” + number
+    - symbols/equations present in solution_steps_text
+    - mentions “final answer”, “why”, “how”, “verify”, “domain”, “constraint”
+    - explicitly refers to the given problem statement.
+    """
+    msg = message.lower()
+    
+    # Block phrases that look like new problems
+    blocking_phrases = ["solve this", "another question", "similar problem", "new problem", "another math"]
+    if any(bp in msg for bp in blocking_phrases):
+        return False
+        
+    # Check for keywords
+    allowed_keywords = ["step", "final answer", "why", "how", "verify", "domain", "constraint", "formula", "method", "concept"]
+    if any(kw in msg for kw in allowed_keywords):
+        return True
+        
+    # Check for significant words from problem text (min 4 chars)
+    stop_words = {"the", "and", "for", "with", "what", "solve", "this", "that", "please", "can", "you", "help"}
+    problem_words = [w for w in re.findall(r"\w+", session.problem_text.lower()) if len(w) >= 4 and w not in stop_words]
+    if any(w in msg for w in problem_words):
+        return True
+
+    # Check for steps references
+    if re.search(r"step\s*\d+", msg):
+        return True
+        
+    return False
+
 
     bad_words = [
         "fuck",
@@ -4132,19 +4173,35 @@ async def get_plan_links_removed(plan_id: int):
             user.subscription.credits_used_this_period += 1
             session.add(user.subscription)
     
+    # 1.1 Store immutable snapshot of the solved problem for follow-up chat context.
+    steps_list = solution_data.get("solution", {}).get("steps", [])
+    steps_text = "\n".join([f"Step {i+1}: {s.get('explanation', '')}" for i, s in enumerate(steps_list)])
+    final_ans = str(solution_data.get("solution", {}).get("result", ""))
+    
+    solve_session_rec = SolveSession(
+        user_id=user_id,
+        problem_text=base_query,
+        topic=body.subject or "Math",
+        solution_steps_text=steps_text,
+        final_answer_text=final_ans
+    )
+    session.add(solve_session_rec)
     session.commit()
+    session.refresh(solve_session_rec)
 
     return SolveResponse(
         session_id=new_chat.id,
+        solve_session_id=solve_session_rec.id, # Phase 3
         solution=solution_data.get("solution", solution_data),
         concepts=solution_data.get("concepts") or [],
         visuals=solution_data.get("visuals") or [],
         verification=solution_data.get("verification"),
         model_used=model_name,
-        tokens_used=estimated_tokens,
+        tokens_used=final_tokens_count,
         has_image=is_image,
         telemetry=solution_data.get("telemetry") or solution_data.get("_telemetry")
     )
+
     
     # ------------------------------------------------------------------
 # Solver V3 Endpoint - Production-Grade with Schema Validation
@@ -6844,13 +6901,167 @@ async def session_chat(
     db.commit()
     db.refresh(ai_msg)
     
-    return {
-        "response": ai_content,
-        "relevant": result.get("relevant", True),
-        "created_at": ai_msg.created_at.isoformat(),
-        "model_used": ai_msg.model_used,
-        "tokens_used": ai_msg.tokens_used
-    }
+@api_router.post("/followup/{solve_session_id}")
+async def solve_followup(
+    solve_session_id: int,
+    request: FollowupRequest,
+    user_id: int = Query(..., description="User ID"),
+    db: Session = Depends(get_session)
+):
+    """
+    Dedicated follow-up chat endpoint that restricts scope to the solved problem.
+    Enforces a hard limit of 10 turns per session.
+    """
+    # 1. Fetch session
+    session_rec = db.get(SolveSession, solve_session_id)
+    if not session_rec:
+        raise HTTPException(status_code=404, detail="Solve session not found")
+    
+    if session_rec.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    # 2. Check turn limit
+    existing_turns = db.exec(
+        select(FollowupChatTurn).where(FollowupChatTurn.solve_session_id == solve_session_id)
+    ).all()
+    turn_index = len(existing_turns) + 1
+    
+    if turn_index > 10:
+        raise HTTPException(status_code=403, detail="Follow-up limit reached. Start a new solve session.")
+    
+    # 3. Scope Lock (Hard Constraint)
+    if not check_followup_scope(request.message, session_rec):
+        turn = FollowupChatTurn(
+            solve_session_id=solve_session_id,
+            user_id=user_id,
+            turn_index=turn_index,
+            user_message=request.message,
+            assistant_message="I'm sorry, I can only answer questions related to THIS specific problem and solution. Please ask about a step or concept from the result above.",
+            refused_out_of_scope=True
+        )
+        db.add(turn)
+        db.commit()
+        return {
+            "assistant_message": turn.assistant_message,
+            "turn_index": turn_index,
+            "turns_remaining": 10 - turn_index,
+            "refused_out_of_scope": True,
+            "usage": None
+        }
+
+    # 4. LLM Prompting
+    turns_remaining = 10 - turn_index
+    system_prompt = f"""You are a math tutor for follow-up questions about ONE specific solved problem.
+
+AUTHORITATIVE CONTEXT (do not invent beyond this):
+Problem: {session_rec.problem_text}
+Topic: {session_rec.topic}
+Solution steps and results: {session_rec.solution_steps_text}
+Final answer: {session_rec.final_answer_text}
+
+SCOPE (STRICT):
+Only answer if the student’s question is directly about this problem, a specific step, a transformation, a definition used in the steps, a constraint/domain issue, or verifying the final result.
+If the question is outside scope or asks to solve a different/new problem: refuse politely and redirect them to reference a specific step number or expression from THIS solution.
+
+SOCRATIC (STRICT):
+If asked for the final answer/formula/step directly, do not immediately give it. Ask ONE short guiding question, then provide ONE short hint based on the given steps. If the requested item is already explicitly present in the provided steps, you may restate it briefly after the guiding question.
+
+STYLE:
+- Always short and direct. 2–6 sentences max.
+- Plain text.
+- Use LaTeX: $...$ or $$...$$.
+- No extra sections, no long explanations, no fluff.
+
+TURN LIMIT:
+Questions remaining: {turns_remaining}/10"""
+
+    try:
+        start_time_pts = time.time()
+        mgr = get_llm_manager()
+        client = mgr.get_client("openai")
+        
+        # Prepare messages
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": request.message}
+        ]
+        
+        # Token Accounting (System Prompt + User Message)
+        system_tokens = count_tokens(system_prompt)
+        input_tokens_est = count_messages_tokens(messages)
+        
+        response = await client.generate(
+            messages=messages,
+            system_prompt=None,
+            prompt=None,
+            json_schema=None,
+            max_tokens=400,
+            temperature=0.3,
+            stream=False,
+            request_id=f"follow-up-{solve_session_id}-{turn_index}"
+        )
+        
+        latency_ms = int((time.time() - start_time_pts) * 1000)
+        
+        assistant_content = response.content.strip()
+        output_tokens_est = count_tokens(assistant_content)
+        
+        # 5. Token Tracking (Full Accounting)
+        provider_input = response.usage.get("input", input_tokens_est)
+        provider_output = response.usage.get("output", output_tokens_est)
+        provider_total = response.usage.get("total", provider_input + provider_output)
+        
+        # Log Turn
+        turn = FollowupChatTurn(
+            solve_session_id=solve_session_id,
+            user_id=user_id,
+            turn_index=turn_index,
+            user_message=request.message,
+            assistant_message=assistant_content,
+            refused_out_of_scope=False
+        )
+        db.add(turn)
+        db.commit()
+        db.refresh(turn)
+        
+        # 5.1 Provider Usage Capture
+        usage_rec = LlmUsageLedger(
+            solve_session_id=solve_session_id,
+            followup_turn_id=turn.id,
+            provider="openai",
+            model=response.model,
+            request_id=response.payload.get("request_id") or f"req-{turn.id}",
+            system_prompt_tokens=system_tokens,
+            input_tokens=provider_input,
+            output_tokens=provider_output,
+            total_tokens=provider_total,
+            latency_ms=latency_ms
+        )
+        db.add(usage_rec)
+        db.commit()
+        
+        # Update user totals
+        add_tokens_to_user(user_id, provider_total, db)
+        db.commit()
+
+        return {
+            "assistant_message": assistant_content,
+            "turn_index": turn_index,
+            "turns_remaining": turns_remaining,
+            "refused_out_of_scope": False,
+            "usage": {
+                "system_prompt_tokens": system_tokens,
+                "input_tokens": provider_input,
+                "output_tokens": provider_output,
+                "total_tokens": provider_total,
+                "model": response.model,
+                "request_id": usage_rec.request_id
+            }
+        }
+    except Exception as e:
+        print(f"[FOLLOWUP_ERROR] {e}")
+        raise HTTPException(status_code=500, detail="Internal error during follow-up chat.")
+
 
 
 # --- Profile & Preferences ---

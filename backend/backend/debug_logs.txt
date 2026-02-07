@@ -5215,3 +5215,395 @@ Ensured promptmodeenum includes OCR_EXTRACT
 Database connection successful and tables created.
 Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
 Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 25ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 26ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: POST /api/v1/sessions/139/chat
+Response: 200 | 10587ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Incoming: GET /api/v1/history
+Response: 200 | 96ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 91ms
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 9ms
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 7ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 11ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 10ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/sessions/139
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 56ms
+Response: 200 | 57ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 12ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 9ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 18ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 15ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 16ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 17ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 11ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 12ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 10ms
+Incoming: GET /api/v1/admin/db/tables
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/db/tables
+Response: 200 | 0ms
+Incoming: GET /api/admin/db/table/school
+Response: 404 | 0ms
+Incoming: OPTIONS /api/v1/admin/db/table/school
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/db/table/school
+Response: 200 | 9ms
+Incoming: GET /api/admin/db/table/chatmessage
+Response: 404 | 0ms
+Incoming: OPTIONS /api/v1/admin/db/table/chatmessage
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/db/table/chatmessage
+Response: 200 | 23ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/admin/db/tables
+Response: 200 | 1ms
+Incoming: GET /api/v1/admin/db/tables
+Response: 200 | 0ms
+Incoming: GET /api/admin/db/table/school
+Response: 404 | 1ms
+Incoming: GET /api/v1/admin/db/table/school
+Response: 200 | 9ms
+Incoming: GET /api/admin/db/table/chatmessage
+Response: 404 | 0ms
+Incoming: GET /api/v1/admin/db/table/chatmessage
+Response: 200 | 25ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 12ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 23ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/admin/db/tables
+Response: 200 | 1ms
+Incoming: GET /api/v1/admin/db/tables
+Response: 200 | 1ms
+Incoming: GET /api/admin/db/table/school
+Response: 404 | 1ms
+Incoming: GET /api/v1/admin/db/table/school
+Response: 200 | 13ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 12ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 9ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 12ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 202ms
+Response: 200 | 201ms
+Response: 200 | 202ms
+Response: 200 | 203ms
+Response: 200 | 204ms
+Response: 200 | 205ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/users/online
+Incoming: GET /api/v1/history
+Response: 200 | 10ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 85ms
+Response: 200 | 91ms
+Response: 200 | 91ms
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 87ms
+Response: 200 | 80ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/users/online
+Response: 200 | 8ms
+Response: 200 | 13ms
+Response: 200 | 13ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/user/token-usage
+Incoming: GET /api/v1/user/profile
+Response: 200 | 11ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 13ms
+Response: 200 | 13ms
+Response: 200 | 7ms
+Incoming: OPTIONS /api/v1/credits/estimate
+Response: 200 | 0ms
+Incoming: POST /api/v1/credits/estimate
+Incoming: GET /api/v1/user/profile
+Response: 200 | 12ms
+Response: 200 | 14ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 4ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/user/profile
+Response: 200 | 17ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/history
+Response: 200 | 123ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 99ms
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 9ms
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 10ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 18ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 10ms
+Incoming: GET /api/v1/sessions/139
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 14ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 17ms
+Incoming: GET /api/v1/history
+Response: 200 | 120ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 122ms
+Response: 200 | 6ms
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 7ms
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 13ms
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/user/profile
+Response: 200 | 80ms
+Response: 200 | 79ms
+Response: 200 | 80ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/history
+Response: 200 | 29ms
+Response: 200 | 29ms
+Response: 200 | 18ms
+Response: 200 | 16ms
+Incoming: POST /api/v1/credits/estimate
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/users/online
+Response: 200 | 15ms
+Response: 200 | 21ms
+Response: 200 | 11ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/users/online
+Response: 200 | 11ms
+Response: 200 | 6ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 5ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 5ms
+Incoming: POST /api/v1/solve_v3_stream
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 98ms
+Response: 200 | 100ms
+build_openai_structured_output: call=None endpoint=responses name=solve_standard_detailed_v1 strict=False schema_hash=5a123dc74dd62ce6
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+build_openai_structured_output: call=None endpoint=responses name=solve_standard_detailed_v1 strict=False schema_hash=5a123dc74dd62ce6
+Incoming: GET /api/v1/user/profile
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Response: 200 | 10ms
+Response: 200 | 13ms
+Response: 200 | 13ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 4ms

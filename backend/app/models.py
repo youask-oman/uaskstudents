@@ -74,6 +74,8 @@ class User(SQLModel, table=True):
     payments: List["Payment"] = Relationship(back_populates="user")
     voice_sessions: List["VoiceSession"] = Relationship(back_populates="user")
     admin_notes: List["AdminNote"] = Relationship(back_populates="user")
+    solve_sessions: List["SolveSession"] = Relationship(back_populates="user")
+
 
 class ChatSession(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -129,6 +131,55 @@ class UsageLog(SQLModel, table=True):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     
     user: User = Relationship(back_populates="usage_logs")
+
+class SolveSession(SQLModel, table=True):
+    """Immutable snapshot of a solved problem for follow-up chat context."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    problem_text: str
+    topic: str
+    solution_steps_text: str # plain text steps or structured steps rendered to text
+    final_answer_text: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    user: "User" = Relationship(back_populates="solve_sessions")
+    followups: List["FollowupChatTurn"] = Relationship(back_populates="solve_session")
+    usage_records: List["LlmUsageLedger"] = Relationship(back_populates="solve_session")
+
+class FollowupChatTurn(SQLModel, table=True):
+    """Each follow-up request/response stored as an auditable record."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    solve_session_id: int = Field(foreign_key="solvesession.id", index=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    turn_index: int # 1..10
+    user_message: str
+    assistant_message: str
+    refused_out_of_scope: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    solve_session: SolveSession = Relationship(back_populates="followups")
+    usage_record: Optional["LlmUsageLedger"] = Relationship(back_populates="followup_turn")
+
+class LlmUsageLedger(SQLModel, table=True):
+    """Log token usage per follow-up call."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    solve_session_id: int = Field(foreign_key="solvesession.id", index=True)
+    followup_turn_id: Optional[int] = Field(default=None, foreign_key="followupchatturn.id", index=True, unique=True)
+    
+    provider: str # "openai"
+    model: str
+    request_id: Optional[str] = None # provider request id if available
+    
+    system_prompt_tokens: int
+    input_tokens: int # total input tokens
+    output_tokens: int
+    total_tokens: int
+    latency_ms: Optional[int] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    solve_session: SolveSession = Relationship(back_populates="usage_records")
+    followup_turn: Optional[FollowupChatTurn] = Relationship(back_populates="usage_record")
+
 
 # --- Subscription System Models ---
 
