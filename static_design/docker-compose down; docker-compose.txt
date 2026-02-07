@@ -1,0 +1,40 @@
+docker-compose down; docker-compose up -d --build
+
+docker compose build
+docker compose up -d --force-recreate
+
+
+
+# Check database health
+curl http://localhost:8000/api/admin/health/db
+# View error summary
+curl http://localhost:8000/api/admin/health/errors/summary
+# List open findings
+curl http://localhost:8000/api/admin/health/findings?status=OPEN
+
+
+
+$ts = Get-Date -Format "yyyyMMdd_HHmmss"
+$cid = docker compose ps -q postgres
+$remote = "/tmp/uask_db_$ts.dump"
+$local  = ".\uask_db_$ts.dump"
+
+docker compose exec -T postgres pg_dump -U uask_user -Fc -d uask_db -f $remote
+docker cp "${cid}:${remote}" $local
+docker compose exec -T postgres pg_restore -l $remote > $null
+
+Write-Host "OK: $local"
+
+
+
+
+$ts = Get-Date -Format "yyyyMMdd_HHmmss"
+$cid = docker compose ps -q postgres
+$remote = "/tmp/uask_db_$ts.sql"
+$local  = ".\uask_db_$ts.sql"
+
+docker compose exec -T postgres pg_dump -U uask_user -Fp -d uask_db -f $remote
+docker cp "${cid}:${remote}" $local
+Select-String -Path $local -Pattern "^-- PostgreSQL database dump" | Out-Null
+
+Write-Host "OK: $local"

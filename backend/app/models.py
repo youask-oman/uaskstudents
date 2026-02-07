@@ -727,12 +727,27 @@ class UserQuotaOverride(SQLModel, table=True):
 
 class SystemErrorEntry(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    level: str = "ERROR" # INFO, WARNING, ERROR, CRITICAL
-    component: str # e.g. "OCR-ENGINE", "API-ROUTER"
+    severity: str = "ERROR" # INFO, WARNING, ERROR, CRITICAL
+    error_code: Optional[str] = Field(default=None, index=True) # e.g. payment_webhook_failed
+    component: str = Field(index=True) # e.g. "OCR-ENGINE", "API-ROUTER"
     message: str
     stack_trace: Optional[str] = None
-    is_resolved: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    # Traceability
+    trace_id: Optional[str] = Field(default=None, index=True)
+    request_id: Optional[str] = Field(default=None, index=True)
+    user_id: Optional[int] = Field(default=None, index=True)
+    
+    # Fingerprinting for deduplication
+    fingerprint: Optional[str] = Field(default=None, index=True)
+    occurrence_count: int = Field(default=1)
+    
+    # Metadata
+    context_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    
+    is_resolved: bool = Field(default=False, index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    last_seen_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class QuestionIdentityCache(SQLModel, table=True):
@@ -855,6 +870,21 @@ class SolverOutputAttempt(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
 
 
+class ProviderPricingAction(str, Enum):
+    CREATE = "CREATE"
+    UPDATE = "UPDATE"
+    RETIRE = "RETIRE"
+
+class ProviderPricingAuditEvent(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    admin_user_id: int = Field(foreign_key="user.id", index=True)
+    provider_model_pricing_id: int = Field(foreign_key="providermodelpricing.id", index=True)
+    action: ProviderPricingAction
+    before_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    after_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    reason: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
 class ProviderModelPricing(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     provider: str = Field(index=True) # openai, anthropic
@@ -870,6 +900,8 @@ class ProviderModelPricing(SQLModel, table=True):
     
     created_at: datetime = Field(default_factory=datetime.utcnow)
     created_by: Optional[int] = Field(default=None)
+    status: str = Field(default="ACTIVE", index=True) # ACTIVE, INACTIVE
+    change_reason: Optional[str] = None
 
 
 
@@ -1102,4 +1134,22 @@ class InvoiceSequence(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     year: int = Field(unique=True, index=True)
     last_value: int = Field(default=0)
+
+class ReconciliationFinding(SQLModel, table=True):
+    """Tracks issues found during automated system reconciliation."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    finding_type: str = Field(index=True) # e.g. ledger_mismatch, invoice_missing
+    severity: str = "HIGH" # LOW, MEDIUM, HIGH, CRITICAL
+    
+    entity_type: str = Field(index=True) # subscription, request, user, invoice, lot
+    entity_id: str = Field(index=True) # External ID or Primary Key
+    
+    trace_id: Optional[str] = Field(default=None, index=True)
+    details_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    
+    status: str = Field(default="OPEN", index=True) # OPEN, ACKED, RESOLVED
+    
+    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    resolved_at: Optional[datetime] = None
+    resolved_by: Optional[int] = None # Admin user ID
 

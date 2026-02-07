@@ -33,22 +33,38 @@ app.add_middleware(
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    logger = logging.getLogger("uvicorn")
+    from app.trace import TraceContext
+    import uuid
+    
     start_time = time.perf_counter()
     
-    # Generate or use existing correlation ID
-    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())[:8]
+    # Trace ID is the primary correlation across all logs
+    trace_id = str(uuid.uuid4())
+    # Request ID might come from header or be specific to the solver
+    request_id = request.headers.get("X-Request-ID")
     
-    logger.info(f"[{request_id}] Incoming: {request.method} {request.url.path}")
+    # Initialize TraceContext for this async task
+    TraceContext.set(trace_id=trace_id, request_id=request_id)
+    
+    logger = logging.getLogger("api")
+    logger.info(f"Incoming: {request.method} {request.url.path}", extra=TraceContext.get_all())
+    
     try:
         response = await call_next(request)
         duration_ms = int((time.perf_counter() - start_time) * 1000)
-        logger.info(f"[{request_id}] Response: {response.status_code} | {duration_ms}ms")
-        response.headers["X-Request-ID"] = request_id
+        
+        # Merge any updated context (e.g. user_id set during auth)
+        context = TraceContext.get_all()
+        logger.info(f"Response: {response.status_code} | {duration_ms}ms", extra=context)
+        
+        response.headers["X-Trace-ID"] = trace_id
+        if request_id:
+            response.headers["X-Request-ID"] = request_id
+            
         return response
     except Exception as e:
         duration_ms = int((time.perf_counter() - start_time) * 1000)
-        logger.error(f"[{request_id}] Failed: {str(e)} | {duration_ms}ms")
+        logger.error(f"Request Failed: {str(e)} | {duration_ms}ms", exc_info=True, extra=TraceContext.get_all())
         raise e
 
 @app.on_event("startup")
@@ -65,6 +81,13 @@ def on_startup():
                 "message": record.getMessage(),
                 "module": record.module,
             }
+            # Include trace fields if present in record
+            for field in ["trace_id", "request_id", "user_id", "subscription_id"]:
+                if hasattr(record, field):
+                    log_record[field] = getattr(record, field)
+                elif hasattr(record, "extra") and field in record.extra:
+                    log_record[field] = record.extra[field]
+
             if record.exc_info:
                 log_record["exception"] = self.formatException(record.exc_info)
             return json.dumps(log_record)
@@ -179,6 +202,8 @@ from app.api_admin_payments import router as admin_payments_router
 from app.api_topups import router as topup_router
 from app.api_stripe import router as stripe_router
 from app.api_billing import router as billing_router
+from app.api_admin_payments_config import router as admin_payments_config_router
+from app.api_admin_health import router as admin_health_router
 
 app.include_router(api_router, prefix="/api/v1")
 app.include_router(topup_router, prefix="/api/v1")
@@ -186,6 +211,8 @@ app.include_router(stripe_router, prefix="/api/v1")
 app.include_router(billing_router, prefix="/api/v1")
 app.include_router(admin_router)
 app.include_router(admin_payments_router)
+app.include_router(admin_payments_config_router)
+app.include_router(admin_health_router)
 
 from fastapi.staticfiles import StaticFiles
 import os

@@ -65,6 +65,7 @@ export default function AdminPaymentsLayout({
         { label: "Stripe Events", href: "/adminpayments?tab=stripe_events", icon: "receipt_long" },
         { label: "Reconciliation", href: "/adminpayments?tab=reconciliation", icon: "balance" },
         { label: "Pricing", href: "/adminpayments?tab=pricing", icon: "price_change" },
+        { label: "Payments Config", href: "/adminpayments/config", icon: "settings" },
         { label: "Back to Main Admin", href: "/admin/dashboard", icon: "arrow_back" },
     ];
 

@@ -8,13 +8,16 @@ class CostEstimationService:
         self, 
         session: Session, 
         event: RequestEvent
-    ) -> Tuple[float, Optional[int]]:
+    ) -> Tuple[Optional[float], Optional[int]]:
         """
         Calculates the ESTIMATED provider cost for a request event based on historical pricing.
         Returns (cost_usd, pricing_record_id).
+        
+        If pricing is missing, returns (None, None) and logs an error.
+        Caller should mark the cost as NEEDS_REVIEW.
         """
         if not event.provider or not event.model:
-            return 0.0, None
+            return None, None
 
         pricing = provider_pricing_service.get_active_price(
             session, 
@@ -24,10 +27,31 @@ class CostEstimationService:
         )
 
         if not pricing:
-            # Fallback for unknown models to avoid 0 cost?
-            # Or return 0 and log warning?
-            # For Phase 0, let's look for a "default" fallback or return 0
-            return 0.0, None
+            # FAIL SAFE: No pricing available
+            # Log error and return None to signal needs review
+            from app.services.error_service import error_service
+            from app.trace import TraceContext
+            
+            try:
+                error_service.capture_error(
+                    session=session,
+                    component="CostEstimation",
+                    message=f"No pricing found for {event.provider}/{event.model} at {event.created_at}",
+                    severity="HIGH",
+                    error_code="pricing_missing",
+                    context={
+                        "request_id": event.request_id,
+                        "provider": event.provider,
+                        "model": event.model,
+                        "timestamp": event.created_at.isoformat()
+                    }
+                )
+            except Exception as e:
+                # Don't fail cost estimation if error logging fails
+                import logging
+                logging.getLogger("cost_estimation").error(f"Failed to log pricing_missing error: {e}")
+            
+            return None, None
 
         in_tokens = event.tokens_in or 0
         out_tokens = event.tokens_out or 0
@@ -36,8 +60,7 @@ class CostEstimationService:
         cost_in = (in_tokens / 1_000_000.0) * pricing.price_in_per_1m
         cost_out = (out_tokens / 1_000_000.0) * pricing.price_out_per_1m
         
-        # Determine cached tokens if any (RequestEvent doesn't explicitly split cached/uncached input usually)
-        # If we add cached tokens later, we use price_cached_in_per_1m.
+        # TODO: If we add cached tokens later, use price_cached_in_per_1m
         
         total_cost = cost_in + cost_out
         return total_cost, pricing.id

@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from sqlmodel import Session, select, desc, func
 from datetime import datetime, timedelta
+from fastapi.responses import StreamingResponse
 
 from app.database import get_session
 from app.models import User, RequestEvent, ProviderModelPricing, BillingLedger, SolverOutputAttempt, CreditLot, Payment, CreditLotConsumption
@@ -78,7 +79,15 @@ def list_topups(
         except ValueError:
             query = query.where(CreditLot.external_ref.contains(search))
             
-    total_count = session.exec(select(func.count()).select_from(query.subquery())).one()
+    count_stmt = select(func.count(CreditLot.id)).where(CreditLot.lot_type == "TOPUP")
+    if search:
+        try:
+            val = float(search)
+            count_stmt = count_stmt.where(CreditLot.amount_paid == val)
+        except ValueError:
+            count_stmt = count_stmt.where(CreditLot.external_ref.contains(search))
+    
+    total_count = session.exec(count_stmt).one()
     lots = session.exec(query.order_by(desc(CreditLot.purchased_at)).offset(offset).limit(page_size)).all()
     
     return {"total": total_count, "page": page, "page_size": page_size, "data": lots}
@@ -99,7 +108,10 @@ def list_lots(
     if lot_type:
         query = query.where(CreditLot.lot_type == lot_type)
         
-    total_count = session.exec(select(func.count()).select_from(query.subquery())).one()
+    count_stmt = select(func.count(CreditLot.id))
+    if user_id: count_stmt = count_stmt.where(CreditLot.user_id == user_id)
+    if lot_type: count_stmt = count_stmt.where(CreditLot.lot_type == lot_type)
+    total_count = session.exec(count_stmt).one()
     lots = session.exec(query.order_by(desc(CreditLot.purchased_at)).offset(offset).limit(page_size)).all()
     
     return {"total": total_count, "page": page, "page_size": page_size, "data": lots}
@@ -139,7 +151,6 @@ def list_requests(
     session: Session = Depends(get_session),
     user: User = Depends(get_staff_user)
 ):
-    from sqlalchemy import or_
     query = select(RequestEvent)
     
     if model:
@@ -151,13 +162,26 @@ def list_requests(
     if user_id:
         query = query.where(RequestEvent.user_id == user_id)
         
-    total_count = session.exec(select(func.count()).select_from(query.subquery())).one()
+    # Count matching records
+    from sqlalchemy import func
+    count_stmt = select(func.count(RequestEvent.id))
+    if model: count_stmt = count_stmt.where(RequestEvent.model == model)
+    if provider: count_stmt = count_stmt.where(RequestEvent.provider == provider)
+    if status: count_stmt = count_stmt.where(RequestEvent.status == status)
+    if user_id: count_stmt = count_stmt.where(RequestEvent.user_id == user_id)
+    
+    total_count = session.exec(count_stmt).one()
+    
     events = session.exec(query.order_by(desc(RequestEvent.created_at)).offset((page - 1) * page_size).limit(page_size)).all()
     
     # Enrich with Cost Estimate "Live"
     results = []
     for e in events:
-        est_cost, price_id = cost_estimation_service.estimate_provider_cost(session, e)
+        try:
+            est_cost, price_id = cost_estimation_service.estimate_provider_cost(session, e)
+        except Exception:
+            est_cost, price_id = 0.0, None
+            
         results.append({
             "request_id": e.request_id,
             "created_at": e.created_at,
@@ -222,7 +246,9 @@ def list_subscriptions(
     if status:
         query = query.where(Subscription.status == status)
         
-    total_count = session.exec(select(func.count()).select_from(query.subquery())).one()
+    count_stmt = select(func.count(Subscription.id))
+    if status: count_stmt = count_stmt.where(Subscription.status == status)
+    total_count = session.exec(count_stmt).one()
     subs = session.exec(query.order_by(desc(Subscription.created_at)).offset(offset).limit(page_size)).all()
     
     # Enrich with current period and plan name
@@ -273,7 +299,10 @@ def list_stripe_events(
     if status:
         query = query.where(StripeEvent.process_status == status)
         
-    total_count = session.exec(select(func.count()).select_from(query.subquery())).one()
+    count_stmt = select(func.count(StripeEvent.id))
+    if event_type: count_stmt = count_stmt.where(StripeEvent.type == event_type)
+    if status: count_stmt = count_stmt.where(StripeEvent.process_status == status)
+    total_count = session.exec(count_stmt).one()
     events = session.exec(query.order_by(desc(StripeEvent.received_at)).offset(offset).limit(page_size)).all()
     return {"total": total_count, "page": page, "page_size": page_size, "data": events}
 
@@ -365,7 +394,11 @@ def list_invoices(
     if status:
         query = query.where(Invoice.status == status)
         
-    total_count = session.exec(select(func.count()).select_from(query.subquery())).one()
+    count_stmt = select(func.count(Invoice.id))
+    if user_id: count_stmt = count_stmt.where(Invoice.user_id == user_id)
+    if kind: count_stmt = count_stmt.where(Invoice.kind == kind)
+    if status: count_stmt = count_stmt.where(Invoice.status == status)
+    total_count = session.exec(count_stmt).one()
     invoices = session.exec(query.order_by(desc(Invoice.created_at)).offset(offset).limit(page_size)).all()
     return {"total": total_count, "page": page, "page_size": page_size, "data": invoices}
 
