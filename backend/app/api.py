@@ -231,7 +231,7 @@ def _collect_stream_business_rule_errors(payload: Dict[str, Any]) -> List[str]:
     return errors
 
 
-def _validate_stream_payload(payload: Dict[str, Any], schema_config: Optional[Dict[str, Any]]) -> List[str]:
+def _validate_stream_payload(payload: Dict[str, Any], schema_config: Optional[Dict[str, Any]]) -> Tuple[List[str], bool]:
     schema = _schema_object_for_validation(schema_config)
     if not schema:
         return ["schema_error: missing schema configuration for stream validation."]
@@ -242,7 +242,18 @@ def _validate_stream_payload(payload: Dict[str, Any], schema_config: Optional[Di
         return [f"schema_error: invalid JSON schema: {exc}"]
 
     schema_errors = _format_json_schema_errors(list(validator.iter_errors(payload)))
-    return schema_errors + _collect_stream_business_rule_errors(payload)
+    
+    # Check for Refusal (Ambiguity)
+    is_ambiguous = False
+    refusal = payload.get("refusal")
+    if refusal:
+        if isinstance(refusal, dict):
+             if refusal.get("is_refusal", True):
+                 is_ambiguous = True
+        else:
+             is_ambiguous = bool(refusal)
+    
+    return schema_errors + _collect_stream_business_rule_errors(payload), is_ambiguous
 
 
 def _sha256_text(value: str) -> str:
@@ -300,6 +311,7 @@ def _build_schema_valid_stream_error_payload(
     prompt_id: Optional[str],
     validation_errors: List[str],
     schema_config: Optional[Dict[str, Any]],
+    error_code: str = "internal_error",
 ) -> Dict[str, Any]:
     message = "Unable to generate a valid structured solution. Please try again."
     errors_top = [str(err) for err in (validation_errors or [])[:10]]
@@ -413,6 +425,11 @@ def _build_schema_valid_stream_error_payload(
                 "validation_errors": errors_top,
             },
         },
+        "error": {
+            "code": error_code,
+            "message": (validation_errors[0] if validation_errors else "Validation failed") if not (error_code == "ambiguous_response") else "Clarification needed",
+            "validation_failures": validation_errors
+        }
     }
 
 
@@ -611,11 +628,11 @@ def _transform_v3_to_v1_format(v3_data: Dict[str, Any]) -> Dict[str, Any]:
         return transformed
         
     except Exception as e:
-        print(f"[TRANSFORM_ERROR] Failed to transform V2 to V1: {e}")
+        print(f"[TRANSFORM_ERROR] Failed to transform V3 to V1: {e}")
         import traceback
         traceback.print_exc()
         # Return original if transformation fails
-        return v2_data
+        return v3_data
 
 
 
@@ -4050,7 +4067,8 @@ async def solve_problem(
             try:
                 att = session.exec(select(SolverOutputAttempt).where(SolverOutputAttempt.attempt_id == attempt_id)).first()
                 if att:
-                    att.status = "error"
+                    att.status = "failure"
+                    att.failure_code = "INTERNAL_SERVER_ERROR"
                     att.error_message = str(e)
                     session.add(att)
                     session.commit()
@@ -4719,7 +4737,7 @@ async def solve_v3_endpoint(
                     (result.get("telemetry") or {}).get("output_tokens")
                 ),
                 "latency_ms": (result.get("telemetry") or {}).get("latency_ms_total"),
-                "status": "error",
+                "status": "failure",
                 "error_type": result.get("error_type") or "solver_error",
                 "schema_valid": (result.get("telemetry") or {}).get("validated"),
                 "verification_pass": False,
@@ -4736,7 +4754,7 @@ async def solve_v3_endpoint(
             billing_service.finalize_transaction(
                  session,
                  request_id=request_id,
-                 result_status="error",
+                 result_status="failure",
                  schema_valid=False
             )
             
@@ -5091,9 +5109,37 @@ async def solve_v3_stream_endpoint(
     from app.services.llm.manager import get_configured_openai_model
     from app.llm_profiles.profile_resolver import ProfileResolutionError
 
-    # 0. Phase 3: Idempotency & Debit (Audit/Billing)
-    # Generate request_id early to use as idempotency key or reference
+    # 0. Phase 1 Hardening: Distinct IDs
     request_id = str(uuid.uuid4())
+    attempt_id = str(uuid.uuid4())
+    attempt = None
+    
+    # Initialize TraceContext with solving phase
+    from app.trace import TraceContext
+    TraceContext.set(
+        trace_id=str(uuid.uuid4()),
+        request_id=request_id,
+        attempt_id=attempt_id,
+        phase="solve_v3_stream",
+        status="pending"
+    )
+    
+    # Phase 1: Create Attempt Record (Pending)
+    try:
+        from app.models import SolverOutputAttempt
+        
+        attempt = SolverOutputAttempt(
+            request_id=request_id,
+            attempt_id=attempt_id,
+            user_id=user_id,
+            status="pending",
+            input_text_raw=(body.confirmed_text or body.text_query or "")[:50000],
+            created_at=datetime.utcnow()
+        )
+        session.add(attempt)
+        session.commit()
+    except Exception as e:
+        logging.error(f"Failed to create attempt record: {e}", extra=TraceContext.get_all())
     
     # ===== LIVE REQUEST TRACE =====
     import sys
@@ -5109,7 +5155,12 @@ async def solve_v3_stream_endpoint(
     # ==============================
 
     # Resolve checks
-    user_obj = session.get(User, user_id)
+    from sqlalchemy.orm import selectinload
+    user_obj = session.exec(
+        select(User)
+        .where(User.id == user_id)
+        .options(selectinload(User.subscription).selectinload(Subscription.plan))
+    ).first()
     effective_tier_slug = get_user_effective_tier_slug(user_obj)
     tier_policy = _clamp_requested_tier(body.tier, effective_tier_slug)
     requested_tier = tier_policy["tier_requested"]
@@ -5157,6 +5208,8 @@ async def solve_v3_stream_endpoint(
         
         requested_mode = body.requested_mode or "minimal"
         learning_mode = (body.trusted_context or {}).get("learning_mode", "solve")
+        is_ambiguous = False
+        refusal = None
         deduct_attempted = {"credits": False, "ocr": False, "voice": False}
         deduct_committed = False
         features_used = body.features_used or {}
@@ -5247,7 +5300,20 @@ async def solve_v3_stream_endpoint(
             return
         print(f"[SOLVER_V3_STREAM] Resolved Profile: Tier={profile.tier}, Mode={profile.mode}, MaxTokens={profile.max_output_tokens}")
         profile_key = f"{profile.tier.upper().replace('-', '_')}_{profile.mode.upper()}"
+        
         binding_meta = getattr(profile, "prompt_binding_meta", {}) or {}
+        # Phase 1: Update Attempt with Prompt Meta
+        try:
+            if attempt:
+                attempt.prompt_id = binding_meta.get("binding_id")
+                attempt.prompt_version = binding_meta.get("global_system_prompt_version")
+                attempt.prompt_meta = binding_meta
+                attempt.status = "processing"
+                session.add(attempt)
+                session.commit()
+        except Exception as e:
+            print(f"[SOLVER_V3_STREAM] Update attempt meta failed: {e}")
+
         if user_obj and user_obj.subscription and user_obj.subscription.plan:
             plan_key = user_obj.subscription.plan.slug
         else:
@@ -5588,22 +5654,33 @@ async def solve_v3_stream_endpoint(
 
         try:
             async for chunk in solver.solve_stream(
-                problem_text,
-                context,
+                problem_text=problem_text,
+                context=context,
                 trace=True,
                 request_id=request_id,
-                max_output_tokens=max_output_tokens,
+                max_output_tokens=effective_max_tokens,
                 system_prompt=profile.system_prompt_content,
-                developer_prompt=getattr(profile, "developer_prompt_content", None),
+                developer_prompt=profile.developer_prompt_content,
                 json_schema_config=profile.json_schema_content,
-                trusted_context=body.trusted_context,
-                requested_mode=requested_mode
+                requested_mode=requested_mode,
+                trusted_context={"learning_mode": learning_mode}
             ):
                 if chunk["type"] == "delta":
                     full_content += chunk["text"]
-                    yield f"event: delta\ndata: {json.dumps({'type': 'delta', 'text': chunk['text']})}\n\n"
-                elif chunk["type"] == "telemetry":
+                    yield f"data: {json.dumps({'type': 'delta', 'text': chunk['text']})}\n\n"
+                elif chunk["type"] == "usage":
                     openai_telemetry = chunk["telemetry"]
+                    # A3: Append history entry
+                    if "history_entry" in chunk and attempt:
+                        if attempt.llm_responses is None:
+                            attempt.llm_responses = []
+                        attempt.llm_responses.append(chunk["history_entry"])
+                        session.add(attempt)
+                        session.commit()
+                elif chunk["type"] == "failure":
+                    # Handle early termination
+                    yield f"event: done\ndata: {json.dumps({'ok': False, 'error': chunk['error']})}\n\n"
+                    return
                 elif chunk["type"] == "meta" and chunk.get("truncated"):
                     truncated_meta = dict(meta_data)
                     truncated_meta["truncated"] = True
@@ -5705,8 +5782,8 @@ async def solve_v3_stream_endpoint(
             if final_data and not validation_errors:
                 # Normalization pass to fix common enum mishaps before strict validation
                 final_data = normalize_raw_llm_response(final_data)
-                validation_errors = _validate_stream_payload(final_data, profile.json_schema_content)
-                schema_valid = len(validation_errors) == 0
+                validation_errors, is_ambiguous = _validate_stream_payload(final_data, profile.json_schema_content)
+                schema_valid = len(validation_errors) == 0 and not is_ambiguous
 
             if validation_errors:
                 repair_attempted = True
@@ -5731,12 +5808,12 @@ async def solve_v3_stream_endpoint(
                     if isinstance(repaired_text, str) and repaired_text.strip():
                         raw_llm_output = repaired_text
                     final_data = repaired_data if isinstance(repaired_data, dict) else {}
-                    validation_errors = (
+                    validation_errors, is_ambiguous = (
                         _validate_stream_payload(final_data, profile.json_schema_content)
                         if final_data
-                        else ["repair_error: repair output was not a JSON object"]
+                        else (["repair_error: repair output was not a JSON object"], False)
                     )
-                    schema_valid = len(validation_errors) == 0
+                    schema_valid = len(validation_errors) == 0 and not is_ambiguous
                     if schema_valid:
                         openai_telemetry["repaired"] = True
                 except Exception as repair_err:
@@ -5760,7 +5837,8 @@ async def solve_v3_stream_endpoint(
                 sys.stderr.flush()
                 # =============================
                 
-                error_message = "Unable to generate a valid structured solution. Please try again."
+                print(f"[DEBUG] is_ambiguous={is_ambiguous} refusal={refusal}")
+                error_message = refusal if is_ambiguous and refusal else "Unable to generate a valid structured solution. Please try again."
                 error_payload = _build_schema_valid_stream_error_payload(
                     problem_text=problem_text,
                     provider=openai_telemetry.get("provider") or stream_provider,
@@ -5770,7 +5848,11 @@ async def solve_v3_stream_endpoint(
                     prompt_id=binding_meta.get("developer_prompt_id"),
                     validation_errors=validation_errors,
                     schema_config=profile.json_schema_content,
+                    error_code="ambiguous_response" if is_ambiguous else "internal_error"
                 )
+                if is_ambiguous:
+                     error_payload["is_ambiguous"] = True
+                     error_payload["refusal"] = refusal
                 error_payload["_raw_llm_output"] = raw_llm_output[:20000]
                 placeholder_msg.content = error_message
                 placeholder_msg.structured_data = error_payload
@@ -5845,7 +5927,7 @@ async def solve_v3_stream_endpoint(
                     ),
                     "latency_ms": openai_telemetry.get("latency_ms_total") or openai_telemetry.get("latency_ms_openai"),
                     "status": "error",
-                    "error_type": "schema_validation_failed",
+                    "error_type": "ambiguous_response" if is_ambiguous else "schema_validation_failed",
                     "schema_valid": False,
                     "verification_pass": False,
                     "is_stream": True,
@@ -5856,7 +5938,8 @@ async def solve_v3_stream_endpoint(
                     "voice_used": action_req["has_voice"],
                     "response_truncated": bool(openai_telemetry.get("truncated") or is_truncated),
                 })
-                yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': False, 'error': {'code': 'schema_validation_failed', 'message': error_message, 'validation_errors': validation_errors[:10], 'request_id': request_id}})}\n\n"
+                error_code = "ambiguous_response" if is_ambiguous else "schema_validation_failed"
+                yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': False, 'error': {'code': error_code, 'message': error_message, 'validation_errors': validation_errors[:10], 'request_id': request_id, 'refusal': refusal if is_ambiguous else None}})}\n\n"
                 return
 
             if profile.mode == "minimal" and "solution" not in final_data:
@@ -5952,31 +6035,46 @@ async def solve_v3_stream_endpoint(
                 ):
                     final_data["solution"]["final_answer"]["value"] = answer_text
 
+                # Phase 1: Structured Logging & Persistence
+                if attempt:
+                    attempt.status = "success" if schema_valid else "failure"
+                    if is_ambiguous:
+                        attempt.status = "ambiguous"
+                    
+                    attempt.raw_solution_text = raw_llm_output
+                    attempt.validation_json = final_data if schema_valid else None
+                    attempt.validation_errors = validation_errors if not schema_valid else None
+                    attempt.error_message = error_message if not schema_valid else None
+                    
+                    attempt.input_tokens = openai_telemetry.get("input_tokens", 0)
+                    attempt.output_tokens = openai_telemetry.get("output_tokens", 0)
+                    attempt.total_tokens = openai_telemetry.get("total_tokens", 0)
+                    attempt.latency_ms = openai_telemetry.get("latency_ms_total")
+                    attempt.provider_model = f"{openai_telemetry.get('provider')}:{openai_telemetry.get('model')}"
+                    
+                    session.add(attempt)
+                    session.commit()
+                
+                # --- Legacy compatibility for placeholder_msg ---
                 placeholder_msg.content = answer_text
                 placeholder_msg.structured_data = final_data
                 openai_telemetry["schema_valid"] = schema_valid
                 placeholder_msg.telemetry = openai_telemetry
                 placeholder_msg.tokens_used = openai_telemetry.get("total_tokens", 0)
                 
-                # Populate Metadata Columns (New)
+                # Populate Metadata Columns
                 classification = final_data.get("classification", {})
                 placeholder_msg.subject = classification.get("subject") or classification.get("topic") or body.subject
                 placeholder_msg.grade_level = classification.get("grade_level") or (user_obj.grade_level if user_obj else None)
                 placeholder_msg.difficulty = classification.get("difficulty")
-                # Normalize tags/topics
-                raw_tags = classification.get("tags") or classification.get("topics")
-                if isinstance(raw_tags, list):
-                     placeholder_msg.topics = [str(t) for t in raw_tags]
-                elif isinstance(raw_tags, str):
-                     placeholder_msg.topics = [raw_tags]
                 
-                # Token Tracking (Part D3)
+                # Token Tracking
                 tokens = openai_telemetry.get("total_tokens", 0)
                 if tokens > 0:
                     add_tokens_to_user(user_id, tokens, session)
                     session.add(UsageLog(user_id=user_id, action_type="solve_v3_stream", tokens_used=tokens))
                 
-                # Cache store
+                session.commit()
                 try:
                     question_fingerprint = question_identity_service.compute_question_fingerprint(problem_text)
                     question_key = question_identity_service.compute_question_key(question_fingerprint)
@@ -5985,6 +6083,59 @@ async def solve_v3_stream_endpoint(
 
                 session.commit()
                 print(f"[SOLVER_V3_STREAM] ✅ Successfully persisted results for session {new_chat.id}")
+
+                # Phase 1: Update Final Attempt Record
+                try:
+                    if attempt:
+                        # Phase 1 Ambiguity Mapping
+                        if schema_valid:
+                             attempt.status = "success"
+                        elif is_ambiguous:
+                             attempt.status = "ambiguous"
+                             attempt.failure_code = "AMBIGUOUS_RESPONSE"
+                        else:
+                             attempt.status = "failure"
+                        attempt.output_tokens = openai_telemetry.get("output_tokens", 0)
+                        attempt.input_tokens = openai_telemetry.get("input_tokens", 0)
+                        attempt.total_tokens = openai_telemetry.get("total_tokens", 0)
+                        attempt.latency_ms = int((time.perf_counter() - start_total) * 1000)
+                        
+                        # Append history
+                        history_entry = {
+                            "kind": "primary",
+                            "timestamp": datetime.utcnow().isoformat(),
+                            "provider": stream_provider,
+                            "model": stream_model,
+                            "raw_text": raw_llm_output,
+                            "parsed_json": final_data,
+                            "usage": {
+                                "input": attempt.input_tokens,
+                                "output": attempt.output_tokens,
+                                "total": attempt.total_tokens
+                            },
+                            "latency_ms": attempt.latency_ms
+                        }
+                        if attempt.llm_responses is None: attempt.llm_responses = []
+                        h = list(attempt.llm_responses)
+                        h.append(history_entry)
+                        attempt.llm_responses = h
+                        
+                        # Append validation event
+                        val_event = {
+                            "timestamp": datetime.utcnow().isoformat(),
+                            "success": schema_valid,
+                            "errors": validation_errors
+                        }
+                        if attempt.validation_events is None: attempt.validation_events = []
+                        v = list(attempt.validation_events)
+                        v.append(val_event)
+                        attempt.validation_events = v
+                        
+                        session.add(attempt)
+                        session.commit()
+                except Exception as e:
+                    print(f"[SOLVER_V3_STREAM] Final attempt update failed: {e}")
+
 
             # Final Telemetry Event
             openai_telemetry["type"] = "telemetry"
@@ -6070,7 +6221,20 @@ async def solve_v3_stream_endpoint(
             import traceback
             traceback.print_exc()
             print(f"[SOLVER_V3_STREAM] ❌ FATAL ERROR: {str(e)}")
+            
+            # Phase 1: Persistent Failure State
+            try:
+                if attempt:
+                    attempt.status = "failure"
+                    attempt.failure_code = "INTERNAL_SERVER_ERROR"
+                    attempt.error_message = str(e)
+                    session.add(attempt)
+                    session.commit()
+            except Exception as ex:
+                print(f"[SOLVER_V3_STREAM] Error persistence failed: {ex}")
+            
             session.commit()
+
             log_solve_trace({
                 "request_id": request_id,
                 "user_id": user_id,
@@ -9731,8 +9895,15 @@ async def solve_clarify(
     """
     Phase 1: Resume an ambiguous attempt with user clarification.
     """
-    # 1. Fetch Attempt
-    attempt = session.exec(select(SolverOutputAttempt).where(SolverOutputAttempt.attempt_id == attempt_id)).first()
+    from sqlalchemy.orm import selectinload
+    attempt = session.exec(
+        select(SolverOutputAttempt)
+        .where(SolverOutputAttempt.attempt_id == attempt_id)
+        .options(
+            selectinload(SolverOutputAttempt.user).selectinload(User.subscription).selectinload(Subscription.plan),
+            selectinload(SolverOutputAttempt.chat_session)
+        )
+    ).first()
     if not attempt:
         raise HTTPException(status_code=404, detail="Attempt not found")
         
@@ -9802,13 +9973,23 @@ async def solve_clarify(
             attempt_id=attempt_id # Reuse ID
         )
         
-        # Transform V3 format (SolveResponseV3) to V1 format (SolveResponse)
-        # Note: _transform_v3_to_v1_format is defined in api.py, we need to ensure it's available.
-        # It is defined above in api.py.
-        return _transform_v3_to_v1_format(solution_data)
+        # transform to V1
+        transformed = _transform_v3_to_v1_format(solution_data)
+        
+        # Ensure required SolveResponse fields are present
+        return {
+            "session_id": attempt.session_id or 0,
+            "solution": transformed,
+            "concepts": transformed.get("concepts", []),
+            "visuals": transformed.get("visuals", []),
+            "model_used": transformed.get("meta", {}).get("model"),
+            "tokens_used": transformed.get("meta", {}).get("tokens", 500),
+            "telemetry": transformed.get("meta")
+        }
         
     except Exception as e:
-        attempt.status = "error"
+        attempt.status = "failure"
+        attempt.failure_code = "INTERNAL_ERROR"
         attempt.error_message = str(e)
         session.add(attempt)
         session.commit()
@@ -9824,19 +10005,21 @@ async def get_attempt_status(
     Phase 1 Hardening: Frontend Resume Endpoint.
     Returns status, clarification state, and results.
     """
-    attempt = session.exec(select(SolverOutputAttempt).where(SolverOutputAttempt.attempt_id == attempt_id)).first()
+    attempt = session.exec(
+        select(SolverOutputAttempt)
+        .where(SolverOutputAttempt.attempt_id == attempt_id)
+    ).first()
+    
     if not attempt:
         raise HTTPException(status_code=404, detail="Attempt not found")
         
     return {
         "attempt_id": attempt.attempt_id,
-        "status": attempt.status, # pending, processing, success, failure, ambiguous
+        "request_id": attempt.request_id,
+        "status": attempt.status,
         "failure_code": attempt.failure_code,
         "error_message": attempt.error_message,
         "clarification_count": attempt.clarification_count,
-        "clarification_history": attempt.clarification_history,
-        "validation_errors": attempt.validation_errors,
-        "result": attempt.validation_json, # The final success payload
         "created_at": attempt.created_at,
         "updated_at": attempt.updated_at
     }

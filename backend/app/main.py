@@ -82,7 +82,7 @@ def on_startup():
                 "module": record.module,
             }
             # Include trace fields if present in record
-            for field in ["trace_id", "request_id", "user_id", "subscription_id"]:
+            for field in ["trace_id", "request_id", "user_id", "subscription_id", "attempt_id", "phase", "status"]:
                 if hasattr(record, field):
                     log_record[field] = getattr(record, field)
                 elif hasattr(record, "extra") and field in record.extra:

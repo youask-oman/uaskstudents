@@ -70,7 +70,7 @@ async def verify_clarification():
     req = MagicMock(spec=Request)
     
     # We mock solver to return success on clarification
-    with patch("app.api.get_solver_v3") as mock_get_solver: # Note: api.py imports verify_persistence_mock imports app.api which imports... wait.
+    with patch("app.services.solver_v3.get_solver_v3") as mock_get_solver: # Corrected patch path
         # solve_clarify uses `from app.services.solver_v3 import get_solver_v3` inside function.
         # mocking `app.services.solver_v3` module should work if we patch where it is used.
         # Since it is a local import inside function, we need to patch `app.services.solver_v3.get_solver_v3`?

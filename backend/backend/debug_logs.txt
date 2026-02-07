@@ -6388,3 +6388,868 @@ Incoming: GET /api/v1/user/profile
 Response: 200 | 6ms
 Incoming: GET /api/v1/users/online
 Response: 200 | 4ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/public/plans
+Response: 200 | 10ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: OPTIONS /api/v1/login
+Response: 200 | 0ms
+Incoming: POST /api/v1/login
+Response: 200 | 59ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/config/token-policy
+Response: 200 | 31ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: OPTIONS /api/v1/credits/estimate
+Response: 200 | 4ms
+Incoming: OPTIONS /api/v1/credits/estimate
+Response: 200 | 8ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 2ms
+Incoming: POST /api/v1/credits/estimate
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 9ms
+Response: 200 | 10ms
+Response: 200 | 8ms
+Response: 200 | 77ms
+Response: 200 | 75ms
+Response: 200 | 75ms
+Response: 200 | 77ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Response: 200 | 13ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 8ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 2ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 4ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 4ms
+Incoming: POST /api/v1/solve_v3_stream
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 92ms
+Response: 200 | 130ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 4ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 0ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/user/profile
+Response: 200 | 17ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 4ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/user/profile
+Response: 200 | 16ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/user/profile
+Response: 200 | 16ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/user/profile
+Response: 200 | 16ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/config/token-policy
+Response: 200 | 50ms
+Response: 200 | 44ms
+Response: 200 | 44ms
+Incoming: OPTIONS /api/v1/credits/estimate
+Response: 200 | 1ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Response: 200 | 33ms
+Response: 200 | 33ms
+Response: 200 | 35ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/config/token-policy
+Response: 200 | 6ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Response: 200 | 13ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Response: 200 | 19ms
+Response: 200 | 20ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: POST /api/v1/solve_v3_stream
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 66ms
+Response: 200 | 105ms
+build_openai_structured_output: call=None endpoint=responses name=solve_free_minimal_v1 strict=True schema_hash=5b842c6e27aad20c
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 0ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 22ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 7ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: POST /api/v1/solve_v3_stream
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 106ms
+Response: 200 | 180ms
+build_openai_structured_output: call=None endpoint=responses name=solve_free_minimal_v1 strict=True schema_hash=5b842c6e27aad20c
+Incoming: GET /health
+Response: 200 | 1ms
+[QUESTION_CACHE] Stored: 9bc0e1ae6a354cab...
+Incoming: GET /api/v1/sessions/167
+Response: 200 | 11ms
+Incoming: GET /api/v1/sessions/167
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Database connection failed: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+Retrying in 2 seconds...
+Attempting to connect to database (Attempt 2/10)...
+Database connection failed: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+Retrying in 2 seconds...
+Attempting to connect to database (Attempt 3/10)...
+Database connection failed: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+Retrying in 2 seconds...
+Attempting to connect to database (Attempt 4/10)...
+Database connection failed: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+Retrying in 2 seconds...
+Attempting to connect to database (Attempt 5/10)...
+Database connection failed: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+Retrying in 2 seconds...
+Attempting to connect to database (Attempt 6/10)...
+Database connection failed: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+Retrying in 2 seconds...
+Attempting to connect to database (Attempt 7/10)...
+Attempting to connect to database (Attempt 1/10)...
+Database connection failed: (psycopg2.OperationalError) connection to server at "127.0.0.1", port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+Retrying in 2 seconds...
+Attempting to connect to database (Attempt 2/10)...
+Database connection failed: (psycopg2.OperationalError) connection to server at "127.0.0.1", port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+Retrying in 2 seconds...
+Attempting to connect to database (Attempt 3/10)...
+Database connection failed: (psycopg2.OperationalError) connection to server at "127.0.0.1", port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+Retrying in 2 seconds...
+Attempting to connect to database (Attempt 4/10)...
+Database connection failed: (psycopg2.OperationalError) connection to server at "127.0.0.1", port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+Retrying in 2 seconds...
+Attempting to connect to database (Attempt 5/10)...
+Database connection failed: (psycopg2.OperationalError) connection to server at "127.0.0.1", port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+Retrying in 2 seconds...
+Attempting to connect to database (Attempt 6/10)...
+Database connection failed: (psycopg2.OperationalError) connection to server at "127.0.0.1", port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+Retrying in 2 seconds...
+Attempting to connect to database (Attempt 7/10)...
+Database connection failed: (psycopg2.OperationalError) connection to server at "127.0.0.1", port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+Retrying in 2 seconds...
+Attempting to connect to database (Attempt 8/10)...
+Database connection failed: (psycopg2.OperationalError) connection to server at "127.0.0.1", port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+Retrying in 2 seconds...
+Attempting to connect to database (Attempt 9/10)...
+Database connection failed: (psycopg2.OperationalError) connection to server at "127.0.0.1", port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+Retrying in 2 seconds...
+Attempting to connect to database (Attempt 10/10)...
+Database connection failed: (psycopg2.OperationalError) connection to server at "127.0.0.1", port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+Retrying in 2 seconds...

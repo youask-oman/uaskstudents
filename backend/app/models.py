@@ -905,6 +905,9 @@ class SolverOutputAttempt(SQLModel, table=True):
     user_id: Optional[int] = Field(default=None, foreign_key="user.id", index=True)
     session_id: Optional[int] = Field(default=None, foreign_key="chatsession.id", index=True)
     message_id: Optional[int] = Field(default=None, foreign_key="chatmessage.id", index=True)
+
+    user: Optional["User"] = Relationship()
+    chat_session: Optional["ChatSession"] = Relationship()
     
     # Context
     output_format: str = Field(default="freeform", index=True)
@@ -937,13 +940,18 @@ class SolverOutputAttempt(SQLModel, table=True):
     clarification_count: int = Field(default=0)
     clarification_history: Optional[List[dict]] = Field(default=None, sa_column=Column(JSON)) # [{q:..., a:...}]
     
-    # Phase 1 Hardening: Append-only History & Tokens
-    llm_responses: Optional[List[dict]] = Field(default=None, sa_column=Column(JSON)) # Append-only history of all LLM calls
-    validation_events: Optional[List[dict]] = Field(default=None, sa_column=Column(JSON)) # History of validation outcomes
-    
     input_tokens: int = Field(default=0)
     output_tokens: int = Field(default=0)
     total_tokens: int = Field(default=0)
+    
+    # Phase 1: Append-only History
+    llm_responses: Optional[List[dict]] = Field(default=None, sa_column=Column(JSON)) # Append-only history
+    validation_events: Optional[List[dict]] = Field(default=None, sa_column=Column(JSON)) # Validation history
+    
+    # Metrics (A5)
+    latency_ms: Optional[int] = None
+    time_to_first_token_ms: Optional[int] = None
+    provider_model: Optional[str] = Field(default=None, index=True) # provider:model string
 
     
     # Archives & Status

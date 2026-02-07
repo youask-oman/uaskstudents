@@ -8,6 +8,8 @@ services:
       dockerfile: Dockerfile
       target: orchestrator
     container_name: uask_orchestrator
+    command: >
+      bash -c "pip install filetype tiktoken && uvicorn app.main:app --host 0.0.0.0 --port 8000"
     ports:
       - "8000:8000"
     env_file:
@@ -35,7 +37,7 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    read_only: true
+    read_only: false
     tmpfs:
       - /tmp
     security_opt:
@@ -89,7 +91,7 @@ services:
       options:
         max-size: "4m"
         max-file: "2"
-    read_only: true
+    read_only: false
     tmpfs:
       - /tmp
     volumes:
@@ -179,7 +181,7 @@ services:
     restart: unless-stopped
     environment:
       - WATCHTOWER_CLEANUP=true
-      - WATCHTOWER_POLL_INTERVAL=3600  # I added to Check every hour (adjust as needed)
+      - WATCHTOWER_POLL_INTERVAL=3600 # I added to Check every hour (adjust as needed)
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     command: postgres redis
@@ -189,4 +191,5 @@ volumes:
   redis_data:
 
   storage_data:
+
 

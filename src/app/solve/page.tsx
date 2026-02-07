@@ -174,6 +174,13 @@ export default function DashboardPage() {
     const [runtimeDebugError, setRuntimeDebugError] = useState<string | null>(null);
     const [solveStartTime, setSolveStartTime] = useState<number | null>(null);
 
+    // Phase 1: Clarification States
+    const [isClarifying, setIsClarifying] = useState(false);
+    const [clarificationMessage, setClarificationMessage] = useState("");
+    const [clarificationResponse, setClarificationResponse] = useState("");
+    const [activeAttemptId, setActiveAttemptId] = useState<string | null>(null);
+    const [clarificationHistory, setClarificationHistory] = useState<string[]>([]);
+
     const buildRuntimeMetaFromPayload = (payload: unknown, fallbackRequestedMode: string): StreamingRuntimeMeta => {
         const toObject = (value: unknown): Record<string, unknown> =>
             (value && typeof value === "object" ? (value as Record<string, unknown>) : {});
@@ -431,10 +438,55 @@ export default function DashboardPage() {
             }
         };
 
+        const restoreAttempt = async () => {
+            const savedAttemptId = localStorage.getItem("uask.activeAttemptId");
+            const savedQuery = localStorage.getItem("uask.activeQuery");
+            if (savedAttemptId) {
+                console.log("[RESTORE] Found active attempt:", savedAttemptId);
+                setActiveAttemptId(savedAttemptId);
+                if (savedQuery) setQuery(savedQuery);
+
+                try {
+                    setIsSolving(true);
+                    setCurrentStage("Restoring session...");
+                    setSolveStartTime(Date.now());
+
+                    const res = await fetch(`/api/v1/attempt/${savedAttemptId}`);
+                    if (!res.ok) throw new Error("Failed to fetch attempt");
+
+                    const data = await res.json();
+                    if (data.status === "success" && data.session_id) {
+                        // Already solved
+                        localStorage.removeItem("uask.activeAttemptId");
+                        localStorage.removeItem("uask.activeQuery");
+                        router.push(`/chat/${data.session_id}`);
+                    } else if (data.status === "ambiguous") {
+                        setIsClarifying(true);
+                        setClarificationMessage(data.error_message || "Clarification needed.");
+                    } else if (data.status === "failure") {
+                        localStorage.removeItem("uask.activeAttemptId");
+                        localStorage.removeItem("uask.activeQuery");
+                        alert(`Previous attempt failed: ${data.error_message || "Unknown error"}`);
+                    } else if (data.status === "pending" || data.status === "processing") {
+                        // It's still working, but since we lost the stream, we can't easily reconnect 
+                        // to the SAME stream. For Phase 1, we stay in 'solving' state or let it time out.
+                        // Or we could trigger a "resume" logic. 
+                    }
+                } catch (e) {
+                    console.error("[RESTORE] Failed:", e);
+                    localStorage.removeItem("uask.activeAttemptId");
+                } finally {
+                    setIsSolving(false);
+                    setSolveStartTime(null);
+                }
+            }
+        };
+
         fetchHistory();
         fetchOnline();
         loadSubscription();
         loadTokenPolicy();
+        restoreAttempt();
         const interval = setInterval(fetchOnline, 30000);
         return () => clearInterval(interval);
     }, [router]);
@@ -646,7 +698,7 @@ export default function DashboardPage() {
         }
     };
 
-    const handleSolve = async (overrideText?: string, featureOverrides?: FeaturesUsed) => {
+    const handleSolve = async (textOverride?: string, featureOverrides?: Record<string, unknown>) => {
         if (isSolving) return;
         if (!tokenPolicyReady) {
             setInputError("Token policy unavailable. Please refresh.");
@@ -657,24 +709,18 @@ export default function DashboardPage() {
         const mathFieldValue = mathModeEnabled && mathInputRef.current?.getValue
             ? mathInputRef.current.getValue()
             : "";
-        const textToSolve = overrideText ?? (mathFieldValue.trim() ? mathFieldValue : query);
+        const textToSolve = textOverride ?? (mathFieldValue.trim() ? mathFieldValue : query);
 
         const validationError = validateMathQuery(textToSolve);
-        // Errors that can be overridden by user confirmation
         const isOverridableError = validationError === INPUT_ERROR_BLOCKED || validationError === INPUT_ERROR_NOT_MATH;
 
         if (validationError) {
-            // If it's an error we can override, and the user hasn't confirmed yet, block carefully.
-            // If the user HAS confirmed, we ignore this specific error and proceed.
-            // If it's NOT overridable (empty, too short), we always block.
             if (isOverridableError) {
                 if (!mathValidityConfirmed) {
                     setInputError(validationError);
                     return;
                 }
-                // If confirmed, fall through to solve logic
             } else {
-                // Hard block for empty/too short
                 setInputError(validationError);
                 return;
             }
@@ -687,12 +733,17 @@ export default function DashboardPage() {
         setStreamingMeta(null);
         setSolveStartTime(Date.now());
 
+        // Reset Phase 1 Clarification
+        setIsClarifying(false);
+        setClarificationMessage("");
+        setClarificationResponse("");
+        setClarificationHistory([]);
+        setActiveAttemptId(null);
+
         try {
-            // Always use same-origin API route so CSP/connect-src stays on `self`.
             const streamCandidates = ["/api/v1/solve_v3_stream"];
             const requestedMode = selectedSolveTier === 'FREE' ? 'minimal' : 'detailed';
 
-            // Seed runtime metadata immediately so solve popup does not show placeholders.
             void fetchSolveRuntimeMeta(userId, selectedSolveTier, requestedMode)
                 .then((runtimeMeta) => {
                     setStreamingMeta((prev) => ({ ...(prev || {}), ...runtimeMeta }));
@@ -701,8 +752,7 @@ export default function DashboardPage() {
                     console.warn("[SOLVER_STREAM] Runtime meta prefetch failed:", metaErr);
                 });
 
-            console.log(`[SOLVER_STREAM] Host: ${window.location.hostname}, Port: ${window.location.port} -> Candidates: ${streamCandidates.join(", ")}`);
-            const featuresUsed: FeaturesUsed = {
+            const features = {
                 ocr_used: activeTab === 'snap',
                 voice_used: activeTab === 'voice',
                 plot_requested: graphMode !== 'off',
@@ -710,6 +760,7 @@ export default function DashboardPage() {
                 ...(activeTab === 'voice' ? voiceFeatures : {}),
                 ...featureOverrides,
             };
+
             let response: Response | null = null;
             let lastFetchError: unknown = null;
             for (const endpoint of streamCandidates) {
@@ -719,22 +770,16 @@ export default function DashboardPage() {
                         headers: { 'Content-Type': 'application/json' },
                         credentials: 'include',
                         body: JSON.stringify({
-                            // Primary problem input - only one text field
                             confirmed_text: textToSolve,
-                            // Tier-aware mode - legacy mapping + explicit tier
                             requested_mode: requestedMode,
                             tier: selectedSolveTier.toLowerCase(),
-                            // Normalized trusted_context (compact enums)
                             trusted_context: {
                                 learning_mode: selectedGoal,
-                                // Values already normalized from API (CA, CA-ON, 11)
                                 grade_level: trustedProfile?.grade_level || undefined,
                                 region_country: trustedProfile?.region_country || undefined,
                                 region_state_province: trustedProfile?.region_state_province || undefined
                             },
-                            // Feature flags for accounting (not sent to OpenAI)
-                            features_used: featuresUsed,
-                            // Plot/Graph inclusion settings
+                            features_used: features,
                             graph_mode: graphMode,
                             attach_to_step_id: attachToStepId,
                             force_validity: mathValidityConfirmed
@@ -743,17 +788,11 @@ export default function DashboardPage() {
                     break;
                 } catch (fetchErr) {
                     lastFetchError = fetchErr;
-                    console.warn(`[SOLVER_STREAM] Failed endpoint ${endpoint}:`, fetchErr);
                     response = null;
                 }
             }
 
-            if (!response) {
-                throw (lastFetchError instanceof Error ? lastFetchError : new Error("Network error"));
-            }
-
-            console.log(`[SOLVER_STREAM] Response status: ${response.status}, ok: ${response.ok}`);
-
+            if (!response) throw (lastFetchError instanceof Error ? lastFetchError : new Error("Network error"));
             if (!response.ok) {
                 const message = await response.text();
                 throw new Error(message || "Solve request failed");
@@ -772,8 +811,6 @@ export default function DashboardPage() {
 
                 accumulatedBuffer += decoder.decode(value, { stream: true });
                 const lines = accumulatedBuffer.split('\n');
-
-                // Keep the last partial line in the buffer
                 accumulatedBuffer = lines.pop() || "";
 
                 for (const line of lines) {
@@ -782,31 +819,42 @@ export default function DashboardPage() {
 
                     if (trimmedLine.startsWith('event: ')) {
                         currentEvent = trimmedLine.slice(7).trim();
-                        console.log(`[SSE] Event: ${currentEvent}`);
                     } else if (trimmedLine.startsWith('data: ')) {
                         try {
                             const data = JSON.parse(trimmedLine.slice(6));
-                            console.log(`[SSE] Data for ${currentEvent}:`, data);
-
                             if (currentEvent === 'delta') {
                                 setStreamingContent(prev => prev + data.text);
                             } else if (currentEvent === 'stage') {
                                 setCurrentStage(data.name);
                             } else if (currentEvent === 'telemetry') {
-                                const telemetryPayload = data?.telemetry ?? data;
-                                setStreamingTelemetry(telemetryPayload);
+                                setStreamingTelemetry(data?.telemetry ?? data);
                             } else if (currentEvent === 'done') {
-                                console.log("[SSE] Done event received", data);
                                 if (data.ok) {
                                     setSolveProgress(100);
+                                    localStorage.removeItem("uask.activeAttemptId");
+                                    localStorage.removeItem("uask.activeQuery");
                                     setTimeout(() => router.push(`/chat/${data.session_id}`), 500);
+                                } else if (data.error?.code === "ambiguous_response") {
+                                    setIsClarifying(true);
+                                    setClarificationMessage(data.error.refusal || data.error.message);
+                                    setActiveAttemptId(data.error.request_id);
+                                    if (data.error.request_id) {
+                                        localStorage.setItem("uask.activeAttemptId", data.error.request_id);
+                                        localStorage.setItem("uask.activeQuery", textToSolve);
+                                    }
                                 } else {
+                                    localStorage.removeItem("uask.activeAttemptId");
+                                    localStorage.removeItem("uask.activeQuery");
                                     throw new Error(data.error?.message || "Solve failed");
                                 }
                             } else if (currentEvent === 'meta') {
-                                if (data.truncated) console.warn("Response truncated");
                                 const parsedMeta = buildRuntimeMetaFromPayload(data, requestedMode);
                                 setStreamingMeta((prev) => ({ ...(prev || {}), ...parsedMeta }));
+                                if (parsedMeta.request_id) {
+                                    localStorage.setItem("uask.activeAttemptId", parsedMeta.request_id);
+                                    localStorage.setItem("uask.activeQuery", textToSolve);
+                                    setActiveAttemptId(parsedMeta.request_id);
+                                }
                             }
                         } catch (e) {
                             console.error("Error parsing SSE data", e);
@@ -815,7 +863,7 @@ export default function DashboardPage() {
                 }
             }
         } catch (err) {
-            console.error("[SOLVER_STREAM] Error in stream processing:", err);
+            console.error("[SOLVER_STREAM] Error:", err);
             alert((err as Error).message || "Failed to generate solution.");
         } finally {
             setIsSolving(false);
@@ -823,6 +871,53 @@ export default function DashboardPage() {
         }
     };
 
+    const handleClarify = async () => {
+        if (!activeAttemptId || !clarificationResponse.trim() || isSolving) return;
+
+        setIsSolving(true);
+        setSolveStartTime(Date.now());
+        setCurrentStage("Resolving ambiguity...");
+
+        try {
+            const userId = localStorage.getItem("user_id") || "1";
+            const res = await fetch(`/api/v1/solve/clarify`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    attempt_id: activeAttemptId,
+                    user_id: userId,
+                    user_response: clarificationResponse
+                })
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || "Clarification failed");
+            }
+
+            const data = await res.json();
+            if (data.status === "success" && data.session_id) {
+                setSolveProgress(100);
+                localStorage.removeItem("uask.activeAttemptId");
+                localStorage.removeItem("uask.activeQuery");
+                setTimeout(() => router.push(`/chat/${data.session_id}`), 500);
+            } else if (data.status === "ambiguous") {
+                setClarificationHistory(prev => [...prev, clarificationResponse]);
+                setClarificationMessage(data.clarifier_question || "Still ambiguous. Please provide more detail.");
+                setClarificationResponse("");
+            } else {
+                localStorage.removeItem("uask.activeAttemptId");
+                localStorage.removeItem("uask.activeQuery");
+                throw new Error(data.error || "Ambiguity resolution failed.");
+            }
+        } catch (err) {
+            console.error("[CLARIFY] Error:", err);
+            alert((err as Error).message || "Failed to clarify.");
+        } finally {
+            setIsSolving(false);
+            setSolveStartTime(null);
+        }
+    };
     useEffect(() => {
         if (!isSolving || !solveStartTime) {
             setSolveProgress(0);
@@ -1009,7 +1104,65 @@ export default function DashboardPage() {
 
                             {/* Tab Content */}
                             <div className="p-6">
-                                {(activeTab === "text" || activeTab === "snap") && (
+                                {isClarifying && (
+                                    <div className="mb-6 animate-in fade-in slide-in-from-top-4 duration-500">
+                                        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-6 shadow-sm">
+                                            <div className="flex items-start gap-4 mb-4">
+                                                <div className="mt-1 bg-amber-100 dark:bg-amber-900/40 p-2 rounded-lg">
+                                                    <span className="material-symbols-outlined text-amber-600 dark:text-amber-400">help_center</span>
+                                                </div>
+                                                <div className="flex-1">
+                                                    <h3 className="text-lg font-bold text-amber-900 dark:text-amber-100 mb-1">Clarification Needed</h3>
+                                                    <p className="text-amber-800/80 dark:text-amber-200/80 text-sm leading-relaxed">
+                                                        {clarificationMessage}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {clarificationHistory.length > 0 && (
+                                                <div className="mb-4 pl-12 space-y-2 opacity-60">
+                                                    {clarificationHistory.map((hist, i) => (
+                                                        <div key={i} className="text-xs italic border-l-2 border-amber-200 dark:border-amber-800 pl-3 py-1">
+                                                            &ldquo;{hist}&rdquo;
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            <div className="pl-12">
+                                                <textarea
+                                                    value={clarificationResponse}
+                                                    onChange={(e) => setClarificationResponse(e.target.value)}
+                                                    placeholder="Provide more detail here..."
+                                                    className="w-full bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-amber-500/20 transition-all resize-none min-h-[100px]"
+                                                />
+                                                <div className="mt-4 flex gap-3">
+                                                    <button
+                                                        onClick={handleClarify}
+                                                        disabled={isSolving || !clarificationResponse.trim()}
+                                                        className="bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white px-6 py-2 rounded-lg font-bold shadow-lg shadow-amber-600/20 transition-all flex items-center gap-2"
+                                                    >
+                                                        {isSolving ? "Submitting..." : "Send Clarification"}
+                                                        <span className="material-symbols-outlined text-sm">send</span>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            setIsClarifying(false);
+                                                            localStorage.removeItem("uask.activeAttemptId");
+                                                            localStorage.removeItem("uask.activeQuery");
+                                                            setActiveAttemptId(null);
+                                                        }}
+                                                        className="text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 px-4 py-2 rounded-lg font-medium transition-colors text-sm"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {(!isClarifying && (activeTab === "text" || activeTab === "snap")) && (
                                     <div className="mb-3 flex justify-end">
                                         <button
                                             type="button"
@@ -1364,7 +1517,7 @@ export default function DashboardPage() {
                                         </div>
                                     </div>
                                 )}
-                                {activeTab === 'voice' && (
+                                {(!isClarifying && activeTab === 'voice') && (
                                     <div className="flex flex-col gap-6 items-center justify-center min-h-[400px]">
                                         {voiceStage === 'idle' && (
                                             <div className="text-center space-y-6">

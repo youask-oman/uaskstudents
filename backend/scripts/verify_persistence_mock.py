@@ -63,7 +63,7 @@ async def verify_persistence():
     
     try:
         # Mock SolverV3
-        with patch("app.api.get_solver_v3") as mock_get_solver:
+        with patch("app.services.solver_v3.get_solver_v3") as mock_get_solver:
             mock_solver_instance = AsyncMock()
             mock_solver_instance.solve.return_value = {
                 "problem": {"original_text": "Test Question", "normalized_text": "Test Question", "detected_tasks": []},

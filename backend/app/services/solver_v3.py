@@ -839,10 +839,8 @@ class SolverV3:
 
                         t_val_start = time.perf_counter()
 
-                        validation_success, validation_error, validated_data, error_list = self._check_status_and_validate(
-
+                        validation_success, validation_error, validated_data, error_list, is_ambiguous = self._check_status_and_validate(
                             response_data, status_info, openai_schema_wrapper["schema"], raw_text=raw_output_text
-
                         )
 
                         telemetry["latency_ms_validation"] = int((time.perf_counter() - t_val_start) * 1000)
@@ -852,7 +850,10 @@ class SolverV3:
                              try:
                                  attempt = db_session.exec(select(SolverOutputAttempt).where(SolverOutputAttempt.attempt_id == attempt_id)).first()
                                  if attempt:
-                                     if validation_success:
+                                     if is_ambiguous:
+                                         attempt.status = "ambiguous"
+                                         attempt.error_message = validation_error or "LLM requested clarification (refusal)."
+                                     elif validation_success:
                                          attempt.status = "success"
                                          attempt.validation_json = validated_data
                                          attempt.validation_errors = None # Clear previous errors if any
@@ -1295,7 +1296,7 @@ class SolverV3:
 
                 yield {
 
-                    "type": "error",
+                    "type": "failure",
 
                     "error": {
 
@@ -1363,8 +1364,7 @@ class SolverV3:
 
 
 
-            schema_payload = json_schema_config.get("schema") if isinstance(json_schema_config, dict) and "schema" in json_schema_config else json_schema_config
-
+            schema_payload = json_schema_config
             response_stream = client.generate_stream(
 
                 messages=messages,
@@ -1450,21 +1450,35 @@ class SolverV3:
             if not telemetry.get("output_tokens"):
 
                 telemetry["output_tokens"] = len(full_content) // 4
-
                 telemetry["total_tokens"] = telemetry.get("input_tokens", 0) + telemetry["output_tokens"]
-
             telemetry["latency_ms_total"] = int((time.perf_counter() - start_time_perf) * 1000)
-
             
-
-            # Yield telemetry at end
-
-            yield {"type": "telemetry", "telemetry": telemetry}
-
-
+            # A3: Append-only history entry
+            history_entry = {
+                "kind": "primary",
+                "ts": datetime.utcnow().isoformat(),
+                "model": telemetry.get("model"),
+                "prompt_template_id": telemetry.get("prompt_id"),
+                "schema_id": telemetry.get("schema_id"),
+                "strict": True,
+                "raw_text": full_content,
+                "parsed_json": None, # Will be parsed by caller if needed
+                "usage": {
+                    "input_tokens": telemetry.get("input_tokens"),
+                    "output_tokens": telemetry.get("output_tokens"),
+                    "total_tokens": telemetry.get("total_tokens")
+                },
+                "latency_ms": telemetry.get("latency_ms_total"),
+                "finish_reason": telemetry.get("status", {}).get("finish_reason") if isinstance(telemetry.get("status"), dict) else "completed"
+            }
+            
+            yield {
+                "type": "usage",
+                "telemetry": telemetry,
+                "history_entry": history_entry
+            }
 
         except Exception as e:
-
             if trace:
 
                 print(f"[SOLVER_V3_STREAM] [ERROR] FATAL: {e}")
@@ -1557,13 +1571,13 @@ class SolverV3:
 
         raw_text: Optional[str] = None,
 
-    ) -> Tuple[bool, Optional[str], Optional[Dict], List[Dict[str, str]]]:
+    ) -> Tuple[bool, Optional[str], Optional[Dict], List[Dict[str, str]], bool]:
 
         """
 
         Check upstream status/finish_reason AND validate against schema.
 
-        Returns: (success, error_msg, validated_data)
+        Returns: (success, error_msg, validated_data, issues, is_ambiguous)
 
         """
 
@@ -1578,48 +1592,50 @@ class SolverV3:
         # Responses API "incomplete"
 
         if status == "incomplete":
-
-            return False, f"Upstream Incomplete (reason={status_info.get('incomplete_reason')})", None, []
+            return False, f"Upstream Incomplete (reason={status_info.get('incomplete_reason')})", None, [], False
 
         
 
         # Chat Completions "length"
 
         if finish_reason == "length":
-
-            return False, "Upstream Truncated (length)", None, []
+            return False, "Upstream Truncated (length)", None, [], False
 
             
 
         # 2. Check Data Existence
 
         if not data:
-
-             return False, "Empty Data", None, [{"type": "parse_error", "message": "empty response", "path": "$"}]
+             return False, "Empty Data", None, [{"type": "parse_error", "message": "empty response", "path": "$"}], False
 
 
 
         if isinstance(data, dict) and "_raw" in data:
-
             msg = "Response was not valid JSON."
-
             issues = [{"type": "parse_error", "message": msg, "path": "$"}]
-
-            return False, msg, None, issues
-
+            return False, msg, None, issues, False
 
 
-        # 3. Schema Validation (Draft 2020-12 first)
 
+        # 3. Check for Refusal (Ambiguity)
+        if isinstance(data, dict) and data.get("refusal"):
+            refusal_body = data.get("refusal")
+            # If it's the standard OpenAI refusal object OR just a truthy refusal
+            is_ref = False
+            if isinstance(refusal_body, dict):
+                is_ref = refusal_body.get("is_refusal", True)
+            else:
+                is_ref = bool(refusal_body)
+            
+            if is_ref:
+                return False, "LLM Refusal: Problem is ambiguous or out of scope.", data, [], True
+
+        # 4. Schema Validation (Draft 2020-12 first)
         schema_issues = self._validate_with_draft202012(data, schema)
-
         if schema_issues:
+            return False, "Schema Validation Failed", None, schema_issues, False
 
-            return False, "Schema Validation Failed", None, schema_issues
-
-
-
-        return True, None, data, []
+        return True, None, data, [], False
 
 
 

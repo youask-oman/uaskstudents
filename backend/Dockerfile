@@ -35,6 +35,7 @@ RUN pip install --only-binary=:all: psycopg2-binary==2.9.11
 COPY requirements.base.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install -r requirements.base.txt
+RUN pip install tiktoken>=0.5.0 filetype>=1.2.0
 
 # ----------------------------
 # App source layer (shared)
