@@ -1457,3 +1457,113 @@ Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
 Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
 Prompt binding integrity OK: active_bindings=8 active_pairs=8
 Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Attempting to connect to database (Attempt 1/10)...
+Attempting to connect to database (Attempt 1/10)...
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Attempting to connect to database (Attempt 1/10)...
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Attempting to connect to database (Attempt 1/10)...
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8

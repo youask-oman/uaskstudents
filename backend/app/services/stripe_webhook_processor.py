@@ -6,6 +6,7 @@ from app.models import (
 )
 from app.services.credit_wallet_service import credit_wallet_service
 from app.services.subscription_service import subscription_service
+from app.services.invoice_service import invoice_service
 from datetime import datetime
 import logging
 
@@ -32,8 +33,12 @@ class StripeWebhookProcessor:
                 self.handle_subscription_deleted(session, data_object)
             elif event_type == "invoice.paid":
                 self.handle_invoice_paid(session, data_object)
+            elif event_type == "invoice.finalized":
+                self.handle_invoice_finalized(session, data_object)
             elif event_type == "invoice.payment_failed":
                 self.handle_invoice_payment_failed(session, data_object)
+            elif event_type == "charge.refunded":
+                self.handle_charge_refunded(session, data_object)
             else:
                 logging.info(f"Stripe event {event_type} ignored.")
                 stripe_event.process_status = "IGNORED"
@@ -161,6 +166,13 @@ class StripeWebhookProcessor:
         order.fulfill_usage_ledger_id = ledger.id
         session.add(order)
         
+        # 5. Create Invoice (Receipt)
+        try:
+            invoice_service.create_topup_invoice(session, order, payment)
+        except Exception as e:
+            logging.error(f"Error creating top-up invoice for order {order.id}: {e}")
+            # Do not fail fulfillment if only invoice creation fails, but log it.
+            
         session.commit()
         logging.info(f"Top-up fulfilled: Order {order.id}, User {order.user_id}, Credits {order.credits}")
 
@@ -254,6 +266,9 @@ class StripeWebhookProcessor:
             session.commit()
 
     def handle_invoice_paid(self, session: Session, invoice_obj: dict):
+        # Mirror to local Invoice table
+        invoice_service.upsert_subscription_invoice(session, invoice_obj)
+
         stripe_sub_id = invoice_obj.get("subscription")
         if stripe_sub_id:
             billing_link = session.exec(select(SubscriptionBillingLink).where(
@@ -268,6 +283,23 @@ class StripeWebhookProcessor:
                     internal_sub.status = "active"
                     session.add(internal_sub)
                 session.commit()
+
+    def handle_invoice_finalized(self, session: Session, invoice_obj: dict):
+        # Mirror to local Invoice table
+        invoice_service.upsert_subscription_invoice(session, invoice_obj)
+
+    def handle_charge_refunded(self, session: Session, charge_obj: dict):
+        pi_id = charge_obj.get("payment_intent")
+        if not pi_id:
+            return
+            
+        # Find related invoice
+        from app.models import Invoice
+        invoice = session.exec(select(Invoice).where(Invoice.stripe_payment_intent_id == pi_id)).first()
+        if invoice:
+            amount_refunded = charge_obj.get("amount_refunded", 0) / 100.0
+            reason = charge_obj.get("outcome", {}).get("reason", "Customer Requested")
+            invoice_service.create_adjustment_invoice(session, invoice, amount_refunded, reason)
 
     def handle_invoice_payment_failed(self, session: Session, invoice_obj: dict):
         stripe_sub_id = invoice_obj.get("subscription")

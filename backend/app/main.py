@@ -178,10 +178,12 @@ from app.api_admin import admin_router
 from app.api_admin_payments import router as admin_payments_router
 from app.api_topups import router as topup_router
 from app.api_stripe import router as stripe_router
+from app.api_billing import router as billing_router
 
 app.include_router(api_router, prefix="/api/v1")
 app.include_router(topup_router, prefix="/api/v1")
 app.include_router(stripe_router, prefix="/api/v1")
+app.include_router(billing_router, prefix="/api/v1")
 app.include_router(admin_router)
 app.include_router(admin_payments_router)
 

@@ -1016,3 +1016,90 @@ class StripePriceMap(SQLModel, table=True):
     active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
+class InvoiceKind(str, Enum):
+    TOPUP = "TOPUP"
+    SUBSCRIPTION = "SUBSCRIPTION"
+    ADJUSTMENT = "ADJUSTMENT"
+
+class InvoiceStatus(str, Enum):
+    DRAFT = "DRAFT"
+    OPEN = "OPEN"
+    PAID = "PAID"
+    VOID = "VOID"
+    UNCOLLECTIBLE = "UNCOLLECTIBLE"
+    REFUNDED = "REFUNDED"
+    PARTIALLY_REFUNDED = "PARTIALLY_REFUNDED"
+
+class TaxMode(str, Enum):
+    NONE = "NONE"
+    ESTIMATED = "ESTIMATED"
+    FINAL = "FINAL"
+
+class InvoiceLineItemKind(str, Enum):
+    TOPUP_CREDITS = "TOPUP_CREDITS"
+    SUBSCRIPTION_FEE = "SUBSCRIPTION_FEE"
+    USAGE_CHARGE = "USAGE_CHARGE"
+    REFUND = "REFUND"
+    DISCOUNT = "DISCOUNT"
+    TAX = "TAX"
+    ADJUSTMENT = "ADJUSTMENT"
+
+class Invoice(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    subscription_id: Optional[int] = Field(default=None, foreign_key="subscription.id", index=True)
+    topup_order_id: Optional[int] = Field(default=None, foreign_key="topuporder.id", index=True) 
+    
+    stripe_invoice_id: Optional[str] = Field(default=None, unique=True, index=True)
+    stripe_payment_intent_id: Optional[str] = Field(default=None, index=True)
+    
+    invoice_number: str = Field(unique=True, index=True)
+    kind: InvoiceKind = Field(index=True)
+    status: InvoiceStatus = Field(default=InvoiceStatus.DRAFT, index=True)
+    
+    currency: str = Field(default="USD")
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+    
+    subtotal_amount: float = Field(default=0.0)
+    tax_amount: float = Field(default=0.0)
+    total_amount: float = Field(default=0.0)
+    
+    amount_paid: float = Field(default=0.0)
+    amount_due: float = Field(default=0.0)
+    
+    tax_mode: TaxMode = Field(default=TaxMode.NONE)
+    tax_rate: Optional[float] = None
+    
+    billing_address_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    
+    issued_at: Optional[datetime] = None
+    due_at: Optional[datetime] = None
+    paid_at: Optional[datetime] = None
+    
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class InvoiceLineItem(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    invoice_id: int = Field(foreign_key="invoice.id", index=True)
+    
+    kind: InvoiceLineItemKind
+    description: str
+    quantity: float = Field(default=1.0)
+    unit_price: float
+    amount: float
+    currency: str = Field(default="USD")
+    
+    billing_ledger_id: Optional[int] = Field(default=None, foreign_key="billingledger.id")
+    payment_id: Optional[int] = Field(default=None, foreign_key="payment.id")
+    
+    metadata_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class InvoiceSequence(SQLModel, table=True):
+    """Simple atomic sequence for invoice numbering per year."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    year: int = Field(unique=True, index=True)
+    last_value: int = Field(default=0)
+

@@ -44,6 +44,17 @@ type StripeEventItem = {
     last_error?: string;
 };
 
+type InvoiceItem = {
+    id: number;
+    invoice_number: string;
+    kind: string;
+    status: string;
+    total_amount: number;
+    currency: string;
+    created_at: string;
+    user_id: number;
+};
+
 type ReconciliationItem = {
     id: number;
     level: string;
@@ -88,6 +99,7 @@ export default function AdminPaymentsPage() {
     const [pricing, setPricing] = useState<PricingItem[]>([]);
     const [stripeEvents, setStripeEvents] = useState<StripeEventItem[]>([]);
     const [reconciliation, setReconciliation] = useState<ReconciliationItem[]>([]);
+    const [invoices, setInvoices] = useState<InvoiceItem[]>([]);
 
     // Pagination & Filtering
     const [page, setPage] = useState(1);
@@ -124,6 +136,11 @@ export default function AdminPaymentsPage() {
         } else if (tab === "pricing") {
             fetchAdmin("/pricing")
                 .then(data => setPricing(data))
+                .catch(err => console.error(err))
+                .finally(() => setLoading(false));
+        } else if (tab === "invoices") {
+            fetchAdmin(`/invoices?${params.toString()}`)
+                .then(data => { setInvoices(data.data); setTotal(data.total); })
                 .catch(err => console.error(err))
                 .finally(() => setLoading(false));
         } else if (tab === "stripe_events") {
@@ -295,6 +312,88 @@ export default function AdminPaymentsPage() {
         </div>
     );
 
+    const renderInvoices = () => (
+        <div className="p-8">
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Invoices & Receipts</h2>
+                <div className="flex gap-4">
+                    <select
+                        className="px-4 py-2 rounded-lg border border-slate-200 dark:bg-slate-800 dark:border-slate-700 text-sm"
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                    >
+                        <option value="">All Statuses</option>
+                        <option value="PAID">Paid</option>
+                        <option value="OPEN">Open</option>
+                        <option value="VOID">Void</option>
+                        <option value="REFUNDED">Refunded</option>
+                    </select>
+                </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+                        <tr>
+                            <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">Date</th>
+                            <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">Number</th>
+                            <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">User</th>
+                            <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">Kind</th>
+                            <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">Total</th>
+                            <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400">Status</th>
+                            <th className="px-6 py-3 font-semibold text-slate-600 dark:text-slate-400 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                        {invoices.map(inv => (
+                            <tr key={inv.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                <td className="px-6 py-3 text-slate-500 whitespace-nowrap">{new Date(inv.created_at).toLocaleDateString()}</td>
+                                <td className="px-6 py-3 font-mono text-xs">{inv.invoice_number}</td>
+                                <td className="px-6 py-3 text-xs">User #{inv.user_id}</td>
+                                <td className="px-6 py-3">
+                                    <span className="text-[10px] font-bold uppercase text-slate-400">{inv.kind}</span>
+                                </td>
+                                <td className="px-6 py-3 font-bold">
+                                    {inv.currency} ${inv.total_amount.toFixed(2)}
+                                </td>
+                                <td className="px-6 py-3">
+                                    <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${inv.status === 'PAID' ? 'bg-green-100 text-green-700' :
+                                        inv.status === 'REFUNDED' ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-700'
+                                        }`}>
+                                        {inv.status}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-3 text-right">
+                                    <a
+                                        href={`/api/admin/payments/invoices/${inv.id}/html`}
+                                        target="_blank"
+                                        className="text-emerald-600 hover:text-emerald-700 font-medium text-xs"
+                                    >
+                                        View HTML
+                                    </a>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                    <p className="text-xs text-slate-500">Showing {invoices.length} of {total} records</p>
+                    <div className="flex gap-2">
+                        <button
+                            disabled={page === 1}
+                            onClick={() => setPage(p => p - 1)}
+                            className="px-3 py-1 rounded border border-slate-200 text-xs font-medium disabled:opacity-50"
+                        >Prev</button>
+                        <button
+                            disabled={invoices.length < 25}
+                            onClick={() => setPage(p => p + 1)}
+                            className="px-3 py-1 rounded border border-slate-200 text-xs font-medium disabled:opacity-50"
+                        >Next</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
     const renderStripeEvents = () => (
         <div className="p-8">
             <div className="flex justify-between items-center mb-6">
@@ -422,6 +521,7 @@ export default function AdminPaymentsPage() {
             {tab === "overview" && renderOverview()}
             {tab === "requests" && renderRequests()}
             {tab === "pricing" && renderPricing()}
+            {tab === "invoices" && renderInvoices()}
             {tab === "stripe_events" && renderStripeEvents()}
             {tab === "reconciliation" && renderReconciliation()}
             {tab === "credits" && <div className="p-8">Credits View (Coming Soon)</div>}

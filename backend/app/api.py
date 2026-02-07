@@ -1026,6 +1026,9 @@ class SubscriptionResponse(BaseModel):
     plan: SubscriptionPlanInfo
     usage: SubscriptionUsage
     profile: SubscriptionProfile
+    status: Optional[str] = None
+    current_period_start: Optional[datetime] = None
+    current_period_end: Optional[datetime] = None
     allow_detailed: bool
     allow_ocr: bool
     allow_voice: bool
@@ -1413,17 +1416,16 @@ def build_subscription_response(
         display_name=user.full_name
     )
 
-    allow_detailed = plan_info.slug != "free"
-    allow_ocr = usage_info.ocr_used < usage_info.ocr_limit
-    allow_voice = usage_info.voice_used < usage_info.voice_limit
-
     return SubscriptionResponse(
         plan=plan_info,
         usage=usage_info,
         profile=profile_info,
-        allow_detailed=allow_detailed,
-        allow_ocr=allow_ocr,
-        allow_voice=allow_voice
+        status=subscription.status,
+        current_period_start=subscription.current_period_start,
+        current_period_end=subscription.current_period_end,
+        allow_detailed=features.get("allow_detailed", plan_info.slug != "free"),
+        allow_ocr=features.get("allow_ocr", True),
+        allow_voice=features.get("allow_voice", True)
     )
 @api_router.get("/me/subscription", response_model=SubscriptionResponse)
 async def get_my_subscription(

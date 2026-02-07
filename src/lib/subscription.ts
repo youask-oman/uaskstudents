@@ -44,6 +44,7 @@ export interface SubscriptionPlan {
 export interface SubscriptionUsage {
     credits_used: number;
     credits_remaining: number;
+    credits_balance: number;
     ocr_used: number;
     ocr_limit: number;
     voice_used: number;
@@ -63,6 +64,9 @@ export interface SubscriptionResponse {
     plan: SubscriptionPlan;
     usage: SubscriptionUsage;
     profile: SubscriptionProfile;
+    status: string;
+    current_period_start: string;
+    current_period_end: string;
     allow_detailed: boolean;
     allow_ocr: boolean;
     allow_voice: boolean;
@@ -92,7 +96,7 @@ export interface CreditsEstimateResponse {
  * Fetch subscription details for tier-aware solve UX.
  */
 export async function fetchSubscription(userId: string): Promise<SubscriptionResponse> {
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
     const res = await fetch(`${baseUrl}/api/v1/users/me/subscription?user_id=${userId}`);
 
     if (!res.ok) {
@@ -121,7 +125,7 @@ export async function fetchCreditsEstimate(
         };
     }
 ): Promise<CreditsEstimateResponse> {
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
     const res = await fetch(`${baseUrl}/api/v1/credits/estimate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -147,16 +151,10 @@ export function calculateSolveCost(
 
     // Check for V1 schema
     if (multipliers.version === 1 && multipliers.credits) {
-        // Map frontend "answerStyle" to Tier
-        // quick -> Free Tier Quality (roughly)
-        // tutor -> Standard Tier Quality/Reasoning
-        // This mapping is loose on frontend; strict logic is in backend.
-        // But for estimation:
         const tier = answerStyle === "tutor" ? "standard" : "free";
         const tierConfig = multipliers.credits.solve[tier];
 
         if (voiceUsed) return tierConfig.voice;
-        // Assuming OCR implies Image for now in simple estimator
         if (ocrUsed) return tierConfig.snap_image;
         return tierConfig.text;
     }

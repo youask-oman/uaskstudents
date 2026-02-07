@@ -2,9 +2,10 @@
 from typing import List, Optional
 from sqlmodel import Session, select
 from datetime import datetime
-from app.models import TopUpProduct, User, Payment, CreditLot, UsageLedger
+from app.models import TopUpProduct, User, Payment, CreditLot, UsageLedger, TopUpOrder
 from app.services.credit_wallet_service import credit_wallet_service
 from app.services.subscription_service import subscription_service
+from app.services.invoice_service import invoice_service
 
 class TopUpService:
     def list_products(self, session: Session) -> List[TopUpProduct]:
@@ -134,6 +135,35 @@ class TopUpService:
         )
         session.add(ledger)
         
+        # 4. Create/Complete TopUpOrder (For Invoicing)
+        order = session.exec(select(TopUpOrder).where(
+            (TopUpOrder.stripe_payment_intent_id == external_ref) | 
+            (TopUpOrder.stripe_checkout_session_id == external_ref)
+        )).first()
+        
+        if not order:
+            # Create a manual order record for the invoice
+            order = TopUpOrder(
+                user_id=user_id,
+                topup_product_id=product.id,
+                credits=float(product.credits),
+                price_usd=product.price_usd,
+                status="FULFILLED",
+                stripe_payment_intent_id=external_ref
+            )
+            session.add(order)
+            session.flush()
+        else:
+            order.status = "FULFILLED"
+            session.add(order)
+
+        # 5. Create Invoice
+        try:
+            invoice_service.create_topup_invoice(session, order, payment)
+        except Exception as e:
+            import logging
+            logging.error(f"Error creating manual top-up invoice: {e}")
+
         session.commit()
         session.refresh(lot)
         

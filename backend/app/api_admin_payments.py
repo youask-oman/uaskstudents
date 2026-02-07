@@ -340,3 +340,67 @@ def get_subscription_billing_detail(
     return {
         "billing_link": link
     }
+
+
+# --- Invoicing ---
+
+from app.models import Invoice, InvoiceLineItem
+
+@router.get("/invoices")
+def list_invoices(
+    page: int = 1,
+    page_size: int = 25,
+    user_id: Optional[int] = None,
+    kind: Optional[str] = None,
+    status: Optional[str] = None,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_staff_user)
+):
+    offset = (page - 1) * page_size
+    query = select(Invoice)
+    if user_id:
+        query = query.where(Invoice.user_id == user_id)
+    if kind:
+        query = query.where(Invoice.kind == kind)
+    if status:
+        query = query.where(Invoice.status == status)
+        
+    total_count = session.exec(select(func.count()).select_from(query.subquery())).one()
+    invoices = session.exec(query.order_by(desc(Invoice.created_at)).offset(offset).limit(page_size)).all()
+    return {"total": total_count, "page": page, "page_size": page_size, "data": invoices}
+
+@router.get("/invoices/{invoice_id}")
+def get_invoice_detail(
+    invoice_id: int,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_staff_user)
+):
+    invoice = session.get(Invoice, invoice_id)
+    if not invoice:
+        raise HTTPException(404, detail="Invoice not found")
+        
+    lines = session.exec(select(InvoiceLineItem).where(InvoiceLineItem.invoice_id == invoice_id)).all()
+    return {
+        "invoice": invoice,
+        "lines": lines
+    }
+
+@router.get("/invoices/{invoice_id}/html")
+def get_invoice_html(
+    invoice_id: int,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_staff_user)
+):
+    from app.services.invoice_service import invoice_service
+    invoice = session.get(Invoice, invoice_id)
+    if not invoice:
+        raise HTTPException(404, detail="Invoice not found")
+    
+    invoice_user = session.get(User, invoice.user_id)
+    lines = session.exec(select(InvoiceLineItem).where(InvoiceLineItem.invoice_id == invoice_id)).all()
+    
+    user_name = invoice_user.full_name if invoice_user else f"User #{invoice.user_id}"
+    user_email = invoice_user.email if invoice_user else "---"
+
+    html = invoice_service.render_invoice_html(invoice, lines, user_name, user_email)
+    return StreamingResponse(iter([html]), media_type="text/html")
