@@ -85,6 +85,7 @@ from app.services.school_import_service import normalize_country_code
 from app.utils.perf_timer import perf_emit, perf_enabled
 from app.services.response_mapper import normalize_raw_llm_response
 from app.services.solver import solver_service
+from app.services.intent import should_require_visual
 
 
 
@@ -3803,7 +3804,31 @@ async def solve_problem(
         except:
             print("Failed to write to debug log")
         traceback.print_exc()
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+    # Phase 1: Create Attempt Record Immediately
+    attempt_id = str(uuid.uuid4())
+    req_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+    try:
+        new_attempt = SolverOutputAttempt(
+            request_id=req_id,
+            attempt_id=attempt_id,
+            user_id=user_id,
+            status="pending",
+            input_text_raw=body.text_query, # Raw input from body
+            created_at=datetime.utcnow()
+        )
+        session.add(new_attempt)
+        session.commit()
+        
+        # Structured Log
+        print(f"request_id={req_id} attempt_id={attempt_id} phase=solve_start status=pending")
+    except Exception as e:
+        print(f"[API] Failed to create attempt record: {e}")
+        # We continue even if tracking fails, but log it.
+        # Ideally we should fail if strict audit is required, but for availability we proceed.
+
 
     base_query = f"{body.text_query or ''}".strip()
     
@@ -3978,6 +4003,17 @@ async def solve_problem(
     )
     try:
         print(f"[API] Using Solver V3 for: {final_prompt[:50]}...")
+        
+        # Update attempt input text with final resolved prompt
+        if attempt_id:
+             try:
+                 att = session.exec(select(SolverOutputAttempt).where(SolverOutputAttempt.attempt_id == attempt_id)).first()
+                 if att:
+                     att.input_text_normalized = final_prompt
+                     session.add(att)
+                     session.commit()
+             except: pass
+
         solution_data = await solver.solve(
             problem_text=final_prompt,
             context=context,
@@ -3987,7 +4023,9 @@ async def solve_problem(
             db_session=session,
             requested_mode=requested_mode,
             trusted_context=body.trusted_context,
-            max_output_tokens=effective_max_tokens
+            max_output_tokens=effective_max_tokens,
+            attempt_id=attempt_id, # Phase 1
+            image_url=body.image_url
         )
         print(f"[API] Solver V3 returned successfully")
         
@@ -3998,6 +4036,28 @@ async def solve_problem(
         
     except Exception as e:
         print(f"[API_ERROR] Solver V3 failed: {type(e).__name__}: {e}")
+        # Structured Log (Failure)
+        # Check if req_id is bound; it should be as it's at top of function
+        if 'req_id' not in locals(): req_id = "unknown"
+        if 'attempt_id' not in locals(): attempt_id = "unknown"
+        print(f"request_id={req_id} attempt_id={attempt_id} phase=solve_end status=failure error={str(e)}")
+        
+        session.rollback() # Ensure session is clean for status update
+        
+        # Fail the attempt if it threw exception (e.g. RateLimit, Overloaded)
+        # Fail the attempt if it threw exception (e.g. RateLimit, Overloaded)
+        if attempt_id:
+            try:
+                att = session.exec(select(SolverOutputAttempt).where(SolverOutputAttempt.attempt_id == attempt_id)).first()
+                if att:
+                    att.status = "error"
+                    att.error_message = str(e)
+                    session.add(att)
+                    session.commit()
+            except Exception as update_err:
+                print(f"[API_ERROR] Failed to update attempt status: {update_err}")
+                # We don't re-raise here to allow the main error to propagate via HTTPException
+
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Solver V3 failed: {str(e)}")
@@ -4089,6 +4149,9 @@ async def solve_problem(
     session.commit()
 
     # Transformation complete, visuals handled at runtime in frontend
+    # Structured Log (Success)
+    print(f"request_id={req_id} attempt_id={attempt_id} phase=solve_end status=success latency={telemetry_data.get('latency_ms_total')}ms")
+    
     return SolveResponse(
         session_id=new_chat.id,
         solution=solution_data,
@@ -9657,3 +9720,125 @@ Format: Problem → Steps → Final Answer"""
         return {
             "reply": "❌ Sorry, I encountered an error processing your problem. Please try again or contact support at uask.ai"
         }
+
+@api_router.post("/solve/clarify", response_model=SolveResponse)
+async def solve_clarify(
+    request: Request,
+    attempt_id: str = Body(..., embed=True),
+    user_response: str = Body(..., embed=True),
+    session: Session = Depends(get_session)
+):
+    """
+    Phase 1: Resume an ambiguous attempt with user clarification.
+    """
+    # 1. Fetch Attempt
+    attempt = session.exec(select(SolverOutputAttempt).where(SolverOutputAttempt.attempt_id == attempt_id)).first()
+    if not attempt:
+        raise HTTPException(status_code=404, detail="Attempt not found")
+        
+    if attempt.status != "ambiguous" and attempt.status != "failure" and attempt.status != "processing":
+        # We allow 'processing' if resuming from a crash? No, 'ambiguous' is the main use case.
+        # But we also want to allow clarifications on failures if the failure was "I don't understand".
+        # For now, we allow 'ambiguous' and 'failure'.
+        if attempt.status == "success":
+             raise HTTPException(status_code=400, detail="Goal already succeeded.")
+
+    if attempt.clarification_count >= 2:
+        # Phase 1 Hardening: Persist Failure Code
+        attempt.status = "failure"
+        attempt.failure_code = "AMBIGUOUS_AFTER_CLARIFICATIONS"
+        attempt.error_message = "Max clarifications reached (2). Please start a new query."
+        session.add(attempt)
+        session.commit()
+        
+        print(f"request_id={attempt.request_id} attempt_id={attempt_id} phase=clarify status=failure failure_code=AMBIGUOUS_AFTER_CLARIFICATIONS")
+        raise HTTPException(status_code=400, detail="Max clarifications reached (2). Please start a new query.")
+
+    # 2. Update History
+    history = attempt.clarification_history or []
+    if not isinstance(history, list): history = []
+    
+    last_question = attempt.error_message or "Clarification needed"
+    
+    history.append({
+        "question": last_question,
+        "answer": user_response,
+        "timestamp": datetime.utcnow().isoformat()
+    })
+    
+    attempt.clarification_history = history
+    attempt.clarification_count += 1
+    attempt.status = "processing"
+    # Clear previous error/failure code since we are retrying
+    attempt.failure_code = None 
+    
+    session.add(attempt)
+    session.commit()
+    session.refresh(attempt)
+    
+    print(f"request_id={attempt.request_id} attempt_id={attempt_id} phase=clarify status=processing clarification_count={attempt.clarification_count}")
+    
+    # 3. Re-Solve
+    original_prompt = attempt.input_text_normalized or attempt.input_text_raw
+    
+    # Append history to prompt or context
+    clarification_context = "\\n\\n[Clarification History]\\n"
+    for item in history:
+        clarification_context += f"System: {item.get('question')}\\nUser: {item.get('answer')}\\n"
+        
+    user_id = attempt.user_id # Could be None
+    
+    try:
+        from app.services.solver_v3 import get_solver_v3
+        solver = get_solver_v3()
+        
+        # We pass attempt_id again so it updates the SAME record.
+        solution_data = await solver.solve(
+            problem_text=original_prompt,
+            context=clarification_context, # Appended
+            trace=False,
+            user_id=user_id,
+            db_session=session,
+            attempt_id=attempt_id # Reuse ID
+        )
+        
+        # Transform V3 format (SolveResponseV3) to V1 format (SolveResponse)
+        # Note: _transform_v3_to_v1_format is defined in api.py, we need to ensure it's available.
+        # It is defined above in api.py.
+        return _transform_v3_to_v1_format(solution_data)
+        
+    except Exception as e:
+        attempt.status = "error"
+        attempt.error_message = str(e)
+        session.add(attempt)
+        session.commit()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/attempt/{attempt_id}")
+async def get_attempt_status(
+    attempt_id: str,
+    session: Session = Depends(get_session)
+):
+    """
+    Phase 1 Hardening: Frontend Resume Endpoint.
+    Returns status, clarification state, and results.
+    """
+    attempt = session.exec(select(SolverOutputAttempt).where(SolverOutputAttempt.attempt_id == attempt_id)).first()
+    if not attempt:
+        raise HTTPException(status_code=404, detail="Attempt not found")
+        
+    return {
+        "attempt_id": attempt.attempt_id,
+        "status": attempt.status, # pending, processing, success, failure, ambiguous
+        "failure_code": attempt.failure_code,
+        "error_message": attempt.error_message,
+        "clarification_count": attempt.clarification_count,
+        "clarification_history": attempt.clarification_history,
+        "validation_errors": attempt.validation_errors,
+        "result": attempt.validation_json, # The final success payload
+        "created_at": attempt.created_at,
+        "updated_at": attempt.updated_at
+    }
+
+

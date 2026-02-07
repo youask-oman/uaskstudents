@@ -36,7 +36,11 @@ from app.services.validation_v3 import create_error_response
 
 from app.utils.schema_deref import deref_json_schema, validate_no_refs
 
-from app.llm_profiles.profiles import get_prompt_profile
+from app.utils.schema_deref import deref_json_schema, validate_no_refs
+
+# from app.llm_profiles.profiles import get_prompt_profile 
+
+from app.services.response_mapper import map_minimal_to_canonical
 
 from app.services.response_mapper import map_minimal_to_canonical
 
@@ -56,7 +60,17 @@ from app.services.message_builder import build_user_message
 
 from app.llm_profiles.profiles import PromptProfile
 
+from app.services.prompt_registry_service import prompt_registry_service, PromptRegistryError
+
+from app.services.prompt_manager import prompt_manager
+
+from app.services.message_builder import build_user_message
+
+from app.llm_profiles.profiles import PromptProfile
+
 from app.prompts.db_loader import PromptBindingLookupError, load_prompt_bundle
+
+from app.models import SolverOutputAttempt
 
 
 
@@ -209,41 +223,25 @@ class SolverV3:
 
 
     async def solve(
-
         self,
-
         problem_text: str,
-
         context: str = "",
-
         trace: bool = False,
-
         include_plot_base64: bool = False,
-
         request_id: str = None,
-
         user_tier: str = "free",
-
         # New Context Params
-
         user_id: Optional[int] = None,
-
         db_session: Optional[Any] = None,  # SQLModel Session
-
         requested_mode: str = "minimal",
-
         db_plan: Optional[Any] = None,
-
         # Tier-aware payload fields (normalized at frontend)
-
         trusted_context: Optional[Dict[str, Any]] = None,
-
         learning_mode: Optional[str] = None,  # "solve" | "study"
-
         image_url: Optional[str] = None,
-
-        max_output_tokens: Optional[int] = None
-
+        max_output_tokens: Optional[int] = None,
+        # Phase 1: Attempt Tracking
+        attempt_id: Optional[str] = None
     ) -> Dict[str, Any]:
 
         
@@ -407,8 +405,27 @@ class SolverV3:
 
 
                     if trace:
-
                         print(f"[SOLVER_V3] Resolved Profile: Tier={profile.tier}, Mode={profile.mode}")
+
+                    # Phase 1: Update Attempt Record with Prompt Meta
+                    if db_session and attempt_id:
+                         try:
+                             from sqlmodel import select
+                             # We use execute/commit because we might be in a nested flow, but session.exec is fine?
+                             # Better to just query object and update.
+                             attempt = db_session.exec(select(SolverOutputAttempt).where(SolverOutputAttempt.attempt_id == attempt_id)).first()
+                             if attempt:
+                                 attempt.prompt_id = binding_bundle.get("meta", {}).get("prompt_id")
+                                 attempt.prompt_version = binding_bundle.get("meta", {}).get("version")
+                                 attempt.prompt_meta = binding_bundle.get("meta")
+                                 attempt.provider = self.client_manager.primary_provider
+                                 attempt.model = self.default_model
+                                 attempt.input_text_raw = problem_text
+                                 attempt.status = "processing"
+                                 db_session.add(attempt)
+                                 db_session.commit()
+                         except Exception as e:
+                             print(f"[SOLVER_V3] Failed to update attempt prompt meta: {e}")
 
 
 
@@ -694,6 +711,68 @@ class SolverV3:
 
                         llm_end_perf = time.perf_counter()
 
+                        # Phase 1 Hardening: Persist Raw LLM Response (Append-Only) & Update Tokens
+                        if db_session and attempt_id:
+                            try:
+                                from sqlmodel import select
+                                attempt = db_session.exec(select(SolverOutputAttempt).where(SolverOutputAttempt.attempt_id == attempt_id)).first()
+                                if attempt:
+                                    # 1. Update Tokens (Aggregate)
+                                    input_t = llm_tokens.get("input", 0)
+                                    output_t = llm_tokens.get("output", 0)
+                                    total_t = llm_tokens.get("total", 0)
+                                    
+                                    attempt.input_tokens += input_t
+                                    attempt.output_tokens += output_t
+                                    attempt.total_tokens += total_t
+                                    
+                                    # 2. Append to History
+                                    history_entry = {
+                                        "kind": "primary" if pass_idx == 0 else "repair",
+                                        "timestamp": datetime.utcnow().isoformat(),
+                                        "provider": provider,
+                                        "model": model_used,
+                                        "prompt_template_id": telemetry.get("prompt_binding", {}).get("prompt_id"),
+                                        "schema_id": telemetry.get("prompt_binding", {}).get("output_schema_id"),
+                                        "strict": True, # V3 is always strict
+                                        "raw_text": raw_output_text or "",
+                                        "parsed_json": response_data if isinstance(response_data, dict) else None,
+                                        "usage": {
+                                            "input": input_t,
+                                            "output": output_t,
+                                            "total": total_t
+                                        },
+                                        "latency_ms": int((llm_end_perf - llm_start_perf) * 1000)
+                                    }
+                                    
+                                    # Initialize list if None
+                                    if attempt.llm_responses is None:
+                                        attempt.llm_responses = []
+                                    
+                                    # SQLModel/Pydantic mutable field tracking can be tricky, so we re-assign
+                                    current_history = list(attempt.llm_responses)
+                                    current_history.append(history_entry)
+                                    attempt.llm_responses = current_history
+                                    
+                                    # 3. Update Legacy/Last Response Fields
+                                    attempt.raw_solution_text = raw_output_text or ""
+                                    attempt.llm_raw_response = response_data if isinstance(response_data, dict) else {"raw": str(response_data)}
+                                    attempt.latency_ms = int((llm_end_perf - llm_start_perf) * 1000)
+                                    attempt.char_count = len(attempt.raw_solution_text)
+                                    
+                                    db_session.add(attempt)
+                                    db_session.commit()
+                                    db_session.refresh(attempt)
+                                    
+                                    # Structured Log
+                                    self._logger.info(
+                                        f"request_id={request_id} attempt_id={attempt_id} phase=llm_call status=success "
+                                        f"provider={provider} model={model_used} latency={attempt.latency_ms}ms"
+                                    )
+                            except Exception as e:
+                                print(f"[SOLVER_V3] Failed to persist raw response: {e}")
+
+
 
 
                         # Accumulate/Update telemetry
@@ -767,6 +846,46 @@ class SolverV3:
                         )
 
                         telemetry["latency_ms_validation"] = int((time.perf_counter() - t_val_start) * 1000)
+
+                        # Phase 1: Persist Validated Data or Errors & Update History
+                        if db_session and attempt_id:
+                             try:
+                                 attempt = db_session.exec(select(SolverOutputAttempt).where(SolverOutputAttempt.attempt_id == attempt_id)).first()
+                                 if attempt:
+                                     if validation_success:
+                                         attempt.status = "success"
+                                         attempt.validation_json = validated_data
+                                         attempt.validation_errors = None # Clear previous errors if any
+                                     else:
+                                         attempt.status = "failure" # Will be "invalid" until repair?
+                                         attempt.validation_errors = error_list
+                                         attempt.error_message = validation_error
+                                    
+                                     # Validation Event History
+                                     val_event = {
+                                         "timestamp": datetime.utcnow().isoformat(),
+                                         "pass": pass_idx + 1,
+                                         "success": validation_success,
+                                         "error": validation_error,
+                                         "errors_list": error_list
+                                     }
+                                     
+                                     if attempt.validation_events is None:
+                                         attempt.validation_events = []
+                                     
+                                     current_val_history = list(attempt.validation_events)
+                                     current_val_history.append(val_event)
+                                     attempt.validation_events = current_val_history
+                                     
+                                     db_session.add(attempt)
+                                     db_session.commit()
+                                     
+                                     self._logger.info(
+                                        f"request_id={request_id} attempt_id={attempt_id} phase=validation status={'success' if validation_success else 'failure'} "
+                                        f"error={validation_error}"
+                                     )
+                             except Exception as e:
+                                 print(f"[SOLVER_V3] Failed to persist validation status: {e}")
 
 
 

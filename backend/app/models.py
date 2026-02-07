@@ -901,24 +901,60 @@ class RequestEvent(SQLModel, table=True):
 class SolverOutputAttempt(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     request_id: str = Field(index=True)
+    attempt_id: str = Field(index=True, default_factory=lambda: str(uuid.uuid4())) # New UUID for unique attempt tracking
     user_id: Optional[int] = Field(default=None, foreign_key="user.id", index=True)
     session_id: Optional[int] = Field(default=None, foreign_key="chatsession.id", index=True)
     message_id: Optional[int] = Field(default=None, foreign_key="chatmessage.id", index=True)
+    
+    # Context
     output_format: str = Field(default="freeform", index=True)
     prompt_id: Optional[str] = Field(default=None, index=True)
     prompt_version: Optional[str] = None
+    prompt_meta: Optional[dict] = Field(default=None, sa_column=Column(JSON)) # Full prompt config snapshot
+    
     attempt_number: int = Field(default=1, index=True)
     provider: Optional[str] = Field(default=None, index=True)
     model: Optional[str] = Field(default=None, index=True)
+    
+    # Inputs
+    input_text_raw: Optional[str] = Field(default=None, sa_column=Column(Text))
+    input_text_normalized: Optional[str] = Field(default=None, sa_column=Column(Text))
+    
+    # Metrics
     latency_ms: Optional[int] = None
     char_count: int = Field(default=0)
+    
+    # Outputs
     extracted_answer: Optional[str] = Field(default=None, sa_column=Column(Text))
-    raw_solution_text: str = Field(default="", sa_column=Column(Text))
-    validation_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    raw_solution_text: str = Field(default="", sa_column=Column(Text)) # Primary output
+    llm_raw_response: Optional[dict] = Field(default=None, sa_column=Column(JSON)) # Full provider response dump
+    
+    # Validation & Repair
+    validation_json: Optional[dict] = Field(default=None, sa_column=Column(JSON)) # Successful parse
+    validation_errors: Optional[List[dict]] = Field(default=None, sa_column=Column(JSON)) # Error list if failed
+    
+    # Clarification
+    clarification_count: int = Field(default=0)
+    clarification_history: Optional[List[dict]] = Field(default=None, sa_column=Column(JSON)) # [{q:..., a:...}]
+    
+    # Phase 1 Hardening: Append-only History & Tokens
+    llm_responses: Optional[List[dict]] = Field(default=None, sa_column=Column(JSON)) # Append-only history of all LLM calls
+    validation_events: Optional[List[dict]] = Field(default=None, sa_column=Column(JSON)) # History of validation outcomes
+    
+    input_tokens: int = Field(default=0)
+    output_tokens: int = Field(default=0)
+    total_tokens: int = Field(default=0)
+
+    
+    # Archives & Status
     archive_path: Optional[str] = None
-    status: str = Field(default="ok", index=True)  # ok / invalid / error
+    status: str = Field(default="pending", index=True) # pending, success, failure, ambiguous
+    failure_code: Optional[str] = Field(default=None, index=True) # SCHEMA_INVALID, etc.
     error_message: Optional[str] = Field(default=None, sa_column=Column(Text))
+
+    
     created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class ProviderPricingAction(str, Enum):
