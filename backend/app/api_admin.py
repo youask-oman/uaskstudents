@@ -41,6 +41,7 @@ def get_current_user(
 ) -> User:
     """Extract user from JWT token in Authorization header."""
     if not authorization or not authorization.startswith("Bearer "):
+        print("[Auth] Missing or invalid Authorization header")
         raise HTTPException(status_code=401, detail="Not authenticated")
     
     token = authorization.replace("Bearer ", "")
@@ -48,12 +49,15 @@ def get_current_user(
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
+            print("[Auth] Token missing 'sub'")
             raise HTTPException(status_code=401, detail="Invalid token")
-    except JWTError:
+    except JWTError as e:
+        print(f"[Auth] JWT Decode Error: {e}")
         raise HTTPException(status_code=401, detail="Invalid token")
     
     user = session.exec(select(User).where(User.email == email)).first()
     if not user:
+        print(f"[Auth] User not found for email: {email}")
         raise HTTPException(status_code=401, detail="User not found")
     return user
 

@@ -70,6 +70,18 @@ celery_app.conf.update(
 
 # Register additional task modules
 import app.tasks.whatsapp_tasks  # noqa: E402,F401
+import app.tasks.subscription_tasks # noqa: E402,F401
+
+celery_app.conf.beat_schedule = {
+    "daily_subscription_grant": {
+        "task": "subscription_grant_job",
+        "schedule": 3600.0 * 24, # Daily
+    },
+    "hourly_subscription_expiry": {
+        "task": "subscription_expiry_job",
+        "schedule": 3600.0, # Hourly
+    },
+}
 
 # Register signals
 signal.signal(signal.SIGTERM, handle_exit)

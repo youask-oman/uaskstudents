@@ -30,12 +30,13 @@ export default function AdminPaymentsLayout({
             router.push("/login");
             return;
         }
+        const token = localStorage.getItem("token");
         const role = localStorage.getItem("user_role") ?? "";
         const profile: AdminProfile = {
             name: localStorage.getItem("user_name") ?? "Admin User",
             role: role,
             avatar: localStorage.getItem("user_avatar") ?? "",
-            authorized: role === "admin" || role === "devops",
+            authorized: (role === "admin" || role === "devops") && !!token,
         };
 
         // Defer update to avoid synchronous state update warning
@@ -57,9 +58,10 @@ export default function AdminPaymentsLayout({
 
     const navItems = [
         { label: "Overview", href: "/adminpayments", icon: "monitoring" },
-        { label: "Requests Explorer", href: "/adminpayments?tab=requests", icon: "table_view" },
-        { label: "Credit & Ledger", href: "/adminpayments?tab=credits", icon: "account_balance_wallet" },
-        { label: "Pricing Config", href: "/adminpayments?tab=pricing", icon: "price_change" },
+        { label: "Requests", href: "/adminpayments/requests", icon: "table_view" },
+        { label: "Top-Ups", href: "/adminpayments/topups", icon: "add_card" },
+        { label: "Subscriptions", href: "/adminpayments/subscriptions", icon: "card_membership" },
+        { label: "Pricing", href: "/adminpayments?tab=pricing", icon: "price_change" },
         { label: "Back to Main Admin", href: "/admin/dashboard", icon: "arrow_back" },
     ];
 
@@ -79,21 +81,31 @@ export default function AdminPaymentsLayout({
                         </div>
                     </div>
                     <nav className="flex flex-col gap-1">
-                        {navItems.map((item) => (
-                            <Link
-                                key={item.label}
-                                href={item.href}
-                                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${(pathname === item.href || (item.href.includes("?tab=") && pathname === "/adminpayments" && window.location.search.includes(item.href.split("?")[1])))
+                        {navItems.map((item) => {
+                            const isOverviewPricing = item.href.includes("/adminpayments");
+                            const hasTab = item.href.includes("?tab=");
+                            const currentSearch = typeof window !== "undefined" ? window.location.search : "";
+
+                            const isActive = hasTab
+                                ? (pathname === "/adminpayments" && currentSearch.includes(item.href.split("?")[1]))
+                                : (pathname === item.href && (!isOverviewPricing || currentSearch === "" || currentSearch === "?"));
+
+                            return (
+                                <Link
+                                    key={item.label}
+                                    href={item.href}
+                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isActive
                                         ? "bg-emerald-600 text-white shadow-lg"
                                         : "text-slate-400 hover:bg-slate-800 hover:text-white"
-                                    }`}
-                            >
-                                <span className="material-symbols-outlined">
-                                    {item.icon}
-                                </span>
-                                <p className="text-sm font-medium">{item.label}</p>
-                            </Link>
-                        ))}
+                                        }`}
+                                >
+                                    <span className="material-symbols-outlined">
+                                        {item.icon}
+                                    </span>
+                                    <p className="text-sm font-medium">{item.label}</p>
+                                </Link>
+                            );
+                        })}
                     </nav>
                 </div>
                 <div className="flex flex-col gap-4">

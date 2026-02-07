@@ -172,6 +172,24 @@ class Subscription(SQLModel, table=True):
     user: User = Relationship(back_populates="subscription")
     plan: Plan = Relationship()
     ledger_entries: List["UsageLedger"] = Relationship(back_populates="subscription")
+    periods: List["SubscriptionPeriod"] = Relationship(back_populates="subscription")
+
+class SubscriptionPeriod(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    subscription_id: int = Field(foreign_key="subscription.id", index=True)
+    
+    period_start: datetime = Field(index=True)
+    period_end: datetime = Field(index=True)
+    status: str = Field(default="OPEN", index=True) # OPEN, CLOSED
+    
+    granted_credits: int
+    grant_lot_id: Optional[int] = Field(default=None, foreign_key="creditlot.id")
+    
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    subscription: Subscription = Relationship(back_populates="periods")
+    # Enforce uniqueness of period per subscription
+    __table_args__ = (UniqueConstraint("subscription_id", "period_start", name="uq_sub_period_start"),)
 
 class UsageLedger(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -853,7 +871,7 @@ class CreditLot(SQLModel, table=True):
     credits_remaining: float
     
     # Metadata
-    lot_type: str = Field(default="TOPUP", index=True) # TOPUP, PROMO, GRANT, MIGRATION, SUBSCRIPTION_MONTHLY
+    lot_type: str = Field(default="TOPUP", index=True) # TOPUP, PROMO, GRANT, MIGRATION, SUBSCRIPTION_GRANT
     status: str = Field(default="ACTIVE", index=True) # ACTIVE, EXPIRED, DEPLETED, VOIDED
     source: str = Field(default="MANUAL_ADMIN", index=True)
     external_ref: Optional[str] = Field(default=None, index=True) # PaymentIntent ID or idempotency key

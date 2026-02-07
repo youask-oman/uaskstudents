@@ -10,17 +10,28 @@ class CreditWalletService:
     def get_balance(self, session: Session, user_id: int) -> float:
         """
         Calculate total valid (non-expired) credits for a user.
-        Uses Phase 2 logic: Sum of Active Lots.
+        Respects 'overage_policy' if set to 'block'.
         """
+        from app.models import Subscription
+        
+        # 1. Determine Overage Policy
+        sub = session.exec(select(Subscription).where(Subscription.user_id == user_id)).first()
+        overage_policy = "paygo"
+        if sub and sub.plan:
+            overage_policy = (sub.plan.features or {}).get("overage_policy", "paygo")
+            
         now = datetime.utcnow()
         statement = select(func.sum(CreditLot.credits_remaining)).where(
             CreditLot.user_id == user_id,
             CreditLot.status == 'ACTIVE',
             CreditLot.credits_remaining > 0,
-            # Handling None expires_at as "Never expires" (valid)
-            # or expires_at > now
             (CreditLot.expires_at == None) | (CreditLot.expires_at > now)
         )
+        
+        if overage_policy == "block":
+            # Strict limit: only count subscription grants
+            statement = statement.where(CreditLot.lot_type == "SUBSCRIPTION_GRANT")
+            
         result = session.exec(statement).one()
         return float(result) if result else 0.0
 
@@ -30,7 +41,8 @@ class CreditWalletService:
         user_id: int, 
         amount: float, 
         source: str, 
-        expiry_days: int = 120,
+        expiry_days: Optional[int] = 120,
+        expires_at: Optional[datetime] = None,
         lot_type: str = "TOPUP",
         external_ref: Optional[str] = None
     ) -> CreditLot:
@@ -38,17 +50,16 @@ class CreditWalletService:
         Add a new batch of credits to the user's wallet.
         """
         from datetime import timedelta
-        # If expiry_days is 0 or very large, treat as infinite? 
-        # Default 120.
-        expires_at = None
-        if expiry_days:
-             expires_at = datetime.utcnow() + timedelta(days=expiry_days)
+        
+        final_expires_at = expires_at
+        if final_expires_at is None and expiry_days:
+             final_expires_at = datetime.utcnow() + timedelta(days=expiry_days)
         
         lot = CreditLot(
             user_id=user_id,
             credits_total=amount,
             credits_remaining=amount,
-            expires_at=expires_at,
+            expires_at=final_expires_at,
             source=source,
             lot_type=lot_type,
             status="ACTIVE",
@@ -56,6 +67,27 @@ class CreditWalletService:
         )
         session.add(lot)
         session.flush()
+        
+        # Sync Subscription Balance
+        user = session.get(User, user_id)
+        if user and user.subscription:
+            from app.models import UsageLedger
+            
+            sub = user.subscription
+            sub.credits_balance += amount
+            
+            # Create Audit Entry
+            ledger_entry = UsageLedger(
+                subscription_id=sub.id,
+                transaction_type="CREDIT",
+                amount=amount,
+                balance_after=sub.credits_balance,
+                reference_id=external_ref,
+                meta={"source": source, "lot_type": lot_type}
+            )
+            session.add(ledger_entry)
+            session.add(sub)
+            
         return lot
 
     def deduct_credits(
@@ -68,62 +100,63 @@ class CreditWalletService:
     ) -> bool:
         """
         Deduct credits:
-        1. Create UsageLedger (DEBIT).
-        2. Update Subscription Balance (Sync).
-        3. Allocate against Lots via FIFO (Phase 2).
+        1. Check Balance (respecting overage_policy).
+        2. Allocate against Lots via FIFO (respecting overage_policy).
+        3. Create UsageLedger (DEBIT).
+        4. Update Subscription Balance.
         """
         if amount <= 0:
             return True
 
         # 1. Get User/Subscription
-        # We need subscription for UsageLedger
         user = session.get(User, user_id)
-        # Handle lazy loading or missing sub?
         if not user:
             raise ValueError("User not found")
         
         sub = user.subscription
-        # If no subscription, we can't create UsageLedger (requires sub_id).
-        # In this system, every user should have a sub (Free).
         if not sub:
              from app.services.subscription_service import subscription_service
              sub = subscription_service.get_or_create_subscription(session, user)
 
-        # 2. Check Balance (Phase 2: Check Lots vs Subscription?)
-        # Subscription.credits_balance should be the cache.
-        if sub.credits_balance < amount:
-             # Double check against lots?
-             real_balance = self.get_balance(session, user_id)
-             if real_balance < amount:
-                  raise ValueError(f"Insufficient credits. Required: {amount}, Available: {real_balance}")
+        # 2. Check USABLE Balance (this already respects 'block')
+        usable_balance = self.get_balance(session, user_id)
+        if usable_balance < amount:
+             raise ValueError(f"Insufficient credits. Required: {amount}, Usable Available: {usable_balance}")
 
         # 3. Create UsageLedger
-        from app.models import UsageLedger # Import inside to avoid circular if any
+        from app.models import UsageLedger
         ledger_entry = UsageLedger(
             subscription_id=sub.id,
             transaction_type="DEBIT",
             amount=amount,
-            # Balance after prediction
             balance_after=sub.credits_balance - amount,
             reference_id=reference_id,
             meta=meta
         )
         session.add(ledger_entry)
-        session.flush() # Get ID
+        session.flush()
         
-        # 4. Update Subscription
+        # 4. Update Subscription Cache
         sub.credits_balance -= amount
         sub.credits_used_this_period += amount
         session.add(sub)
         
-        # 5. FIFO Allocation (Phase 2)
+        # 5. FIFO Allocation (Consumes from Lots)
         try:
-             credit_lot_allocator.consume_credits(
+             consumptions = credit_lot_allocator.consume_credits(
                  session, 
                  user_id, 
                  amount, 
-                 usage_ledger_id=ledger_entry.id
+                 usage_ledger_id=ledger_entry.id,
+                 subscription_id=sub.id
              )
+             
+             # Verify total consumption matches request
+             total_consumed = sum(c.amount for c in consumptions)
+             if total_consumed < (amount - 0.0001):
+                  # This should not happen if get_balance check passed
+                  raise ValueError(f"Allocation failure: only consumed {total_consumed}/{amount}")
+                  
              return True
         except Exception as e:
              raise e

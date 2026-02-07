@@ -38,7 +38,12 @@ type PricingItem = {
 
 // --- API Helper ---
 async function fetchAdmin(path: string) {
-    const token = localStorage.getItem("access_token");
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) {
+        window.location.href = "/login?redirect=" + window.location.pathname;
+        return;
+    }
+
     // Use relative URL to leverage Next.js proxy (avoids CORS)
     const res = await fetch(`/api/admin/payments${path}`, {
         headers: {
@@ -46,6 +51,13 @@ async function fetchAdmin(path: string) {
             "Content-Type": "application/json"
         }
     });
+
+    if (res.status === 401) {
+        localStorage.removeItem("token");
+        window.location.href = "/login?redirect=" + window.location.pathname;
+        return;
+    }
+
     if (!res.ok) throw new Error(`API Error: ${res.status}`);
     return res.json();
 }
@@ -62,7 +74,7 @@ export default function AdminPaymentsPage() {
 
     useEffect(() => {
         setLoading(true);
-        const token = localStorage.getItem("access_token");
+        const token = localStorage.getItem("token");
         if (!token) {
             // Let layout handle redirect
             return;

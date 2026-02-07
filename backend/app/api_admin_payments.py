@@ -185,3 +185,45 @@ def add_pricing_config(
         admin_user_id=user.id
     )
     return new_entry
+
+# --- Subscription Management ---
+
+from app.models import Subscription, SubscriptionPeriod
+
+@router.get("/subscriptions")
+def list_subscriptions(
+    page: int = 1,
+    page_size: int = 50,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_staff_user)
+):
+    offset = (page - 1) * page_size
+    query = select(Subscription).order_by(desc(Subscription.created_at))
+    subs = session.exec(query.offset(offset).limit(page_size)).all()
+    
+    # Enrich with current period and plan name
+    results = []
+    for sub in subs:
+        plan = sub.plan
+        results.append({
+            "id": sub.id,
+            "user_id": sub.user_id,
+            "plan_name": plan.name if plan else "Unknown",
+            "status": sub.status,
+            "current_period_start": sub.current_period_start,
+            "current_period_end": sub.current_period_end,
+            "credits_balance": sub.credits_balance,
+            "credits_used_this_period": sub.credits_used_this_period,
+            "feature_usage": sub.feature_usage,
+            "auto_renew": sub.auto_renew
+        })
+    return results
+
+@router.get("/subscriptions/{sub_id}/periods")
+def list_subscription_periods(
+    sub_id: int,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_staff_user)
+):
+    query = select(SubscriptionPeriod).where(SubscriptionPeriod.subscription_id == sub_id).order_by(desc(SubscriptionPeriod.period_start))
+    return session.exec(query).all()

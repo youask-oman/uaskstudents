@@ -32,22 +32,41 @@ class CreditLotAllocator:
             CreditLot.user_id == user_id,
             CreditLot.credits_remaining > 0,
             CreditLot.status == 'ACTIVE'
-        ).order_by(
-            # Sort by Expiry ASC (Non-Null first? No, standard logic usually Null=Never expires=Last)
-            # SQLite/PG handles nulls differently. Let's explicitly sort.
-            # Usually we want: Expiring soonest (e.g. tomorrow) FIRST.
-            # Never expiring LAST.
-            # So standard ASC works for dates.
-            # What about NULL? NULL > Date? 
-            # In PG: NULLS LAST is good. In SQLModel/SA we can specify.
-        ).order_by(
-           CreditLot.expires_at.asc().nullslast(), # Consume expiring logic first
-           CreditLot.purchased_at.asc(),           # Then Oldest
-           CreditLot.id.asc()
         )
+        # Note: We sort in Python to handle complex config-based prioritization (Spend Order)
         
         lots = session.exec(query).all()
+        # CAST lots to list to ensure mutable
+        lots = list(lots)
         
+        # Determine Spend Order and Overage Policy
+        # We need to fetch the subscription and its plan to know the policy
+        sub = session.exec(select(Subscription).where(Subscription.user_id == user_id)).first()
+        overage_policy = "paygo" # Default
+        
+        if sub and sub.plan:
+            features = sub.plan.features or {}
+            overage_policy = features.get("overage_policy", "paygo")
+        
+        def sort_key(l):
+            # 1. Type Priority: SUBSCRIPTION_GRANT (0) > Others (1)
+            type_priority = 0 if l.lot_type == 'SUBSCRIPTION_GRANT' else 1
+            
+            # 2. Expiry: Soonest First (None = Far Future)
+            expiry_ts = l.expires_at.timestamp() if l.expires_at else 99999999999.0
+            
+            # 3. FIFO: Oldest Purchase First
+            purchased_ts = l.purchased_at.timestamp()
+            
+            return (type_priority, expiry_ts, purchased_ts)
+            
+        lots.sort(key=sort_key)
+        
+        # If policy is 'block', filter out non-SUBSCRIPTION_GRANT lots if we are about to use them?
+        # Actually, it's easier to filter the 'lots' list directly if policy is block.
+        if overage_policy == "block":
+            lots = [l for l in lots if l.lot_type == "SUBSCRIPTION_GRANT"]
+            
         consumptions = []
         remaining_to_deduct = amount_needed
         
@@ -76,7 +95,7 @@ class CreditLotAllocator:
             # Create Consumption Record
             consumption = CreditLotConsumption(
                 user_id=user_id,
-                subscription_id=subscription_id or lot.subscription_id,
+                subscription_id=subscription_id or lot.subscription_id or (sub.id if sub else None),
                 credit_lot_id=lot.id,
                 usage_ledger_id=usage_ledger_id,
                 direction="DEBIT",
@@ -87,9 +106,14 @@ class CreditLotAllocator:
             
             remaining_to_deduct -= to_take
         
-        # If still remaining, we have a "Leak" (Balance > Lots).
-        # We record it as untracked consumption if needed, or just let it slide (Legacy Balance).
-        # We assume caller checked total balance availability via Subscription.
+        # If still remaining, we have a "Leak" or we were blocked by policy.
+        if remaining_to_deduct > 0:
+            if overage_policy == "block":
+                # We should probably raise an error here if we couldn't fulfill the request
+                # but deduct_credits already checked the balance.
+                # If balance was checked against ALL lots but we only allow GRANT lots,
+                # then we have a discrepancy.
+                pass
         
         return consumptions
 
