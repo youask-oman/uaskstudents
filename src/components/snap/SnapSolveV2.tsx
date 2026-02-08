@@ -21,6 +21,7 @@ import {
 type SnapSolveV2Props = {
     onUseText: (text: string) => void;
     onSolveText: (text: string) => void;
+    tier?: "FREE" | "STANDARD" | "RESEARCH" | "SHORT";
     requestedMode?: "minimal" | "detailed";
 };
 

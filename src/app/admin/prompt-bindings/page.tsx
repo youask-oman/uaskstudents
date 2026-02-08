@@ -362,6 +362,7 @@ export default function AdminPromptBindingsPage() {
                                         <option value="FREE">FREE</option>
                                         <option value="STANDARD">STANDARD</option>
                                         <option value="RESEARCH">RESEARCH</option>
+                                        <option value="SHORT">SHORT</option>
                                     </select>
                                 </div>
                                 <div className="space-y-1.5">
@@ -582,8 +583,8 @@ export default function AdminPromptBindingsPage() {
                                     <div className="flex items-start justify-between mb-3">
                                         <div className="flex items-center gap-3">
                                             <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide ${binding.tier === 'FREE' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                                    binding.tier === 'STANDARD' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                                        'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                                                binding.tier === 'STANDARD' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                                    'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
                                                 }`}>
                                                 {binding.tier}
                                             </span>

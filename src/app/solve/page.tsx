@@ -430,9 +430,11 @@ export default function DashboardPage() {
     const accountTier: SolveTier = readySubscription
         ? (readySubscription.plan.slug === "research"
             ? "RESEARCH"
-            : readySubscription.plan.slug === "free"
-                ? "FREE"
-                : "STANDARD")
+            : readySubscription.plan.slug === "short"
+                ? "SHORT"
+                : readySubscription.plan.slug === "free"
+                    ? "FREE"
+                    : "STANDARD")
         : "FREE";
     const estimatedQuestionCount = activeTab === "text"
         ? Math.max(1, multiQuestionResult.suggestedSplits.length || 1)
@@ -440,7 +442,7 @@ export default function DashboardPage() {
 
     useEffect(() => {
         const stored = typeof window !== "undefined" ? localStorage.getItem("uask.solveTier") : null;
-        if (stored === "FREE" || stored === "STANDARD" || stored === "RESEARCH") {
+        if (stored === "FREE" || stored === "STANDARD" || stored === "RESEARCH" || stored === "SHORT") {
             setSelectedSolveTier(stored);
         }
     }, []);
@@ -1120,12 +1122,13 @@ export default function DashboardPage() {
                                     label="Tier"
                                     options={[
                                         { value: "FREE", label: "Free", icon: "bolt" },
+                                        { value: "SHORT", label: "Short", icon: "bolt" },
                                         { value: "STANDARD", label: "Standard", icon: "school" },
                                         { value: "RESEARCH", label: "Research", icon: "science" },
                                     ]}
                                     value={selectedSolveTier}
                                     onChange={(v) => {
-                                        if (v === "FREE" || v === "STANDARD" || v === "RESEARCH") {
+                                        if (v === "FREE" || v === "STANDARD" || v === "RESEARCH" || v === "SHORT") {
                                             setSelectedSolveTier(v as SolveTier);
                                             if (typeof window !== "undefined") {
                                                 localStorage.setItem("uask.solveTier", v);

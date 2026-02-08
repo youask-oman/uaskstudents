@@ -13,12 +13,14 @@ class TierPricingConfig(BaseModel):
 class SolveCreditsConfig(BaseModel):
     """Credit costs for the 'solve' action across different tiers."""
     free: TierPricingConfig = Field(default_factory=lambda: TierPricingConfig(text=1, snap_image=2, snap_pdf=3, voice=2))
+    short: TierPricingConfig = Field(default_factory=lambda: TierPricingConfig(text=1, snap_image=2, snap_pdf=3, voice=2))
     standard: TierPricingConfig = Field(default_factory=lambda: TierPricingConfig(text=2, snap_image=3, snap_pdf=4, voice=3))
     research: TierPricingConfig = Field(default_factory=lambda: TierPricingConfig(text=4, snap_image=5, snap_pdf=6, voice=5))
 
 class VerifyCreditsConfig(BaseModel):
     """Credit costs for the 'verify' action."""
     free: int = 1
+    short: int = 1
     standard: int = 1
     research: int = 2
 

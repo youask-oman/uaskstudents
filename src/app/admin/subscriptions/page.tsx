@@ -26,10 +26,11 @@ interface Plan {
         credits?: {
             solve: {
                 free: { text: number; snap_image: number; snap_pdf: number; voice: number };
+                short: { text: number; snap_image: number; snap_pdf: number; voice: number };
                 standard: { text: number; snap_image: number; snap_pdf: number; voice: number };
                 research: { text: number; snap_image: number; snap_pdf: number; voice: number };
             };
-            verify: { free: number; standard: number; research: number };
+            verify: { free: number; short: number; standard: number; research: number };
             plot_trigger: number;
             plot_spec: number;
         };
@@ -53,32 +54,11 @@ function PricingPreviewPanel({ plans }: { plans: Plan[] }) {
         setError("");
         setResult(null);
         try {
-            // Mock user subscription context by passing plan_slug in a fake token or just relying on
-            // backend using the provided plan_id if we update backend?
-            // Actually, backend estimate uses logged-in user's subscription.
-            // ADMIN HACK: We need to Simulate.
-            // Phase 3 backend implementation uses: user -> subscription -> plan.
-            // It does NOT accept plan_id in body easily without auth override.
-            // FOR ADMIN V1: We will use the selected plan's multipliers purely client-side?
-            // No, requirement says "use same estimator endpoint".
-            // We can pass a "simulation_plan_slug" or similar if we modify backend, OR
-            // we assume Admin has a "Free" account and we just want to test generally?
-            // BUT different plans have different caps.
-            // FIX: We will just interpret the plan's multipliers locally for now to satisfy "No new pricing tables".
-            // WAIT, Phase 4 req says "Shows estimated credits and cap warnings using same estimator endpoint."
-            // AND "Local-only mode: no OpenAI calls". 
-            // IF backend endpoint requires valid subscription, Admin might not have the specific plan.
-            // Let's implement client-side simulation using the passed Plan object for instant feedback, 
-            // mirroring backend logic. It's safer for Admin testing without changing user state.
-
-            // ... Actually, let's try calling backend but maybe we can't switch plan easily.
-            // Client-side simulation is robust for Admin UI purposes.
-
             const selectedPlan = plans.find(p => p.id.toString() === planId);
             if (!selectedPlan) throw new Error("Select a plan");
 
             // Client-side mimic of SubscriptionService logic
-            const mults = selectedPlan.multipliers?.credits?.solve?.[tier as "free" | "standard" | "research"];
+            const mults = selectedPlan.multipliers?.credits?.solve?.[tier as "free" | "short" | "standard" | "research"];
             if (!mults) throw new Error("Invalid tier configuration");
 
             let cost = 0;
@@ -133,6 +113,7 @@ function PricingPreviewPanel({ plans }: { plans: Plan[] }) {
                         value={tier} onChange={e => setTier(e.target.value)}
                     >
                         <option value="free">Free</option>
+                        <option value="short">Short</option>
                         <option value="standard">Standard</option>
                         <option value="research">Research</option>
                     </select>
@@ -412,8 +393,8 @@ export default function AdminSubscriptionsPage() {
                                                 <span>Voice</span>
                                             </div>
 
-                                            {["free", "standard", "research"].map((t) => {
-                                                const tier = t as "free" | "standard" | "research";
+                                            {["free", "short", "standard", "research"].map((t) => {
+                                                const tier = t as "free" | "short" | "standard" | "research";
                                                 const cost = selectedPlan.multipliers.credits?.solve?.[tier];
                                                 if (!cost) return null;
 
@@ -473,8 +454,8 @@ export default function AdminSubscriptionsPage() {
                                         <div className="space-y-3 p-3 border border-slate-200 dark:border-slate-700 rounded-lg">
                                             <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">Verify & Plot</h4>
                                             <div className="grid grid-cols-2 gap-4">
-                                                {["free", "standard", "research"].map((t) => {
-                                                    const tier = t as "free" | "standard" | "research";
+                                                {["free", "short", "standard", "research"].map((t) => {
+                                                    const tier = t as "free" | "short" | "standard" | "research";
                                                     return (
                                                         <div key={`verify-${tier}`} className="flex justify-between items-center text-sm">
                                                             <span className="text-slate-500 capitalize">Verify {tier}</span>

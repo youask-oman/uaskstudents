@@ -681,6 +681,7 @@ class PromptTierEnum(str, Enum):
     FREE = "FREE"
     STANDARD = "STANDARD"
     RESEARCH = "RESEARCH"
+    SHORT = "SHORT"
 
 class PromptModeEnum(str, Enum):
     SOLVE = "SOLVE"

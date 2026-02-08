@@ -23,6 +23,7 @@ export interface SubscriptionPlan {
                 free: TierPricing;
                 standard: TierPricing;
                 research: TierPricing;
+                short: TierPricing;
             };
             verify: {
                 free: number;
@@ -72,7 +73,7 @@ export interface SubscriptionResponse {
     allow_voice: boolean;
 }
 
-export type SolveTier = "FREE" | "STANDARD" | "RESEARCH";
+export type SolveTier = "FREE" | "STANDARD" | "RESEARCH" | "SHORT";
 export type SolveInputType = "text" | "snap" | "voice";
 export type SolveAssetType = "none" | "image" | "pdf";
 

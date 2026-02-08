@@ -64,7 +64,7 @@ const PDF_DOCUMENT_ENABLED = process.env.NEXT_PUBLIC_SNAP_SOLVE_PDF_DOCUMENT_EXT
 
 type SnapSolveInputPanelProps = {
     onResolveText?: (text: string, featureOverrides?: Record<string, unknown>) => Promise<void> | void;
-    tier?: "FREE" | "STANDARD" | "RESEARCH";
+    tier?: "FREE" | "STANDARD" | "RESEARCH" | "SHORT";
     requestedMode?: "minimal" | "detailed";
 };
 
@@ -181,14 +181,14 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
         return Boolean(uploadedFile || sketchHasContent || questionText.trim().length > 0);
     }, [uploadedFile, sketchHasContent, questionText, isPdfMode]);
 
-    const resolveSolveTier = React.useCallback((): "free" | "standard" | "research" => {
+    const resolveSolveTier = React.useCallback((): "free" | "standard" | "research" | "short" => {
         const propTier = (tier || "").toLowerCase();
-        if (propTier === "free" || propTier === "standard" || propTier === "research") {
+        if (propTier === "free" || propTier === "standard" || propTier === "research" || propTier === "short") {
             return propTier;
         }
         if (typeof window !== "undefined") {
             const storedTier = (window.localStorage.getItem("selected_solve_tier") || "").toLowerCase();
-            if (storedTier === "free" || storedTier === "standard" || storedTier === "research") {
+            if (storedTier === "free" || storedTier === "standard" || storedTier === "research" || storedTier === "short") {
                 return storedTier;
             }
         }
@@ -196,9 +196,9 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
     }, [tier]);
 
     const resolveSolveMode = React.useCallback(
-        (effectiveTier: "free" | "standard" | "research"): "minimal" | "detailed" => {
+        (effectiveTier: "free" | "standard" | "research" | "short"): "minimal" | "detailed" => {
             if (requestedMode === "minimal" || requestedMode === "detailed") return requestedMode;
-            return effectiveTier === "free" ? "minimal" : "detailed";
+            return (effectiveTier === "free" || effectiveTier === "short") ? "minimal" : "detailed";
         },
         [requestedMode],
     );
@@ -728,11 +728,10 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                     type="button"
                     onClick={() => setActiveSubTab("upload")}
                     data-testid="snap-subtab-upload"
-                    className={`rounded-lg px-4 py-2 text-sm font-bold transition ${
-                        activeSubTab === "upload"
-                            ? "bg-sky-600 text-white shadow"
-                            : "bg-sky-100 text-sky-800 hover:bg-sky-200 dark:bg-sky-950/50 dark:text-sky-200"
-                    }`}
+                    className={`rounded-lg px-4 py-2 text-sm font-bold transition ${activeSubTab === "upload"
+                        ? "bg-sky-600 text-white shadow"
+                        : "bg-sky-100 text-sky-800 hover:bg-sky-200 dark:bg-sky-950/50 dark:text-sky-200"
+                        }`}
                 >
                     Upload
                 </button>
@@ -740,11 +739,10 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                     type="button"
                     onClick={() => setActiveSubTab("sketch")}
                     data-testid="snap-subtab-sketch"
-                    className={`rounded-lg px-4 py-2 text-sm font-bold transition ${
-                        activeSubTab === "sketch"
-                            ? "bg-emerald-600 text-white shadow"
-                            : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-200"
-                    }`}
+                    className={`rounded-lg px-4 py-2 text-sm font-bold transition ${activeSubTab === "sketch"
+                        ? "bg-emerald-600 text-white shadow"
+                        : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-200"
+                        }`}
                 >
                     Sketch
                 </button>

@@ -276,6 +276,7 @@ export default function AdminPromptRegistryPage() {
                                 <option value="FREE">FREE</option>
                                 <option value="STANDARD">STANDARD</option>
                                 <option value="RESEARCH">RESEARCH</option>
+                                <option value="SHORT">SHORT</option>
                             </select>
                             <select
                                 className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-2 py-2 text-xs"
@@ -322,8 +323,8 @@ export default function AdminPromptRegistryPage() {
                                 <li key={prompt.prompt_id}>
                                     <button
                                         className={`w-full text-left px-3 py-2 rounded-lg text-sm border ${selected?.prompt_id === prompt.prompt_id
-                                                ? "border-admin-primary bg-admin-primary/10 text-admin-primary"
-                                                : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300"
+                                            ? "border-admin-primary bg-admin-primary/10 text-admin-primary"
+                                            : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300"
                                             }`}
                                         onClick={() => setSelected(prompt)}
                                     >
@@ -375,6 +376,7 @@ export default function AdminPromptRegistryPage() {
                                     <option value="FREE">FREE</option>
                                     <option value="STANDARD">STANDARD</option>
                                     <option value="RESEARCH">RESEARCH</option>
+                                    <option value="SHORT">SHORT</option>
                                 </select>
                                 <select
                                     className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-2 py-2 text-xs"
