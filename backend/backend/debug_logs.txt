@@ -7282,3 +7282,2262 @@ Incoming: GET /health
 Response: 200 | 1ms
 Incoming: GET /health
 Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/public/plans
+Response: 200 | 12ms
+Incoming: GET /api/v1/public/plans
+Response: 200 | 10ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 31ms
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: OPTIONS /api/v1/credits/estimate
+Response: 200 | 0ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 6ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 4ms
+Incoming: GET /api/v1/config/token-policy
+Response: 200 | 85ms
+Response: 200 | 87ms
+Response: 200 | 88ms
+Response: 200 | 8ms
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/users/online
+Response: 200 | 14ms
+Response: 200 | 14ms
+Response: 200 | 14ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 4ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: POST /api/v1/solve_v3_stream
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 145ms
+Response: 200 | 78ms
+build_openai_structured_output: call=None endpoint=responses name=solve_free_minimal_v1 strict=True schema_hash=5b842c6e27aad20c
+[QUESTION_CACHE] Already exists: f80cd03a13babfdb...
+Incoming: GET /api/v1/sessions/198
+Response: 200 | 11ms
+Incoming: GET /api/v1/sessions/198
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/sessions/198
+Response: 200 | 12ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/sessions/198
+Response: 200 | 17ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: GET /api/v1/public/plans
+Response: 200 | 9ms
+Incoming: GET /api/v1/public/plans
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/history
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/config/token-policy
+Response: 200 | 27ms
+Response: 200 | 29ms
+Incoming: OPTIONS /api/v1/credits/estimate
+Response: 200 | 0ms
+Response: 200 | 36ms
+Response: 200 | 36ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 20ms
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 2ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/solve_v3_stream
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 131ms
+Response: 200 | 131ms
+build_openai_structured_output: call=None endpoint=responses name=solve_free_minimal_v1 strict=True schema_hash=5b842c6e27aad20c
+[QUESTION_CACHE] Stored: 39148bac5f5aa372...
+Incoming: GET /api/v1/sessions/199
+Response: 200 | 7ms
+Incoming: GET /api/v1/sessions/199
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/history
+Response: 200 | 116ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 105ms
+Response: 200 | 6ms
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 8ms
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/history
+Response: 200 | 6ms
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/config/token-policy
+Response: 200 | 6ms
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Response: 200 | 32ms
+Incoming: GET /api/v1/history
+Response: 200 | 32ms
+Response: 200 | 32ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 9ms
+Response: 200 | 8ms
+Incoming: POST /api/v1/credits/estimate
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/history
+Response: 200 | 6ms
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/config/token-policy
+Response: 200 | 66ms
+Response: 200 | 60ms
+Response: 200 | 60ms
+Incoming: GET /api/v1/sessions/198
+Response: 200 | 9ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/public/plans
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 4ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/config/token-policy
+Response: 200 | 12ms
+Response: 200 | 4ms
+Response: 200 | 13ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/history
+Response: 200 | 10ms
+Response: 200 | 10ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Response: 200 | 11ms
+Incoming: OPTIONS /api/v1/credits/estimate
+Response: 200 | 0ms
+Incoming: GET /api/v1/users/online
+Incoming: POST /api/v1/credits/estimate
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 6ms
+Response: 200 | 6ms
+Response: 200 | 4ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/public/plans
+Response: 200 | 8ms
+Incoming: GET /api/v1/public/plans
+Response: 200 | 8ms
+Incoming: GET /api/v1/public/plans
+Response: 200 | 6ms
+Incoming: GET /api/v1/public/plans
+Response: 200 | 7ms
+Incoming: OPTIONS /api/v1/login
+Response: 200 | 0ms
+Incoming: POST /api/v1/login
+Response: 401 | 8ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: POST /api/v1/login
+Response: 200 | 42ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 4ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/history
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/config/token-policy
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 22ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 21ms
+Response: 200 | 7ms
+Response: 200 | 15ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 16ms
+Response: 200 | 10ms
+Response: 200 | 8ms
+Incoming: GET /api/v1/history
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 16ms
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: POST /api/v1/solve_v3_stream
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 82ms
+Response: 200 | 72ms
+build_openai_structured_output: call=None endpoint=responses name=solve_free_minimal_v1 strict=True schema_hash=5b842c6e27aad20c
+[QUESTION_CACHE] Already exists: fa46202206ae3cb5...
+Incoming: GET /api/v1/sessions/200
+Response: 200 | 7ms
+Incoming: GET /api/v1/sessions/200
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /api/v1/history
+Response: 200 | 109ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 98ms
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 6ms
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/config/token-policy
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 4ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 2ms
+Response: 200 | 48ms
+Response: 200 | 48ms
+Response: 200 | 47ms
+Response: 200 | 44ms
+Incoming: GET /api/v1/history
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/users/online
+Response: 200 | 12ms
+Response: 200 | 12ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: POST /api/v1/solve_v3_stream
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 88ms
+Response: 200 | 90ms
+build_openai_structured_output: call=None endpoint=responses name=solve_free_minimal_v1 strict=True schema_hash=5b842c6e27aad20c
+Incoming: GET /health
+Response: 200 | 1ms
+[QUESTION_CACHE] Stored: 63f16185d32c986c...
+Incoming: GET /api/v1/sessions/201
+Response: 200 | 7ms
+Incoming: GET /api/v1/sessions/201
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 7ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/history
+Response: 200 | 110ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 112ms
+Response: 200 | 6ms
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 8ms
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/history
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 18ms
+Response: 200 | 18ms
+Response: 200 | 13ms
+Response: 200 | 14ms
+Response: 200 | 5ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Incoming: POST /api/v1/credits/estimate
+Incoming: GET /api/v1/users/online
+Response: 200 | 12ms
+Response: 200 | 3ms
+Response: 200 | 11ms
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: POST /api/v1/solve_v3_stream
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 69ms
+Response: 200 | 71ms
+build_openai_structured_output: call=None endpoint=responses name=solve_free_minimal_v1 strict=True schema_hash=5b842c6e27aad20c
+[QUESTION_CACHE] Stored: 16297209866f1ebb...
+Incoming: GET /api/v1/sessions/202
+Response: 200 | 6ms
+Incoming: GET /api/v1/sessions/202
+Response: 200 | 4ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /api/v1/history
+Response: 200 | 112ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 84ms
+Response: 200 | 6ms
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 10ms
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/history
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: OPTIONS /api/v1/credits/estimate
+Response: 200 | 1ms
+Response: 200 | 8ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 2ms
+Incoming: GET /api/v1/config/token-policy
+Response: 200 | 31ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Response: 200 | 35ms
+Response: 200 | 30ms
+Response: 200 | 14ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/users/online
+Response: 200 | 9ms
+Response: 200 | 11ms
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: POST /api/v1/solve_v3_stream
+Response: 200 | 203ms
+build_openai_structured_output: call=None endpoint=responses name=solve_free_minimal_v1 strict=True schema_hash=5b842c6e27aad20c
+[QUESTION_CACHE] Already exists: 16297209866f1ebb...
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: POST /api/v1/solve_v3_stream
+Response: 200 | 40ms
+build_openai_structured_output: call=None endpoint=responses name=solve_free_minimal_v1 strict=True schema_hash=5b842c6e27aad20c
+[QUESTION_CACHE] Already exists: 16297209866f1ebb...
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: POST /api/v1/solve_v3_stream
+Response: 200 | 36ms
+build_openai_structured_output: call=None endpoint=responses name=solve_free_minimal_v1 strict=True schema_hash=5b842c6e27aad20c
+[QUESTION_CACHE] Stored: eb489664765ec348...
+Incoming: GET /api/v1/user/profile
+Response: 200 | 17ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 16ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: POST /api/v1/solve_v3_stream
+Response: 200 | 44ms
+build_openai_structured_output: call=None endpoint=responses name=solve_free_minimal_v1 strict=True schema_hash=5b842c6e27aad20c
+[QUESTION_CACHE] Already exists: eb489664765ec348...
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/health
+Response: 404 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 16ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /ready
+Response: 200 | 10ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 0ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 16ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: POST /api/v1/solve_v3_stream
+Response: 200 | 33ms
+build_openai_structured_output: call=None endpoint=responses name=solve_free_minimal_v1 strict=True schema_hash=5b842c6e27aad20c
+Incoming: GET /health
+Response: 200 | 0ms
+[QUESTION_CACHE] Stored: 29f89fb386106da9...
+Incoming: POST /api/v1/solve_v3_stream
+Response: 200 | 23ms
+build_openai_structured_output: call=None endpoint=responses name=solve_free_minimal_v1 strict=True schema_hash=5b842c6e27aad20c
+[QUESTION_CACHE] Already exists: eb489664765ec348...
+Incoming: POST /api/v1/solve_v3_stream
+Response: 200 | 23ms
+build_openai_structured_output: call=None endpoint=responses name=solve_free_minimal_v1 strict=True schema_hash=5b842c6e27aad20c
+[QUESTION_CACHE] Stored: 8cf1681fc64f7e92...
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 17ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 6ms
+Incoming: GET /health
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: POST /api/v1/solve_v3_stream
+Response: 200 | 42ms
+build_openai_structured_output: call=None endpoint=responses name=solve_free_minimal_v1 strict=True schema_hash=5b842c6e27aad20c
+[QUESTION_CACHE] Already exists: 29f89fb386106da9...
+Incoming: POST /api/v1/solve_v3_stream
+Response: 200 | 28ms
+build_openai_structured_output: call=None endpoint=responses name=solve_free_minimal_v1 strict=True schema_hash=5b842c6e27aad20c
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+[QUESTION_CACHE] Already exists: eb489664765ec348...
+Incoming: POST /api/v1/solve_v3_stream
+Response: 200 | 23ms
+build_openai_structured_output: call=None endpoint=responses name=solve_free_minimal_v1 strict=True schema_hash=5b842c6e27aad20c
+[QUESTION_CACHE] Already exists: 8cf1681fc64f7e92...
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 23ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 6ms
+Incoming: POST /api/v1/solve_v3_stream
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 74ms
+Response: 200 | 130ms
+build_openai_structured_output: call=None endpoint=responses name=solve_free_minimal_v1 strict=True schema_hash=5b842c6e27aad20c
+Incoming: GET /health
+Response: 200 | 4ms
+[QUESTION_CACHE] Stored: bb0f2c86c871d50d...
+Incoming: GET /api/v1/sessions/213
+Response: 200 | 33ms
+Incoming: GET /api/v1/sessions/213
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/history
+Response: 200 | 129ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 106ms
+Response: 200 | 6ms
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 8ms
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 6ms
+Response: 200 | 4ms
+Response: 200 | 35ms
+Response: 200 | 35ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 35ms
+Response: 200 | 31ms
+Response: 200 | 2ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Response: 200 | 4ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 12ms
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 4ms
+Incoming: POST /api/v1/solve_v3_stream
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 43ms
+Response: 200 | 92ms
+build_openai_structured_output: call=None endpoint=responses name=solve_standard_detailed_v1 strict=False schema_hash=5a123dc74dd62ce6
+Incoming: GET /health
+Response: 200 | 1ms
+build_openai_structured_output: call=None endpoint=responses name=solve_standard_detailed_v1 strict=False schema_hash=5a123dc74dd62ce6
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: OPTIONS /api/v1/admin/stats/dashboard
+Response: 200 | 0ms
+Incoming: OPTIONS /api/v1/admin/solve-traces
+Incoming: OPTIONS /api/v1/admin/stats/model-routing
+Incoming: OPTIONS /api/v1/admin/analytics/overview
+Response: 200 | 1ms
+Response: 200 | 1ms
+Response: 200 | 1ms
+Incoming: OPTIONS /api/v1/admin/stats/dashboard
+Incoming: OPTIONS /api/v1/admin/analytics/anomalies
+Incoming: OPTIONS /api/v1/admin/analytics/errors
+Response: 200 | 2ms
+Response: 200 | 2ms
+Response: 200 | 2ms
+Incoming: OPTIONS /api/v1/admin/stats/model-routing
+Incoming: OPTIONS /api/v1/admin/solve-traces
+Incoming: OPTIONS /api/v1/admin/analytics/overview
+Response: 200 | 3ms
+Response: 200 | 2ms
+Response: 200 | 2ms
+Incoming: OPTIONS /api/v1/admin/analytics/errors
+Incoming: OPTIONS /api/v1/admin/analytics/anomalies
+Incoming: GET /api/v1/admin/stats/dashboard
+Incoming: GET /api/v1/admin/stats/model-routing
+Response: 200 | 3ms
+Response: 200 | 3ms
+Incoming: GET /api/v1/admin/solve-traces
+Incoming: GET /api/v1/admin/analytics/overview
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-08&end_date=2026-02-08
+OpenAI usage fetch failed: 400 Client Error: Bad Request for url: https://api.openai.com/v1/usage?start_date=2026-02-01&end_date=2026-02-08
+Response: 200 | 1321ms
+Incoming: GET /api/v1/admin/analytics/errors
+Incoming: GET /api/v1/admin/analytics/anomalies
+Incoming: OPTIONS /api/v1/config/token-policy
+Response: 200 | 1348ms
+Response: 200 | 11ms
+Response: 200 | 1358ms
+Response: 200 | 1356ms
+Incoming: OPTIONS /api/v1/admin/system-config
+Incoming: OPTIONS /api/v1/config/token-policy
+Response: 200 | 1ms
+Incoming: OPTIONS /api/v1/admin/system-config
+Response: 200 | 2ms
+Response: 200 | 38ms
+Response: 200 | 38ms
+Response: 200 | 2ms
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/admin/system-config
+Response: 200 | 6ms
+Response: 200 | 8ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Response: 200 | 0ms
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 9ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 4ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 6ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/update
+Response: 200 | 1ms
+Incoming: POST /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/update
+Response: 200 | 131ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 7ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/versions
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json
+Response: 200 | 0ms
+Incoming: DELETE /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json
+Response: 200 | 23ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 6ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/update
+Response: 200 | 1ms
+Incoming: POST /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/update
+Response: 200 | 126ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/versions
+Response: 200 | 5ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings
+Response: 200 | 0ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Response: 200 | 1ms
+Response: 200 | 1ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Response: 200 | 1ms
+Response: 200 | 1ms
+Response: 200 | 1ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 20ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Response: 200 | 14ms
+Response: 200 | 14ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Response: 200 | 12ms
+Response: 200 | 9ms
+Response: 200 | 10ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings/activate
+Response: 200 | 0ms
+Incoming: POST /api/v1/admin/prompt-registry/bindings/activate
+Response: 200 | 18ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 13ms
+Response: 200 | 13ms
+Response: 200 | 13ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings/e4290e50-e4a1-428a-ae4e-3094425a3edc
+Response: 200 | 0ms
+Incoming: DELETE /api/v1/admin/prompt-registry/bindings/e4290e50-e4a1-428a-ae4e-3094425a3edc
+Response: 200 | 11ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Response: 200 | 4ms
+Incoming: GET /api/v1/public/plans
+Response: 200 | 8ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/history
+Response: 200 | 5ms
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 4ms
+Response: 200 | 29ms
+Response: 200 | 29ms
+Response: 200 | 31ms
+Incoming: OPTIONS /api/v1/credits/estimate
+Incoming: GET /api/v1/user/profile
+Response: 200 | 0ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Incoming: GET /api/v1/history
+Response: 200 | 10ms
+Response: 200 | 3ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 10ms
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/config/token-policy
+Response: 200 | 5ms
+Response: 200 | 18ms
+Response: 200 | 20ms
+Response: 200 | 19ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 4ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 6ms
+Incoming: POST /api/v1/solve_v3_stream
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 72ms
+Response: 200 | 73ms
+build_openai_structured_output: call=None endpoint=responses name=solve_standard_detailed_v1 strict=True schema_hash=82bd34770f8ec085
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 13ms
+Response: 200 | 7ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 6ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/versions
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 11ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/rollback
+Response: 200 | 1ms
+Incoming: POST /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/rollback
+Response: 200 | 16ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: POST /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/rollback
+Response: 200 | 13ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 6ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/versions
+Response: 200 | 7ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: DELETE /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json
+Response: 200 | 19ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 5ms
+Incoming: POST /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/update
+Response: 200 | 113ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/versions
+Response: 200 | 5ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 1ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 9ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json
+Response: 200 | 0ms
+Incoming: DELETE /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json
+Response: 200 | 25ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 6ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/update
+Response: 200 | 1ms
+Incoming: POST /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/update
+Response: 200 | 106ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 3ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 18ms
+Response: 200 | 18ms
+Response: 200 | 16ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 11ms
+Response: 200 | 11ms
+Response: 200 | 10ms
+Incoming: GET /health
+Response: 200 | 8ms
+Incoming: POST /api/v1/admin/prompt-registry/bindings/activate
+Response: 200 | 16ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 13ms
+Response: 200 | 12ms
+Response: 200 | 13ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings/9ea4a381-b85c-420f-a5d1-109a8348c974
+Response: 200 | 1ms
+Incoming: DELETE /api/v1/admin/prompt-registry/bindings/9ea4a381-b85c-420f-a5d1-109a8348c974
+Response: 200 | 10ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 4ms
+Incoming: POST /api/v1/admin/prompt-registry/bindings/activate
+Response: 200 | 12ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Response: 200 | 11ms
+Response: 200 | 10ms
+Response: 200 | 11ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings/166dd0af-f565-4e43-869d-209b5fc63696
+Response: 200 | 0ms
+Incoming: DELETE /api/v1/admin/prompt-registry/bindings/166dd0af-f565-4e43-869d-209b5fc63696
+Response: 200 | 10ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 15ms
+Response: 200 | 18ms
+Response: 200 | 16ms
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 4ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Response: 200 | 8ms
+Response: 200 | 9ms
+Response: 200 | 9ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Response: 200 | 11ms
+Response: 200 | 12ms
+Response: 200 | 12ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Response: 200 | 16ms
+Response: 200 | 16ms
+Response: 200 | 16ms
+Response: 200 | 13ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Response: 200 | 64ms
+Response: 200 | 63ms
+Response: 200 | 65ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 7ms
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 25ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 31ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 22ms
+Response: 200 | 21ms
+Response: 200 | 23ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Response: 200 | 14ms
+Response: 200 | 12ms
+Response: 200 | 15ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Response: 200 | 1ms
+Response: 200 | 1ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 5ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 6ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 6ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 11ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Response: 200 | 16ms
+Response: 200 | 15ms
+Response: 200 | 15ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 8ms
+Response: 200 | 8ms
+Response: 200 | 8ms
+Incoming: POST /api/v1/admin/prompt-registry/bindings/activate
+Response: 200 | 23ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 10ms
+Response: 200 | 10ms
+Response: 200 | 10ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings/e8cdefb8-9936-43b6-9fae-ee521fedea28
+Response: 200 | 1ms
+Incoming: DELETE /api/v1/admin/prompt-registry/bindings/e8cdefb8-9936-43b6-9fae-ee521fedea28
+Response: 200 | 17ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 4ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Response: 200 | 80ms
+Response: 200 | 83ms
+Response: 200 | 83ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Response: 200 | 13ms
+Response: 200 | 12ms
+Response: 200 | 13ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 6ms
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 28ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 22ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 19ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/solve_v3_stream
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 68ms
+Response: 200 | 119ms
+build_openai_structured_output: call=None endpoint=responses name=solve_standard_detailed_v1 strict=False schema_hash=bf8da4c6a4cafbc8
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 7ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 6ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/versions
+Response: 200 | 8ms
+Incoming: GET /health
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json
+Response: 200 | 1ms
+Incoming: DELETE /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json
+Response: 200 | 23ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 5ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/update
+Response: 200 | 1ms
+Incoming: POST /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/update
+Response: 200 | 62ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/versions
+Response: 200 | 5ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Response: 200 | 1ms
+Response: 200 | 1ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings
+Response: 200 | 2ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Response: 200 | 2ms
+Response: 200 | 2ms
+Response: 200 | 5ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 16ms
+Response: 200 | 15ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Response: 200 | 13ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 9ms
+Response: 200 | 12ms
+Response: 200 | 6ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings/activate
+Response: 200 | 0ms
+Incoming: POST /api/v1/admin/prompt-registry/bindings/activate
+Response: 200 | 17ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 12ms
+Response: 200 | 9ms
+Response: 200 | 10ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings/e951173f-7898-4a6a-91cf-c068100f8bcd
+Response: 200 | 0ms
+Incoming: DELETE /api/v1/admin/prompt-registry/bindings/e951173f-7898-4a6a-91cf-c068100f8bcd
+Response: 200 | 13ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 2ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 11ms
+Response: 200 | 11ms
+Response: 200 | 12ms
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: OPTIONS /api/v1/credits/estimate
+Response: 200 | 0ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 0ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 8ms
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Response: 200 | 78ms
+Response: 200 | 77ms
+Response: 200 | 78ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 7ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 4ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 4ms
+Incoming: POST /api/v1/solve_v3_stream
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 146ms
+Response: 200 | 148ms
+build_openai_structured_output: call=None endpoint=responses name=solve_standard_detailed_v1 strict=False schema_hash=8b2a501cf548f63c
+Incoming: GET /health
+Response: 200 | 2ms
+build_openai_structured_output: call=None endpoint=responses name=solve_standard_detailed_v1 strict=False schema_hash=8b2a501cf548f63c
+[QUESTION_CACHE] Already exists: 39148bac5f5aa372...
+Incoming: GET /api/v1/sessions/217
+Response: 200 | 7ms
+Incoming: GET /api/v1/sessions/217
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 7ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Response: 200 | 0ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Response: 200 | 1ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 8ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 6ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json
+Response: 200 | 0ms
+Incoming: DELETE /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json
+Response: 200 | 18ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 6ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/update
+Response: 200 | 0ms
+Incoming: POST /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/update
+Response: 200 | 117ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 5ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Response: 200 | 15ms
+Response: 200 | 15ms
+Response: 200 | 16ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Response: 200 | 12ms
+Response: 200 | 12ms
+Response: 200 | 9ms
+Incoming: POST /api/v1/admin/prompt-registry/bindings/activate
+Response: 200 | 20ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Response: 200 | 12ms
+Response: 200 | 12ms
+Response: 200 | 12ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings/0446354e-3efe-4993-9fa6-35ef96182d2b
+Response: 200 | 0ms
+Incoming: DELETE /api/v1/admin/prompt-registry/bindings/0446354e-3efe-4993-9fa6-35ef96182d2b
+Response: 200 | 9ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/sessions/217
+Response: 200 | 18ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: GET /api/v1/history
+Response: 200 | 114ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 111ms
+Response: 200 | 7ms
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 10ms
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/user/profile
+Response: 200 | 35ms
+Response: 200 | 48ms
+Response: 200 | 16ms
+Response: 200 | 17ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 16ms
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Response: 200 | 774ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 4ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 4ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 4ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 2ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 22ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Incoming: POST /api/v1/solve_v3_stream
+Response: 200 | 28ms
+Response: 200 | 136ms
+build_openai_structured_output: call=None endpoint=responses name=solve_research_detailed_v1 strict=False schema_hash=bf8da4c6a4cafbc8
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 8ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 11ms
+Response: 200 | 10ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 7ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: DELETE /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json
+Response: 200 | 22ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 5ms
+Incoming: POST /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/update
+Response: 200 | 122ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 5ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Response: 200 | 16ms
+Response: 200 | 16ms
+Response: 200 | 17ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Response: 200 | 24ms
+Response: 200 | 27ms
+Response: 200 | 22ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: POST /api/v1/admin/prompt-registry/bindings/activate
+Response: 200 | 17ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 11ms
+Response: 200 | 7ms
+Response: 200 | 7ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings/81ab5574-711d-4e90-84a2-8ef437eb96d7
+Response: 200 | 0ms
+Incoming: DELETE /api/v1/admin/prompt-registry/bindings/81ab5574-711d-4e90-84a2-8ef437eb96d7
+Response: 200 | 10ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Response: 200 | 6ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/history
+Response: 200 | 63ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 64ms
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/history
+Response: 200 | 132ms
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 10ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 16ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/config/token-policy
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/history
+Response: 200 | 8ms
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/user/profile
+Response: 200 | 12ms
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: POST /api/v1/credits/estimate
+Incoming: GET /api/v1/config/token-policy
+Response: 200 | 15ms
+Response: 200 | 9ms
+Incoming: GET /api/v1/history
+Response: 200 | 8ms
+Response: 200 | 12ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 12ms
+Response: 200 | 9ms
+Incoming: POST /api/v1/credits/estimate
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: POST /api/v1/solve_v3_stream
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 169ms
+Response: 200 | 172ms
+build_openai_structured_output: call=None endpoint=responses name=solve_research_detailed_v1 strict=False schema_hash=20ede6834fcbf528
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+build_openai_structured_output: call=None endpoint=responses name=solve_research_detailed_v1 strict=False schema_hash=20ede6834fcbf528
+Incoming: GET /health
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+[QUESTION_CACHE] Stored: a3f114d4e51525df...
+Incoming: GET /api/v1/sessions/219
+Response: 200 | 7ms
+Incoming: GET /api/v1/sessions/219
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 8ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms

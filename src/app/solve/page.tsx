@@ -2,6 +2,8 @@
 
 import DashboardNavBar from "@/components/DashboardNavBar";
 import { useState, useEffect, useRef, useMemo } from "react";
+import Link from "next/link";
+import ProgressTimeline, { TimelineStep } from "@/components/solve/ProgressTimeline";
 import { useRouter } from "next/navigation";
 import MathRenderer from "@/components/math/MathRendererSwitch";
 import MathRendererMJX from "@/components/MathRendererMJX";
@@ -180,6 +182,118 @@ export default function DashboardPage() {
     const [clarificationResponse, setClarificationResponse] = useState("");
     const [activeAttemptId, setActiveAttemptId] = useState<string | null>(null);
     const [clarificationHistory, setClarificationHistory] = useState<string[]>([]);
+
+    const [pipelineStages, setPipelineStages] = useState<TimelineStep[]>([
+        { key: "attempt_created", label: "Semantic Extraction", description: "Parsing math symbols...", status: "pending", icon: "barcode_reader" },
+        { key: "calling_ai_core", label: "Neural Reasoning", description: "Mapping logical steps...", status: "pending", icon: "psychology" },
+        { key: "schema_validate", label: "Strict Validation", description: "Checking schema v1.0...", status: "pending", icon: "verified_user" },
+        { key: "completed", label: "Packet Delivery", description: "Assembling response...", status: "pending", icon: "network_check" },
+    ]);
+    const [solveError, setSolveError] = useState<{ code?: string; message: string } | null>(null);
+
+    // SSE / Polling Event Listener
+    useEffect(() => {
+        if (!activeAttemptId || !isSolving) return;
+
+        let eventSource: EventSource | null = null;
+        let pollInterval: NodeJS.Timeout | null = null;
+        const channel = `/api/v1/attempt/${activeAttemptId}/events`;
+
+        const updateStep = (key: string, status: "pending" | "active" | "completed" | "failed", description?: string) => {
+            setPipelineStages(prev => prev.map(s => {
+                if (s.key === key) return { ...s, status, description: description || s.description };
+                // If this step is completed, make previous steps completed too if they aren't
+                return s;
+            }));
+        };
+
+        const handleBackendEvent = (data: any) => {
+            const { phase, status, metadata } = data;
+
+            if (phase === "attempt_created") {
+                updateStep("attempt_created", "completed", "Extraction complete.");
+                updateStep("calling_ai_core", "active", "Initializing reasoning...");
+            } else if (phase === "calling_ai_core_start") {
+                updateStep("calling_ai_core", "active", `Calling ${metadata?.provider || 'AI'}...`);
+            } else if (phase === "calling_ai_core_done") {
+                updateStep("calling_ai_core", "completed", "Reasoning complete.");
+                updateStep("schema_validate", "active", "Validating output...");
+            } else if (phase === "schema_validate_start") {
+                updateStep("schema_validate", "active", "Validating schema v1.0...");
+            } else if (phase === "schema_validate_done") {
+                if (status === "success") {
+                    updateStep("schema_validate", "completed", "Validation successful.");
+                    updateStep("completed", "active", "Streaming results...");
+                } else {
+                    updateStep("schema_validate", "active", "Schema invalid, attempting repair...");
+                }
+            } else if (phase === "schema_repair_start") {
+                updateStep("schema_validate", "active", "Attempting automated repair...");
+            } else if (phase === "schema_repair_done") {
+                if (status === "success") {
+                    updateStep("schema_validate", "completed", "Repair successful.");
+                    updateStep("completed", "active", "Streaming results...");
+                } else {
+                    updateStep("schema_validate", "failed", "Validation failed.");
+                }
+            } else if (phase === "completed_success") {
+                updateStep("completed", "completed", "Solve complete.");
+            } else if (phase === "completed_failure") {
+                updateStep("completed", "failed", "Solve failed.");
+                setSolveError({ code: metadata?.code, message: metadata?.error || "Solve failed." });
+            } else if (phase === "clarification_needed") {
+                updateStep("completed", "active", "Clarification requested.");
+            }
+        };
+
+        const startSSE = () => {
+            eventSource = new EventSource(channel, { withCredentials: true });
+            eventSource.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleBackendEvent(data);
+                } catch (e) {
+                    console.error("SSE parse error", e);
+                }
+            };
+            eventSource.onerror = (err) => {
+                console.warn("SSE error, falling back to polling", err);
+                eventSource?.close();
+                startPolling();
+            };
+        };
+
+        const startPolling = () => {
+            pollInterval = setInterval(async () => {
+                try {
+                    const res = await fetch(`/api/v1/attempt/${activeAttemptId}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        // Map status to stages (simplified polling fallback)
+                        if (data.status === "success") {
+                            setPipelineStages(prev => prev.map(s => ({ ...s, status: "completed" })));
+                            if (pollInterval) clearInterval(pollInterval);
+                        } else if (data.status === "failure") {
+                            setPipelineStages(prev => prev.map(s => s.status === "completed" ? s : { ...s, status: "failed" }));
+                            setSolveError({ code: data.failure_code, message: data.error_message });
+                            if (pollInterval) clearInterval(pollInterval);
+                        } else if (data.status === "ambiguous") {
+                            if (pollInterval) clearInterval(pollInterval);
+                        }
+                    }
+                } catch (e) {
+                    console.error("Polling error", e);
+                }
+            }, 2000);
+        };
+
+        startSSE();
+
+        return () => {
+            eventSource?.close();
+            if (pollInterval) clearInterval(pollInterval);
+        };
+    }, [activeAttemptId, isSolving]);
 
     const buildRuntimeMetaFromPayload = (payload: unknown, fallbackRequestedMode: string): StreamingRuntimeMeta => {
         const toObject = (value: unknown): Record<string, unknown> =>
@@ -467,15 +581,18 @@ export default function DashboardPage() {
                         localStorage.removeItem("uask.activeAttemptId");
                         localStorage.removeItem("uask.activeQuery");
                         alert(`Previous attempt failed: ${data.error_message || "Unknown error"}`);
+                        setIsSolving(false);
+                        setSolveStartTime(null);
                     } else if (data.status === "pending" || data.status === "processing") {
-                        // It's still working, but since we lost the stream, we can't easily reconnect 
-                        // to the SAME stream. For Phase 1, we stay in 'solving' state or let it time out.
-                        // Or we could trigger a "resume" logic. 
+                        setIsSolving(true);
+                        // SSE listener will take over
+                    } else {
+                        setIsSolving(false);
+                        setSolveStartTime(null);
                     }
                 } catch (e) {
                     console.error("[RESTORE] Failed:", e);
                     localStorage.removeItem("uask.activeAttemptId");
-                } finally {
                     setIsSolving(false);
                     setSolveStartTime(null);
                 }
@@ -848,6 +965,11 @@ export default function DashboardPage() {
                                     throw new Error(data.error?.message || "Solve failed");
                                 }
                             } else if (currentEvent === 'meta') {
+                                setStreamingMeta(data);
+                                if (data.attempt_id) {
+                                    setActiveAttemptId(data.attempt_id);
+                                    localStorage.setItem("uask.activeAttemptId", data.attempt_id);
+                                }
                                 const parsedMeta = buildRuntimeMetaFromPayload(data, requestedMode);
                                 setStreamingMeta((prev) => ({ ...(prev || {}), ...parsedMeta }));
                                 if (parsedMeta.request_id) {
@@ -956,46 +1078,8 @@ export default function DashboardPage() {
         return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${tenths}`;
     };
 
-    const rawStageOrder = [
-        "Preparing request...",
-        "Calling AI model...",
-        "Waiting for model...",
-        "Validating response...",
-        "Rendering plot...",
-        "Finalizing...",
-    ];
-    const rawStageIndex = rawStageOrder.indexOf(currentStage || "");
-    const normalizedStageIndex = rawStageIndex >= 0 ? rawStageIndex : 0;
-    const pipelineStages: Array<{ key: string; label: string; description: string; icon: string; status: "completed" | "active" | "pending" }> = [
-        {
-            key: "preparing",
-            label: "Preparing Engine",
-            description: "Initial environment setup complete",
-            icon: "task_alt",
-            status: "completed",
-        },
-        {
-            key: "executing",
-            label: "Executing Solver",
-            description: normalizedStageIndex === 0 ? "Compiling execution graph..." : "Pending core response",
-            icon: "calculate",
-            status: normalizedStageIndex === 0 ? "active" : normalizedStageIndex > 0 ? "completed" : "pending",
-        },
-        {
-            key: "calling",
-            label: "Calling AI Core",
-            description: normalizedStageIndex >= 1 && normalizedStageIndex <= 3 ? "Analyzing multidimensional tensors..." : "Awaiting model execution",
-            icon: "view_in_ar",
-            status: normalizedStageIndex >= 1 && normalizedStageIndex <= 3 ? "active" : normalizedStageIndex > 3 ? "completed" : "pending",
-        },
-        {
-            key: "plotting",
-            label: "Plotting Coordinates",
-            description: normalizedStageIndex === 4 ? "Rendering coordinate visuals..." : "Awaiting visualization data",
-            icon: "polyline",
-            status: normalizedStageIndex === 4 ? "active" : normalizedStageIndex > 4 ? "completed" : "pending",
-        },
-    ];
+    // pipelineStages is now a state variable defined at the top
+
 
     return (
         <div className="solve-ui bg-background-light dark:bg-background-dark min-h-screen text-slate-900 dark:text-slate-100 font-display transition-colors duration-200">
@@ -1973,47 +2057,7 @@ export default function DashboardPage() {
                         </div>
 
                         <div className="relative px-4 py-6 sm:px-9 sm:py-10">
-                            <div className="mb-8 flex items-center gap-2.5 text-[10px] sm:text-[11px] font-black tracking-[0.22em] uppercase text-slate-400">
-                                <span className="material-symbols-outlined text-lg text-[#8B5CF6] motion-safe:animate-spin">autorenew</span>
-                                <span>System Pipeline State</span>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-7 sm:gap-x-10 sm:gap-y-9">
-                                {pipelineStages.map((stage) => {
-                                    const isCompleted = stage.status === "completed";
-                                    const isActive = stage.status === "active";
-                                    const icon = isCompleted ? "task_alt" : stage.icon;
-                                    return (
-                                        <div key={stage.key} className={`flex items-center gap-4 ${stage.status === "pending" ? "opacity-45" : ""}`}>
-                                            <div className="relative flex items-center justify-center">
-                                                <div className={`absolute inset-0 rounded-full blur-xl ${isCompleted ? "bg-emerald-500/30" : isActive ? "bg-[#2E5BFF]/35" : "bg-transparent"}`} />
-                                                <div
-                                                    className={[
-                                                        "relative flex size-11 items-center justify-center rounded-xl border text-lg",
-                                                        isCompleted
-                                                            ? "bg-emerald-500/10 border-emerald-400/70 text-emerald-400"
-                                                            : isActive
-                                                                ? "bg-[#2E5BFF]/20 border-[#2E5BFF] text-[#4b80ff] motion-safe:animate-[uaskPulseGlow_2s_ease-in-out_infinite]"
-                                                                : "bg-slate-900/70 border-white/15 text-slate-500",
-                                                    ].join(" ")}
-                                                >
-                                                    <span className="material-symbols-outlined">{icon}</span>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <p
-                                                    className={[
-                                                        "text-lg leading-tight",
-                                                        isCompleted ? "font-semibold text-white" : isActive ? "font-bold text-[#8ab0ff]" : "font-medium text-slate-300",
-                                                    ].join(" ")}
-                                                >
-                                                    {stage.label}
-                                                </p>
-                                                <p className={`mt-1 text-xs ${isCompleted ? "text-slate-400" : isActive ? "text-[#7ba5ff]" : "text-slate-500"}`}>{stage.description}</p>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                            <ProgressTimeline steps={pipelineStages} error={solveError} />
                         </div>
 
                         <div className="relative border-t border-white/10 bg-white/[0.02] px-4 py-5 sm:px-9 sm:py-6 flex flex-col md:flex-row items-center justify-between gap-5">

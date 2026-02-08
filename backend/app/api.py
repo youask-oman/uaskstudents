@@ -108,6 +108,7 @@ api_router.include_router(local_router, tags=["local_math"])
 api_router.include_router(snap_solve_pdf_router, tags=["snap_solve_pdf"])
 api_router.include_router(credits_router, tags=["credits"])
 api_router.include_router(plot_router, prefix="/v1", tags=["plotting"])
+from app.services.solve.solve_events import emit_attempt_event
 
 OCR_OPENAI_SYSTEM_PROMPT_ID = os.environ.get("OCR_OPENAI_SYSTEM_PROMPT_ID", "")
 OCR_OPENAI_SCHEMA_ID = os.environ.get("OCR_OPENAI_SCHEMA_ID", "")
@@ -5490,6 +5491,7 @@ async def solve_v3_stream_endpoint(
         # Meta Event (Part A1)
         meta_data = {
             "request_id": request_id,
+            "attempt_id": attempt_id,
             "session_id": None, # Will be set after creation
             "message_id": None,
             "provider": stream_provider,
@@ -5532,6 +5534,7 @@ async def solve_v3_stream_endpoint(
         
         max_output_tokens = effective_max_tokens
         meta_data["type"] = "meta"
+        print(f"DEBUG: yielding meta_data keys: {list(meta_data.keys())}")
         yield f"event: meta\ndata: {json.dumps(meta_data)}\n\n"
 
         # Stage: Preparing request... (Part A2)
@@ -5663,7 +5666,8 @@ async def solve_v3_stream_endpoint(
                 developer_prompt=profile.developer_prompt_content,
                 json_schema_config=profile.json_schema_content,
                 requested_mode=requested_mode,
-                trusted_context={"learning_mode": learning_mode}
+                trusted_context={"learning_mode": learning_mode},
+                attempt_id=attempt_id
             ):
                 if chunk["type"] == "delta":
                     full_content += chunk["text"]
@@ -5758,6 +5762,8 @@ async def solve_v3_stream_endpoint(
 
             # Stage: Validating response...
             yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': 'Validating response...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
+            if attempt_id:
+                emit_attempt_event(attempt_id, request_id, "schema_validate_start")
 
             # Post-stream persistence and validation (Part E1)
             final_data: Dict[str, Any] = {}
@@ -5784,11 +5790,19 @@ async def solve_v3_stream_endpoint(
                 final_data = normalize_raw_llm_response(final_data)
                 validation_errors, is_ambiguous = _validate_stream_payload(final_data, profile.json_schema_content)
                 schema_valid = len(validation_errors) == 0 and not is_ambiguous
+                
+                if attempt_id:
+                    if is_ambiguous:
+                        emit_attempt_event(attempt_id, request_id, "clarification_needed", status="ambiguous")
+                    else:
+                        emit_attempt_event(attempt_id, request_id, "schema_validate_done", status="success" if schema_valid else "failure")
 
             if validation_errors:
                 repair_attempted = True
                 openai_telemetry["repair_attempted"] = True
                 openai_telemetry["repair_attempts"] = 1
+                if attempt_id:
+                    emit_attempt_event(attempt_id, request_id, "schema_repair_start")
                 try:
                     # FIX: Pass FULL schema wrapper, not just {"schema": ...} which creates half-wrapper bug
                     repaired_data, repaired_text = await solver._repair_response(
@@ -5819,6 +5833,9 @@ async def solve_v3_stream_endpoint(
                 except Exception as repair_err:
                     validation_errors.append(f"repair_error: {repair_err}")
                     schema_valid = False
+                
+                if attempt_id:
+                    emit_attempt_event(attempt_id, request_id, "schema_repair_done", status="success" if schema_valid else "failure")
 
             if not schema_valid:
                 # ===== LIVE ERROR TRACE =====
@@ -6083,6 +6100,8 @@ async def solve_v3_stream_endpoint(
 
                 session.commit()
                 print(f"[SOLVER_V3_STREAM] ✅ Successfully persisted results for session {new_chat.id}")
+                if attempt_id:
+                    emit_attempt_event(attempt_id, request_id, "completed_success", status="success")
 
                 # Phase 1: Update Final Attempt Record
                 try:
@@ -10023,5 +10042,59 @@ async def get_attempt_status(
         "created_at": attempt.created_at,
         "updated_at": attempt.updated_at
     }
+
+
+@api_router.get("/attempt/{attempt_id}/events")
+async def stream_attempt_events(
+    attempt_id: str,
+    request: Request,
+    session: Session = Depends(get_session)
+):
+    """
+    SSE endpoint to stream progress events for a specific solve attempt.
+    """
+    attempt = session.exec(
+        select(SolverOutputAttempt)
+        .where(SolverOutputAttempt.attempt_id == attempt_id)
+    ).first()
+
+    if not attempt:
+        raise HTTPException(status_code=404, detail="Attempt not found")
+
+    async def event_generator():
+        redis_client = get_redis()
+        pubsub = redis_client.pubsub()
+        channel = f"solve:attempt:{attempt_id}:events"
+        pubsub.subscribe(channel)
+
+        try:
+            # Send initial state if already completed/failed/processing
+            if attempt.status in ["success", "failure", "ambiguous"]:
+                yield f"data: {json.dumps({'attempt_id': attempt_id, 'request_id': attempt.request_id, 'phase': 'completed_success' if attempt.status == 'success' else 'completed_failure' if attempt.status == 'failure' else 'clarification_needed', 'status': attempt.status})}\n\n"
+                return
+            
+            if attempt.status in ["pending", "processing"]:
+                yield f"data: {json.dumps({'attempt_id': attempt_id, 'request_id': attempt.request_id, 'phase': 'attempt_created', 'status': 'active'})}\n\n"
+
+            while True:
+                if await request.is_disconnected():
+                    break
+                
+                # We use a small sleep to avoid tight loop, but pubsub.get_message is better
+                # redis-py's pubsub.get_message(ignore_subscribe_messages=True)
+                message = pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                if message:
+                    yield f"data: {message['data']}\n\n"
+                
+                # Optional: check if attempt status changed in DB as a safety fallback
+                # but Redis events should be the primary driver.
+                
+                await asyncio.sleep(0.1)
+        finally:
+            pubsub.unsubscribe(channel)
+            pubsub.close()
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
 
 

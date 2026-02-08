@@ -71,6 +71,7 @@ from app.llm_profiles.profiles import PromptProfile
 from app.prompts.db_loader import PromptBindingLookupError, load_prompt_bundle
 
 from app.models import SolverOutputAttempt
+from app.services.solve.solve_events import emit_attempt_event
 
 
 
@@ -315,8 +316,8 @@ class SolverV3:
             print(f"\n[SOLVER_V3] ==================== START ====================")
 
             print(f"[SOLVER_V3] Request ID: {request_id}")
-
-
+        if attempt_id:
+            emit_attempt_event(attempt_id, request_id, "attempt_created", status="active")
 
         profile = None
 
@@ -628,6 +629,8 @@ class SolverV3:
 
 
                 for provider_idx, provider in enumerate(providers_to_try):
+                    if attempt_id:
+                        emit_attempt_event(attempt_id, request_id, "calling_ai_core_start", metadata={"provider": provider})
 
                     llm_start_perf = time.perf_counter()
 
@@ -651,7 +654,7 @@ class SolverV3:
 
                         # _call_llm_with_schema calls existing method.
 
-                        # Let's modify _call_llm_with_schema later?
+                        # I'll modify _call_llm_with_schema later?
 
                         # Or just note that message building is part of LLM setup.
 
@@ -710,6 +713,9 @@ class SolverV3:
 
 
                         llm_end_perf = time.perf_counter()
+                        
+                        if attempt_id:
+                            emit_attempt_event(attempt_id, request_id, f"calling_ai_core_done", metadata={"model": model_used, "provider": provider})
 
                         # Phase 1 Hardening: Persist Raw LLM Response (Append-Only) & Update Tokens
                         if db_session and attempt_id:
@@ -836,12 +842,16 @@ class SolverV3:
 
 
                         # VALIDATION
+                        if attempt_id:
+                            emit_attempt_event(attempt_id, request_id, "schema_validate_start")
 
                         t_val_start = time.perf_counter()
 
                         validation_success, validation_error, validated_data, error_list, is_ambiguous = self._check_status_and_validate(
                             response_data, status_info, openai_schema_wrapper["schema"], raw_text=raw_output_text
                         )
+                        if attempt_id:
+                            emit_attempt_event(attempt_id, request_id, "schema_validate_done", status="success" if validation_success else "failure")
 
                         telemetry["latency_ms_validation"] = int((time.perf_counter() - t_val_start) * 1000)
 
@@ -851,8 +861,10 @@ class SolverV3:
                                  attempt = db_session.exec(select(SolverOutputAttempt).where(SolverOutputAttempt.attempt_id == attempt_id)).first()
                                  if attempt:
                                      if is_ambiguous:
-                                         attempt.status = "ambiguous"
-                                         attempt.error_message = validation_error or "LLM requested clarification (refusal)."
+                                          attempt.status = "ambiguous"
+                                          attempt.error_message = validation_error or "LLM requested clarification (refusal)."
+                                          if attempt_id:
+                                              emit_attempt_event(attempt_id, request_id, "clarification_needed", status="ambiguous")
                                      elif validation_success:
                                          attempt.status = "success"
                                          attempt.validation_json = validated_data
@@ -947,6 +959,8 @@ class SolverV3:
                             try:
 
                                 t_repair_start = time.perf_counter()
+                                if attempt_id:
+                                    emit_attempt_event(attempt_id, request_id, "schema_repair_start")
 
                                 repaired, repaired_text = await self._repair_response(
 
@@ -979,10 +993,12 @@ class SolverV3:
                                 
 
                                 validation_success, validation_error, validated_data, post_repair_errors = self._check_status_and_validate(
-
-                                    repaired, status_info, openai_schema_wrapper["schema"], raw_text=repaired_text
-
-                                )
+ 
+                                     repaired, status_info, openai_schema_wrapper["schema"], raw_text=repaired_text
+ 
+                                 )
+                                if attempt_id:
+                                    emit_attempt_event(attempt_id, request_id, "schema_repair_done", status="success" if validation_success else "failure")
 
                                 if validation_success:
 
@@ -1071,6 +1087,9 @@ class SolverV3:
                 if telemetry.get("validation_failures_count", 0) > 0:
 
                     error_code = "LLM_SCHEMA_INVALID"
+
+                if attempt_id:
+                    emit_attempt_event(attempt_id, request_id, "completed_failure", status="failure", metadata={"error": f"All attempts failed. Last error: {last_error}", "code": error_code})
 
                 return self._handle_error(problem_text, f"All attempts failed. Last error: {last_error}", error_code, telemetry, start_time_perf)
 
@@ -1166,6 +1185,9 @@ class SolverV3:
 
             
 
+            if attempt_id:
+                emit_attempt_event(attempt_id, request_id, "completed_success")
+
             return response_data
 
 
@@ -1179,6 +1201,9 @@ class SolverV3:
                 import traceback
 
                 traceback.print_exc()
+
+            if attempt_id:
+                emit_attempt_event(attempt_id, request_id, "completed_failure", status="failure", metadata={"error": str(e), "code": "fatal_error"})
 
             return self._handle_error(problem_text, str(e), "fatal_error", telemetry, start_time_perf)
 
@@ -1213,29 +1238,18 @@ class SolverV3:
 
 
     async def solve_stream(
-
         self,
-
         problem_text: str,
-
         context: str = "",
-
         trace: bool = False,
-
         request_id: str = None,
-
         max_output_tokens: int = 900, # Ignored in favor of deterministic cap
-
         system_prompt: Optional[str] = None,
-
         developer_prompt: Optional[str] = None,
-
         json_schema_config: Optional[Dict[str, Any]] = None,
-
         trusted_context: Optional[Dict[str, Any]] = None,
-
-        requested_mode: str = "minimal"
-
+        requested_mode: str = "minimal",
+        attempt_id: Optional[str] = None
     ) -> AsyncIterator[Dict[str, Any]]:
 
         """
@@ -1287,6 +1301,8 @@ class SolverV3:
 
 
         try:
+            if attempt_id:
+                emit_attempt_event(attempt_id, request_id, "attempt_created", status="active")
 
             provider = "openai"
 
@@ -1362,7 +1378,8 @@ class SolverV3:
 
                 print(f"[SOLVER_V3_STREAM] Calling OpenAI with model={self.default_model}")
 
-
+            if attempt_id:
+                emit_attempt_event(attempt_id, request_id, "calling_ai_core_start", metadata={"provider": provider})
 
             schema_payload = json_schema_config
             response_stream = client.generate_stream(
@@ -1400,6 +1417,9 @@ class SolverV3:
                     if trace:
 
                         print(f"[SOLVER_V3_STREAM] First chunk received")
+
+                    if attempt_id:
+                        emit_attempt_event(attempt_id, request_id, "calling_ai_core_done", metadata={"model": self.default_model, "provider": provider})
 
                     first_chunk = False
 
