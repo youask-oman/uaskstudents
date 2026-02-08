@@ -148,7 +148,7 @@ def _resolve_runtime_tier_slug(user: Optional[User]) -> str:
     return get_user_effective_tier_slug(user)
 
 
-_TIER_ORDER = {"FREE": 0, "STANDARD": 1, "RESEARCH": 2}
+_TIER_ORDER = {"FREE": 0, "SHORT": 1, "STANDARD": 2, "RESEARCH": 3}
 
 
 def _normalize_tier_for_prompt_binding(value: Optional[str]) -> str:
@@ -157,6 +157,8 @@ def _normalize_tier_for_prompt_binding(value: Optional[str]) -> str:
         return "RESEARCH"
     if raw in {"standard", "student_standard", "pro", "premium"}:
         return "STANDARD"
+    if raw == "short":
+        return "SHORT"
     return "FREE"
 
 

@@ -454,9 +454,11 @@ export default function DashboardPage() {
         const defaultTier: SolveTier =
             readySubscription.plan.slug === "research"
                 ? "RESEARCH"
-                : readySubscription.plan.slug === "free"
-                    ? "FREE"
-                    : "STANDARD";
+                : readySubscription.plan.slug === "short"
+                    ? "SHORT"
+                    : readySubscription.plan.slug === "free"
+                        ? "FREE"
+                        : "STANDARD";
         setSelectedSolveTier(defaultTier);
         if (typeof window !== "undefined") {
             localStorage.setItem("uask.solveTier", defaultTier);
@@ -800,7 +802,7 @@ export default function DashboardPage() {
     const handleDebugRuntimeMeta = async () => {
         if (isSolving) return;
         const userId = localStorage.getItem("user_id") || "1";
-        const requestedMode = selectedSolveTier === "FREE" ? "minimal" : "detailed";
+        const requestedMode = (selectedSolveTier === "FREE" || selectedSolveTier === "SHORT") ? "minimal" : "detailed";
 
         setRuntimeDebugLoading(true);
         setRuntimeDebugError(null);
@@ -861,7 +863,7 @@ export default function DashboardPage() {
 
         try {
             const streamCandidates = ["/api/v1/solve_v3_stream"];
-            const requestedMode = selectedSolveTier === 'FREE' ? 'minimal' : 'detailed';
+            const requestedMode = (selectedSolveTier === 'FREE' || selectedSolveTier === 'SHORT') ? 'minimal' : 'detailed';
 
             void fetchSolveRuntimeMeta(userId, selectedSolveTier, requestedMode)
                 .then((runtimeMeta) => {
