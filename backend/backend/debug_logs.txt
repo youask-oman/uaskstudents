@@ -19454,3 +19454,517 @@ Incoming: GET /api/v1/users/online
 Response: 200 | 3ms
 Incoming: GET /health
 Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Response: 200 | 10ms
+Response: 200 | 14ms
+Response: 200 | 15ms
+Incoming: POST /api/v1/credits/estimate
+Incoming: GET /api/v1/users/online
+Response: 200 | 2ms
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 2ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 15ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Response: 200 | 19ms
+Response: 200 | 19ms
+Response: 200 | 21ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 15ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 17ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 4ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 11ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/history
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 15ms
+Response: 200 | 15ms
+Response: 200 | 10ms
+Incoming: POST /api/v1/credits/estimate
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Response: 200 | 5ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 15ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 16ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 2ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 7ms
+Response: 200 | 6ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 6ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Response: 200 | 1ms
+Response: 200 | 1ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Response: 200 | 6ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts/global_system_prompt_v1/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/global_system_prompt_v1/versions
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts/solve_final_answer_v1/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/solve_final_answer_v1/versions
+Response: 200 | 5ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts/plot_trigger_v1/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/plot_trigger_v1/versions
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts/solve_research_v1/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/solve_research_v1/versions
+Response: 200 | 4ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts/solve_free_v1/versions
+Response: 200 | 1ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/solve_free_v1/versions
+Response: 200 | 7ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/solve_final_answer_v1/versions
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts/solve_final_answer_v1
+Response: 200 | 0ms
+Incoming: DELETE /api/v1/admin/prompt-registry/prompts/solve_final_answer_v1
+Response: 200 | 15ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/global_system_prompt_v1/versions
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts/solve_final_answer_v1/update
+Response: 200 | 0ms
+Incoming: POST /api/v1/admin/prompt-registry/prompts/solve_final_answer_v1/update
+Response: 200 | 20ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/solve_final_answer_v1/versions
+Response: 200 | 4ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 7ms
+Response: 200 | 7ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 6ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Response: 200 | 5ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Response: 200 | 3ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Response: 200 | 3ms
+Response: 200 | 12ms
+Response: 200 | 3ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Response: 200 | 13ms
+Response: 200 | 12ms
+Response: 200 | 11ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 7ms
+Response: 200 | 7ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: POST /api/v1/admin/prompt-registry/bindings/activate
+Response: 200 | 17ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 12ms
+Response: 200 | 12ms
+Response: 200 | 10ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings/b979a123-6472-4c7a-af6f-b8d1bee2cb8e
+Response: 200 | 0ms
+Incoming: DELETE /api/v1/admin/prompt-registry/bindings/b979a123-6472-4c7a-af6f-b8d1bee2cb8e
+Response: 200 | 10ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/me/subscription
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/me/subscription
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Response: 200 | 15ms
+Response: 200 | 15ms
+Response: 200 | 15ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 6ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 14ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 13ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 7ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: OPTIONS /api/v1/credits/estimate
+Response: 200 | 0ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 2ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 4ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: POST /api/v1/credits/estimate
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 0ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 11ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 2ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
