@@ -125,6 +125,9 @@ export interface StepRow {
   mathLatex?: string;
   mathRichHtml?: string;
   mathRichJson?: Record<string, unknown>;
+  rulesUsed?: string[];
+  checks?: string[];
+  notes?: string;
 }
 
 export interface VerificationCheck {
@@ -148,15 +151,34 @@ export interface ChartPayload {
   points: PlotPoint[];
 }
 
+export interface FinalAnswerValue {
+  label: string;
+  value: Record<string, unknown>;
+  value_latex?: string;
+}
+
+export interface FinalAnswer {
+  answer_text: string;
+  answer_latex: string;
+  values: FinalAnswerValue[];
+  units?: string;
+}
+
 export interface MathSolutionPayload {
   layoutTitle?: string;
   recognizedLatex?: string;
+  assumptions?: string[];
+  originalProblem?: string;
+  normalizedProblem?: string;
   domainConstraints?: string[];
   steps: StepRow[];
   result?: string;
+  finalAnswer?: FinalAnswer;
   plots?: ChartPayload[];
   verificationChecks?: VerificationCheck[];
   autocorrectApplied?: boolean;
+  confidence?: number;
+  commonMistakes?: string[];
   parseStatus?: "ok" | "partial" | "failed";
 }
 
@@ -184,6 +206,13 @@ export type CanvasBlock =
     verificationChecks?: VerificationCheck[];
     domainConstraints?: string[];
     autocorrectApplied?: boolean;
+    assumptions?: string[];
+    originalProblem?: string;
+    normalizedProblem?: string;
+    finalAnswer?: FinalAnswer;
+    plots?: ChartPayload[];
+    confidence?: number;
+    commonMistakes?: string[];
   }
   | { id: string; type: "text"; text: string };
 

@@ -1474,21 +1474,171 @@
   line-height: 1.4;
 }
 
+/* ============================================
+   FINAL ANSWER LAYOUT - NO SCROLLBARS
+   ============================================
+   HARD RULE: No vertical or horizontal scrollbar 
+   inside any LaTeX render container.
+   ============================================ */
+
+/* Force visible overflow on all library-generated math containers inside the paper to ban scrollbars */
+.paperPage :global(mjx-container),
+.paperPage :global(mjx-math),
+.paperPage :global(.MathJax),
+.paperPage :global(.katex),
+.paperPage :global(.katex-display),
+.paperPage :global(.math-renderer-mjx),
+.paperPage :global(*[data-math]) {
+  overflow: visible !important;
+  max-height: none !important;
+  height: auto !important;
+}
+
+.finalAnswerMathContainer {
+  width: 100%;
+  max-width: 100%;
+  overflow: visible;
+}
+
+.finalAnswerMathContent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.finalAnswerMathBlock {
+  width: 100%;
+  max-width: 100%;
+  overflow: visible;
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.6;
+  padding: 8px 0;
+}
+
+/* MathJax containers - force visible overflow scoped to local math block */
+.finalAnswerMathBlock :global(mjx-container),
+.finalAnswerMathBlock :global(.MathJax),
+.finalAnswerMathBlock :global(mjx-math) {
+  max-width: 100% !important;
+  overflow: visible !important;
+  display: block !important;
+  height: auto !important;
+  max-height: none !important;
+}
+
+.finalAnswerTextBlock {
+  width: 100%;
+  font-size: 14px;
+  color: #334155;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  padding: 8px 12px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  border-left: 3px solid #3b82f6;
+}
+
+/* Paper Form Container - enforce width, hidden clip */
+.paperPage {
+  max-width: 800px;
+  margin: 40px auto;
+  background: var(--paper-bg);
+  border-radius: 12px;
+  box-shadow: var(--paper-shadow);
+  min-height: 780px;
+  border: 1px solid #eef2f6;
+  padding: 28px;
+  /* Use clip instead of hidden to prevent internal scrollbars */
+  overflow-x: clip;
+  overflow-y: visible;
+}
+
+/* Safe wrapping for content elements inside paper */
+.paperPage p,
+.paperPage span,
+.paperPage div {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* Steps Block Containment */
+.stepsBlock {
+  width: 100%;
+  max-width: 100%;
+  overflow: visible;
+}
+
+.stepRow {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px dashed #e2e8f0;
+  width: 100%;
+  max-width: 100%;
+}
+
+.stepLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-top: 3px;
+  flex-shrink: 0;
+}
+
+.stepValue {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  overflow: visible;
+}
+
+/* Override for nested math containers - NO SCROLLBARS */
+.stepValue :global(mjx-container),
+.stepValue :global(.MathJax),
+.stepValue :global(mjx-math) {
+  max-width: 100% !important;
+  overflow: visible !important;
+  height: auto !important;
+  max-height: none !important;
+}
+
+/* Chat step math - NO SCROLLBARS */
 .chatStepMath {
   margin-top: 4px;
   background: #f8fafc;
   padding: 8px;
   border-radius: 8px;
   border: 1px solid #eef2f6;
-  overflow-x: auto;
+  overflow: visible;
 }
 
-.chatSolutionResult {
-  margin-top: 12px;
-  padding: 10px;
-  border-radius: 10px;
-  background: #ecfdf5;
-  border: 1px solid #d1fae5;
-  color: #064e3b;
-  font-size: 14px;
+.chatStepMath :global(mjx-container),
+.chatStepMath :global(.MathJax) {
+  overflow: visible !important;
+  max-width: 100% !important;
+}
+
+/* MATH SCALE-DOWN FALLBACK */
+.mathScaleToFit {
+  transform-origin: left top;
+  transform: scale(var(--math-scale, 1));
+}
+
+/* Top-level global math safety rules for this component */
+:global(.mathBlock),
+:global(.latexBox),
+:global([data-math-block]),
+:global([data-math]) {
+  overflow: visible !important;
+  max-height: none !important;
 }

@@ -34,6 +34,41 @@ export function renderHtmlFromPayload(payload: ExportSolutionPayload): string {
         return text.split("\n").map(line => `<p>${line}</p>`).join("");
     };
 
+    const renderPlotSvg = (block: any) => {
+        const width = 520;
+        const height = 240;
+        const padding = 24;
+        const xs = block.points.map((p: any) => p.x);
+        const ys = block.points.map((p: any) => p.y);
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys);
+        const spanX = Math.max(1e-9, maxX - minX);
+        const spanY = Math.max(1e-9, maxY - minY);
+
+        const path = block.points
+            .map((p: any, idx: number) => {
+                const px = padding + ((p.x - minX) / spanX) * (width - padding * 2);
+                const py = height - padding - ((p.y - minY) / spanY) * (height - padding * 2);
+                return `${idx === 0 ? "M" : "L"}${px.toFixed(2)} ${py.toFixed(2)}`;
+            })
+            .join(" ");
+
+        return `
+            <div class="plot-card">
+              <div class="plot-title">${block.title || "Graph"}</div>
+              <svg viewBox="0 0 ${width} ${height}" style="width:100%; height:auto; background:#fff; border:1px solid #e2e8f0; border-radius:8px;">
+                <path d="${path}" fill="none" stroke="#2563eb" stroke-width="2" />
+              </svg>
+              <div style="display:flex; justify-content:space-between; font-size:9pt; color:#64748b; margin-top:4px;">
+                <span>x: ${block.xLabel || "x"}</span>
+                <span>y: ${block.yLabel || "y"}</span>
+              </div>
+            </div>
+        `;
+    };
+
     const renderBlocks = (blocks: ExportSolutionPayload["pages"][0]["blocks"]) => {
         return blocks.map(block => {
             let content = "";
@@ -44,7 +79,14 @@ export function renderHtmlFromPayload(payload: ExportSolutionPayload): string {
                 content = `
                     <div class="card problem-card">
                         <div class="card-title">${block.title}</div>
+                        ${block.originalText ? `<div class="sub-header">Goal: ${block.originalText}</div>` : ""}
                         <div class="card-body">${formatBody(block.body)}</div>
+                        ${block.assumptions?.length ? `
+                            <div class="assumptions-box">
+                                <div class="assumptions-label">Assumptions:</div>
+                                <ul>${block.assumptions.map(a => `<li>${a}</li>`).join("")}</ul>
+                            </div>
+                        ` : ""}
                         <div class="math-blocks">${mathContent}</div>
                     </div>
                 `;
@@ -60,13 +102,30 @@ export function renderHtmlFromPayload(payload: ExportSolutionPayload): string {
                         <div class="math-blocks">${mathContent}</div>
                     </div>
                 `;
+            } else if (block.type === "mistakes") {
+                content = `
+                    <div class="card mistakes-card">
+                        <div class="card-title mistakes-header">${block.title}</div>
+                        <ul class="mistakes-list">
+                            ${block.list.map(m => `<li>${m}</li>`).join("")}
+                        </ul>
+                    </div>
+                `;
             } else if (block.type === "final") {
                 mathContent = block.math?.map(renderMath).join("") || "";
                 content = `
                     <div class="card final-card">
-                        <div class="card-title">${block.label || "Final Answer"}</div>
+                        <div class="card-title">${block.label || "Final Result"}</div>
                         <div class="card-body bold">${formatBody(block.body)}</div>
                         <div class="math-blocks">${mathContent}</div>
+                        ${(block.units || (block.values && block.values.length > 0)) ? `
+                            <div class="final-details">
+                                ${block.units ? `<div class="detail-row"><span class="label">Units:</span> <span class="val">${block.units}</span></div>` : ""}
+                                ${block.values ? block.values.map(v => `
+                                    <div class="detail-row"><span class="label">${v.label}:</span> <span class="val">${renderMathInline(v.value)}</span></div>
+                                `).join("") : ""}
+                            </div>
+                        ` : ""}
                     </div>
                 `;
             } else if (block.type === "note") {
@@ -74,6 +133,12 @@ export function renderHtmlFromPayload(payload: ExportSolutionPayload): string {
                     <div class="card note-card">
                         ${block.title ? `<div class="card-title">${block.title}</div>` : ""}
                         <div class="card-body italic">${formatBody(block.body)}</div>
+                    </div>
+                `;
+            } else if (block.type === "plot") {
+                content = `
+                    <div class="card">
+                        ${renderPlotSvg(block)}
                     </div>
                 `;
             }
@@ -201,14 +266,12 @@ export function renderHtmlFromPayload(payload: ExportSolutionPayload): string {
         }
 
         .final-card {
-            background: linear-gradient(135deg, var(--success), var(--success-dark));
-            color: white;
-            border: none;
-            box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.2);
+            border: 2px solid var(--success);
+            box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.1);
         }
 
         .final-card .card-title, .final-card .card-body {
-            color: white;
+            color: var(--text-main);
         }
 
         .note-card {
@@ -225,7 +288,7 @@ export function renderHtmlFromPayload(payload: ExportSolutionPayload): string {
         }
 
         .final-card .card-title {
-            color: white;
+            color: var(--success-dark);
             font-size: 16pt;
         }
 
@@ -275,6 +338,75 @@ export function renderHtmlFromPayload(payload: ExportSolutionPayload): string {
             font-size: 13.5pt;
             font-weight: 700;
             color: var(--primary-dark);
+        }
+
+        .sub-header {
+            font-size: 10pt;
+            color: var(--primary-dark);
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .assumptions-box {
+            margin-top: 1rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .assumptions-label {
+            font-size: 8pt;
+            font-weight: 800;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-bottom: 0.25rem;
+        }
+
+        .assumptions-box ul {
+            margin: 0;
+            padding-left: 1.25rem;
+            font-size: 10pt;
+            color: #334155;
+        }
+
+        .mistakes-card {
+            background-color: #fffbeb;
+            border-color: #fef3c7;
+        }
+
+        .mistakes-header {
+            color: #92400e;
+        }
+
+        .mistakes-list {
+            padding-left: 1.25rem;
+            font-size: 11pt;
+            color: #78350f;
+        }
+
+        .final-details {
+            margin-top: 1.25rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            justify-content: center;
+        }
+
+        .detail-row {
+            font-size: 10pt;
+        }
+
+        .detail-row .label {
+            font-weight: 500;
+            opacity: 0.8;
+            margin-right: 0.5rem;
+            text-transform: uppercase;
+            font-size: 8pt;
+        }
+
+        .detail-row .val {
+            font-weight: 700;
         }
 
         .step-card .card-body, .step-card .math-blocks {

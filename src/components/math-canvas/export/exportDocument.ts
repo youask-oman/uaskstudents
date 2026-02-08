@@ -252,6 +252,19 @@ const renderPage = (page: CanvasPageData, pageIndex: number): string => {
       if (block.type === "steps") {
         return `
           <section class="section steps-section">
+            <div class="problem-statement-card">
+               <div class="problem-statement-header">Problem Analysis</div>
+               ${block.originalProblem ? `<div class="original-problem"><strong>Goal:</strong> ${proseWithMathToHtml(block.originalProblem)}</div>` : ""}
+               ${block.assumptions && block.assumptions.length > 0 ? `
+                 <div class="assumptions-box">
+                   <div class="assumptions-title">Assumptions</div>
+                   <ul class="assumptions-list">
+                     ${block.assumptions.map(a => `<li>${proseWithMathToHtml(a)}</li>`).join("")}
+                   </ul>
+                 </div>
+               ` : ""}
+            </div>
+
             <h3>Step-by-step Solution</h3>
             ${block.domainConstraints && block.domainConstraints.length > 0
             ? `<div class="verification"><h4>Domain constraints</h4>${block.domainConstraints
@@ -260,6 +273,16 @@ const renderPage = (page: CanvasPageData, pageIndex: number): string => {
             : ""
           }
             ${block.steps.map((step, idx) => renderStep(step, idx)).join("")}
+            
+            ${block.commonMistakes && block.commonMistakes.length > 0 ? `
+              <div class="mistakes-card">
+                <div class="mistakes-header">Common Mistakes to Avoid</div>
+                <ul class="mistakes-list">
+                  ${block.commonMistakes.map(m => `<li>${proseWithMathToHtml(m)}</li>`).join("")}
+                </ul>
+              </div>
+            ` : ""}
+
             ${block.verificationChecks && block.verificationChecks.length > 0
             ? `<div class="verification"><h4>Verification</h4>${block.verificationChecks
               .map(
@@ -272,13 +295,34 @@ const renderPage = (page: CanvasPageData, pageIndex: number): string => {
               .join("")}</div>`
             : ""
           }
-            ${block.result
-            ? `<section class="section final-answer"><h3>Final Answer${block.autocorrectApplied ? " (Verified)" : ""}</h3><div class="final-answer-content">${richMathToHtml(
-              block.result,
-              true,
-            )}</div></section>`
+            ${(block.result || (block.finalAnswer && (block.finalAnswer.answer_latex || block.finalAnswer.answer_text)))
+            ? `
+            <section class="section final-answer">
+              <h3>Final Result</h3>
+              <div class="final-answer-content">
+                ${block.finalAnswer?.answer_latex
+              ? latexToHtml(block.finalAnswer.answer_latex, true)
+              : (block.result ? richMathToHtml(block.result, true) : "")}
+              </div>
+              ${(block.finalAnswer?.values?.length || block.finalAnswer?.units) ? `
+                <div class="final-answer-details">
+                  ${block.finalAnswer?.units ? `<div class="detail-item"><span class="detail-label">Units:</span> <span class="detail-value">${escapeHtml(block.finalAnswer.units)}</span></div>` : ""}
+                  ${block.finalAnswer?.values?.map(v => `
+                    <div class="detail-item">
+                      <span class="detail-label">${escapeHtml(v.label)}:</span> 
+                      <span class="detail-value">${latexToHtml(v.value_latex || v.value.toString(), false)}</span>
+                    </div>
+                  `).join("")}
+                </div>
+              ` : ""}
+            </section>`
             : ""
           }
+            ${block.plots && block.plots.length > 0 ? `
+              <div class="block-plots">
+                ${block.plots.map(p => renderPlotSvg({ type: "plot", ...p } as any)).join("")}
+              </div>
+            ` : ""}
           </section>
         `;
       }
@@ -362,6 +406,18 @@ export const buildExportHtml = (payload: SolutionExportPayload): string => {
     .plot-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
     .plot-svg { width: 100%; height: auto; max-height: 260px; background: #fff; }
     .plot-axis-labels { display: flex; justify-content: space-between; font-size: 12px; color: #42526a; margin-top: 6px; }
+    .problem-statement-card { background: #f0fdf4; border-left: 4px solid #16a34a; padding: 16px; margin-bottom: 20px; border-radius: 4px; }
+    .problem-statement-header { font-size: 11px; font-weight: 900; color: #166534; text-transform: uppercase; margin-bottom: 8px; }
+    .assumptions-box { margin-top: 12px; }
+    .assumptions-title { font-size: 10px; font-weight: 800; color: #166534; text-transform: uppercase; margin-bottom: 4px; }
+    .assumptions-list { margin: 0; padding-left: 18px; font-size: 12px; color: #374151; }
+    .mistakes-card { background: #fffbeb; border: 1px solid #fde68a; padding: 16px; margin: 20px 0; border-radius: 8px; }
+    .mistakes-header { color: #92400e; font-weight: 700; font-size: 14px; margin-bottom: 8px; }
+    .mistakes-list { margin: 0; padding-left: 20px; font-size: 13px; color: #78350f; }
+    .final-answer-details { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; margin-top: 16px; padding-top: 16px; border-top: 1px solid #e5e7eb; }
+    .detail-item { font-size: 14px; }
+    .detail-label { font-weight: 700; color: #6b7280; text-transform: uppercase; font-size: 10px; margin-right: 4px; }
+    .detail-value { font-weight: 600; color: #111827; }
     .paper-page-break { page-break-before: always; }
     math { font-size: 1.05em; color: #101828; }
     .step-math math, .verification-math math { display: inline-block; }
@@ -486,6 +542,15 @@ const mapToExportPayload = (payload: SolutionExportPayload): ExportSolutionPaylo
         }
         if (block.type === "steps") {
           const out: any[] = [];
+
+          out.push({
+            type: "problem",
+            title: "Problem Analysis",
+            body: block.originalProblem ? `Goal: ${plainText(block.originalProblem)}` : "",
+            assumptions: block.assumptions || [],
+            originalText: block.originalProblem
+          });
+
           if (block.domainConstraints?.length) {
             out.push({
               type: "note",
@@ -505,17 +570,43 @@ const mapToExportPayload = (payload: SolutionExportPayload): ExportSolutionPaylo
             });
           });
 
+          if (block.commonMistakes?.length) {
+            out.push({
+              type: "mistakes",
+              title: "Common Mistakes to Avoid",
+              list: block.commonMistakes
+            });
+          }
+
           if (block.verificationChecks?.length) {
             const body = block.verificationChecks.map(c => `${c.checkId}: ${plainText(c.message)}`).join("\n");
             out.push({ type: "note", title: "Verification", body });
           }
 
-          if (block.result) {
+          const resMath = block.finalAnswer?.answer_latex || block.result;
+          if (resMath || block.finalAnswer?.answer_text) {
             out.push({
               type: "final",
-              label: "Final Answer",
-              body: block.autocorrectApplied ? "(Verified)" : "",
-              math: [block.result]
+              label: "Final Result",
+              body: block.autocorrectApplied ? "(Verified)" : (block.finalAnswer?.answer_text || ""),
+              math: resMath ? [resMath] : undefined,
+              units: block.finalAnswer?.units,
+              values: block.finalAnswer?.values?.map(v => ({
+                label: v.label,
+                value: v.value_latex || v.value.toString()
+              }))
+            });
+          }
+
+          if (block.plots?.length) {
+            block.plots.forEach(p => {
+              out.push({
+                type: "plot",
+                title: p.title || "Graph",
+                xLabel: p.xLabel || "x",
+                yLabel: p.yLabel || "y",
+                points: p.points
+              });
             });
           }
           return out;

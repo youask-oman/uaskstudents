@@ -752,7 +752,7 @@ export default function PaperPage({
 
   return (
     <article
-      className={`${styles.paperPage} ${active ? styles.paperPageActive : ""} ${getCursorClass()}`.trim()}
+      className={`paper ${styles.paperPage} ${active ? styles.paperPageActive : ""} ${getCursorClass()}`.trim()}
       onClick={onActivate}
     >
       <div className={styles.paperPageHeader}>
@@ -844,8 +844,13 @@ export default function PaperPage({
                   <SolutionStepsBlock
                     steps={block.steps}
                     result={block.result}
+                    finalAnswer={block.finalAnswer}
                     verificationChecks={block.verificationChecks}
                     domainConstraints={block.domainConstraints}
+                    assumptions={block.assumptions}
+                    originalProblem={block.originalProblem}
+                    normalizedProblem={block.normalizedProblem}
+                    commonMistakes={block.commonMistakes}
                     autocorrectApplied={block.autocorrectApplied}
                     sectionId={block.id}
                     exportMode={exportMode}

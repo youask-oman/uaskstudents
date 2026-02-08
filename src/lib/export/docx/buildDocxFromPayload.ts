@@ -133,65 +133,27 @@ export async function buildDocxFromPayload(payload: ExportSolutionPayload): Prom
         for (const block of page.blocks) {
             if (block.type === "problem") {
                 const mathParts = await mathParagraphs(block.math);
-                children.push(
-                    card(
-                        [
-                            new Paragraph({ children: [new TextRun({ text: block.title, bold: true })] }),
-                            spacer(1),
-                            new Paragraph({ children: [new TextRun({ text: block.body })] }),
-                            ...mathParts,
-                        ],
-                        "F7FAFF"
-                    )
-                );
+                const items = [
+                    new Paragraph({ children: [new TextRun({ text: block.title, bold: true })] }),
+                    spacer(1),
+                    new Paragraph({ children: [new TextRun({ text: block.body })] }),
+                    ...mathParts,
+                ];
+
+                if (block.assumptions?.length) {
+                    items.push(spacer(1));
+                    items.push(new Paragraph({ children: [new TextRun({ text: "ASSUMPTIONS:", bold: true, size: 18 })] }));
+                    for (const asm of block.assumptions) {
+                        items.push(new Paragraph({ children: [new TextRun({ text: `• ${asm}` })] }));
+                    }
+                }
+
+                children.push(card(items, "F7FAFF"));
                 children.push(spacer(1));
             }
 
             if (block.type === "step") {
                 const mathParts = await mathParagraphs(block.math);
-                children.push(
-                    card(
-                        [
-                            new Paragraph({ children: [new TextRun({ text: "" })] }),
-                        ],
-                        undefined
-                    )
-                );
-                children.pop(); // don’t add empty card; we add a real step card below
-
-                children.push(
-                    card(
-                        [
-                            new Paragraph({ children: [new TextRun({ text: "" })] }),
-                        ],
-                        "FFFFFF"
-                    )
-                );
-                children.pop();
-
-                children.push(
-                    card(
-                        [
-                            // Step header as nested table
-                            new Paragraph({ children: [] }),
-                        ],
-                        "FFFFFF"
-                    )
-                );
-                children.pop();
-
-                // Build step card with header table + body + math
-                children.push(
-                    card(
-                        [
-                            // Header row
-                            new Paragraph({ children: [] }),
-                        ],
-                        "FFFFFF"
-                    )
-                );
-                children.pop();
-
                 children.push(
                     new Table({
                         width: { size: 100, type: WidthType.PERCENTAGE },
@@ -216,25 +178,50 @@ export async function buildDocxFromPayload(payload: ExportSolutionPayload): Prom
                 children.push(spacer(1));
             }
 
-            if (block.type === "final") {
-                const mathParts = await mathParagraphs(block.math);
+            if (block.type === "mistakes") {
                 children.push(
                     card(
                         [
-                            new Paragraph({
-                                children: [
-                                    new TextRun({ text: block.label || "Final Answer", bold: true, color: "FFFFFF" }),
-                                ],
-                            }),
+                            new Paragraph({ children: [new TextRun({ text: block.title, bold: true, color: "92400E" })] }),
                             spacer(1),
-                            new Paragraph({
-                                children: [new TextRun({ text: block.body, bold: true, color: "FFFFFF" })],
-                            }),
-                            ...mathParts,
+                            ...block.list.map(m => new Paragraph({ children: [new TextRun({ text: `⚠️ ${m}`, color: "78350F" })] }))
                         ],
-                        "1FA971" // green callout
+                        "FFFBEB"
                     )
                 );
+                children.push(spacer(1));
+            }
+
+            if (block.type === "final") {
+                const mathParts = await mathParagraphs(block.math);
+                const items = [
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: block.label || "Final Result", bold: true, color: "1FA971" }),
+                        ],
+                    }),
+                    spacer(1),
+                    new Paragraph({
+                        children: [new TextRun({ text: block.body, bold: true })],
+                    }),
+                    ...mathParts,
+                ];
+
+                if (block.units || (block.values && block.values.length > 0)) {
+                    items.push(spacer(1));
+                    const details: Paragraph[] = [];
+                    if (block.units) {
+                        details.push(new Paragraph({ children: [new TextRun({ text: `UNITS: ${block.units}`, bold: true })] }));
+                    }
+                    if (block.values) {
+                        for (const v of block.values) {
+                            details.push(new Paragraph({ children: [new TextRun({ text: `${v.label}: ${v.value}` })] }));
+                        }
+                    }
+                    items.push(...details);
+                }
+
+                children.push(card(items, undefined));
                 children.push(spacer(1));
             }
 

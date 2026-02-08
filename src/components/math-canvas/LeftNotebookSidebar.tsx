@@ -23,6 +23,7 @@ interface LeftNotebookSidebarProps {
     output_tokens: number;
     total_tokens: number;
   };
+  confidence?: number;
 }
 
 const navItems = [
@@ -36,6 +37,7 @@ export default function LeftNotebookSidebar({
   outlineItems = [],
   classification,
   tokenUsage = { input_tokens: 0, output_tokens: 0, total_tokens: 0 },
+  confidence,
 }: LeftNotebookSidebarProps) {
   return (
     <aside className={styles.leftSidebar}>
@@ -69,6 +71,20 @@ export default function LeftNotebookSidebar({
               {classification.difficulty}
             </span>
           )}
+        </div>
+      )}
+
+      {typeof confidence === "number" && (
+        <div style={{ padding: "0 16px 16px", marginBottom: 16, borderBottom: "1px solid #f1f5f9" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase" }}>
+            Confidence Score
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ flex: 1, height: 6, background: "#e2e8f0", borderRadius: 3, overflow: "hidden" }}>
+              <div style={{ width: `${Math.min(100, Math.max(0, confidence * 100))}%`, height: "100%", background: confidence > 0.8 ? "#22c55e" : confidence > 0.5 ? "#f59e0b" : "#ef4444" }} />
+            </div>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-main)" }}>{Math.round(confidence * 100)}%</span>
+          </div>
         </div>
       )}
 

@@ -233,6 +233,9 @@ const parseStepsFromObject = (value: unknown): StepRow[] => {
       title,
       explanation,
       mathLatex,
+      rulesUsed: asStringArray(entry.rules_used),
+      checks: asStringArray(entry.checks),
+      notes: asString(entry.notes) || undefined,
     });
   });
 
@@ -445,6 +448,35 @@ const parseSolutionDocFromStructured = (value: unknown): MathSolutionPayload | n
   };
 };
 
+const parseFinalAnswerFromObject = (value: unknown): MathSolutionPayload["finalAnswer"] => {
+  const obj = asRecord(value);
+  if (!obj) return undefined;
+
+  const answerText = asString(obj.answer_text) || "";
+  const answerLatex = asString(obj.answer_latex) || "";
+
+  const valuesRaw = Array.isArray(obj.values) ? obj.values : [];
+  const values = valuesRaw
+    .map((v) => {
+      const vObj = asRecord(v);
+      if (!vObj) return null;
+      return {
+        label: asString(vObj.label) || "Value",
+        value: asRecord(vObj.value) || {},
+        value_latex: asString(vObj.value_latex) || undefined,
+      };
+    })
+    .filter((v): v is NonNullable<typeof v> => v !== null);
+
+  if (!answerText && !answerLatex && values.length === 0) return undefined;
+
+  return {
+    answer_text: answerText,
+    answer_latex: answerLatex,
+    values,
+  };
+};
+
 const parseMathSolutionFromObject = (value: unknown): MathSolutionPayload | null => {
   const obj = asRecord(value);
   if (!obj) return null;
@@ -455,8 +487,9 @@ const parseMathSolutionFromObject = (value: unknown): MathSolutionPayload | null
   const recognizedLatex = parseRecognizedLatexFromObject(obj);
   const plots = parsePlotFromObject(obj);
   const verificationChecks = parseVerificationChecks(obj);
+  const finalAnswer = parseFinalAnswerFromObject(asRecord(obj.final_answer) || asRecord(asRecord(obj.solution)?.final_answer));
 
-  if (!recognizedLatex && steps.length === 0 && !result && plots.length === 0 && verificationChecks.length === 0) {
+  if (!recognizedLatex && steps.length === 0 && !result && plots.length === 0 && verificationChecks.length === 0 && !finalAnswer) {
     return null;
   }
 
@@ -465,8 +498,14 @@ const parseMathSolutionFromObject = (value: unknown): MathSolutionPayload | null
     recognizedLatex,
     steps,
     result,
+    finalAnswer,
     plots,
     verificationChecks,
+    assumptions: asStringArray(obj.assumptions),
+    originalProblem: asString(asRecord(obj.problem)?.original_text) || asString(asRecord(obj.problem)?.text) || undefined,
+    normalizedProblem: asString(asRecord(obj.problem)?.normalized_text) || undefined,
+    confidence: Number(asRecord(obj.quality)?.confidence) || Number(asRecord(obj.accuracy)?.confidence) || undefined,
+    commonMistakes: asStringArray(asRecord(obj.quality)?.common_mistakes),
   };
 };
 

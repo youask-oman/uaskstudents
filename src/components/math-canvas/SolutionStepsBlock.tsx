@@ -5,14 +5,21 @@ import type { Editor } from "@tiptap/core";
 import MathRenderer from "@/components/math/MathRendererSwitch";
 import RichTextElementEditor from "./RichTextElementEditor";
 import type { RichTextCommitPayload } from "./RichTextElementEditor";
-import { StepRow, VerificationCheck } from "./types";
+import { StepRow, VerificationCheck, FinalAnswer } from "./types";
+import { parseLatexToBlocks } from "@/lib/final-answer-layout-engine";
+import { useMathOverflowFix } from "@/hooks/useMathOverflowFix";
 import styles from "./MathCanvas.module.css";
 
 interface SolutionStepsBlockProps {
   steps: StepRow[];
   result?: string;
+  finalAnswer?: FinalAnswer;
   verificationChecks?: VerificationCheck[];
   domainConstraints?: string[];
+  assumptions?: string[];
+  originalProblem?: string;
+  normalizedProblem?: string;
+  commonMistakes?: string[];
   autocorrectApplied?: boolean;
   sectionId?: string;
   editable?: boolean;
@@ -51,11 +58,24 @@ const hasSameDraftContent = (draft: StepRow, payload: RichTextCommitPayload): bo
   (draft.explanationRichHtml || "") === (payload.richTextHtml || "") &&
   normalizedJson(draft.explanationRichJson) === normalizedJson(payload.richTextJson);
 
+/* Section row component for consistent alignment */
+const SectionRow: React.FC<{ label: string; id: string; style?: React.CSSProperties; children: React.ReactNode }> = ({ label, id, style, children }) => (
+  <div className={styles.stepRow} id={id} style={style}>
+    <span className={styles.stepLabel}>{label}</span>
+    <div className={styles.stepValue}>{children}</div>
+  </div>
+);
+
 export default function SolutionStepsBlock({
   steps,
   result,
+  finalAnswer,
   verificationChecks,
   domainConstraints,
+  assumptions,
+  originalProblem,
+  normalizedProblem,
+  commonMistakes,
   autocorrectApplied,
   sectionId = "steps-block",
   editable = false,
@@ -67,19 +87,28 @@ export default function SolutionStepsBlock({
   const [stepDraft, setStepDraft] = React.useState<StepRow>({ title: "", explanation: "", mathLatex: "" });
   const [editingResult, setEditingResult] = React.useState(false);
   const [resultDraft, setResultDraft] = React.useState(result || "");
+
+  // Editing states for new sections
+  const [editingProblem, setEditingProblem] = React.useState(false);
+  const [problemDraft, setProblemDraft] = React.useState({ original: originalProblem || "", normalized: normalizedProblem || "" });
+  const [editingAssumptions, setEditingAssumptions] = React.useState(false);
+  const [assumptionsDraft, setAssumptionsDraft] = React.useState<string[]>(assumptions || []);
+
   const handleStepEditorActivate = React.useCallback(
     (editor: Editor | null, elementId: string | null) => onActiveTextEditorChange?.(editor, elementId),
     [onActiveTextEditorChange],
   );
+
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  useMathOverflowFix(rootRef);
+
   const handleStepTitleCommit = React.useCallback((payload: RichTextCommitPayload) => {
-    setStepDraft((prev) => {
-      return {
-        ...prev,
-        title: payload.text,
-        titleRichHtml: payload.richTextHtml,
-        titleRichJson: payload.richTextJson,
-      };
-    });
+    setStepDraft((prev) => ({
+      ...prev,
+      title: payload.text,
+      titleRichHtml: payload.richTextHtml,
+      titleRichJson: payload.richTextJson,
+    }));
   }, []);
 
   const handleStepExplanationCommit = React.useCallback((payload: RichTextCommitPayload) => {
@@ -95,22 +124,27 @@ export default function SolutionStepsBlock({
   }, []);
 
   const handleStepMathCommit = React.useCallback((payload: RichTextCommitPayload) => {
-    setStepDraft((prev) => {
-      return {
-        ...prev,
-        mathLatex: payload.text,
-        mathRichHtml: payload.richTextHtml,
-        mathRichJson: payload.richTextJson,
-      };
-    });
+    setStepDraft((prev) => ({
+      ...prev,
+      mathLatex: payload.text,
+      mathRichHtml: payload.richTextHtml,
+      mathRichJson: payload.richTextJson,
+    }));
   }, []);
-  const handleStepEditorRequestClose = React.useCallback(() => {
-    // Keep step edit form open; Save/Cancel controls handle form lifecycle.
-  }, []);
+
+  const handleStepEditorRequestClose = React.useCallback(() => { }, []);
 
   React.useEffect(() => {
     setResultDraft(result || "");
   }, [result]);
+
+  React.useEffect(() => {
+    setProblemDraft({ original: originalProblem || "", normalized: normalizedProblem || "" });
+  }, [originalProblem, normalizedProblem]);
+
+  React.useEffect(() => {
+    setAssumptionsDraft(assumptions || []);
+  }, [assumptions]);
 
   const isGenericStepTitle = (title: string, index: number) => {
     const normalized = (title || "").trim().toLowerCase();
@@ -138,21 +172,123 @@ export default function SolutionStepsBlock({
     setEditingStepIndex(null);
   };
 
+  // Compute display values for final answer
+  const displayAnswerText = finalAnswer?.answer_text || "";
+  const displayAnswerLatex = finalAnswer?.answer_latex || result || "";
+  const displayValues = finalAnswer?.values || [];
+
   return (
-    <div className={styles.stepsBlock}>
-      {Array.isArray(domainConstraints) && domainConstraints.length > 0 ? (
-        <div className={styles.stepRow} id={`${sectionId}-domain`}>
-          <span className={styles.stepLabel}>DOMAIN</span>
-          <div className={styles.stepValue}>
-            <div style={{ fontWeight: 700, marginBottom: 8 }}>Domain constraints:</div>
-            {domainConstraints.map((constraint, index) => (
-              <div key={`${sectionId}-domain-${index}`} style={{ marginBottom: index < domainConstraints.length - 1 ? 6 : 0 }}>
-                <MathRenderer content={constraint} mode="prose" />
+    <div className={styles.stepsBlock} ref={rootRef}>
+      {/* Domain Constraints */}
+      {Array.isArray(domainConstraints) && domainConstraints.length > 0 && (
+        <SectionRow label="DOMAIN" id={`${sectionId}-domain`}>
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>Domain constraints:</div>
+          {domainConstraints.map((constraint, index) => (
+            <div key={`${sectionId}-domain-${index}`} style={{ marginBottom: index < domainConstraints.length - 1 ? 6 : 0 }}>
+              <MathRenderer content={constraint} mode="prose" />
+            </div>
+          ))}
+        </SectionRow>
+      )}
+
+      {/* Problem Statement Section */}
+      {(originalProblem || normalizedProblem) && (
+        <SectionRow label="PROBLEM" id={`${sectionId}-problem`}>
+          {editingProblem ? (
+            <div className={styles.inlineEditWrap}>
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase" }}>Original Problem</div>
+                <textarea
+                  className={styles.inlineEditTextArea}
+                  style={{ minHeight: 80, width: "100%", whiteSpace: "pre-wrap" }}
+                  value={problemDraft.original}
+                  onChange={(e) => setProblemDraft((prev) => ({ ...prev, original: e.target.value }))}
+                />
               </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase" }}>Normalized Interpretation</div>
+                <textarea
+                  className={styles.inlineEditTextArea}
+                  style={{ minHeight: 60, width: "100%", whiteSpace: "pre-wrap" }}
+                  value={problemDraft.normalized}
+                  onChange={(e) => setProblemDraft((prev) => ({ ...prev, normalized: e.target.value }))}
+                />
+              </div>
+              <div className={styles.blockActions}>
+                <button type="button" className={styles.blockActionButton} onClick={() => setEditingProblem(false)}>Save</button>
+                <button type="button" className={styles.blockActionButton} onClick={() => { setProblemDraft({ original: originalProblem || "", normalized: normalizedProblem || "" }); setEditingProblem(false); }}>Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {originalProblem && (
+                <div style={{ marginBottom: normalizedProblem ? 12 : 0 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase" }}>Original Problem</div>
+                  <div style={{ whiteSpace: "pre-wrap", fontSize: 13, color: "var(--text-main)", lineHeight: 1.6 }}>{originalProblem}</div>
+                </div>
+              )}
+              {normalizedProblem && (
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase" }}>Normalized Interpretation</div>
+                  <div style={{ whiteSpace: "pre-wrap", fontSize: 13, color: "var(--text-main)", lineHeight: 1.6 }}><MathRenderer content={normalizedProblem} mode="prose" /></div>
+                </div>
+              )}
+              {editable && !exportMode && (
+                <div className={styles.blockActions} style={{ marginTop: 8 }}>
+                  <button type="button" className={styles.blockActionButton} onClick={() => setEditingProblem(true)}>Edit</button>
+                </div>
+              )}
+            </>
+          )}
+        </SectionRow>
+      )}
+
+      {/* Assumptions Section */}
+      {Array.isArray(assumptions) && assumptions.length > 0 && (
+        <SectionRow label="ASSUMPTIONS" id={`${sectionId}-assumptions`}>
+          {editingAssumptions ? (
+            <div className={styles.inlineEditWrap}>
+              {assumptionsDraft.map((assumption, index) => (
+                <div key={index} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                  <input
+                    className={styles.inlineEditInput}
+                    style={{ flex: 1 }}
+                    value={assumption}
+                    onChange={(e) => {
+                      const next = [...assumptionsDraft];
+                      next[index] = e.target.value;
+                      setAssumptionsDraft(next);
+                    }}
+                  />
+                  <button type="button" className={styles.blockActionButton} onClick={() => setAssumptionsDraft(assumptionsDraft.filter((_, i) => i !== index))}>×</button>
+                </div>
+              ))}
+              <button type="button" className={styles.blockActionButton} onClick={() => setAssumptionsDraft([...assumptionsDraft, ""])}>+ Add</button>
+              <div className={styles.blockActions} style={{ marginTop: 8 }}>
+                <button type="button" className={styles.blockActionButton} onClick={() => setEditingAssumptions(false)}>Save</button>
+                <button type="button" className={styles.blockActionButton} onClick={() => { setAssumptionsDraft(assumptions || []); setEditingAssumptions(false); }}>Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <ul style={{ margin: 0, paddingLeft: 20, listStyleType: "disc", fontSize: 13, lineHeight: 1.6 }}>
+                {assumptions.map((assumption, index) => (
+                  <li key={`${sectionId}-assumption-${index}`} style={{ marginBottom: 4 }}>
+                    <MathRenderer content={assumption} mode="prose" />
+                  </li>
+                ))}
+              </ul>
+              {editable && !exportMode && (
+                <div className={styles.blockActions} style={{ marginTop: 8 }}>
+                  <button type="button" className={styles.blockActionButton} onClick={() => setEditingAssumptions(true)}>Edit</button>
+                </div>
+              )}
+            </>
+          )}
+        </SectionRow>
+      )}
+
+      {/* Steps */}
       {steps.map((step, index) => (
         <div key={`${sectionId}-step-${index}`} className={styles.stepRow} id={`${sectionId}-step-${index + 1}`}>
           <span className={styles.stepLabel}>STEP {step.k || index + 1}</span>
@@ -218,131 +354,243 @@ export default function SolutionStepsBlock({
                   </div>
                 </div>
                 <div className={styles.blockActions}>
-                  <button type="button" className={styles.blockActionButton} onClick={saveStep}>
-                    Save
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.blockActionButton}
-                    onClick={() => setEditingStepIndex(null)}
-                  >
-                    Cancel
-                  </button>
+                  <button type="button" className={styles.blockActionButton} onClick={saveStep}>Save</button>
+                  <button type="button" className={styles.blockActionButton} onClick={() => setEditingStepIndex(null)}>Cancel</button>
                 </div>
               </div>
             ) : (
               <>
                 {step.explanationRichHtml ? (
                   <div
-                    style={{ marginTop: 3, fontSize: 13 }}
+                    style={{ marginTop: 3, fontSize: 13, lineHeight: 1.6 }}
                     className={styles.richTextElementContent}
                     dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(step.explanationRichHtml) }}
                   />
                 ) : step.explanation ? (
-                  <div style={{ marginTop: 3, fontSize: 13 }}>
+                  <div style={{ marginTop: 3, fontSize: 13, lineHeight: 1.6 }}>
                     <MathRenderer content={step.explanation} mode="prose" />
                   </div>
                 ) : step.bodyMarkdown ? (
-                  <div style={{ marginTop: 3, fontSize: 13 }}>
+                  <div style={{ marginTop: 3, fontSize: 13, lineHeight: 1.6 }}>
                     <MathRenderer content={step.bodyMarkdown} mode="prose" />
                   </div>
                 ) : null}
                 {step.mathRichHtml ? (
                   <div
-                    style={{ marginTop: 4 }}
+                    style={{ marginTop: 8 }}
                     className={styles.richTextElementContent}
                     dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(step.mathRichHtml) }}
                   />
                 ) : step.mathLatex ? (
-                  <div style={{ marginTop: 4 }}>
+                  <div style={{ marginTop: 8 }}>
                     <MathRenderer content={step.mathLatex} mode="block" />
                   </div>
                 ) : null}
-                {editable && !exportMode ? (
-                  <div className={styles.blockActions}>
-                    <button type="button" className={styles.blockActionButton} onClick={() => startEditStep(index)}>
-                      Edit
-                    </button>
-                    <button type="button" className={styles.blockActionButton} onClick={() => deleteStep(index)}>
-                      Delete
-                    </button>
+                {editable && !exportMode && (
+                  <div className={styles.blockActions} style={{ marginTop: 8 }}>
+                    <button type="button" className={styles.blockActionButton} onClick={() => startEditStep(index)}>Edit</button>
+                    <button type="button" className={styles.blockActionButton} onClick={() => deleteStep(index)}>Delete</button>
                   </div>
-                ) : null}
+                )}
               </>
+            )}
+
+            {/* Step Metadata: Rules, Checks, Notes */}
+            {editingStepIndex !== index && (
+              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                {Array.isArray(step.rulesUsed) && step.rulesUsed.length > 0 && (
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                    <span style={{ fontWeight: 600, color: "var(--text-main)" }}>Rules: </span>
+                    {step.rulesUsed.join(", ")}
+                  </div>
+                )}
+                {Array.isArray(step.checks) && step.checks.length > 0 && (
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                    <span style={{ fontWeight: 600, color: "var(--text-main)" }}>Checks: </span>
+                    <ul style={{ margin: "4px 0 0", paddingLeft: 20, listStyleType: "circle" }}>
+                      {step.checks.map((check, i) => (
+                        <li key={i}>{check}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {step.notes && (
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic", background: "#f8fafc", padding: "8px 12px", borderRadius: 4, borderLeft: "3px solid #cbd5e1" }}>
+                    <strong>Note:</strong> <MathRenderer content={step.notes} mode="inline" />
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
       ))}
-      <div className={styles.stepRow} id={`${sectionId}-final-answer`}>
-        <span className={styles.stepLabel}>FINAL</span>
-        <div className={styles.stepValue}>
-          {editingResult ? (
-            <div className={styles.inlineEditWrap}>
-              <input
-                className={styles.inlineEditInput}
+
+      {/* Final Answer Section */}
+      <SectionRow label="FINAL ANSWER" id={`${sectionId}-final-answer`}>
+        {editingResult ? (
+          <div className={styles.inlineEditWrap}>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase" }}>Answer (LaTeX)</div>
+              <textarea
+                className={styles.inlineEditTextArea}
+                style={{ minHeight: 60, width: "100%", fontFamily: "monospace" }}
                 value={resultDraft}
-                onChange={(event) => setResultDraft(event.target.value)}
+                onChange={(e) => setResultDraft(e.target.value)}
               />
-              <div className={styles.blockActions}>
-                <button
-                  type="button"
-                  className={styles.blockActionButton}
-                  onClick={() => {
-                    onChange?.({ steps, result: resultDraft, verificationChecks });
-                    setEditingResult(false);
-                  }}
-                >
-                  Save
-                </button>
-                <button
-                  type="button"
-                  className={styles.blockActionButton}
-                  onClick={() => {
-                    setResultDraft(result || "");
-                    setEditingResult(false);
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
             </div>
-          ) : (
-            <>
-              <span className={styles.resultBadge}>
-                <strong>Final Answer:</strong>{" "}
-                {result ? <MathRenderer content={result} mode="inline" /> : "Not provided."}
-                {autocorrectApplied ? <span style={{ marginLeft: 8, fontWeight: 700, color: "#0f6b3f" }}>Verified</span> : null}
-              </span>
-              {editable && !exportMode ? (
-                <div className={styles.blockActions}>
-                  <button type="button" className={styles.blockActionButton} onClick={() => setEditingResult(true)}>
-                    Edit
-                  </button>
-                </div>
-              ) : null}
-            </>
-          )}
-        </div>
-      </div>
-      {Array.isArray(verificationChecks) && verificationChecks.length > 0 ? (
-        <div className={styles.stepRow} id={`${sectionId}-verification`}>
-          <span className={styles.stepLabel}>VERIFY</span>
-          <div className={styles.stepValue}>
-            <div style={{ fontWeight: 700, marginBottom: 8 }}>Verification:</div>
-            {verificationChecks.map((check, index) => (
-              <div key={`${check.checkId}-${index}`} style={{ marginBottom: index < verificationChecks.length - 1 ? 8 : 0 }}>
-                <div style={{ fontWeight: 600 }}>{check.checkId} ({check.verdict.toUpperCase()})</div>
-                <div style={{ fontSize: 13 }}>{check.message}</div>
-                {check.evidenceMath ? (
-                  <div style={{ marginTop: 3 }}>
-                    <MathRenderer content={check.evidenceMath} mode="inline" />
-                  </div>
-                ) : null}
-              </div>
-            ))}
+            <div className={styles.blockActions}>
+              <button
+                type="button"
+                className={styles.blockActionButton}
+                onClick={() => {
+                  onChange?.({ steps, result: resultDraft, verificationChecks });
+                  setEditingResult(false);
+                }}
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                className={styles.blockActionButton}
+                onClick={() => {
+                  setResultDraft(result || "");
+                  setEditingResult(false);
+                }}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
-        </div>
-      ) : null}
+        ) : (
+          <div style={{
+            background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
+            border: "1px solid #e2e8f0",
+            borderRadius: 12,
+            padding: 20,
+          }}>
+            {/* Answer Text */}
+            {displayAnswerText && (
+              <div style={{ marginBottom: displayAnswerLatex || displayValues.length > 0 ? 16 : 0 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 8, letterSpacing: "0.05em" }}>
+                  Summary
+                </div>
+                <div style={{ fontSize: 14, color: "#334155", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+                  {displayAnswerText}
+                </div>
+              </div>
+            )}
+
+            {/* Answer LaTeX - with deterministic line breaking */}
+            {displayAnswerLatex && (() => {
+              const blocks = parseLatexToBlocks(displayAnswerLatex);
+              return (
+                <div className={styles.finalAnswerMathContainer} style={{ marginBottom: displayValues.length > 0 ? 16 : 0 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 8, letterSpacing: "0.05em" }}>
+                    Result
+                  </div>
+                  <div className={styles.finalAnswerMathContent}>
+                    {blocks.map((block, idx) => (
+                      block.kind === "math" ? (
+                        <div key={idx} className={styles.finalAnswerMathBlock}>
+                          <MathRenderer content={block.latex} mode="block" />
+                        </div>
+                      ) : (
+                        <div key={idx} className={styles.finalAnswerTextBlock}>
+                          {block.text}
+                        </div>
+                      )
+                    ))}
+                    {blocks.length === 0 && (
+                      <div className={styles.finalAnswerMathBlock}>
+                        <MathRenderer content={displayAnswerLatex} mode="block" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Values */}
+            {displayValues.length > 0 && (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 12, letterSpacing: "0.05em" }}>
+                  Values & Parameters
+                </div>
+                <div style={{ display: "grid", gap: 12 }}>
+                  {displayValues.map((val, idx) => (
+                    <div key={idx} style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: 12 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 6, textTransform: "capitalize" }}>
+                        {val.label.replace(/_/g, " ")}
+                      </div>
+                      {val.value_latex ? (
+                        <div style={{ fontSize: 14, color: "#0f172a" }}>
+                          <MathRenderer content={val.value_latex} mode="inline" />
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 13, color: "#475569", fontFamily: "monospace" }}>
+                          {JSON.stringify(val.value, null, 2)}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Fallback if nothing */}
+            {!displayAnswerText && !displayAnswerLatex && displayValues.length === 0 && (
+              <div style={{ fontStyle: "italic", color: "var(--text-muted)" }}>No final answer provided.</div>
+            )}
+
+            {autocorrectApplied && (
+              <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#15803d", fontWeight: 600 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>check_circle</span>
+                Autocorrect Applied & Verified
+              </div>
+            )}
+
+            {editable && !exportMode && (
+              <div style={{ marginTop: 16 }}>
+                <button type="button" className={styles.blockActionButton} onClick={() => setEditingResult(true)}>
+                  Edit
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </SectionRow>
+
+      {/* Verification */}
+      {Array.isArray(verificationChecks) && verificationChecks.length > 0 && (
+        <SectionRow label="VERIFY" id={`${sectionId}-verification`}>
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>Verification:</div>
+          {verificationChecks.map((check, index) => (
+            <div key={`${check.checkId}-${index}`} style={{ marginBottom: index < verificationChecks.length - 1 ? 8 : 0 }}>
+              <div style={{ fontWeight: 600 }}>{check.checkId} ({check.verdict.toUpperCase()})</div>
+              <div style={{ fontSize: 13, lineHeight: 1.6 }}>{check.message}</div>
+              {check.evidenceMath && (
+                <div style={{ marginTop: 4 }}>
+                  <MathRenderer content={check.evidenceMath} mode="inline" />
+                </div>
+              )}
+            </div>
+          ))}
+        </SectionRow>
+      )}
+
+      {/* Common Mistakes */}
+      {Array.isArray(commonMistakes) && commonMistakes.length > 0 && (
+        <SectionRow label="MISTAKES" id={`${sectionId}-mistakes`} style={{ borderLeft: "3px solid #f59e0b", background: "#fffbeb" }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#b45309", marginBottom: 8, textTransform: "uppercase" }}>Common Mistakes to Avoid</div>
+          <ul style={{ margin: 0, paddingLeft: 20, listStyleType: "disc", fontSize: 13, color: "#92400e", lineHeight: 1.6 }}>
+            {commonMistakes.map((mistake, index) => (
+              <li key={`${sectionId}-mistake-${index}`} style={{ marginBottom: 4 }}>
+                {mistake}
+              </li>
+            ))}
+          </ul>
+        </SectionRow>
+      )}
     </div>
   );
 }

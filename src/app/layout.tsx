@@ -22,6 +22,17 @@ const mathJaxConfig = {
   chtml: {
     scale: 1.1,
     matchFontHeight: true,
+    // Enable automatic line breaking - safer fallback for long expressions
+    linebreaks: {
+      automatic: true,
+      width: "container",
+    },
+  },
+  options: {
+    // Allow line breaks for very long math
+    linebreaks: {
+      automatic: true,
+    },
   },
 };
 

@@ -178,8 +178,13 @@ const buildInitialPages = (
       type: "steps",
       steps: solution.steps,
       result: solution.result,
+      finalAnswer: solution.finalAnswer,
       verificationChecks: solution.verificationChecks,
       domainConstraints: solution.domainConstraints,
+      assumptions: solution.assumptions,
+      originalProblem: solution.originalProblem,
+      normalizedProblem: solution.normalizedProblem,
+      commonMistakes: solution.commonMistakes,
       autocorrectApplied: solution.autocorrectApplied,
     });
   }
@@ -476,6 +481,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             tokenUsage={tokenUsage}
             outlineItems={outlineItems}
             classification={classification}
+            confidence={primarySolution?.confidence}
           />
         }
         workspace={

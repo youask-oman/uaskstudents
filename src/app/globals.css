@@ -97,6 +97,7 @@
   background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
   box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
 }
+
 :root:not(.dark) .kpi-card {
   background: linear-gradient(135deg, #f3f3f6 0%, #ffffff 100%);
   box-shadow: 0 15px 30px rgba(15, 23, 42, 0.1);
@@ -304,7 +305,7 @@
     padding: 0 !important;
   }
 
-.custom-scrollbar {
+  .custom-scrollbar {
     overflow: visible !important;
   }
 }
@@ -442,4 +443,67 @@
 .solve-mode-template:hover {
   background: var(--solve-accent-soft);
   color: var(--solve-accent-strong);
+}
+
+/* ============================================
+   GLOBAL MATH NO-SCROLLBAR RULES
+   ============================================ */
+
+/* Identify ALL wrappers used for LaTeX render and ban internal scrollbars */
+.math-renderer,
+.math-renderer-mjx,
+.markdown-math,
+.latexBox,
+.mathBlock,
+.MathJax,
+.katex,
+.katex-display,
+mjx-container,
+mjx-math {
+  overflow: visible !important;
+  max-height: none !important;
+  height: auto !important;
+  min-height: 0;
+}
+
+/* Defensive rule scoped to paper area */
+.paper [data-math],
+.paper .latexBox,
+.paper .MathJax,
+.paper .katex,
+.paper .katex-display,
+.paper mjx-container {
+  overflow: visible !important;
+  max-height: none !important;
+}
+
+/* If any container must clip horizontally, use clip not auto/scroll */
+.paper {
+  overflow-x: clip;
+}
+
+/* Width contract: math must respect paper content width */
+.math-renderer,
+.math-renderer-mjx,
+.markdown-math,
+.MathJax,
+.katex,
+mjx-container {
+  max-width: 100%;
+}
+
+/* Safe wrapping for plain text next to math */
+.paper p,
+.paper span,
+.paper div {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* No fixed-height render boxes */
+.preview-container,
+.render-box,
+.math-output {
+  height: auto !important;
+  max-height: none !important;
 }
