@@ -18055,3 +18055,179 @@ Incoming: GET /api/v1/sessions/259
 Response: 200 | 5ms
 Incoming: POST /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/update
 Response: 400 | 2ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 6ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 5ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 6ms
+Incoming: POST /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/update
+Response: 400 | 2ms
+Incoming: POST /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/update
+Response: 400 | 4ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 5ms
+Incoming: POST /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/update
+Response: 200 | 122ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/versions
+Response: 200 | 4ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 8ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/versions
+Response: 200 | 8ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Response: 200 | 24ms
+Response: 200 | 20ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts/global_system_prompt_v1/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/global_system_prompt_v1/versions
+Response: 200 | 5ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Response: 200 | 0ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 7ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 10ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Response: 200 | 1ms
+Response: 200 | 2ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Response: 200 | 2ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Response: 200 | 3ms
+Response: 200 | 2ms
+Response: 200 | 4ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 54ms
+Response: 200 | 54ms
+Response: 200 | 51ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 11ms
+Response: 200 | 10ms
+Response: 200 | 11ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings/activate
+Response: 200 | 0ms
+Incoming: POST /api/v1/admin/prompt-registry/bindings/activate
+Response: 200 | 18ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 17ms
+Response: 200 | 12ms
+Response: 200 | 12ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings/29e81ce0-b977-4053-b5b2-940a9267e3a2
+Response: 200 | 0ms
+Incoming: DELETE /api/v1/admin/prompt-registry/bindings/29e81ce0-b977-4053-b5b2-940a9267e3a2
+Response: 200 | 12ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Response: 200 | 5ms
+Incoming: GET /api/v1/sessions/259
+Response: 200 | 13ms
+Incoming: GET /api/v1/sessions/259
+Response: 200 | 8ms
+Incoming: GET /api/v1/sessions/259
+Response: 200 | 8ms
+Incoming: GET /api/v1/sessions/259
+Response: 200 | 11ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Response: 200 | 11ms
+Response: 200 | 8ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts/global_system_prompt_v1/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/global_system_prompt_v1/versions
+Response: 200 | 6ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts/solve_free_v1/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/solve_free_v1/versions
+Response: 200 | 5ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts/solve_final_answer_v1/update
+Response: 200 | 0ms
+Incoming: POST /api/v1/admin/prompt-registry/prompts/solve_final_answer_v1/update
+Response: 200 | 17ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts/solve_final_answer_v1/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/solve_final_answer_v1/versions
+Response: 200 | 4ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 13ms
+Response: 200 | 13ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 5ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Response: 200 | 7ms
+Response: 200 | 7ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/global_system_prompt_v1/versions
+Response: 200 | 5ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/solve_final_answer_v1/versions
+Response: 200 | 5ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 12ms
+Response: 200 | 8ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 6ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_final_answer_v1.schema.json/update
+Response: 200 | 0ms
+Incoming: POST /api/v1/admin/prompt-registry/schemas/solve_final_answer_v1.schema.json/update
+Response: 200 | 46ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_final_answer_v1.schema.json/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_final_answer_v1.schema.json/versions
+Response: 200 | 3ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Response: 200 | 1ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Response: 200 | 2ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Response: 200 | 4ms
+Response: 200 | 13ms
+Response: 200 | 3ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Response: 200 | 17ms
+Response: 200 | 19ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Response: 200 | 19ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 8ms
+Response: 200 | 10ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings/activate
+Response: 200 | 0ms
+Incoming: POST /api/v1/admin/prompt-registry/bindings/activate
+Response: 200 | 14ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 12ms
+Response: 200 | 8ms
+Response: 200 | 12ms
