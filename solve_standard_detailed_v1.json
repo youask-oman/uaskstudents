@@ -1,0 +1,1262 @@
+{
+    "type": "json_schema",
+    "name": "solve_standard_detailed_v1",
+    "strict": true,
+    "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "YouAsk Math Tutor Standard Detailed v1 (Strict, Max Numeric Results)",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+            "schema_version",
+            "refusal",
+            "assumptions",
+            "problem",
+            "classification",
+            "steps",
+            "final_answer",
+            "visuals",
+            "quality",
+            "experiment",
+            "artifacts",
+            "numerical_results"
+        ],
+        "properties": {
+            "schema_version": {
+                "type": "string",
+                "enum": [
+                    "v1"
+                ]
+            },
+            "refusal": {
+                "$ref": "#/$defs/refusal"
+            },
+            "assumptions": {
+                "type": "array",
+                "minItems": 0,
+                "maxItems": 2,
+                "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 220
+                }
+            },
+            "problem": {
+                "$ref": "#/$defs/problem"
+            },
+            "classification": {
+                "$ref": "#/$defs/classification"
+            },
+            "steps": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 18,
+                "items": {
+                    "$ref": "#/$defs/step"
+                }
+            },
+            "final_answer": {
+                "$ref": "#/$defs/final_answer"
+            },
+            "visuals": {
+                "$ref": "#/$defs/visuals"
+            },
+            "quality": {
+                "$ref": "#/$defs/quality"
+            },
+            "experiment": {
+                "$ref": "#/$defs/experiment"
+            },
+            "artifacts": {
+                "$ref": "#/$defs/artifacts"
+            },
+            "numerical_results": {
+                "$ref": "#/$defs/numerical_results"
+            }
+        },
+        "$defs": {
+            "refusal": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "is_refusal",
+                    "reason",
+                    "safe_alternative"
+                ],
+                "properties": {
+                    "is_refusal": {
+                        "type": "boolean"
+                    },
+                    "reason": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 600
+                    },
+                    "safe_alternative": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 600
+                    }
+                }
+            },
+            "problem": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "original_text",
+                    "normalized_text",
+                    "detected_tasks"
+                ],
+                "properties": {
+                    "original_text": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 20000
+                    },
+                    "normalized_text": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 6000
+                    },
+                    "detected_tasks": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 12,
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "solve",
+                                "simplify",
+                                "factor",
+                                "expand",
+                                "evaluate",
+                                "equation",
+                                "inequality",
+                                "system",
+                                "word_problem",
+                                "geometry",
+                                "trigonometry",
+                                "calculus",
+                                "probability",
+                                "discretize",
+                                "statistics",
+                                "graph",
+                                "precalculus",
+                                "functions",
+                                "sequences_series",
+                                "linear_algebra",
+                                "matrix_algebra",
+                                "eigenvalues_eigenvectors",
+                                "diagonalization",
+                                "vector_spaces",
+                                "differential_equations",
+                                "partial_differential_equations",
+                                "dynamical_systems",
+                                "laplace_transform",
+                                "fourier_series",
+                                "fourier_transform",
+                                "real_analysis",
+                                "complex_analysis",
+                                "measure_theory",
+                                "functional_analysis",
+                                "abstract_algebra",
+                                "group_theory",
+                                "ring_theory",
+                                "field_theory",
+                                "linear_programming",
+                                "number_theory",
+                                "discrete_math",
+                                "combinatorics",
+                                "graph_theory",
+                                "logic",
+                                "set_theory",
+                                "numerical_methods",
+                                "optimization",
+                                "convex_optimization",
+                                "mathematical_proofs",
+                                "proof_writing",
+                                "statistical_inference",
+                                "regression",
+                                "time_series",
+                                "stochastic_processes",
+                                "bayesian_statistics",
+                                "math_physics",
+                                "vector_calculus",
+                                "multivariable_calculus",
+                                "tensor_calculus",
+                                "fourier_analysis",
+                                "spectral_decay",
+                                "bifurcation",
+                                "nonlinear_dynamics",
+                                "chaos",
+                                "signal_processing"
+                            ]
+                        }
+                    }
+                }
+            },
+            "classification": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "grade_band",
+                    "domain",
+                    "topic",
+                    "difficulty"
+                ],
+                "properties": {
+                    "grade_band": {
+                        "type": "string",
+                        "enum": [
+                            "k_2",
+                            "grades_3_5",
+                            "grades_6_8",
+                            "grades_9_10",
+                            "grades_11_12",
+                            "college_intro",
+                            "undergraduate_lower",
+                            "undergraduate_upper",
+                            "graduate",
+                            "phd_research",
+                            "unknown"
+                        ]
+                    },
+                    "domain": {
+                        "type": "string",
+                        "enum": [
+                            "arithmetic",
+                            "pre_algebra",
+                            "algebra",
+                            "geometry",
+                            "trigonometry",
+                            "precalculus",
+                            "calculus",
+                            "linear_algebra",
+                            "differential_equations",
+                            "real_analysis",
+                            "complex_analysis",
+                            "abstract_algebra",
+                            "number_theory",
+                            "topology",
+                            "discrete",
+                            "optimization",
+                            "numerical_methods",
+                            "probability",
+                            "statistics",
+                            "unknown"
+                        ]
+                    },
+                    "topic": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 300
+                    },
+                    "difficulty": {
+                        "type": "string",
+                        "enum": [
+                            "easy",
+                            "medium",
+                            "hard",
+                            "unknown"
+                        ]
+                    }
+                }
+            },
+            "step": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "index",
+                    "title",
+                    "explanation",
+                    "math_latex",
+                    "rules_used"
+                ],
+                "properties": {
+                    "index": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 200
+                    },
+                    "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 140
+                    },
+                    "explanation": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                    },
+                    "math_latex": {
+                        "type": "array",
+                        "minItems": 0,
+                        "maxItems": 30,
+                        "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1200,
+                            "pattern": "^(?!.*\\$\\$?)(?!.*\\\\\\()(?!.*\\\\\\))(?!.*\\\\\\[)(?!.*\\\\\\]).+"
+                        }
+                    },
+                    "rules_used": {
+                        "type": "array",
+                        "minItems": 0,
+                        "maxItems": 20,
+                        "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                        }
+                    }
+                }
+            },
+            "final_answer": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "answer_text",
+                    "answer_latex",
+                    "values",
+                    "units"
+                ],
+                "properties": {
+                    "answer_text": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                    },
+                    "answer_latex": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000,
+                        "pattern": "^(?!.*\\$\\$?)(?!.*\\\\\\()(?!.*\\\\\\))(?!.*\\\\\\[)(?!.*\\\\\\]).+"
+                    },
+                    "values": {
+                        "type": "array",
+                        "minItems": 0,
+                        "maxItems": 30,
+                        "items": {
+                            "$ref": "#/$defs/value_item"
+                        }
+                    },
+                    "units": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 80
+                    }
+                }
+            },
+            "value_item": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "label",
+                    "value",
+                    "value_latex"
+                ],
+                "properties": {
+                    "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 80
+                    },
+                    "value": {
+                        "type": [
+                            "number",
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "value_latex": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 2000,
+                        "pattern": "^(?!.*\\$\\$?)(?!.*\\\\\\()(?!.*\\\\\\))(?!.*\\\\\\[)(?!.*\\\\\\]).+"
+                    }
+                }
+            },
+            "visuals": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "should_visualize",
+                    "decision_reason",
+                    "plots",
+                    "alternative_visual"
+                ],
+                "properties": {
+                    "should_visualize": {
+                        "type": "boolean"
+                    },
+                    "decision_reason": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 600
+                    },
+                    "plots": {
+                        "type": "array",
+                        "minItems": 0,
+                        "maxItems": 12,
+                        "items": {
+                            "$ref": "#/$defs/plot"
+                        }
+                    },
+                    "alternative_visual": {
+                        "$ref": "#/$defs/alternative_visual"
+                    }
+                }
+            },
+            "plot": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "title",
+                    "x_min",
+                    "x_max",
+                    "y_min",
+                    "y_max",
+                    "plot_kind",
+                    "x_scale",
+                    "y_scale",
+                    "series",
+                    "key_points"
+                ],
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                    },
+                    "x_min": {
+                        "type": "number"
+                    },
+                    "x_max": {
+                        "type": "number"
+                    },
+                    "y_min": {
+                        "type": "number"
+                    },
+                    "y_max": {
+                        "type": "number"
+                    },
+                    "plot_kind": {
+                        "type": "string",
+                        "enum": [
+                            "cartesian_2d",
+                            "scatter_2d",
+                            "implicit_2d",
+                            "parametric_2d",
+                            "polar",
+                            "heatmap_2d",
+                            "surface_3d"
+                        ]
+                    },
+                    "x_scale": {
+                        "type": "string",
+                        "enum": [
+                            "linear",
+                            "log10"
+                        ]
+                    },
+                    "y_scale": {
+                        "type": "string",
+                        "enum": [
+                            "linear",
+                            "log10"
+                        ]
+                    },
+                    "series": {
+                        "type": "array",
+                        "minItems": 0,
+                        "maxItems": 6,
+                        "items": {
+                            "$ref": "#/$defs/series"
+                        }
+                    },
+                    "key_points": {
+                        "type": "array",
+                        "minItems": 0,
+                        "maxItems": 12,
+                        "items": {
+                            "$ref": "#/$defs/key_point"
+                        }
+                    }
+                }
+            },
+            "series": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "kind",
+                    "label",
+                    "expr_latex",
+                    "points",
+                    "data_ref",
+                    "color",
+                    "line_width",
+                    "line_style",
+                    "marker_style"
+                ],
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "y_of_x",
+                            "implicit",
+                            "parametric",
+                            "points",
+                            "grid2d_ref",
+                            "surface_ref"
+                        ]
+                    },
+                    "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 80
+                    },
+                    "expr_latex": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 1200,
+                        "pattern": "^(?!.*\\$\\$?)(?!.*\\\\\\()(?!.*\\\\\\))(?!.*\\\\\\[)(?!.*\\\\\\]).+"
+                    },
+                    "points": {
+                        "type": "array",
+                        "minItems": 0,
+                        "maxItems": 5000,
+                        "items": {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 3,
+                            "items": {
+                                "type": "number"
+                            }
+                        }
+                    },
+                    "data_ref": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 220
+                    },
+                    "color": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 40
+                    },
+                    "line_width": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "minimum": 0.1,
+                        "maximum": 12
+                    },
+                    "line_style": {
+                        "anyOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "solid",
+                                    "dashed",
+                                    "dotted",
+                                    "dashdot"
+                                ]
+                            }
+                        ]
+                    },
+                    "marker_style": {
+                        "anyOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "none",
+                                    "circle",
+                                    "square",
+                                    "triangle",
+                                    "x"
+                                ]
+                            }
+                        ]
+                    }
+                }
+            },
+            "key_point": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "label",
+                    "x",
+                    "y"
+                ],
+                "properties": {
+                    "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 80
+                    },
+                    "x": {
+                        "type": "number"
+                    },
+                    "y": {
+                        "type": "number"
+                    }
+                }
+            },
+            "alternative_visual": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "kind",
+                    "description",
+                    "data"
+                ],
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "none",
+                            "table",
+                            "number_line",
+                            "diagram"
+                        ]
+                    },
+                    "description": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 4000
+                    },
+                    "data": {
+                        "type": "array",
+                        "minItems": 0,
+                        "maxItems": 80,
+                        "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 400
+                        }
+                    }
+                }
+            },
+            "quality": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "confidence",
+                    "common_mistakes"
+                ],
+                "properties": {
+                    "confidence": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                    },
+                    "common_mistakes": {
+                        "type": "array",
+                        "minItems": 0,
+                        "maxItems": 5,
+                        "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                        }
+                    }
+                }
+            },
+            "experiment_run_spec": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "n",
+                    "note"
+                ],
+                "properties": {
+                    "n": {
+                        "type": "integer",
+                        "minimum": 8,
+                        "maximum": 4096
+                    },
+                    "note": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 200
+                    }
+                }
+            },
+            "experiment": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "pde",
+                    "discretization",
+                    "solver",
+                    "eigens",
+                    "preconditioner",
+                    "runs"
+                ],
+                "properties": {
+                    "pde": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                            "domain",
+                            "bc",
+                            "manufactured_u_latex",
+                            "forcing_g_latex"
+                        ],
+                        "properties": {
+                            "domain": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 80
+                            },
+                            "bc": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 120
+                            },
+                            "manufactured_u_latex": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1200,
+                                "pattern": "^(?!.*\\$\\$?)(?!.*\\\\\\()(?!.*\\\\\\))(?!.*\\\\\\[)(?!.*\\\\\\]).+"
+                            },
+                            "forcing_g_latex": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1200,
+                                "pattern": "^(?!.*\\$\\$?)(?!.*\\\\\\()(?!.*\\\\\\))(?!.*\\\\\\[)(?!.*\\\\\\]).+"
+                            }
+                        }
+                    },
+                    "discretization": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                            "scheme",
+                            "order",
+                            "stencil",
+                            "scaling_convention"
+                        ],
+                        "properties": {
+                            "scheme": {
+                                "type": "string",
+                                "enum": [
+                                    "finite_difference_5pt"
+                                ]
+                            },
+                            "order": {
+                                "type": "integer",
+                                "enum": [
+                                    2
+                                ]
+                            },
+                            "stencil": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 80
+                            },
+                            "scaling_convention": {
+                                "type": "string",
+                                "enum": [
+                                    "A_is_L_over_h2__b_is_g",
+                                    "A_is_L__b_is_h2g"
+                                ]
+                            }
+                        }
+                    },
+                    "solver": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                            "method",
+                            "rtol",
+                            "atol",
+                            "maxiter",
+                            "residual_reference"
+                        ],
+                        "properties": {
+                            "method": {
+                                "type": "string",
+                                "enum": [
+                                    "cg"
+                                ]
+                            },
+                            "rtol": {
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                            },
+                            "atol": {
+                                "type": "number",
+                                "minimum": 0
+                            },
+                            "maxiter": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 200000
+                            },
+                            "residual_reference": {
+                                "type": "string",
+                                "enum": [
+                                    "r0",
+                                    "b"
+                                ]
+                            }
+                        }
+                    },
+                    "eigens": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                            "method",
+                            "which",
+                            "tol"
+                        ],
+                        "properties": {
+                            "method": {
+                                "type": "string",
+                                "enum": [
+                                    "direct_small_n",
+                                    "lanczos_eigsh",
+                                    "power_iteration"
+                                ]
+                            },
+                            "which": {
+                                "type": "string",
+                                "enum": [
+                                    "minmax",
+                                    "min",
+                                    "max"
+                                ]
+                            },
+                            "tol": {
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                            }
+                        }
+                    },
+                    "preconditioner": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                            "enabled",
+                            "method"
+                        ],
+                        "properties": {
+                            "enabled": {
+                                "type": "boolean"
+                            },
+                            "method": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "enum": [
+                                    "jacobi",
+                                    "ichol",
+                                    "ilu",
+                                    "none",
+                                    null
+                                ]
+                            }
+                        }
+                    },
+                    "runs": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 6,
+                        "items": {
+                            "$ref": "#/$defs/experiment_run_spec"
+                        }
+                    }
+                }
+            },
+            "artifact": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "key",
+                    "kind",
+                    "shape",
+                    "data_ref",
+                    "description",
+                    "units"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                    },
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "grid2d",
+                            "surface3d",
+                            "curve",
+                            "spectrum_samples",
+                            "table",
+                            "text"
+                        ]
+                    },
+                    "shape": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 40
+                    },
+                    "data_ref": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 220
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 240
+                    },
+                    "units": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 40
+                    }
+                }
+            },
+            "artifacts": {
+                "type": "array",
+                "minItems": 0,
+                "maxItems": 80,
+                "items": {
+                    "$ref": "#/$defs/artifact"
+                }
+            },
+            "cg_metrics": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "rtol",
+                    "iters",
+                    "final_rel_residual",
+                    "converged",
+                    "residual_curve_ref"
+                ],
+                "properties": {
+                    "rtol": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "exclusiveMinimum": 0
+                    },
+                    "iters": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "minimum": 0,
+                        "maximum": 200000
+                    },
+                    "final_rel_residual": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "minimum": 0
+                    },
+                    "converged": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "residual_curve_ref": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 220
+                    }
+                }
+            },
+            "error_metrics": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "l2",
+                    "linf",
+                    "l2_definition"
+                ],
+                "properties": {
+                    "l2": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "minimum": 0
+                    },
+                    "linf": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "minimum": 0
+                    },
+                    "l2_definition": {
+                        "type": "string",
+                        "enum": [
+                            "weighted_h2_sum_sqrt",
+                            "unweighted_euclidean"
+                        ]
+                    }
+                }
+            },
+            "spectrum_metrics": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "lambda_min",
+                    "lambda_max",
+                    "kappa",
+                    "method",
+                    "samples_ref"
+                ],
+                "properties": {
+                    "lambda_min": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "exclusiveMinimum": 0
+                    },
+                    "lambda_max": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "exclusiveMinimum": 0
+                    },
+                    "kappa": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "exclusiveMinimum": 1
+                    },
+                    "method": {
+                        "type": "string",
+                        "enum": [
+                            "direct",
+                            "lanczos",
+                            "power_method",
+                            "unknown"
+                        ]
+                    },
+                    "samples_ref": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 220
+                    }
+                }
+            },
+            "preconditioning_result": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "used",
+                    "method",
+                    "pcg",
+                    "improvement_factor_iters"
+                ],
+                "properties": {
+                    "used": {
+                        "type": "boolean"
+                    },
+                    "method": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 40
+                    },
+                    "pcg": {
+                        "$ref": "#/$defs/cg_metrics"
+                    },
+                    "improvement_factor_iters": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "exclusiveMinimum": 0
+                    }
+                }
+            },
+            "run_artifact_refs": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "uh_ref",
+                    "u_exact_ref",
+                    "error_ref"
+                ],
+                "properties": {
+                    "uh_ref": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 220
+                    },
+                    "u_exact_ref": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 220
+                    },
+                    "error_ref": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 220
+                    }
+                }
+            },
+            "grid_run_result": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "n",
+                    "h",
+                    "N",
+                    "cg",
+                    "errors",
+                    "spectrum",
+                    "preconditioning",
+                    "refs"
+                ],
+                "properties": {
+                    "n": {
+                        "type": "integer",
+                        "minimum": 8,
+                        "maximum": 4096
+                    },
+                    "h": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                    },
+                    "N": {
+                        "type": "integer",
+                        "minimum": 1
+                    },
+                    "cg": {
+                        "$ref": "#/$defs/cg_metrics"
+                    },
+                    "errors": {
+                        "$ref": "#/$defs/error_metrics"
+                    },
+                    "spectrum": {
+                        "$ref": "#/$defs/spectrum_metrics"
+                    },
+                    "preconditioning": {
+                        "$ref": "#/$defs/preconditioning_result"
+                    },
+                    "refs": {
+                        "$ref": "#/$defs/run_artifact_refs"
+                    }
+                }
+            },
+            "numerical_results_summary": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "observed_order_l2",
+                    "observed_order_linf",
+                    "cg_scaling_note"
+                ],
+                "properties": {
+                    "observed_order_l2": {
+                        "type": [
+                            "number",
+                            "null"
+                        ]
+                    },
+                    "observed_order_linf": {
+                        "type": [
+                            "number",
+                            "null"
+                        ]
+                    },
+                    "cg_scaling_note": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 800
+                    }
+                }
+            },
+            "numerical_results": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "computed",
+                    "grid_runs",
+                    "summary",
+                    "consistency_checks"
+                ],
+                "properties": {
+                    "computed": {
+                        "type": "boolean"
+                    },
+                    "grid_runs": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 6,
+                        "items": {
+                            "$ref": "#/$defs/grid_run_result"
+                        }
+                    },
+                    "summary": {
+                        "$ref": "#/$defs/numerical_results_summary"
+                    },
+                    "consistency_checks": {
+                        "type": "array",
+                        "minItems": 0,
+                        "maxItems": 20,
+                        "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

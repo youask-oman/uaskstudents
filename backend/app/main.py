@@ -226,3 +226,5 @@ app.mount("/storage", StaticFiles(directory="storage"), name="storage")
 @app.get("/")
 def read_root():
     return {"status": "ok", "service": "UAsk.ai Orchestrator v1"}
+
+# Reload trigger 8

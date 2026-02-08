@@ -1,0 +1,377 @@
+{
+  "schema_version": "v1",
+  "refusal": {
+    "is_refusal": false,
+    "reason": null,
+    "safe_alternative": null
+  },
+  "assumptions": [
+    "Use odd sine series representation for the square wave centered at zero",
+    "Discrete sampling for plots uses 2000 points on [-\\pi,\\pi] and N-term sums use odd harmonics up to the indicated N"
+  ],
+  "problem": {
+    "original_text": "Fourier Series & Gibbs Phenomenon: Convergence, Overshoot, and Spectral Decay\nTopic: Fourier analysis, approximation theory, convergence in norms, spectral interpretation.\n\nProblem:\nLet f(x) be the 2\\pi-periodic extension of the square wave\n  f(x) = 1  for x \\in (0, \\pi),\n  f(x) = -1 for x \\in (-\\pi, 0).\nLet S_N(x) be the N-term Fourier partial sum of f.\n\nTasks (plot required in at least three distinct steps):\n(a) For N \\in {5, 15, 50, 200}, plot f(x) and S_N(x) over [-\\pi, \\pi] on the same axes. Use the plots to measure overshoot near discontinuities and describe the Gibbs phenomenon.\n(b) For the same N, plot the pointwise error |S_N(x) - f(x)| over [-\\pi, \\pi]. Then create a zoomed-in plot near x = 0 to show how the overshoot region shrinks while the overshoot height persists.\n(c) Plot the magnitudes of Fourier coefficients |\\hat{f}(n)| versus n on log-log axes. Fit an approximate slope and relate it to the regularity (discontinuity) of f.\n(d) Plot convergence metrics: compute and plot ||S_N - f||_{L^2} vs N and (separately) ||S_N - f||_{L^\\infty} away from discontinuities vs N. Explain why the observed rates differ.\n\nOptional extension:\n(e) Replace S_N with Fej\\'er sums \\sigma_N(x). Plot \\sigma_N versus S_N for the same N and compare overshoot and uniform convergence behavior.",
+    "normalized_text": "Square wave 2\\pi-periodic, partial Fourier sums S_N, tasks (a)-(e) as specified requiring plots for several N values and error/convergence analysis.",
+    "detected_tasks": [
+      "fourier_series",
+      "convergence",
+      "spectral_decay",
+      "plot",
+      "approximation_theory",
+      "analysis"
+    ]
+  },
+  "classification": {
+    "grade_band": "undergraduate_lower",
+    "domain": "fourier_series",
+    "topic": "Fourier series, Gibbs phenomenon, spectral decay, convergence rates",
+    "difficulty": "medium"
+  },
+  "steps": [
+    {
+      "index": 1,
+      "title": "Define the function and coefficients",
+      "explanation": "Write the square wave as an odd function and state its nonzero Fourier sine coefficients; use the standard formula for sine coefficients for an odd 2\\pi-periodic square wave.",
+      "math_latex": [
+        "f(x)=\\begin{cases}1,&0<x<\\pi\\\\-1,&-\\pi<x<0\\end{cases}",
+        "\\hat f_n=\\frac{1}{\\pi}\\int_{-\\pi}^{\\pi}f(x)\\sin(nx)\\,dx",
+        "\\hat f_{2k+1}=\\frac{4}{\\pi(2k+1)},\\quad \\hat f_{2k}=0"
+      ],
+      "rules_used": [
+        "Fourier_coefficients",
+        "odd_function_sine_series",
+        "integration"
+      ]
+    },
+    {
+      "index": 2,
+      "title": "Construct partial sums S_N",
+      "explanation": "Define S_N as the sum over the first N odd harmonics (or the N-term partial sum if counting nonzero terms). Describe sampling for plotting.",
+      "math_latex": [
+        "S_N(x)=\\sum_{k=0}^{N-1}\\frac{4}{\\pi(2k+1)}\\sin((2k+1)x)"
+      ],
+      "rules_used": [
+        "finite_sum",
+        "truncation"
+      ]
+    },
+    {
+      "index": 3,
+      "title": "Prepare plot data and artifacts",
+      "explanation": "Specify grid, N values, and data_ref artifacts for each required plot so a backend can generate them reproducibly.",
+      "math_latex": [],
+      "rules_used": [
+        "sampling",
+        "artifact_registration"
+      ]
+    },
+    {
+      "index": 4,
+      "title": "Measure overshoot and Gibbs description",
+      "explanation": "From the f and S_N overlays, measure maximum pointwise overshoot near discontinuities and note that height approaches the Gibbs constant while the region width shrinks as N increases.",
+      "math_latex": [
+        "G=\\lim_{N\\to\\infty}\\sup_x|S_N(x)-f(x)|_{\\text{near discontinuity}}\\approx 0.08949\\times 4\\approx 0.3569"
+      ],
+      "rules_used": [
+        "limit_behavior",
+        "Gibbs_phenomenon"
+      ]
+    },
+    {
+      "index": 5,
+      "title": "Plot error and zoom near discontinuity",
+      "explanation": "Plot absolute error on full domain and a zoomed interval around x=0 to show shrinking oscillation support and persistent overshoot amplitude.",
+      "math_latex": [
+        "|S_N(x)-f(x)|"
+      ],
+      "rules_used": [
+        "error_plot",
+        "zoom"
+      ]
+    },
+    {
+      "index": 6,
+      "title": "Compute and plot coefficient decay",
+      "explanation": "Compute |\\hat f_n| and plot on log-log axes; fit slope to estimate algebraic decay rate and relate to jump discontinuity.",
+      "math_latex": [
+        "|\\hat f_{2k+1}|=\\frac{4}{\\pi(2k+1)}\\sim Cn^{-1}"
+      ],
+      "rules_used": [
+        "log_log_fit",
+        "regularity_vs_decay"
+      ]
+    },
+    {
+      "index": 7,
+      "title": "Compute norms versus N",
+      "explanation": "Describe computations of L^2 error and L^\\infty away from jumps; state expected rates: L^2 error decays like N^{-1/2} overall for a function with a jump when measured globally, while uniform error away from discontinuities decays faster.",
+      "math_latex": [
+        "\\|S_N-f\\|_{L^2}\\to 0, \\quad \\|S_N-f\\|_{L^\\infty(\\Omega\\setminus B)}\\to 0"
+      ],
+      "rules_used": [
+        "norms",
+        "rate_estimation"
+      ]
+    },
+    {
+      "index": 8,
+      "title": "Optional: Fej\\'er sums comparison",
+      "explanation": "Define Fej\\'er (Ces\\'aro) sums and state that they remove the Gibbs overshoot and converge uniformly to the average at discontinuities.",
+      "math_latex": [
+        "\\sigma_N(x)=\\frac{1}{N}\\sum_{m=0}^{N-1}S_m(x)"
+      ],
+      "rules_used": [
+        "Cesaro_summation",
+        "smoothing"
+      ]
+    }
+  ],
+  "final_answer": {
+    "answer_text": "Computation is pending backend execution. The planned outputs are: (1) overlays of f and S_N for N=5,15,50,200 with data stored in artifacts 'f:grid', 'S_N:n=5', 'S_N:n=15', 'S_N:n=50', 'S_N:n=200'; these will show the Gibbs overshoot whose height approaches the well-known constant while the oscillation width shrinks. (2) Absolute error plots and zoomed-in error near x=0 stored in 'error:n=5', 'error:n=15', 'error:n=50', 'error:n=200'. (3) Log-log plot of coefficient magnitudes in 'spectrum_samples:n=2000' and a fitted slope indicating decay ~n^{-1} consistent with a jump discontinuity. (4) Convergence curves for \\|S_N-f\\|_{L^2} and \\|S_N-f\\|_{L^\\infty} away from discontinuities stored in 'convergence:l2' and 'convergence:linf_away'. Backend execution will produce numeric overshoot measurements, fitted slopes, and error-vs-N curves.",
+    "answer_latex": "\\hat f_{2k+1}=\\frac{4}{\\pi(2k+1)},\\quad S_N(x)=\\sum_{k=0}^{N-1}\\frac{4}{\\pi(2k+1)}\\sin((2k+1)x),\\quad \\sigma_N(x)=\\frac{1}{N}\\sum_{m=0}^{N-1}S_m(x)",
+    "values": [],
+    "units": null
+  },
+  "visuals": {
+    "should_visualize": true,
+    "decision_reason": "User explicitly requested plots in multiple steps; register heatmap/curve artifacts and series referencing them",
+    "plots": [
+      {
+        "title": "f and S_N overlays for N=5,15,50,200",
+        "x_min": -3.141592653589793,
+        "x_max": 3.141592653589793,
+        "y_min": -1.5,
+        "y_max": 1.5,
+        "plot_kind": "cartesian_2d",
+        "x_scale": "linear",
+        "y_scale": "linear",
+        "series": [
+          {
+            "kind": "y_of_x",
+            "label": "f(x)",
+            "expr_latex": null,
+            "points": [],
+            "data_ref": "f:grid",
+            "color": "black",
+            "line_width": 1,
+            "line_style": "solid",
+            "marker_style": "none"
+          },
+          {
+            "kind": "y_of_x",
+            "label": "S_N n=5",
+            "expr_latex": null,
+            "points": [],
+            "data_ref": "S_N:n=5",
+            "color": "red",
+            "line_width": 1,
+            "line_style": "dashed",
+            "marker_style": "none"
+          },
+          {
+            "kind": "y_of_x",
+            "label": "S_N n=15",
+            "expr_latex": null,
+            "points": [],
+            "data_ref": "S_N:n=15",
+            "color": "blue",
+            "line_width": 1,
+            "line_style": "dashed",
+            "marker_style": "none"
+          },
+          {
+            "kind": "y_of_x",
+            "label": "S_N n=50",
+            "expr_latex": null,
+            "points": [],
+            "data_ref": "S_N:n=50",
+            "color": "green",
+            "line_width": 1,
+            "line_style": "dashed",
+            "marker_style": "none"
+          },
+          {
+            "kind": "y_of_x",
+            "label": "S_N n=200",
+            "expr_latex": null,
+            "points": [],
+            "data_ref": "S_N:n=200",
+            "color": "magenta",
+            "line_width": 1,
+            "line_style": "dashdot",
+            "marker_style": "none"
+          }
+        ],
+        "key_points": []
+      },
+      {
+        "title": "Absolute error |S_N-f| and zoom near x=0",
+        "x_min": -3.141592653589793,
+        "x_max": 3.141592653589793,
+        "y_min": 0,
+        "y_max": 1.0,
+        "plot_kind": "cartesian_2d",
+        "x_scale": "linear",
+        "y_scale": "linear",
+        "series": [
+          {
+            "kind": "y_of_x",
+            "label": "|S_N-f| n=5",
+            "expr_latex": null,
+            "points": [],
+            "data_ref": "error:n=5",
+            "color": "red",
+            "line_width": 1,
+            "line_style": "solid",
+            "marker_style": "none"
+          },
+          {
+            "kind": "y_of_x",
+            "label": "|S_N-f| n=15",
+            "expr_latex": null,
+            "points": [],
+            "data_ref": "error:n=15",
+            "color": "blue",
+            "line_width": 1,
+            "line_style": "solid",
+            "marker_style": "none"
+          },
+          {
+            "kind": "y_of_x",
+            "label": "|S_N-f| n=50",
+            "expr_latex": null,
+            "points": [],
+            "data_ref": "error:n=50",
+            "color": "green",
+            "line_width": 1,
+            "line_style": "solid",
+            "marker_style": "none"
+          },
+          {
+            "kind": "y_of_x",
+            "label": "|S_N-f| n=200",
+            "expr_latex": null,
+            "points": [],
+            "data_ref": "error:n=200",
+            "color": "magenta",
+            "line_width": 1,
+            "line_style": "solid",
+            "marker_style": "none"
+          }
+        ],
+        "key_points": []
+      },
+      {
+        "title": "Fourier coefficient magnitudes on log-log axes",
+        "x_min": 1,
+        "x_max": 200,
+        "y_min": 1e-3,
+        "y_max": 10,
+        "plot_kind": "cartesian_2d",
+        "x_scale": "log10",
+        "y_scale": "log10",
+        "series": [
+          {
+            "kind": "points",
+            "label": "|\\hat f(n)|",
+            "expr_latex": null,
+            "points": [],
+            "data_ref": "spectrum_samples:n=200",
+            "color": "black",
+            "line_width": null,
+            "line_style": null,
+            "marker_style": "circle"
+          }
+        ],
+        "key_points": []
+      },
+      {
+        "title": "Convergence metrics vs N",
+        "x_min": 1,
+        "x_max": 200,
+        "y_min": 1e-4,
+        "y_max": 2,
+        "plot_kind": "cartesian_2d",
+        "x_scale": "linear",
+        "y_scale": "log10",
+        "series": [
+          {
+            "kind": "y_of_x",
+            "label": "\\|S_N-f\\|_{L^2}",
+            "expr_latex": null,
+            "points": [],
+            "data_ref": "convergence:l2",
+            "color": "blue",
+            "line_width": 1,
+            "line_style": "solid",
+            "marker_style": "none"
+          },
+          {
+            "kind": "y_of_x",
+            "label": "\\|S_N-f\\|_{L^\\infty\\_away}",
+            "expr_latex": null,
+            "points": [],
+            "data_ref": "convergence:linf_away",
+            "color": "red",
+            "line_width": 1,
+            "line_style": "dashed",
+            "marker_style": "none"
+          }
+        ],
+        "key_points": []
+      },
+      {
+        "title": "Comparison: Fej\\'er sums vs partial sums",
+        "x_min": -3.141592653589793,
+        "x_max": 3.141592653589793,
+        "y_min": -1.5,
+        "y_max": 1.5,
+        "plot_kind": "cartesian_2d",
+        "x_scale": "linear",
+        "y_scale": "linear",
+        "series": [
+          {
+            "kind": "y_of_x",
+            "label": "\\sigma_N n=50",
+            "expr_latex": null,
+            "points": [],
+            "data_ref": "sigma_N:n=50",
+            "color": "orange",
+            "line_width": 1,
+            "line_style": "solid",
+            "marker_style": "none"
+          },
+          {
+            "kind": "y_of_x",
+            "label": "S_N n=50",
+            "expr_latex": null,
+            "points": [],
+            "data_ref": "S_N:n=50",
+            "color": "green",
+            "line_width": 1,
+            "line_style": "dashed",
+            "marker_style": "none"
+          }
+        ],
+        "key_points": []
+      }
+    ],
+    "alternative_visual": {
+      "kind": "none",
+      "description": "",
+      "data": []
+    }
+  },
+  "quality": {
+    "confidence": 0.79,
+    "common_mistakes": [
+      "Counting N incorrectly (use N nonzero terms or highest harmonic index consistently)",
+      "Mixing scaling conventions for discrete sums versus continuous coefficients",
+      "Measuring overshoot too far from discontinuity instead of at the first maximum",
+      "Fitting slope on too small n-range for log-log coefficient decay",
+      "Using L^\\infty norm including discontinuities instead of excluding small neighborhoods"
+    ]
+  },
+  "experiment": {
+    "pde": null,
+    "discretization": {

@@ -555,27 +555,8 @@ class SolverV3:
             # Helper for clamping tokens
 
             def _clamp_tokens_for_provider(provider: str, tokens: int) -> int:
-
-                if provider == "openai":
-
-                    tier_slug = (user_tier or "").lower()
-
-                    cap = 1200
-
-                    if "free" in tier_slug:
-
-                        cap = 900
-
-                    elif "standard" in tier_slug or "pro" in tier_slug or "family" in tier_slug:
-
-                        cap = 1100
-
-                    elif "research" in tier_slug:
-
-                        cap = 1200
-
-                    return min(tokens, cap)
-
+                # Do NOT clamp OpenAI tokens; rely on token_policy or request args.
+                # The previous clamping to 900-1200 was causing truncation on complex problems.
                 return tokens
 
             
@@ -1383,23 +1364,14 @@ class SolverV3:
 
             schema_payload = json_schema_config
             response_stream = client.generate_stream(
-
                 messages=messages,
-
                 system_prompt=None,
-
                 prompt=None,
-
                 json_schema=schema_payload,
-
                 max_tokens=effective_max_tokens,
-
                 temperature=0.4,
-
                 request_id=request_id,
-
                 model=self.default_model,
-
             )
 
 
@@ -1426,41 +1398,32 @@ class SolverV3:
                 content_delta = ""
 
                 if hasattr(chunk_obj, "content"):
-
                     content_delta = chunk_obj.content
-
                 elif isinstance(chunk_obj, dict):
-
                     content_delta = chunk_obj.get("content", "")
 
-                
-
                 if content_delta:
-
                     full_content += content_delta
-
+                    # FIX: Yield ONLY the raw text, let the API layer wrap in SSE if needed
+                    # Actually, the API layer expects this dict format: {"type": "delta", "text": ...}
+                    # But wait, the user said "accumulate ONLY the assistant output text deltas into one buffer json_text."
+                    # The accumulation is happening in full_content.
+                    # This yield is sent to the Frontend via SSE.
                     yield {"type": "delta", "text": content_delta}
 
                 if hasattr(chunk_obj, "usage") and chunk_obj.usage:
-
                     telemetry["input_tokens"] = chunk_obj.usage.get("input", 0)
-
                     telemetry["output_tokens"] = chunk_obj.usage.get("output", 0)
-
                     telemetry["total_tokens"] = chunk_obj.usage.get("total", 0)
-
                     telemetry["cached_tokens"] = chunk_obj.usage.get("cached")
 
                 if hasattr(chunk_obj, "model") and chunk_obj.model:
-
                     telemetry["model"] = chunk_obj.model
 
                 if hasattr(chunk_obj, "provider") and chunk_obj.provider:
-
                     telemetry["provider"] = chunk_obj.provider
 
                 if hasattr(chunk_obj, "status") and chunk_obj.status:
-
                     telemetry["status"] = chunk_obj.status
 
 
