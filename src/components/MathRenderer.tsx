@@ -4,7 +4,11 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-// CSS imported globally in layout.tsx
+import { segmentMath } from './math/mathSegment';
+import {
+    sanitizeLatex,
+    convertStrictToLibFormat,
+} from './MathUtils';
 
 interface MathRendererProps {
     content?: string | number;
@@ -13,94 +17,73 @@ interface MathRendererProps {
     forceMath?: boolean;
 }
 
-import {
-    convertLatexFencesToMath,
-    sanitizeLatex,
-    normalizeLatexBreaksOutsideMath,
-    normalizeAndFixColors,
-    escapeAllDollars,
-    convertStrictToLibFormat,
-    autoWrapEnvironments,
-    normalizePlainSqrt,
-    escapeUnmatchedRightDelimiters
-} from './MathUtils';
-
-// =============================================================================
-// MAIN COMPONENT
-// =============================================================================
-
+/**
+ * MathRenderer (Katex/Remark implementation)
+ * 
+ * Overhauled to use a robust segmenter that prevents word-gluing
+ * and handles naked TeX fragments safely.
+ */
 export default function MathRenderer({ content, className = "", inline = false, forceMath = false }: MathRendererProps) {
     if (content === null || content === undefined) return null;
-    let text = String(content);
+    let raw = String(content);
 
-    // Step 1: Convert fenced ```latex blocks to \[...\] (Strict Block)
-    text = convertLatexFencesToMath(text);
-
-    // Step 2: Auto-wrap LaTeX environments
-    text = autoWrapEnvironments(text);
-
-    // Step 3: Normalize Colors & Fix Prose
-    text = normalizeAndFixColors(text);
-
-    // Step 4: Sanitize LaTeX artifacts
-    text = sanitizeLatex(text);
-
-    // Step 5: Normalize LaTeX breaks/commands outside math regions
-    text = normalizeLatexBreaksOutsideMath(text);
-
-    // Step 6: Normalize bare sqrt expressions and stray delimiters
-    text = normalizePlainSqrt(text);
-    text = escapeUnmatchedRightDelimiters(text);
-
-    // Step 7: STRICT: Escape ALL dollars in prose to prevent accidental math mode.
-    // This effectively disables $...$ delimiters.
-    text = escapeAllDollars(text);
-
-    // Step 7: Force Math Logic (Strict Mode)
-    if (forceMath) {
-        const trimmed = text.trim();
-        // Check for STRICT delimiters only
-        const hasDelimiters =
-            (trimmed.startsWith('\\(') && trimmed.endsWith('\\)')) ||
-            (trimmed.startsWith('\\[') && trimmed.endsWith('\\]'));
-
-        if (!hasDelimiters) {
-            // Apply strict delimiters
-            const requiresBlock = /\\begin\{|\\\\/.test(text) || !inline;
-            if (requiresBlock) {
-                text = `\\[${text}\\]`;
-            } else {
-                text = `\\(${text}\\)`;
-            }
-        }
+    // Apply strict force math if requested (wrap whole content if no delimiters found)
+    if (forceMath && !raw.includes("\\(") && !raw.includes("\\[") && !raw.includes("$")) {
+        raw = inline ? `\\(${raw}\\)` : `\\[${raw}\\]`;
     }
 
-    // Step 8: Final Separation: Convert Strict Delimiters to Library Format
-    // \( -> $ and \[ -> $$ for remark-math consumption
-    text = convertStrictToLibFormat(text);
+    // Segment the content into text and math blocks
+    // This is the core fix for "glued words" - text segments are rendered outside of Katex.
+    const segments = segmentMath(raw);
 
-    // Use correct wrapper element based on mode
     const Wrapper: React.ElementType = inline ? "span" : "div";
 
     return (
-        <Wrapper className={`math-renderer markdown-math ${className} ${inline ? "inline-block" : "block"}`}>
-            <ReactMarkdown
-                remarkPlugins={[remarkMath]}
-                rehypePlugins={[
-                    [rehypeKatex, { throwOnError: false, strict: 'ignore' }]
-                ]}
-                components={{
-                    // Only override p to span in inline mode
-                    p: ({ children, ...props }) => {
-                        if (inline) {
-                            return <span {...props}>{children}{" "}</span>;
-                        }
-                        return <p {...props}>{children}</p>;
-                    },
-                }}
-            >
-                {text}
-            </ReactMarkdown>
+        <Wrapper
+            className={`math-renderer markdown-math ${className} ${inline ? "inline-block" : "block"}`}
+            style={{ whiteSpace: "pre-wrap" }}
+        >
+            {segments.map((seg, i) => {
+                if (seg.type === "text") {
+                    // Render prose as normal span to preserve spaces and font
+                    return <span key={`txt-${i}`}>{seg.value}</span>;
+                }
+
+                // Construct wrapped TeX for remark-math/rehype-katex
+                // seg.value from segmentMath is the naked TeX content
+                const wrappedTex = seg.type === "block_math"
+                    ? `\\[${seg.value}\\]`
+                    : `\\(${seg.value}\\)`;
+
+                // Sanitize and convert for library consumption
+                let tex = sanitizeLatex(wrappedTex);
+                tex = convertStrictToLibFormat(tex);
+
+                return (
+                    <span
+                        key={`math-${i}`}
+                        className="math-segment-wrap"
+                        style={{ display: seg.type === "block_math" ? "block" : "inline-block" }}
+                    >
+                        <ReactMarkdown
+                            remarkPlugins={[remarkMath]}
+                            rehypePlugins={[
+                                [rehypeKatex, { throwOnError: false, strict: 'ignore' }]
+                            ]}
+                            components={{
+                                // Prevent ReactMarkdown from wrapping every segment in <p>
+                                p: ({ children }) => (
+                                    <span style={{ display: seg.type === "block_math" ? "block" : "inline" }}>
+                                        {children}
+                                    </span>
+                                ),
+                            }}
+                        >
+                            {tex}
+                        </ReactMarkdown>
+                    </span>
+                );
+            })}
         </Wrapper>
     );
 }

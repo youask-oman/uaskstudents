@@ -17670,3 +17670,388 @@ Incoming: GET /health
 Response: 200 | 1ms
 Incoming: GET /health
 Response: 200 | 1ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 68ms
+Response: 200 | 78ms
+Response: 200 | 78ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 20ms
+Response: 200 | 20ms
+Response: 200 | 22ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 12ms
+Response: 200 | 11ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 5ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 5ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json
+Response: 200 | 0ms
+Incoming: DELETE /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json
+Response: 200 | 27ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 6ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/update
+Response: 200 | 0ms
+Incoming: POST /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/update
+Response: 200 | 118ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 3ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 6ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Response: 200 | 13ms
+Response: 200 | 19ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Response: 200 | 9ms
+Response: 200 | 10ms
+Response: 200 | 10ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Response: 200 | 0ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Response: 200 | 5ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts/global_system_prompt_v1/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/global_system_prompt_v1/versions
+Response: 200 | 5ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts/solve_standard_v1/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/solve_standard_v1/versions
+Response: 200 | 4ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts/solve_free_v1/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/solve_free_v1/versions
+Response: 200 | 5ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts/plot_trigger_v1/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/plot_trigger_v1/versions
+Response: 200 | 5ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts/openai_ocr_system_prompt_v1.txt/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/openai_ocr_system_prompt_v1.txt/versions
+Response: 200 | 5ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/global_system_prompt_v1/versions
+Response: 200 | 4ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/solve_standard_v1/versions
+Response: 200 | 5ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts/solve_research_v1/update
+Response: 200 | 0ms
+Incoming: POST /api/v1/admin/prompt-registry/prompts/solve_research_v1/update
+Response: 200 | 17ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts/solve_research_v1/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/solve_research_v1/versions
+Response: 200 | 4ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/solve_standard_v1/versions
+Response: 200 | 5ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/solve_research_v1/versions
+Response: 200 | 5ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 5ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 5ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 7ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Response: 200 | 11ms
+Response: 200 | 11ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 7ms
+Response: 200 | 9ms
+Response: 200 | 9ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings/activate
+Response: 200 | 0ms
+Incoming: POST /api/v1/admin/prompt-registry/bindings/activate
+Response: 200 | 15ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 13ms
+Response: 200 | 13ms
+Response: 200 | 8ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings/6e8e9745-f98c-47ad-a01e-d1c45ef470e3
+Response: 200 | 0ms
+Incoming: DELETE /api/v1/admin/prompt-registry/bindings/6e8e9745-f98c-47ad-a01e-d1c45ef470e3
+Response: 200 | 11ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Response: 200 | 6ms
+Incoming: GET /api/v1/sessions/258
+Response: 200 | 14ms
+Incoming: GET /api/v1/public/plans
+Response: 200 | 10ms
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Response: 200 | 11ms
+Response: 200 | 30ms
+Incoming: GET /api/v1/config/token-policy
+Response: 200 | 28ms
+Incoming: GET /api/v1/history
+Response: 200 | 8ms
+Response: 200 | 6ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/history
+Response: 200 | 145ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 153ms
+Response: 200 | 8ms
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 13ms
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/sessions/258
+Response: 200 | 10ms
+Incoming: GET /api/v1/sessions/258
+Response: 200 | 7ms
+Incoming: POST /api/v1/admin/prompt-registry/bindings/activate
+Response: 200 | 15ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings
+Response: 200 | 0ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Response: 200 | 1ms
+Response: 200 | 2ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 10ms
+Response: 200 | 9ms
+Response: 200 | 13ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings/610f9682-dcde-4d2e-9381-3e5f35f7ab50
+Response: 200 | 0ms
+Incoming: DELETE /api/v1/admin/prompt-registry/bindings/610f9682-dcde-4d2e-9381-3e5f35f7ab50
+Response: 200 | 6ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Response: 200 | 5ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 10ms
+Response: 200 | 13ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 7ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/versions
+Response: 200 | 1ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/versions
+Response: 200 | 7ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 4ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/versions
+Response: 200 | 6ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 6ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json
+Response: 200 | 0ms
+Incoming: DELETE /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json
+Response: 200 | 14ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 6ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/update
+Response: 200 | 1ms
+Incoming: POST /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/update
+Response: 200 | 128ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_research_detailed_v1.schema.json/versions
+Response: 200 | 5ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings
+Response: 200 | 0ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Response: 200 | 1ms
+Response: 200 | 1ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Response: 200 | 2ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 6ms
+Response: 200 | 20ms
+Response: 200 | 13ms
+Response: 200 | 19ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Response: 200 | 11ms
+Response: 200 | 11ms
+Response: 200 | 14ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings/activate
+Response: 200 | 0ms
+Incoming: POST /api/v1/admin/prompt-registry/bindings/activate
+Response: 200 | 17ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 14ms
+Response: 200 | 17ms
+Response: 200 | 13ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/bindings/4d7c5549-1c62-4266-afdc-cf5477202b36
+Response: 200 | 0ms
+Incoming: DELETE /api/v1/admin/prompt-registry/bindings/4d7c5549-1c62-4266-afdc-cf5477202b36
+Response: 200 | 9ms
+Incoming: GET /api/v1/admin/prompt-registry/bindings
+Response: 200 | 5ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=8 active_pairs=8
+Incoming: GET /api/v1/history
+Response: 200 | 176ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 148ms
+Response: 200 | 7ms
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 18ms
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 8ms
+Incoming: GET /api/v1/history
+Response: 200 | 180ms
+Incoming: GET /api/v1/user/token-usage
+Response: 200 | 5ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 13ms
+Incoming: GET /api/v1/config/token-policy
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Incoming: GET /api/v1/config/token-policy
+Response: 200 | 29ms
+Response: 200 | 31ms
+Response: 200 | 20ms
+Response: 200 | 20ms
+Incoming: GET /api/v1/history
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Response: 200 | 13ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 21ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 9ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 6ms
+Incoming: POST /api/v1/solve_v3_stream
+Incoming: GET /api/v1/solve_v3_runtime_meta
+Response: 200 | 75ms
+Response: 200 | 135ms
+build_openai_structured_output: call=None endpoint=responses name=solve_research_detailed_v1 strict=False schema_hash=a3e673a62fffdf7e
+Incoming: GET /api/v1/user/profile
+Response: 200 | 7ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+build_openai_structured_output: call=None endpoint=responses name=solve_research_detailed_v1 strict=False schema_hash=a3e673a62fffdf7e
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Response: 200 | 1ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts
+Response: 200 | 5ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts/global_system_prompt_v1/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/global_system_prompt_v1/versions
+Response: 200 | 5ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts/solve_standard_v1/versions
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/solve_standard_v1/versions
+Response: 200 | 7ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 5ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 3ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts/solve_standard_v1
+Response: 200 | 0ms
+Incoming: DELETE /api/v1/admin/prompt-registry/prompts/solve_standard_v1
+Response: 200 | 22ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/global_system_prompt_v1/versions
+Response: 200 | 5ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/prompts/solve_standard_v1/update
+Response: 200 | 0ms
+Incoming: POST /api/v1/admin/prompt-registry/prompts/solve_standard_v1/update
+Response: 200 | 15ms
+Incoming: GET /api/v1/admin/prompt-registry/prompts/solve_standard_v1/versions
+Response: 200 | 5ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Response: 200 | 0ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas
+Response: 200 | 0ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas
+Response: 200 | 6ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 6ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/versions
+Response: 200 | 1ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/versions
+Response: 200 | 8ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 6ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json
+Response: 200 | 0ms
+Incoming: DELETE /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json
+Response: 200 | 16ms
+Incoming: GET /api/v1/admin/prompt-registry/schemas/openai_image_extract_v1.schema.json/versions
+Response: 200 | 7ms
+Incoming: OPTIONS /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/update
+Response: 200 | 1ms
+Incoming: POST /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/update
+Response: 400 | 4ms
+Incoming: GET /api/v1/user/profile
+Response: 200 | 10ms
+Incoming: GET /api/v1/users/online
+Response: 200 | 4ms
+[QUESTION_CACHE] Already exists: 7ef34425e1ea0ef6...
+Incoming: GET /api/v1/sessions/259
+Response: 200 | 7ms
+Incoming: GET /api/v1/sessions/259
+Response: 200 | 5ms
+Incoming: POST /api/v1/admin/prompt-registry/schemas/solve_standard_detailed_v1.schema.json/update
+Response: 400 | 2ms

@@ -119,7 +119,7 @@ function tokenizeAtTopLevel(latex: string, separator: RegExp): string[] {
  * Check if a clause contains a relation operator at the top level
  */
 function findAlignmentPoint(clause: string): { before: string; operator: string; after: string } | null {
-    const operators = ["=", "\\approx", "\\to", "\\Rightarrow", "\\rightarrow", "\\leq", "\\geq", "\\neq", "\\equiv"];
+    const operators = ["=", "\\approx", "\\to", "\\Rightarrow", "\\rightarrow", "\\leq", "\\geq", "\\neq", "\\equiv", "\\sim", "\\simeq", "\\cong", "\\propto", "\\parallel", "\\perp"];
 
     let depth = 0;
     let inTextCommand = false;

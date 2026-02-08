@@ -36,7 +36,10 @@ export const normalizeProseMath = (content: unknown): string => {
 export const autoFixMath = (text: string): string => {
     if (!text) return text;
     // Common terms that should be math commands if they look like standalone words or prefixes
-    const commands = ["frac", "tfrac", "sqrt", "sin", "cos", "tan", "log", "ln", "pm", "mp", "le", "ge", "leq", "geq", "neq", "approx", "alpha", "beta", "gamma", "delta", "theta", "pi", "infty", "begin", "end", "times", "div", "cdot"];
+    const commands = [
+        "frac", "tfrac", "sqrt", "sin", "cos", "tan", "log", "ln", "pm", "mp", "le", "ge", "leq", "geq", "neq", "approx", "alpha", "beta", "gamma", "delta", "theta", "pi", "infty", "begin", "end", "times", "div", "cdot", "hat", "bar", "tilde", "vec",
+        "sigma", "mu", "lambda", "phi", "psi", "omega", "tau", "zeta", "eta", "epsilon", "rho", "chi", "nu", "kappa", "Xi", "Gamma", "Delta", "Theta", "Lambda", "Sigma", "Phi", "Psi", "Omega"
+    ];
 
     // Sort by length descending to match longest commands first
     commands.sort((a, b) => b.length - a.length);
@@ -52,16 +55,11 @@ export const autoFixMath = (text: string): string => {
     repaired = repaired.replace(/\\sqrt\(([^)]+)\)/g, "\\sqrt{$1}");
 
     // Handle non-standard \root variations
-    // 1. \root{n}\of{x} or \root n \of {x} -> \sqrt[n]{x}
     repaired = repaired.replace(/\\root\s*\{?([^}\s]+)\}?\s*\\of\s*\{([^}]+)\}/g, "\\sqrt[$1]{$2}");
-    // 2. \root{n}{x} -> \sqrt[n]{x}
     repaired = repaired.replace(/\\root\s*\{([^}]+)\}\s*\{([^}]+)\}/g, "\\sqrt[$1]{$2}");
-    // 3. \root n {x} -> \sqrt[n]{x}
     repaired = repaired.replace(/\\root\s+([0-9a-z]+)\s+\{([^}]+)\}/g, "\\sqrt[$1]{$2}");
 
-    // Surgical Fix for left/right: Only prefix if followed by a delimiter character they actually need
-    // e.g. "left(" -> "\left(", "right]" -> "\right]"
-    // But NOT "on the right," -> "on the \right,"
+    // Surgical Fix for left/right
     repaired = repaired.replace(/(?<![\\a-zA-Z])left([(\[{])/g, "\\left$1");
     repaired = repaired.replace(/(?<![\\a-zA-Z])right([)\]}])/g, "\\right$1");
 
@@ -71,7 +69,6 @@ export const autoFixMath = (text: string): string => {
 // Detect if content is raw LaTeX without delimiters
 const isRawLatex = (text: string): boolean => {
     const trimmed = text.trim();
-    // Skip if already has delimiters
     if (trimmed.startsWith("\\(") || trimmed.startsWith("\\[") ||
         trimmed.startsWith("$") || trimmed.startsWith("$$")) {
         return false;
@@ -81,12 +78,9 @@ const isRawLatex = (text: string): boolean => {
     const isJsonArray = trimmed.startsWith("[");
     const startsWithText = trimmed.startsWith("\\text{");
 
-    // Heuristic: If it has any spaces, it's very likely prose or contains prose.
     if (spaceCount > 0 && !isJsonArray && !startsWithText) return false;
 
-    // Check for common LaTeX commands. 
-    // We split into two: those that MUST have a backslash, and those that can be raw.
-    const strictLatexPattern = /\\(frac|tfrac|sqrt|root|sum|int|lim|sin|cos|tan|log|ln|alpha|beta|gamma|delta|theta|pi|infty|cdot|times|div|pm|mp|le|ge|leq|geq|neq|approx|equiv|subset|supset|notin|forall|exists|partial|nabla|left|right|begin|end|to|Rightarrow|rightarrow|leftrightarrow|in)(?![a-zA-Z])/;
+    const strictLatexPattern = /\\(frac|tfrac|sqrt|root|sum|int|lim|sin|cos|tan|log|ln|alpha|beta|gamma|delta|theta|pi|infty|cdot|times|div|pm|mp|le|ge|leq|geq|neq|approx|equiv|subset|supset|notin|forall|exists|partial|nabla|left|right|begin|end|to|Rightarrow|rightarrow|leftrightarrow|in|sigma|mu|lambda)(?![a-zA-Z])/;
     const permissiveLatexPattern = /(?<![a-zA-Z])(Rightarrow|rightarrow|leftrightarrow|neq|approx|equiv)(?![a-zA-Z])/;
 
     return strictLatexPattern.test(trimmed) || permissiveLatexPattern.test(trimmed);
@@ -122,14 +116,12 @@ const convertLatexFences = (text: string) => {
 const convertDisplayMath = (text: string) => {
     let cursor = 0;
     let output = "";
-
     while (cursor < text.length) {
         const start = findDelimiter(text, "$$", cursor);
         if (start === -1) {
             output += text.slice(cursor);
             break;
         }
-
         output += text.slice(cursor, start);
         const closing = findDelimiter(text, "$$", start + 2);
         if (closing === -1) {
@@ -137,12 +129,10 @@ const convertDisplayMath = (text: string) => {
             cursor = start + 2;
             continue;
         }
-
         const block = text.slice(start + 2, closing);
         output += `\\[\n${block}\n\\]`;
         cursor = closing + 2;
     }
-
     return output;
 };
 
@@ -153,21 +143,18 @@ const normalizeInlineDollars = (line: string) => {
             dollarIndexes.push(i);
         }
     }
-
     if (dollarIndexes.length === 0) return line;
     if (dollarIndexes.length % 2 === 1) {
         const lastDollar = dollarIndexes[dollarIndexes.length - 1];
         const escapedLine = `${line.slice(0, lastDollar)}\\$${line.slice(lastDollar + 1)}`;
         return normalizeInlineDollars(escapedLine);
     }
-
     let output = "";
     let cursor = 0;
     for (let i = 0; i < dollarIndexes.length; i += 2) {
         const start = dollarIndexes[i];
         const end = dollarIndexes[i + 1];
         output += line.slice(cursor, start);
-
         const inner = line.slice(start + 1, end);
         if (isSafeInlinePair(inner)) {
             output += `\\(${inner.trim()}\\)`;
@@ -176,29 +163,13 @@ const normalizeInlineDollars = (line: string) => {
         }
         cursor = end + 1;
     }
-
     output += line.slice(cursor);
-    return output;
-};
-
-const escapeAllDollars = (text: string) => {
-    let output = "";
-    for (let i = 0; i < text.length; i += 1) {
-        const ch = text[i];
-        if (ch === "$" && !isEscaped(text, i)) {
-            output += "\\$";
-        } else {
-            output += ch;
-        }
-    }
     return output;
 };
 
 const isSafeInlinePair = (inner: string) => {
     const trimmed = inner.trim();
     if (!trimmed) return false;
-
-    // Double check if value is still an array/object-like string that needs cleaning before render
     let cleanValue = trimmed;
     if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
         try {
@@ -206,7 +177,6 @@ const isSafeInlinePair = (inner: string) => {
             if (Array.isArray(parsed)) cleanValue = parsed.join(" \\\\ ");
         } catch { }
     }
-
     if (/^[\d.,]+$/.test(cleanValue)) return false;
     if (/\\[a-zA-Z]+/.test(cleanValue)) return true;
     if (/[=+\-*/^_<>]/.test(cleanValue)) return true;

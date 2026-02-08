@@ -398,18 +398,25 @@ export default function SolutionStepsBlock({
             {/* Step Metadata: Rules, Checks, Notes */}
             {editingStepIndex !== index && (
               <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-                {Array.isArray(step.rulesUsed) && step.rulesUsed.length > 0 && (
+                {step.rulesUsed && step.rulesUsed.length > 0 && (
                   <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                     <span style={{ fontWeight: 600, color: "var(--text-main)" }}>Rules: </span>
-                    {step.rulesUsed.join(", ")}
+                    {step.rulesUsed.map((rule: string, i: number) => (
+                      <React.Fragment key={i}>
+                        <MathRenderer content={rule} mode="prose" />
+                        {i < (step.rulesUsed?.length || 0) - 1 ? ", " : ""}
+                      </React.Fragment>
+                    ))}
                   </div>
                 )}
-                {Array.isArray(step.checks) && step.checks.length > 0 && (
+                {step.checks && step.checks.length > 0 && (
                   <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                     <span style={{ fontWeight: 600, color: "var(--text-main)" }}>Checks: </span>
                     <ul style={{ margin: "4px 0 0", paddingLeft: 20, listStyleType: "circle" }}>
-                      {step.checks.map((check, i) => (
-                        <li key={i}>{check}</li>
+                      {step.checks.map((check: string, i: number) => (
+                        <li key={i}>
+                          <MathRenderer content={check} mode="prose" />
+                        </li>
                       ))}
                     </ul>
                   </div>
@@ -474,8 +481,8 @@ export default function SolutionStepsBlock({
                 <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 8, letterSpacing: "0.05em" }}>
                   Summary
                 </div>
-                <div style={{ fontSize: 14, color: "#334155", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
-                  {displayAnswerText}
+                <div style={{ fontSize: 14, color: "#334155", lineHeight: 1.7 }}>
+                  <MathRenderer content={displayAnswerText} mode="prose" />
                 </div>
               </div>
             )}

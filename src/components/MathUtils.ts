@@ -49,21 +49,8 @@ export function sanitizeLatex(input: string): string {
     // Fix missing backslash in text{...}
     clean = clean.replace(/(^|[^\\])text\{/g, '$1\\text{');
 
-    // AGGRESSIVE: Remove malformed $\X$ patterns (single char math that's broken)
-    // e.g., "$\f$" => "" or "$\" => ""
-    clean = clean.replace(/\$\\[a-zA-Z]?\$/g, '');
-
-    // Remove stray $ followed immediately by backslash and letter (like "$\f'")
-    clean = clean.replace(/\$\\([a-zA-Z])/g, '\\$1');
-
-    // Remove trailing $ at end of line/string that's unmatched
-    clean = clean.replace(/([^$])\$$/gm, '$1');
-
-    // Remove $ immediately before = or ) when not matched
-    clean = clean.replace(/\$([=)])/g, '$1');
-
-    // Fix \big ( with space
-    clean = clean.replace(/\\big\s+([([{|\\])/g, '\\big$1');
+    // Surgical Fix for accents: \hat f -> \hat{f}
+    clean = clean.replace(/\\(hat|bar|tilde|vec|dot|ddot|check|acute|grave)\s+([a-zA-Z0-9])/g, '\\$1{$2}');
 
     return clean;
 }

@@ -1497,37 +1497,39 @@
 .finalAnswerMathContainer {
   width: 100%;
   max-width: 100%;
-  overflow: visible;
 }
 
 .finalAnswerMathContent {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   width: 100%;
-  max-width: 100%;
 }
 
 .finalAnswerMathBlock {
   width: 100%;
-  max-width: 100%;
-  overflow: visible;
+  display: block;
+  text-align: center;
   font-size: 16px;
   font-weight: 600;
   color: #0f172a;
   line-height: 1.6;
   padding: 8px 0;
+  /* Allow horizontal scroll if scaling doesn't fit, but keep start visible */
+  overflow-x: auto;
+  overflow-y: visible;
+  /* Ensure it doesn't force parent to expand, allowing scaling hook to work */
 }
 
-/* MathJax containers - force visible overflow scoped to local math block */
+/* MathJax containers - ensure it behaves like an inline-block for width detection but block-level for centered layout */
 .finalAnswerMathBlock :global(mjx-container),
 .finalAnswerMathBlock :global(.MathJax),
-.finalAnswerMathBlock :global(mjx-math) {
-  max-width: 100% !important;
-  overflow: visible !important;
-  display: block !important;
-  height: auto !important;
-  max-height: none !important;
+.finalAnswerMathBlock :global(.katex-display) {
+  display: inline-block !important;
+  margin: 0 auto !important;
+  max-width: none !important;
+  text-align: left;
+  /* Reset alignment for formula content */
 }
 
 .finalAnswerTextBlock {
