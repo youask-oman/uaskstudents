@@ -25724,3 +25724,5 @@ Incoming: GET /api/v1/user/profile
 Response: 200 | 6ms
 Incoming: GET /health
 Response: 200 | 1ms
+Incoming: GET /health
+Response: 200 | 1ms
