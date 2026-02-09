@@ -1,69 +1,55 @@
-<<<<<<< HEAD
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
-1. uaskstudentmark@gmail.com
+# uaskstudents
 
-## Getting Started
+## DEV Reset & Seed
 
-First, run the development server:
+Use `orchestrator` (not `backend`) for migration/scripts.
+
+### One-command DEV NUKE + reseed + smoke
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+docker compose up -d postgres redis orchestrator
+docker compose exec orchestrator alembic upgrade head
+docker compose exec orchestrator python scripts/dev_seed_and_smoke_test.py
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Manual DEV flow
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+docker compose up -d postgres redis orchestrator
+docker compose exec orchestrator python scripts/dev_reset_db.py --mode NUKE --confirm RESET_DEV_DB
+docker compose exec orchestrator alembic upgrade head
+docker compose exec orchestrator python scripts/seed_production.py --env DEV
+docker compose exec orchestrator pytest tests/smoke/ -q
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### DEV reset modes
 
-## Learn More
+- `NUKE`: truncates all public tables except `alembic_version`, then migration + reseed.
+- `SAFE`: truncates non-essential operational tables while preserving seeded reference/config tables.
 
-To learn more about Next.js, take a look at the following resources:
+Both modes are blocked unless `APP_ENV=DEV` or `ALLOW_DESTRUCTIVE_DEV_RESET=true`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## PROD Seeding Rules
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+`python scripts/seed_production.py --env PROD`
 
-## Deploy on Vercel
+Safety guarantees:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-=======
-# uaskstudents
-uaskstudents
->>>>>>> 99777e3a9f0ca4d057f8aed6b72fd2fb5c0f88ed
+- No destructive reset logic is present in production seeder.
+- Seeder only touches allowlisted essential tables:
+  `school`, `prompt_bindings`, `prompt_templates`, `providermodelpricing`,
+  `systemconfig`, `plan`, `creditprogramdefinition`, `payment` (table only), `user`.
+- Seeder never inserts payment transactions; it fails if `payment` has rows added by seed flow.
+- Internal user seeding in `PROD`/`STAGING` requires `SEED_INTERNAL_USERS_JSON` with passwords.
+- Password overwrite for existing internal users is refused unless `--rotate-passwords` is passed.
+- DEV fixtures (`--dev-fixtures`) are refused in `PROD`/`STAGING`.
+- Seed idempotency is tracked in `seed_registry` using `(seed_name, seed_version, checksum)`.
 
 ## WhatsApp Feature Flags
 
 These are OFF by default and must be explicitly enabled:
 
-- `WHATSAPP_OCR_ENABLED=false` (enable image OCR + confirmation flow)
-- `WHATSAPP_SOLVER_V3_ENABLED=false` (use Solver V3 for confirmed OCR text)
-- `WHATSAPP_INTERNAL_KEY=` (shared secret for internal WhatsApp media/send endpoints)
-- `WHATSAPP_INTERNAL_PORT=8791` (internal bridge port for Python -> Node sends)
-
-## WhatsApp LaTeX Rendering (Internal)
-
-- `WHATSAPP_LATEX_RENDER_ENABLED=false`
-- `WHATSAPP_LATEX_RENDER_ENGINE=katex`
-- `WHATSAPP_LATEX_IMAGE_FORMAT=webp`
-- `WHATSAPP_LATEX_MAX_BLOCKS_PER_REPLY=10`
-- `WHATSAPP_STEP_TTL_SECONDS=7200`
-- `WHATSAPP_INTERNAL_RENDER_URL=http://orchestrator:8791/internal/latex/render`
-- `WHATSAPP_INTERNAL_SEND_MEDIA_URL=http://orchestrator:8791/send-media`
-- `WHATSAPP_LATEX_CACHE_DIR=/app/storage/latex_cache`
-
-Rollback: set `WHATSAPP_LATEX_RENDER_ENABLED=false`.
-
-## OpenAI Connectivity
-
-- Set `OPENAI_API_KEY` and `OPENAI_MODEL_DEFAULT` in `.env`.
-- OCR uses `VLM_MODEL_OPENA_AI_OCR` and provider routing via `VISION_OCR_ENABLED_PROVIDERS` / `VISION_OCR_FALLBACK_ORDER`.
+- `WHATSAPP_OCR_ENABLED=false`
+- `WHATSAPP_SOLVER_V3_ENABLED=false`
+- `WHATSAPP_INTERNAL_KEY=`
+- `WHATSAPP_INTERNAL_PORT=8791`

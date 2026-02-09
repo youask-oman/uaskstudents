@@ -8,6 +8,7 @@ from enum import Enum
 # Import sub-modules to register models
 from app.models.credit_program_models import *
 from app.models.admin_audit_log import AdminAuditLog
+from app.models.seed_registry import SeedRegistry
 
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -15,7 +16,8 @@ class User(SQLModel, table=True):
     full_name: str
     password_hash: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    role: str = Field(default="student") # student, admin
+    role: str = Field(default="student") # student, admin, employee
+    is_internal: bool = Field(default=False, index=True) # Staff accounts
     
     # Profile fields
     academic_level: Optional[str] = None # High School, University, etc.

@@ -76,16 +76,16 @@ async def list_refunds(
         count_query = count_query.where(CreditLot.reason_code == reason_code)
     
     if start_date:
-        query = query.where(CreditLot.created_at >= start_date)
-        count_query = count_query.where(CreditLot.created_at >= start_date)
+        query = query.where(CreditLot.purchased_at >= start_date)
+        count_query = count_query.where(CreditLot.purchased_at >= start_date)
     
     if end_date:
-        query = query.where(CreditLot.created_at <= end_date)
-        count_query = count_query.where(CreditLot.created_at <= end_date)
+        query = query.where(CreditLot.purchased_at <= end_date)
+        count_query = count_query.where(CreditLot.purchased_at <= end_date)
     
     total = session.exec(count_query).one()
     lots = session.exec(
-        query.order_by(CreditLot.created_at.desc()).offset(offset).limit(limit)
+        query.order_by(CreditLot.purchased_at.desc()).offset(offset).limit(limit)
     ).all()
     
     # Get user emails
@@ -104,7 +104,7 @@ async def list_refunds(
             source_attempt_id=lot.source_attempt_id,
             source_payment_id=lot.source_payment_id,
             expires_at=lot.expires_at,
-            created_at=lot.created_at,
+            created_at=lot.purchased_at,
         ))
     
     return PaginatedResponse(items=results, total=total, limit=limit, offset=offset)
@@ -140,7 +140,7 @@ async def create_refund(
                 source_attempt_id=existing.source_attempt_id,
                 source_payment_id=existing.source_payment_id,
                 expires_at=existing.expires_at,
-                created_at=existing.created_at,
+                created_at=existing.purchased_at,
             )
     
     # Create refund lot
@@ -191,5 +191,5 @@ async def create_refund(
         source_attempt_id=lot.source_attempt_id,
         source_payment_id=lot.source_payment_id,
         expires_at=lot.expires_at,
-        created_at=lot.created_at,
+        created_at=lot.purchased_at,
     )

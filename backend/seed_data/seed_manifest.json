@@ -1,0 +1,53 @@
+{
+  "files": {
+    "credit_programs_or_plans.json": {
+      "row_count": 8,
+      "sha256": "95045dcc04aff898cc60caf1956f3d09f4a780ad388bcc69b568ee186823620e"
+    },
+    "internal_users.json": {
+      "row_count": 10,
+      "sha256": "bd53e5b3cbc2f714a612776b0f97f639c6b41d2f13af66e2635182986d37be1e"
+    },
+    "json_schemas.json": {
+      "row_count": 8,
+      "sha256": "a7b62415a55686a3ec5a2e9996e0a090af78472953bc7381f1be88f319690bf0"
+    },
+    "prompt_bindings.json": {
+      "row_count": 9,
+      "sha256": "d37333b07bebf60bcc62444bdc896a53dae3ec997dfc2da0c945d2a526791931"
+    },
+    "prompt_schema_links.json": {
+      "row_count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "prompt_templates.json": {
+      "row_count": 10,
+      "sha256": "09a249105d6c5efdc12051b768118087fe34db6149c566ba2ca14b7cf2556c99"
+    },
+    "providermodelpricing.json": {
+      "row_count": 8,
+      "sha256": "bd0374b88d474923981a3fb3dcc89440d07662a65c91faa4bad2b0869d69edba"
+    },
+    "schools.json": {
+      "row_count": 117960,
+      "sha256": "1f1b6d1fba4c16cbd74df892cc46ede8deefc8c9a7bd04dc3345642686410f5d"
+    },
+    "systemconfig.json": {
+      "row_count": 30,
+      "sha256": "774722ee70fa537ace956e59386fbb7ad63bcad89b87c871e6ec0a7b48335a13"
+    }
+  },
+  "generated_at": "2026-02-09T22:13:26.785224+00:00",
+  "schema_table_map": {
+    "link_tables": [],
+    "prompt_binding_reference_model": "key-based strings",
+    "prompt_bindings_to_prompts": [
+      "global_system_prompt_id -> prompt_templates.prompt_id",
+      "developer_prompt_id -> prompt_templates.prompt_id"
+    ],
+    "prompt_bindings_to_schema": "output_schema_id -> json_schemas.schema_id",
+    "schema_tables": [
+      "json_schemas"
+    ]
+  }
+}

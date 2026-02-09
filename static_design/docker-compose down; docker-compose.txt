@@ -2,6 +2,14 @@ docker-compose down; docker-compose up -d --build
 
 taskkill /IM uvicorn.exe /F
 uvicorn app.main:app --port 8000 --log-level debug
+
+
+
+npx tsc --noEmit --skipLibCheck 2>&1 | Select-String -Pattern "error" | Select-Object -First 20
+
+
+
+
 docker-compose down
 docker compose build
 docker compose up -d --force-recreate
@@ -10,6 +18,15 @@ docker compose up -d --force-recreate
 docker compose down
 docker compose build --no-cache
 docker compose up -d
+
+
+
+What you should do every deploy (the boring, correct ritual)
+docker compose up -d --build --remove-orphans
+docker compose exec orchestrator alembic upgrade head
+docker compose exec orchestrator alembic current
+docker compose exec postgres psql -U uask_user -d uask_db -c "SELECT * FROM alembic_version;"
+
 
 
 

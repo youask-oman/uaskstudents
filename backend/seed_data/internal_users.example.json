@@ -1,0 +1,62 @@
+[
+  {
+    "email": "admin1@uask.ai",
+    "full_name": "UAsk Admin 1",
+    "role": "admin",
+    "password_env": "SEED_ADMIN1_PASSWORD"
+  },
+  {
+    "email": "admin2@uask.ai",
+    "full_name": "UAsk Admin 2",
+    "role": "admin",
+    "password_env": "SEED_ADMIN2_PASSWORD"
+  },
+  {
+    "email": "admin3@uask.ai",
+    "full_name": "UAsk Admin 3",
+    "role": "admin",
+    "password_env": "SEED_ADMIN3_PASSWORD"
+  },
+  {
+    "email": "admin4@uask.ai",
+    "full_name": "UAsk Admin 4",
+    "role": "admin",
+    "password_env": "SEED_ADMIN4_PASSWORD"
+  },
+  {
+    "email": "admin5@uask.ai",
+    "full_name": "UAsk Admin 5",
+    "role": "admin",
+    "password_env": "SEED_ADMIN5_PASSWORD"
+  },
+  {
+    "email": "staff1@uask.ai",
+    "full_name": "UAsk Staff 1",
+    "role": "employee",
+    "password_env": "SEED_STAFF1_PASSWORD"
+  },
+  {
+    "email": "staff2@uask.ai",
+    "full_name": "UAsk Staff 2",
+    "role": "employee",
+    "password_env": "SEED_STAFF2_PASSWORD"
+  },
+  {
+    "email": "staff3@uask.ai",
+    "full_name": "UAsk Staff 3",
+    "role": "employee",
+    "password_env": "SEED_STAFF3_PASSWORD"
+  },
+  {
+    "email": "staff4@uask.ai",
+    "full_name": "UAsk Staff 4",
+    "role": "employee",
+    "password_env": "SEED_STAFF4_PASSWORD"
+  },
+  {
+    "email": "staff5@uask.ai",
+    "full_name": "UAsk Staff 5",
+    "role": "employee",
+    "password_env": "SEED_STAFF5_PASSWORD"
+  }
+]
