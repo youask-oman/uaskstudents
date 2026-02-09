@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import UsageMeter from "@/components/ui/UsageMeter";
 import { SubscriptionResponse, fetchSubscription } from "@/lib/subscription";
@@ -39,6 +39,9 @@ export default function DashboardNavBar() {
     const [subscription, setSubscription] = useState<SubscriptionResponse | null>(null);
 
     const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const currentTab = searchParams.get("tab");
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -106,9 +109,30 @@ export default function DashboardNavBar() {
                         <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">uask.ai</span>
                     </Link>
                     <nav className="hidden md:flex space-x-8">
-                        <Link className="text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white transition-colors text-sm font-medium" href="/dashboard">Dashboard</Link>
-                        <Link className="text-primary dark:text-white border-b-2 border-primary pb-1 text-sm font-medium" href="/dashboard">New Solve</Link>
-                        <Link className="text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white transition-colors text-sm font-medium" href="/dashboard?tab=history">History</Link>
+                        <Link
+                            className={`${pathname === "/dashboard" && !currentTab ? "text-primary dark:text-white border-b-2 border-primary pb-1" : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white"} transition-colors text-sm font-medium`}
+                            href="/dashboard"
+                        >
+                            Dashboard
+                        </Link>
+                        <Link
+                            className={`${pathname === "/solve" ? "text-primary dark:text-white border-b-2 border-primary pb-1" : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white"} transition-colors text-sm font-medium`}
+                            href="/solve"
+                            onClick={(e) => {
+                                if (pathname === "/solve") {
+                                    e.preventDefault();
+                                    window.location.href = "/solve";
+                                }
+                            }}
+                        >
+                            New Solve
+                        </Link>
+                        <Link
+                            className={`${pathname === "/dashboard" && currentTab === "history" ? "text-primary dark:text-white border-b-2 border-primary pb-1" : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white"} transition-colors text-sm font-medium`}
+                            href="/dashboard?tab=history"
+                        >
+                            History
+                        </Link>
                         <Link className="text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white transition-colors text-sm font-medium" href="#">Resources</Link>
                     </nav>
                     {subscription && (

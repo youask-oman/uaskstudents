@@ -228,12 +228,24 @@ function DashboardContent() {
                                     "Start your first problem solving session today!"
                                 )}
                             </div>
-                            <button
-                                onClick={() => history[0] ? router.push(`/chat/${history[0].id}`) : router.push('/chat/new')}
-                                className="bg-white text-amber-700 px-6 py-3 rounded-lg font-bold text-sm shadow-lg hover:shadow-xl transition-all"
-                            >
-                                {history.length > 0 ? "Continue Last Session" : "Start New Session"}
-                            </button>
+                            <div className="flex gap-4">
+                                <button
+                                    onClick={() => router.push('/solve')}
+                                    className="bg-white text-amber-700 px-6 py-3 rounded-lg font-bold text-sm shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+                                >
+                                    <span className="material-symbols-outlined text-sm">add_circle</span>
+                                    New Solve
+                                </button>
+                                {history.length > 0 && (
+                                    <button
+                                        onClick={() => router.push(`/chat/${history[0].id}`)}
+                                        className="bg-amber-600/20 text-slate-800 border border-amber-600/30 px-6 py-3 rounded-lg font-bold text-sm shadow-sm hover:bg-amber-600/30 transition-all flex items-center gap-2"
+                                    >
+                                        <span className="material-symbols-outlined text-sm">history</span>
+                                        Continue Last
+                                    </button>
+                                )}
+                            </div>
                         </div>
                         {/* Abstract Geometric Shapes */}
                         <div className="absolute -right-20 -top-20 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>

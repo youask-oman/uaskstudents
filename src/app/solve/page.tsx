@@ -163,6 +163,20 @@ export default function DashboardPage() {
     const [graphMode, setGraphMode] = useState<'off' | 'auto' | 'on'>('auto');
     const [attachToStepId] = useState<number | null>(null);
 
+    // Random light background for Plot Mode, Tier Section, and Free Type Mode
+    const [plotModeColor, setPlotModeColor] = useState("bg-sky-50");
+    const [tierSectionColor, setTierSectionColor] = useState("bg-white");
+    const [freeTypeColor, setFreeTypeColor] = useState("bg-white");
+    useEffect(() => {
+        const colors = [
+            "bg-blue-50", "bg-green-50", "bg-purple-50", "bg-orange-50",
+            "bg-teal-50", "bg-rose-50", "bg-indigo-50", "bg-cyan-50"
+        ];
+        setPlotModeColor(colors[Math.floor(Math.random() * colors.length)]);
+        setTierSectionColor(colors[Math.floor(Math.random() * colors.length)]);
+        setFreeTypeColor(colors[Math.floor(Math.random() * colors.length)]);
+    }, []);
+
     // Streaming Solve States (Part F1)
     const [streamingContent, setStreamingContent] = useState("");
     const [currentStage, setCurrentStage] = useState("");
@@ -1106,7 +1120,7 @@ export default function DashboardPage() {
                     <div className="lg:col-span-8 space-y-6">
 
                         {/* Tier-Aware Controls Section */}
-                        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border-2 border-slate-300 dark:border-slate-800 p-6 sketch-container relative" style={{ filter: 'url(#handWobble) url(#roughpaper)' }}>
+                        <div className={`${tierSectionColor} dark:bg-slate-900 rounded-2xl shadow-xl border-2 border-slate-300 dark:border-slate-800 p-6 sketch-container relative transition-colors duration-1000`} style={{ filter: 'url(#handWobble) url(#roughpaper)' }}>
                             <div className="flex flex-col md:flex-row gap-8 items-center justify-between">
                                 {/* Goal Section */}
                                 <div className="flex flex-col gap-2">
@@ -1164,6 +1178,39 @@ export default function DashboardPage() {
 
 
 
+
+
+                        {/* Plot Mode Section - Global with Larger Font & Random Light BG */}
+                        <div className={`flex flex-col gap-3 px-6 py-4 ${plotModeColor} dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors duration-1000`}>
+                            <div className="flex items-center gap-4">
+                                <span className="material-symbols-outlined text-primary text-2xl">area_chart</span>
+                                <span className="text-lg font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                                    Plot Mode
+                                </span>
+
+                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mx-4 flex-1 text-center truncate">
+                                    {graphMode === 'off' && "No plots will be generated"}
+                                    {graphMode === 'auto' && "AI will generate plots when helpful"}
+                                    {graphMode === 'on' && "Force plot generation when possible"}
+                                </p>
+
+                                <div className="flex bg-white/50 dark:bg-slate-800 rounded-lg p-1.5 shrink-0 shadow-sm border border-slate-200/50 dark:border-slate-700">
+                                    {(['off', 'auto', 'on'] as const).map((mode) => (
+                                        <button
+                                            key={mode}
+                                            type="button"
+                                            onClick={() => setGraphMode(mode)}
+                                            className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all ${graphMode === mode
+                                                ? "bg-white dark:bg-slate-600 text-primary shadow-md scale-105"
+                                                : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
+                                                }`}
+                                        >
+                                            {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
 
                         {/* Input Mode Tabs */}
                         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl shadow-black/5 border border-slate-200 dark:border-slate-800 transition-colors">
@@ -1262,19 +1309,7 @@ export default function DashboardPage() {
                                     </div>
                                 )}
 
-                                {(!isClarifying && (activeTab === "text" || activeTab === "snap")) && (
-                                    <div className="mb-3 flex justify-end">
-                                        <button
-                                            type="button"
-                                            onClick={handleDebugRuntimeMeta}
-                                            disabled={isSolving || runtimeDebugLoading}
-                                            className="flex items-center gap-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg font-semibold transition-colors text-xs hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            <span className="material-symbols-outlined text-sm">bug_report</span>
-                                            {runtimeDebugLoading ? "Loading..." : "Debug"}
-                                        </button>
-                                    </div>
-                                )}
+
                                 {activeTab === 'snap' && (
                                     <div className="space-y-3">
                                         {useSnapSolveUploadPanelV2 ? (
@@ -1321,36 +1356,7 @@ export default function DashboardPage() {
 
 
                                         {/* Include Graph Toggle */}
-                                        <div className="flex flex-col gap-3 px-1 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                                            <div className="flex items-center gap-3">
-                                                <span className="material-symbols-outlined text-primary text-lg">area_chart</span>
-                                                <span className="text-sm font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                                                    Plot Mode
-                                                </span>
 
-                                                <p className="text-xs text-slate-500 mx-2 flex-1 text-center truncate">
-                                                    {graphMode === 'off' && "No plots will be generated"}
-                                                    {graphMode === 'auto' && "AI will generate plots when helpful"}
-                                                    {graphMode === 'on' && "Force plot generation when possible"}
-                                                </p>
-
-                                                <div className="flex bg-slate-200 dark:bg-slate-700 rounded-lg p-1 shrink-0">
-                                                    {(['off', 'auto', 'on'] as const).map((mode) => (
-                                                        <button
-                                                            key={mode}
-                                                            type="button"
-                                                            onClick={() => setGraphMode(mode)}
-                                                            className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${graphMode === mode
-                                                                ? "bg-white dark:bg-slate-600 text-primary shadow-sm"
-                                                                : "text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-                                                                }`}
-                                                        >
-                                                            {mode.charAt(0).toUpperCase() + mode.slice(1)}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
 
                                         {/* Math Symbol Mode Bar */}
                                         <div className="flex items-center gap-2">
@@ -1502,7 +1508,7 @@ export default function DashboardPage() {
                                                             }
                                                         }}
                                                         maxLength={textInputMaxChars || undefined}
-                                                        className="flex-1 p-4 bg-transparent outline-none text-slate-700 dark:text-slate-200 text-lg leading-relaxed resize-none min-h-[180px]"
+                                                        className={`flex-1 p-4 ${freeTypeColor} dark:bg-transparent outline-none text-slate-700 dark:text-slate-200 text-lg leading-relaxed resize-none min-h-[180px] transition-colors duration-500 rounded-t-xl`}
                                                         style={{
                                                             whiteSpace: 'pre-wrap',
                                                             overflowWrap: 'break-word',
@@ -1600,6 +1606,18 @@ export default function DashboardPage() {
                                                     </div>
                                                 </div>
                                             </div>
+                                        </div>
+
+                                        <div className="mt-8 flex justify-end">
+                                            <button
+                                                type="button"
+                                                onClick={handleDebugRuntimeMeta}
+                                                disabled={isSolving || runtimeDebugLoading}
+                                                className="flex items-center gap-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg font-semibold transition-colors text-xs hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                <span className="material-symbols-outlined text-sm">bug_report</span>
+                                                {runtimeDebugLoading ? "Loading..." : "Debug"}
+                                            </button>
                                         </div>
 
                                         {/* Live Math Preview */}
