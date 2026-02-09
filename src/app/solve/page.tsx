@@ -1089,105 +1089,120 @@ export default function DashboardPage() {
         <div className="solve-ui bg-background-light dark:bg-background-dark min-h-screen text-slate-900 dark:text-slate-100 font-display transition-colors duration-200">
             <DashboardNavBar />
 
-            <main className="max-w-5xl mx-auto px-4 py-8 md:py-12">
-                {/* Page Heading */}
-                <div className="mb-8 rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-gradient-to-b from-white to-slate-100/90 dark:from-slate-900 dark:to-slate-800/80 px-6 py-5 shadow-[0_1px_0_rgba(255,255,255,0.85)_inset,0_12px_24px_rgba(15,23,42,0.16)]">
-                    <h1
-                        className="text-4xl font-black tracking-tight mb-2 text-slate-900 dark:text-white"
-                        style={{ textShadow: "0 1px 0 rgba(255,255,255,0.55), 0 2px 0 rgba(15,23,42,0.18), 0 8px 14px rgba(15,23,42,0.15)" }}
-                    >
+            <main className="max-w-6xl mx-auto px-4 py-8 md:py-12">
+                {/* Hand-Drawn Title Section */}
+                <header className="mb-12 text-center">
+                    <h2 className="sketch-title mb-2 flex items-center justify-center gap-3">
                         New Solve
-                    </h1>
-                    <p className="text-slate-600 dark:text-slate-300 text-lg font-normal">Select your preferred input method and define the context for the best tutor results.</p>
-                    <div className="mt-2 text-right text-xs font-semibold text-emerald-500">Uask AI v1.0</div>
-                </div>
+                        <span className="text-xs font-black px-2 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-lg border border-blue-200 dark:border-blue-800 rotate-3 tracking-tighter">
+                            uask AI v1.0
+                        </span>
+                    </h2>
+                    <p className="sketch-subtitle mx-auto max-w-2xl px-4">
+                        Select your preferred input method and define the context for the best tutor results.
+                    </p>
+                </header>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     {/* Main Interaction Area */}
                     <div className="lg:col-span-8 space-y-6">
 
                         {/* Tier-Aware Controls Section */}
-                        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-800 p-4">
-                            <div className="flex flex-wrap items-center justify-between gap-4">
-                                {/* Goal Toggle */}
-                                <SegmentedControl
-                                    label="Goal"
-                                    options={[{ value: "solve", label: "Solve", icon: "bolt" }]}
-                                    value="solve"
-                                    onChange={() => { }}
-                                    size="sm"
-                                    className="solve-segmented"
-                                />
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border-2 border-slate-300 dark:border-slate-800 p-6 sketch-container relative" style={{ filter: 'url(#handWobble) url(#roughpaper)' }}>
+                            <div className="flex flex-col md:flex-row gap-8 items-center justify-between">
+                                {/* Goal Section */}
+                                <div className="flex flex-col gap-2">
+                                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">Goal</h3>
+                                    <button className="wobbly-button px-6 py-2 flex items-center gap-2 bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-700 hover:bg-slate-50 transition-all" style={{ filter: 'url(#handWobble) url(#roughpaper)' }}>
+                                        <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-xl hand-drawn-icon">bolt</span>
+                                        <span className="font-bold text-lg tracking-tight">Solve</span>
+                                    </button>
+                                </div>
 
-                                {/* Tier Selector */}
-                                <SegmentedControl
-                                    label="Tier"
-                                    options={[
-                                        { value: "FREE", label: "Free", icon: "bolt" },
-                                        { value: "SHORT", label: "Short", icon: "bolt" },
-                                        { value: "STANDARD", label: "Standard", icon: "school" },
-                                        { value: "RESEARCH", label: "Research", icon: "science" },
-                                    ]}
-                                    value={selectedSolveTier}
-                                    onChange={(v) => {
-                                        if (v === "FREE" || v === "STANDARD" || v === "RESEARCH" || v === "SHORT") {
-                                            setSelectedSolveTier(v as SolveTier);
-                                            if (typeof window !== "undefined") {
-                                                localStorage.setItem("uask.solveTier", v);
+                                {/* Tier Selector Section */}
+                                <div className="flex flex-col gap-2 flex-grow max-w-[450px]">
+                                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">Tier</h3>
+                                    <SegmentedControl
+                                        options={[
+                                            { value: "FREE", label: "Free", icon: "bolt" },
+                                            { value: "SHORT", label: "Short", icon: "bolt" },
+                                            { value: "STANDARD", label: "Standard", icon: "school" },
+                                            { value: "RESEARCH", label: "Research", icon: "science" },
+                                        ]}
+                                        value={selectedSolveTier}
+                                        onChange={(v) => {
+                                            if (v === "FREE" || v === "STANDARD" || v === "RESEARCH" || v === "SHORT") {
+                                                setSelectedSolveTier(v as SolveTier);
+                                                if (typeof window !== "undefined") {
+                                                    localStorage.setItem("uask.solveTier", v);
+                                                }
                                             }
-                                        }
-                                    }}
-                                    size="sm"
-                                    className="solve-segmented"
-                                />
-
-                                {subscriptionLoaded && subscriptionError && (
-                                    <div className="text-xs font-semibold text-rose-500">
-                                        {subscriptionError}
-                                    </div>
-                                )}
+                                        }}
+                                        size="md"
+                                        className="solve-segmented"
+                                    />
+                                </div>
                             </div>
 
-                            {/* Cost Preview */}
-                            <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-                                {readySubscription && estimate ? (
-                                    <CostPreview
-                                        perQuestionCost={estimate.per_question_credits}
-                                        questionCount={estimatedQuestionCount}
-                                        breakdown={estimate.breakdown}
-                                        creditsRemaining={readySubscription.usage.credits_remaining}
-                                    />
-                                ) : (
-                                    <div className="text-xs text-slate-500">
-                                        {estimateError || "Subscription data required for cost preview."}
-                                    </div>
-                                )}
+                            {/* Decorative Flourish */}
+                            <div className="absolute -top-4 -right-4 opacity-10 pointer-events-none hidden lg:block">
+                                <svg width="100" height="100" viewBox="0 0 100 100" fill="none" className="stroke-slate-400">
+                                    <path d="M10 20C30 15 80 10 90 30C100 50 20 80 10 70C0 60 50 40 80 50" strokeWidth="2" strokeLinecap="round" />
+                                </svg>
                             </div>
                         </div>
 
+                        {/* Cost Preview Container moved down slightly for layout */}
+                        <div className="mt-4">
+                            {readySubscription && estimate ? (
+                                <CostPreview
+                                    perQuestionCost={estimate.per_question_credits}
+                                    questionCount={estimatedQuestionCount}
+                                    breakdown={estimate.breakdown}
+                                    creditsRemaining={readySubscription.usage.credits_remaining}
+                                />
+                            ) : (
+                                <div className="text-xs text-slate-500">
+                                    {estimateError || "Subscription data required for cost preview."}
+                                </div>
+                            )}
+                        </div>
+
+
                         {/* Input Mode Tabs */}
                         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl shadow-black/5 border border-slate-200 dark:border-slate-800 transition-colors">
-                            <div className="flex border-b border-slate-200 dark:border-slate-800">
+                            <div className="flex p-4 gap-4 justify-center border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20">
                                 <button
                                     onClick={() => setActiveTab('text')}
-                                    className={`solve-tab ${activeTab === 'text' ? 'solve-tab--active' : ''}`}
+                                    className={`solve-tab solve-tab--text ${activeTab === 'text' ? 'solve-tab--active' : ''}`}
                                 >
-                                    <span className="material-symbols-outlined mb-1 solve-tab-icon">edit_note</span>
-                                    <span className="text-xs font-bold uppercase tracking-wider">Text</span>
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-1 solve-tab-icon">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" style={{ strokeDasharray: '40, 4' }} />
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                    </svg>
+                                    <span className="solve-tab-label">Text</span>
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('snap')}
-                                    className={`solve-tab ${activeTab === 'snap' ? 'solve-tab--active' : ''}`}
+                                    className={`solve-tab solve-tab--snap ${activeTab === 'snap' ? 'solve-tab--active dashed-sketch-border' : ''}`}
                                 >
-                                    <span className="material-symbols-outlined mb-1 solve-tab-icon">add_a_photo</span>
-                                    <span className="text-xs font-bold uppercase tracking-wider">Snap & Solve</span>
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-1 solve-tab-icon">
+                                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" style={{ strokeDasharray: '50, 5' }} />
+                                        <circle cx="12" cy="13" r="4" strokeDasharray="2,2" />
+                                    </svg>
+                                    <span className="solve-tab-label">Snap & Solve</span>
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('voice')}
-                                    className={`solve-tab ${activeTab === 'voice' ? 'solve-tab--active' : ''}`}
+                                    className={`solve-tab solve-tab--voice ${activeTab === 'voice' ? 'solve-tab--active circle-sketch' : ''}`}
                                 >
-                                    <span className="material-symbols-outlined mb-1 solve-tab-icon">mic</span>
-                                    <span className="text-xs font-bold uppercase tracking-wider">Voice</span>
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-1 solve-tab-icon">
+                                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" style={{ strokeDasharray: '30, 3' }} />
+                                        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                                        <line x1="12" y1="19" x2="12" y2="22" />
+                                        <line x1="8" y1="22" x2="16" y2="22" />
+                                    </svg>
+                                    <span className="solve-tab-label">Voice</span>
                                 </button>
                             </div>
 
@@ -1987,146 +2002,149 @@ export default function DashboardPage() {
                 <p className="text-slate-400 text-xs font-medium">© {new Date().getFullYear()} YouAsk AI LLM Math Solver Labs. All rights reserved.</p>
             </footer>
 
-            {showRuntimeDebug && (
-                <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
-                    <div className="w-full max-w-xl rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-xl">
-                        <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Solve Runtime Debug</h3>
-                            <button
-                                type="button"
-                                onClick={() => setShowRuntimeDebug(false)}
-                                className="text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-                            >
-                                Close
-                            </button>
-                        </div>
-                        {runtimeDebugError ? (
-                            <p className="text-xs text-red-500">{runtimeDebugError}</p>
-                        ) : (
-                            <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
-                                <div>Tier: {runtimeDebugMeta?.effective_tier || selectedSolveTier}</div>
-                                <div>Mode: {runtimeDebugMeta?.mode_family || "SOLVE"}</div>
-                                <div>LLM Provider: {runtimeDebugMeta?.provider || "openai"}</div>
-                                <div>Model: {runtimeDebugMeta?.model || "unknown"}</div>
-                                <div>Prompt Binding ID: {runtimeDebugMeta?.prompt_binding_id || "-"}</div>
-                                <div>Global System Prompt ID: {runtimeDebugMeta?.global_system_prompt_id || "-"}</div>
-                                <div>Developer Prompt ID: {runtimeDebugMeta?.developer_prompt_id || "-"}</div>
-                                <div>Output Schema ID: {runtimeDebugMeta?.output_schema_id || "-"}</div>
-                                <div>Request ID: {runtimeDebugMeta?.request_id || "-"}</div>
-                                {runtimeDebugMeta?.token_config && (
-                                    <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-800">
-                                        <div className="font-semibold mb-1">Token Config:</div>
-                                        <div>Max Output: {runtimeDebugMeta.token_config.max_output_tokens ?? "Auto"}</div>
-                                        <div>Max Input: {runtimeDebugMeta.token_config.max_input_tokens ?? "Auto"}</div>
-                                        <div>Temp: {runtimeDebugMeta.token_config.temperature ?? "Default"}</div>
-                                        <div>Top P: {runtimeDebugMeta.token_config.top_p ?? "Default"}</div>
-                                        <div>Timeout: {runtimeDebugMeta.token_config.timeout_ms ? `${runtimeDebugMeta.token_config.timeout_ms}ms` : "Default"}</div>
-                                        <div>Trim: {runtimeDebugMeta.token_config.trim_strategy ?? "None"}</div>
-                                    </div>
-                                )}
+            {
+                showRuntimeDebug && (
+                    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+                        <div className="w-full max-w-xl rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-xl">
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Solve Runtime Debug</h3>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowRuntimeDebug(false)}
+                                    className="text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                                >
+                                    Close
+                                </button>
                             </div>
-                        )}
+                            {runtimeDebugError ? (
+                                <p className="text-xs text-red-500">{runtimeDebugError}</p>
+                            ) : (
+                                <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+                                    <div>Tier: {runtimeDebugMeta?.effective_tier || selectedSolveTier}</div>
+                                    <div>Mode: {runtimeDebugMeta?.mode_family || "SOLVE"}</div>
+                                    <div>LLM Provider: {runtimeDebugMeta?.provider || "openai"}</div>
+                                    <div>Model: {runtimeDebugMeta?.model || "unknown"}</div>
+                                    <div>Prompt Binding ID: {runtimeDebugMeta?.prompt_binding_id || "-"}</div>
+                                    <div>Global System Prompt ID: {runtimeDebugMeta?.global_system_prompt_id || "-"}</div>
+                                    <div>Developer Prompt ID: {runtimeDebugMeta?.developer_prompt_id || "-"}</div>
+                                    <div>Output Schema ID: {runtimeDebugMeta?.output_schema_id || "-"}</div>
+                                    <div>Request ID: {runtimeDebugMeta?.request_id || "-"}</div>
+                                    {runtimeDebugMeta?.token_config && (
+                                        <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                                            <div className="font-semibold mb-1">Token Config:</div>
+                                            <div>Max Output: {runtimeDebugMeta.token_config.max_output_tokens ?? "Auto"}</div>
+                                            <div>Max Input: {runtimeDebugMeta.token_config.max_input_tokens ?? "Auto"}</div>
+                                            <div>Temp: {runtimeDebugMeta.token_config.temperature ?? "Default"}</div>
+                                            <div>Top P: {runtimeDebugMeta.token_config.top_p ?? "Default"}</div>
+                                            <div>Timeout: {runtimeDebugMeta.token_config.timeout_ms ? `${runtimeDebugMeta.token_config.timeout_ms}ms` : "Default"}</div>
+                                            <div>Trim: {runtimeDebugMeta.token_config.trim_strategy ?? "None"}</div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Streaming Solve Popup (Part F1) */}
-            {isSolving && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
-                    <div
-                        role="dialog"
-                        aria-modal="true"
-                        aria-label="Solving math problem"
-                        className="relative w-full max-w-4xl overflow-hidden rounded-[28px] border border-white/10 bg-[rgba(10,18,34,0.82)] shadow-[0_28px_60px_rgba(0,0,0,0.55)]"
-                    >
-                        <div className="pointer-events-none absolute inset-0 opacity-90 [background-image:linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] [background-size:28px_28px]" />
-                        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_24%_18%,rgba(46,91,255,0.22),transparent_44%),radial-gradient(circle_at_78%_90%,rgba(139,92,246,0.15),transparent_42%)]" />
+            {
+                isSolving && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
+                        <div
+                            role="dialog"
+                            aria-modal="true"
+                            aria-label="Solving math problem"
+                            className="relative w-full max-w-4xl overflow-hidden rounded-[28px] border border-white/10 bg-[rgba(10,18,34,0.82)] shadow-[0_28px_60px_rgba(0,0,0,0.55)]"
+                        >
+                            <div className="pointer-events-none absolute inset-0 opacity-90 [background-image:linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] [background-size:28px_28px]" />
+                            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_24%_18%,rgba(46,91,255,0.22),transparent_44%),radial-gradient(circle_at_78%_90%,rgba(139,92,246,0.15),transparent_42%)]" />
 
-                        <div className="relative border-b border-white/10 px-4 py-5 sm:px-8 sm:py-7 flex items-start justify-between gap-3">
-                            <div className="flex items-center gap-4">
-                                <div className="relative flex size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#2E5BFF] to-[#8B5CF6] text-white shadow-[0_0_30px_rgba(46,91,255,0.45)]">
-                                    <span className="material-symbols-outlined text-[30px] motion-safe:animate-[uaskPulseGlow_2s_ease-in-out_infinite]">functions</span>
-                                </div>
-                                <div>
-                                    <h3 className="text-xl sm:text-2xl font-bold tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">Solving Math Problem...</h3>
-                                    <p className="mt-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.28em] text-[#4b80ff]">Advanced Neural Computation</p>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Elapsed Time</p>
-                                <p className="mt-0.5 min-w-[9ch] tabular-nums text-2xl sm:text-3xl font-mono font-medium text-[#4b80ff] drop-shadow-[0_0_10px_rgba(46,91,255,0.58)]">
-                                    {formatElapsed(elapsedMs)}
-                                    <span className="ml-1 text-base opacity-70">s</span>
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="relative px-4 py-6 sm:px-9 sm:py-10">
-                            <ProgressTimeline steps={pipelineStages} error={solveError} />
-                        </div>
-
-                        <div className="relative border-t border-white/10 bg-white/[0.02] px-4 py-5 sm:px-9 sm:py-6 flex flex-col md:flex-row items-center justify-between gap-5">
-                            <div className="flex items-center gap-3">
-                                <div className="flex h-8 items-end gap-1 motion-reduce:hidden">
-                                    {Array.from({ length: 7 }).map((_, idx) => (
-                                        <span
-                                            key={`bar-${idx}`}
-                                            className="block w-1 rounded-sm bg-gradient-to-t from-[#2E5BFF] to-[#8B5CF6] motion-safe:animate-[uaskWave_1.2s_ease-in-out_infinite]"
-                                            style={{ animationDelay: `${idx * 0.1}s` }}
-                                        />
-                                    ))}
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="size-2 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.9)] motion-safe:animate-pulse" />
-                                        <span className="text-[10px] uppercase tracking-[0.2em] font-black text-white">Streaming Active</span>
+                            <div className="relative border-b border-white/10 px-4 py-5 sm:px-8 sm:py-7 flex items-start justify-between gap-3">
+                                <div className="flex items-center gap-4">
+                                    <div className="relative flex size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#2E5BFF] to-[#8B5CF6] text-white shadow-[0_0_30px_rgba(46,91,255,0.45)]">
+                                        <span className="material-symbols-outlined text-[30px] motion-safe:animate-[uaskPulseGlow_2s_ease-in-out_infinite]">functions</span>
                                     </div>
-                                    <p className="mt-0.5 text-[11px] text-slate-500">Packet delivery in real-time</p>
+                                    <div>
+                                        <h3 className="text-xl sm:text-2xl font-bold tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">Solving Math Problem...</h3>
+                                        <p className="mt-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.28em] text-[#4b80ff]">Advanced Neural Computation</p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Elapsed Time</p>
+                                    <p className="mt-0.5 min-w-[9ch] tabular-nums text-2xl sm:text-3xl font-mono font-medium text-[#4b80ff] drop-shadow-[0_0_10px_rgba(46,91,255,0.58)]">
+                                        {formatElapsed(elapsedMs)}
+                                        <span className="ml-1 text-base opacity-70">s</span>
+                                    </p>
                                 </div>
                             </div>
-                            <div className="text-center md:text-right">
-                                <p className="text-xs italic text-slate-400/70">Solution generation in progress</p>
-                                <div className="mt-1 flex items-center justify-center md:justify-end gap-2 text-[10px] uppercase tracking-[0.18em] font-bold text-slate-500">
-                                    <span>v4.0.1 Stable</span>
-                                    <span className="size-1 rounded-full bg-slate-600" />
-                                    <span>{streamingContent ? "Encrypted Stream" : "Secure Stream"}</span>
-                                </div>
-                                {streamingTelemetry?.model && (
-                                    <div className="mt-1 text-[10px] text-slate-500">Model: {streamingTelemetry.model}</div>
-                                )}
-                                <details className="mt-2 text-left md:text-right">
-                                    <summary className="cursor-pointer text-[10px] uppercase tracking-[0.15em] text-slate-400">Debug / Runtime</summary>
-                                    <div className="mt-2 space-y-1 text-[10px] text-slate-400">
-                                        <div>Tier Requested: {streamingMeta?.tier_requested || selectedSolveTier}</div>
-                                        <div>Tier: {streamingMeta?.effective_tier || accountTier}</div>
-                                        <div>Mode: {streamingMeta?.mode_family || "SOLVE"}</div>
-                                        <div>LLM Provider: {streamingMeta?.provider || streamingTelemetry?.provider || "openai"}</div>
-                                        <div>Model: {streamingMeta?.model || streamingTelemetry?.model || "unknown"}</div>
-                                        <div>Prompt Binding ID: {streamingMeta?.prompt_binding_id || "-"}</div>
-                                        <div>Global System Prompt ID: {streamingMeta?.global_system_prompt_id || "-"}</div>
-                                        <div>Developer Prompt ID: {streamingMeta?.developer_prompt_id || "-"}</div>
-                                        <div>Output Schema ID: {streamingMeta?.output_schema_id || "-"}</div>
-                                        <div>
-                                            Request ID:{" "}
-                                            <button
-                                                type="button"
-                                                className="underline"
-                                                onClick={() => streamingMeta?.request_id && navigator.clipboard?.writeText(streamingMeta.request_id)}
-                                            >
-                                                {streamingMeta?.request_id || "-"}
-                                            </button>
+
+                            <div className="relative px-4 py-6 sm:px-9 sm:py-10">
+                                <ProgressTimeline steps={pipelineStages} error={solveError} />
+                            </div>
+
+                            <div className="relative border-t border-white/10 bg-white/[0.02] px-4 py-5 sm:px-9 sm:py-6 flex flex-col md:flex-row items-center justify-between gap-5">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-8 items-end gap-1 motion-reduce:hidden">
+                                        {Array.from({ length: 7 }).map((_, idx) => (
+                                            <span
+                                                key={`bar-${idx}`}
+                                                className="block w-1 rounded-sm bg-gradient-to-t from-[#2E5BFF] to-[#8B5CF6] motion-safe:animate-[uaskWave_1.2s_ease-in-out_infinite]"
+                                                style={{ animationDelay: `${idx * 0.1}s` }}
+                                            />
+                                        ))}
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="size-2 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.9)] motion-safe:animate-pulse" />
+                                            <span className="text-[10px] uppercase tracking-[0.2em] font-black text-white">Streaming Active</span>
                                         </div>
-                                        {(streamingMeta?.global_system_prompt_version || streamingMeta?.developer_prompt_version || streamingMeta?.output_schema_version) && (
-                                            <div>
-                                                Versions: S={streamingMeta?.global_system_prompt_version ?? "-"}, D={streamingMeta?.developer_prompt_version ?? "-"}, Schema={streamingMeta?.output_schema_version ?? "-"}
-                                            </div>
-                                        )}
+                                        <p className="mt-0.5 text-[11px] text-slate-500">Packet delivery in real-time</p>
                                     </div>
-                                </details>
+                                </div>
+                                <div className="text-center md:text-right">
+                                    <p className="text-xs italic text-slate-400/70">Solution generation in progress</p>
+                                    <div className="mt-1 flex items-center justify-center md:justify-end gap-2 text-[10px] uppercase tracking-[0.18em] font-bold text-slate-500">
+                                        <span>v4.0.1 Stable</span>
+                                        <span className="size-1 rounded-full bg-slate-600" />
+                                        <span>{streamingContent ? "Encrypted Stream" : "Secure Stream"}</span>
+                                    </div>
+                                    {streamingTelemetry?.model && (
+                                        <div className="mt-1 text-[10px] text-slate-500">Model: {streamingTelemetry.model}</div>
+                                    )}
+                                    <details className="mt-2 text-left md:text-right">
+                                        <summary className="cursor-pointer text-[10px] uppercase tracking-[0.15em] text-slate-400">Debug / Runtime</summary>
+                                        <div className="mt-2 space-y-1 text-[10px] text-slate-400">
+                                            <div>Tier Requested: {streamingMeta?.tier_requested || selectedSolveTier}</div>
+                                            <div>Tier: {streamingMeta?.effective_tier || accountTier}</div>
+                                            <div>Mode: {streamingMeta?.mode_family || "SOLVE"}</div>
+                                            <div>LLM Provider: {streamingMeta?.provider || streamingTelemetry?.provider || "openai"}</div>
+                                            <div>Model: {streamingMeta?.model || streamingTelemetry?.model || "unknown"}</div>
+                                            <div>Prompt Binding ID: {streamingMeta?.prompt_binding_id || "-"}</div>
+                                            <div>Global System Prompt ID: {streamingMeta?.global_system_prompt_id || "-"}</div>
+                                            <div>Developer Prompt ID: {streamingMeta?.developer_prompt_id || "-"}</div>
+                                            <div>Output Schema ID: {streamingMeta?.output_schema_id || "-"}</div>
+                                            <div>
+                                                Request ID:{" "}
+                                                <button
+                                                    type="button"
+                                                    className="underline"
+                                                    onClick={() => streamingMeta?.request_id && navigator.clipboard?.writeText(streamingMeta.request_id)}
+                                                >
+                                                    {streamingMeta?.request_id || "-"}
+                                                </button>
+                                            </div>
+                                            {(streamingMeta?.global_system_prompt_version || streamingMeta?.developer_prompt_version || streamingMeta?.output_schema_version) && (
+                                                <div>
+                                                    Versions: S={streamingMeta?.global_system_prompt_version ?? "-"}, D={streamingMeta?.developer_prompt_version ?? "-"}, Schema={streamingMeta?.output_schema_version ?? "-"}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </details>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <style jsx>{`
+                        <style jsx>{`
                         @keyframes uaskWave {
                             0%, 100% { height: 10px; opacity: 0.45; }
                             50% { height: 30px; opacity: 1; }
@@ -2136,8 +2154,9 @@ export default function DashboardPage() {
                             50% { filter: drop-shadow(0 0 14px rgba(139, 92, 246, 0.78)); transform: scale(1.04); }
                         }
                     `}</style>
-                </div>
-            )}
+                    </div>
+                )
+            }
 
             {/* Split Modal for multiple questions */}
             <SplitModal
@@ -2157,6 +2176,6 @@ export default function DashboardPage() {
             />
 
             <ThemeToggle />
-        </div>
+        </div >
     );
 }
