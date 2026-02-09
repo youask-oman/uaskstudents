@@ -60,6 +60,7 @@ from app.services.ocr.vision_routing import (
 )
 from app.services.solve.canonicalization_service import canonicalization_service
 from app.services.admin.analytics_service import record_request_event, _calc_cost
+from app.services.solve.trace_logger import log_solve_trace
 from app.services.whatsapp import whatsapp_service
 from app.services.whatsapp.whatsapp_state import (
     mark_dedupe,
@@ -103,6 +104,7 @@ from app.bg_routers.plot_router import router as plot_router
 
 limiter = Limiter(key_func=get_remote_address)
 api_router = APIRouter()
+logger = logging.getLogger(__name__)
 
 api_router.include_router(voice_router, tags=["voice"])
 api_router.include_router(local_router, tags=["local_math"])
@@ -4392,8 +4394,9 @@ async def solve_v3_endpoint(
     Returns:
         SolveResponseV3 with complete solution, plots, and verification
     """
+    from app.services.billing_service import billing_service
+    from app.services.subscription_service import subscription_service
     from app.services.solver_v3 import get_solver_v3
-    from app.services.solve.trace_logger import log_solve_trace
     import base64
     
     # Generate unique Request ID
@@ -4405,6 +4408,12 @@ async def solve_v3_endpoint(
     deduct_committed = False
     resolved_profile = None
     token_policy = get_token_policy(session)
+    ocr_metadata = {}
+    voice_metadata = {}
+    verification_level = "standard"
+    token_policy_key = "DEFAULT"
+    ocr_confidence = None
+    graph_mode = getattr(body, 'graph_mode', 'auto')
 
     
     # Extract problem text
@@ -4632,7 +4641,6 @@ async def solve_v3_endpoint(
             est_output = 4000 if requested_mode == "detailed" else 1500
             
             # Phase 1: Hold Credits
-            from app.services.subscription_service import subscription_service
             sub_obj = subscription_service.get_or_create_subscription(session, user)
             
             try:
@@ -4663,51 +4671,67 @@ async def solve_v3_endpoint(
                     learning_mode=learning_mode,
                     image_url=body.image_url,
                     max_output_tokens=effective_max_tokens,
-                    user_tier=effective_tier,
-                    requests_graph_mode=getattr(body, "graph_mode", "auto")
+                    user_tier=effective_tier
                 )
                 
-                # --- PLOTTING PIPELINE INTEGRATION ---
-                # Call new plotting pipeline if graph_mode is enabled
-                graph_mode = getattr(body, 'graph_mode', 'auto')
-                if graph_mode in ('on', 'auto'):
-                    try:
-                        from app.services.plot_pipeline_service import get_plot_pipeline_service
-                        plot_service = get_plot_pipeline_service(session)
-                        
-                        trigger_result, spec_result = await plot_service.execute_plotting_pipeline(
-                            problem_text=problem_text,
-                            solve_result=result,
-                            graph_mode=graph_mode,
-                            attach_to_step_id=getattr(body, 'attach_to_step_id', None),
-                            tier=effective_tier,
-                            question_id=question_key or request_id
-                        )
-                        
-                        # Add plot data to result if plot was generated
-                        if spec_result and spec_result.plotly_json:
-                            result['plot'] = {
-                                'plot_id': spec_result.plot_id,
-                                'plotly': spec_result.plotly_json,
-                                'attach_to_step_id': spec_result.attach_to_step_id
-                            }
-                            result['plot_trigger'] = {
-                                'plot_needed': trigger_result.plot_needed if trigger_result else False,
-                                'plot_type': trigger_result.plot_type if trigger_result else None,
-                                'reason': trigger_result.reason if trigger_result else None
-                            }
-                            print(f"[API_V3] Plot generated: {spec_result.plot_id}")
-                    except Exception as plot_err:
-                        print(f"[API_V3] Plot generation failed (non-critical): {plot_err}")
-                        # Continue without plot - non-critical error
-                
+
             except Exception as e:
                 raise e
             
         
+        # --- PLOTTING PIPELINE INTEGRATION ---
+        # Normalize and ensure essentials
+        from app.services.plot_integration import maybe_generate_plot, apply_graph_mode_override, format_plot_for_response
+        
+        # We only run plotting if result is successful and not an error
+        if result and not result.get("error"):
+            plot_data = await maybe_generate_plot(
+                db_session=session,
+                problem_text=problem_text,
+                solve_result=result,
+                graph_mode=graph_mode,
+                attach_to_step_id=getattr(body, 'attach_to_step_id', None),
+                tier=effective_tier,
+                question_id=question_key or request_id
+            )
+            
+            logger.info(f"[API_V3] Plot data generated: {plot_data.get('plot_generated')}, type: {plot_data.get('pipeline_type')}")
+            # Apply deterministic overrides to visuals.should_visualize
+            result = apply_graph_mode_override(
+                solve_result=result,
+                graph_mode=graph_mode,
+                plot_generated=plot_data.get("plot_generated", False)
+            )
+            logger.info(f"[API_V3] After override: should_visualize={result.get('visuals', {}).get('should_visualize')}")
+            
+            # Merge generated plot into visuals.plots if successful
+            if plot_data.get("plot_generated"):
+                formatted_plot = format_plot_for_response(plot_data)
+                if formatted_plot:
+                    # V3 Schema expects visual object to have plots list
+                    if not result.get("visuals"):
+                         result["visuals"] = {"should_visualize": True, "decision_reason": "Injected", "plots": []}
+                    
+                    if "plots" not in result["visuals"] or result["visuals"]["plots"] is None:
+                        result["visuals"]["plots"] = []
+                    
+                    # Deduplicate by plot_id
+                    new_plot_id = formatted_plot.get("plot_id")
+                    existing_plots = result["visuals"]["plots"]
+                    if not any(isinstance(p, dict) and p.get("plot_id") == new_plot_id for p in existing_plots):
+                        result["visuals"]["plots"].append(formatted_plot)
+                        logger.info(f"[API_V3] Plot merged into visuals.plots: {new_plot_id}")
+                    else:
+                        # Replace existing with pipeline-processed version
+                        for i, p in enumerate(existing_plots):
+                            if isinstance(p, dict) and p.get("plot_id") == new_plot_id:
+                                existing_plots[i] = formatted_plot
+                                break
+                        logger.info(f"[API_V3] existing plot updated from pipeline: {new_plot_id}")
+
         # Check if it's an error response
         if result.get("error", False):
-            print(f"[API_V3] Solver V3 returned error: {result.get('error_type')}")
+            logger.info(f"[API_V3] Solver V3 returned error: {result.get('error_type')}")
 
             
             # Record error in a chat session for visibility
@@ -4796,7 +4820,6 @@ async def solve_v3_endpoint(
                 plot_bytes = base64.b64decode(plot_image_b64)
                 
                 # Save to backend/storage/plots/
-                import os
                 from pathlib import Path
                 plots_dir = Path(__file__).parent.parent / "storage" / "plots"
                 plots_dir.mkdir(parents=True, exist_ok=True)
@@ -4875,7 +4898,7 @@ async def solve_v3_endpoint(
             role="assistant",
             content=final_answer,
             structured_data=result,
-            model_used=result.get("_model", os.environ.get("OPENAI_MODEL_DEFAULT") or "unknown_model"),
+            model_used=(result or {}).get("_model") or os.environ.get("OPENAI_MODEL_DEFAULT") or "unknown_model",
             tokens_used=tokens_actual,
             telemetry=result.get("telemetry")
         ))
@@ -4971,7 +4994,7 @@ async def solve_v3_endpoint(
             "status": "ok",
             "error_type": None,
             "schema_valid": telemetry.get("validated"),
-            "verification_pass": _verification_passed(result),
+            "verification_pass": False,
             "is_stream": False,
             "is_cached": bool(was_cached or question_cache_hit),
             "credit_deducted": deduct_committed,
@@ -5001,7 +5024,7 @@ async def solve_v3_endpoint(
     except Exception as e:
         print(f"[API_V3_ERROR] Solver V3 failed: {type(e).__name__}: {e}")
         import traceback
-        traceback.print_exc()
+        print(traceback.format_exc())
         try:
             profile_key = None
             if resolved_profile:
@@ -5090,6 +5113,8 @@ async def solve_v3_stream_info():
     }
 
 @api_router.post("/solve_v3_stream")
+
+
 async def solve_v3_stream_endpoint(
     request: Request,
     body: SolveRequest,
@@ -5102,7 +5127,6 @@ async def solve_v3_stream_endpoint(
     """
     from app.services.solver_v3 import get_solver_v3
     from app.services.solve.question_identity_service import question_identity_service
-    from app.services.solve.trace_logger import log_solve_trace
     from app.services.admin.analytics_service import record_request_event, _calc_cost
     import base64
     from app.utils.token_limits import get_effective_max_tokens
@@ -5117,6 +5141,14 @@ async def solve_v3_stream_endpoint(
     request_id = str(uuid.uuid4())
     attempt_id = str(uuid.uuid4())
     attempt = None
+    graph_mode = getattr(body, 'graph_mode', 'auto')
+    # DEBUG: Write to file to confirm graph_mode value
+    with open("graph_mode_trace.log", "a") as f:
+        from datetime import datetime
+        f.write(f"[{datetime.utcnow().isoformat()}] graph_mode={graph_mode}, body.graph_mode={getattr(body, 'graph_mode', 'MISSING')}\n")
+        f.flush()
+    print(f"[SOLVE_V3_STREAM] Extracted graph_mode: {graph_mode}")
+
     
     # Initialize TraceContext with solving phase
     from app.trace import TraceContext
@@ -5149,10 +5181,12 @@ async def solve_v3_stream_endpoint(
     import sys
     sys.stderr.write("\n" + "="*60 + "\n")
     sys.stderr.write(f"[SOLVE_V3_STREAM] request_id={request_id}\n")
+    sys.stderr.write(f"[SOLVE_V3_STREAM] graph_mode={graph_mode}\n")
     sys.stderr.write("="*60 + "\n")
     sys.stderr.write(f"user_id: {user_id}\n")
     sys.stderr.write(f"tier (requested): {body.tier}\n")
     sys.stderr.write(f"mode (requested): {body.requested_mode}\n")
+
     sys.stderr.write(f"problem_text: {(body.confirmed_text or body.text_query or '')[:200]}...\n")
     sys.stderr.write("="*60 + "\n\n")
     sys.stderr.flush()
@@ -5532,6 +5566,8 @@ async def solve_v3_stream_endpoint(
             "developer_prompt_id": binding_meta.get("developer_prompt_id"),
             "output_schema_id": binding_meta.get("output_schema_id"),
             "output_format": output_format,
+            "debug_graph_mode_IN_RESPONSE": graph_mode,  # DEBUG: Must appear in output
+
             "prompt_versions": {
                 "system": binding_meta.get("global_system_prompt_version"),
                 "developer": binding_meta.get("developer_prompt_version"),
@@ -6058,11 +6094,63 @@ async def solve_v3_stream_endpoint(
                 steps_count = len(final_data.get("steps") or [])
             print(f"[SOLVER_V3_STREAM] Validated response. Steps: {steps_count}")
 
+            # --- PLOTTING PIPELINE INTEGRATION ---
+            from app.services.plot_integration import maybe_generate_plot, apply_graph_mode_override, format_plot_for_response
+            
+            # CRITICAL: Read graph_mode directly from body to avoid closure issues
+            effective_graph_mode = getattr(body, 'graph_mode', None) or 'auto'
+            print(f"[SOLVER_V3_STREAM] effective_graph_mode from body: {effective_graph_mode}")
+            
+            plot_data = await maybe_generate_plot(
+                db_session=session,
+                problem_text=problem_text,
+                solve_result=final_data,
+                graph_mode=effective_graph_mode,
+                attach_to_step_id=getattr(body, 'attach_to_step_id', None),
+                tier=effective_tier,
+                question_id=request_id
+            )
+            
+            # Apply deterministic overrides to visuals.should_visualize
+            # This MUST override the LLM's decision based on user's graph_mode setting
+            final_data = apply_graph_mode_override(
+                solve_result=final_data,
+                graph_mode=effective_graph_mode,
+                plot_generated=plot_data.get("plot_generated", False)
+            )
+            
+            # VERIFY the override was applied
+            print(f"[SOLVER_V3_STREAM] After override: should_visualize={final_data.get('visuals', {}).get('should_visualize')}, decision_reason={final_data.get('visuals', {}).get('decision_reason')}")
+            
+
+            # Merge generated plot into visuals.plots if successful
+            if plot_data.get("plot_generated"):
+                formatted_plot = format_plot_for_response(plot_data)
+                if formatted_plot:
+                    if not final_data.get("visuals"):
+                         final_data["visuals"] = {"should_visualize": True, "decision_reason": "Injected", "plots": []}
+                    
+                    if "plots" not in final_data["visuals"] or final_data["visuals"]["plots"] is None:
+                        final_data["visuals"]["plots"] = []
+                    
+                    # Deduplicate by plot_id
+                    new_plot_id = formatted_plot.get("plot_id")
+                    existing_plots = final_data["visuals"]["plots"]
+                    if not any(isinstance(p, dict) and p.get("plot_id") == new_plot_id for p in existing_plots):
+                        final_data["visuals"]["plots"].append(formatted_plot)
+                    else:
+                        for i, p in enumerate(existing_plots):
+                            if isinstance(p, dict) and p.get("plot_id") == new_plot_id:
+                                existing_plots[i] = formatted_plot
+                                break
+
             if True: # Always attempt to save what we have
                 # Stage: Rendering plot...
                 plot_url = None
                 if final_data.get("visuals", {}).get("should_visualize"):
                     yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': 'Rendering plot...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
+                    
+                    # Legacy fallback for _plot_image if it still exists (unlikely with new pipeline but kept for safety)
                     if "_plot_image" in final_data:
                         try:
                             plot_bytes = base64.b64decode(final_data["_plot_image"])
@@ -6077,6 +6165,7 @@ async def solve_v3_stream_endpoint(
 
                 # Stage: Finalizing...
                 yield f"event: stage\ndata: {json.dumps({'type': 'stage', 'name': 'Finalizing...', 'at_ms': int((time.perf_counter() - start_total) * 1000)})}\n\n"
+
 
                 # Update DB (Part E1)
                 # Safe extraction of answer_text (supports both legacy and v2 payload shapes)

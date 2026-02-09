@@ -153,7 +153,7 @@ export interface ChartPayload {
 
 export interface FinalAnswerValue {
   label: string;
-  value: Record<string, unknown>;
+  value: string | number | boolean | Record<string, unknown> | null;
   value_latex?: string;
 }
 

@@ -34,12 +34,19 @@ const config: Config = {
                 "accent-amber": "#f59e0b",
                 "primary-hover": "#2563eb",
                 "neon-green": "#22c55e",
-                "neon-amber": "#f59e0b"
+                "neon-amber": "#f59e0b",
+                "chalkboard": "#2c2f33",
+                "chalk": "#ffffff",
+                "chalk-cyan": "#a5f3fc"
             },
             fontFamily: {
                 "display": ["var(--font-space-grotesk)", "sans-serif"],
                 "math": ["Times New Roman", "serif"],
-                "admin": ["var(--font-lexend)", "sans-serif"]
+                "admin": ["var(--font-lexend)", "sans-serif"],
+                "architects": ["'Architects Daughter'", "cursive"],
+                "hand": ["'Patrick Hand'", "cursive"],
+                "sketch": ["'Caveat'", "cursive"],
+                "gochi": ["'Gochi Hand'", "cursive"]
             },
         },
     },

@@ -4,7 +4,9 @@
     "strict": true,
     "schema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "title": "YouAsk Math Tutor Standard Detailed v1 (Strict, Max Numeric Results)",
+        "$id": "https://youask.ai/schemas/solve_standard_detailed_v1.schema.json",
+        "title": "YouAsk Solver Output Schema (Standard Detailed) (Matplotlib Recipes)",
+        "description": "Strict JSON schema for standard (non-research) math tutoring output with optional plot recipes rendered server-side via matplotlib.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -16,10 +18,7 @@
             "steps",
             "final_answer",
             "visuals",
-            "quality",
-            "experiment",
-            "artifacts",
-            "numerical_results"
+            "quality"
         ],
         "properties": {
             "schema_version": {
@@ -33,13 +32,14 @@
             },
             "assumptions": {
                 "type": "array",
-                "minItems": 0,
-                "maxItems": 2,
                 "items": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 220
-                }
+                    "maxLength": 4000
+                },
+                "minItems": 0,
+                "maxItems": 10,
+                "default": []
             },
             "problem": {
                 "$ref": "#/$defs/problem"
@@ -49,11 +49,11 @@
             },
             "steps": {
                 "type": "array",
-                "minItems": 1,
-                "maxItems": 18,
                 "items": {
                     "$ref": "#/$defs/step"
-                }
+                },
+                "minItems": 1,
+                "maxItems": 24
             },
             "final_answer": {
                 "$ref": "#/$defs/final_answer"
@@ -64,17 +64,24 @@
             "quality": {
                 "$ref": "#/$defs/quality"
             },
-            "experiment": {
-                "$ref": "#/$defs/experiment"
+            "debug": {
+                "$ref": "#/$defs/debug"
             },
-            "artifacts": {
-                "$ref": "#/$defs/artifacts"
-            },
-            "numerical_results": {
-                "$ref": "#/$defs/numerical_results"
+            "_raw_llm_output": {
+                "type": [
+                    "string",
+                    "null"
+                ],
+                "maxLength": 500000
             }
         },
         "$defs": {
+            "numOrNull": {
+                "type": [
+                    "number",
+                    "null"
+                ]
+            },
             "refusal": {
                 "type": "object",
                 "additionalProperties": false,
@@ -92,14 +99,14 @@
                             "string",
                             "null"
                         ],
-                        "maxLength": 600
+                        "maxLength": 20000
                     },
                     "safe_alternative": {
                         "type": [
                             "string",
                             "null"
                         ],
-                        "maxLength": 600
+                        "maxLength": 20000
                     }
                 }
             },
@@ -115,17 +122,37 @@
                     "original_text": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 20000
+                        "maxLength": 200000
                     },
                     "normalized_text": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 6000
+                        "maxLength": 200000
+                    },
+                    "language": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                            "user_language",
+                            "response_language"
+                        ],
+                        "properties": {
+                            "user_language": {
+                                "type": "string",
+                                "minLength": 2,
+                                "maxLength": 32
+                            },
+                            "response_language": {
+                                "type": "string",
+                                "minLength": 2,
+                                "maxLength": 32
+                            }
+                        }
                     },
                     "detected_tasks": {
                         "type": "array",
                         "minItems": 1,
-                        "maxItems": 12,
+                        "maxItems": 6,
                         "items": {
                             "type": "string",
                             "enum": [
@@ -142,58 +169,13 @@
                                 "trigonometry",
                                 "calculus",
                                 "probability",
-                                "discretize",
                                 "statistics",
-                                "graph",
-                                "precalculus",
-                                "functions",
-                                "sequences_series",
                                 "linear_algebra",
-                                "matrix_algebra",
-                                "eigenvalues_eigenvectors",
-                                "diagonalization",
-                                "vector_spaces",
-                                "differential_equations",
-                                "partial_differential_equations",
-                                "dynamical_systems",
-                                "laplace_transform",
-                                "fourier_series",
-                                "fourier_transform",
-                                "real_analysis",
-                                "complex_analysis",
-                                "measure_theory",
-                                "functional_analysis",
-                                "abstract_algebra",
-                                "group_theory",
-                                "ring_theory",
-                                "field_theory",
-                                "linear_programming",
-                                "number_theory",
                                 "discrete_math",
-                                "combinatorics",
-                                "graph_theory",
-                                "logic",
-                                "set_theory",
-                                "numerical_methods",
-                                "optimization",
-                                "convex_optimization",
-                                "mathematical_proofs",
-                                "proof_writing",
-                                "statistical_inference",
-                                "regression",
-                                "time_series",
-                                "stochastic_processes",
-                                "bayesian_statistics",
-                                "math_physics",
-                                "vector_calculus",
-                                "multivariable_calculus",
-                                "tensor_calculus",
-                                "fourier_analysis",
-                                "spectral_decay",
-                                "bifurcation",
-                                "nonlinear_dynamics",
-                                "chaos",
-                                "signal_processing"
+                                "proof",
+                                "graph",
+                                "plot",
+                                "other"
                             ]
                         }
                     }
@@ -205,24 +187,19 @@
                 "required": [
                     "grade_band",
                     "domain",
-                    "topic",
                     "difficulty"
                 ],
                 "properties": {
                     "grade_band": {
                         "type": "string",
                         "enum": [
-                            "k_2",
-                            "grades_3_5",
                             "grades_6_8",
                             "grades_9_10",
                             "grades_11_12",
                             "college_intro",
                             "undergraduate_lower",
                             "undergraduate_upper",
-                            "graduate",
-                            "phd_research",
-                            "unknown"
+                            "graduate"
                         ]
                     },
                     "domain": {
@@ -236,32 +213,35 @@
                             "precalculus",
                             "calculus",
                             "linear_algebra",
-                            "differential_equations",
-                            "real_analysis",
-                            "complex_analysis",
-                            "abstract_algebra",
+                            "analysis",
                             "number_theory",
-                            "topology",
+                            "discrete_math",
                             "discrete",
-                            "optimization",
-                            "numerical_methods",
                             "probability",
                             "statistics",
-                            "unknown"
+                            "optimization",
+                            "differential_equations",
+                            "dynamical_systems",
+                            "numerical_analysis",
+                            "abstract_algebra",
+                            "numerical_methods",
+                            "complex_analysis",
+                            "topology",
+                            "applied_math",
+                            "other"
                         ]
                     },
                     "topic": {
                         "type": "string",
-                        "minLength": 1,
-                        "maxLength": 300
+                        "maxLength": 20000,
+                        "default": ""
                     },
                     "difficulty": {
                         "type": "string",
                         "enum": [
                             "easy",
                             "medium",
-                            "hard",
-                            "unknown"
+                            "hard"
                         ]
                     }
                 }
@@ -274,7 +254,9 @@
                     "title",
                     "explanation",
                     "math_latex",
-                    "rules_used"
+                    "rules_used",
+                    "plots_used",
+                    "checks"
                 ],
                 "properties": {
                     "index": {
@@ -285,33 +267,73 @@
                     "title": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 140
+                        "maxLength": 200
                     },
                     "explanation": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 2000
+                        "maxLength": 20000
                     },
                     "math_latex": {
                         "type": "array",
-                        "minItems": 0,
-                        "maxItems": 30,
                         "items": {
                             "type": "string",
                             "minLength": 1,
-                            "maxLength": 1200,
-                            "pattern": "^(?!.*\\$\\$?)(?!.*\\\\\\()(?!.*\\\\\\))(?!.*\\\\\\[)(?!.*\\\\\\]).+"
-                        }
+                            "maxLength": 200000
+                        },
+                        "minItems": 0,
+                        "maxItems": 30,
+                        "default": []
                     },
                     "rules_used": {
                         "type": "array",
-                        "minItems": 0,
-                        "maxItems": 20,
                         "items": {
                             "type": "string",
                             "minLength": 1,
-                            "maxLength": 120
-                        }
+                            "maxLength": 500
+                        },
+                        "minItems": 0,
+                        "maxItems": 8,
+                        "default": []
+                    },
+                    "plots_used": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "none",
+                                "function_2d",
+                                "scatter_2d",
+                                "time_series",
+                                "phase_portrait",
+                                "poincare",
+                                "bifurcation",
+                                "histogram",
+                                "custom"
+                            ]
+                        },
+                        "minItems": 0,
+                        "maxItems": 4,
+                        "default": []
+                    },
+                    "checks": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 500
+                        },
+                        "minItems": 0,
+                        "maxItems": 6,
+                        "default": []
+                    },
+                    "notes": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 20000,
+                        "default": null
                     }
                 }
             },
@@ -328,28 +350,30 @@
                     "answer_text": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 2000
+                        "maxLength": 200000
                     },
                     "answer_latex": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 2000,
-                        "pattern": "^(?!.*\\$\\$?)(?!.*\\\\\\()(?!.*\\\\\\))(?!.*\\\\\\[)(?!.*\\\\\\]).+"
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 200000
                     },
                     "values": {
                         "type": "array",
-                        "minItems": 0,
-                        "maxItems": 30,
                         "items": {
                             "$ref": "#/$defs/value_item"
-                        }
+                        },
+                        "minItems": 0,
+                        "maxItems": 50,
+                        "default": []
                     },
                     "units": {
                         "type": [
                             "string",
                             "null"
                         ],
-                        "maxLength": 80
+                        "maxLength": 2000
                     }
                 }
             },
@@ -365,12 +389,14 @@
                     "label": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 80
+                        "maxLength": 200
                     },
                     "value": {
                         "type": [
-                            "number",
                             "string",
+                            "number",
+                            "integer",
+                            "boolean",
                             "null"
                         ]
                     },
@@ -379,8 +405,7 @@
                             "string",
                             "null"
                         ],
-                        "maxLength": 2000,
-                        "pattern": "^(?!.*\\$\\$?)(?!.*\\\\\\()(?!.*\\\\\\))(?!.*\\\\\\[)(?!.*\\\\\\]).+"
+                        "maxLength": 200000
                     }
                 }
             },
@@ -400,18 +425,50 @@
                     "decision_reason": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 600
+                        "maxLength": 20000
                     },
                     "plots": {
                         "type": "array",
-                        "minItems": 0,
-                        "maxItems": 12,
                         "items": {
                             "$ref": "#/$defs/plot"
-                        }
+                        },
+                        "minItems": 0,
+                        "maxItems": 8,
+                        "default": []
                     },
                     "alternative_visual": {
-                        "$ref": "#/$defs/alternative_visual"
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "additionalProperties": false,
+                        "required": [
+                            "kind",
+                            "description",
+                            "data"
+                        ],
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "none",
+                                    "table",
+                                    "ascii",
+                                    "explanation"
+                                ]
+                            },
+                            "description": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 20000
+                            },
+                            "data": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200000
+                            }
+                        },
+                        "default": null
                     }
                 }
             },
@@ -419,184 +476,428 @@
                 "type": "object",
                 "additionalProperties": false,
                 "required": [
-                    "title",
-                    "x_min",
-                    "x_max",
-                    "y_min",
-                    "y_max",
-                    "plot_kind",
-                    "x_scale",
-                    "y_scale",
-                    "series",
-                    "key_points"
-                ],
-                "properties": {
-                    "title": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 120
-                    },
-                    "x_min": {
-                        "type": "number"
-                    },
-                    "x_max": {
-                        "type": "number"
-                    },
-                    "y_min": {
-                        "type": "number"
-                    },
-                    "y_max": {
-                        "type": "number"
-                    },
-                    "plot_kind": {
-                        "type": "string",
-                        "enum": [
-                            "cartesian_2d",
-                            "scatter_2d",
-                            "implicit_2d",
-                            "parametric_2d",
-                            "polar",
-                            "heatmap_2d",
-                            "surface_3d"
-                        ]
-                    },
-                    "x_scale": {
-                        "type": "string",
-                        "enum": [
-                            "linear",
-                            "log10"
-                        ]
-                    },
-                    "y_scale": {
-                        "type": "string",
-                        "enum": [
-                            "linear",
-                            "log10"
-                        ]
-                    },
-                    "series": {
-                        "type": "array",
-                        "minItems": 0,
-                        "maxItems": 6,
-                        "items": {
-                            "$ref": "#/$defs/series"
-                        }
-                    },
-                    "key_points": {
-                        "type": "array",
-                        "minItems": 0,
-                        "maxItems": 12,
-                        "items": {
-                            "$ref": "#/$defs/key_point"
-                        }
-                    }
-                }
-            },
-            "series": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
                     "kind",
-                    "label",
-                    "expr_latex",
-                    "points",
-                    "data_ref",
-                    "color",
-                    "line_width",
-                    "line_style",
-                    "marker_style"
+                    "title",
+                    "x_label",
+                    "y_label",
+                    "render_hint",
+                    "recipe",
+                    "rendered"
                 ],
                 "properties": {
                     "kind": {
                         "type": "string",
                         "enum": [
-                            "y_of_x",
-                            "implicit",
-                            "parametric",
-                            "points",
-                            "grid2d_ref",
-                            "surface_ref"
+                            "function_2d",
+                            "scatter_2d",
+                            "time_series",
+                            "phase_portrait",
+                            "poincare",
+                            "bifurcation",
+                            "histogram",
+                            "image",
+                            "custom"
                         ]
                     },
-                    "label": {
+                    "title": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 80
+                        "maxLength": 20000
                     },
-                    "expr_latex": {
+                    "subtitle": {
                         "type": [
                             "string",
                             "null"
                         ],
-                        "maxLength": 1200,
-                        "pattern": "^(?!.*\\$\\$?)(?!.*\\\\\\()(?!.*\\\\\\))(?!.*\\\\\\[)(?!.*\\\\\\]).+"
+                        "maxLength": 20000
                     },
-                    "points": {
+                    "x_label": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 2000
+                    },
+                    "y_label": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 2000
+                    },
+                    "z_label": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 2000
+                    },
+                    "domain": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "additionalProperties": false,
+                        "required": [
+                            "x_min",
+                            "x_max",
+                            "y_min",
+                            "y_max"
+                        ],
+                        "properties": {
+                            "x_min": {
+                                "$ref": "#/$defs/numOrNull"
+                            },
+                            "x_max": {
+                                "$ref": "#/$defs/numOrNull"
+                            },
+                            "y_min": {
+                                "$ref": "#/$defs/numOrNull"
+                            },
+                            "y_max": {
+                                "$ref": "#/$defs/numOrNull"
+                            }
+                        },
+                        "default": null
+                    },
+                    "series": {
+                        "description": "Optional lightweight series for simple plots only (avoid large arrays).",
                         "type": "array",
-                        "minItems": 0,
-                        "maxItems": 5000,
                         "items": {
-                            "type": "array",
-                            "minItems": 2,
-                            "maxItems": 3,
-                            "items": {
-                                "type": "number"
+                            "$ref": "#/$defs/plot_series"
+                        },
+                        "minItems": 0,
+                        "maxItems": 6,
+                        "default": []
+                    },
+                    "key_points": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/$defs/key_point"
+                        },
+                        "minItems": 0,
+                        "maxItems": 20,
+                        "default": []
+                    },
+                    "render_hint": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                            "preferred"
+                        ],
+                        "properties": {
+                            "preferred": {
+                                "type": "string",
+                                "enum": [
+                                    "matplotlib",
+                                    "plotly",
+                                    "none"
+                                ]
+                            },
+                            "notes": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "maxLength": 4000,
+                                "default": null
                             }
                         }
                     },
-                    "data_ref": {
+                    "recipe": {
+                        "description": "Instructions-only. Backend generates plots with matplotlib/numpy/sympy.",
                         "type": [
-                            "string",
+                            "object",
                             "null"
                         ],
-                        "maxLength": 220
-                    },
-                    "color": {
-                        "type": [
-                            "string",
-                            "null"
+                        "additionalProperties": false,
+                        "required": [
+                            "generator"
                         ],
-                        "maxLength": 40
-                    },
-                    "line_width": {
-                        "type": [
-                            "number",
-                            "null"
-                        ],
-                        "minimum": 0.1,
-                        "maximum": 12
-                    },
-                    "line_style": {
-                        "anyOf": [
-                            {
-                                "type": "null"
-                            },
-                            {
+                        "properties": {
+                            "generator": {
                                 "type": "string",
                                 "enum": [
-                                    "solid",
-                                    "dashed",
-                                    "dotted",
-                                    "dashdot"
+                                    "function_2d",
+                                    "ode_system",
+                                    "poincare",
+                                    "bifurcation_sweep",
+                                    "data_ref",
+                                    "custom"
                                 ]
-                            }
-                        ]
-                    },
-                    "marker_style": {
-                        "anyOf": [
-                            {
-                                "type": "null"
                             },
-                            {
-                                "type": "string",
-                                "enum": [
-                                    "none",
-                                    "circle",
-                                    "square",
-                                    "triangle",
-                                    "x"
-                                ]
+                            "expr": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "maxLength": 200000,
+                                "default": null
+                            },
+                            "symbols": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 50
+                                },
+                                "minItems": 0,
+                                "maxItems": 10,
+                                "default": []
+                            },
+                            "system": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "maxLength": 2000,
+                                "default": null
+                            },
+                            "params": {
+                                "type": [
+                                    "object",
+                                    "null"
+                                ],
+                                "additionalProperties": false,
+                                "required": [],
+                                "properties": {
+                                    "zeta": {
+                                        "$ref": "#/$defs/numOrNull"
+                                    },
+                                    "beta": {
+                                        "$ref": "#/$defs/numOrNull"
+                                    },
+                                    "omega": {
+                                        "$ref": "#/$defs/numOrNull"
+                                    },
+                                    "gamma": {
+                                        "$ref": "#/$defs/numOrNull"
+                                    }
+                                },
+                                "default": null
+                            },
+                            "initial_conditions": {
+                                "type": [
+                                    "object",
+                                    "null"
+                                ],
+                                "additionalProperties": false,
+                                "required": [],
+                                "properties": {
+                                    "x0": {
+                                        "$ref": "#/$defs/numOrNull"
+                                    },
+                                    "v0": {
+                                        "$ref": "#/$defs/numOrNull"
+                                    }
+                                },
+                                "default": null
+                            },
+                            "sampling": {
+                                "type": [
+                                    "object",
+                                    "null"
+                                ],
+                                "additionalProperties": false,
+                                "required": [],
+                                "properties": {
+                                    "t_min": {
+                                        "$ref": "#/$defs/numOrNull"
+                                    },
+                                    "t_max": {
+                                        "$ref": "#/$defs/numOrNull"
+                                    },
+                                    "dt": {
+                                        "$ref": "#/$defs/numOrNull"
+                                    },
+                                    "samples": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "minimum": 1,
+                                        "default": null
+                                    },
+                                    "discard": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "minimum": 0,
+                                        "default": null
+                                    },
+                                    "samples_per_period": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "minimum": 10,
+                                        "default": null
+                                    },
+                                    "transient_periods": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "minimum": 0,
+                                        "default": null
+                                    },
+                                    "keep_periods": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "minimum": 1,
+                                        "default": null
+                                    }
+                                },
+                                "default": null
+                            },
+                            "sweep": {
+                                "type": [
+                                    "object",
+                                    "null"
+                                ],
+                                "additionalProperties": false,
+                                "required": [],
+                                "properties": {
+                                    "param": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ],
+                                        "maxLength": 2000,
+                                        "default": null
+                                    },
+                                    "min": {
+                                        "$ref": "#/$defs/numOrNull"
+                                    },
+                                    "max": {
+                                        "$ref": "#/$defs/numOrNull"
+                                    },
+                                    "steps": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "minimum": 2,
+                                        "default": null
+                                    }
+                                },
+                                "default": null
+                            },
+                            "data_ref": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "maxLength": 2000,
+                                "default": null
                             }
+                        },
+                        "default": null
+                    },
+                    "rendered": {
+                        "description": "Filled by backend after matplotlib rendering.",
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "additionalProperties": false,
+                        "required": [
+                            "image_ref",
+                            "mime",
+                            "width_px",
+                            "height_px",
+                            "caption"
+                        ],
+                        "properties": {
+                            "image_ref": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "maxLength": 2000
+                            },
+                            "mime": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "maxLength": 100
+                            },
+                            "width_px": {
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ],
+                                "minimum": 1
+                            },
+                            "height_px": {
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ],
+                                "minimum": 1
+                            },
+                            "caption": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "maxLength": 20000
+                            }
+                        },
+                        "default": null
+                    }
+                }
+            },
+            "plot_series": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "name",
+                    "x",
+                    "y",
+                    "mode"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                    },
+                    "x": {
+                        "type": "array",
+                        "items": {
+                            "type": [
+                                "number",
+                                "string"
+                            ]
+                        },
+                        "minItems": 0,
+                        "maxItems": 200,
+                        "default": []
+                    },
+                    "y": {
+                        "type": "array",
+                        "items": {
+                            "type": [
+                                "number",
+                                "string"
+                            ]
+                        },
+                        "minItems": 0,
+                        "maxItems": 200,
+                        "default": []
+                    },
+                    "mode": {
+                        "type": "string",
+                        "enum": [
+                            "lines",
+                            "markers",
+                            "lines+markers",
+                            "bars"
                         ]
                     }
                 }
@@ -613,48 +914,21 @@
                     "label": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 80
+                        "maxLength": 2000
                     },
                     "x": {
-                        "type": "number"
-                    },
-                    "y": {
-                        "type": "number"
-                    }
-                }
-            },
-            "alternative_visual": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                    "kind",
-                    "description",
-                    "data"
-                ],
-                "properties": {
-                    "kind": {
-                        "type": "string",
-                        "enum": [
-                            "none",
-                            "table",
-                            "number_line",
-                            "diagram"
+                        "type": [
+                            "number",
+                            "string",
+                            "null"
                         ]
                     },
-                    "description": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 4000
-                    },
-                    "data": {
-                        "type": "array",
-                        "minItems": 0,
-                        "maxItems": 80,
-                        "items": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 400
-                        }
+                    "y": {
+                        "type": [
+                            "number",
+                            "string",
+                            "null"
+                        ]
                     }
                 }
             },
@@ -673,589 +947,99 @@
                     },
                     "common_mistakes": {
                         "type": "array",
-                        "minItems": 0,
-                        "maxItems": 5,
                         "items": {
                             "type": "string",
                             "minLength": 1,
-                            "maxLength": 200
-                        }
+                            "maxLength": 500
+                        },
+                        "minItems": 0,
+                        "maxItems": 5,
+                        "default": []
                     }
                 }
             },
-            "experiment_run_spec": {
-                "type": "object",
+            "debug": {
+                "type": [
+                    "object",
+                    "null"
+                ],
                 "additionalProperties": false,
                 "required": [
-                    "n",
-                    "note"
+                    "request_id",
+                    "model",
+                    "provider",
+                    "input_tokens",
+                    "output_tokens",
+                    "total_tokens",
+                    "latency_ms_total",
+                    "finish_reason",
+                    "truncated"
                 ],
                 "properties": {
-                    "n": {
-                        "type": "integer",
-                        "minimum": 8,
-                        "maximum": 4096
-                    },
-                    "note": {
+                    "request_id": {
                         "type": [
                             "string",
                             "null"
                         ],
                         "maxLength": 200
-                    }
-                }
-            },
-            "experiment": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                    "pde",
-                    "discretization",
-                    "solver",
-                    "eigens",
-                    "preconditioner",
-                    "runs"
-                ],
-                "properties": {
-                    "pde": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                            "domain",
-                            "bc",
-                            "manufactured_u_latex",
-                            "forcing_g_latex"
-                        ],
-                        "properties": {
-                            "domain": {
-                                "type": "string",
-                                "minLength": 1,
-                                "maxLength": 80
-                            },
-                            "bc": {
-                                "type": "string",
-                                "minLength": 1,
-                                "maxLength": 120
-                            },
-                            "manufactured_u_latex": {
-                                "type": "string",
-                                "minLength": 1,
-                                "maxLength": 1200,
-                                "pattern": "^(?!.*\\$\\$?)(?!.*\\\\\\()(?!.*\\\\\\))(?!.*\\\\\\[)(?!.*\\\\\\]).+"
-                            },
-                            "forcing_g_latex": {
-                                "type": "string",
-                                "minLength": 1,
-                                "maxLength": 1200,
-                                "pattern": "^(?!.*\\$\\$?)(?!.*\\\\\\()(?!.*\\\\\\))(?!.*\\\\\\[)(?!.*\\\\\\]).+"
-                            }
-                        }
                     },
-                    "discretization": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                            "scheme",
-                            "order",
-                            "stencil",
-                            "scaling_convention"
-                        ],
-                        "properties": {
-                            "scheme": {
-                                "type": "string",
-                                "enum": [
-                                    "finite_difference_5pt"
-                                ]
-                            },
-                            "order": {
-                                "type": "integer",
-                                "enum": [
-                                    2
-                                ]
-                            },
-                            "stencil": {
-                                "type": "string",
-                                "minLength": 1,
-                                "maxLength": 80
-                            },
-                            "scaling_convention": {
-                                "type": "string",
-                                "enum": [
-                                    "A_is_L_over_h2__b_is_g",
-                                    "A_is_L__b_is_h2g"
-                                ]
-                            }
-                        }
-                    },
-                    "solver": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                            "method",
-                            "rtol",
-                            "atol",
-                            "maxiter",
-                            "residual_reference"
-                        ],
-                        "properties": {
-                            "method": {
-                                "type": "string",
-                                "enum": [
-                                    "cg"
-                                ]
-                            },
-                            "rtol": {
-                                "type": "number",
-                                "exclusiveMinimum": 0
-                            },
-                            "atol": {
-                                "type": "number",
-                                "minimum": 0
-                            },
-                            "maxiter": {
-                                "type": "integer",
-                                "minimum": 1,
-                                "maximum": 200000
-                            },
-                            "residual_reference": {
-                                "type": "string",
-                                "enum": [
-                                    "r0",
-                                    "b"
-                                ]
-                            }
-                        }
-                    },
-                    "eigens": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                            "method",
-                            "which",
-                            "tol"
-                        ],
-                        "properties": {
-                            "method": {
-                                "type": "string",
-                                "enum": [
-                                    "direct_small_n",
-                                    "lanczos_eigsh",
-                                    "power_iteration"
-                                ]
-                            },
-                            "which": {
-                                "type": "string",
-                                "enum": [
-                                    "minmax",
-                                    "min",
-                                    "max"
-                                ]
-                            },
-                            "tol": {
-                                "type": "number",
-                                "exclusiveMinimum": 0
-                            }
-                        }
-                    },
-                    "preconditioner": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                            "enabled",
-                            "method"
-                        ],
-                        "properties": {
-                            "enabled": {
-                                "type": "boolean"
-                            },
-                            "method": {
-                                "type": [
-                                    "string",
-                                    "null"
-                                ],
-                                "enum": [
-                                    "jacobi",
-                                    "ichol",
-                                    "ilu",
-                                    "none",
-                                    null
-                                ]
-                            }
-                        }
-                    },
-                    "runs": {
-                        "type": "array",
-                        "minItems": 1,
-                        "maxItems": 6,
-                        "items": {
-                            "$ref": "#/$defs/experiment_run_spec"
-                        }
-                    }
-                }
-            },
-            "artifact": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                    "key",
-                    "kind",
-                    "shape",
-                    "data_ref",
-                    "description",
-                    "units"
-                ],
-                "properties": {
-                    "key": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 64
-                    },
-                    "kind": {
-                        "type": "string",
-                        "enum": [
-                            "grid2d",
-                            "surface3d",
-                            "curve",
-                            "spectrum_samples",
-                            "table",
-                            "text"
-                        ]
-                    },
-                    "shape": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 40
-                    },
-                    "data_ref": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 220
-                    },
-                    "description": {
+                    "model": {
                         "type": [
                             "string",
                             "null"
                         ],
-                        "maxLength": 240
+                        "maxLength": 200
                     },
-                    "units": {
+                    "provider": {
                         "type": [
                             "string",
                             "null"
                         ],
-                        "maxLength": 40
-                    }
-                }
-            },
-            "artifacts": {
-                "type": "array",
-                "minItems": 0,
-                "maxItems": 80,
-                "items": {
-                    "$ref": "#/$defs/artifact"
-                }
-            },
-            "cg_metrics": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                    "rtol",
-                    "iters",
-                    "final_rel_residual",
-                    "converged",
-                    "residual_curve_ref"
-                ],
-                "properties": {
-                    "rtol": {
-                        "type": [
-                            "number",
-                            "null"
-                        ],
-                        "exclusiveMinimum": 0
+                        "maxLength": 100
                     },
-                    "iters": {
+                    "input_tokens": {
                         "type": [
                             "integer",
                             "null"
                         ],
-                        "minimum": 0,
-                        "maximum": 200000
+                        "minimum": 0
                     },
-                    "final_rel_residual": {
+                    "output_tokens": {
                         "type": [
-                            "number",
+                            "integer",
                             "null"
                         ],
                         "minimum": 0
                     },
-                    "converged": {
+                    "total_tokens": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "minimum": 0
+                    },
+                    "latency_ms_total": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "minimum": 0
+                    },
+                    "finish_reason": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 100
+                    },
+                    "truncated": {
                         "type": [
                             "boolean",
                             "null"
                         ]
-                    },
-                    "residual_curve_ref": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "maxLength": 220
                     }
-                }
-            },
-            "error_metrics": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                    "l2",
-                    "linf",
-                    "l2_definition"
-                ],
-                "properties": {
-                    "l2": {
-                        "type": [
-                            "number",
-                            "null"
-                        ],
-                        "minimum": 0
-                    },
-                    "linf": {
-                        "type": [
-                            "number",
-                            "null"
-                        ],
-                        "minimum": 0
-                    },
-                    "l2_definition": {
-                        "type": "string",
-                        "enum": [
-                            "weighted_h2_sum_sqrt",
-                            "unweighted_euclidean"
-                        ]
-                    }
-                }
-            },
-            "spectrum_metrics": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                    "lambda_min",
-                    "lambda_max",
-                    "kappa",
-                    "method",
-                    "samples_ref"
-                ],
-                "properties": {
-                    "lambda_min": {
-                        "type": [
-                            "number",
-                            "null"
-                        ],
-                        "exclusiveMinimum": 0
-                    },
-                    "lambda_max": {
-                        "type": [
-                            "number",
-                            "null"
-                        ],
-                        "exclusiveMinimum": 0
-                    },
-                    "kappa": {
-                        "type": [
-                            "number",
-                            "null"
-                        ],
-                        "exclusiveMinimum": 1
-                    },
-                    "method": {
-                        "type": "string",
-                        "enum": [
-                            "direct",
-                            "lanczos",
-                            "power_method",
-                            "unknown"
-                        ]
-                    },
-                    "samples_ref": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "maxLength": 220
-                    }
-                }
-            },
-            "preconditioning_result": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                    "used",
-                    "method",
-                    "pcg",
-                    "improvement_factor_iters"
-                ],
-                "properties": {
-                    "used": {
-                        "type": "boolean"
-                    },
-                    "method": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "maxLength": 40
-                    },
-                    "pcg": {
-                        "$ref": "#/$defs/cg_metrics"
-                    },
-                    "improvement_factor_iters": {
-                        "type": [
-                            "number",
-                            "null"
-                        ],
-                        "exclusiveMinimum": 0
-                    }
-                }
-            },
-            "run_artifact_refs": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                    "uh_ref",
-                    "u_exact_ref",
-                    "error_ref"
-                ],
-                "properties": {
-                    "uh_ref": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "maxLength": 220
-                    },
-                    "u_exact_ref": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "maxLength": 220
-                    },
-                    "error_ref": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "maxLength": 220
-                    }
-                }
-            },
-            "grid_run_result": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                    "n",
-                    "h",
-                    "N",
-                    "cg",
-                    "errors",
-                    "spectrum",
-                    "preconditioning",
-                    "refs"
-                ],
-                "properties": {
-                    "n": {
-                        "type": "integer",
-                        "minimum": 8,
-                        "maximum": 4096
-                    },
-                    "h": {
-                        "type": "number",
-                        "exclusiveMinimum": 0
-                    },
-                    "N": {
-                        "type": "integer",
-                        "minimum": 1
-                    },
-                    "cg": {
-                        "$ref": "#/$defs/cg_metrics"
-                    },
-                    "errors": {
-                        "$ref": "#/$defs/error_metrics"
-                    },
-                    "spectrum": {
-                        "$ref": "#/$defs/spectrum_metrics"
-                    },
-                    "preconditioning": {
-                        "$ref": "#/$defs/preconditioning_result"
-                    },
-                    "refs": {
-                        "$ref": "#/$defs/run_artifact_refs"
-                    }
-                }
-            },
-            "numerical_results_summary": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                    "observed_order_l2",
-                    "observed_order_linf",
-                    "cg_scaling_note"
-                ],
-                "properties": {
-                    "observed_order_l2": {
-                        "type": [
-                            "number",
-                            "null"
-                        ]
-                    },
-                    "observed_order_linf": {
-                        "type": [
-                            "number",
-                            "null"
-                        ]
-                    },
-                    "cg_scaling_note": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 800
-                    }
-                }
-            },
-            "numerical_results": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                    "computed",
-                    "grid_runs",
-                    "summary",
-                    "consistency_checks"
-                ],
-                "properties": {
-                    "computed": {
-                        "type": "boolean"
-                    },
-                    "grid_runs": {
-                        "type": "array",
-                        "minItems": 1,
-                        "maxItems": 6,
-                        "items": {
-                            "$ref": "#/$defs/grid_run_result"
-                        }
-                    },
-                    "summary": {
-                        "$ref": "#/$defs/numerical_results_summary"
-                    },
-                    "consistency_checks": {
-                        "type": "array",
-                        "minItems": 0,
-                        "maxItems": 20,
-                        "items": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 180
-                        }
-                    }
-                }
+                },
+                "default": null
             }
         }
     }

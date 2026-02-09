@@ -2047,113 +2047,113 @@ export default function DashboardPage() {
                 )
             }
 
-            {/* Streaming Solve Popup (Part F1) */}
             {
                 isSolving && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
-                        <div
-                            role="dialog"
-                            aria-modal="true"
-                            aria-label="Solving math problem"
-                            className="relative w-full max-w-4xl overflow-hidden rounded-[28px] border border-white/10 bg-[rgba(10,18,34,0.82)] shadow-[0_28px_60px_rgba(0,0,0,0.55)]"
-                        >
-                            <div className="pointer-events-none absolute inset-0 opacity-90 [background-image:linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] [background-size:28px_28px]" />
-                            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_24%_18%,rgba(46,91,255,0.22),transparent_44%),radial-gradient(circle_at_78%_90%,rgba(139,92,246,0.15),transparent_42%)]" />
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-sm animate-in fade-in duration-300">
+                        <div className="relative w-full max-w-4xl p-8 md:p-12 text-white chalkboard-texture chalk-border shadow-2xl overflow-hidden">
+                            {/* Decorative Elements */}
+                            <div className="dust-smudge w-40 h-40 -top-10 -left-10 opacity-30"></div>
+                            <div className="dust-smudge w-64 h-32 bottom-20 right-10 opacity-20"></div>
+                            <div className="absolute top-1/4 right-12 opacity-10 pointer-events-none select-none text-4xl font-sketch">★</div>
+                            <div className="absolute bottom-1/4 left-1/4 opacity-10 pointer-events-none select-none text-6xl font-sketch -rotate-12">∫</div>
 
-                            <div className="relative border-b border-white/10 px-4 py-5 sm:px-8 sm:py-7 flex items-start justify-between gap-3">
-                                <div className="flex items-center gap-4">
-                                    <div className="relative flex size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#2E5BFF] to-[#8B5CF6] text-white shadow-[0_0_30px_rgba(46,91,255,0.45)]">
-                                        <span className="material-symbols-outlined text-[30px] motion-safe:animate-[uaskPulseGlow_2s_ease-in-out_infinite]">functions</span>
+                            {/* Header */}
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 relative z-10">
+                                <div className="flex items-center gap-5">
+                                    <div className="w-16 h-16 flex items-center justify-center text-white text-3xl font-architects wobbly-chalk rotate-[-2deg]">
+                                        Σ
                                     </div>
                                     <div>
-                                        <h3 className="text-xl sm:text-2xl font-bold tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">Solving Math Problem...</h3>
-                                        <p className="mt-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.28em] text-[#4b80ff]">Advanced Neural Computation</p>
+                                        <h1 className="text-3xl md:text-4xl font-architects tracking-wide text-white/90">Solving Math Problem...</h1>
+                                        <p className="font-hand text-lg opacity-60 tracking-widest mt-1 uppercase">Advanced Neural Computation</p>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Elapsed Time</p>
-                                    <p className="mt-0.5 min-w-[9ch] tabular-nums text-2xl sm:text-3xl font-mono font-medium text-[#4b80ff] drop-shadow-[0_0_10px_rgba(46,91,255,0.58)]">
-                                        {formatElapsed(elapsedMs)}
-                                        <span className="ml-1 text-base opacity-70">s</span>
-                                    </p>
+                                <div className="text-right font-hand">
+                                    <p className="text-xs uppercase opacity-50 tracking-widest">Elapsed Time</p>
+                                    <div className="text-5xl font-architects cyan-glow flex items-baseline">
+                                        {formatElapsed(elapsedMs)}<span className="text-xl ml-1">s</span>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="relative px-4 py-6 sm:px-9 sm:py-10">
-                                <ProgressTimeline steps={pipelineStages} error={solveError} />
+                            {/* Pipeline Grid */}
+                            <div className="mb-12 relative z-10">
+                                <div className="flex items-center gap-2 mb-8 opacity-80">
+                                    <span className="material-symbols-outlined text-2xl">refresh</span>
+                                    <h2 className="font-hand text-xl uppercase tracking-[0.2em]">System Pipeline State</h2>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    {(() => {
+                                        const activeIndex = pipelineStages.findIndex(s => s.label === currentStage || s.key === currentStage);
+                                        return pipelineStages.map((stage, index) => {
+                                            const isCompleted = (activeIndex !== -1 && index < activeIndex) || stage.status === 'completed';
+                                            const isActive = (activeIndex !== -1 && index === activeIndex) || (stage.status === 'in-progress');
+
+                                            // Fallback for improved UX: If solving but no stage matched yet (Initializing), highlight first
+                                            const effectiveActive = isActive || (activeIndex === -1 && index === 0 && currentStage === 'Initializing...');
+
+                                            return (
+                                                <div key={stage.key} className={`flex items-start gap-4 p-5 wobbly-chalk transition-all cursor-default group ${effectiveActive || isCompleted ? 'border-white/60 bg-white/5' : 'border-white/20 opacity-60'}`}>
+                                                    <div className={`w-12 h-12 flex items-center justify-center transition-colors ${effectiveActive || isCompleted ? 'text-white' : 'text-white/70'}`}>
+                                                        <span className="material-symbols-outlined text-4xl bg-clip-text">
+                                                            {stage.icon}
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <h3 className={`font-architects text-xl transition-colors ${effectiveActive || isCompleted ? 'text-white' : 'text-white/90'}`}>
+                                                            {stage.label}
+                                                        </h3>
+                                                        <p className="font-hand text-lg opacity-50">{stage.description}</p>
+                                                    </div>
+                                                    {effectiveActive && <div className="ml-auto w-2 h-2 rounded-full bg-cyan-400 animate-pulse self-center"></div>}
+                                                    {isCompleted && <div className="ml-auto material-symbols-outlined text-emerald-400 self-center">check</div>}
+                                                </div>
+                                            );
+                                        })
+                                    })()}
+                                </div>
                             </div>
 
-                            <div className="relative border-t border-white/10 bg-white/[0.02] px-4 py-5 sm:px-9 sm:py-6 flex flex-col md:flex-row items-center justify-between gap-5">
-                                <div className="flex items-center gap-3">
-                                    <div className="flex h-8 items-end gap-1 motion-reduce:hidden">
-                                        {Array.from({ length: 7 }).map((_, idx) => (
-                                            <span
-                                                key={`bar-${idx}`}
-                                                className="block w-1 rounded-sm bg-gradient-to-t from-[#2E5BFF] to-[#8B5CF6] motion-safe:animate-[uaskWave_1.2s_ease-in-out_infinite]"
-                                                style={{ animationDelay: `${idx * 0.1}s` }}
-                                            />
+                            {/* Footer / Streaming Status */}
+                            <div className="pt-8 mt-4 border-t border-dashed border-white/20 flex flex-col md:flex-row justify-between items-end gap-6 relative z-10">
+                                <div className="flex items-center gap-6">
+                                    {/* Animated Bars */}
+                                    <div className="flex items-end gap-1.5 h-12">
+                                        {[40, 85, 45, 100, 55, 75, 40].map((h, i) => (
+                                            <div
+                                                key={i}
+                                                className="w-1.5 bg-chalk-cyan rounded-sm cyan-bar-glow animate-voice-bar"
+                                                style={{ height: `${h}%`, animationDelay: `${i * 0.1}s` }}
+                                            ></div>
                                         ))}
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <span className="size-2 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.9)] motion-safe:animate-pulse" />
-                                            <span className="text-[10px] uppercase tracking-[0.2em] font-black text-white">Streaming Active</span>
+                                            <div className="w-2.5 h-2.5 bg-chalk-cyan rounded-full cyan-bar-glow animate-pulse"></div>
+                                            <span className="font-hand text-xl font-bold uppercase tracking-widest text-chalk-cyan cyan-glow">Streaming Active</span>
                                         </div>
-                                        <p className="mt-0.5 text-[11px] text-slate-500">Packet delivery in real-time</p>
+                                        <p className="font-hand text-sm opacity-50">Packet delivery in real-time</p>
                                     </div>
                                 </div>
-                                <div className="text-center md:text-right">
-                                    <p className="text-xs italic text-slate-400/70">Solution generation in progress</p>
-                                    <div className="mt-1 flex items-center justify-center md:justify-end gap-2 text-[10px] uppercase tracking-[0.18em] font-bold text-slate-500">
-                                        <span>v4.0.1 Stable</span>
-                                        <span className="size-1 rounded-full bg-slate-600" />
-                                        <span>{streamingContent ? "Encrypted Stream" : "Secure Stream"}</span>
+                                <div className="text-right space-y-1">
+                                    <p className="font-sketch italic opacity-40 text-lg">Solution generation in progress</p>
+                                    <div className="flex flex-col items-end gap-1">
+                                        <p className="font-hand text-sm uppercase opacity-50 tracking-tighter">v4.0.1 Stable • {streamingContent ? "Encrypted Stream" : "Secure Stream"}</p>
+                                        <button
+                                            onClick={() => setShowRuntimeDebug(true)}
+                                            className="font-hand text-sm font-bold opacity-70 cursor-pointer hover:text-white transition-colors border-b border-dashed border-white/30"
+                                        >
+                                            ▶ DEBUG / RUNTIME
+                                        </button>
                                     </div>
-                                    {streamingTelemetry?.model && (
-                                        <div className="mt-1 text-[10px] text-slate-500">Model: {streamingTelemetry.model}</div>
-                                    )}
-                                    <details className="mt-2 text-left md:text-right">
-                                        <summary className="cursor-pointer text-[10px] uppercase tracking-[0.15em] text-slate-400">Debug / Runtime</summary>
-                                        <div className="mt-2 space-y-1 text-[10px] text-slate-400">
-                                            <div>Tier Requested: {streamingMeta?.tier_requested || selectedSolveTier}</div>
-                                            <div>Tier: {streamingMeta?.effective_tier || accountTier}</div>
-                                            <div>Mode: {streamingMeta?.mode_family || "SOLVE"}</div>
-                                            <div>LLM Provider: {streamingMeta?.provider || streamingTelemetry?.provider || "openai"}</div>
-                                            <div>Model: {streamingMeta?.model || streamingTelemetry?.model || "unknown"}</div>
-                                            <div>Prompt Binding ID: {streamingMeta?.prompt_binding_id || "-"}</div>
-                                            <div>Global System Prompt ID: {streamingMeta?.global_system_prompt_id || "-"}</div>
-                                            <div>Developer Prompt ID: {streamingMeta?.developer_prompt_id || "-"}</div>
-                                            <div>Output Schema ID: {streamingMeta?.output_schema_id || "-"}</div>
-                                            <div>
-                                                Request ID:{" "}
-                                                <button
-                                                    type="button"
-                                                    className="underline"
-                                                    onClick={() => streamingMeta?.request_id && navigator.clipboard?.writeText(streamingMeta.request_id)}
-                                                >
-                                                    {streamingMeta?.request_id || "-"}
-                                                </button>
-                                            </div>
-                                            {(streamingMeta?.global_system_prompt_version || streamingMeta?.developer_prompt_version || streamingMeta?.output_schema_version) && (
-                                                <div>
-                                                    Versions: S={streamingMeta?.global_system_prompt_version ?? "-"}, D={streamingMeta?.developer_prompt_version ?? "-"}, Schema={streamingMeta?.output_schema_version ?? "-"}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </details>
                                 </div>
                             </div>
+
+                            {/* Corner Icon */}
+                            <div className="absolute top-4 right-4 w-10 h-10 rounded-lg flex items-center justify-center opacity-30 hover:opacity-100 transition-opacity cursor-help">
+                                <span className="material-symbols-outlined text-white">auto_fix_high</span>
+                            </div>
                         </div>
-                        <style jsx>{`
-                        @keyframes uaskWave {
-                            0%, 100% { height: 10px; opacity: 0.45; }
-                            50% { height: 30px; opacity: 1; }
-                        }
-                        @keyframes uaskPulseGlow {
-                            0%, 100% { filter: drop-shadow(0 0 4px rgba(46, 91, 255, 0.45)); transform: scale(1); }
-                            50% { filter: drop-shadow(0 0 14px rgba(139, 92, 246, 0.78)); transform: scale(1.04); }
-                        }
-                    `}</style>
                     </div>
                 )
             }

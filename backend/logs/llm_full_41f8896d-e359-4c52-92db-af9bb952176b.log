@@ -1,0 +1,1 @@
+{"final_answer":"x+1, for x ≠ 1","steps":[{"index":1,"title":"Factor and cancel","explanation":"Factor numerator as (x-1)(x+1), cancel common factor with denominator, noting x≠1 so cancellation is valid.","math_latex":"\\frac{(x-1)(x+1)}{x-1}=x+1"}],"topic":"Algebra","confidence_score":0.9}

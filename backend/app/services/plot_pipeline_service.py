@@ -399,10 +399,24 @@ class PlotPipelineService:
             
             result_json = self._extract_json_from_response(response.choices[0].message.content)
             
+            # Validate result structure
+            if isinstance(result_json, list):
+                if result_json and isinstance(result_json[0], dict):
+                    result_json = result_json[0]
+                else:
+                    result_json = {}
+            
+            if not isinstance(result_json, dict):
+                result_json = {}
+
+            plot_node = result_json.get("plot")
+            if not isinstance(plot_node, dict):
+                plot_node = {}
+
             return PlotSpecResult(
-                plot_id=result_json.get("plot", {}).get("plot_id", "plot_1"),
-                attach_to_step_id=result_json.get("plot", {}).get("attach_to_step_id"),
-                plotly_json=result_json.get("plot", {}).get("plotly", {}),
+                plot_id=plot_node.get("plot_id", "plot_1"),
+                attach_to_step_id=plot_node.get("attach_to_step_id"),
+                plotly_json=plot_node.get("plotly", {}),
                 raw_response=result_json,
             )
             

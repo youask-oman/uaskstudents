@@ -449,6 +449,15 @@ const parseSolutionDocFromStructured = (value: unknown): MathSolutionPayload | n
 };
 
 const parseFinalAnswerFromObject = (value: unknown): MathSolutionPayload["finalAnswer"] => {
+  const asStr = asString(value);
+  if (asStr) {
+    return {
+      answer_text: "",
+      answer_latex: asStr,
+      values: [],
+    };
+  }
+
   const obj = asRecord(value);
   if (!obj) return undefined;
 
@@ -462,7 +471,7 @@ const parseFinalAnswerFromObject = (value: unknown): MathSolutionPayload["finalA
       if (!vObj) return null;
       return {
         label: asString(vObj.label) || "Value",
-        value: asRecord(vObj.value) || {},
+        value: (vObj.value as string | number | boolean | Record<string, unknown> | null) ?? null,
         value_latex: asString(vObj.value_latex) || undefined,
       };
     })
@@ -487,7 +496,7 @@ const parseMathSolutionFromObject = (value: unknown): MathSolutionPayload | null
   const recognizedLatex = parseRecognizedLatexFromObject(obj);
   const plots = parsePlotFromObject(obj);
   const verificationChecks = parseVerificationChecks(obj);
-  const finalAnswer = parseFinalAnswerFromObject(asRecord(obj.final_answer) || asRecord(asRecord(obj.solution)?.final_answer));
+  const finalAnswer = parseFinalAnswerFromObject(obj.final_answer ?? asRecord(obj.solution)?.final_answer);
 
   if (!recognizedLatex && steps.length === 0 && !result && plots.length === 0 && verificationChecks.length === 0 && !finalAnswer) {
     return null;

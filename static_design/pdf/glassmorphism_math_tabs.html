@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Chalkboard Math Processing</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&amp;family=Gochi+Hand&amp;family=Patrick+Hand&amp;family=Caveat:wght@400..700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              chalkboard: "#2c2f33",
+              chalk: "#ffffff",
+              "chalk-cyan": "#a5f3fc",
+            },
+            fontFamily: {
+              display: ["'Architects Daughter'", "cursive"],
+              hand: ["'Patrick Hand'", "cursive"],
+              sketch: ["'Caveat'", "cursive"],
+              gochi: ["'Gochi Hand'", "cursive"],
+            },
+          },
+        },
+      };
+    </script>
+<style type="text/tailwindcss">
+        @layer utilities {
+            .chalkboard-texture {
+                background-color: #2c2f33;
+                background-image: 
+                    radial-gradient(circle at 50% 50%, rgba(255,255,255,0.05) 0%, transparent 80%),
+                    url("https://www.transparenttextures.com/patterns/black-linen.png");
+            }
+            .chalk-border {
+                border: 3px solid rgba(255, 255, 255, 0.8);
+                border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+                box-shadow: 0 0 10px rgba(255,255,255,0.1), inset 0 0 15px rgba(255,255,255,0.05);
+            }
+            .wobbly-chalk {
+                border: 1.5px solid rgba(255, 255, 255, 0.6);
+                border-radius: 4% 95% 6% 95%/95% 4% 92% 5%;
+            }
+            .dust-smudge {
+                position: absolute;
+                background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+                filter: blur(20px);
+                pointer-events: none;
+            }
+            .cyan-glow {
+                text-shadow: 0 0 8px rgba(165, 243, 252, 0.6);
+                color: #a5f3fc;
+            }
+            .cyan-bar-glow {
+                box-shadow: 0 0 10px rgba(165, 243, 252, 0.4);
+            }
+            .material-symbols-outlined {
+                font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 40;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-950 min-h-screen flex items-center justify-center p-6">
+<div class="relative w-full max-w-4xl p-8 md:p-12 text-white chalkboard-texture chalk-border shadow-2xl overflow-hidden">
+<div class="dust-smudge w-40 h-40 -top-10 -left-10 opacity-30"></div>
+<div class="dust-smudge w-64 h-32 bottom-20 right-10 opacity-20"></div>
+<div class="absolute top-1/4 right-12 opacity-10 pointer-events-none select-none text-4xl font-sketch">★</div>
+<div class="absolute bottom-1/4 left-1/4 opacity-10 pointer-events-none select-none text-6xl font-sketch -rotate-12">∫</div>
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 relative z-10">
+<div class="flex items-center gap-5">
+<div class="w-16 h-16 flex items-center justify-center text-white text-3xl font-display wobbly-chalk rotate-[-2deg]">
+                    Σ
+                </div>
+<div>
+<h1 class="text-3xl md:text-4xl font-display tracking-wide text-white/90">Solving Math Problem...</h1>
+<p class="font-hand text-lg opacity-60 tracking-widest mt-1 uppercase">Advanced Neural Computation</p>
+</div>
+</div>
+<div class="text-right font-hand">
+<p class="text-xs uppercase opacity-50 tracking-widest">Elapsed Time</p>
+<div class="text-5xl font-display cyan-glow flex items-baseline">
+                    00:23.8<span class="text-xl ml-1">s</span>
+</div>
+</div>
+</div>
+<div class="mb-12 relative z-10">
+<div class="flex items-center gap-2 mb-8 opacity-80">
+<span class="material-symbols-outlined text-2xl">refresh</span>
+<h2 class="font-hand text-xl uppercase tracking-[0.2em]">System Pipeline State</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<div class="flex items-start gap-4 p-5 wobbly-chalk border-white/20 hover:border-white/40 transition-all cursor-default group">
+<div class="w-12 h-12 flex items-center justify-center text-white/70 group-hover:text-white">
+<span class="material-symbols-outlined text-4xl">travel_explore</span>
+</div>
+<div>
+<h3 class="font-display text-xl text-white/90">Semantic Extraction</h3>
+<p class="font-hand text-lg opacity-50">Parsing math symbols...</p>
+</div>
+</div>
+<div class="flex items-start gap-4 p-5 wobbly-chalk border-white/20 hover:border-white/40 transition-all cursor-default group">
+<div class="w-12 h-12 flex items-center justify-center text-white/70 group-hover:text-white">
+<span class="material-symbols-outlined text-4xl">psychology</span>
+</div>
+<div>
+<h3 class="font-display text-xl text-white/90">Neural Reasoning</h3>
+<p class="font-hand text-lg opacity-50">Mapping logical steps...</p>
+</div>
+</div>
+<div class="flex items-start gap-4 p-5 wobbly-chalk border-white/20 hover:border-white/40 transition-all cursor-default group">
+<div class="w-12 h-12 flex items-center justify-center text-white/70 group-hover:text-white">
+<span class="material-symbols-outlined text-4xl">verified_user</span>
+</div>
+<div>
+<h3 class="font-display text-xl text-white/90">Strict Validation</h3>
+<p class="font-hand text-lg opacity-50">Checking schema v1.0...</p>
+</div>
+</div>
+<div class="flex items-start gap-4 p-5 wobbly-chalk border-white/20 hover:border-white/40 transition-all cursor-default group">
+<div class="w-12 h-12 flex items-center justify-center text-white/70 group-hover:text-white">
+<span class="material-symbols-outlined text-4xl">quick_phrases</span>
+</div>
+<div>
+<h3 class="font-display text-xl text-white/90">Packet Delivery</h3>
+<p class="font-hand text-lg opacity-50">Assembling response...</p>
+</div>
+</div>
+</div>
+</div>
+<div class="pt-8 mt-4 border-t border-dashed border-white/20 flex flex-col md:flex-row justify-between items-end gap-6 relative z-10">
+<div class="flex items-center gap-6">
+<div class="flex items-end gap-1.5 h-12">
+<div class="w-1.5 bg-chalk-cyan/40 rounded-sm h-[60%] cyan-bar-glow"></div>
+<div class="w-1.5 bg-chalk-cyan/60 rounded-sm h-[85%] cyan-bar-glow"></div>
+<div class="w-1.5 bg-chalk-cyan/30 rounded-sm h-[45%] cyan-bar-glow"></div>
+<div class="w-1.5 bg-chalk-cyan rounded-sm h-[100%] cyan-bar-glow"></div>
+<div class="w-1.5 bg-chalk-cyan/70 rounded-sm h-[55%] cyan-bar-glow"></div>
+<div class="w-1.5 bg-chalk-cyan/50 rounded-sm h-[75%] cyan-bar-glow"></div>
+<div class="w-1.5 bg-chalk-cyan/80 rounded-sm h-[40%] cyan-bar-glow"></div>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<div class="w-2.5 h-2.5 bg-chalk-cyan rounded-full cyan-bar-glow"></div>
+<span class="font-hand text-xl font-bold uppercase tracking-widest text-chalk-cyan cyan-glow">Streaming Active</span>
+</div>
+<p class="font-hand text-sm opacity-50">Packet delivery in real-time</p>
+</div>
+</div>
+<div class="text-right space-y-1">
+<p class="font-sketch italic opacity-40 text-lg">Solution generation in progress</p>
+<div class="flex flex-col items-end gap-1">
+<p class="font-hand text-sm uppercase opacity-50 tracking-tighter">v4.0.1 Stable • Secure Stream</p>
+<p class="font-hand text-sm font-bold opacity-70 cursor-pointer hover:text-white transition-colors border-b border-dashed border-white/30">
+                        ▶ DEBUG / RUNTIME
+                    </p>
+</div>
+</div>
+</div>
+<div class="absolute top-4 right-4 w-10 h-10 rounded-lg flex items-center justify-center opacity-30 hover:opacity-100 transition-opacity cursor-help">
+<span class="material-symbols-outlined text-white">auto_fix_high</span>
+</div>
+</div>
+
+</body></html>

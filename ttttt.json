@@ -1,0 +1,31 @@
+{
+    "final_answer": "x+1 for x ≠ 1",
+    "steps": [
+        {
+            "index": 1,
+            "title": "Factor numerator",
+            "explanation": "Write numerator as product (x-1)(x+1) to reveal common factor with denominator.",
+            "math_latex": "\\frac{(x-1)(x+1)}{x-1}"
+        },
+        {
+            "index": 2,
+            "title": "Cancel common factor",
+            "explanation": "Cancel x-1 since x≠1 to get simplified expression x+1, excluding x=1 from domain.",
+            "math_latex": "x+1"
+        }
+    ],
+    "topic": "Algebra",
+    "confidence_score": 0.9,
+    "refusal": {
+        "is_refusal": false,
+        "refusal_reason": null,
+        "safe_alternative": null
+    },
+    "_raw_llm_output": "{\"final_answer\":\"x+1, for x ≠ 1\",\"steps\":[{\"index\":1,\"title\":\"Factor and cancel\",\"explanation\":\"Factor numerator as (x-1)(x+1), cancel common factor with denominator, noting x≠1 so cancellation is valid.\",\"math_latex\":\"\\\\frac{(x-1)(x+1)}{x-1}=x+1\"}],\"topic\":\"Algebra\",\"confidence_score\":0.9}",
+    "visuals": {
+        "should_visualize": false,
+        "decision_reason": "Default (Injected)",
+        "plots": [],
+        "alternative_visual": null
+    }
+}

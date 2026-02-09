@@ -534,8 +534,13 @@ export default function SolutionStepsBlock({
                           <MathRenderer content={val.value_latex} mode="inline" />
                         </div>
                       ) : (
-                        <div style={{ fontSize: 13, color: "#475569", fontFamily: "monospace" }}>
-                          {JSON.stringify(val.value, null, 2)}
+                        <div style={{ fontSize: 13, color: "#475569", fontFamily: "monospace", whiteSpace: "pre-wrap" }}>
+                          {typeof val.value === "string"
+                            ? val.value
+                            : (val.value === null || val.value === undefined)
+                              ? "null"
+                              : JSON.stringify(val.value, null, 2)
+                          }
                         </div>
                       )}
                     </div>

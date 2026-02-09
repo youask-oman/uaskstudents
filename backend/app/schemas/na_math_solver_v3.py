@@ -5,7 +5,7 @@ Based on JSON Schema v1.0 from static_design/solver_developer.txt.
 This is the canonical schema for tutoring-quality math solutions.
 """
 
-from typing import List, Optional, Literal, Union, Any
+from typing import List, Optional, Literal, Union, Any, Dict
 from pydantic import BaseModel, Field, field_validator
 from enum import Enum
 from app.utils.schema_cleaner import enforce_strict
@@ -78,6 +78,24 @@ class PlotTypeEnum(str, Enum):
     NUMBER_LINE_1D = "number_line_1d"
     COORDINATE_GEOMETRY_2D = "coordinate_geometry_2d"
     STATISTICS_CHART = "statistics_chart"
+    FUNCTION = "function"
+    SYSTEM = "system"
+    NUMBER_LINE = "number_line"
+    INEQUALITY_REGION = "inequality_region"
+    SCATTER = "scatter"
+    HISTOGRAM = "histogram"
+
+class ObjectKind(str, Enum):
+    CURVE = "curve"
+    LINE = "line"
+    POINTS = "points"
+    REGION = "region"
+    FUNCTION = "function"
+
+class SamplingStrategy(str, Enum):
+    UNIFORM = "uniform"
+    GRID = "grid"
+    ADAPTIVE = "adaptive"
 
 class SeriesKindEnum(str, Enum):
     FUNCTION_Y_OF_X = "function_y_of_x"
@@ -95,7 +113,40 @@ class SeriesKindEnum(str, Enum):
 class PointV3(BaseModel):
     x: float
     y: float
+    label: Optional[str] = None
+
+class RecommendedWindowV3(BaseModel):
+    x_min: float
+    x_max: float
+    y_min: Optional[float] = None
+    y_max: Optional[float] = None
+
+class PlotObjectV3(BaseModel):
+    kind: ObjectKind
+    expression: str
     label: str
+    style_hints: Optional[Dict[str, Any]] = None
+
+class SamplingV3(BaseModel):
+    strategy: SamplingStrategy
+    resolution: int
+
+class AxesV3(BaseModel):
+    x_label: str
+    y_label: str
+
+class AnnotationV3(BaseModel):
+    name: str  # Adjusted to match what decision_engine expects
+    detail: str
+    point: Optional[PointV3] = None
+
+class PlotPlanV3(BaseModel):
+    title: str
+    axes: AxesV3
+    recommended_window: RecommendedWindowV3
+    objects: List[PlotObjectV3]
+    annotations: List[AnnotationV3]
+    sampling: SamplingV3
 
 class SeriesV3(BaseModel):
     name: str
@@ -103,11 +154,6 @@ class SeriesV3(BaseModel):
     expression_latex: str
     points: Optional[List[PointV3]] = None
     style_hint: Optional[str] = None
-
-class AnnotationV3(BaseModel):
-    text: str
-    x: float
-    y: float
 
 class PlotSpecV3(BaseModel):
     plot_id: str

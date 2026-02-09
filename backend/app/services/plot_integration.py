@@ -139,9 +139,8 @@ async def maybe_generate_plot(
             
             # Check if trigger blocked the plot
             if not trigger_result.plot_needed and mode == "on":
-                log.warning("[PLOT_INTEGRATION] User wanted plot but trigger refused")
-                result["error"] = f"Plot not justified: {trigger_result.reason}"
-                return result
+                log.warning("[PLOT_INTEGRATION] User wanted plot but trigger refused. Trying fallback.")
+                # We'll try fallback below if spec_result is missing
         
         # Store spec result
         if spec_result:
@@ -154,17 +153,105 @@ async def maybe_generate_plot(
             
             if not spec_result.error and spec_result.plotly_json:
                 result["plot_generated"] = True
-                log.info(f"[PLOT_INTEGRATION] Plot generated: {spec_result.plot_id}")
+                log.info(f"[PLOT_INTEGRATION] Plot generated (LLM): {spec_result.plot_id}")
             elif spec_result.error:
                 log.error(f"[PLOT_INTEGRATION] Plot spec failed: {spec_result.error}")
                 result["error"] = f"Plot generation failed: {spec_result.error}"
-        
+
+        # --- FALLBACK TO MATPLOTLIB MODEL ---
+        if not result["plot_generated"] and mode in ("on", "auto"):
+            if mode == "on" or (mode == "auto" and should_visualize):
+                log.info("[PLOT_INTEGRATION] LLM plot failed or missing. Trying Matplotlib fallback.")
+                try:
+                    fallback_plotly = await generate_matplotlib_fallback(problem_text, solve_result)
+                    if fallback_plotly:
+                        result["spec"] = {
+                            "plot_id": "plot_matplotlib_fallback",
+                            "attach_to_step_id": attach_to_step_id,
+                            "plotly_json": fallback_plotly,
+                            "error": None,
+                        }
+                        result["plot_generated"] = True
+                        result["pipeline_type"] = "matplotlib_fallback"
+                        log.info("[PLOT_INTEGRATION] Matplotlib fallback plot generated.")
+                except Exception as fe:
+                    log.error(f"[PLOT_INTEGRATION] Matplotlib fallback failed: {fe}")
+
     except Exception as e:
         log.exception("[PLOT_INTEGRATION] Unexpected error in plot pipeline")
         result["error"] = f"Plot pipeline error: {str(e)}"
         # Don't re-raise - let solve continue without plot
     
     return result
+
+
+async def generate_matplotlib_fallback(
+    problem_text: str,
+    solve_result: Dict[str, Any],
+) -> Optional[Dict[str, Any]]:
+    """
+    Generate a Plotly-compatible JSON using the local Matplotlib-based engine.
+    Used when the LLM pipeline fails to produce a plot.
+    """
+    try:
+        from app.services.visualization.decision_engine import get_visualization_engine
+        from app.services.visualization.plot_renderer import get_plot_renderer
+        import re
+
+        engine = get_visualization_engine()
+        renderer = get_plot_renderer()
+
+        # Extract entities heuristically if not present
+        entities = solve_result.get("problem", {}).get("detected_entities")
+        if not entities:
+            # Simple extraction: look for y=... or f(x)=...
+            # This matches y=x^2, f(x)=sin(x), etc.
+            found_funcs = re.findall(r'[yf]\(x\)?\s*=\s*[^,;]+', problem_text)
+            if not found_funcs:
+                # Try just expressions with x
+                found_funcs = re.findall(r'[x0-9\+\-\*\/\^\(\)\.]{2,}', problem_text)
+                found_funcs = [f for f in found_funcs if 'x' in f and len(f) > 3]
+
+            entities = {
+                "functions": found_funcs,
+                "equations": found_funcs,
+                "detected_entities": {"functions": found_funcs, "equations": found_funcs}
+            }
+
+        analysis = {"detected_entities": entities}
+        decision = engine.should_visualize(problem_text, analysis)
+
+        if not decision.should_visualize:
+            return None
+
+        plan = engine.generate_plot_plan(decision.plot_type, entities)
+        series_data = renderer.generate_data(plan)
+
+        if not series_data:
+            return None
+
+        # Convert to Plotly JSON
+        plotly_data = []
+        for s in series_data:
+            plotly_data.append({
+                "name": s["label"],
+                "x": [p["x"] for p in s["points"]],
+                "y": [p["y"] for p in s["points"]],
+                "mode": "lines",
+                "type": "scatter"
+            })
+
+        return {
+            "data": plotly_data,
+            "layout": {
+                "title": plan.title,
+                "xaxis": {"title": plan.axes.x_label},
+                "yaxis": {"title": plan.axes.y_label}
+            }
+        }
+    except Exception:
+        # Quietly fail if fallback has issues
+        return None
 
 
 def format_plot_for_response(plot_result: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -177,8 +264,8 @@ def format_plot_for_response(plot_result: Dict[str, Any]) -> Optional[Dict[str, 
     if not plot_result.get("plot_generated"):
         return None
     
-    spec = plot_result.get("spec", {})
-    trigger = plot_result.get("trigger", {})
+    spec = plot_result.get("spec") or {}
+    trigger = plot_result.get("trigger") or {}
     
     return {
         "plot_id": spec.get("plot_id", "plot_1"),
@@ -187,3 +274,59 @@ def format_plot_for_response(plot_result: Dict[str, Any]) -> Optional[Dict[str, 
         "plot_type": trigger.get("plot_type", "function"),
         "generated_by": plot_result.get("pipeline_type", "unknown"),
     }
+
+
+def apply_graph_mode_override(
+    solve_result: Dict[str, Any], 
+    graph_mode: str,
+    plot_generated: bool = False
+) -> Dict[str, Any]:
+    """
+    Enforce deterministic behavior on the solve_result based on graph_mode.
+    
+    Rules:
+    - 'off': visuals.should_visualize = False, visuals.plots = [], visuals.alternative_visual = None
+    - 'on': visuals.should_visualize = True
+    - 'auto': visuals.should_visualize = solve_result.visuals.should_visualize OR plot_generated
+    
+    Args:
+        solve_result: The raw solve output (V3 schema)
+        graph_mode: off | auto | on
+        plot_generated: Whether the plotting pipeline successfully produced a plot
+        
+    Returns:
+        Updated solve_result
+    """
+    mode = (graph_mode or "auto").lower().strip()
+    print(f"[PLOT_OVERRIDE] mode='{mode}', initial_should_visualize={solve_result.get('visuals', {}).get('should_visualize')}")
+
+    
+    # Ensure visuals key exists
+    if "visuals" not in solve_result:
+        solve_result["visuals"] = {
+            "should_visualize": False,
+            "decision_reason": "Default (Injected)",
+            "plots": [],
+            "alternative_visual": None
+        }
+    
+    visuals = solve_result["visuals"]
+    
+    if mode == "off":
+        visuals["should_visualize"] = False
+        visuals["plots"] = []
+        visuals["alternative_visual"] = None
+        visuals["decision_reason"] = "Forced OFF by user graph_mode=off"
+        
+    elif mode == "on":
+        # Force visualization even if LLM said no
+        visuals["should_visualize"] = True
+        visuals["decision_reason"] = "Forced ON by user graph_mode=on"
+             
+    elif mode == "auto":
+        # If plot was generated by pipeline, ensure should_visualize is true
+        if plot_generated:
+            visuals["should_visualize"] = True
+            
+    return solve_result
+
