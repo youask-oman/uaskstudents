@@ -1,0 +1,68 @@
+schema,table,rows_exact,rows_est,classification,seeded,seed_source,origin,retention,retention_reason,description,notes,has_pii,pii_columns,column_count,size_bytes
+public,adminauditlog,0,0,AUDIT_PROD,NO,,SYSTEM_GENERATED,Keep forever,Legal/compliance requirement for financial audit trail,Adminauditlog table (12 columns),PII: ip_address,YES,ip_address,12,57344
+public,adminnote,0,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Adminnote table (5 columns),PII: admin_name,YES,admin_name,5,24576
+public,alembic_version,1,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Database migration version tracking,,NO,,1,24576
+public,billingledger,0,0,AUDIT_PROD,NO,,SYSTEM_GENERATED,Keep forever,Legal/compliance requirement for financial audit trail,Billingledger table (31 columns),"PII: token_usage_json, fee_tokens_applied",YES,"token_usage_json, fee_tokens_applied",31,73728
+public,canonicalproblem,0,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Canonicalproblem table (15 columns),,NO,,15,32768
+public,canonicalsolution,0,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Canonicalsolution table (10 columns),,NO,,10,24576
+public,chatmessage,521,366,OPERATIONAL_PROD,NO,,USER_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Chatmessage table (13 columns),PII: tokens_used,YES,tokens_used,13,1122304
+public,chatsession,270,193,ESSENTIAL_PROD,NO,,USER_GENERATED,Keep forever,Core production data,Chatsession table (11 columns),,NO,,11,122880
+public,credithold,0,0,ESSENTIAL_PROD,NO,,SYSTEM_GENERATED,Keep forever,Core production data,Credithold table (10 columns),,NO,,10,98304
+public,creditlot,617,617,ESSENTIAL_PROD,NO,,SYSTEM_GENERATED,Keep forever,Core production data,Creditlot table (18 columns),,NO,,18,352256
+public,creditlotconsumption,16,16,ESSENTIAL_PROD,NO,,SYSTEM_GENERATED,Keep forever,Core production data,Creditlotconsumption table (10 columns),,NO,,10,131072
+public,creditprogramdefinition,4,0,ESSENTIAL_PROD,NO,,SYSTEM_GENERATED,Keep forever,Core production data,Creditprogramdefinition table (15 columns),PII: name,YES,name,15,81920
+public,creditprogramenrollment,556,556,ESSENTIAL_PROD,NO,,SYSTEM_GENERATED,Keep forever,Core production data,Creditprogramenrollment table (10 columns),,NO,,10,229376
+public,creditprogramgrantlog,556,556,AUDIT_PROD,NO,,SYSTEM_GENERATED,Keep forever,Legal/compliance requirement for financial audit trail,Creditprogramgrantlog table (9 columns),,NO,,9,286720
+public,crop,0,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Crop table (8 columns),,NO,,8,32768
+public,devicesignuplog,0,0,AUDIT_PROD,NO,,SYSTEM_GENERATED,Keep forever,Legal/compliance requirement for financial audit trail,Devicesignuplog table (4 columns),,NO,,4,24576
+public,followupchatturn,0,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Followupchatturn table (8 columns),,NO,,8,32768
+public,invoice,13,0,ESSENTIAL_PROD,NO,,EXTERNAL_PROVIDER,Keep forever,Core production data,Generated invoices,PII: billing_address_json,YES,billing_address_json,25,163840
+public,invoicelineitem,13,0,OPERATIONAL_PROD,NO,,EXTERNAL_PROVIDER,30 days,"Runtime metadata, safe to purge periodically",Invoicelineitem table (12 columns),,NO,,12,49152
+public,invoicesequence,1,0,OPERATIONAL_PROD,NO,,EXTERNAL_PROVIDER,30 days,"Runtime metadata, safe to purge periodically",Invoicesequence table (3 columns),,NO,,3,40960
+public,json_schemas,8,9,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Json Schemas table (8 columns),,NO,,8,303104
+public,llmusageledger,0,0,AUDIT_PROD,NO,,SYSTEM_GENERATED,Keep forever,Legal/compliance requirement for financial audit trail,Llmusageledger table (12 columns),"PII: system_prompt_tokens, input_tokens, output_tokens, total_tokens",YES,"system_prompt_tokens, input_tokens, output_tokens, total_tokens",12,32768
+public,ocrartifact,0,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Ocrartifact table (21 columns),,NO,,21,40960
+public,ocrauditevent,0,0,AUDIT_PROD,NO,,SYSTEM_GENERATED,Keep forever,Legal/compliance requirement for financial audit trail,Ocrauditevent table (15 columns),,NO,,15,40960
+public,ocrcache,0,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Ocrcache table (8 columns),,NO,,8,24576
+public,ocrchoice,0,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Ocrchoice table (4 columns),,NO,,4,24576
+public,ocrconfirmation,0,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Ocrconfirmation table (8 columns),,NO,,8,40960
+public,ocrextractioncache,1,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Ocrextractioncache table (8 columns),,NO,,8,65536
+public,ocrfigure,0,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Ocrfigure table (6 columns),,NO,,6,24576
+public,ocrjob,0,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Ocrjob table (12 columns),,NO,,12,32768
+public,ocrquestion,0,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Ocrquestion table (8 columns),,NO,,8,24576
+public,payment,10,10,ESSENTIAL_PROD,NO,,EXTERNAL_PROVIDER,Keep forever,Core production data,Stripe payment transactions (top-ups),PII: ip_address,YES,ip_address,15,196608
+public,plan,4,53,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Plan table (12 columns),PII: name,YES,name,12,81920
+public,promocode,0,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Promocode table (9 columns),,NO,,9,24576
+public,prompt_bindings,9,9,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Prompt Bindings table (25 columns),"PII: max_output_tokens, retry_cap_tokens, max_input_tokens, system_schema_budget_tokens, context_budget_tokens, json_retry_max_output_tokens",YES,"max_output_tokens, retry_cap_tokens, max_input_tokens, system_schema_budget_tokens, context_budget_tokens, json_retry_max_output_tokens",25,131072
+public,prompt_templates,8,4,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Prompt Templates table (11 columns),,NO,,11,327680
+public,providermodelpricing,8,5,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Providermodelpricing table (13 columns),,NO,,13,81920
+public,providerpricingauditevent,0,0,AUDIT_PROD,NO,,SYSTEM_GENERATED,Keep forever,Legal/compliance requirement for financial audit trail,Providerpricingauditevent table (8 columns),,NO,,8,32768
+public,question_identity_cache,35,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Question Identity Cache table (10 columns),,NO,,10,229376
+public,reconciliationfinding,0,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Reconciliationfinding table (11 columns),,NO,,11,65536
+public,reconciliationrecord,0,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Reconciliationrecord table (8 columns),,NO,,8,40960
+public,requestevent,218,152,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Requestevent table (27 columns),"PII: tokens_in, tokens_out, tokens_total",YES,"tokens_in, tokens_out, tokens_total",27,335872
+public,school,136875,136875,SEED_DATA,YES,scripts/seed_db.py,ADMIN_MANAGED,Keep forever,Reference data,School/institution reference data,"PII: school_name, address_line1, full_address, street_name, csdname, normalized_name, normalized_address",YES,"school_name, address_line1, full_address, street_name, csdname, normalized_name, normalized_address",25,84140032
+public,schoolimportrun,0,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Schoolimportrun table (12 columns),,NO,,12,24576
+public,solveroutputattempt,188,188,ESSENTIAL_PROD,NO,,USER_GENERATED,2 years,"User solve history, can be archived after 2 years",Solveroutputattempt table (37 columns),"PII: input_tokens, output_tokens, total_tokens, time_to_first_token_ms",YES,"input_tokens, output_tokens, total_tokens, time_to_first_token_ms",37,1638400
+public,solvesession,0,0,ESSENTIAL_PROD,NO,,USER_GENERATED,Keep forever,Core production data,Solvesession table (7 columns),,NO,,7,24576
+public,stripeevent,0,0,OPERATIONAL_PROD,NO,,EXTERNAL_PROVIDER,30 days,"Runtime metadata, safe to purge periodically",Stripeevent table (11 columns),,NO,,11,49152
+public,stripepricemap,0,0,OPERATIONAL_PROD,NO,,EXTERNAL_PROVIDER,30 days,"Runtime metadata, safe to purge periodically",Stripepricemap table (7 columns),,NO,,7,40960
+public,subscription,556,556,ESSENTIAL_PROD,NO,,SYSTEM_GENERATED,Keep forever,Core production data,User subscription records,,NO,,12,139264
+public,subscriptionbillinglink,3,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Subscriptionbillinglink table (12 columns),,NO,,12,114688
+public,subscriptionperiod,533,533,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Subscriptionperiod table (8 columns),,NO,,8,270336
+public,systemconfig,25,25,CONFIG_PROD,NO,,ADMIN_MANAGED,Keep forever,System configuration,Systemconfig table (4 columns),,NO,,4,32768
+public,systemconfigversion,0,0,CONFIG_PROD,NO,,ADMIN_MANAGED,Keep forever,System configuration,Systemconfigversion table (9 columns),,NO,,9,40960
+public,systemerrorentry,0,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Systemerrorentry table (15 columns),,NO,,15,81920
+public,topuporder,7,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Topuporder table (13 columns),,NO,,13,98304
+public,topupproduct,12,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Topupproduct table (7 columns),PII: name,YES,name,7,49152
+public,upload,0,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Upload table (6 columns),,NO,,6,32768
+public,usageledger,443,443,AUDIT_PROD,NO,,SYSTEM_GENERATED,Keep forever,Legal/compliance requirement for financial audit trail,Usageledger table (8 columns),,NO,,8,229376
+public,usagelog,142,54,AUDIT_PROD,NO,,SYSTEM_GENERATED,Keep forever,Legal/compliance requirement for financial audit trail,Usagelog table (5 columns),PII: tokens_used,YES,tokens_used,5,81920
+public,user,615,607,ESSENTIAL_PROD,NO,,USER_GENERATED,Keep forever,Core production data,User accounts with credentials and profile data,"PII: email, full_name, password_hash, tokens_used_this_month, last_token_reset, verification_token, ip_address, session_token, whatsapp_secret",YES,"email, full_name, password_hash, tokens_used_this_month, last_token_reset, verification_token, ip_address, session_token, whatsapp_secret",37,442368
+public,userquotaoverride,0,0,ESSENTIAL_PROD,NO,,USER_GENERATED,Keep forever,Core production data,Userquotaoverride table (6 columns),PII: token_limit,YES,token_limit,6,16384
+public,usersavedsolution,0,0,ESSENTIAL_PROD,NO,,USER_GENERATED,Keep forever,Core production data,Usersavedsolution table (5 columns),,NO,,5,16384
+public,voiceartifact,0,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Voiceartifact table (11 columns),,NO,,11,24576
+public,voiceaudio,0,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Voiceaudio table (7 columns),,NO,,7,32768
+public,voiceconfirmation,0,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Voiceconfirmation table (8 columns),,NO,,8,32768
+public,voicejob,0,0,OPERATIONAL_PROD,NO,,SYSTEM_GENERATED,30 days,"Runtime metadata, safe to purge periodically",Voicejob table (10 columns),,NO,,10,16384
+public,voicesession,0,0,ESSENTIAL_PROD,NO,,USER_GENERATED,Keep forever,Core production data,Voicesession table (6 columns),,NO,,6,32768

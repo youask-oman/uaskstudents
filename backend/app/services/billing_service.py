@@ -1,5 +1,6 @@
 from typing import Optional, Dict, Any, Tuple
 from datetime import datetime
+from decimal import Decimal, ROUND_HALF_UP
 from sqlmodel import Session, select
 import json
 import hashlib
@@ -9,6 +10,19 @@ from app.models import BillingLedger, User, CreditHold, UsageLedger, RequestEven
 from app.services.pricing_service import pricing_service, PricingConfig
 from app.services.credit_wallet_service import credit_wallet_service
 from app.services.cost_estimation_service import cost_estimation_service
+
+# Phase 0: Instrumentation imports
+from app.services.billing_logger import (
+    log_hold_created, log_hold_released, log_settled, 
+    log_billing_error, BillingEvent, emit_billing_event
+)
+from app.services.billing_metrics import (
+    inc_holds_created, inc_settled, inc_billing_error, HoldTimer
+)
+from app.services.billing_exceptions import (
+    InsufficientCreditsError, IdempotencyConflictError, HoldNotFoundError,
+    HoldAlreadyFinalizedError
+)
 
 class BillingService:
     def create_pending_transaction(
@@ -243,20 +257,37 @@ class BillingService:
         request_id: str,
         subscription_id: int,
         estimated_credits: float = 1.0,
-        question_id: Optional[str] = None
+        question_id: Optional[str] = None,
+        attempt_id: Optional[str] = None  # Phase 0: Added for logging
     ) -> CreditHold:
         """
         Phase 1: Reserve credits before execution.
+        Phase 0: Instrumented with logging and metrics.
         """
         # 1. Check idempotency
         existing = session.exec(select(CreditHold).where(CreditHold.request_id == request_id)).first()
         if existing:
+            # Log idempotent return (no new hold)
             return existing
 
         # 2. Check balance
         balance = credit_wallet_service.get_balance(session, user_id)
         if balance < estimated_credits:
-             raise ValueError(f"Insufficient credits. Required: {estimated_credits}, Available: {balance}")
+            # Phase 0: Log insufficient credits
+            log_billing_error(
+                user_id=user_id,
+                error_code="INSUFFICIENT_CREDITS",
+                error_message=f"Required: {estimated_credits}, Available: {balance}",
+                request_id=request_id,
+                attempt_id=attempt_id,
+            )
+            inc_billing_error("INSUFFICIENT_CREDITS")
+            raise InsufficientCreditsError(
+                user_id=user_id,
+                required=estimated_credits,
+                available=balance,
+                request_id=request_id,
+            )
 
         # 3. Create Hold
         hold = CreditHold(
@@ -270,6 +301,17 @@ class BillingService:
         session.add(hold)
         session.commit()
         session.refresh(hold)
+        
+        # Phase 0: Log and metrics
+        log_hold_created(
+            user_id=user_id,
+            request_id=request_id,
+            reserved_credits=Decimal(str(estimated_credits)),
+            balance_before=Decimal(str(balance)),
+            attempt_id=attempt_id,
+        )
+        inc_holds_created()
+        
         return hold
 
     def finalize_transaction(
@@ -278,10 +320,12 @@ class BillingService:
         request_id: str,
         result_status: str = "ok",
         schema_valid: bool = True,
-        repaired: bool = False
+        repaired: bool = False,
+        attempt_id: Optional[str] = None  # Phase 0: Added for logging
     ) -> BillingLedger:
         """
         Phase 1: Compute final cost, debit usage, release hold.
+        Phase 0: Instrumented with logging and metrics.
         Idempotent.
         """
         # 1. Idempotency Check (BillingLedger existence)
@@ -295,6 +339,14 @@ class BillingService:
         
         if not event:
              # Fallback if event missing
+             log_billing_error(
+                 user_id=hold.user_id if hold else 0,
+                 error_code="MISSING_REQUEST_EVENT",
+                 error_message="Cannot finalize transaction: missing telemetry",
+                 request_id=request_id,
+                 attempt_id=attempt_id,
+             )
+             inc_billing_error("MISSING_REQUEST_EVENT")
              ledger = BillingLedger(
                  user_id=hold.user_id if hold else 0,
                  request_id=request_id,
@@ -386,6 +438,28 @@ class BillingService:
              
         session.commit()
         session.refresh(ledger)
+        
+        # Phase 0: Log and metrics
+        if is_billable:
+            log_settled(
+                user_id=event.user_id,
+                request_id=request_id,
+                credits_charged=Decimal(str(charge_credits)),
+                usd_charged=Decimal(str(charge_usd)),
+                balance_before=Decimal(str(balance_before)),
+                balance_after=Decimal(str(balance_before - charge_credits)),
+                attempt_id=attempt_id,
+            )
+            inc_settled()
+        else:
+            log_hold_released(
+                user_id=event.user_id,
+                request_id=request_id,
+                released_credits=Decimal(str(hold.reserved_credits if hold else 0)),
+                balance_after=Decimal(str(balance_before)),
+                attempt_id=attempt_id,
+            )
+        
         return ledger
 
 billing_service = BillingService()

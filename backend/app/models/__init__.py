@@ -1,9 +1,13 @@
 from typing import Optional, List
+from decimal import Decimal
 from datetime import datetime
 from sqlmodel import Field, SQLModel, Relationship
-from sqlalchemy import Column, JSON, BigInteger, Enum as SAEnum, Text, UniqueConstraint, DateTime, func, Index
+from sqlalchemy import Column, JSON, BigInteger, Enum as SAEnum, Text, UniqueConstraint, DateTime, func, Index, Numeric
 from uuid import uuid4
 from enum import Enum
+# Import sub-modules to register models
+from app.models.credit_program_models import *
+from app.models.admin_audit_log import AdminAuditLog
 
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -26,6 +30,7 @@ class User(SQLModel, table=True):
     subscription_expiry: Optional[datetime] = None
     
     quota_questions_total: int = Field(default=100)
+    credits_balance: Decimal = Field(default=Decimal("0.0"), sa_column=Column(Numeric(20, 10), default=0))
     quota_scans_total: int = Field(default=50)
     
     # Token Tracking (1M per month limit)
@@ -210,8 +215,8 @@ class Subscription(SQLModel, table=True):
     current_period_end: datetime
     
     # Balance & Usage
-    credits_balance: float = Field(default=0.0)
-    credits_used_this_period: float = Field(default=0.0)
+    credits_balance: Decimal = Field(default=Decimal("0.0"), sa_column=Column(Numeric(20, 10), default=0))
+    credits_used_this_period: Decimal = Field(default=Decimal("0.0"), sa_column=Column(Numeric(20, 10), default=0))
     
     # Feature Usage Counters (reset monthly)
     feature_usage: dict = Field(default_factory=dict, sa_column=Column(JSON))
@@ -247,8 +252,8 @@ class UsageLedger(SQLModel, table=True):
     subscription_id: int = Field(foreign_key="subscription.id", index=True)
     
     transaction_type: str # DEBIT, CREDIT, REFUND, RESET
-    amount: float
-    balance_after: float
+    amount: Decimal = Field(sa_column=Column(Numeric(20, 10), nullable=False))
+    balance_after: Decimal = Field(sa_column=Column(Numeric(20, 10), nullable=False))
     
     reference_id: Optional[str] = Field(default=None, index=True) # question_id, payment_id
     meta: Optional[dict] = Field(default=None, sa_column=Column(JSON)) # reason, details
@@ -855,7 +860,7 @@ class CreditHold(SQLModel, table=True):
     subscription_id: int = Field(foreign_key="subscription.id", index=True)
     request_id: str = Field(index=True)
     question_id: Optional[str] = Field(default=None, index=True)
-    reserved_credits: float = Field(default=0.0)
+    reserved_credits: Decimal = Field(default=Decimal("0.0"), sa_column=Column(Numeric(20, 10), default=0))
     status: str = Field(default="held")  # held, finalized, released, failed
     meta: Optional[dict] = Field(default=None, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -1006,21 +1011,27 @@ class CreditLot(SQLModel, table=True):
     user_id: int = Field(foreign_key="user.id", index=True)
     subscription_id: Optional[int] = Field(default=None, foreign_key="subscription.id", index=True)
     
-    # Core Balance
-    credits_total: float
-    credits_remaining: float
+    # Core Balance (Decimal for precision)
+    credits_total: Decimal = Field(sa_column=Column(Numeric(20, 10), nullable=False))
+    credits_remaining: Decimal = Field(sa_column=Column(Numeric(20, 10), nullable=False))
     
     # Metadata
-    lot_type: str = Field(default="TOPUP", index=True) # TOPUP, PROMO, GRANT, MIGRATION, SUBSCRIPTION_GRANT
+    lot_type: str = Field(default="TOPUP", index=True) # TOPUP, PROMO, GRANT, MIGRATION, SUBSCRIPTION_GRANT, REFUND
     status: str = Field(default="ACTIVE", index=True) # ACTIVE, EXPIRED, DEPLETED, VOIDED
     source: str = Field(default="MANUAL_ADMIN", index=True)
     external_ref: Optional[str] = Field(default=None, index=True) # PaymentIntent ID or idempotency key
     
     currency: str = Field(default="USD")
-    amount_paid: Optional[float] = None
+    amount_paid: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(20, 10)))
     
     purchased_at: datetime = Field(default_factory=datetime.utcnow)
     expires_at: Optional[datetime] = Field(default=None, index=True)
+    
+    # Phase 3: Credit Program support
+    source_program_id: Optional[int] = Field(default=None, index=True)
+    source_payment_id: Optional[str] = Field(default=None, index=True)
+    source_attempt_id: Optional[str] = Field(default=None, index=True)
+    reason_code: Optional[str] = Field(default=None)
     
     is_active: bool = Field(default=True) # Legacy toggle, use status='ACTIVE' primarily
 
@@ -1030,10 +1041,13 @@ class CreditLotConsumption(SQLModel, table=True):
     subscription_id: Optional[int] = Field(default=None, foreign_key="subscription.id")
     credit_lot_id: int = Field(foreign_key="creditlot.id", index=True)
     # Allows nullable for legacy or edge cases, but ideally FK enforced
-    usage_ledger_id: Optional[int] = Field(default=None, foreign_key="usageledger.id", index=True) 
+    usage_ledger_id: Optional[int] = Field(default=None, foreign_key="usageledger.id", index=True)
+    # Phase 2: Link to ledger event for traceability
+    ledger_event_id: Optional[int] = Field(default=None, index=True)
+    attempt_id: Optional[str] = Field(default=None, index=True)
     
     direction: str = Field(index=True) # DEBIT, REFUND
-    amount: float
+    amount: Decimal = Field(sa_column=Column(Numeric(20, 10), nullable=False))
     
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -1054,18 +1068,21 @@ class BillingLedger(SQLModel, table=True):
     source_asset_id: Optional[str] = None
     question_id: Optional[str] = None
     
+    # Phase 0: Idempotency
+    idempotency_key: Optional[str] = Field(default=None, unique=True, index=True)
+    
     # Status
-    status: str = Field(default="SETTLED", index=True) # PENDING, SETTLED, FAILED_REFUNDED
+    status: str = Field(default="SETTLED", index=True) # PENDING, SETTLED, FAILED_REFUNDED, CHARGED, VOIDED
     
-    # Financials (Credits)
-    credits_charged: float = 0.0 # Final effective charge (actual)
-    estimated_credits: float = 0.0
-    actual_credits: float = 0.0
-    delta_credits: float = 0.0 # actual - estimate
+    # Financials (Credits) - Decimal for precision
+    credits_charged: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(20, 10), default=0))
+    estimated_credits: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(20, 10), default=0))
+    actual_credits: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(20, 10), default=0))
+    delta_credits: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(20, 10), default=0))
     
-    # Balances
-    credits_before: float
-    credits_after: float
+    # Balances - Decimal for precision
+    credits_before: Decimal = Field(sa_column=Column(Numeric(20, 10), nullable=False))
+    credits_after: Decimal = Field(sa_column=Column(Numeric(20, 10), nullable=False))
     
     # Token Usage & Fees
     fee_tokens_applied: int = 0
@@ -1078,12 +1095,12 @@ class BillingLedger(SQLModel, table=True):
     pricing_snapshot_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
     config_version_id: Optional[int] = Field(default=None, index=True) # Linked SystemConfigVersion
     
-    # Phase 1: Definite Billing Fields
-    provider_cost_usd: float = Field(default=0.0)
-    markup_multiplier: float = Field(default=1.0)
-    fixed_fee_usd: float = Field(default=0.0)
-    charge_usd: float = Field(default=0.0)
-    credit_value_usd: float = Field(default=0.0)
+    # Phase 1: Definite Billing Fields - Decimal for precision
+    provider_cost_usd: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(20, 10), default=0))
+    markup_multiplier: Decimal = Field(default=Decimal("1"), sa_column=Column(Numeric(20, 10), default=1))
+    fixed_fee_usd: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(20, 10), default=0))
+    charge_usd: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(20, 10), default=0))
+    credit_value_usd: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(20, 10), default=0))
     tier: Optional[str] = Field(default=None) # FREE, STANDARD, RESEARCH
     finalized_at: Optional[datetime] = None
 

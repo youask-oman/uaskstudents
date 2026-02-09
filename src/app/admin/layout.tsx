@@ -74,8 +74,17 @@ export default function AdminLayout({
         { label: "Top-Ups", href: "/adminpayments/topups", icon: "credit_card" },
         { label: "Data", href: "/admin/data", icon: "table_view" },
         { label: "System Config", href: "/admin/system-config", icon: "tune" },
-        { label: "Billing", href: "/admin/billing", icon: "payments" },
+        // Billing Admin Section
+        { label: "─────────────", href: "#", icon: "" },
+        { label: "Billing Flags", href: "/admin/billing/flags", icon: "toggle_on" },
+        { label: "Credit Programs", href: "/admin/billing/programs", icon: "card_giftcard" },
+        { label: "Holds", href: "/admin/billing/holds", icon: "pause_circle" },
+        { label: "Refunds", href: "/admin/billing/refunds", icon: "currency_exchange" },
+        { label: "Health", href: "/admin/billing/health", icon: "monitor_heart" },
+        { label: "Ledger", href: "/admin/billing/ledger", icon: "menu_book" },
+        { label: "Invoices", href: "/admin/billing/invoices", icon: "receipt" },
     ];
+
 
     return (
         <div
