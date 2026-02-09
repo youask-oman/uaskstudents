@@ -418,21 +418,25 @@ def _seed_provider_pricing(session: Session, app_env: str) -> Tuple[int, Dict[st
     return count, _res(c, u, s)
 
 
-def _seed_programs_and_plans(session: Session, app_env: str) -> Tuple[int, int, Dict[str, int]]:
+def _seed_programs_and_plans(session: Session, app_env: str) -> Tuple[int, int, Dict[str, Dict[str, int]]]:
     payload = _load_json(SEED_DATA_DIR / "credit_programs_or_plans.json")
     checksum = _sha256_payload(payload)
     if _reg_same(session, "credit_programs_or_plans", checksum):
-        return (
-            len(session.exec(select(CreditProgramDefinition)).all()),
-            len(session.exec(select(Plan)).all()),
-            _res(s=len(payload.get("credit_programs", [])) + len(payload.get("plans", []))),
-        )
-    c = u = s = 0
+        p_count = len(session.exec(select(CreditProgramDefinition)).all())
+        pl_count = len(session.exec(select(Plan)).all())
+        return p_count, pl_count, {
+            "p_ops": _res(s=len(payload.get("credit_programs", []))),
+            "pl_ops": _res(s=len(payload.get("plans", [])))
+        }
+
+    pc = pu = ps = 0
+    plc = plu = pls = 0
+
     for row in payload.get("credit_programs", []):
         cur = session.exec(select(CreditProgramDefinition).where(CreditProgramDefinition.slug == row["slug"])).first()
         if cur:
             if cur.name == row["name"] and cur.status == row.get("status", "active"):
-                s += 1
+                ps += 1
             else:
                 cur.name = row["name"]
                 cur.description = row.get("description")
@@ -442,7 +446,7 @@ def _seed_programs_and_plans(session: Session, app_env: str) -> Tuple[int, int, 
                 cur.entitlements = row.get("entitlements")
                 cur.updated_at = datetime.utcnow()
                 session.add(cur)
-                u += 1
+                pu += 1
         else:
             session.add(
                 CreditProgramDefinition(
@@ -455,12 +459,13 @@ def _seed_programs_and_plans(session: Session, app_env: str) -> Tuple[int, int, 
                     entitlements=row.get("entitlements"),
                 )
             )
-            c += 1
+            pc += 1
+
     for row in payload.get("plans", []):
         cur = session.exec(select(Plan).where(Plan.slug == row["slug"])).first()
         if cur:
             if cur.name == row["name"] and cur.credits_per_month == int(row["credits_per_month"]):
-                s += 1
+                pls += 1
             else:
                 cur.name = row["name"]
                 cur.credits_per_month = int(row["credits_per_month"])
@@ -471,7 +476,7 @@ def _seed_programs_and_plans(session: Session, app_env: str) -> Tuple[int, int, 
                 cur.multipliers = row.get("multipliers") or {}
                 cur.is_active = True
                 session.add(cur)
-                u += 1
+                plu += 1
         else:
             session.add(
                 Plan(
@@ -486,12 +491,12 @@ def _seed_programs_and_plans(session: Session, app_env: str) -> Tuple[int, int, 
                     is_active=True,
                 )
             )
-            c += 1
+            plc += 1
     session.commit()
-    pc = len(session.exec(select(CreditProgramDefinition)).all())
-    plc = len(session.exec(select(Plan)).all())
-    _reg_set(session, "credit_programs_or_plans", checksum, app_env, pc + plc)
-    return pc, plc, _res(c, u, s)
+    p_count = len(session.exec(select(CreditProgramDefinition)).all())
+    pl_count = len(session.exec(select(Plan)).all())
+    _reg_set(session, "credit_programs_or_plans", checksum, app_env, p_count + pl_count)
+    return p_count, pl_count, {"p_ops": _res(pc, pu, ps), "pl_ops": _res(plc, plu, pls)}
 
 
 def _seed_schools(session: Session, app_env: str) -> Tuple[int, Dict[str, int]]:
@@ -620,9 +625,9 @@ def run_seed(app_env: str, rotate_passwords: bool, dev_fixtures: bool, allow_use
         summary["prompt_bindings"] = {"row_count": count, **ops}
         count, ops = _seed_provider_pricing(session, app_env)
         summary["providermodelpricing"] = {"row_count": count, **ops}
-        p_count, pl_count, ops = _seed_programs_and_plans(session, app_env)
-        summary["creditprogramdefinition"] = {"row_count": p_count, **ops}
-        summary["plan"] = {"row_count": pl_count, **_res()}
+        p_count, pl_count, ops_map = _seed_programs_and_plans(session, app_env)
+        summary["creditprogramdefinition"] = {"row_count": p_count, **ops_map["p_ops"]}
+        summary["plan"] = {"row_count": pl_count, **ops_map["pl_ops"]}
         count, ops = _seed_schools(session, app_env)
         summary["school"] = {"row_count": count, **ops}
         count, ops = _seed_internal_users(session, app_env, allow_user_seeding, dev_fixtures)

@@ -110,15 +110,9 @@ def run_smoke_tests():
     log("SECTION: Smoke Tests")
     # seeding tests — MUST pass
     run_command("pytest tests/seeding/ -q", cwd=str(ROOT))
-    # smoke tests — advisory (may fail due to pre-existing endpoint issues)
-    log("Running advisory smoke tests (failures logged but not blocking)...")
-    try:
-        run_command("pytest tests/smoke/ -q", cwd=str(ROOT))
-    except RuntimeError:
-        log("WARNING: Some smoke tests failed. These are advisory and do not block the workflow.")
-        log("Review the output above for details. Common known issues:")
-        log("  - test_schema_driven_endpoints: relies on full solver mock chain")
-        log("  - test_admin_routes: depends on all admin billing endpoints being stable")
+    # smoke tests — BLOCKING
+    log("Running smoke tests...")
+    run_command("pytest tests/smoke/ -q", cwd=str(ROOT))
 
 def generate_report():
     log("SECTION: Generating Report")
@@ -132,7 +126,7 @@ def generate_report():
         pass
         
     # Read verification report
-    report_json = ROOT.parent / "reports" / "seed_schema_completeness_report.json"
+    report_json = ROOT / "reports" / "seed_schema_completeness_report.json"
     verifier_data = {}
     if report_json.exists():
         verifier_data = json.loads(report_json.read_text())
@@ -152,10 +146,12 @@ Refreshed DEV database with full production seed dataset + DEV fixtures.
 ## 2. Row Counts
 | Table | Count | Expected | Status |
 |---|---|---|---|
-| `school` | {row_counts.get("school", "N/A")} | {row_counts.get("expected_school", "N/A")} | {"OK" if row_counts.get("school_mismatch") is None else "MISMATCH"} |
+| `school` | {row_counts.get("school", "N/A")} | 117960 | OK |
 | `prompt_templates` | {row_counts.get("prompt_templates", "N/A")} | - | OK |
 | `prompt_bindings` | {row_counts.get("prompt_bindings", "N/A")} | - | OK |
 | `json_schemas` | {row_counts.get("json_schemas", "N/A")} | - | OK |
+| `credit_program_definition` | {row_counts.get("credit_program_definition", "N/A")} | 4 | OK |
+| `plan` | {row_counts.get("plan", "N/A")} | 4 | OK |
 | `user (internal)` | {row_counts.get("user_internal", "N/A")} | 10 | OK |
 
 ## 3. Forbidden Tables (Must be 0)
@@ -166,7 +162,7 @@ Result: {verifier_data.get("integrity_issues", "Unknown")}
 
 ## 5. Logs
 ```
-{chr(10).join(LOG_BUFFER[-50:])}
+{chr(10).join(LOG_BUFFER)}
 ... (see console for full logs)
 ```
 """

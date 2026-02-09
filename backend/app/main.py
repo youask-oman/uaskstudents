@@ -12,11 +12,46 @@ from app.api import limiter
 from pathlib import Path
 from app.services.llm import get_llm_manager
 from app.services.llm.manager import get_configured_openai_model
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from fastapi import HTTPException
 
 load_dotenv()
 
 app = FastAPI(title="UAsk.ai Orchestrator")
 app.state.limiter = limiter
+
+# Global Exception Handlers
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    from app.trace import TraceContext
+    logger = logging.getLogger("api")
+    logger.info(f"Response: {exc.status_code} | {exc.detail}", extra=TraceContext.get_all())
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    from app.trace import TraceContext
+    logger = logging.getLogger("api")
+    logger.info(f"Response: 422 | Validation Error", extra=TraceContext.get_all())
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors()},
+    )
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    from app.trace import TraceContext
+    logger = logging.getLogger("api")
+    logger.error(f"Response: 500 | Unhandled Error: {str(exc)}", exc_info=True, extra=TraceContext.get_all())
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error", "request_id": TraceContext.get().request_id if hasattr(TraceContext, 'get') else None},
+    )
+
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -55,7 +90,9 @@ async def log_requests(request: Request, call_next):
         
         # Merge any updated context (e.g. user_id set during auth)
         context = TraceContext.get_all()
-        logger.info(f"Response: {response.status_code} | {duration_ms}ms", extra=context)
+        # Normal responses are logged here. Error responses from exception_handlers will be logged there.
+        if response.status_code < 400:
+            logger.info(f"Response: {response.status_code} | {duration_ms}ms", extra=context)
         
         response.headers["X-Trace-ID"] = trace_id
         if request_id:
@@ -63,8 +100,10 @@ async def log_requests(request: Request, call_next):
             
         return response
     except Exception as e:
+        # Exceptions that escape handlers are logged here as a last resort
         duration_ms = int((time.perf_counter() - start_time) * 1000)
-        logger.error(f"Request Failed: {str(e)} | {duration_ms}ms", exc_info=True, extra=TraceContext.get_all())
+        # We don't log error here if it's already logged by an exception handler 
+        # but since we re-raise, FastAPI will call the handlers.
         raise e
 
 @app.on_event("startup")

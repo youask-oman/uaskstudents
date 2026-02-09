@@ -3787,8 +3787,10 @@ async def solve_problem(
     """
     try:
         # Check token limit BEFORE processing
-        # Use user_id from request body (pydantic), default to 1 if missing
-        user_id = body.user_id or 1
+        # Priority: body.user_id > X-User-ID header > default to 1 (legacy/internal)
+        x_user_id = request.headers.get("X-User-ID")
+        user_id = body.user_id or (int(x_user_id) if x_user_id and x_user_id.isdigit() else 1)
+        
         user = session.get(User, user_id)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
@@ -3813,22 +3815,16 @@ async def solve_problem(
                 detail=f"Monthly token limit of {MONTHLY_LIMIT:,} tokens exceeded. Resets on {(user.last_token_reset + timedelta(days=30)).strftime('%Y-%m-%d')}."
             )
         
-        # 1. OCR Processing (Legacy/Vision fallback if needed, but mostly handled by frontend passing text now)
-        # The frontend now calls /latex-from-image first, then passes the text here.
-        # So we don't need to call ocr_service here anymore.
         # 1. OCR Processing (Handled by frontend/separate endpoint)
         extracted_text = ""
+    except HTTPException:
+        # Pass through expected HTTP exceptions
+        raise
     except Exception as e:
         import traceback
-        try:
-            with open("/app/storage/solve_debug.log", "w") as f:
-                f.write(f"Error: {str(e)}\n")
-                traceback.print_exc(file=f)
-        except:
-            print("Failed to write to debug log")
         traceback.print_exc()
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        # Log unexpected errors but don't leak internals unless requested
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
     # Phase 1: Create Attempt Record Immediately
     attempt_id = str(uuid.uuid4())

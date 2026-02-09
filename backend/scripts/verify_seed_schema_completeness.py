@@ -190,24 +190,19 @@ def verify_data_integrity(session: Session):
         user_ok = False
     
     # Check Forbidden Tables
-    forbidden = ["payment", "invoice", "invoice_line_item", "refund", "subscription", "usage_log", "attempt_log"] 
-    # Adjust table names to real ones
+    forbidden = ["payment", "invoice", "invoice_line_item", "refund", "subscription", "subscriptionperiod", "chatsession", "chatmessage", "solveroutputattempt", "billingledger"] 
     inspector = inspect(engine)
     all_tables = inspector.get_table_names()
     
     forbidden_status = {}
     try:
         for ft in forbidden:
-            # Find partial matches or exact matches
-            matches = [t for t in all_tables if ft in t]
-            for t in matches:
-                # Skip some if they are config headers? No, specifically transactions.
-                # Assume any match is forbidden unless allowlisted.
-                try:
-                    count = session.exec(text(f"SELECT COUNT(*) FROM {t}")).one()[0]
-                    forbidden_status[t] = count
-                except Exception as ex:
-                    forbidden_status[t] = f"Error: {ex}"
+            table_to_check = ft if ft in all_tables else (ft + "s" if ft + "s" in all_tables else None)
+            if table_to_check:
+                count = session.exec(text(f"SELECT COUNT(*) FROM {table_to_check}")).one()[0]
+                forbidden_status[table_to_check] = count
+            else:
+                forbidden_status[ft] = 0
         
         REPORT_DATA["forbidden_tables_status"] = forbidden_status
         forbidden_ok = all(isinstance(c, int) and c == 0 for c in forbidden_status.values())
@@ -217,24 +212,24 @@ def verify_data_integrity(session: Session):
 
     # Check row counts validation
     db_counts = {}
+    required_tables = {
+        "systemconfig": "systemconfig",
+        "prompt_templates": "prompt_templates",
+        "prompt_bindings": "prompt_bindings",
+        "json_schemas": "json_schemas",
+        "providermodelpricing": "providermodelpricing",
+        "credit_program_definition": "credit_program_definition",
+        "plan": "plan",
+        "school": "school"
+    }
     try:
         db_counts["user_internal"] = len(users) if 'users' in locals() else 0
-        if "prompt_templates" in all_tables:
-            db_counts["prompt_templates"] = session.exec(text("SELECT count(*) FROM prompt_templates")).one()[0]
-        else:
-            db_counts["prompt_templates"] = 0
-        if "prompt_bindings" in all_tables:
-            db_counts["prompt_bindings"] = session.exec(text("SELECT count(*) FROM prompt_bindings")).one()[0]
-        else:
-            db_counts["prompt_bindings"] = 0
-        if "json_schemas" in all_tables:
-            db_counts["json_schemas"] = session.exec(text("SELECT count(*) FROM json_schemas")).one()[0]
-        else:
-            db_counts["json_schemas"] = 0
-        if "school" in all_tables:
-            db_counts["school"] = session.exec(text("SELECT count(*) FROM school")).one()[0]
-        else:
-            db_counts["school"] = 0
+        for label, table_name in required_tables.items():
+            check_name = table_name if table_name in all_tables else (table_name + "s" if table_name + "s" in all_tables else None)
+            if check_name:
+                db_counts[label] = session.exec(text(f"SELECT count(*) FROM {check_name}")).one()[0]
+            else:
+                db_counts[label] = 0
         
         # Manifest check for schools if available
         if manifest.get("files", {}).get("schools.json"):
