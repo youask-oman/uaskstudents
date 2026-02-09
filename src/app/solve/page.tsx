@@ -20,9 +20,8 @@ import InputStatus from "@/components/InputStatus";
 import SplitModal from "@/components/SplitModal";
 
 // Input mode imports
-import InputModeSelector from "@/components/InputModeSelector";
 import LiveMathPreview from "@/components/LiveMathPreview";
-import { InputModeId, INPUT_MODES, GraphingOptions, DEFAULT_GRAPHING_OPTIONS } from "@/lib/inputModes";
+
 import {
     validateMathQuery,
     isBlockingInputError,
@@ -158,8 +157,7 @@ export default function DashboardPage() {
     const [mathValidityConfirmed, setMathValidityConfirmed] = useState(false);
 
     // Input mode state
-    const [selectedInputMode, setSelectedInputMode] = useState<InputModeId>('expression');
-    const [graphingOptions, setGraphingOptions] = useState<GraphingOptions>(DEFAULT_GRAPHING_OPTIONS);
+
 
     // Plot/Graph inclusion state
     const [graphMode, setGraphMode] = useState<'off' | 'auto' | 'on'>('auto');
@@ -1121,7 +1119,19 @@ export default function DashboardPage() {
 
                                 {/* Tier Selector Section */}
                                 <div className="flex flex-col gap-2 flex-grow max-w-[450px]">
-                                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">Tier</h3>
+                                    <div className="flex justify-between items-end mb-1">
+                                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">Tier</h3>
+                                        {readySubscription && estimate && (
+                                            <div className="scale-90 origin-right">
+                                                <CostPreview
+                                                    perQuestionCost={estimate.per_question_credits}
+                                                    questionCount={estimatedQuestionCount}
+                                                    breakdown={estimate.breakdown}
+                                                    creditsRemaining={readySubscription.usage.credits_remaining}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
                                     <SegmentedControl
                                         options={[
                                             { value: "FREE", label: "Free", icon: "bolt" },
@@ -1152,21 +1162,7 @@ export default function DashboardPage() {
                             </div>
                         </div>
 
-                        {/* Cost Preview Container moved down slightly for layout */}
-                        <div className="mt-4">
-                            {readySubscription && estimate ? (
-                                <CostPreview
-                                    perQuestionCost={estimate.per_question_credits}
-                                    questionCount={estimatedQuestionCount}
-                                    breakdown={estimate.breakdown}
-                                    creditsRemaining={readySubscription.usage.credits_remaining}
-                                />
-                            ) : (
-                                <div className="text-xs text-slate-500">
-                                    {estimateError || "Subscription data required for cost preview."}
-                                </div>
-                            )}
-                        </div>
+
 
 
                         {/* Input Mode Tabs */}
@@ -1322,27 +1318,23 @@ export default function DashboardPage() {
                                 {activeTab === 'text' && (
                                     <div className="flex flex-col gap-6 relative">
                                         {/* Input Mode Selector (Expression / Word Problem / Graphing) */}
-                                        <InputModeSelector
-                                            selectedMode={selectedInputMode}
-                                            onModeChange={setSelectedInputMode}
-                                            graphingOptions={graphingOptions}
-                                            onGraphingOptionsChange={setGraphingOptions}
-                                            onTemplateClick={(template) => {
-                                                setQuery(template);
-                                                setMathValidityConfirmed(false);
-                                                setMathModeEnabled(false); // Switch to regular textarea to show template
-                                                if (inputError) setInputError(null);
-                                            }}
-                                        />
+
 
                                         {/* Include Graph Toggle */}
                                         <div className="flex flex-col gap-3 px-1 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
                                             <div className="flex items-center gap-3">
                                                 <span className="material-symbols-outlined text-primary text-lg">area_chart</span>
-                                                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                                                    Graph Mode
+                                                <span className="text-sm font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                                                    Plot Mode
                                                 </span>
-                                                <div className="flex bg-slate-200 dark:bg-slate-700 rounded-lg p-1">
+
+                                                <p className="text-xs text-slate-500 mx-2 flex-1 text-center truncate">
+                                                    {graphMode === 'off' && "No plots will be generated"}
+                                                    {graphMode === 'auto' && "AI will generate plots when helpful"}
+                                                    {graphMode === 'on' && "Force plot generation when possible"}
+                                                </p>
+
+                                                <div className="flex bg-slate-200 dark:bg-slate-700 rounded-lg p-1 shrink-0">
                                                     {(['off', 'auto', 'on'] as const).map((mode) => (
                                                         <button
                                                             key={mode}
@@ -1358,11 +1350,6 @@ export default function DashboardPage() {
                                                     ))}
                                                 </div>
                                             </div>
-                                            <p className="text-xs text-slate-500 ml-8">
-                                                {graphMode === 'off' && "No plots will be generated"}
-                                                {graphMode === 'auto' && "AI will generate plots when helpful"}
-                                                {graphMode === 'on' && "Force plot generation when possible"}
-                                            </p>
                                         </div>
 
                                         {/* Math Symbol Mode Bar */}
@@ -1522,7 +1509,7 @@ export default function DashboardPage() {
                                                             wordBreak: 'normal',
                                                             hyphens: 'auto',
                                                         }}
-                                                        placeholder={INPUT_MODES.find(m => m.id === selectedInputMode)?.placeholder || "Type your question..."}
+                                                        placeholder="Type your question..."
                                                     />
                                                 )}
 
@@ -1900,26 +1887,121 @@ export default function DashboardPage() {
                             )}
                         </div>
 
-                        {/* Tips Sidebar */}
-                        <div className="bg-primary/5 border border-primary/20 rounded-xl p-6">
-                            <h3 className="text-primary font-bold flex items-center gap-2 mb-4">
-                                <span className="material-symbols-outlined">lightbulb</span>
-                                Good Photo Tips
-                            </h3>
-                            <ul className="space-y-4">
-                                <li className="flex gap-3">
-                                    <span className="w-5 h-5 bg-primary text-white text-[10px] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
-                                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed"><strong>Ensure good lighting.</strong> Avoid shadows covering the equations or variables.</p>
-                                </li>
-                                <li className="flex gap-3">
-                                    <span className="w-5 h-5 bg-primary text-white text-[10px] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
-                                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed"><strong>Focus on one problem.</strong> Crop the image to show only the relevant task.</p>
-                                </li>
-                                <li className="flex gap-3">
-                                    <span className="w-5 h-5 bg-primary text-white text-[10px] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
-                                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed"><strong>Include diagrams.</strong> If the problem references a graph, make sure it&apos;s in the shot.</p>
-                                </li>
-                            </ul>
+                        {/* Tips Sidebar - Photo */}
+                        {activeTab === 'snap' && (
+                            <div className="bg-primary/5 border border-primary/20 rounded-xl p-6 transition-all animate-in fade-in slide-in-from-right-4 duration-500">
+                                <h3 className="text-primary font-bold flex items-center gap-2 mb-4">
+                                    <span className="material-symbols-outlined">lightbulb</span>
+                                    Good Photo Tips
+                                </h3>
+                                <ul className="space-y-4">
+                                    <li className="flex gap-3">
+                                        <span className="w-5 h-5 bg-primary text-white text-[10px] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+                                        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed"><strong>Ensure good lighting.</strong> Avoid shadows covering the equations or variables.</p>
+                                    </li>
+                                    <li className="flex gap-3">
+                                        <span className="w-5 h-5 bg-primary text-white text-[10px] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
+                                        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed"><strong>Focus on one problem.</strong> Crop the image to show only the relevant task.</p>
+                                    </li>
+                                    <li className="flex gap-3">
+                                        <span className="w-5 h-5 bg-primary text-white text-[10px] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
+                                        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed"><strong>Include diagrams.</strong> If the problem references a graph, make sure it&apos;s in the shot.</p>
+                                    </li>
+                                </ul>
+                            </div>
+                        )}
+
+                        {/* Tips Sidebar - Voice */}
+                        {activeTab === 'voice' && (
+                            <div className="bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800 rounded-xl p-6 transition-all animate-in fade-in slide-in-from-right-4 duration-500">
+                                <h3 className="text-purple-600 dark:text-purple-400 font-bold flex items-center gap-2 mb-4">
+                                    <span className="material-symbols-outlined">mic</span>
+                                    Voice Input Tips
+                                </h3>
+                                <ul className="space-y-4">
+                                    <li className="flex gap-3">
+                                        <span className="w-5 h-5 bg-purple-600 text-white text-[10px] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+                                        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed"><strong>Speak clearly.</strong> Ensure you are in a quiet environment for best accuracy.</p>
+                                    </li>
+                                    <li className="flex gap-3">
+                                        <span className="w-5 h-5 bg-purple-600 text-white text-[10px] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
+                                        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed"><strong>Be specific.</strong> State variables and operations explicitly (e.g., &quot;x squared&quot;).</p>
+                                    </li>
+                                    <li className="flex gap-3">
+                                        <span className="w-5 h-5 bg-purple-600 text-white text-[10px] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
+                                        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed"><strong>Review the math.</strong> Check the generated LaTeX before clicking Solve.</p>
+                                    </li>
+                                </ul>
+                            </div>
+                        )}
+
+                        {/* Tips Sidebar - Text */}
+                        {activeTab === 'text' && (
+                            <div className="bg-primary/5 border border-primary/20 rounded-xl p-6 transition-all animate-in fade-in slide-in-from-right-4 duration-500">
+                                <h3 className="text-primary font-bold flex items-center gap-2 mb-4">
+                                    <span className="material-symbols-outlined">lightbulb</span>
+                                    Good Math Tips
+                                </h3>
+                                <ul className="space-y-4">
+                                    <li className="flex gap-3">
+                                        <span className="w-5 h-5 bg-primary text-white text-[10px] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+                                        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed"><strong>Use clear notation.</strong> Type standard math symbols or use the helper tools.</p>
+                                    </li>
+                                    <li className="flex gap-3">
+                                        <span className="w-5 h-5 bg-primary text-white text-[10px] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
+                                        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed"><strong>One problem at a time.</strong> Keep questions focused for the best answer.</p>
+                                    </li>
+                                    <li className="flex gap-3">
+                                        <span className="w-5 h-5 bg-primary text-white text-[10px] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
+                                        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed"><strong>Check your variables.</strong> define any unusual terms or constants.</p>
+                                    </li>
+                                </ul>
+                            </div>
+                        )}
+
+                        {/* Recent Solutions - Always visible */}
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 transition-all animate-in fade-in slide-in-from-right-4 duration-500">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-slate-400">history</span>
+                                    Recent History
+                                </h3>
+                                <button
+                                    type="button"
+                                    onClick={() => router.push("/dashboard?tab=history")}
+                                    className="text-primary text-xs font-semibold hover:underline"
+                                >
+                                    View All
+                                </button>
+                            </div>
+                            <div className="space-y-3">
+                                {history.length === 0 ? (
+                                    <div className="text-center py-6 text-slate-400 text-sm italic">
+                                        <p>No history found.</p>
+                                        <p className="text-xs mt-1">Start solving to see items here.</p>
+                                    </div>
+                                ) : (
+                                    history.slice(0, 3).map((session) => (
+                                        <div
+                                            key={session.id}
+                                            onClick={() => router.push(`/chat/${session.id}`)}
+                                            className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:border-primary/30 transition-colors cursor-pointer group"
+                                        >
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-[10px] uppercase font-bold text-slate-400 bg-slate-100 dark:bg-slate-700/50 px-1.5 py-0.5 rounded">
+                                                    #{session.id}
+                                                </span>
+                                                <span className="text-[10px] text-slate-400 ml-auto">
+                                                    {new Date(session.created_at).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                            <div className="text-sm font-medium text-slate-900 dark:text-slate-200 line-clamp-2 min-h-[1.25rem]">
+                                                <MathRenderer content={session.title || "Untitled Session"} mode="prose" />
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
                         </div>
 
                         {/* Student Context Card */}
@@ -1947,41 +2029,7 @@ export default function DashboardPage() {
                             )}
                         </div>
 
-                        {/* Recent Solutions */}
-                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 transition-colors">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-bold text-slate-900 dark:text-white">Recent History</h3>
-                                <button
-                                    type="button"
-                                    onClick={() => router.push("/dashboard?tab=history")}
-                                    className="text-primary text-xs font-semibold hover:underline"
-                                >
-                                    View All
-                                </button>
-                            </div>
-                            <div className="space-y-3">
-                                {history.length === 0 ? (
-                                    <p className="text-sm text-slate-500 italic">No history found.</p>
-                                ) : (
-                                    history.slice(0, 5).map((session) => (
-                                        <div
-                                            key={session.id}
-                                            onClick={() => router.push(`/chat/${session.id}`)}
-                                            className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:border-primary/30 transition-colors cursor-pointer group"
-                                        >
-                                            <p className="text-xs font-bold text-primary mb-1 uppercase tracking-tighter">Session #{session.id}</p>
-                                            <div className="text-sm font-medium mb-2 text-slate-900 dark:text-slate-200 overflow-hidden max-h-[1.6rem]">
-                                                <MathRenderer content={session.title} mode="prose" />
-                                            </div>
-                                            <div className="flex justify-between items-center text-[10px] text-slate-400 font-medium">
-                                                <span>{new Date(session.created_at).toLocaleDateString()}</span>
-                                                <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
+
 
                         {/* Pro Callout */}
                         <div className="relative overflow-hidden bg-slate-900 rounded-xl p-6 text-white group">
