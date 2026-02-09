@@ -326,7 +326,7 @@ async def list_program_enrollments(
     
     # Get user emails
     user_ids = {e.user_id for e in enrollments}
-    users = {u.id: u for u in session.exec(select(User).where(User.id.in_(user_ids))).all()}
+    users = {u.id: u for u in session.exec(select(User).where(User.id.in_(list(user_ids)))).all()}
     
     results = []
     for e in enrollments:
@@ -337,6 +337,52 @@ async def list_program_enrollments(
             user_email=user.email if user else None,
             program_id=e.program_id,
             program_name=program.name,
+            status=e.status,
+            started_at=e.started_at,
+            ended_at=e.ended_at,
+            last_grant_month=e.last_grant_month,
+            created_at=e.created_at,
+        ))
+    
+    return PaginatedResponse(items=results, total=total, limit=limit, offset=offset)
+
+
+@router.get("/enrollments/all", response_model=PaginatedResponse)
+async def list_all_enrollments(
+    status: Optional[str] = None,
+    limit: int = Query(default=20, le=100),
+    offset: int = 0,
+    admin: User = Depends(get_admin_user),
+    session: Session = Depends(get_session),
+):
+    """List all program enrollments across all programs."""
+    query = select(CreditProgramEnrollment)
+    count_query = select(func.count(CreditProgramEnrollment.id))
+    
+    if status:
+        query = query.where(CreditProgramEnrollment.status == status)
+        count_query = count_query.where(CreditProgramEnrollment.status == status)
+    
+    total = session.exec(count_query).one()
+    enrollments = session.exec(query.order_by(CreditProgramEnrollment.created_at.desc()).offset(offset).limit(limit)).all()
+    
+    # Get user emails and program names
+    user_ids = {e.user_id for e in enrollments}
+    program_ids = {e.program_id for e in enrollments}
+    
+    users = {u.id: u for u in session.exec(select(User).where(User.id.in_(list(user_ids)))).all()}
+    programs = {p.id: p for p in session.exec(select(CreditProgramDefinition).where(CreditProgramDefinition.id.in_(list(program_ids)))).all()}
+    
+    results = []
+    for e in enrollments:
+        user = users.get(e.user_id)
+        program = programs.get(e.program_id)
+        results.append(EnrollmentResponse(
+            id=e.id,
+            user_id=e.user_id,
+            user_email=user.email if user else None,
+            program_id=e.program_id,
+            program_name=program.name if program else "Unknown",
             status=e.status,
             started_at=e.started_at,
             ended_at=e.ended_at,

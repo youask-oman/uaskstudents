@@ -60,7 +60,6 @@ export default function AdminLayout({
         { label: "Overview", href: "/admin/dashboard", icon: "dashboard" },
         { label: "Users", href: "/admin/users", icon: "group" },
         { label: "Quotas", href: "/admin/quotas", icon: "speed" },
-        { label: "Subscriptions", href: "/admin/subscriptions", icon: "diamond" },
         { label: "Prompt Registry", href: "/admin/prompt-registry", icon: "terminal" },
         { label: "Schema Registry", href: "/admin/schema-registry", icon: "data_object" },
         { label: "Prompt Bindings", href: "/admin/prompt-bindings", icon: "link" },
@@ -69,20 +68,26 @@ export default function AdminLayout({
         { label: "WhatsApp Monitor", href: "/admin/whatsapp-monitor", icon: "monitor_heart" },
         { label: "Logs", href: "/admin/logs", icon: "receipt_long" },
         { label: "Solvers", href: "/admin/solver-attempts", icon: "article" },
-        { label: "Payments Overview", href: "/adminpayments", icon: "payments" },
-        { label: "Requests & Cost", href: "/adminpayments/requests", icon: "request_quote" },
-        { label: "Top-Ups", href: "/adminpayments/topups", icon: "credit_card" },
+
+        // Billing Section
+        { label: "─────────────", href: "#", icon: "" },
+        { label: "Credit Programs", href: "/admin/billing/programs", icon: "card_giftcard" },
+        { label: "Enrollments", href: "/admin/billing/enrollments", icon: "person_add" },
+        { label: "Pricing Config", href: "/admin/billing/pricing", icon: "payments" },
+        { label: "Credit Packs", href: "/admin/billing/packs", icon: "inventory_2" },
+        { label: "Ledger Explorer", href: "/admin/billing/ledger", icon: "menu_book" },
+        { label: "Refund Center", href: "/admin/billing/refunds", icon: "currency_exchange" },
+        { label: "Active Holds", href: "/admin/billing/holds", icon: "pause_circle" },
+        { label: "Billing Health", href: "/admin/billing/health", icon: "health_and_safety" },
+
+        // Legacy Section
+        { label: "─────────────", href: "#", icon: "" },
+        { label: "Legacy Plans (RO)", href: "/admin/billing/legacy", icon: "diamond" },
+        { label: "Legacy Payments", href: "/adminpayments", icon: "history" },
+
+        { label: "─────────────", href: "#", icon: "" },
         { label: "Data", href: "/admin/data", icon: "table_view" },
         { label: "System Config", href: "/admin/system-config", icon: "tune" },
-        // Billing Admin Section
-        { label: "─────────────", href: "#", icon: "" },
-        { label: "Billing Flags", href: "/admin/billing/flags", icon: "toggle_on" },
-        { label: "Credit Programs", href: "/admin/billing/programs", icon: "card_giftcard" },
-        { label: "Holds", href: "/admin/billing/holds", icon: "pause_circle" },
-        { label: "Refunds", href: "/admin/billing/refunds", icon: "currency_exchange" },
-        { label: "Health", href: "/admin/billing/health", icon: "monitor_heart" },
-        { label: "Ledger", href: "/admin/billing/ledger", icon: "menu_book" },
-        { label: "Invoices", href: "/admin/billing/invoices", icon: "receipt" },
     ];
 
 

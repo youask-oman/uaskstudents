@@ -147,6 +147,24 @@ export default function WhatsAppMonitorPage() {
                     >
                         {streaming ? "Stop Live" : "Start Live"}
                     </button>
+                    <button
+                        onClick={async () => {
+                            if (!confirm("Are you sure you want to clear the WhatsApp event monitor?")) return;
+                            const token = localStorage.getItem("token");
+                            const res = await fetch("/api/v1/admin/whatsapp/all", {
+                                method: "DELETE",
+                                headers: { Authorization: `Bearer ${token}` }
+                            });
+                            if (res.ok) {
+                                fetchData();
+                            } else {
+                                alert("Failed to clear monitor data.");
+                            }
+                        }}
+                        className="px-4 py-2 rounded bg-rose-500 hover:bg-rose-600 text-white text-sm font-bold transition-all"
+                    >
+                        Clear Monitor
+                    </button>
                 </div>
             </div>
 

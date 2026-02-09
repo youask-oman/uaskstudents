@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import Link from 'next/link';
 
 interface Refund {
     id: number;
@@ -9,28 +10,31 @@ interface Refund {
     user_email: string;
     credits: number;
     reason_code: string;
-    source_attempt_id: string | null;
-    expires_at: string | null;
+    expires_at: string;
     created_at: string;
 }
 
-export default function RefundsPage() {
+export default function RefundCenterPage() {
     const { token } = useAuth();
     const [refunds, setRefunds] = useState<Refund[]>([]);
     const [loading, setLoading] = useState(true);
-    const [showCreate, setShowCreate] = useState(false);
-    const [creating, setCreating] = useState(false);
+    const [isSuper, setIsSuper] = useState(false);
 
-    // Create form state
-    const [userId, setUserId] = useState('');
+    // Form state
+    const [showForm, setShowForm] = useState(false);
+    const [targetUser, setTargetUser] = useState('');
     const [credits, setCredits] = useState('');
-    const [reasonCode, setReasonCode] = useState('SERVICE_ISSUE');
     const [reason, setReason] = useState('');
+    const [reasonCode, setReasonCode] = useState('SERVICE_ISSUE');
 
     const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
 
     useEffect(() => {
         fetchRefunds();
+        const storedRole = typeof window !== 'undefined' ? localStorage.getItem('user_role') : '';
+        if (storedRole === 'system_admin' || storedRole === 'superadmin') {
+            setIsSuper(true);
+        }
     }, []);
 
     const fetchRefunds = async () => {
@@ -49,165 +53,174 @@ export default function RefundsPage() {
         }
     };
 
-    const createRefund = async () => {
-        if (!userId || !credits || !reason) {
-            alert('All fields are required');
-            return;
-        }
-
-        setCreating(true);
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
         try {
             const res = await fetch(`${API_BASE}/admin/billing/refunds`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    user_id: parseInt(userId),
+                    user_id: parseInt(targetUser),
                     credits: parseFloat(credits),
                     reason_code: reasonCode,
-                    reason,
-                }),
+                    reason: reason,
+                })
             });
             if (res.ok) {
-                setShowCreate(false);
-                setUserId('');
+                setShowForm(false);
+                setTargetUser('');
                 setCredits('');
                 setReason('');
                 fetchRefunds();
+                alert('Refund issued successfully');
             } else {
-                const data = await res.json();
-                alert(data.detail || 'Failed to create refund');
+                const err = await res.json();
+                alert(err.detail || 'Failed to issue refund');
             }
         } catch (e) {
-            alert('Error creating refund');
-        } finally {
-            setCreating(false);
+            alert('Error issuing refund');
         }
     };
 
     if (loading) {
-        return <div className="p-8">Loading...</div>;
+        return (
+            <div className="p-8 flex items-center justify-center min-h-screen">
+                <div className="animate-pulse flex flex-col items-center gap-4">
+                    <div className="size-12 bg-rose-500/20 rounded-full border-4 border-t-rose-500 animate-spin"></div>
+                    <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Accessing Refund Logs...</p>
+                </div>
+            </div>
+        );
     }
 
     return (
-        <div className="p-8 max-w-6xl">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold">💸 Refund Center</h1>
-                <button
-                    onClick={() => setShowCreate(!showCreate)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-                >
-                    {showCreate ? 'Cancel' : '+ Create Refund'}
-                </button>
-            </div>
+        <div className="p-8 max-w-7xl mx-auto space-y-10">
+            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                        <div className="size-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-500 border border-rose-500/20 shadow-xl">
+                            <span className="material-symbols-outlined text-2xl">undo</span>
+                        </div>
+                        <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight italic">Refund Center</h1>
+                    </div>
+                    <p className="text-sm font-medium text-slate-500 max-w-2xl">
+                        Issue credit adjustments and investigate service refunds. Note that credits issued here typically have a shorter expiry than purchased packs.
+                    </p>
+                </div>
+                {isSuper && (
+                    <button
+                        onClick={() => setShowForm(!showForm)}
+                        className="flex items-center gap-2 px-6 py-3 bg-rose-500 hover:bg-rose-600 text-white text-sm font-bold rounded-2xl shadow-xl shadow-rose-500/25 transition-all"
+                    >
+                        <span className="material-symbols-outlined text-[20px]">{showForm ? 'close' : 'add'}</span>
+                        {showForm ? 'Cancel' : 'Issue Refund'}
+                    </button>
+                )}
+            </header>
 
-            {/* Create Form */}
-            {showCreate && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                    <h2 className="font-bold mb-4">Create Refund</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium mb-1">User ID</label>
+            {showForm && (
+                <div className="bg-white dark:bg-[#111827] border border-rose-500/20 p-8 rounded-[2.5rem] shadow-3xl animate-in slide-in-from-top duration-300">
+                    <h3 className="text-xl font-black text-slate-900 dark:text-white mb-6 italic">Issue New Credit Refund</h3>
+                    <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Target User ID</label>
                             <input
+                                required
                                 type="number"
-                                value={userId}
-                                onChange={(e) => setUserId(e.target.value)}
-                                className="w-full border rounded px-3 py-2"
+                                value={targetUser}
+                                onChange={(e) => setTargetUser(e.target.value)}
+                                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-3 text-sm focus:ring-2 focus:ring-rose-500 outline-none"
+                                placeholder="e.g. 1234"
                             />
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-1">Credits</label>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Credit Amount</label>
                             <input
+                                required
                                 type="number"
-                                step="0.01"
+                                step="any"
                                 value={credits}
                                 onChange={(e) => setCredits(e.target.value)}
-                                className="w-full border rounded px-3 py-2"
+                                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-3 text-sm focus:ring-2 focus:ring-rose-500 outline-none"
+                                placeholder="e.g. 500"
                             />
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-1">Reason Code</label>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Reason Code</label>
                             <select
                                 value={reasonCode}
                                 onChange={(e) => setReasonCode(e.target.value)}
-                                className="w-full border rounded px-3 py-2"
+                                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-3 text-sm focus:ring-2 focus:ring-rose-500 outline-none"
                             >
                                 <option value="SERVICE_ISSUE">Service Issue</option>
                                 <option value="PAYMENT_REVERSAL">Payment Reversal</option>
                                 <option value="ADMIN_ADJUSTMENT">Admin Adjustment</option>
                             </select>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-1">Reason</label>
-                            <input
-                                type="text"
+                        <div className="md:col-span-3 space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Reason Description (Visible to User)</label>
+                            <textarea
+                                required
                                 value={reason}
                                 onChange={(e) => setReason(e.target.value)}
-                                className="w-full border rounded px-3 py-2"
-                                placeholder="Why is this refund being issued?"
+                                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-3 text-sm focus:ring-2 focus:ring-rose-500 outline-none min-h-[100px]"
+                                placeholder="Explain why this refund is being issued..."
                             />
                         </div>
-                    </div>
-                    <button
-                        onClick={createRefund}
-                        disabled={creating}
-                        className="mt-4 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
-                    >
-                        {creating ? 'Creating...' : 'Create Refund'}
-                    </button>
+                        <div className="md:col-span-3 flex justify-end">
+                            <button type="submit" className="px-10 py-4 bg-rose-500 text-white font-black rounded-2xl shadow-xl shadow-rose-500/30 hover:bg-rose-600 transition-all uppercase tracking-widest text-xs">
+                                Confirm & Post Refund
+                            </button>
+                        </div>
+                    </form>
                 </div>
             )}
 
-            {/* Refunds Table */}
-            <div className="bg-white border rounded-lg overflow-hidden">
-                <table className="w-full text-sm">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-4 py-3 text-left">ID</th>
-                            <th className="px-4 py-3 text-left">User</th>
-                            <th className="px-4 py-3 text-left">Credits</th>
-                            <th className="px-4 py-3 text-left">Reason Code</th>
-                            <th className="px-4 py-3 text-left">Source</th>
-                            <th className="px-4 py-3 text-left">Expires</th>
-                            <th className="px-4 py-3 text-left">Created</th>
+            <div className="bg-white dark:bg-[#111827]/50 backdrop-blur-3xl border border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-3xl overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                            <th className="px-8 py-5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Refund ID</th>
+                            <th className="px-8 py-5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Recipient</th>
+                            <th className="px-8 py-5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Amount</th>
+                            <th className="px-8 py-5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Reason</th>
+                            <th className="px-8 py-5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Timestamp</th>
+                            <th className="px-8 py-5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Expiry</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {refunds.map((r) => (
-                            <tr key={r.id} className="border-t hover:bg-gray-50">
-                                <td className="px-4 py-3 font-mono">{r.id}</td>
-                                <td className="px-4 py-3">
-                                    <div>{r.user_email}</div>
-                                    <div className="text-xs text-gray-400">ID: {r.user_id}</div>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {refunds.map((refund) => (
+                            <tr key={refund.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                <td className="px-8 py-6">
+                                    <span className="text-xs font-mono font-black text-rose-500">REF-{refund.id.toString().padStart(6, '0')}</span>
                                 </td>
-                                <td className="px-4 py-3 font-medium text-green-600">
-                                    +{r.credits.toFixed(2)}
+                                <td className="px-8 py-6">
+                                    <Link href={`/admin/users/${refund.user_id}`} className="flex flex-col gap-0.5 group/link">
+                                        <span className="text-sm font-bold text-slate-900 dark:text-white group-hover/link:text-rose-500 transition-colors">{refund.user_email}</span>
+                                        <span className="text-[10px] font-medium text-slate-400">UID: #{refund.user_id}</span>
+                                    </Link>
                                 </td>
-                                <td className="px-4 py-3">
-                                    <span className="px-2 py-1 bg-gray-100 rounded text-xs">
-                                        {r.reason_code}
+                                <td className="px-8 py-6">
+                                    <span className="text-sm font-black text-rose-600 italic">+{refund.credits.toFixed(0)} CR</span>
+                                </td>
+                                <td className="px-8 py-6">
+                                    <span className="px-2 py-0.5 rounded-lg bg-rose-500/10 text-rose-500 text-[10px] font-black uppercase tracking-widest border border-rose-500/20">
+                                        {refund.reason_code}
                                     </span>
                                 </td>
-                                <td className="px-4 py-3 font-mono text-xs">
-                                    {r.source_attempt_id?.slice(0, 8) || '-'}
+                                <td className="px-8 py-6 text-xs font-medium text-slate-500 tabular-nums lowercase italic">
+                                    {new Date(refund.created_at).toLocaleDateString()}
                                 </td>
-                                <td className="px-4 py-3 text-gray-500">
-                                    {r.expires_at ? new Date(r.expires_at).toLocaleDateString() : '-'}
-                                </td>
-                                <td className="px-4 py-3 text-gray-500">
-                                    {new Date(r.created_at).toLocaleDateString()}
+                                <td className="px-8 py-6">
+                                    <span className="text-xs font-bold text-slate-400 italic">
+                                        {refund.expires_at ? new Date(refund.expires_at).toLocaleDateString() : 'NO EXPIRY'}
+                                    </span>
                                 </td>
                             </tr>
                         ))}
-                        {refunds.length === 0 && (
-                            <tr>
-                                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                                    No refunds found
-                                </td>
-                            </tr>
-                        )}
                     </tbody>
                 </table>
             </div>

@@ -133,6 +133,25 @@ export default function AdminSolverAttemptsPage() {
         >
           Refresh
         </button>
+        <button
+          type="button"
+          className="rounded-lg bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 text-sm font-semibold"
+          onClick={async () => {
+            if (!confirm("Are you sure you want to PERMANENTLY delete ALL solver attempts?")) return;
+            const token = localStorage.getItem("token");
+            const res = await fetch(`${DEFAULT_API_BASE_URL}/api/v1/admin/solver-attempts/all`, {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+              fetchRows();
+            } else {
+              alert("Failed to clear attempts.");
+            }
+          }}
+        >
+          Clear All
+        </button>
         <span className="text-xs text-slate-500">{filtered.length} rows</span>
       </div>
 
@@ -194,28 +213,28 @@ export default function AdminSolverAttemptsPage() {
           ) : (
             <>
               <pre className="text-[11px] whitespace-pre-wrap break-words rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-3 max-h-[200px] overflow-y-auto">
-{JSON.stringify(
-  {
-    id: selected.id,
-    request_id: selected.request_id,
-    user_id: selected.user_id,
-    provider: selected.provider,
-    model: selected.model,
-    prompt_id: selected.prompt_id,
-    prompt_version: selected.prompt_version,
-    attempt_number: selected.attempt_number,
-    status: selected.status,
-    char_count: selected.char_count,
-    latency_ms: selected.latency_ms,
-    archive_path: selected.archive_path,
-    created_at: selected.created_at,
-    extracted_answer: selected.extracted_answer,
-    error_message: selected.error_message,
-    validation_json: selected.validation_json,
-  },
-  null,
-  2
-)}
+                {JSON.stringify(
+                  {
+                    id: selected.id,
+                    request_id: selected.request_id,
+                    user_id: selected.user_id,
+                    provider: selected.provider,
+                    model: selected.model,
+                    prompt_id: selected.prompt_id,
+                    prompt_version: selected.prompt_version,
+                    attempt_number: selected.attempt_number,
+                    status: selected.status,
+                    char_count: selected.char_count,
+                    latency_ms: selected.latency_ms,
+                    archive_path: selected.archive_path,
+                    created_at: selected.created_at,
+                    extracted_answer: selected.extracted_answer,
+                    error_message: selected.error_message,
+                    validation_json: selected.validation_json,
+                  },
+                  null,
+                  2
+                )}
               </pre>
               <textarea
                 readOnly

@@ -265,12 +265,34 @@ export default function AdminSubscriptionsPage() {
                                     </div>
                                 </div>
 
-                                <button
-                                    onClick={() => handleEditClick(plan)}
-                                    className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm font-medium transition-colors"
-                                >
-                                    Edit Configuration
-                                </button>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => handleEditClick(plan)}
+                                        className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm font-medium transition-colors"
+                                    >
+                                        Edit
+                                    </button>
+                                    <button
+                                        onClick={async () => {
+                                            if (!confirm(`Are you sure you want to delete the plan "${plan.name}"? This cannot be undone.`)) return;
+                                            const token = localStorage.getItem("token");
+                                            const res = await fetch(`http://localhost:8000/api/v1/admin/plans/${plan.id}`, {
+                                                method: "DELETE",
+                                                headers: { Authorization: `Bearer ${token}` }
+                                            });
+                                            if (res.ok) {
+                                                fetchPlans();
+                                            } else {
+                                                const err = await res.json();
+                                                alert(err.detail || "Failed to delete plan.");
+                                            }
+                                        }}
+                                        className="px-3 py-2 border border-rose-500/30 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
+                                        title="Delete Plan"
+                                    >
+                                        <span className="material-symbols-outlined text-[20px]">delete</span>
+                                    </button>
+                                </div>
                             </div>
                         ))}
                     </div>

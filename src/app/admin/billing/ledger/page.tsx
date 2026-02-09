@@ -2,32 +2,28 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import Link from 'next/link';
 
 interface LedgerEntry {
     id: number;
     user_id: number;
     user_email: string;
     action_type: string;
-    request_id: string;
+    request_id: string | null;
     status: string;
-    credits_charged: number | null;
-    credits_before: number | null;
-    credits_after: number | null;
-    provider_cost_usd: number | null;
+    credits_charged: number;
+    credits_before: number;
+    credits_after: number;
     tier: string | null;
     created_at: string;
 }
 
-export default function LedgerPage() {
+export default function LedgerExplorerPage() {
     const { token } = useAuth();
     const [entries, setEntries] = useState<LedgerEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [total, setTotal] = useState(0);
-
-    // Filters
-    const [userId, setUserId] = useState('');
-    const [requestId, setRequestId] = useState('');
-    const [status, setStatus] = useState('');
+    const [filterUser, setFilterUser] = useState('');
 
     const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
 
@@ -35,16 +31,14 @@ export default function LedgerPage() {
         fetchLedger();
     }, []);
 
-    const fetchLedger = async () => {
+    const fetchLedger = async (userId?: string) => {
         setLoading(true);
         try {
-            const params = new URLSearchParams();
-            params.append('limit', '50');
-            if (userId) params.append('user_id', userId);
-            if (requestId) params.append('request_id', requestId);
-            if (status) params.append('status', status);
+            const url = userId
+                ? `${API_BASE}/admin/billing/ledger?user_id=${userId}&limit=50`
+                : `${API_BASE}/admin/billing/ledger?limit=50`;
 
-            const res = await fetch(`${API_BASE}/admin/billing/ledger?${params}`, {
+            const res = await fetch(url, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {
@@ -59,130 +53,119 @@ export default function LedgerPage() {
         }
     };
 
-    const applyFilters = () => {
-        fetchLedger();
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        fetchLedger(filterUser);
     };
 
-    return (
-        <div className="p-8 max-w-7xl">
-            <h1 className="text-2xl font-bold mb-6">📒 Ledger Explorer</h1>
-
-            {/* Filters */}
-            <div className="bg-gray-50 border rounded-lg p-4 mb-6">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium mb-1">User ID</label>
-                        <input
-                            type="number"
-                            value={userId}
-                            onChange={(e) => setUserId(e.target.value)}
-                            className="w-full border rounded px-3 py-2"
-                            placeholder="e.g., 123"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Request ID</label>
-                        <input
-                            type="text"
-                            value={requestId}
-                            onChange={(e) => setRequestId(e.target.value)}
-                            className="w-full border rounded px-3 py-2"
-                            placeholder="e.g., abc123..."
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Status</label>
-                        <select
-                            value={status}
-                            onChange={(e) => setStatus(e.target.value)}
-                            className="w-full border rounded px-3 py-2"
-                        >
-                            <option value="">All</option>
-                            <option value="CHARGED">Charged</option>
-                            <option value="VOIDED">Voided</option>
-                            <option value="PENDING">Pending</option>
-                            <option value="ERROR">Error</option>
-                        </select>
-                    </div>
-                    <div className="flex items-end">
-                        <button
-                            onClick={applyFilters}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-                        >
-                            Search
-                        </button>
-                    </div>
+    if (loading && entries.length === 0) {
+        return (
+            <div className="p-8 flex items-center justify-center min-h-screen">
+                <div className="animate-pulse flex flex-col items-center gap-4">
+                    <div className="size-12 bg-admin-primary/20 rounded-full border-4 border-t-admin-primary animate-spin"></div>
+                    <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Scanning Ledger...</p>
                 </div>
             </div>
+        );
+    }
 
-            {/* Ledger Table */}
-            <div className="bg-white border rounded-lg overflow-x-auto">
-                <table className="w-full text-sm">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-4 py-3 text-left">ID</th>
-                            <th className="px-4 py-3 text-left">User</th>
-                            <th className="px-4 py-3 text-left">Action</th>
-                            <th className="px-4 py-3 text-left">Status</th>
-                            <th className="px-4 py-3 text-left">Credits</th>
-                            <th className="px-4 py-3 text-left">Before</th>
-                            <th className="px-4 py-3 text-left">After</th>
-                            <th className="px-4 py-3 text-left">Cost (USD)</th>
-                            <th className="px-4 py-3 text-left">Time</th>
+    return (
+        <div className="p-8 max-w-7xl mx-auto space-y-10">
+            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                        <div className="size-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500 border border-indigo-500/20 shadow-xl">
+                            <span className="material-symbols-outlined text-2xl">database</span>
+                        </div>
+                        <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight italic">Ledger Explorer</h1>
+                    </div>
+                    <p className="text-sm font-medium text-slate-500 max-w-2xl">
+                        A real-time, tamper-proof record of every credit transaction in the system. Monitor consumption patterns and investigate discrepancies.
+                    </p>
+                </div>
+                <form onSubmit={handleSearch} className="flex gap-2">
+                    <input
+                        type="text"
+                        placeholder="User ID..."
+                        value={filterUser}
+                        onChange={(e) => setFilterUser(e.target.value)}
+                        className="bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                    />
+                    <button type="submit" className="px-6 py-3 bg-indigo-500 text-white font-bold rounded-2xl shadow-xl shadow-indigo-500/20">
+                        Filter
+                    </button>
+                    {filterUser && (
+                        <button
+                            type="button"
+                            onClick={() => { setFilterUser(''); fetchLedger(); }}
+                            className="px-4 py-3 bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold rounded-2xl"
+                        >
+                            Clear
+                        </button>
+                    )}
+                </form>
+            </header>
+
+            <div className="bg-white dark:bg-[#111827]/50 backdrop-blur-3xl border border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-3xl overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                            <th className="px-8 py-5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Transaction</th>
+                            <th className="px-8 py-5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">User</th>
+                            <th className="px-8 py-5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Delta</th>
+                            <th className="px-8 py-5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Balance Trail</th>
+                            <th className="px-8 py-5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Status</th>
+                            <th className="px-8 py-5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Timestamp</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {entries.map((e) => (
-                            <tr key={e.id} className="border-t hover:bg-gray-50">
-                                <td className="px-4 py-3 font-mono">{e.id}</td>
-                                <td className="px-4 py-3">
-                                    <div className="text-xs">{e.user_email}</div>
-                                    <div className="text-xs text-gray-400">#{e.user_id}</div>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {entries.map((entry) => (
+                            <tr key={entry.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                <td className="px-8 py-6">
+                                    <div className="flex flex-col gap-1">
+                                        <span className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-tight">{entry.action_type.replace(/_/g, ' ')}</span>
+                                        <span className="text-[10px] font-mono text-slate-400">#E-{entry.id}</span>
+                                    </div>
                                 </td>
-                                <td className="px-4 py-3">{e.action_type}</td>
-                                <td className="px-4 py-3">
-                                    <span
-                                        className={`px-2 py-1 rounded text-xs ${e.status === 'CHARGED'
-                                                ? 'bg-green-100 text-green-700'
-                                                : e.status === 'ERROR'
-                                                    ? 'bg-red-100 text-red-700'
-                                                    : 'bg-gray-100 text-gray-700'
-                                            }`}
-                                    >
-                                        {e.status}
+                                <td className="px-8 py-6">
+                                    <Link href={`/admin/users/${entry.user_id}`} className="text-sm font-semibold text-slate-500 hover:text-indigo-500 transition-colors">
+                                        {entry.user_email || `User #${entry.user_id}`}
+                                    </Link>
+                                </td>
+                                <td className="px-8 py-6">
+                                    <span className={`text-sm font-black italic ${entry.credits_charged > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                        {entry.credits_charged > 0 ? '-' : '+'}{Math.abs(entry.credits_charged).toFixed(2)}
                                     </span>
                                 </td>
-                                <td className="px-4 py-3 font-medium">
-                                    {e.credits_charged?.toFixed(2) || '-'}
+                                <td className="px-8 py-6">
+                                    <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
+                                        <span>{entry.credits_before.toFixed(2)}</span>
+                                        <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                                        <span className="text-slate-900 dark:text-slate-200">{entry.credits_after.toFixed(2)}</span>
+                                    </div>
                                 </td>
-                                <td className="px-4 py-3 text-gray-500">
-                                    {e.credits_before?.toFixed(2) || '-'}
+                                <td className="px-8 py-6">
+                                    <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10px] font-black uppercase tracking-widest border border-slate-200 dark:border-slate-700">
+                                        {entry.status}
+                                    </span>
                                 </td>
-                                <td className="px-4 py-3 text-gray-500">
-                                    {e.credits_after?.toFixed(2) || '-'}
-                                </td>
-                                <td className="px-4 py-3 text-gray-500">
-                                    ${e.provider_cost_usd?.toFixed(4) || '-'}
-                                </td>
-                                <td className="px-4 py-3 text-gray-500 text-xs">
-                                    {new Date(e.created_at).toLocaleString()}
+                                <td className="px-8 py-6 text-xs font-medium text-slate-500 tabular-nums">
+                                    {new Date(entry.created_at).toLocaleString()}
                                 </td>
                             </tr>
                         ))}
-                        {entries.length === 0 && !loading && (
-                            <tr>
-                                <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
-                                    No ledger entries found
-                                </td>
-                            </tr>
-                        )}
                     </tbody>
                 </table>
             </div>
 
-            <div className="mt-4 text-sm text-gray-500">
-                Showing {entries.length} of {total} entries
-            </div>
+            <footer className="flex justify-between items-center px-4">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest italic leading-none">
+                    Ledger entries are strictly append-only and immutable. Viewing {entries.length} of {total} records.
+                </p>
+                <div className="flex gap-2">
+                    {/* Pagination */}
+                </div>
+            </footer>
         </div>
     );
 }

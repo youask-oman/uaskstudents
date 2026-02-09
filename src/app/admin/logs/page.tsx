@@ -98,9 +98,31 @@ export default function AdminLogsPage() {
 
     return (
         <div className="p-8 max-w-[1400px] mx-auto w-full flex flex-col gap-6">
-            <header className="flex flex-col gap-2">
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Solve Request Logs</h2>
-                <p className="text-sm text-slate-400">Full trace log for each request, including OpenAI payload metadata.</p>
+            <header className="flex items-center justify-between">
+                <div className="flex flex-col gap-2">
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">Solve Request Logs</h2>
+                    <p className="text-sm text-slate-400">Full trace log for each request, including OpenAI payload metadata.</p>
+                </div>
+                <button
+                    onClick={async () => {
+                        if (!confirm("Are you sure you want to PERMANENTLY delete ALL solve traces/logs?")) return;
+                        const token = localStorage.getItem("token");
+                        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+                        const res = await fetch(`${baseUrl}/api/v1/admin/logs/all`, {
+                            method: "DELETE",
+                            headers: { Authorization: `Bearer ${token}` }
+                        });
+                        if (res.ok) {
+                            window.location.reload();
+                        } else {
+                            alert("Failed to clear logs.");
+                        }
+                    }}
+                    className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-sm font-bold shadow-lg shadow-rose-500/20 transition-all flex items-center gap-2"
+                >
+                    <span className="material-symbols-outlined text-[18px]">delete_sweep</span>
+                    Clear All Logs
+                </button>
             </header>
             <div className="flex items-center gap-3">
                 <input
@@ -117,29 +139,29 @@ export default function AdminLogsPage() {
                         {filteredTraces.length === 0 && (
                             <div className="p-6 text-slate-500 text-sm italic">No trace logs available.</div>
                         )}
-                                {filteredTraces.map((entry, index) => (
-                                    <button
-                                        key={entry.request_id || index}
-                                        onClick={() => setSelectedTrace(entry)}
-                                        className="w-full text-left px-6 py-4 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"
-                                    >
-                                        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
-                                            <span className="font-mono text-slate-700 dark:text-slate-200">{entry.request_id?.slice(0, 10) || "unknown"}</span>
-                                            <span>User {entry.user_id ?? "n/a"}</span>
-                                            <span>{entry.ui_goal || "solve"} / {entry.ui_style || "minimal"}</span>
-                                            <span>{entry.schema_name || "schema"}</span>
-                                            <span>{entry.input_tokens ?? 0}/{entry.output_tokens ?? 0} tok</span>
-                                            <span className={entry.deduct_committed ? "text-emerald-400" : "text-rose-400"}>
-                                                {entry.deduct_committed ? "debited" : "no debit"}
-                                            </span>
-                                        </div>
-                                        {entry.problem_text && (
-                                            <p className="mt-2 text-[11px] text-slate-500 line-clamp-2">
-                                                {entry.problem_text}
-                                            </p>
-                                        )}
-                                    </button>
-                                ))}
+                        {filteredTraces.map((entry, index) => (
+                            <button
+                                key={entry.request_id || index}
+                                onClick={() => setSelectedTrace(entry)}
+                                className="w-full text-left px-6 py-4 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"
+                            >
+                                <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
+                                    <span className="font-mono text-slate-700 dark:text-slate-200">{entry.request_id?.slice(0, 10) || "unknown"}</span>
+                                    <span>User {entry.user_id ?? "n/a"}</span>
+                                    <span>{entry.ui_goal || "solve"} / {entry.ui_style || "minimal"}</span>
+                                    <span>{entry.schema_name || "schema"}</span>
+                                    <span>{entry.input_tokens ?? 0}/{entry.output_tokens ?? 0} tok</span>
+                                    <span className={entry.deduct_committed ? "text-emerald-400" : "text-rose-400"}>
+                                        {entry.deduct_committed ? "debited" : "no debit"}
+                                    </span>
+                                </div>
+                                {entry.problem_text && (
+                                    <p className="mt-2 text-[11px] text-slate-500 line-clamp-2">
+                                        {entry.problem_text}
+                                    </p>
+                                )}
+                            </button>
+                        ))}
                     </div>
                 </section>
                 <section className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 flex flex-col gap-4">

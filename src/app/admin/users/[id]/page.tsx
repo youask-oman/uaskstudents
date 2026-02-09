@@ -31,6 +31,7 @@ interface UserDetail {
     quota_scans_total: number;
     questions_used: number;
     scans_used: number;
+    credits_balance: number;
     notes: AdminNote[];
 }
 
@@ -72,6 +73,8 @@ interface FullUserData {
     saved_solutions: GenericRecord[];
     request_events: GenericRecord[];
     device_signup_logs: GenericRecord[];
+    credit_lots: GenericRecord[];
+    enrollments: GenericRecord[];
 }
 
 const formatDateTime = (value: unknown) => {
@@ -553,7 +556,7 @@ export default function UserDetailPage() {
                     </div>
 
                     <nav className="flex items-center gap-8">
-                        {["Profile Detail", "Session Logs", "Billing & Plan", "Security & Privacy", "Full Data"].map((tab) => (
+                        {["Profile Detail", "Session Logs", "Wallet & Programs", "Security & Privacy", "Full Data"].map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
@@ -1124,61 +1127,75 @@ export default function UserDetailPage() {
                         </div>
                     )}
 
-                    {activeTab === "Billing & Plan" && (
+                    {activeTab === "Wallet & Programs" && (
                         <div className="flex flex-col gap-6">
                             <section className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xl">
                                 <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                                     <div>
-                                        <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400 mb-1">Plan Summary</p>
+                                        <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400 mb-1">Wallet Summary</p>
                                         <h4 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-                                            {formatPlanName(user.plan_name, user.plan_slug, user.subscription_tier)}
+                                            {Number(user.credits_balance || 0).toFixed(2)} Credits
                                         </h4>
                                         <p className="text-xs uppercase tracking-[0.5em] text-slate-500">
-                                            {user.plan_slug ? user.plan_slug.replace(/_/g, " ").toUpperCase() : user.subscription_tier.toUpperCase()}
+                                            Current Usable Balance
                                         </p>
                                     </div>
                                     <div className="flex flex-col items-start md:items-end gap-2">
-                                        <span className="text-[10px] uppercase tracking-[0.4em] text-slate-500">Status</span>
+                                        <span className="text-[10px] uppercase tracking-[0.4em] text-slate-500">Tier Status</span>
                                         <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-700">
-                                            {user.subscription_status.toUpperCase()}
+                                            {user.subscription_tier.toUpperCase()}
                                         </span>
                                     </div>
                                 </div>
                                 <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                     <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
-                                        <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Monthly Price</p>
-                                        <p className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrencyFromCents(user.plan_price_monthly_cents)}</p>
+                                        <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Active Lots</p>
+                                        <p className="text-lg font-bold text-slate-900 dark:text-white">{(fullData?.credit_lots || []).filter(l => l.status === 'ACTIVE').length}</p>
                                     </div>
                                     <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
-                                        <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Credits / mo</p>
-                                        <p className="text-lg font-bold text-slate-900 dark:text-white">{formatCreditsLabel(user.plan_credits_per_month)}</p>
+                                        <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Total Enrollment</p>
+                                        <p className="text-lg font-bold text-slate-900 dark:text-white">{fullData?.enrollments?.length || 0}</p>
                                     </div>
                                     <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
-                                        <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Plan ID</p>
-                                        <p className="text-lg font-bold text-slate-900 dark:text-white">{user.plan_id ?? "n/a"}</p>
+                                        <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Plan (Legacy)</p>
+                                        <p className="text-lg font-bold text-slate-900 dark:text-white">{user.plan_slug ?? "none"}</p>
                                     </div>
                                     <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
-                                        <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Subscription ID</p>
-                                        <p className="text-lg font-bold text-slate-900 dark:text-white">{user.subscription_id ?? "n/a"}</p>
+                                        <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">User ID</p>
+                                        <p className="text-lg font-bold text-slate-900 dark:text-white">#{user.id}</p>
                                     </div>
                                 </div>
                             </section>
+
+                            <DataTable
+                                title="Credit Lots (Wallet Batches)"
+                                rows={fullData?.credit_lots || []}
+                                columns={[
+                                    { key: "id", label: "ID" },
+                                    { key: "lot_type", label: "Type" },
+                                    { key: "credits_remaining", label: "Remaining", render: (v) => Number(v).toFixed(2) },
+                                    { key: "credits_total", label: "Total", render: (v) => Number(v).toFixed(2) },
+                                    { key: "expires_at", label: "Expires", render: (v) => v ? new Date(v as string).toLocaleDateString() : 'Never' },
+                                    { key: "status", label: "Status" },
+                                    { key: "source", label: "Source" }
+                                ]}
+                            />
+
+                            <DataTable
+                                title="Program Enrollments"
+                                rows={fullData?.enrollments || []}
+                                columns={[
+                                    { key: "id", label: "ID" },
+                                    { key: "program_id", label: "Program ID" },
+                                    { key: "status", label: "Status" },
+                                    { key: "started_at", label: "Started", render: (v) => formatDateTime(v) },
+                                    { key: "last_grant_month", label: "Last Grant" }
+                                ]}
+                            />
+
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                <FieldGrid title="Subscription Fields" data={fullData?.subscription} />
-                                <FieldGrid title="Plan Fields" data={fullData?.plan} />
                                 <DataTable
-                                    title="Payments"
-                                    rows={payments}
-                                    columns={[
-                                        { key: "created_at", label: "Date", render: (value) => formatDateTime(value) },
-                                        { key: "amount", label: "Amount" },
-                                        { key: "currency", label: "Currency" },
-                                        { key: "status", label: "Status" },
-                                        { key: "transaction_id", label: "Transaction" }
-                                    ]}
-                                />
-                                <DataTable
-                                    title="Ledger Entries"
+                                    title="Recent Ledger"
                                     rows={fullData?.usage_ledger || []}
                                     columns={[
                                         { key: "created_at", label: "Date", render: (value) => formatDateTime(value) },
@@ -1186,6 +1203,17 @@ export default function UserDetailPage() {
                                         { key: "amount", label: "Amount" },
                                         { key: "balance_after", label: "Balance" },
                                         { key: "reference_id", label: "Reference" }
+                                    ]}
+                                />
+                                <DataTable
+                                    title="Recent Payments"
+                                    rows={payments}
+                                    columns={[
+                                        { key: "created_at", label: "Date", render: (value) => formatDateTime(value) },
+                                        { key: "amount", label: "Amount" },
+                                        { key: "currency", label: "Currency" },
+                                        { key: "status", label: "Status" },
+                                        { key: "transaction_id", label: "Transaction" }
                                     ]}
                                 />
                             </div>

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Request, Form, Body
 from fastapi.responses import StreamingResponse, JSONResponse
 from sqlmodel import Session, SQLModel, select
-from sqlalchemy import text as sql_text, or_
+from sqlalchemy import text as sql_text, or_, func
 from typing import List, Optional, Dict, Any, Tuple
 from pydantic import BaseModel, Field
 import uuid
@@ -7829,6 +7829,19 @@ async def admin_get_user_full(
         voice_confirmations = db.exec(select(VoiceConfirmation).where(VoiceConfirmation.artifact_id.in_(voice_artifact_ids)).limit(voice_limit)).all()
 
     saved_solutions = db.exec(select(UserSavedSolution).where(UserSavedSolution.user_id == user_id)).all()
+    
+    # Phase 3: Add new credit-based billing models
+    credit_lots = db.exec(
+        select(CreditLot)
+        .where(CreditLot.user_id == user_id)
+        .order_by(CreditLot.created_at.desc())
+    ).all()
+    
+    enrollments = db.exec(
+        select(CreditProgramEnrollment)
+        .where(CreditProgramEnrollment.user_id == user_id)
+        .order_by(CreditProgramEnrollment.created_at.desc())
+    ).all()
 
     return {
         "user": _sqlmodel_to_dict(user),
@@ -7857,7 +7870,9 @@ async def admin_get_user_full(
         "voice_jobs": _sqlmodel_list(voice_jobs),
         "voice_artifacts": _sqlmodel_list(voice_artifacts),
         "voice_confirmations": _sqlmodel_list(voice_confirmations),
-        "saved_solutions": _sqlmodel_list(saved_solutions)
+        "saved_solutions": _sqlmodel_list(saved_solutions),
+        "credit_lots": _sqlmodel_list(credit_lots),
+        "enrollments": _sqlmodel_list(enrollments)
     }
 
 @api_router.patch("/admin/users/{user_id}")
@@ -7974,10 +7989,27 @@ async def admin_ban_user(user_id: int, banned: bool = True, db: Session = Depend
 
 @api_router.delete("/admin/users/{user_id}")
 async def admin_delete_user(user_id: int, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
-    """Admin only: Permanently delete a user and their associated data (cascaded)"""
+    """Admin only: Permanently delete a user and their associated data (cascaded manual)"""
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    # Manual cascade for problematic tables to avoid IntegrityErrors
+    # Many relationships should ideally be cascade=delete but for now manual is safer for high-traffic tables.
+    db.execute(sql_text("DELETE FROM usagelog WHERE user_id = :uid"), {"uid": user_id})
+    db.execute(sql_text("DELETE FROM chatsession WHERE user_id = :uid"), {"uid": user_id})
+    db.execute(sql_text("DELETE FROM creditlotconsumption WHERE user_id = :uid"), {"uid": user_id})
+    db.execute(sql_text("DELETE FROM creditprogramgrantlog WHERE user_id = :uid"), {"uid": user_id})
+    db.execute(sql_text("DELETE FROM creditprogramenrollment WHERE user_id = :uid"), {"uid": user_id})
+    db.execute(sql_text("DELETE FROM reconciliationrecord WHERE user_id = :uid"), {"uid": user_id})
+    db.execute(sql_text("DELETE FROM creditlot WHERE user_id = :uid"), {"uid": user_id})
+    db.execute(sql_text("DELETE FROM billingledger WHERE user_id = :uid"), {"uid": user_id})
+    db.execute(sql_text("DELETE FROM ocrjob WHERE user_id = :uid"), {"uid": user_id})
+    db.execute(sql_text("DELETE FROM voicesession WHERE user_id = :uid"), {"uid": user_id})
+    db.execute(sql_text("DELETE FROM solvesession WHERE user_id = :uid"), {"uid": user_id})
+    db.execute(sql_text("DELETE FROM userquotaoverride WHERE user_id = :uid"), {"uid": user_id})
+    db.execute(sql_text("DELETE FROM devicesignuplog WHERE user_id = :uid"), {"uid": user_id})
+    db.execute(sql_text("DELETE FROM subscription WHERE user_id = :uid"), {"uid": user_id})
     
     db.delete(user)
     db.commit()
@@ -9256,6 +9288,44 @@ async def list_plans(session: Session = Depends(get_session)):
     return session.exec(select(Plan)).all()
 
 @api_router.post('/admin/plans')
+async def admin_save_plan(plan: Plan, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
+    if plan.id == 0:
+        plan.id = None
+        db.add(plan)
+    else:
+        existing = db.get(Plan, plan.id)
+        if existing:
+            for key, value in plan.dict(exclude={"id"}).items():
+                setattr(existing, key, value)
+            db.add(existing)
+        else:
+            db.add(plan)
+    db.commit()
+    db.refresh(plan)
+    return plan
+
+@api_router.delete("/admin/plans/{plan_id}")
+async def admin_delete_plan(plan_id: int, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
+    """Delete a plan if it's not and has never been used by any users."""
+    plan = db.get(Plan, plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    
+    # Check current assignments
+    usage_count = db.exec(select(func.count(User.id)).where(User.subscription_tier == plan.slug)).one()
+    if usage_count > 0:
+        raise HTTPException(status_code=400, detail=f"Cannot delete plan: {usage_count} users are currently assigned to this tier.")
+    
+    # Check historical or active subscription records
+    sub_usage = db.exec(select(func.count(Subscription.id)).where(Subscription.plan_id == plan_id)).one()
+    if sub_usage > 0:
+        raise HTTPException(status_code=400, detail=f"Cannot delete plan: {sub_usage} active/past subscriptions are linked to it.")
+
+    db.delete(plan)
+    db.commit()
+    return {"status": "ok"}
+
+@api_router.post('/admin/plans')
 async def create_or_update_plan(plan_data: PlanCreate, session: Session = Depends(get_session)):
     # Check if slug exists
     existing = session.exec(select(Plan).where(Plan.slug == plan_data.slug)).first()
@@ -9723,6 +9793,30 @@ async def whatsapp_diag(request: Request):
         "whatsapp_ocr_enabled": os.getenv("WHATSAPP_OCR_ENABLED", "false"),
         "whatsapp_solver_v3_enabled": os.getenv("WHATSAPP_SOLVER_V3_ENABLED", "false"),
     }
+
+@api_router.delete("/admin/logs/all")
+async def admin_clear_logs(db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
+    """Truncate the main trace/event logs for performance reset."""
+    db.execute(sql_text("TRUNCATE TABLE requestevent CASCADE;"))
+    db.execute(sql_text("TRUNCATE TABLE usagelog CASCADE;"))
+    db.commit()
+    return {"status": "ok"}
+
+@api_router.delete("/admin/solver-attempts/all")
+async def admin_clear_solver_attempts(db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
+    """Clear all solver output attempts."""
+    db.execute(sql_text("TRUNCATE TABLE solveroutputattempt CASCADE;"))
+    db.commit()
+    return {"status": "ok"}
+
+@api_router.delete("/admin/whatsapp/all")
+async def admin_clear_whatsapp_monitor(admin: User = Depends(get_admin_user)):
+    """Clear the persistent WhatsApp event list in Redis."""
+    try:
+        get_redis().delete("whatsapp:events")
+        return {"status": "ok"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to clear Redis: {str(e)}")
 
 @api_router.get("/admin/whatsapp/monitor")
 async def whatsapp_monitor(request: Request, limit: int = 50, phone: Optional[str] = None, direction: Optional[str] = None):
