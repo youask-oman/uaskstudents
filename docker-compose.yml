@@ -48,6 +48,7 @@ services:
       - ./static_design:/static_design:ro
       - ./backend/data:/app/data:ro
       - ./backend:/app
+      - .:/src:ro
 
   worker:
     image: uask-worker:prod

@@ -2,181 +2,181 @@
   {
     "description": "Allow selection of gpt-5 and gpt-5-nano in addition to gpt-5-mini",
     "key": "ALLOW_ADVANCED_MODELS",
-    "updated_at": "2026-02-09T22:24:40.582544+00:00",
+    "updated_at": "2026-02-09T22:47:28.908799+00:00",
     "value": "false"
   },
   {
     "description": "Enable billing v2 stack.",
     "key": "billing_v2_enabled",
-    "updated_at": "2026-02-09T22:24:40.584350+00:00",
+    "updated_at": "2026-02-09T22:47:28.911129+00:00",
     "value": "true"
   },
   {
     "description": "Percent of traffic routed to billing v2.",
     "key": "billing_v2_rollout_percent",
-    "updated_at": "2026-02-09T22:24:40.585286+00:00",
+    "updated_at": "2026-02-09T22:47:28.912237+00:00",
     "value": "100"
   },
   {
     "description": "Enable credit program based subscriptions.",
     "key": "credit_programs_enabled",
-    "updated_at": "2026-02-09T22:24:40.586368+00:00",
+    "updated_at": "2026-02-09T22:47:28.913364+00:00",
     "value": "true"
   },
   {
     "description": "Nightly reconciliation auto-fix toggle.",
     "key": "reconciliation_autofix_enabled",
-    "updated_at": "2026-02-09T22:24:40.587240+00:00",
+    "updated_at": "2026-02-09T22:47:28.914165+00:00",
     "value": "false"
   },
   {
     "description": "Enable v2 refund APIs.",
     "key": "refund_v2_enabled",
-    "updated_at": "2026-02-09T22:24:40.588031+00:00",
+    "updated_at": "2026-02-09T22:47:28.915204+00:00",
     "value": "true"
   },
   {
     "description": null,
     "key": "text_input_max",
-    "updated_at": "2026-02-09T22:24:40.588669+00:00",
+    "updated_at": "2026-02-09T22:47:28.916317+00:00",
     "value": "8000"
   },
   {
     "description": "Max tokens for OCR image extraction",
     "key": "tokens.ocr_image.extract_max",
-    "updated_at": "2026-02-09T22:24:40.589324+00:00",
+    "updated_at": "2026-02-09T22:47:28.917395+00:00",
     "value": "2200"
   },
   {
     "description": "Max input tokens for OCR image solve",
     "key": "tokens.ocr_image.input_max",
-    "updated_at": "2026-02-09T22:24:40.590417+00:00",
+    "updated_at": "2026-02-09T22:47:28.918468+00:00",
     "value": "1600"
   },
   {
     "description": "Input overhead tokens for OCR image solve",
     "key": "tokens.ocr_image.input_overhead",
-    "updated_at": "2026-02-09T22:24:40.591244+00:00",
+    "updated_at": "2026-02-09T22:47:28.919750+00:00",
     "value": "500"
   },
   {
     "description": "Max tokens for OCR PDF extraction",
     "key": "tokens.ocr_pdf.extract_max",
-    "updated_at": "2026-02-09T22:24:40.592046+00:00",
+    "updated_at": "2026-02-09T22:47:28.920892+00:00",
     "value": "4200"
   },
   {
     "description": "Max input tokens for OCR PDF solve",
     "key": "tokens.ocr_pdf.input_max",
-    "updated_at": "2026-02-09T22:24:40.592753+00:00",
+    "updated_at": "2026-02-09T22:47:28.922131+00:00",
     "value": "2400"
   },
   {
     "description": "Input overhead tokens for OCR PDF solve",
     "key": "tokens.ocr_pdf.input_overhead",
-    "updated_at": "2026-02-09T22:24:40.593538+00:00",
+    "updated_at": "2026-02-09T22:47:28.923220+00:00",
     "value": "500"
   },
   {
     "description": "Max output tokens for OCR v5",
     "key": "tokens.ocr_v5.output_max",
-    "updated_at": "2026-02-09T22:24:40.594309+00:00",
+    "updated_at": "2026-02-09T22:47:28.924484+00:00",
     "value": "4200"
   },
   {
     "description": "Expected output tokens for request fit",
     "key": "tokens.request.expected_output_budget",
-    "updated_at": "2026-02-09T22:24:40.594950+00:00",
+    "updated_at": "2026-02-09T22:47:28.925439+00:00",
     "value": "2200"
   },
   {
     "description": "Estimated system+schema tokens",
     "key": "tokens.request.system_and_schema_budget",
-    "updated_at": "2026-02-09T22:24:40.595780+00:00",
+    "updated_at": "2026-02-09T22:47:28.926497+00:00",
     "value": "2800"
   },
   {
     "description": "Max input tokens for text solve",
     "key": "tokens.text.input_max",
-    "updated_at": "2026-02-09T22:24:40.596756+00:00",
+    "updated_at": "2026-02-09T22:47:28.927551+00:00",
     "value": "4200"
   },
   {
     "description": "Max input characters for text solve",
     "key": "tokens.text.input_max_chars",
-    "updated_at": "2026-02-09T22:24:40.597504+00:00",
+    "updated_at": "2026-02-09T22:47:28.928710+00:00",
     "value": "3000"
   },
   {
     "description": "Max output tokens for detailed solve",
     "key": "tokens.text.output_max_detailed_solve",
-    "updated_at": "2026-02-09T22:24:40.598192+00:00",
+    "updated_at": "2026-02-09T22:47:28.929896+00:00",
     "value": "8000"
   },
   {
     "description": "Max output tokens for detailed study",
     "key": "tokens.text.output_max_detailed_study",
-    "updated_at": "2026-02-09T22:24:40.598898+00:00",
+    "updated_at": "2026-02-09T22:47:28.930934+00:00",
     "value": "3500"
   },
   {
     "description": "Max output tokens for minimal solve",
     "key": "tokens.text.output_max_minimal_solve",
-    "updated_at": "2026-02-09T22:24:40.599685+00:00",
+    "updated_at": "2026-02-09T22:47:28.931769+00:00",
     "value": "1600"
   },
   {
     "description": "Max output tokens for minimal study",
     "key": "tokens.text.output_max_minimal_study",
-    "updated_at": "2026-02-09T22:24:40.600433+00:00",
+    "updated_at": "2026-02-09T22:47:28.932725+00:00",
     "value": "1900"
   },
   {
     "description": "Retry max output tokens for detailed solve",
     "key": "tokens.text.output_retry_cap_detailed_solve",
-    "updated_at": "2026-02-09T22:24:40.601274+00:00",
+    "updated_at": "2026-02-09T22:47:28.933697+00:00",
     "value": "1800"
   },
   {
     "description": "Retry max output tokens for detailed study",
     "key": "tokens.text.output_retry_cap_detailed_study",
-    "updated_at": "2026-02-09T22:24:40.602043+00:00",
+    "updated_at": "2026-02-09T22:47:28.934703+00:00",
     "value": "2400"
   },
   {
     "description": "Max steps for detailed solve",
     "key": "tokens.text.steps_detailed_solve",
-    "updated_at": "2026-02-09T22:24:40.603026+00:00",
+    "updated_at": "2026-02-09T22:47:28.935590+00:00",
     "value": "9"
   },
   {
     "description": "Max steps for detailed study",
     "key": "tokens.text.steps_detailed_study",
-    "updated_at": "2026-02-09T22:24:40.604014+00:00",
+    "updated_at": "2026-02-09T22:47:28.936415+00:00",
     "value": "13"
   },
   {
     "description": "Max steps for minimal solve",
     "key": "tokens.text.steps_minimal_solve",
-    "updated_at": "2026-02-09T22:24:40.604955+00:00",
+    "updated_at": "2026-02-09T22:47:28.937219+00:00",
     "value": "2"
   },
   {
     "description": "Max steps for minimal study",
     "key": "tokens.text.steps_minimal_study",
-    "updated_at": "2026-02-09T22:24:40.606292+00:00",
+    "updated_at": "2026-02-09T22:47:28.938007+00:00",
     "value": "3"
   },
   {
     "description": "Max input tokens for voice solve",
     "key": "tokens.voice.input_max",
-    "updated_at": "2026-02-09T22:24:40.607613+00:00",
+    "updated_at": "2026-02-09T22:47:28.938691+00:00",
     "value": "1200"
   },
   {
     "description": "Input overhead tokens for voice solve",
     "key": "tokens.voice.input_overhead",
-    "updated_at": "2026-02-09T22:24:40.608777+00:00",
+    "updated_at": "2026-02-09T22:47:28.939405+00:00",
     "value": "180"
   }
 ]

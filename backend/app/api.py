@@ -92,6 +92,7 @@ from app.services.intent import should_require_visual
 
 
 from app.auth import verify_password, create_access_token, Token, get_password_hash
+from app.admin_billing.deps import get_admin_user
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -7615,7 +7616,7 @@ async def admin_list_users(
     offset: int = 0,
     limit: int = 50,
     db: Session = Depends(get_session)
-):
+, admin: User = Depends(get_admin_user)):
     """Admin only: List and filter users"""
     statement = select(User)
     
@@ -7678,7 +7679,7 @@ async def admin_list_users(
     )
 
 @api_router.get("/admin/users/{user_id}", response_model=AdminUserDetailResponse)
-async def admin_get_user_detail(user_id: int, db: Session = Depends(get_session)):
+async def admin_get_user_detail(user_id: int, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     """Admin only: Get full user profile and usage"""
     user = db.get(User, user_id)
     if not user:
@@ -7738,7 +7739,7 @@ async def admin_get_user_full(
     request_limit: int = Query(200, ge=1, le=2000),
     device_limit: int = Query(100, ge=1, le=2000),
     db: Session = Depends(get_session)
-):
+, admin: User = Depends(get_admin_user)):
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -7860,7 +7861,7 @@ async def admin_get_user_full(
     }
 
 @api_router.patch("/admin/users/{user_id}")
-async def admin_update_user(user_id: int, req: AdminUserUpdateRequest, db: Session = Depends(get_session)):
+async def admin_update_user(user_id: int, req: AdminUserUpdateRequest, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     """Admin only: Update user subscription or role"""
     user = db.get(User, user_id)
     if not user:
@@ -7898,7 +7899,7 @@ async def admin_update_user(user_id: int, req: AdminUserUpdateRequest, db: Sessi
     return {"status": "ok"}
 
 @api_router.post("/admin/users/{user_id}/notes")
-async def admin_add_note(user_id: int, req: AdminNoteCreateRequest, db: Session = Depends(get_session)):
+async def admin_add_note(user_id: int, req: AdminNoteCreateRequest, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     """Admin only: Add internal support note"""
     from app.models import AdminNote
     note = AdminNote(
@@ -7911,7 +7912,7 @@ async def admin_add_note(user_id: int, req: AdminNoteCreateRequest, db: Session 
     return {"status": "ok"}
 
 @api_router.post("/admin/invite")
-async def admin_invite_user(req: SignupRequest, db: Session = Depends(get_session)):
+async def admin_invite_user(req: SignupRequest, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     """Admin only: Invite/Create a new user with a temporary password"""
     from app.auth import get_password_hash
     # P2: Password Complexity Check
@@ -7936,7 +7937,7 @@ async def admin_invite_user(req: SignupRequest, db: Session = Depends(get_sessio
     return {"status": "ok", "user_id": new_user.id}
 
 @api_router.post("/admin/users/{user_id}/reset-password")
-async def admin_reset_password(user_id: int, db: Session = Depends(get_session)):
+async def admin_reset_password(user_id: int, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     """Admin only: Reset user password to a default one (e.g., ChangeMe123!)"""
     from app.auth import get_password_hash
     user = db.get(User, user_id)
@@ -7949,7 +7950,7 @@ async def admin_reset_password(user_id: int, db: Session = Depends(get_session))
     return {"status": "ok", "message": "Password reset to default successfully."}
 
 @api_router.post("/admin/users/{user_id}/resend-email")
-async def admin_resend_email(user_id: int, db: Session = Depends(get_session)):
+async def admin_resend_email(user_id: int, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     """Admin only: Resend verification OR welcome email"""
     user = db.get(User, user_id)
     if not user:
@@ -7960,7 +7961,7 @@ async def admin_resend_email(user_id: int, db: Session = Depends(get_session)):
     return {"status": "ok", "message": f"Email queued for {user.email}"}
 
 @api_router.patch("/admin/users/{user_id}/ban")
-async def admin_ban_user(user_id: int, banned: bool = True, db: Session = Depends(get_session)):
+async def admin_ban_user(user_id: int, banned: bool = True, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     """Admin only: Ban or unban a user by setting status to expired/active"""
     user = db.get(User, user_id)
     if not user:
@@ -7972,7 +7973,7 @@ async def admin_ban_user(user_id: int, banned: bool = True, db: Session = Depend
     return {"status": "ok", "banned": banned}
 
 @api_router.delete("/admin/users/{user_id}")
-async def admin_delete_user(user_id: int, db: Session = Depends(get_session)):
+async def admin_delete_user(user_id: int, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     """Admin only: Permanently delete a user and their associated data (cascaded)"""
     user = db.get(User, user_id)
     if not user:
@@ -7983,7 +7984,7 @@ async def admin_delete_user(user_id: int, db: Session = Depends(get_session)):
     return {"status": "ok"}
 
 @api_router.get("/admin/stats/dashboard", response_model=DashboardStatsResponse)
-async def admin_get_dashboard_stats(db: Session = Depends(get_session)):
+async def admin_get_dashboard_stats(db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     """Admin only: Get global KPI metrics"""
     from datetime import timedelta
     now = datetime.utcnow()
@@ -8109,7 +8110,7 @@ async def admin_analytics_overview(
     provider: Optional[str] = Query(None),
     route: Optional[str] = Query(None),
     db: Session = Depends(get_session)
-):
+, admin: User = Depends(get_admin_user)):
     from app.services.admin.analytics_service import get_overview
     filters = {
         "mode": mode,
@@ -8129,7 +8130,7 @@ async def admin_analytics_errors(
     provider: Optional[str] = Query(None),
     route: Optional[str] = Query(None),
     db: Session = Depends(get_session)
-):
+, admin: User = Depends(get_admin_user)):
     from app.services.admin.analytics_service import get_errors
     filters = {
         "mode": mode,
@@ -8148,7 +8149,7 @@ async def admin_analytics_anomalies(
     provider: Optional[str] = Query(None),
     route: Optional[str] = Query(None),
     db: Session = Depends(get_session)
-):
+, admin: User = Depends(get_admin_user)):
     from app.services.admin.analytics_service import get_anomalies
     filters = {
         "mode": mode,
@@ -8231,7 +8232,7 @@ async def admin_list_solver_output_attempts(
     status: Optional[str] = Query(None),
     output_format: Optional[str] = Query(None),
     db: Session = Depends(get_session),
-):
+admin: User = Depends(get_admin_user)):
     query = select(SolverOutputAttempt)
     if request_id:
         query = query.where(SolverOutputAttempt.request_id.contains(request_id.strip()))
@@ -8251,7 +8252,7 @@ async def admin_list_solver_output_attempts(
 async def admin_get_solver_output_attempt(
     attempt_id: int,
     db: Session = Depends(get_session),
-):
+admin: User = Depends(get_admin_user)):
     row = db.get(SolverOutputAttempt, attempt_id)
     if not row:
         raise HTTPException(status_code=404, detail="Solver output attempt not found")
@@ -8261,7 +8262,7 @@ async def admin_get_solver_output_attempt(
 @api_router.get("/admin/solve-traces", response_model=List[SolveTraceEntry])
 async def admin_get_solve_traces(
     limit: int = Query(100, ge=1, le=1000)
-):
+, admin: User = Depends(get_admin_user)):
     from app.services.solve.trace_logger import TRACE_LOG_PATH
     if not TRACE_LOG_PATH.exists():
         return []
@@ -8280,7 +8281,7 @@ async def admin_get_solve_traces(
 
 
 @api_router.get("/admin/db/tables", response_model=List[str])
-async def admin_list_db_tables():
+async def admin_list_db_tables(admin: User = Depends(get_admin_user)):
     return sorted(list(SQLModel.metadata.tables.keys()))
 
 
@@ -8291,7 +8292,7 @@ async def admin_get_db_table(
     offset: int = Query(0, ge=0),
     order: str = Query("desc", pattern="^(asc|desc)$"),
     db: Session = Depends(get_session)
-):
+, admin: User = Depends(get_admin_user)):
     if table_name not in SQLModel.metadata.tables:
         raise HTTPException(status_code=404, detail="Table not found")
     table = SQLModel.metadata.tables[table_name]
@@ -8314,7 +8315,7 @@ async def admin_get_db_table(
         raise HTTPException(status_code=500, detail=f"Failed to read table {table_name}: {exc}")
 
 @api_router.get("/admin/stats/model-routing", response_model=ModelRoutingResponse)
-async def admin_get_model_routing(db: Session = Depends(get_session)):
+async def admin_get_model_routing(db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     """Admin only: Get model distribution data"""
     series = [
         ModelRoutingSeries(day="Mon", volume=12000),
@@ -8334,7 +8335,7 @@ async def admin_get_model_routing(db: Session = Depends(get_session)):
     )
 
 @api_router.get("/admin/quotas", response_model=AdminQuotaListResponse)
-async def admin_get_quotas(db: Session = Depends(get_session)):
+async def admin_get_quotas(db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     """Admin only: List users and their usage for quota management"""
     from datetime import timedelta
     now = datetime.utcnow()
@@ -8427,7 +8428,7 @@ async def admin_get_quotas(db: Session = Depends(get_session)):
     )
 
 @api_router.post("/admin/quotas/override")
-async def admin_apply_quota_override(req: QuotaOverrideRequest, db: Session = Depends(get_session)):
+async def admin_apply_quota_override(req: QuotaOverrideRequest, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     """Admin only: Apply a manual quota override for a specific user"""
     from datetime import timedelta
     
@@ -8458,14 +8459,14 @@ async def admin_apply_quota_override(req: QuotaOverrideRequest, db: Session = De
 
 
 @api_router.get("/admin/system-config", response_model=List[SystemConfigEntry])
-async def admin_list_system_config(session: Session = Depends(get_session)):
+async def admin_list_system_config(session: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     """Admin only: fetch the entire system configuration table."""
     rows = session.exec(select(SystemConfig)).all()
     return [SystemConfigEntry(key=row.key, value=row.value, description=row.description) for row in rows]
 
 
 @api_router.post("/admin/system-config")
-async def admin_update_system_config(req: SystemConfigUpdateRequest, session: Session = Depends(get_session)):
+async def admin_update_system_config(req: SystemConfigUpdateRequest, session: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     """Admin only: persist updated system configuration entries."""
     updated = 0
     for entry in req.entries:
@@ -8482,7 +8483,7 @@ async def admin_update_system_config(req: SystemConfigUpdateRequest, session: Se
     return {"ok": True, "updated": updated}
 
 @api_router.get("/admin/users/{user_id}/activity", response_model=List[AdminActivityItem])
-async def admin_get_user_activity(user_id: int, db: Session = Depends(get_session)):
+async def admin_get_user_activity(user_id: int, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     """Admin only: Get recent activity events for a user"""
     from app.models import ChatSession, OCRJob
     
@@ -8520,7 +8521,7 @@ async def admin_get_user_question_history(
     user_id: int,
     limit: int = Query(200, ge=1, le=2000),
     db: Session = Depends(get_session)
-):
+, admin: User = Depends(get_admin_user)):
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -8607,19 +8608,19 @@ async def admin_get_user_question_history(
     return response_items
 
 @api_router.get("/admin/prompts")
-async def admin_get_prompts_removed():
+async def admin_get_prompts_removed(admin: User = Depends(get_admin_user)):
     raise HTTPException(status_code=410, detail=LEGACY_PROMPT_TABLES_REMOVED_DETAIL)
 
 @api_router.get("/admin/prompts/{template_id}/versions")
-async def admin_get_prompt_versions_removed(template_id: int):
+async def admin_get_prompt_versions_removed(template_id: int, admin: User = Depends(get_admin_user)):
     raise HTTPException(status_code=410, detail=LEGACY_PROMPT_TABLES_REMOVED_DETAIL)
 
 @api_router.post("/admin/prompts/{template_id}/save")
-async def admin_save_prompt_removed(template_id: int):
+async def admin_save_prompt_removed(template_id: int, admin: User = Depends(get_admin_user)):
     raise HTTPException(status_code=410, detail=LEGACY_PROMPT_TABLES_REMOVED_DETAIL)
 
 @api_router.post("/admin/prompts/versions/{version_id}/deploy")
-async def admin_deploy_prompt_removed(version_id: int):
+async def admin_deploy_prompt_removed(version_id: int, admin: User = Depends(get_admin_user)):
     raise HTTPException(status_code=410, detail=LEGACY_PROMPT_TABLES_REMOVED_DETAIL)
 
 # --- Prompt Registry (DB-backed) ---
@@ -8761,7 +8762,7 @@ def _parse_role(value: str) -> PromptRoleEnum:
 async def admin_list_prompt_registry_prompts(
     include_inactive: bool = Query(False),
     db: Session = Depends(get_session),
-):
+admin: User = Depends(get_admin_user)):
     if not include_inactive:
         rows = db.exec(
             select(PromptTemplateEntry)
@@ -8799,7 +8800,7 @@ async def admin_list_prompt_registry_prompts(
     ]
 
 @api_router.get("/admin/prompt-registry/prompts/{prompt_id}/versions", response_model=List[RegistryPromptItem])
-async def admin_list_prompt_registry_versions(prompt_id: str, db: Session = Depends(get_session)):
+async def admin_list_prompt_registry_versions(prompt_id: str, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     rows = prompt_registry_service.get_prompt_versions(db, prompt_id)
     return [
         RegistryPromptItem(
@@ -8817,7 +8818,7 @@ async def admin_list_prompt_registry_versions(prompt_id: str, db: Session = Depe
     ]
 
 @api_router.post("/admin/prompt-registry/prompts/{prompt_id}/update", response_model=RegistryPromptItem)
-async def admin_update_prompt_registry_prompt(prompt_id: str, req: PromptRegistryUpdateRequest, db: Session = Depends(get_session)):
+async def admin_update_prompt_registry_prompt(prompt_id: str, req: PromptRegistryUpdateRequest, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     entry = prompt_registry_service.update_prompt(
         session=db,
         prompt_id=prompt_id,
@@ -8840,7 +8841,7 @@ async def admin_update_prompt_registry_prompt(prompt_id: str, req: PromptRegistr
     )
 
 @api_router.post("/admin/prompt-registry/prompts/{prompt_id}/rollback", response_model=RegistryPromptItem)
-async def admin_rollback_prompt_registry_prompt(prompt_id: str, req: RegistryRollbackRequest, db: Session = Depends(get_session)):
+async def admin_rollback_prompt_registry_prompt(prompt_id: str, req: RegistryRollbackRequest, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     entry = prompt_registry_service.rollback_prompt(db, prompt_id, req.version, req.updated_by)
     return RegistryPromptItem(
         prompt_id=entry.prompt_id,
@@ -8859,7 +8860,7 @@ async def admin_delete_prompt_registry_prompt(
     prompt_id: str,
     updated_by: Optional[str] = Query(None),
     db: Session = Depends(get_session),
-):
+admin: User = Depends(get_admin_user)):
     try:
         result = prompt_registry_service.delete_prompt(
             session=db,
@@ -8881,7 +8882,7 @@ async def admin_delete_prompt_registry_prompt(
 async def admin_list_prompt_registry_schemas(
     include_inactive: bool = Query(False),
     db: Session = Depends(get_session),
-):
+admin: User = Depends(get_admin_user)):
     if not include_inactive:
         rows = db.exec(
             select(JsonSchemaEntry)
@@ -8916,7 +8917,7 @@ async def admin_list_prompt_registry_schemas(
     ]
 
 @api_router.get("/admin/prompt-registry/schemas/{schema_id}/versions", response_model=List[RegistrySchemaItem])
-async def admin_list_prompt_registry_schema_versions(schema_id: str, db: Session = Depends(get_session)):
+async def admin_list_prompt_registry_schema_versions(schema_id: str, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     rows = prompt_registry_service.get_schema_versions(db, schema_id)
     return [
         RegistrySchemaItem(
@@ -8931,7 +8932,7 @@ async def admin_list_prompt_registry_schema_versions(schema_id: str, db: Session
     ]
 
 @api_router.post("/admin/prompt-registry/schemas/{schema_id}/update", response_model=RegistrySchemaItem)
-async def admin_update_prompt_registry_schema(schema_id: str, req: SchemaRegistryUpdateRequest, db: Session = Depends(get_session)):
+async def admin_update_prompt_registry_schema(schema_id: str, req: SchemaRegistryUpdateRequest, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     error = prompt_registry_service.validate_schema(req.content)
     if error:
         raise HTTPException(status_code=400, detail=f"Invalid schema: {error}")
@@ -8946,7 +8947,7 @@ async def admin_update_prompt_registry_schema(schema_id: str, req: SchemaRegistr
     )
 
 @api_router.post("/admin/prompt-registry/schemas/{schema_id}/rollback", response_model=RegistrySchemaItem)
-async def admin_rollback_prompt_registry_schema(schema_id: str, req: RegistryRollbackRequest, db: Session = Depends(get_session)):
+async def admin_rollback_prompt_registry_schema(schema_id: str, req: RegistryRollbackRequest, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     entry = prompt_registry_service.rollback_schema(db, schema_id, req.version, req.updated_by)
     return RegistrySchemaItem(
         schema_id=entry.schema_id,
@@ -8962,7 +8963,7 @@ async def admin_delete_prompt_registry_schema(
     schema_id: str,
     updated_by: Optional[str] = Query(None),
     db: Session = Depends(get_session),
-):
+admin: User = Depends(get_admin_user)):
     try:
         result = prompt_registry_service.delete_schema(
             session=db,
@@ -8981,7 +8982,7 @@ async def admin_delete_prompt_registry_schema(
     )
 
 @api_router.get("/admin/prompt-registry/bindings", response_model=List[RegistryBindingItem])
-async def admin_list_prompt_registry_bindings(db: Session = Depends(get_session)):
+async def admin_list_prompt_registry_bindings(db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     rows = db.exec(select(PromptBinding).order_by(PromptBinding.updated_at.desc())).all()
     return [
         RegistryBindingItem(
@@ -9014,7 +9015,7 @@ async def admin_list_prompt_registry_bindings(db: Session = Depends(get_session)
     ]
 
 @api_router.get("/admin/prompt-registry/audit", response_model=RegistryBindingAuditReport)
-async def admin_prompt_registry_audit(db: Session = Depends(get_session)):
+async def admin_prompt_registry_audit(db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     report = prompt_registry_service.audit_active_bindings(db)
     return RegistryBindingAuditReport(
         ok=report.get("ok", False),
@@ -9024,7 +9025,7 @@ async def admin_prompt_registry_audit(db: Session = Depends(get_session)):
     )
 
 @api_router.post("/admin/prompt-registry/bindings/activate", response_model=RegistryBindingItem)
-async def admin_activate_prompt_registry_binding(req: BindingActivateRequest, db: Session = Depends(get_session)):
+async def admin_activate_prompt_registry_binding(req: BindingActivateRequest, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     entry = prompt_registry_service.activate_binding(
         session=db,
         tier=_parse_tier(req.tier),
@@ -9077,7 +9078,7 @@ async def admin_activate_prompt_registry_binding(req: BindingActivateRequest, db
     )
 
 @api_router.delete("/admin/prompt-registry/bindings/{binding_id}", response_model=BindingRegistryDeleteResponse)
-async def admin_delete_prompt_registry_binding(binding_id: str, db: Session = Depends(get_session)):
+async def admin_delete_prompt_registry_binding(binding_id: str, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     row = db.get(PromptBinding, binding_id)
     if not row:
         raise HTTPException(status_code=404, detail="Binding not found.")
@@ -9086,7 +9087,7 @@ async def admin_delete_prompt_registry_binding(binding_id: str, db: Session = De
     return BindingRegistryDeleteResponse(status="ok", binding_id=binding_id)
 
 @api_router.post("/admin/prompt-registry/test")
-async def admin_prompt_registry_test(req: PromptRegistryTestRequest, db: Session = Depends(get_session)):
+async def admin_prompt_registry_test(req: PromptRegistryTestRequest, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     try:
         result = await mode_execution_service.run(
             session=db,
@@ -9105,7 +9106,7 @@ async def admin_prompt_registry_test(req: PromptRegistryTestRequest, db: Session
 
 
 @api_router.post("/admin/llm/circuit-breaker/reset")
-async def admin_reset_llm_circuit_breaker(provider: str = Query("openai")):
+async def admin_reset_llm_circuit_breaker(provider: str = Query("openai"), admin: User = Depends(get_admin_user)):
     manager = get_llm_manager()
     try:
         result = manager.reset_circuit_breaker(provider)

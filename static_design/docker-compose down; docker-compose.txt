@@ -3,6 +3,8 @@ docker-compose down; docker-compose up -d --build
 taskkill /IM uvicorn.exe /F
 uvicorn app.main:app --port 8000 --log-level debug
 
+docker compose exec -e APP_ENV=DEV orchestrator python scripts/run_admin_smoke_all.py
+
 
 
 npx tsc --noEmit --skipLibCheck 2>&1 | Select-String -Pattern "error" | Select-Object -First 20

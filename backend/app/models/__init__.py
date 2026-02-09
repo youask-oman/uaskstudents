@@ -1036,6 +1036,8 @@ class CreditLot(SQLModel, table=True):
     reason_code: Optional[str] = Field(default=None)
     
     is_active: bool = Field(default=True) # Legacy toggle, use status='ACTIVE' primarily
+    
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class CreditLotConsumption(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

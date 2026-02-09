@@ -1,0 +1,1254 @@
+{
+  "backend_endpoints": [
+    {
+      "path": "/api/v1/admin/prompt-assets",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_prompt_assets_removed",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/plans/{plan_id}/prompt-links",
+      "methods": [
+        "PUT"
+      ],
+      "name": "update_plan_links_removed",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/plans/{plan_id}/prompt-links",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_plan_links_removed",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/promo-codes",
+      "methods": [
+        "POST"
+      ],
+      "name": "create_promo_code",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/users",
+      "methods": [
+        "GET"
+      ],
+      "name": "admin_list_users",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/users/{user_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "admin_get_user_detail",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/users/{user_id}/full",
+      "methods": [
+        "GET"
+      ],
+      "name": "admin_get_user_full",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/users/{user_id}",
+      "methods": [
+        "PATCH"
+      ],
+      "name": "admin_update_user",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/users/{user_id}/notes",
+      "methods": [
+        "POST"
+      ],
+      "name": "admin_add_note",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/invite",
+      "methods": [
+        "POST"
+      ],
+      "name": "admin_invite_user",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/users/{user_id}/reset-password",
+      "methods": [
+        "POST"
+      ],
+      "name": "admin_reset_password",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/users/{user_id}/resend-email",
+      "methods": [
+        "POST"
+      ],
+      "name": "admin_resend_email",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/users/{user_id}/ban",
+      "methods": [
+        "PATCH"
+      ],
+      "name": "admin_ban_user",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/users/{user_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "name": "admin_delete_user",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/stats/dashboard",
+      "methods": [
+        "GET"
+      ],
+      "name": "admin_get_dashboard_stats",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/analytics/overview",
+      "methods": [
+        "GET"
+      ],
+      "name": "admin_analytics_overview",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/analytics/errors",
+      "methods": [
+        "GET"
+      ],
+      "name": "admin_analytics_errors",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/analytics/anomalies",
+      "methods": [
+        "GET"
+      ],
+      "name": "admin_analytics_anomalies",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/solver-output-attempts",
+      "methods": [
+        "GET"
+      ],
+      "name": "admin_list_solver_output_attempts",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/solver-output-attempts/{attempt_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "admin_get_solver_output_attempt",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/solve-traces",
+      "methods": [
+        "GET"
+      ],
+      "name": "admin_get_solve_traces",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/db/tables",
+      "methods": [
+        "GET"
+      ],
+      "name": "admin_list_db_tables",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/db/table/{table_name}",
+      "methods": [
+        "GET"
+      ],
+      "name": "admin_get_db_table",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/stats/model-routing",
+      "methods": [
+        "GET"
+      ],
+      "name": "admin_get_model_routing",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/quotas",
+      "methods": [
+        "GET"
+      ],
+      "name": "admin_get_quotas",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/quotas/override",
+      "methods": [
+        "POST"
+      ],
+      "name": "admin_apply_quota_override",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/system-config",
+      "methods": [
+        "GET"
+      ],
+      "name": "admin_list_system_config",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/system-config",
+      "methods": [
+        "POST"
+      ],
+      "name": "admin_update_system_config",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/users/{user_id}/activity",
+      "methods": [
+        "GET"
+      ],
+      "name": "admin_get_user_activity",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/users/{user_id}/question-history",
+      "methods": [
+        "GET"
+      ],
+      "name": "admin_get_user_question_history",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/prompts",
+      "methods": [
+        "GET"
+      ],
+      "name": "admin_get_prompts_removed",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/prompts/{template_id}/versions",
+      "methods": [
+        "GET"
+      ],
+      "name": "admin_get_prompt_versions_removed",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/prompts/{template_id}/save",
+      "methods": [
+        "POST"
+      ],
+      "name": "admin_save_prompt_removed",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/prompts/versions/{version_id}/deploy",
+      "methods": [
+        "POST"
+      ],
+      "name": "admin_deploy_prompt_removed",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/prompt-registry/prompts",
+      "methods": [
+        "GET"
+      ],
+      "name": "admin_list_prompt_registry_prompts",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/prompt-registry/prompts/{prompt_id}/versions",
+      "methods": [
+        "GET"
+      ],
+      "name": "admin_list_prompt_registry_versions",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/prompt-registry/prompts/{prompt_id}/update",
+      "methods": [
+        "POST"
+      ],
+      "name": "admin_update_prompt_registry_prompt",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/prompt-registry/prompts/{prompt_id}/rollback",
+      "methods": [
+        "POST"
+      ],
+      "name": "admin_rollback_prompt_registry_prompt",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/prompt-registry/prompts/{prompt_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "name": "admin_delete_prompt_registry_prompt",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/prompt-registry/schemas",
+      "methods": [
+        "GET"
+      ],
+      "name": "admin_list_prompt_registry_schemas",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/prompt-registry/schemas/{schema_id}/versions",
+      "methods": [
+        "GET"
+      ],
+      "name": "admin_list_prompt_registry_schema_versions",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/prompt-registry/schemas/{schema_id}/update",
+      "methods": [
+        "POST"
+      ],
+      "name": "admin_update_prompt_registry_schema",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/prompt-registry/schemas/{schema_id}/rollback",
+      "methods": [
+        "POST"
+      ],
+      "name": "admin_rollback_prompt_registry_schema",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/prompt-registry/schemas/{schema_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "name": "admin_delete_prompt_registry_schema",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/prompt-registry/bindings",
+      "methods": [
+        "GET"
+      ],
+      "name": "admin_list_prompt_registry_bindings",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/prompt-registry/audit",
+      "methods": [
+        "GET"
+      ],
+      "name": "admin_prompt_registry_audit",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/prompt-registry/bindings/activate",
+      "methods": [
+        "POST"
+      ],
+      "name": "admin_activate_prompt_registry_binding",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/prompt-registry/bindings/{binding_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "name": "admin_delete_prompt_registry_binding",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/prompt-registry/test",
+      "methods": [
+        "POST"
+      ],
+      "name": "admin_prompt_registry_test",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/llm/circuit-breaker/reset",
+      "methods": [
+        "POST"
+      ],
+      "name": "admin_reset_llm_circuit_breaker",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/users/online",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_online_users",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/plans",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_plans",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/plans",
+      "methods": [
+        "POST"
+      ],
+      "name": "create_or_update_plan",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/users/me/subscription",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_my_subscription_v2",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/subscriptions/stripe/checkout",
+      "methods": [
+        "POST"
+      ],
+      "name": "create_subscription_stripe_checkout",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/plans-with-prompts",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_plans_with_prompts",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/whatsapp/status",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_whatsapp_status",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/whatsapp/initialize",
+      "methods": [
+        "POST"
+      ],
+      "name": "initialize_whatsapp_bot",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/whatsapp/disconnect",
+      "methods": [
+        "POST"
+      ],
+      "name": "disconnect_whatsapp_bot",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/whatsapp/ocr-state",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_whatsapp_ocr_state",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/whatsapp/diag",
+      "methods": [
+        "GET"
+      ],
+      "name": "whatsapp_diag",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/whatsapp/monitor",
+      "methods": [
+        "GET"
+      ],
+      "name": "whatsapp_monitor",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/whatsapp/monitor/export",
+      "methods": [
+        "GET"
+      ],
+      "name": "whatsapp_monitor_export",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/admin/whatsapp/monitor/stream",
+      "methods": [
+        "GET"
+      ],
+      "name": "whatsapp_monitor_stream",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/attempt/{attempt_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_attempt_status",
+      "tags": []
+    },
+    {
+      "path": "/api/v1/attempt/{attempt_id}/events",
+      "methods": [
+        "GET"
+      ],
+      "name": "stream_attempt_events",
+      "tags": []
+    },
+    {
+      "path": "/api/admin/calculator",
+      "methods": [
+        "POST"
+      ],
+      "name": "calculate_transaction",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "path": "/api/admin/diagnostics/credits",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_user_credit_diagnostics",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "path": "/api/admin/credits/seed",
+      "methods": [
+        "POST"
+      ],
+      "name": "seed_user_credits",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "path": "/api/admin/diagnostics/transactions/{target_user_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_user_transactions",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "path": "/api/admin/transactions",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_transactions",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "path": "/api/admin/config/revert",
+      "methods": [
+        "POST"
+      ],
+      "name": "revert_config",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "path": "/api/admin/config/history/{config_type}",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_config_history",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "path": "/api/admin/config/{config_type}",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_config",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "path": "/api/admin/config/{config_type}",
+      "methods": [
+        "PUT"
+      ],
+      "name": "update_config",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "path": "/api/admin/payments/overview",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_payments_overview",
+      "tags": [
+        "admin-payments"
+      ]
+    },
+    {
+      "path": "/api/admin/payments/topups",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_topups",
+      "tags": [
+        "admin-payments"
+      ]
+    },
+    {
+      "path": "/api/admin/payments/lots",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_lots",
+      "tags": [
+        "admin-payments"
+      ]
+    },
+    {
+      "path": "/api/admin/payments/consumption/{request_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_consumption_drilldown",
+      "tags": [
+        "admin-payments"
+      ]
+    },
+    {
+      "path": "/api/admin/payments/requests",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_requests",
+      "tags": [
+        "admin-payments"
+      ]
+    },
+    {
+      "path": "/api/admin/payments/pricing",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_pricing_config",
+      "tags": [
+        "admin-payments"
+      ]
+    },
+    {
+      "path": "/api/admin/payments/pricing",
+      "methods": [
+        "POST"
+      ],
+      "name": "add_pricing_config",
+      "tags": [
+        "admin-payments"
+      ]
+    },
+    {
+      "path": "/api/admin/payments/subscriptions",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_subscriptions",
+      "tags": [
+        "admin-payments"
+      ]
+    },
+    {
+      "path": "/api/admin/payments/subscriptions/{sub_id}/periods",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_subscription_periods",
+      "tags": [
+        "admin-payments"
+      ]
+    },
+    {
+      "path": "/api/admin/payments/stripe/events",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_stripe_events",
+      "tags": [
+        "admin-payments"
+      ]
+    },
+    {
+      "path": "/api/admin/payments/stripe/events/{event_id}/replay",
+      "methods": [
+        "POST"
+      ],
+      "name": "replay_stripe_event",
+      "tags": [
+        "admin-payments"
+      ]
+    },
+    {
+      "path": "/api/admin/payments/stripe/reconciliation",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_reconciliation_errors",
+      "tags": [
+        "admin-payments"
+      ]
+    },
+    {
+      "path": "/api/admin/payments/details/{payment_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_payment_detail",
+      "tags": [
+        "admin-payments"
+      ]
+    },
+    {
+      "path": "/api/admin/payments/subscriptions/{sub_id}/billing",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_subscription_billing_detail",
+      "tags": [
+        "admin-payments"
+      ]
+    },
+    {
+      "path": "/api/admin/payments/invoices",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_invoices",
+      "tags": [
+        "admin-payments"
+      ]
+    },
+    {
+      "path": "/api/admin/payments/invoices/{invoice_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_invoice_detail",
+      "tags": [
+        "admin-payments"
+      ]
+    },
+    {
+      "path": "/api/admin/payments/invoices/{invoice_id}/html",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_invoice_html",
+      "tags": [
+        "admin-payments"
+      ]
+    },
+    {
+      "path": "/api/admin/payments/config",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_payments_config",
+      "tags": [
+        "admin-payments-config"
+      ]
+    },
+    {
+      "path": "/api/admin/payments/config",
+      "methods": [
+        "PUT"
+      ],
+      "name": "update_payments_config",
+      "tags": [
+        "admin-payments-config"
+      ]
+    },
+    {
+      "path": "/api/admin/payments/pricing",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_provider_pricing",
+      "tags": [
+        "admin-payments-config"
+      ]
+    },
+    {
+      "path": "/api/admin/payments/pricing",
+      "methods": [
+        "POST"
+      ],
+      "name": "create_provider_pricing",
+      "tags": [
+        "admin-payments-config"
+      ]
+    },
+    {
+      "path": "/api/admin/payments/pricing/{pricing_id}",
+      "methods": [
+        "PUT"
+      ],
+      "name": "update_provider_pricing",
+      "tags": [
+        "admin-payments-config"
+      ]
+    },
+    {
+      "path": "/api/admin/payments/pricing/{pricing_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "name": "retire_provider_pricing",
+      "tags": [
+        "admin-payments-config"
+      ]
+    },
+    {
+      "path": "/api/admin/health/db",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_db_health",
+      "tags": [
+        "admin-health"
+      ]
+    },
+    {
+      "path": "/api/admin/health/findings",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_findings",
+      "tags": [
+        "admin-health"
+      ]
+    },
+    {
+      "path": "/api/admin/health/findings/{finding_id}/resolve",
+      "methods": [
+        "POST"
+      ],
+      "name": "resolve_finding",
+      "tags": [
+        "admin-health"
+      ]
+    },
+    {
+      "path": "/api/admin/health/errors",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_errors",
+      "tags": [
+        "admin-health"
+      ]
+    },
+    {
+      "path": "/api/admin/health/errors/summary",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_error_summary",
+      "tags": [
+        "admin-health"
+      ]
+    },
+    {
+      "path": "/api/admin/health/stripe/failed",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_failed_stripe_events",
+      "tags": [
+        "admin-health"
+      ]
+    },
+    {
+      "path": "/api/admin/health/holds/stuck",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_stuck_holds",
+      "tags": [
+        "admin-health"
+      ]
+    },
+    {
+      "path": "/api/admin/health/reconcile/ledgers",
+      "methods": [
+        "POST"
+      ],
+      "name": "trigger_ledger_reconciliation",
+      "tags": [
+        "admin-health"
+      ]
+    },
+    {
+      "path": "/api/admin/health/reconcile/invoices",
+      "methods": [
+        "POST"
+      ],
+      "name": "trigger_invoice_reconciliation",
+      "tags": [
+        "admin-health"
+      ]
+    },
+    {
+      "path": "/api/admin/health/cleanup/holds",
+      "methods": [
+        "POST"
+      ],
+      "name": "trigger_hold_cleanup",
+      "tags": [
+        "admin-health"
+      ]
+    },
+    {
+      "path": "/admin/billing/flags",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_flags",
+      "tags": [
+        "admin-billing-flags"
+      ]
+    },
+    {
+      "path": "/admin/billing/flags",
+      "methods": [
+        "PUT"
+      ],
+      "name": "update_flags",
+      "tags": [
+        "admin-billing-flags"
+      ]
+    },
+    {
+      "path": "/admin/billing/flags/audit",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_flags_audit",
+      "tags": [
+        "admin-billing-flags"
+      ]
+    },
+    {
+      "path": "/admin/billing/programs",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_programs",
+      "tags": [
+        "admin-billing-programs"
+      ]
+    },
+    {
+      "path": "/admin/billing/programs",
+      "methods": [
+        "POST"
+      ],
+      "name": "create_program",
+      "tags": [
+        "admin-billing-programs"
+      ]
+    },
+    {
+      "path": "/admin/billing/programs/{program_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_program",
+      "tags": [
+        "admin-billing-programs"
+      ]
+    },
+    {
+      "path": "/admin/billing/programs/{program_id}",
+      "methods": [
+        "PUT"
+      ],
+      "name": "update_program",
+      "tags": [
+        "admin-billing-programs"
+      ]
+    },
+    {
+      "path": "/admin/billing/programs/{program_id}/enrollments",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_program_enrollments",
+      "tags": [
+        "admin-billing-programs"
+      ]
+    },
+    {
+      "path": "/admin/billing/users/{user_id}/wallet",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_wallet",
+      "tags": [
+        "admin-billing-wallet"
+      ]
+    },
+    {
+      "path": "/admin/billing/users/{user_id}/lots",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_lots",
+      "tags": [
+        "admin-billing-wallet"
+      ]
+    },
+    {
+      "path": "/admin/billing/users/{user_id}/consumptions",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_consumptions",
+      "tags": [
+        "admin-billing-wallet"
+      ]
+    },
+    {
+      "path": "/admin/billing/users/{user_id}/lots",
+      "methods": [
+        "POST"
+      ],
+      "name": "grant_credits",
+      "tags": [
+        "admin-billing-wallet"
+      ]
+    },
+    {
+      "path": "/admin/billing/users/{user_id}/reconcile",
+      "methods": [
+        "POST"
+      ],
+      "name": "force_reconcile",
+      "tags": [
+        "admin-billing-wallet"
+      ]
+    },
+    {
+      "path": "/admin/billing/holds",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_holds",
+      "tags": [
+        "admin-billing-holds"
+      ]
+    },
+    {
+      "path": "/admin/billing/holds/{hold_id}/release",
+      "methods": [
+        "POST"
+      ],
+      "name": "force_release_hold",
+      "tags": [
+        "admin-billing-holds"
+      ]
+    },
+    {
+      "path": "/admin/billing/holds/stats",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_hold_stats",
+      "tags": [
+        "admin-billing-holds"
+      ]
+    },
+    {
+      "path": "/admin/billing/refunds",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_refunds",
+      "tags": [
+        "admin-billing-refunds"
+      ]
+    },
+    {
+      "path": "/admin/billing/refunds",
+      "methods": [
+        "POST"
+      ],
+      "name": "create_refund",
+      "tags": [
+        "admin-billing-refunds"
+      ]
+    },
+    {
+      "path": "/admin/billing/health",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_health_dashboard",
+      "tags": [
+        "admin-billing-health"
+      ]
+    },
+    {
+      "path": "/admin/billing/health/mismatches",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_mismatches",
+      "tags": [
+        "admin-billing-health"
+      ]
+    },
+    {
+      "path": "/admin/billing/health/run-reconciliation",
+      "methods": [
+        "POST"
+      ],
+      "name": "run_reconciliation",
+      "tags": [
+        "admin-billing-health"
+      ]
+    },
+    {
+      "path": "/admin/billing/health/export",
+      "methods": [
+        "GET"
+      ],
+      "name": "export_mismatches",
+      "tags": [
+        "admin-billing-health"
+      ]
+    },
+    {
+      "path": "/admin/billing/ledger",
+      "methods": [
+        "GET"
+      ],
+      "name": "query_ledger",
+      "tags": [
+        "admin-billing-ledger"
+      ]
+    },
+    {
+      "path": "/admin/billing/ledger/{entry_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_ledger_entry",
+      "tags": [
+        "admin-billing-ledger"
+      ]
+    },
+    {
+      "path": "/admin/billing/invoices",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_invoices",
+      "tags": [
+        "admin-billing-invoices"
+      ]
+    },
+    {
+      "path": "/admin/billing/invoices/{invoice_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_invoice",
+      "tags": [
+        "admin-billing-invoices"
+      ]
+    },
+    {
+      "path": "/admin/billing/invoices/{invoice_id}/pdf",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_invoice_pdf",
+      "tags": [
+        "admin-billing-invoices"
+      ]
+    }
+  ],
+  "ui_pages": [
+    "/admin/billing",
+    "/admin/billing/flags",
+    "/admin/billing/health",
+    "/admin/billing/holds",
+    "/admin/billing/invoices",
+    "/admin/billing/ledger",
+    "/admin/billing/programs",
+    "/admin/billing/programs/enrollments",
+    "/admin/billing/refunds",
+    "/admin/billing/users/[userId]/wallet",
+    "/admin/content",
+    "/admin/dashboard",
+    "/admin/data",
+    "/admin/logs",
+    "/admin/prompt-bindings",
+    "/admin/prompt-registry",
+    "/admin/prompts",
+    "/admin/quotas",
+    "/admin/schema-registry",
+    "/admin/social-logs",
+    "/admin/solver-attempts",
+    "/admin/subscriptions",
+    "/admin/system-config",
+    "/admin/users",
+    "/admin/users/[id]",
+    "/admin/whatsapp-bot",
+    "/admin/whatsapp-monitor",
+    "/adminpayments",
+    "/adminpayments/requests",
+    "/adminpayments/topups"
+  ]
+}
