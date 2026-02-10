@@ -14,7 +14,7 @@ from app.database import get_session
 from app.models import User, BillingLedger
 from app.admin_billing.deps import get_admin_user
 
-router = APIRouter(prefix="/admin/billing/ledger", tags=["admin-billing-ledger"])
+router = APIRouter(prefix="/api/admin/billing/ledger", tags=["admin-billing-ledger"])
 
 
 class LedgerEntryResponse(BaseModel):

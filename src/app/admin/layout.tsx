@@ -108,9 +108,9 @@ export default function AdminLayout({
                         </div>
                     </div>
                     <nav className="flex flex-col gap-1">
-                        {navItems.map((item) => (
+                        {navItems.map((item, index) => (
                             <Link
-                                key={item.href}
+                                key={`${item.href}-${index}`}
                                 href={item.href}
                                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${pathname === item.href
                                     ? "bg-admin-primary text-white shadow-lg shadow-admin-primary/20"

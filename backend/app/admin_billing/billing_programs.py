@@ -19,7 +19,7 @@ from app.models.credit_program_models import (
 from app.admin_billing.deps import get_admin_user, get_superadmin_user
 from app.services.audit_log_service import audit_log_service
 
-router = APIRouter(prefix="/admin/billing/programs", tags=["admin-billing-programs"])
+router = APIRouter(prefix="/api/admin/billing/programs", tags=["admin-billing-programs"])
 
 
 # Request/Response Models
@@ -63,6 +63,25 @@ class UpdateProgramRequest(BaseModel):
     entitlements: Optional[dict] = None
     effective_to: Optional[datetime] = None
     reason: str
+
+
+class EnrollUserRequest(BaseModel):
+    user_id: int
+    program_id: int
+    reason: str
+
+
+class UnenrollUserRequest(BaseModel):
+    user_id: int
+    program_id: int
+    reason: str
+
+
+class DeleteProgramRequest(BaseModel):
+    reason: str
+
+
+
 
 
 class EnrollmentResponse(BaseModel):
@@ -391,3 +410,130 @@ async def list_all_enrollments(
         ))
     
     return PaginatedResponse(items=results, total=total, limit=limit, offset=offset)
+
+
+@router.delete("/{program_id}")
+async def delete_program(
+    program_id: int,
+    body: DeleteProgramRequest,
+    request: Request,
+    admin: User = Depends(get_superadmin_user),
+    session: Session = Depends(get_session),
+):
+    """Soft delete (archive) a credit program."""
+    program = session.get(CreditProgramDefinition, program_id)
+    if not program:
+        raise HTTPException(status_code=404, detail="Program not found")
+    
+    before = {"status": program.status}
+    program.status = "archived"
+    program.updated_at = datetime.utcnow()
+    session.add(program)
+    
+    audit_log_service.log_action(
+        session=session,
+        admin_user_id=admin.id,
+        action="DELETE",
+        entity_type="CREDIT_PROGRAM",
+        entity_id=str(program.id),
+        before_json=before,
+        after_json={"status": "archived"},
+        reason=body.reason,
+        request=request,
+    )
+    
+    session.commit()
+    return {"status": "ok", "message": "Program archived"}
+
+
+@router.post("/enrollments")
+async def enroll_user(
+    body: EnrollUserRequest,
+    request: Request,
+    admin: User = Depends(get_admin_user),
+    session: Session = Depends(get_session),
+):
+    """Enroll a user in a credit program."""
+    # Check user
+    user = session.get(User, body.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Check program
+    program = session.get(CreditProgramDefinition, body.program_id)
+    if not program:
+        raise HTTPException(status_code=404, detail="Program not found")
+    
+    # Check existing active enrollment
+    existing = session.exec(
+        select(CreditProgramEnrollment)
+        .where(CreditProgramEnrollment.user_id == body.user_id)
+        .where(CreditProgramEnrollment.program_id == body.program_id)
+        .where(CreditProgramEnrollment.status == "active")
+    ).first()
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="User is already enrolled in this program")
+    
+    enrollment = CreditProgramEnrollment(
+        user_id=body.user_id,
+        program_id=body.program_id,
+        status="active",
+        started_at=datetime.utcnow(),
+    )
+    session.add(enrollment)
+    session.flush()
+    
+    audit_log_service.log_action(
+        session=session,
+        admin_user_id=admin.id,
+        action="CREATE",
+        entity_type="ENROLLMENT",
+        entity_id=str(enrollment.id),
+        after_json={"user_id": body.user_id, "program_id": body.program_id},
+        reason=body.reason,
+        request=request,
+    )
+    
+    session.commit()
+    return {"status": "ok", "enrollment_id": enrollment.id}
+
+
+@router.post("/enrollments/unenroll")
+async def unenroll_user(
+    body: UnenrollUserRequest,
+    request: Request,
+    admin: User = Depends(get_admin_user),
+    session: Session = Depends(get_session),
+):
+    """Unenroll a user from a credit program."""
+    enrollment = session.exec(
+        select(CreditProgramEnrollment)
+        .where(CreditProgramEnrollment.user_id == body.user_id)
+        .where(CreditProgramEnrollment.program_id == body.program_id)
+        .where(CreditProgramEnrollment.status == "active")
+    ).first()
+    
+    if not enrollment:
+        raise HTTPException(status_code=404, detail="Active enrollment not found")
+    
+    before = {"status": enrollment.status}
+    enrollment.status = "ended"
+    enrollment.ended_at = datetime.utcnow()
+    enrollment.updated_at = datetime.utcnow()
+    session.add(enrollment)
+    
+    audit_log_service.log_action(
+        session=session,
+        admin_user_id=admin.id,
+        action="UPDATE",
+        entity_type="ENROLLMENT",
+        entity_id=str(enrollment.id),
+        before_json=before,
+        after_json={"status": "ended", "ended_at": str(enrollment.ended_at)},
+        reason=body.reason,
+        request=request,
+    )
+    
+    session.commit()
+    return {"status": "ok", "message": "User unenrolled"}

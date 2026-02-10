@@ -15,17 +15,32 @@ interface Enrollment {
     last_grant_month: string | null;
 }
 
+interface Program {
+    id: number;
+    name: string;
+}
+
 export default function GlobalEnrollmentsPage() {
     const { token } = useAuth();
     const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+    const [programs, setPrograms] = useState<Program[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [total, setTotal] = useState(0);
+
+    // Modal
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [formData, setFormData] = useState({
+        user_id: '',
+        program_id: '',
+        reason: ''
+    });
 
     const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
 
     useEffect(() => {
         fetchEnrollments();
+        fetchPrograms();
     }, []);
 
     const fetchEnrollments = async () => {
@@ -45,6 +60,80 @@ export default function GlobalEnrollmentsPage() {
         }
     };
 
+    const fetchPrograms = async () => {
+        try {
+            const res = await fetch(`${API_BASE}/admin/billing/programs?status=active`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setPrograms(data.items);
+            }
+        } catch (e) {
+            console.error('Failed to load programs');
+        }
+    };
+
+    const handleEnroll = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const res = await fetch(`${API_BASE}/admin/billing/programs/enrollments`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    user_id: parseInt(formData.user_id),
+                    program_id: parseInt(formData.program_id),
+                    reason: formData.reason
+                })
+            });
+
+            if (res.ok) {
+                setIsModalOpen(false);
+                setFormData({ user_id: '', program_id: '', reason: '' });
+                fetchEnrollments();
+            } else {
+                const err = await res.json();
+                alert(`Error: ${err.detail}`);
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Failed to enroll user');
+        }
+    };
+
+    const handleUnenroll = async (userId: number, programId: number) => {
+        const reason = prompt("Enter reason for unenrollment:");
+        if (!reason) return;
+
+        try {
+            const res = await fetch(`${API_BASE}/admin/billing/programs/enrollments/unenroll`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    program_id: programId,
+                    reason
+                })
+            });
+
+            if (res.ok) {
+                fetchEnrollments();
+            } else {
+                const err = await res.json();
+                alert(`Error: ${err.detail}`);
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Failed to unenroll user');
+        }
+    };
+
     const filtered = search
         ? enrollments.filter(
             (e) =>
@@ -53,7 +142,7 @@ export default function GlobalEnrollmentsPage() {
         )
         : enrollments;
 
-    if (loading) {
+    if (loading && enrollments.length === 0) {
         return (
             <div className="p-8 flex items-center justify-center min-h-screen">
                 <div className="animate-pulse flex flex-col items-center gap-4">
@@ -86,6 +175,13 @@ export default function GlobalEnrollmentsPage() {
                         onChange={(e) => setSearch(e.target.value)}
                         className="w-full md:w-80 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-3 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500 transition-all outline-none"
                     />
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold rounded-2xl shadow-xl shadow-purple-500/25 transition-all"
+                    >
+                        <span className="material-symbols-outlined text-[20px]">person_add</span>
+                        Enroll User
+                    </button>
                 </div>
             </header>
 
@@ -136,9 +232,14 @@ export default function GlobalEnrollmentsPage() {
                                     </div>
                                 </td>
                                 <td className="px-8 py-6 text-right">
-                                    <button className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all text-slate-400 hover:text-slate-900 dark:hover:text-white">
-                                        <span className="material-symbols-outlined text-[20px]">more_vert</span>
-                                    </button>
+                                    {e.status === 'active' && (
+                                        <button
+                                            onClick={() => handleUnenroll(e.user_id, e.program_id)}
+                                            className="px-3 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs font-bold transition-all"
+                                        >
+                                            Unenroll
+                                        </button>
+                                    )}
                                 </td>
                             </tr>
                         ))}
@@ -161,6 +262,73 @@ export default function GlobalEnrollmentsPage() {
                     Showing {filtered.length} of {total} total enrollments
                 </p>
             </footer>
+
+            {/* Modal */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-[#111827] w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
+                        <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                            <h3 className="text-xl font-bold">Enroll User</h3>
+                            <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+                        <form onSubmit={handleEnroll} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">User ID</label>
+                                <input
+                                    type="number"
+                                    required
+                                    value={formData.user_id}
+                                    onChange={e => setFormData({ ...formData, user_id: e.target.value })}
+                                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+                                    placeholder="1001"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Select Program</label>
+                                <select
+                                    required
+                                    value={formData.program_id}
+                                    onChange={e => setFormData({ ...formData, program_id: e.target.value })}
+                                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+                                >
+                                    <option value="">Select a program...</option>
+                                    {programs.map(p => (
+                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Reason (Audit Log)</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={formData.reason}
+                                    onChange={e => setFormData({ ...formData, reason: e.target.value })}
+                                    className="w-full p-3 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-900/30 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none text-sm"
+                                    placeholder="Why are you enrolling this user?"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-3 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-6 py-2 bg-purple-600 text-white font-bold rounded-lg shadow-lg hover:bg-purple-700 transition-all"
+                                >
+                                    Enroll User
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

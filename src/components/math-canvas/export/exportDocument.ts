@@ -310,7 +310,7 @@ const renderPage = (page: CanvasPageData, pageIndex: number): string => {
                   ${block.finalAnswer?.values?.map(v => `
                     <div class="detail-item">
                       <span class="detail-label">${escapeHtml(v.label)}:</span> 
-                      <span class="detail-value">${latexToHtml(v.value_latex || v.value.toString(), false)}</span>
+                      <span class="detail-value">${latexToHtml(v.value_latex || v.value?.toString() || "", false)}</span>
                     </div>
                   `).join("")}
                 </div>
@@ -593,7 +593,7 @@ const mapToExportPayload = (payload: SolutionExportPayload): ExportSolutionPaylo
               units: block.finalAnswer?.units,
               values: block.finalAnswer?.values?.map(v => ({
                 label: v.label,
-                value: v.value_latex || v.value.toString()
+                value: v.value_latex || v.value?.toString() || ""
               }))
             });
           }

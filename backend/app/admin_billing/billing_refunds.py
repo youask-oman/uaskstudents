@@ -16,7 +16,7 @@ from app.models import User, CreditLot
 from app.admin_billing.deps import get_admin_user, get_superadmin_user
 from app.services.audit_log_service import audit_log_service
 
-router = APIRouter(prefix="/admin/billing/refunds", tags=["admin-billing-refunds"])
+router = APIRouter(prefix="/api/admin/billing/refunds", tags=["admin-billing-refunds"])
 
 
 class CreateRefundRequest(BaseModel):

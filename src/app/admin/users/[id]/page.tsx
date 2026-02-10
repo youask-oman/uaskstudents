@@ -168,7 +168,8 @@ const DataTable = ({
                         </tr>
                     )}
                     {rows.map((row, index) => {
-                        const rowKey = typeof row.id === "string" || typeof row.id === "number" ? row.id : index;
+                        const rowId = typeof row.id === "string" || typeof row.id === "number" ? row.id : "row";
+                        const rowKey = `${rowId}-${index}`;
                         return (
                             <tr key={rowKey} className="border-b border-slate-200 dark:border-slate-800">
                                 {columns.map((col) => (
@@ -223,6 +224,17 @@ export default function UserDetailPage() {
     const [editProfileProvince, setEditProfileProvince] = useState("");
     const [editGradeLevel, setEditGradeLevel] = useState("");
     const [editSchoolId, setEditSchoolId] = useState("");
+
+    // Billing Actions State
+    const [isGrantModalOpen, setIsGrantModalOpen] = useState(false);
+    const [grantAmount, setGrantAmount] = useState(10);
+    const [grantReason, setGrantReason] = useState("");
+    const [grantType, setGrantType] = useState("ADJUSTMENT");
+
+    const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
+    const [refundAmount, setRefundAmount] = useState(10);
+    const [refundReason, setRefundReason] = useState("");
+    const [refundReasonCode, setRefundReasonCode] = useState("SERVICE_ISSUE");
 
     const fetchPlans = useCallback(async (signal?: AbortSignal) => {
         try {
@@ -474,6 +486,82 @@ export default function UserDetailPage() {
             setErrorMessage("Unable to update profile details.");
         } finally {
             setIsSavingProfile(false);
+        }
+    };
+
+    const handleGrantCredits = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const res = await fetch(`${baseUrl}/api/admin/billing/users/${id}/lots`, {
+                method: "POST",
+                headers: getAuthHeaders(true),
+                body: JSON.stringify({
+                    credits: grantAmount,
+                    reason: grantReason,
+                    lot_type: grantType,
+                    expires_days: 365
+                })
+            });
+            if (res.ok) {
+                alert("Credits granted successfully!");
+                setIsGrantModalOpen(false);
+                fetchFullUserData();
+                fetchUserDetail();
+            } else {
+                const err = await res.json();
+                alert(`Error: ${err.detail}`);
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Failed to grant credits.");
+        }
+    };
+
+    const handleForceReconcile = async () => {
+        if (!confirm("Are you sure you want to force reconciliation? This will overwrite the cached balance.")) return;
+        try {
+            const res = await fetch(`${baseUrl}/api/admin/billing/users/${id}/reconcile`, {
+                method: "POST",
+                headers: getAuthHeaders()
+            });
+            if (res.ok) {
+                const data = await res.json();
+                alert(`Reconciled. Old: ${data.old_balance}, New: ${data.new_balance}`);
+                fetchFullUserData();
+                fetchUserDetail();
+            } else {
+                alert("Reconciliation failed.");
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleIssueRefund = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const res = await fetch(`${baseUrl}/api/admin/billing/refunds`, {
+                method: "POST",
+                headers: getAuthHeaders(true),
+                body: JSON.stringify({
+                    user_id: parseInt(id as string),
+                    credits: refundAmount,
+                    reason: refundReason,
+                    reason_code: refundReasonCode
+                })
+            });
+            if (res.ok) {
+                alert("Refund issued successfully!");
+                setIsRefundModalOpen(false);
+                fetchFullUserData();
+                fetchUserDetail();
+            } else {
+                const err = await res.json();
+                alert(`Error: ${err.detail}`);
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Failed to issue refund.");
         }
     };
 
@@ -1141,7 +1229,28 @@ export default function UserDetailPage() {
                                         </p>
                                     </div>
                                     <div className="flex flex-col items-start md:items-end gap-2">
-                                        <span className="text-[10px] uppercase tracking-[0.4em] text-slate-500">Tier Status</span>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => setIsGrantModalOpen(true)}
+                                                className="px-3 py-1 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 text-[10px] font-bold uppercase tracking-widest rounded border border-emerald-500/20 transition-all"
+                                            >
+                                                Grant Credits
+                                            </button>
+                                            <button
+                                                onClick={() => setIsRefundModalOpen(true)}
+                                                className="px-3 py-1 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 text-[10px] font-bold uppercase tracking-widest rounded border border-amber-500/20 transition-all"
+                                            >
+                                                Refund
+                                            </button>
+                                            <button
+                                                onClick={handleForceReconcile}
+                                                className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white text-[10px] font-bold uppercase tracking-widest rounded border border-slate-200 dark:border-slate-700 transition-all"
+                                                title="Force Reconcile"
+                                            >
+                                                <span className="material-symbols-outlined text-[14px]">sync</span>
+                                            </button>
+                                        </div>
+                                        <span className="text-[10px] uppercase tracking-[0.4em] text-slate-500 text-right w-full mt-2">Tier Status</span>
                                         <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-700">
                                             {user.subscription_tier.toUpperCase()}
                                         </span>
@@ -1370,6 +1479,114 @@ export default function UserDetailPage() {
                     </button>
                 </form>
             </aside>
+
+            {/* Grant Credits Modal */}
+            {isGrantModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-[#111827] w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
+                        <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-white">Grant Credits</h3>
+                            <button onClick={() => setIsGrantModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+                        <form onSubmit={handleGrantCredits} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Type</label>
+                                <select
+                                    value={grantType}
+                                    onChange={e => setGrantType(e.target.value)}
+                                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
+                                >
+                                    <option value="ADJUSTMENT">Adjustment</option>
+                                    <option value="BONUS">Bonus</option>
+                                    <option value="PURCHASE">Purchase</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Amount</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    required
+                                    value={grantAmount}
+                                    onChange={e => setGrantAmount(parseFloat(e.target.value))}
+                                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Reason</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={grantReason}
+                                    onChange={e => setGrantReason(e.target.value)}
+                                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
+                                    placeholder="Explanation for audit log..."
+                                />
+                            </div>
+                            <div className="flex justify-end gap-3 pt-4">
+                                <button type="button" onClick={() => setIsGrantModalOpen(false)} className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">Cancel</button>
+                                <button type="submit" className="px-6 py-2 bg-emerald-500 text-white font-bold rounded-lg hover:bg-emerald-600 transition-all">Grant</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Refund Modal */}
+            {isRefundModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-[#111827] w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
+                        <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-white">Issue Refund</h3>
+                            <button onClick={() => setIsRefundModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+                        <form onSubmit={handleIssueRefund} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Reason Code</label>
+                                <select
+                                    value={refundReasonCode}
+                                    onChange={e => setRefundReasonCode(e.target.value)}
+                                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
+                                >
+                                    <option value="SERVICE_ISSUE">Service Issue</option>
+                                    <option value="PAYMENT_REVERSAL">Payment Reversal</option>
+                                    <option value="ADMIN_ADJUSTMENT">Admin Adjustment</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Credits Amount</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    required
+                                    value={refundAmount}
+                                    onChange={e => setRefundAmount(parseFloat(e.target.value))}
+                                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Explanation</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={refundReason}
+                                    onChange={e => setRefundReason(e.target.value)}
+                                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
+                                    placeholder="Detailed reason..."
+                                />
+                            </div>
+                            <div className="flex justify-end gap-3 pt-4">
+                                <button type="button" onClick={() => setIsRefundModalOpen(false)} className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">Cancel</button>
+                                <button type="submit" className="px-6 py-2 bg-amber-500 text-white font-bold rounded-lg hover:bg-amber-600 transition-all">Issue Refund</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

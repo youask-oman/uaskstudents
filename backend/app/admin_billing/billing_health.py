@@ -21,7 +21,7 @@ from app.admin_billing.deps import get_admin_user, get_superadmin_user
 from app.services.audit_log_service import audit_log_service
 from app.jobs.nightly_reconciliation import reconcile_user, compute_user_balance
 
-router = APIRouter(prefix="/admin/billing/health", tags=["admin-billing-health"])
+router = APIRouter(prefix="/api/admin/billing/health", tags=["admin-billing-health"])
 
 
 class HealthDashboard(BaseModel):

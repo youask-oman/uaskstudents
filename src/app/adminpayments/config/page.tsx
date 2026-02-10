@@ -198,8 +198,8 @@ export default function AdminPaymentsConfigPage() {
                         key={t.id}
                         onClick={() => setTab(t.id as Tab)}
                         className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all ${tab === t.id
-                                ? "bg-white dark:bg-slate-700 text-primary shadow-sm"
-                                : "text-slate-500 hover:bg-white/50 dark:hover:bg-slate-700/50"
+                            ? "bg-white dark:bg-slate-700 text-primary shadow-sm"
+                            : "text-slate-500 hover:bg-white/50 dark:hover:bg-slate-700/50"
                             }`}
                     >
                         <span className="material-symbols-outlined text-[18px]">{t.icon}</span>
@@ -354,11 +354,29 @@ export default function AdminPaymentsConfigPage() {
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center">
                                         <span className="text-sm font-medium">Standard Plan</span>
-                                        <input type="number" step="0.1" value={config.multipliers.STANDARD} className="w-20 bg-white dark:bg-slate-800 p-2 rounded border text-center" />
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={config.multipliers.STANDARD}
+                                            onChange={(e) => setConfig({
+                                                ...config,
+                                                multipliers: { ...config.multipliers, STANDARD: parseFloat(e.target.value) }
+                                            })}
+                                            className="w-20 bg-white dark:bg-slate-800 p-2 rounded border text-center"
+                                        />
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-sm font-medium">Research Plan</span>
-                                        <input type="number" step="0.1" value={config.multipliers.RESEARCH} className="w-20 bg-white dark:bg-slate-800 p-2 rounded border text-center" />
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={config.multipliers.RESEARCH}
+                                            onChange={(e) => setConfig({
+                                                ...config,
+                                                multipliers: { ...config.multipliers, RESEARCH: parseFloat(e.target.value) }
+                                            })}
+                                            className="w-20 bg-white dark:bg-slate-800 p-2 rounded border text-center"
+                                        />
                                     </div>
                                 </div>
                             </div>
@@ -370,11 +388,29 @@ export default function AdminPaymentsConfigPage() {
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center">
                                         <span className="text-sm font-medium">OCR Extraction</span>
-                                        <input type="number" step="1" value={config.fixed_fees.ocr} className="w-20 bg-white dark:bg-slate-800 p-2 rounded border text-center" />
+                                        <input
+                                            type="number"
+                                            step="1"
+                                            value={config.fixed_fees.ocr}
+                                            onChange={(e) => setConfig({
+                                                ...config,
+                                                fixed_fees: { ...config.fixed_fees, ocr: parseInt(e.target.value) }
+                                            })}
+                                            className="w-20 bg-white dark:bg-slate-800 p-2 rounded border text-center"
+                                        />
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-sm font-medium">Voice Generation</span>
-                                        <input type="number" step="1" value={config.fixed_fees.voice} className="w-20 bg-white dark:bg-slate-800 p-2 rounded border text-center" />
+                                        <input
+                                            type="number"
+                                            step="1"
+                                            value={config.fixed_fees.voice}
+                                            onChange={(e) => setConfig({
+                                                ...config,
+                                                fixed_fees: { ...config.fixed_fees, voice: parseInt(e.target.value) }
+                                            })}
+                                            className="w-20 bg-white dark:bg-slate-800 p-2 rounded border text-center"
+                                        />
                                     </div>
                                 </div>
                             </div>

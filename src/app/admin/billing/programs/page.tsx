@@ -22,6 +22,18 @@ export default function CreditProgramsPage() {
     const [loading, setLoading] = useState(true);
     const [total, setTotal] = useState(0);
 
+    // Modal State
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingProgram, setEditingProgram] = useState<Program | null>(null);
+    const [formData, setFormData] = useState({
+        name: '',
+        slug: '',
+        description: '',
+        monthly_gift_credits: 0,
+        gift_expiry_window_days: 30,
+        reason: ''
+    });
+
     const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
 
     useEffect(() => {
@@ -45,7 +57,101 @@ export default function CreditProgramsPage() {
         }
     };
 
-    if (loading) {
+    const handleOpenCreate = () => {
+        setEditingProgram(null);
+        setFormData({
+            name: '',
+            slug: '',
+            description: '',
+            monthly_gift_credits: 0,
+            gift_expiry_window_days: 30,
+            reason: ''
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleOpenEdit = (program: Program) => {
+        setEditingProgram(program);
+        setFormData({
+            name: program.name,
+            slug: program.slug,
+            description: program.description || '',
+            monthly_gift_credits: program.monthly_gift_credits || 0,
+            gift_expiry_window_days: program.gift_expiry_window_days,
+            reason: ''
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const url = editingProgram
+                ? `${API_BASE}/admin/billing/programs/${editingProgram.id}`
+                : `${API_BASE}/admin/billing/programs`;
+
+            const method = editingProgram ? 'PUT' : 'POST';
+
+            const payload: any = {
+                name: formData.name,
+                description: formData.description,
+                monthly_gift_credits: formData.monthly_gift_credits,
+                gift_expiry_window_days: formData.gift_expiry_window_days,
+                reason: formData.reason
+            };
+
+            if (!editingProgram) {
+                payload.slug = formData.slug;
+                payload.status = 'active';
+            }
+
+            const res = await fetch(url, {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                setIsModalOpen(false);
+                fetchPrograms();
+            } else {
+                const err = await res.json();
+                alert(`Error: ${err.detail}`);
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Failed to save program');
+        }
+    };
+
+    const handleDeactivate = async (id: number) => {
+        const reason = prompt("Enter reason for deactivation:");
+        if (!reason) return;
+
+        try {
+            const res = await fetch(`${API_BASE}/admin/billing/programs/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ reason })
+            });
+
+            if (res.ok) {
+                fetchPrograms();
+            } else {
+                alert('Failed to deactivate');
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    if (loading && programs.length === 0) {
         return (
             <div className="p-8 flex items-center justify-center min-h-screen">
                 <div className="animate-pulse flex flex-col items-center gap-4">
@@ -79,6 +185,7 @@ export default function CreditProgramsPage() {
                         Global Enrollments
                     </Link>
                     <button
+                        onClick={handleOpenCreate}
                         className="flex items-center gap-2 px-6 py-3 bg-admin-primary hover:bg-blue-600 text-white text-sm font-bold rounded-2xl shadow-xl shadow-admin-primary/25 transition-all"
                     >
                         <span className="material-symbols-outlined text-[20px]">add</span>
@@ -87,6 +194,7 @@ export default function CreditProgramsPage() {
                 </div>
             </header>
 
+            {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 p-6 rounded-[2rem] shadow-2xl flex flex-col gap-4">
                     <div className="flex justify-between items-start">
@@ -98,9 +206,9 @@ export default function CreditProgramsPage() {
                         <p className="text-slate-400 text-xs font-bold mb-2 uppercase tracking-widest">Programs</p>
                     </div>
                 </div>
-                {/* Could add more KPIs here */}
             </div>
 
+            {/* Table */}
             <div className="bg-white dark:bg-[#111827]/50 backdrop-blur-3xl border border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-3xl overflow-hidden">
                 <table className="w-full text-left border-collapse">
                     <thead>
@@ -111,11 +219,12 @@ export default function CreditProgramsPage() {
                             <th className="px-8 py-5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Monthly Grant</th>
                             <th className="px-8 py-5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Expiry</th>
                             <th className="px-8 py-5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Users</th>
+                            <th className="px-8 py-5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {programs.map((program) => (
-                            <tr key={program.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        {programs.map((program, index) => (
+                            <tr key={`${program.id}-${index}`} className="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                                 <td className="px-8 py-6">
                                     <div className="flex flex-col gap-1">
                                         <span className="text-sm font-bold text-slate-900 dark:text-white">{program.name}</span>
@@ -150,11 +259,29 @@ export default function CreditProgramsPage() {
                                         <span className="text-sm font-black text-slate-900 dark:text-slate-200">{program.enrollment_count}</span>
                                     </div>
                                 </td>
+                                <td className="px-8 py-6 text-right">
+                                    <div className="flex justify-end gap-2">
+                                        <button
+                                            onClick={() => handleOpenEdit(program)}
+                                            className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-slate-500 transition-colors"
+                                        >
+                                            <span className="material-symbols-outlined text-[18px]">edit</span>
+                                        </button>
+                                        {program.status !== 'archived' && (
+                                            <button
+                                                onClick={() => handleDeactivate(program.id)}
+                                                className="p-2 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-lg text-red-500 transition-colors"
+                                            >
+                                                <span className="material-symbols-outlined text-[18px]">archive</span>
+                                            </button>
+                                        )}
+                                    </div>
+                                </td>
                             </tr>
                         ))}
                         {programs.length === 0 && (
                             <tr>
-                                <td colSpan={6} className="px-8 py-20 text-center">
+                                <td colSpan={7} className="px-8 py-20 text-center">
                                     <div className="flex flex-col items-center gap-4">
                                         <span className="material-symbols-outlined text-4xl text-slate-600">inventory_2</span>
                                         <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">No programs found in system</p>
@@ -170,10 +297,107 @@ export default function CreditProgramsPage() {
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest italic">
                     Showing {programs.length} of {total} program definitions
                 </p>
-                <div className="flex gap-2">
-                    {/* Pagination could go here */}
-                </div>
             </footer>
+
+            {/* Modal */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-[#111827] w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
+                        <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                            <h3 className="text-xl font-bold">{editingProgram ? 'Edit Program' : 'Create Program'}</h3>
+                            <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                            {!editingProgram && (
+                                <div>
+                                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Slug (Unique ID)</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={formData.slug}
+                                        onChange={e => setFormData({ ...formData, slug: e.target.value })}
+                                        className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none font-mono text-sm"
+                                        placeholder="e.g. pro-plan-2026"
+                                    />
+                                </div>
+                            )}
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Program Name</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={formData.name}
+                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
+                                    placeholder="Pro Membership"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Description</label>
+                                <textarea
+                                    value={formData.description}
+                                    onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
+                                    rows={2}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Monthly Credits</label>
+                                    <input
+                                        type="number"
+                                        required
+                                        value={formData.monthly_gift_credits}
+                                        onChange={e => setFormData({ ...formData, monthly_gift_credits: parseFloat(e.target.value) })}
+                                        className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Expiry Days</label>
+                                    <input
+                                        type="number"
+                                        required
+                                        value={formData.gift_expiry_window_days}
+                                        onChange={e => setFormData({ ...formData, gift_expiry_window_days: parseInt(e.target.value) })}
+                                        className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Audit Reason */}
+                            <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Change Reason (Audit Log)</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={formData.reason}
+                                    onChange={e => setFormData({ ...formData, reason: e.target.value })}
+                                    className="w-full p-3 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-900/30 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none text-sm"
+                                    placeholder="Why are you making this change?"
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-6 py-2 bg-admin-primary text-white font-bold rounded-lg shadow-lg hover:bg-blue-600 transition-all"
+                                >
+                                    {editingProgram ? 'Save Changes' : 'Create Program'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

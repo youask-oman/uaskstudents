@@ -141,7 +141,7 @@ export default function AdminLogsPage() {
                         )}
                         {filteredTraces.map((entry, index) => (
                             <button
-                                key={entry.request_id || index}
+                                key={`${entry.request_id}-${index}`}
                                 onClick={() => setSelectedTrace(entry)}
                                 className="w-full text-left px-6 py-4 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"
                             >

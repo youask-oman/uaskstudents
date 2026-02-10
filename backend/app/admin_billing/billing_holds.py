@@ -15,7 +15,7 @@ from app.models import User, CreditHold
 from app.admin_billing.deps import get_admin_user, get_superadmin_user
 from app.services.audit_log_service import audit_log_service
 
-router = APIRouter(prefix="/admin/billing/holds", tags=["admin-billing-holds"])
+router = APIRouter(prefix="/api/admin/billing/holds", tags=["admin-billing-holds"])
 
 
 class HoldResponse(BaseModel):

@@ -38,7 +38,8 @@ from app.models import (
     OcrExtractionCache, CreditHold, SolverOutputAttempt,
     PromptTemplateEntry, JsonSchemaEntry, PromptBinding,
     PromptTierEnum, PromptModeEnum, PromptRoleEnum,
-    SolveSession, FollowupChatTurn, LlmUsageLedger
+    SolveSession, FollowupChatTurn, LlmUsageLedger,
+    CreditLot, CreditProgramEnrollment
 )
 from app.utils.token_utils import count_tokens, count_messages_tokens
 from app.services.plot_sampling import process_visuals
@@ -8514,6 +8515,55 @@ async def admin_update_system_config(req: SystemConfigUpdateRequest, session: Se
     session.commit()
     return {"ok": True, "updated": updated}
 
+@api_router.get("/admin/users/{user_id}/full", response_model=AdminUserDetailResponse)
+async def admin_get_user_full_data(user_id: int, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
+    from app.models import ChatSession, OCRJob, AdminNote
+
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Subscription info
+    sub = db.exec(select(Subscription).where(Subscription.user_id == user.id)).first()
+    plan = sub.plan if sub else None
+    
+    # Usage stats
+    questions_used = db.exec(select(func.count(ChatSession.id)).where(ChatSession.user_id == user.id)).one()
+    scans_used = db.exec(select(func.count(OCRJob.id)).where(OCRJob.user_id == user.id)).one()
+
+    notes = []
+    if user.admin_notes:
+        for n in user.admin_notes:
+            notes.append(AdminNoteResponse(
+                id=n.id,
+                admin_name=n.admin_name,
+                content=n.content,
+                created_at=n.created_at.isoformat()
+            ))
+
+    return AdminUserDetailResponse(
+        id=user.id,
+        full_name=user.full_name,
+        email=user.email,
+        role=user.role,
+        subscription_tier=user.subscription_tier,
+        subscription_status=user.subscription_status,
+        subscription_id=sub.id if sub else None,
+        plan_id=plan.id if plan else None,
+        plan_slug=plan.slug if plan else None,
+        plan_name=plan.name if plan else None,
+        plan_credits_per_month=plan.credits_per_month if plan else None,
+        plan_price_monthly_cents=plan.price_monthly_cents if plan else None,
+        academic_level=user.academic_level,
+        joined_at=user.created_at.isoformat(),
+        avatar_url=user.avatar_url,
+        quota_questions_total=user.quota_questions_total,
+        quota_scans_total=user.quota_scans_total,
+        questions_used=questions_used,
+        scans_used=scans_used,
+        notes=notes
+    )
+
 @api_router.get("/admin/users/{user_id}/activity", response_model=List[AdminActivityItem])
 async def admin_get_user_activity(user_id: int, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     """Admin only: Get recent activity events for a user"""
@@ -9800,6 +9850,17 @@ async def admin_clear_logs(db: Session = Depends(get_session), admin: User = Dep
     db.execute(sql_text("TRUNCATE TABLE requestevent CASCADE;"))
     db.execute(sql_text("TRUNCATE TABLE usagelog CASCADE;"))
     db.commit()
+
+    # Also clear the file-based solve traces
+    from app.services.solve.trace_logger import TRACE_LOG_PATH
+    if TRACE_LOG_PATH.exists():
+        try:
+            # Truncate file
+            with TRACE_LOG_PATH.open("w", encoding="utf-8") as f:
+                pass
+        except Exception:
+            pass
+
     return {"status": "ok"}
 
 @api_router.delete("/admin/solver-attempts/all")

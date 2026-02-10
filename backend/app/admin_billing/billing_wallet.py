@@ -17,7 +17,7 @@ from app.admin_billing.deps import get_admin_user, get_superadmin_user
 from app.services.audit_log_service import audit_log_service
 from app.jobs.nightly_reconciliation import compute_user_balance
 
-router = APIRouter(prefix="/admin/billing/users", tags=["admin-billing-wallet"])
+router = APIRouter(prefix="/api/admin/billing/users", tags=["admin-billing-wallet"])
 
 
 # Response Models
