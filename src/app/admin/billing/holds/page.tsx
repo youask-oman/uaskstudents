@@ -43,10 +43,10 @@ export default function ActiveHoldsPage() {
         setLoading(true);
         try {
             const [holdsRes, statsRes] = await Promise.all([
-                fetch(`${API_BASE}/admin/billing/holds?limit=50`, {
+                fetch(`${API_BASE}/api/admin/billing/holds?limit=50`, {
                     headers: { Authorization: `Bearer ${token}` },
                 }),
-                fetch(`${API_BASE}/admin/billing/holds/stats`, {
+                fetch(`${API_BASE}/api/admin/billing/holds/stats`, {
                     headers: { Authorization: `Bearer ${token}` },
                 })
             ]);
@@ -71,7 +71,7 @@ export default function ActiveHoldsPage() {
         if (!reason) return;
 
         try {
-            const res = await fetch(`${API_BASE}/admin/billing/holds/${holdId}/release`, {
+            const res = await fetch(`${API_BASE}/api/admin/billing/holds/${holdId}/release`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,

@@ -731,11 +731,11 @@
       "strict": true,
       "type": "json_schema"
     },
-    "created_at": "2026-02-09T22:47:28.965139+00:00",
+    "created_at": "2026-02-10T02:28:19.093814+00:00",
     "id": "fcdcf420-ae30-428f-9a96-180476a0f175",
     "is_active": false,
     "schema_id": "openai_image_extract_v1.schema.json",
-    "updated_at": "2026-02-09T22:47:28.965201+00:00",
+    "updated_at": "2026-02-10T02:28:19.093868+00:00",
     "updated_by": "System Admin",
     "version": 1
   },
@@ -1394,11 +1394,11 @@
       "strict": true,
       "type": "json_schema"
     },
-    "created_at": "2026-02-09T22:47:28.967847+00:00",
+    "created_at": "2026-02-10T02:28:19.096163+00:00",
     "id": "756868d8-5c77-419c-9f32-ee9da2d45439",
     "is_active": true,
     "schema_id": "openai_image_extract_v1.schema.json",
-    "updated_at": "2026-02-09T22:47:28.967918+00:00",
+    "updated_at": "2026-02-10T02:28:19.096225+00:00",
     "updated_by": "System Admin",
     "version": 2
   },
@@ -1439,11 +1439,11 @@
       "strict": true,
       "type": "json_schema"
     },
-    "created_at": "2026-02-09T22:47:28.969475+00:00",
+    "created_at": "2026-02-10T02:28:19.097550+00:00",
     "id": "b436e3d2-50e2-4a10-afce-e17e988bee9f",
     "is_active": true,
     "schema_id": "plot_spec_v1.schema.json",
-    "updated_at": "2026-02-09T22:47:28.969547+00:00",
+    "updated_at": "2026-02-10T02:28:19.097607+00:00",
     "updated_by": "System Admin",
     "version": 1
   },
@@ -1621,11 +1621,11 @@
       "strict": true,
       "type": "json_schema"
     },
-    "created_at": "2026-02-09T22:47:28.970954+00:00",
+    "created_at": "2026-02-10T02:28:19.098545+00:00",
     "id": "3e3023a7-ff83-4607-aa10-ccc208710288",
     "is_active": true,
     "schema_id": "plot_trigger_v1.schema.json",
-    "updated_at": "2026-02-09T22:47:28.971014+00:00",
+    "updated_at": "2026-02-10T02:28:19.098599+00:00",
     "updated_by": "System Admin",
     "version": 1
   },
@@ -2082,11 +2082,11 @@
       },
       "strict": true
     },
-    "created_at": "2026-02-09T22:47:28.972180+00:00",
+    "created_at": "2026-02-10T02:28:19.099554+00:00",
     "id": "c9adc461-cb6e-42e6-b3ef-ac4f0846c139",
     "is_active": true,
     "schema_id": "solve_final_answer_v1.schema.json",
-    "updated_at": "2026-02-09T22:47:28.972241+00:00",
+    "updated_at": "2026-02-10T02:28:19.099613+00:00",
     "updated_by": "System Admin",
     "version": 1
   },
@@ -2167,11 +2167,11 @@
       "strict": true,
       "type": "json_schema"
     },
-    "created_at": "2026-02-09T22:47:28.973444+00:00",
+    "created_at": "2026-02-10T02:28:19.100790+00:00",
     "id": "9b74be2a-0646-4e7e-8e42-f3d8fa6b4f4d",
     "is_active": true,
     "schema_id": "solve_free_minimal_v1.schema.json",
-    "updated_at": "2026-02-09T22:47:28.973503+00:00",
+    "updated_at": "2026-02-10T02:28:19.100860+00:00",
     "updated_by": "System Admin",
     "version": 1
   },
@@ -3313,11 +3313,11 @@
       "strict": false,
       "type": "json_schema"
     },
-    "created_at": "2026-02-09T22:47:28.974432+00:00",
+    "created_at": "2026-02-10T02:28:19.101788+00:00",
     "id": "a97178f6-a2d5-4df6-b436-cd40781e89b6",
     "is_active": true,
     "schema_id": "solve_research_detailed_v1.schema.json",
-    "updated_at": "2026-02-09T22:47:28.974488+00:00",
+    "updated_at": "2026-02-10T02:28:19.101844+00:00",
     "updated_by": "System Admin",
     "version": 1
   },
@@ -4409,11 +4409,11 @@
       "strict": true,
       "type": "json_schema"
     },
-    "created_at": "2026-02-09T22:47:28.975951+00:00",
+    "created_at": "2026-02-10T02:28:19.103287+00:00",
     "id": "7d20c046-1a5e-4558-b50f-0586b4f9a5b2",
     "is_active": true,
     "schema_id": "solve_standard_detailed_v1.schema.json",
-    "updated_at": "2026-02-09T22:47:28.976002+00:00",
+    "updated_at": "2026-02-10T02:28:19.103343+00:00",
     "updated_by": "System Admin",
     "version": 1
   }

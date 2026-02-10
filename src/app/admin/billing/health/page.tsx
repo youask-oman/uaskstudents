@@ -37,10 +37,10 @@ export default function HealthPage() {
     const fetchData = async () => {
         try {
             const [healthRes, mismatchRes] = await Promise.all([
-                fetch(`${API_BASE}/admin/billing/health`, {
+                fetch(`${API_BASE}/api/admin/billing/health`, {
                     headers: { Authorization: `Bearer ${token}` },
                 }),
-                fetch(`${API_BASE}/admin/billing/health/mismatches?limit=20`, {
+                fetch(`${API_BASE}/api/admin/billing/health/mismatches?limit=20`, {
                     headers: { Authorization: `Bearer ${token}` },
                 }),
             ]);
@@ -62,7 +62,7 @@ export default function HealthPage() {
 
         setRunning(true);
         try {
-            const res = await fetch(`${API_BASE}/admin/billing/health/run-reconciliation`, {
+            const res = await fetch(`${API_BASE}/api/admin/billing/health/run-reconciliation`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -81,7 +81,7 @@ export default function HealthPage() {
     };
 
     const exportCSV = () => {
-        window.open(`${API_BASE}/admin/billing/health/export`, '_blank');
+        window.open(`${API_BASE}/api/admin/billing/health/export`, '_blank');
     };
 
     if (loading) {

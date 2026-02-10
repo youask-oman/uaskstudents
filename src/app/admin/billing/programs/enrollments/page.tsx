@@ -30,7 +30,7 @@ export default function EnrollmentsPage() {
     const fetchEnrollments = async () => {
         try {
             // Fetch from all programs (first get programs, then enrollments)
-            const progRes = await fetch(`${API_BASE}/admin/billing/programs?limit=100`, {
+            const progRes = await fetch(`${API_BASE}/api/admin/billing/programs?limit=100`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (progRes.ok) {
@@ -39,7 +39,7 @@ export default function EnrollmentsPage() {
 
                 for (const program of progData.items.slice(0, 10)) {
                     const enrollRes = await fetch(
-                        `${API_BASE}/admin/billing/programs/${program.id}/enrollments?limit=50`,
+                        `${API_BASE}/api/admin/billing/programs/${program.id}/enrollments?limit=50`,
                         { headers: { Authorization: `Bearer ${token}` } }
                     );
                     if (enrollRes.ok) {

@@ -43,7 +43,7 @@ export default function BillingFlagsPage() {
 
     const fetchFlags = async () => {
         try {
-            const res = await fetch(`${API_BASE}/admin/billing/flags`, {
+            const res = await fetch(`${API_BASE}/api/admin/billing/flags`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {
@@ -58,7 +58,7 @@ export default function BillingFlagsPage() {
 
     const fetchAudit = async () => {
         try {
-            const res = await fetch(`${API_BASE}/admin/billing/flags/audit?limit=20`, {
+            const res = await fetch(`${API_BASE}/api/admin/billing/flags/audit?limit=20`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {
@@ -77,7 +77,7 @@ export default function BillingFlagsPage() {
         setSaving(true);
         setError('');
         try {
-            const res = await fetch(`${API_BASE}/admin/billing/flags`, {
+            const res = await fetch(`${API_BASE}/api/admin/billing/flags`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

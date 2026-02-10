@@ -12,9 +12,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from sqlmodel import Session, select, func
 
 from app.database import get_session
-from app.models import User, CreditLot
+from app.models import User, CreditLot, BillingLedger
 from app.admin_billing.deps import get_admin_user, get_superadmin_user
 from app.services.audit_log_service import audit_log_service
+from app.jobs.nightly_reconciliation import compute_user_balance
+from app.services.refund_service import refund_service
+from app.admin_billing.billing_wallet import _build_wallet_summary
 
 router = APIRouter(prefix="/api/admin/billing/refunds", tags=["admin-billing-refunds"])
 
@@ -40,6 +43,8 @@ class RefundResponse(BaseModel):
     source_payment_id: Optional[str]
     expires_at: Optional[datetime]
     created_at: datetime
+    ledger_id: Optional[int] = None
+    wallet_summary: Optional[dict] = None
 
     class Config:
         from_attributes = True
@@ -121,67 +126,96 @@ async def create_refund(
     user = session.get(User, body.user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    # Idempotency check
+
+    if body.credits <= 0:
+        raise HTTPException(status_code=400, detail="credits must be > 0")
+
     if body.idempotency_key:
-        existing = session.exec(
-            select(CreditLot)
-            .where(CreditLot.lot_type == "REFUND")
-            .where(CreditLot.user_id == body.user_id)
-            .where(CreditLot.reason_code == body.idempotency_key)
+        existing_ledger = session.exec(
+            select(BillingLedger).where(BillingLedger.idempotency_key == body.idempotency_key)
         ).first()
-        if existing:
+        if existing_ledger:
+            existing_lot = session.exec(
+                select(CreditLot)
+                .where(CreditLot.lot_type == "REFUND")
+                .where(CreditLot.external_ref == body.idempotency_key)
+                .where(CreditLot.user_id == body.user_id)
+            ).first()
+            summary = _build_wallet_summary(session, user)
             return RefundResponse(
-                id=existing.id,
-                user_id=existing.user_id,
+                id=existing_lot.id if existing_lot else existing_ledger.id,
+                user_id=body.user_id,
                 user_email=user.email,
-                credits=float(existing.credits_total) if existing.credits_total else 0,
-                reason_code=existing.reason_code,
-                source_attempt_id=existing.source_attempt_id,
-                source_payment_id=existing.source_payment_id,
-                expires_at=existing.expires_at,
-                created_at=existing.purchased_at,
+                credits=float(existing_lot.credits_total) if existing_lot else float(body.credits),
+                reason_code=existing_lot.reason_code if existing_lot else body.reason_code,
+                source_attempt_id=existing_lot.source_attempt_id if existing_lot else body.source_attempt_id,
+                source_payment_id=existing_lot.source_payment_id if existing_lot else body.source_payment_id,
+                expires_at=existing_lot.expires_at if existing_lot else None,
+                created_at=existing_lot.purchased_at if existing_lot else existing_ledger.created_at,
+                ledger_id=existing_ledger.id,
+                wallet_summary=summary.dict(),
             )
-    
-    # Create refund lot
-    lot = CreditLot(
+
+    computed_before = compute_user_balance(session, body.user_id)
+    cached_before = Decimal(str(user.credits_balance or 0))
+
+    refund_id = body.idempotency_key or f"admin_refund_{body.user_id}_{int(datetime.utcnow().timestamp())}"
+    lot = refund_service.create_refund(
+        session=session,
         user_id=body.user_id,
-        lot_type="REFUND",
-        credits_total=Decimal(str(body.credits)),
-        credits_remaining=Decimal(str(body.credits)),
-        status="ACTIVE",
+        credits=Decimal(str(body.credits)),
+        refund_id=refund_id,
         reason_code=body.reason_code,
-        source_attempt_id=body.source_attempt_id,
         source_payment_id=body.source_payment_id,
-        purchased_at=datetime.utcnow(),
-        expires_at=datetime.utcnow() + timedelta(days=body.expires_days),
+        source_attempt_id=body.source_attempt_id,
+        is_topup_reversal=False,
     )
-    session.add(lot)
     session.flush()
-    
-    # Update cached balance
-    user.credits_balance = float(Decimal(str(user.credits_balance or 0)) + Decimal(str(body.credits)))
+
+    computed_after = compute_user_balance(session, body.user_id)
+
+    ledger = BillingLedger(
+        user_id=body.user_id,
+        action_type="ADMIN_REFUND",
+        request_id=body.source_attempt_id or body.source_payment_id,
+        idempotency_key=body.idempotency_key,
+        status="SETTLED",
+        credits_charged=Decimal("0"),
+        estimated_credits=Decimal("0"),
+        actual_credits=Decimal("0"),
+        delta_credits=Decimal(str(body.credits)),
+        credits_before=Decimal(str(computed_before)),
+        credits_after=Decimal(str(computed_after)),
+    )
+    session.add(ledger)
+    session.flush()
+
+    user.credits_balance = float(computed_after)
     session.add(user)
-    
-    # Audit log
+
     audit_log_service.log_action(
         session=session,
         admin_user_id=admin.id,
         action="CREATE",
-        entity_type="REFUND",
+        entity_type="CREDIT_REFUND",
         entity_id=str(lot.id),
+        before_json={
+            "cached_balance": float(cached_before),
+            "computed_balance": float(computed_before),
+        },
         after_json={
-            "user_id": body.user_id,
-            "credits": body.credits,
-            "reason_code": body.reason_code,
+            "credit_lot_id": lot.id,
+            "ledger_id": ledger.id,
+            "computed_balance": float(computed_after),
         },
         reason=body.reason,
         idempotency_key=body.idempotency_key,
         request=request,
     )
-    
+
     session.commit()
-    
+
+    summary = _build_wallet_summary(session, user)
     return RefundResponse(
         id=lot.id,
         user_id=lot.user_id,
@@ -192,4 +226,6 @@ async def create_refund(
         source_payment_id=lot.source_payment_id,
         expires_at=lot.expires_at,
         created_at=lot.purchased_at,
+        ledger_id=ledger.id,
+        wallet_summary=summary.dict(),
     )

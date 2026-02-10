@@ -18,7 +18,8 @@ from app.admin_billing.deps import get_admin_user, get_superadmin_user
 from app.services.billing_feature_flags import get_feature_flags
 from app.services.audit_log_service import audit_log_service
 
-router = APIRouter(prefix="/admin/billing", tags=["admin-billing-flags"])
+router = APIRouter(prefix="/api/admin/billing", tags=["admin-billing-flags"])
+legacy_router = APIRouter(prefix="/admin/billing", tags=["admin-billing-flags-legacy"])
 
 
 # Request/Response Models
@@ -52,6 +53,7 @@ class FlagAuditEntry(BaseModel):
 
 
 @router.get("/flags", response_model=FeatureFlagsResponse)
+@legacy_router.get("/flags", response_model=FeatureFlagsResponse)
 async def get_flags(
     admin: User = Depends(get_admin_user),
 ):
@@ -68,6 +70,7 @@ async def get_flags(
 
 
 @router.put("/flags", response_model=FeatureFlagsResponse)
+@legacy_router.put("/flags", response_model=FeatureFlagsResponse)
 async def update_flags(
     request_body: UpdateFlagsRequest,
     request: Request,
@@ -140,6 +143,7 @@ async def update_flags(
 
 
 @router.get("/flags/audit", response_model=List[FlagAuditEntry])
+@legacy_router.get("/flags/audit", response_model=List[FlagAuditEntry])
 async def get_flags_audit(
     limit: int = 50,
     offset: int = 0,

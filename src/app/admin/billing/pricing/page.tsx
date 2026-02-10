@@ -8,9 +8,9 @@ interface PricingEntry {
     id: number;
     provider: string;
     model: string;
-    input_cost_1m: number;
-    output_cost_1m: number;
-    credits_per_usd: number;
+    price_in_per_1m: number;
+    price_out_per_1m: number;
+    price_cached_in_per_1m?: number;
     status: string;
     effective_from: string;
 }
@@ -26,9 +26,9 @@ export default function ProviderPricingPage() {
     const [formData, setFormData] = useState({
         provider: 'openai',
         model: 'gpt-5-mini',
-        input_cost_1m: 0.15,
-        output_cost_1m: 0.60,
-        credits_per_usd: 100,
+        price_in_per_1m: 0.15,
+        price_out_per_1m: 0.60,
+        price_cached_in_per_1m: 0.0,
         effective_from: '',
         reason: ''
     });
@@ -41,7 +41,7 @@ export default function ProviderPricingPage() {
 
     const fetchPricing = async () => {
         try {
-            const res = await fetch(`${API_BASE}/api/admin/payments/config/pricing?show_inactive_gpt5=${showInactive}`, {
+            const res = await fetch(`${API_BASE}/api/admin/billing/pricing?show_inactive_gpt5=${showInactive}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {
@@ -59,9 +59,9 @@ export default function ProviderPricingPage() {
         setFormData({
             provider: 'openai',
             model: 'gpt-5-mini',
-            input_cost_1m: 0.15,
-            output_cost_1m: 0.60,
-            credits_per_usd: 100,
+            price_in_per_1m: 0.15,
+            price_out_per_1m: 0.60,
+            price_cached_in_per_1m: 0.0,
             effective_from: '',
             reason: ''
         });
@@ -73,9 +73,9 @@ export default function ProviderPricingPage() {
         setFormData({
             provider: entry.provider,
             model: entry.model,
-            input_cost_1m: entry.input_cost_1m,
-            output_cost_1m: entry.output_cost_1m,
-            credits_per_usd: entry.credits_per_usd,
+            price_in_per_1m: entry.price_in_per_1m,
+            price_out_per_1m: entry.price_out_per_1m,
+            price_cached_in_per_1m: entry.price_cached_in_per_1m ?? 0,
             effective_from: '', // Default to now
             reason: ''
         });
@@ -88,13 +88,13 @@ export default function ProviderPricingPage() {
             const payload = {
                 provider: formData.provider,
                 model: formData.model,
-                input_cost_1m: formData.input_cost_1m,
-                output_cost_1m: formData.output_cost_1m,
-                credits_per_usd: formData.credits_per_usd,
+                price_in_per_1m: formData.price_in_per_1m,
+                price_out_per_1m: formData.price_out_per_1m,
+                price_cached_in_per_1m: formData.price_cached_in_per_1m,
                 effective_from: formData.effective_from || null
             };
 
-            const res = await fetch(`${API_BASE}/api/admin/payments/config/pricing`, {
+            const res = await fetch(`${API_BASE}/api/admin/billing/pricing`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -203,7 +203,7 @@ export default function ProviderPricingPage() {
                             <th className="px-8 py-5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Status</th>
                             <th className="px-8 py-5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">In / 1M</th>
                             <th className="px-8 py-5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Out / 1M</th>
-                            <th className="px-8 py-5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">CR / $1.00</th>
+                            <th className="px-8 py-5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Cached / 1M</th>
                             <th className="px-8 py-5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] text-right">Actions</th>
                         </tr>
                     </thead>
@@ -234,17 +234,17 @@ export default function ProviderPricingPage() {
                                 <td className="px-8 py-6">
                                     <div className="flex items-center gap-1">
                                         <span className="text-[10px] font-bold text-slate-400">$</span>
-                                        <span className="text-sm font-black text-slate-900 dark:text-white">{item.input_cost_1m.toFixed(2)}</span>
+                                        <span className="text-sm font-black text-slate-900 dark:text-white">{item.price_in_per_1m.toFixed(2)}</span>
                                     </div>
                                 </td>
                                 <td className="px-8 py-6">
                                     <div className="flex items-center gap-1">
                                         <span className="text-[10px] font-bold text-slate-400">$</span>
-                                        <span className="text-sm font-black text-slate-900 dark:text-white">{item.output_cost_1m.toFixed(2)}</span>
+                                        <span className="text-sm font-black text-slate-900 dark:text-white">{item.price_out_per_1m.toFixed(2)}</span>
                                     </div>
                                 </td>
                                 <td className="px-8 py-6">
-                                    <span className="text-sm font-extrabold text-admin-primary tracking-tighter italic">{item.credits_per_usd} CR</span>
+                                    <span className="text-sm font-extrabold text-admin-primary tracking-tighter italic">{(item.price_cached_in_per_1m ?? 0).toFixed(2)}</span>
                                 </td>
                                 <td className="px-8 py-6 text-right">
                                     <div className="flex justify-end gap-2">
@@ -278,9 +278,8 @@ export default function ProviderPricingPage() {
                         Multiplier Logic
                     </h3>
                     <p className="text-xs font-medium text-slate-500 leading-relaxed">
-                        The final credit cost for a request is calculated by converting the USD token cost to credits using the
-                        <span className="text-admin-primary font-bold mx-1">credits_per_usd</span>
-                        for that specific model. This allows for fine-grained control over margins and platform incentives.
+                        The final cost uses provider pricing for input/output tokens (per 1M) and applies the active credit economics config.
+                        Adjusting these rows changes the USD basis used by billing settlement for this model family.
                     </p>
                 </div>
                 <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 p-8 rounded-[2.5rem] space-y-4">
@@ -341,8 +340,8 @@ export default function ProviderPricingPage() {
                                         type="number"
                                         step="0.01"
                                         required
-                                        value={formData.input_cost_1m}
-                                        onChange={e => setFormData({ ...formData, input_cost_1m: parseFloat(e.target.value) })}
+                                        value={formData.price_in_per_1m}
+                                        onChange={e => setFormData({ ...formData, price_in_per_1m: parseFloat(e.target.value) })}
                                         className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
                                     />
                                 </div>
@@ -352,23 +351,22 @@ export default function ProviderPricingPage() {
                                         type="number"
                                         step="0.01"
                                         required
-                                        value={formData.output_cost_1m}
-                                        onChange={e => setFormData({ ...formData, output_cost_1m: parseFloat(e.target.value) })}
+                                        value={formData.price_out_per_1m}
+                                        onChange={e => setFormData({ ...formData, price_out_per_1m: parseFloat(e.target.value) })}
                                         className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
                                     />
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Credits per USD</label>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Cached Input $/1M</label>
                                 <input
                                     type="number"
-                                    required
-                                    value={formData.credits_per_usd}
-                                    onChange={e => setFormData({ ...formData, credits_per_usd: parseFloat(e.target.value) })}
+                                    value={formData.price_cached_in_per_1m}
+                                    onChange={e => setFormData({ ...formData, price_cached_in_per_1m: parseFloat(e.target.value) })}
                                     className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
                                 />
-                                <p className="text-[10px] text-slate-400 mt-1">Controls the internal exchange rate for this model.</p>
+                                <p className="text-[10px] text-slate-400 mt-1">Optional cached-input pricing (if supported by provider).</p>
                             </div>
 
                             <div>

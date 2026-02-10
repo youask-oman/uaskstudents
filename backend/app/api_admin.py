@@ -62,12 +62,12 @@ def get_current_user(
     return user
 
 def get_admin_user(user: User = Depends(get_current_user)):
-    if user.role not in ["admin", "devops"]:
+    if user.role not in ["admin", "devops", "superadmin"]:
         raise HTTPException(status_code=403, detail="Admin privileges required")
     return user
 
 def get_staff_user(user: User = Depends(get_current_user)):
-    if user.role not in ["admin", "devops", "support", "finance"]:
+    if user.role not in ["admin", "devops", "support", "finance", "superadmin"]:
         raise HTTPException(status_code=403, detail="Staff privileges required")
     return user
 

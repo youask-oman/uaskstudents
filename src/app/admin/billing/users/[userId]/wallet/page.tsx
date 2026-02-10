@@ -49,10 +49,10 @@ export default function UserWalletPage() {
     const fetchData = async () => {
         try {
             const [walletRes, lotsRes] = await Promise.all([
-                fetch(`${API_BASE}/admin/billing/users/${userId}/wallet`, {
+                fetch(`${API_BASE}/api/admin/billing/users/${userId}/wallet`, {
                     headers: { Authorization: `Bearer ${token}` },
                 }),
-                fetch(`${API_BASE}/admin/billing/users/${userId}/lots?limit=50`, {
+                fetch(`${API_BASE}/api/admin/billing/users/${userId}/lots?limit=50`, {
                     headers: { Authorization: `Bearer ${token}` },
                 }),
             ]);
@@ -78,7 +78,7 @@ export default function UserWalletPage() {
 
         setGranting(true);
         try {
-            const res = await fetch(`${API_BASE}/admin/billing/users/${userId}/lots`, {
+            const res = await fetch(`${API_BASE}/api/admin/billing/users/${userId}/lots`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -107,7 +107,7 @@ export default function UserWalletPage() {
         if (!confirm('Force reconcile this user\'s balance?')) return;
 
         try {
-            const res = await fetch(`${API_BASE}/admin/billing/users/${userId}/reconcile`, {
+            const res = await fetch(`${API_BASE}/api/admin/billing/users/${userId}/reconcile`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}` },
             });

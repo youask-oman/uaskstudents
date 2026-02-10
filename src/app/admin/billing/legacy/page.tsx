@@ -52,7 +52,11 @@ export default function LegacyPlansPage() {
     }
 
     return (
-        <div className="p-8 max-w-7xl mx-auto space-y-10">
+        <div className="p-8 max-w-7xl mx-auto space-y-6">
+            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-[0.3em] text-amber-600">
+                Legacy - Do Not Use
+            </div>
+            <div className="space-y-10">
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div className="space-y-2">
                     <div className="flex items-center gap-3">
@@ -143,6 +147,7 @@ export default function LegacyPlansPage() {
                         </p>
                     </div>
                 </div>
+            </div>
             </div>
         </div>
     );

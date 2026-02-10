@@ -9333,12 +9333,19 @@ class PlanCreate(BaseModel):
     multipliers: Dict[str, Any] = {}
     is_active: bool = True
 
+
+LEGACY_PLAN_MUTATION_DETAIL = (
+    "Legacy plans/subscriptions are disabled. Use Credit Programs. "
+    "This endpoint is read-only and will be removed."
+)
+
 @api_router.get('/admin/plans')
 async def list_plans(session: Session = Depends(get_session)):
     return session.exec(select(Plan)).all()
 
 @api_router.post('/admin/plans')
 async def admin_save_plan(plan: Plan, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
+    raise HTTPException(status_code=410, detail=LEGACY_PLAN_MUTATION_DETAIL)
     if plan.id == 0:
         plan.id = None
         db.add(plan)
@@ -9356,6 +9363,7 @@ async def admin_save_plan(plan: Plan, db: Session = Depends(get_session), admin:
 
 @api_router.delete("/admin/plans/{plan_id}")
 async def admin_delete_plan(plan_id: int, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
+    raise HTTPException(status_code=410, detail=LEGACY_PLAN_MUTATION_DETAIL)
     """Delete a plan if it's not and has never been used by any users."""
     plan = db.get(Plan, plan_id)
     if not plan:
@@ -9376,7 +9384,8 @@ async def admin_delete_plan(plan_id: int, db: Session = Depends(get_session), ad
     return {"status": "ok"}
 
 @api_router.post('/admin/plans')
-async def create_or_update_plan(plan_data: PlanCreate, session: Session = Depends(get_session)):
+async def create_or_update_plan(plan_data: PlanCreate, session: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
+    raise HTTPException(status_code=410, detail=LEGACY_PLAN_MUTATION_DETAIL)
     # Check if slug exists
     existing = session.exec(select(Plan).where(Plan.slug == plan_data.slug)).first()
     if existing:

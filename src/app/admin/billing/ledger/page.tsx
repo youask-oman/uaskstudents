@@ -35,8 +35,8 @@ export default function LedgerExplorerPage() {
         setLoading(true);
         try {
             const url = userId
-                ? `${API_BASE}/admin/billing/ledger?user_id=${userId}&limit=50`
-                : `${API_BASE}/admin/billing/ledger?limit=50`;
+                ? `${API_BASE}/api/admin/billing/ledger?user_id=${userId}&limit=50`
+                : `${API_BASE}/api/admin/billing/ledger?limit=50`;
 
             const res = await fetch(url, {
                 headers: { Authorization: `Bearer ${token}` },

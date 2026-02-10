@@ -72,8 +72,8 @@ async def query_ledger(
         count_query = count_query.where(BillingLedger.request_id == request_id)
     
     if attempt_id:
-        query = query.where(BillingLedger.attempt_id == attempt_id)
-        count_query = count_query.where(BillingLedger.attempt_id == attempt_id)
+        query = query.where(BillingLedger.request_id == attempt_id)
+        count_query = count_query.where(BillingLedger.request_id == attempt_id)
     
     if status:
         query = query.where(BillingLedger.status == status)
@@ -116,7 +116,7 @@ async def query_ledger(
             credits_after=float(e.credits_after) if e.credits_after else None,
             provider_cost_usd=float(e.provider_cost_usd) if e.provider_cost_usd else None,
             tier=e.tier,
-            attempt_id=e.attempt_id,
+            attempt_id=getattr(e, "attempt_id", None),
             finalized_at=e.finalized_at,
             created_at=e.created_at,
         ))
@@ -150,7 +150,7 @@ async def get_ledger_entry(
         credits_after=float(entry.credits_after) if entry.credits_after else None,
         provider_cost_usd=float(entry.provider_cost_usd) if entry.provider_cost_usd else None,
         tier=entry.tier,
-        attempt_id=entry.attempt_id,
+        attempt_id=getattr(entry, "attempt_id", None),
         finalized_at=entry.finalized_at,
         created_at=entry.created_at,
     )

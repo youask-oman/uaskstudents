@@ -3,462 +3,462 @@
     "path": "/api/v1/admin/users",
     "status": "PASS",
     "code": 200,
-    "ms": 20.68328857421875
+    "ms": 90.56544303894043
   },
   {
     "path": "/api/v1/admin/users/{user_id}",
     "status": "PASS",
     "code": 200,
-    "ms": 10.094642639160156
+    "ms": 11.597394943237305
   },
   {
     "path": "/api/v1/admin/users/{user_id}/full",
     "status": "PASS",
     "code": 200,
-    "ms": 25.86197853088379
+    "ms": 28.3663272857666
   },
   {
     "path": "/api/v1/admin/stats/dashboard",
     "status": "PASS",
     "code": 200,
-    "ms": 771.064043045044
+    "ms": 869.4279193878174
   },
   {
     "path": "/api/v1/admin/analytics/overview",
     "status": "PASS",
     "code": 200,
-    "ms": 12.386560440063477
+    "ms": 12.727975845336914
   },
   {
     "path": "/api/v1/admin/analytics/errors",
     "status": "PASS",
     "code": 200,
-    "ms": 6.598711013793945
+    "ms": 7.002115249633789
   },
   {
     "path": "/api/v1/admin/analytics/anomalies",
     "status": "PASS",
     "code": 200,
-    "ms": 7.782697677612305
+    "ms": 6.967306137084961
   },
   {
     "path": "/api/v1/admin/solver-output-attempts",
     "status": "PASS",
     "code": 200,
-    "ms": 9.180307388305664
+    "ms": 8.228778839111328
   },
   {
     "path": "/api/v1/admin/solver-output-attempts/{attempt_id}",
     "status": "PASS",
     "code": 404,
-    "ms": 6.864309310913086
+    "ms": 7.380962371826172
   },
   {
     "path": "/api/v1/admin/solve-traces",
     "status": "PASS",
     "code": 200,
-    "ms": 28.650760650634766
+    "ms": 28.110265731811523
   },
   {
     "path": "/api/v1/admin/db/tables",
     "status": "PASS",
     "code": 200,
-    "ms": 5.551576614379883
+    "ms": 5.27191162109375
   },
   {
     "path": "/api/v1/admin/db/table/{table_name}",
     "status": "PASS",
     "code": 200,
-    "ms": 6.6051483154296875
+    "ms": 5.895853042602539
   },
   {
     "path": "/api/v1/admin/stats/model-routing",
     "status": "PASS",
     "code": 200,
-    "ms": 5.294322967529297
+    "ms": 5.075931549072266
   },
   {
     "path": "/api/v1/admin/quotas",
     "status": "PASS",
     "code": 200,
-    "ms": 25.2687931060791
+    "ms": 21.64006233215332
   },
   {
     "path": "/api/v1/admin/system-config",
     "status": "PASS",
     "code": 200,
-    "ms": 6.919384002685547
+    "ms": 7.040262222290039
   },
   {
     "path": "/api/v1/admin/users/{user_id}/activity",
     "status": "PASS",
     "code": 200,
-    "ms": 6.104946136474609
+    "ms": 6.083250045776367
   },
   {
     "path": "/api/v1/admin/users/{user_id}/question-history",
     "status": "PASS",
     "code": 200,
-    "ms": 6.564140319824219
+    "ms": 6.414651870727539
   },
   {
     "path": "/api/v1/admin/prompt-registry/prompts",
     "status": "PASS",
     "code": 200,
-    "ms": 7.71641731262207
+    "ms": 7.774114608764648
   },
   {
     "path": "/api/v1/admin/prompt-registry/prompts/{prompt_id}/versions",
     "status": "PASS",
     "code": 200,
-    "ms": 6.300687789916992
+    "ms": 7.173776626586914
   },
   {
     "path": "/api/v1/admin/prompt-registry/schemas",
     "status": "PASS",
     "code": 200,
-    "ms": 7.506608963012695
+    "ms": 7.430791854858398
   },
   {
     "path": "/api/v1/admin/prompt-registry/schemas/{schema_id}/versions",
     "status": "PASS",
     "code": 200,
-    "ms": 6.119012832641602
+    "ms": 6.631612777709961
   },
   {
     "path": "/api/v1/admin/prompt-registry/bindings",
     "status": "PASS",
     "code": 200,
-    "ms": 7.921695709228516
+    "ms": 7.504940032958984
   },
   {
     "path": "/api/v1/admin/prompt-registry/audit",
     "status": "PASS",
     "code": 200,
-    "ms": 20.451784133911133
+    "ms": 20.85733413696289
   },
   {
     "path": "/api/v1/users/online",
     "status": "PASS",
     "code": 200,
-    "ms": 6.2274932861328125
+    "ms": 5.256891250610352
   },
   {
     "path": "/api/v1/admin/plans",
     "status": "PASS",
     "code": 200,
-    "ms": 5.636692047119141
+    "ms": 6.263256072998047
   },
   {
     "path": "/api/v1/users/me/subscription",
     "status": "PASS",
     "code": 422,
-    "ms": 3.615856170654297
+    "ms": 4.1217803955078125
   },
   {
     "path": "/api/v1/admin/plans-with-prompts",
     "status": "PASS",
     "code": 200,
-    "ms": 4.694938659667969
+    "ms": 5.626440048217773
   },
   {
     "path": "/api/v1/admin/whatsapp/status",
     "status": "PASS",
     "code": 200,
-    "ms": 2.9239654541015625
+    "ms": 2.7420520782470703
   },
   {
     "path": "/api/v1/admin/whatsapp/ocr-state",
     "status": "PASS",
     "code": 401,
-    "ms": 2.6857852935791016
+    "ms": 3.3190250396728516
   },
   {
     "path": "/api/v1/admin/whatsapp/diag",
     "status": "PASS",
     "code": 401,
-    "ms": 2.7458667755126953
+    "ms": 2.6628971099853516
   },
   {
     "path": "/api/v1/admin/whatsapp/monitor",
     "status": "PASS",
     "code": 401,
-    "ms": 2.8693675994873047
+    "ms": 2.5777816772460938
   },
   {
     "path": "/api/v1/admin/whatsapp/monitor/export",
     "status": "PASS",
     "code": 401,
-    "ms": 3.0519962310791016
+    "ms": 2.9485225677490234
   },
   {
     "path": "/api/v1/attempt/{attempt_id}",
     "status": "PASS",
     "code": 404,
-    "ms": 5.868196487426758
+    "ms": 5.701541900634766
   },
   {
     "path": "/api/v1/attempt/{attempt_id}/events",
     "status": "PASS",
     "code": 404,
-    "ms": 5.113124847412109
+    "ms": 4.768133163452148
   },
   {
     "path": "/api/admin/diagnostics/credits",
     "status": "PASS",
     "code": 404,
-    "ms": 5.55729866027832
+    "ms": 5.467653274536133
   },
   {
     "path": "/api/admin/diagnostics/transactions/{target_user_id}",
     "status": "PASS",
     "code": 200,
-    "ms": 8.643388748168945
+    "ms": 8.173704147338867
   },
   {
     "path": "/api/admin/transactions",
     "status": "PASS",
     "code": 200,
-    "ms": 7.1353912353515625
+    "ms": 7.075071334838867
   },
   {
     "path": "/api/admin/config/history/{config_type}",
     "status": "PASS",
     "code": 200,
-    "ms": 6.988048553466797
+    "ms": 6.870746612548828
   },
   {
     "path": "/api/admin/config/{config_type}",
     "status": "PASS",
     "code": 200,
-    "ms": 7.64918327331543
+    "ms": 7.112979888916016
   },
   {
     "path": "/api/admin/payments/overview",
     "status": "PASS",
     "code": 200,
-    "ms": 10.179996490478516
+    "ms": 8.831977844238281
   },
   {
     "path": "/api/admin/payments/topups",
     "status": "PASS",
     "code": 200,
-    "ms": 9.459733963012695
+    "ms": 8.792638778686523
   },
   {
     "path": "/api/admin/payments/lots",
     "status": "PASS",
     "code": 200,
-    "ms": 8.331775665283203
+    "ms": 7.494926452636719
   },
   {
     "path": "/api/admin/payments/consumption/{request_id}",
     "status": "PASS",
     "code": 200,
-    "ms": 8.577108383178711
+    "ms": 8.738994598388672
   },
   {
     "path": "/api/admin/payments/requests",
     "status": "PASS",
     "code": 200,
-    "ms": 8.21542739868164
+    "ms": 7.723808288574219
   },
   {
     "path": "/api/admin/payments/pricing",
     "status": "PASS",
     "code": 200,
-    "ms": 7.681846618652344
+    "ms": 7.931232452392578
   },
   {
     "path": "/api/admin/payments/subscriptions",
     "status": "PASS",
     "code": 200,
-    "ms": 8.003473281860352
+    "ms": 7.43556022644043
   },
   {
     "path": "/api/admin/payments/subscriptions/{sub_id}/periods",
     "status": "PASS",
     "code": 200,
-    "ms": 7.246255874633789
+    "ms": 7.4367523193359375
   },
   {
     "path": "/api/admin/payments/stripe/events",
     "status": "PASS",
     "code": 200,
-    "ms": 9.86623764038086
+    "ms": 7.790088653564453
   },
   {
     "path": "/api/admin/payments/stripe/reconciliation",
     "status": "PASS",
     "code": 200,
-    "ms": 7.100582122802734
+    "ms": 6.208181381225586
   },
   {
     "path": "/api/admin/payments/subscriptions/{sub_id}/billing",
     "status": "PASS",
     "code": 200,
-    "ms": 7.798671722412109
+    "ms": 7.050514221191406
   },
   {
     "path": "/api/admin/payments/invoices",
     "status": "PASS",
     "code": 200,
-    "ms": 8.802652359008789
+    "ms": 9.028434753417969
   },
   {
     "path": "/api/admin/payments/invoices/{invoice_id}",
     "status": "PASS",
     "code": 404,
-    "ms": 7.653713226318359
+    "ms": 6.7577362060546875
   },
   {
     "path": "/api/admin/payments/invoices/{invoice_id}/html",
     "status": "PASS",
     "code": 404,
-    "ms": 6.55055046081543
+    "ms": 6.42085075378418
   },
   {
     "path": "/api/admin/payments/config",
     "status": "PASS",
     "code": 200,
-    "ms": 7.658481597900391
+    "ms": 7.784843444824219
   },
   {
     "path": "/api/admin/payments/pricing",
     "status": "PASS",
     "code": 200,
-    "ms": 6.376981735229492
+    "ms": 5.9871673583984375
   },
   {
     "path": "/api/admin/health/db",
     "status": "PASS",
     "code": 200,
-    "ms": 17.073392868041992
+    "ms": 15.678167343139648
   },
   {
     "path": "/api/admin/health/findings",
     "status": "PASS",
     "code": 200,
-    "ms": 10.657548904418945
+    "ms": 9.033203125
   },
   {
     "path": "/api/admin/health/errors",
     "status": "PASS",
     "code": 200,
-    "ms": 7.282733917236328
+    "ms": 7.443666458129883
   },
   {
     "path": "/api/admin/health/errors/summary",
     "status": "PASS",
     "code": 200,
-    "ms": 9.974956512451172
+    "ms": 9.406566619873047
   },
   {
     "path": "/api/admin/health/stripe/failed",
     "status": "PASS",
     "code": 200,
-    "ms": 7.579565048217773
+    "ms": 8.032560348510742
   },
   {
     "path": "/api/admin/health/holds/stuck",
     "status": "PASS",
     "code": 200,
-    "ms": 7.7991485595703125
+    "ms": 7.89189338684082
   },
   {
     "path": "/admin/billing/flags",
     "status": "PASS",
     "code": 200,
-    "ms": 5.45954704284668
+    "ms": 5.696296691894531
   },
   {
     "path": "/admin/billing/flags/audit",
     "status": "PASS",
     "code": 200,
-    "ms": 9.037971496582031
+    "ms": 8.840799331665039
   },
   {
     "path": "/admin/billing/programs",
     "status": "PASS",
-    "code": 200,
-    "ms": 10.849475860595703
+    "code": 404,
+    "ms": 2.9544830322265625
   },
   {
     "path": "/admin/billing/users/{user_id}/wallet",
     "status": "PASS",
-    "code": 200,
-    "ms": 11.24119758605957
+    "code": 404,
+    "ms": 3.0596256256103516
   },
   {
     "path": "/admin/billing/users/{user_id}/lots",
     "status": "PASS",
-    "code": 200,
-    "ms": 7.775783538818359
+    "code": 404,
+    "ms": 3.8290023803710938
   },
   {
     "path": "/admin/billing/users/{user_id}/consumptions",
     "status": "PASS",
-    "code": 200,
-    "ms": 8.858680725097656
+    "code": 404,
+    "ms": 2.972126007080078
   },
   {
     "path": "/admin/billing/holds",
     "status": "PASS",
-    "code": 200,
-    "ms": 8.126974105834961
+    "code": 404,
+    "ms": 3.0841827392578125
   },
   {
     "path": "/admin/billing/holds/stats",
     "status": "PASS",
-    "code": 200,
-    "ms": 6.908416748046875
+    "code": 404,
+    "ms": 3.1135082244873047
   },
   {
     "path": "/admin/billing/refunds",
     "status": "PASS",
-    "code": 200,
-    "ms": 8.266687393188477
+    "code": 404,
+    "ms": 2.9163360595703125
   },
   {
     "path": "/admin/billing/health",
     "status": "PASS",
-    "code": 200,
-    "ms": 9.023427963256836
+    "code": 404,
+    "ms": 3.116130828857422
   },
   {
     "path": "/admin/billing/health/mismatches",
     "status": "PASS",
-    "code": 200,
-    "ms": 7.647991180419922
+    "code": 404,
+    "ms": 3.473997116088867
   },
   {
     "path": "/admin/billing/health/export",
     "status": "PASS",
-    "code": 200,
-    "ms": 8.38470458984375
+    "code": 404,
+    "ms": 3.5376548767089844
   },
   {
     "path": "/admin/billing/ledger",
     "status": "PASS",
-    "code": 200,
-    "ms": 8.021116256713867
+    "code": 404,
+    "ms": 3.2694339752197266
   },
   {
     "path": "/admin/billing/invoices",
     "status": "PASS",
-    "code": 200,
-    "ms": 5.794763565063477
+    "code": 404,
+    "ms": 3.7353038787841797
   },
   {
     "path": "/admin/billing/invoices/{invoice_id}",
     "status": "PASS",
     "code": 404,
-    "ms": 6.297588348388672
+    "ms": 3.014802932739258
   },
   {
     "path": "/admin/billing/invoices/{invoice_id}/pdf",
     "status": "PASS",
-    "code": 501,
-    "ms": 5.259037017822266
+    "code": 404,
+    "ms": 3.4682750701904297
   }
 ]

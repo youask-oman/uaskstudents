@@ -42,7 +42,7 @@ export default function CreditProgramsPage() {
 
     const fetchPrograms = async () => {
         try {
-            const res = await fetch(`${API_BASE}/admin/billing/programs?limit=50`, {
+            const res = await fetch(`${API_BASE}/api/admin/billing/programs?limit=50`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {
@@ -87,8 +87,8 @@ export default function CreditProgramsPage() {
         e.preventDefault();
         try {
             const url = editingProgram
-                ? `${API_BASE}/admin/billing/programs/${editingProgram.id}`
-                : `${API_BASE}/admin/billing/programs`;
+                ? `${API_BASE}/api/admin/billing/programs/${editingProgram.id}`
+                : `${API_BASE}/api/admin/billing/programs`;
 
             const method = editingProgram ? 'PUT' : 'POST';
 
@@ -132,7 +132,7 @@ export default function CreditProgramsPage() {
         if (!reason) return;
 
         try {
-            const res = await fetch(`${API_BASE}/admin/billing/programs/${id}`, {
+            const res = await fetch(`${API_BASE}/api/admin/billing/programs/${id}`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',

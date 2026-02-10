@@ -245,7 +245,10 @@ from app.api_admin_payments_config import router as admin_payments_config_router
 from app.api_admin_health import router as admin_health_router
 
 # Billing Admin APIs
-from app.admin_billing.billing_flags import router as billing_flags_router
+from app.admin_billing.billing_flags import (
+    router as billing_flags_router,
+    legacy_router as billing_flags_legacy_router,
+)
 from app.admin_billing.billing_programs import router as billing_programs_router
 from app.admin_billing.billing_wallet import router as billing_wallet_router
 from app.admin_billing.billing_holds import router as billing_holds_router
@@ -253,6 +256,7 @@ from app.admin_billing.billing_refunds import router as billing_refunds_router
 from app.admin_billing.billing_health import router as billing_health_router
 from app.admin_billing.billing_ledger import router as billing_ledger_router
 from app.admin_billing.billing_invoices import router as billing_invoices_router
+from app.admin_billing.billing_pricing import router as billing_pricing_router
 
 app.include_router(api_router, prefix="/api/v1")
 app.include_router(topup_router, prefix="/api/v1")
@@ -265,6 +269,7 @@ app.include_router(admin_health_router)
 
 # Billing Admin Routers
 app.include_router(billing_flags_router)
+app.include_router(billing_flags_legacy_router)
 app.include_router(billing_programs_router)
 app.include_router(billing_wallet_router)
 app.include_router(billing_holds_router)
@@ -272,6 +277,7 @@ app.include_router(billing_refunds_router)
 app.include_router(billing_health_router)
 app.include_router(billing_ledger_router)
 app.include_router(billing_invoices_router)
+app.include_router(billing_pricing_router)
 
 from fastapi.staticfiles import StaticFiles
 import os

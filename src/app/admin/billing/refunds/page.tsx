@@ -39,7 +39,7 @@ export default function RefundCenterPage() {
 
     const fetchRefunds = async () => {
         try {
-            const res = await fetch(`${API_BASE}/admin/billing/refunds?limit=50`, {
+            const res = await fetch(`${API_BASE}/api/admin/billing/refunds?limit=50`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {
@@ -56,7 +56,7 @@ export default function RefundCenterPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const res = await fetch(`${API_BASE}/admin/billing/refunds`, {
+            const res = await fetch(`${API_BASE}/api/admin/billing/refunds`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,

@@ -52,6 +52,7 @@ class CreateProgramRequest(BaseModel):
     effective_from: Optional[datetime] = None
     effective_to: Optional[datetime] = None
     reason: str
+    idempotency_key: Optional[str] = None
 
 
 class UpdateProgramRequest(BaseModel):
@@ -63,22 +64,26 @@ class UpdateProgramRequest(BaseModel):
     entitlements: Optional[dict] = None
     effective_to: Optional[datetime] = None
     reason: str
+    idempotency_key: Optional[str] = None
 
 
 class EnrollUserRequest(BaseModel):
     user_id: int
     program_id: int
     reason: str
+    idempotency_key: Optional[str] = None
 
 
 class UnenrollUserRequest(BaseModel):
     user_id: int
     program_id: int
     reason: str
+    idempotency_key: Optional[str] = None
 
 
 class DeleteProgramRequest(BaseModel):
     reason: str
+    idempotency_key: Optional[str] = None
 
 
 
@@ -198,8 +203,10 @@ async def create_program(
         action="CREATE",
         entity_type="CREDIT_PROGRAM",
         entity_id=str(program.id),
+        before_json={"status": "new"},
         after_json={"name": program.name, "slug": program.slug},
         reason=body.reason,
+        idempotency_key=body.idempotency_key,
         request=request,
     )
     
@@ -298,6 +305,7 @@ async def update_program(
         before_json=before,
         after_json=after,
         reason=body.reason,
+        idempotency_key=body.idempotency_key,
         request=request,
     )
     
@@ -439,6 +447,7 @@ async def delete_program(
         before_json=before,
         after_json={"status": "archived"},
         reason=body.reason,
+        idempotency_key=body.idempotency_key,
         request=request,
     )
     
@@ -490,8 +499,10 @@ async def enroll_user(
         action="CREATE",
         entity_type="ENROLLMENT",
         entity_id=str(enrollment.id),
-        after_json={"user_id": body.user_id, "program_id": body.program_id},
+        before_json={"status": "none"},
+        after_json={"user_id": body.user_id, "program_id": body.program_id, "status": "active"},
         reason=body.reason,
+        idempotency_key=body.idempotency_key,
         request=request,
     )
     
@@ -532,6 +543,7 @@ async def unenroll_user(
         before_json=before,
         after_json={"status": "ended", "ended_at": str(enrollment.ended_at)},
         reason=body.reason,
+        idempotency_key=body.idempotency_key,
         request=request,
     )
     

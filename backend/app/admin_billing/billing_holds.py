@@ -14,6 +14,7 @@ from app.database import get_session
 from app.models import User, CreditHold
 from app.admin_billing.deps import get_admin_user, get_superadmin_user
 from app.services.audit_log_service import audit_log_service
+from app.admin_billing.billing_wallet import _build_wallet_summary
 
 router = APIRouter(prefix="/api/admin/billing/holds", tags=["admin-billing-holds"])
 
@@ -37,6 +38,7 @@ class HoldResponse(BaseModel):
 
 class ReleaseHoldRequest(BaseModel):
     reason: str
+    idempotency_key: Optional[str] = None
 
 
 class PaginatedResponse(BaseModel):
@@ -136,12 +138,20 @@ async def force_release_hold(
         before_json=before,
         after_json={"status": hold.status},
         reason=body.reason,
+        idempotency_key=body.idempotency_key,
         request=request,
     )
     
     session.commit()
-    
-    return {"success": True, "hold_id": hold_id, "new_status": hold.status}
+
+    user = session.get(User, hold.user_id)
+    summary = _build_wallet_summary(session, user) if user else None
+    return {
+        "success": True,
+        "hold_id": hold_id,
+        "new_status": hold.status,
+        "wallet_summary": summary.dict() if summary else None,
+    }
 
 
 @router.get("/stats")

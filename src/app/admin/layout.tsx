@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import navManifest from "../../../admin_nav_manifest.json";
 
 type AdminProfile = {
     name: string;
@@ -35,7 +36,7 @@ export default function AdminLayout({
             name: localStorage.getItem("user_name") ?? "Admin User",
             role: role,
             avatar: localStorage.getItem("user_avatar") ?? "",
-            authorized: role === "admin",
+            authorized: role === "admin" || role === "superadmin",
         };
 
         // Defer update to avoid synchronous state update warning
@@ -54,41 +55,9 @@ export default function AdminLayout({
     }, [pathname, router]);
     if (!adminProfile.authorized) return null;
 
-    const adminRoleLabel = adminProfile.authorized ? "Platform Administrator" : "Super Admin";
+    const adminRoleLabel = adminProfile.role === "superadmin" ? "Super Admin" : "Platform Administrator";
 
-    const navItems = [
-        { label: "Overview", href: "/admin/dashboard", icon: "dashboard" },
-        { label: "Users", href: "/admin/users", icon: "group" },
-        { label: "Quotas", href: "/admin/quotas", icon: "speed" },
-        { label: "Prompt Registry", href: "/admin/prompt-registry", icon: "terminal" },
-        { label: "Schema Registry", href: "/admin/schema-registry", icon: "data_object" },
-        { label: "Prompt Bindings", href: "/admin/prompt-bindings", icon: "link" },
-        { label: "Content", href: "/admin/content", icon: "collections_bookmark" },
-        { label: "WhatsApp Bot", href: "/admin/whatsapp-bot", icon: "chat" },
-        { label: "WhatsApp Monitor", href: "/admin/whatsapp-monitor", icon: "monitor_heart" },
-        { label: "Logs", href: "/admin/logs", icon: "receipt_long" },
-        { label: "Solvers", href: "/admin/solver-attempts", icon: "article" },
-
-        // Billing Section
-        { label: "─────────────", href: "#", icon: "" },
-        { label: "Credit Programs", href: "/admin/billing/programs", icon: "card_giftcard" },
-        { label: "Enrollments", href: "/admin/billing/enrollments", icon: "person_add" },
-        { label: "Pricing Config", href: "/admin/billing/pricing", icon: "payments" },
-        { label: "Credit Packs", href: "/admin/billing/packs", icon: "inventory_2" },
-        { label: "Ledger Explorer", href: "/admin/billing/ledger", icon: "menu_book" },
-        { label: "Refund Center", href: "/admin/billing/refunds", icon: "currency_exchange" },
-        { label: "Active Holds", href: "/admin/billing/holds", icon: "pause_circle" },
-        { label: "Billing Health", href: "/admin/billing/health", icon: "health_and_safety" },
-
-        // Legacy Section
-        { label: "─────────────", href: "#", icon: "" },
-        { label: "Legacy Plans (RO)", href: "/admin/billing/legacy", icon: "diamond" },
-        { label: "Legacy Payments", href: "/adminpayments", icon: "history" },
-
-        { label: "─────────────", href: "#", icon: "" },
-        { label: "Data", href: "/admin/data", icon: "table_view" },
-        { label: "System Config", href: "/admin/system-config", icon: "tune" },
-    ];
+    const navItems = Array.isArray(navManifest?.nav_items) ? navManifest.nav_items : [];
 
 
     return (
@@ -108,21 +77,31 @@ export default function AdminLayout({
                         </div>
                     </div>
                     <nav className="flex flex-col gap-1">
-                        {navItems.map((item, index) => (
-                            <Link
-                                key={`${item.href}-${index}`}
-                                href={item.href}
-                                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${pathname === item.href
-                                    ? "bg-admin-primary text-white shadow-lg shadow-admin-primary/20"
-                                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
-                                    }`}
-                            >
-                                <span className={`material-symbols-outlined ${pathname === item.href ? "fill-current" : ""}`}>
-                                    {item.icon}
-                                </span>
-                                <p className="text-sm font-medium">{item.label}</p>
-                            </Link>
-                        ))}
+                        {navItems.map((item, index) => {
+                            if (item.type === "divider") {
+                                return (
+                                    <div
+                                        key={`divider-${index}`}
+                                        className="my-3 h-px w-full bg-slate-200 dark:bg-slate-800"
+                                    />
+                                );
+                            }
+                            return (
+                                <Link
+                                    key={`${item.href}-${index}`}
+                                    href={item.href}
+                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${pathname === item.href
+                                        ? "bg-admin-primary text-white shadow-lg shadow-admin-primary/20"
+                                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+                                        }`}
+                                >
+                                    <span className={`material-symbols-outlined ${pathname === item.href ? "fill-current" : ""}`}>
+                                        {item.icon}
+                                    </span>
+                                    <p className="text-sm font-medium">{item.label}</p>
+                                </Link>
+                            );
+                        })}
                     </nav>
                 </div>
                 <div className="flex flex-col gap-4">

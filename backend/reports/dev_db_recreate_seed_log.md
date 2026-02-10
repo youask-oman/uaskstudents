@@ -1,6 +1,6 @@
 # DEV Database Recreate & Seed Log
 
-**Date:** 2026-02-09T22:49:23.167277+00:00  
+**Date:** 2026-02-10T02:30:21.668405+00:00  
 **Status:** SUCCESS  
 **Alembic Revision:** `7aa5b3a25e41 (head)`
 
@@ -37,23 +37,24 @@ Result: PASS
 
 ## 5. Logs
 ```
-[22:47:23] SECTION: Preflight Check
-[22:47:23] SECTION: Nuke DB
-[22:47:23] Truncating 70 tables...
-[22:47:25] SECTION: Migrations
-[22:47:25] CMD: alembic upgrade head
-[22:47:26] SUCCESS after 1.25s
-[22:47:26] STDOUT:
+[02:28:14] SECTION: Preflight Check
+[02:28:14] APP_ENV not set. Defaulting to DEV for this workflow.
+[02:28:14] SECTION: Nuke DB
+[02:28:14] Truncating 70 tables...
+[02:28:15] SECTION: Migrations
+[02:28:15] CMD: alembic upgrade head
+[02:28:16] SUCCESS after 1.23s
+[02:28:16] STDOUT:
 
-[22:47:26] CMD: alembic current
-[22:47:27] SUCCESS after 1.19s
-[22:47:27] STDOUT:
+[02:28:16] CMD: alembic current
+[02:28:17] SUCCESS after 1.55s
+[02:28:17] STDOUT:
 7aa5b3a25e41 (head)
 
-[22:47:27] SECTION: Seeding
-[22:47:27] CMD: python -m scripts.seed_production --env DEV --dev-fixtures
-[22:48:21] SUCCESS after 54.27s
-[22:48:21] STDOUT (snippet):
+[02:28:17] SECTION: Seeding
+[02:28:17] CMD: python -m scripts.seed_production --env DEV --dev-fixtures
+[02:29:11] SUCCESS after 54.06s
+[02:29:11] STDOUT (snippet):
 Seed completed:
   systemconfig: row_count=30 created=30 updated=0 skipped=0
   json_schemas: row_count=8 created=8 updated=0 skipped=0
@@ -63,10 +64,10 @@ Seed completed:
   providermodelpricing: row_count=8 created=8 updated=0 skipped=0
   creditprogramdefinition: row_count=4 created=4 updated=0 skipped=0
   plan: row_count=5 created=5 updated=0 s...
-[22:48:21] SECTION: Verification
-[22:48:21] CMD: python -m scripts.verify_seed_schema_completeness
-[22:48:23] SUCCESS after 1.37s
-[22:48:23] STDOUT (snippet):
+[02:29:11] SECTION: Verification
+[02:29:11] CMD: python -m scripts.verify_seed_schema_completeness
+[02:29:13] SUCCESS after 1.21s
+[02:29:13] STDOUT (snippet):
 Starting verification...
 {
   "tables_exist": {
@@ -88,27 +89,26 @@ Starting verification...
       "crop",
       "devicesignuplog",
       "adminnote",
+      "usagelog",
       "upload",
-      "ocrchoice",
-      "voicejob",
       "canonicalsolution",
- ...
-[22:48:23] SECTION: Smoke Tests
-[22:48:23] CMD: pytest tests/seeding/ -q
-[22:48:45] SUCCESS after 21.89s
-[22:48:45] STDOUT:
+      "json_schemas"...
+[02:29:13] SECTION: Smoke Tests
+[02:29:13] CMD: pytest tests/seeding/ -q
+[02:29:35] SUCCESS after 22.12s
+[02:29:35] STDOUT:
 ....                                                                     [100%]
-4 passed in 20.23s
+4 passed in 20.31s
 
-[22:48:45] Running smoke tests...
-[22:48:45] CMD: pytest tests/smoke/ -q
-[22:49:21] SUCCESS after 36.65s
-[22:49:21] STDOUT (snippet):
-........                                                                 [100%]
+[02:29:35] Running smoke tests...
+[02:29:35] CMD: pytest tests/smoke/ -q
+[02:30:20] SUCCESS after 45.12s
+[02:30:20] STDOUT (snippet):
+............                                                             [100%]
 =============================== warnings summary ===============================
 tests/smoke/test_admin_api_all.py::test_admin_api_endpoints_200
 tests/smoke/test_admin_rbac.py::test_admin_rbac_enforcement
   /app/app/auth.py:38: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(date...
-[22:49:21] SECTION: Generating Report
+[02:30:20] SECTION: Generating Report
 ... (see console for full logs)
 ```

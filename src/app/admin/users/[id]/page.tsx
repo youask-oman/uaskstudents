@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type ReactNode } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 
@@ -77,6 +77,73 @@ interface FullUserData {
     enrollments: GenericRecord[];
 }
 
+interface WalletSummary {
+    user_id?: number;
+    user_email?: string;
+    cached_balance: number;
+    computed_balance: number;
+    delta: number;
+    pending_holds: number;
+    pending_hold_credits: number;
+    expiring_soon_credits: number;
+    expiring_soon_lots: number;
+    active_lots: number;
+    total_lots: number;
+}
+
+interface WalletLot {
+    id: number;
+    lot_type: string;
+    credits_total: number;
+    credits_remaining: number;
+    expires_at: string | null;
+    status: string;
+    source_label?: string | null;
+    source_meta?: Record<string, unknown> | null;
+}
+
+interface WalletLedgerEntry {
+    id: number;
+    event_type: string;
+    credits_delta: number;
+    credits_before: number;
+    credits_after: number;
+    reference?: string | null;
+    request_id?: string | null;
+    created_at: string;
+}
+
+interface WalletEnrollment {
+    id: number;
+    program_id: number;
+    program_name?: string | null;
+    status: string;
+    started_at: string;
+    last_grant_month?: string | null;
+    next_grant_date?: string | null;
+    next_grant_status?: string | null;
+}
+
+interface WalletHold {
+    id: number;
+    user_id?: number;
+    user_email?: string | null;
+    subscription_id?: number;
+    request_id: string;
+    reserved_credits: number;
+    status: string;
+    created_at: string;
+    finalized_at?: string | null;
+    meta?: Record<string, unknown> | null;
+    age_seconds: number;
+}
+
+interface CreditProgram {
+    id: number;
+    name: string;
+    status: string;
+}
+
 const formatDateTime = (value: unknown) => {
     if (!value) return "n/a";
     const date = new Date(value as string | number | Date);
@@ -145,7 +212,7 @@ const DataTable = ({
 }: {
     title: string;
     rows: TableRow[];
-    columns: { key: string; label: string; render?: (value: unknown, row: TableRow) => string }[];
+    columns: { key: string; label: string; render?: (value: unknown, row: TableRow) => ReactNode }[];
 }) => (
     <section className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl">
         <div className="flex items-center justify-between mb-4">
@@ -214,8 +281,6 @@ export default function UserDetailPage() {
     // Form states for updates
     const [newQuotaQuestions, setNewQuotaQuestions] = useState(0);
     const [newQuotaScans, setNewQuotaScans] = useState(0);
-    const [newTier, setNewTier] = useState("");
-    const [availablePlans, setAvailablePlans] = useState<{ id: number; name: string; slug: string }[]>([]);
     const [editFullName, setEditFullName] = useState("");
     const [editEmail, setEditEmail] = useState("");
     const [editAcademicLevel, setEditAcademicLevel] = useState("");
@@ -230,24 +295,28 @@ export default function UserDetailPage() {
     const [grantAmount, setGrantAmount] = useState(10);
     const [grantReason, setGrantReason] = useState("");
     const [grantType, setGrantType] = useState("ADJUSTMENT");
+    const [grantExpiryDays, setGrantExpiryDays] = useState(365);
 
     const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
     const [refundAmount, setRefundAmount] = useState(10);
     const [refundReason, setRefundReason] = useState("");
     const [refundReasonCode, setRefundReasonCode] = useState("SERVICE_ISSUE");
+    const [refundPaymentId, setRefundPaymentId] = useState("");
+    const [refundAttemptId, setRefundAttemptId] = useState("");
+    const [refundIdempotencyKey, setRefundIdempotencyKey] = useState("");
 
-    const fetchPlans = useCallback(async (signal?: AbortSignal) => {
-        try {
-            const res = await fetch(`${baseUrl}/api/v1/admin/plans`, { headers: getAuthHeaders(), signal });
-            if (res.ok) {
-                const data = await res.json();
-                setAvailablePlans(data);
-            }
-        } catch (error) {
-            if ((error as Error).name === "AbortError") return;
-            console.error("Failed to fetch plans:", error);
-        }
-    }, [baseUrl, getAuthHeaders]);
+    const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
+    const [walletLots, setWalletLots] = useState<WalletLot[]>([]);
+    const [walletLedger, setWalletLedger] = useState<WalletLedgerEntry[]>([]);
+    const [walletEnrollments, setWalletEnrollments] = useState<WalletEnrollment[]>([]);
+    const [walletHolds, setWalletHolds] = useState<WalletHold[]>([]);
+    const [programs, setPrograms] = useState<CreditProgram[]>([]);
+    const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+    const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
+    const [enrollProgramId, setEnrollProgramId] = useState("");
+    const [enrollReason, setEnrollReason] = useState("");
+    const [enrollIdempotencyKey, setEnrollIdempotencyKey] = useState("");
+    const [grantIdempotencyKey, setGrantIdempotencyKey] = useState("");
 
     const fetchUserDetail = useCallback(async (signal?: AbortSignal) => {
         if (!id) return;
@@ -259,7 +328,6 @@ export default function UserDetailPage() {
                 setUser(data);
                 setNewQuotaQuestions(data.quota_questions_total);
                 setNewQuotaScans(data.quota_scans_total);
-                setNewTier(data.subscription_tier);
                 setEditFullName(data.full_name || "");
                 setEditEmail(data.email || "");
                 setEditAcademicLevel(data.academic_level || "");
@@ -362,6 +430,102 @@ export default function UserDetailPage() {
         }
     }, [id, baseUrl, getAuthHeaders, selectedSessionId]);
 
+    const fetchWalletSummary = useCallback(async (signal?: AbortSignal) => {
+        if (!id) return;
+        try {
+            const res = await fetch(`${baseUrl}/api/admin/billing/users/${id}/wallet_summary`, { headers: getAuthHeaders(), signal });
+            if (res.ok) {
+                const data = await res.json();
+                setWalletSummary(data);
+            }
+        } catch (error) {
+            if ((error as Error).name === "AbortError") return;
+            console.error("Failed to fetch wallet summary:", error);
+        }
+    }, [id, baseUrl, getAuthHeaders]);
+
+    const fetchWalletLots = useCallback(async (signal?: AbortSignal) => {
+        if (!id) return;
+        try {
+            const res = await fetch(`${baseUrl}/api/admin/billing/users/${id}/lots?limit=50`, { headers: getAuthHeaders(), signal });
+            if (res.ok) {
+                const data = await res.json();
+                setWalletLots(Array.isArray(data.items) ? data.items : []);
+            }
+        } catch (error) {
+            if ((error as Error).name === "AbortError") return;
+            console.error("Failed to fetch wallet lots:", error);
+        }
+    }, [id, baseUrl, getAuthHeaders]);
+
+    const fetchWalletLedger = useCallback(async (signal?: AbortSignal) => {
+        if (!id) return;
+        try {
+            const res = await fetch(`${baseUrl}/api/admin/billing/users/${id}/ledger?limit=20`, { headers: getAuthHeaders(), signal });
+            if (res.ok) {
+                const data = await res.json();
+                setWalletLedger(Array.isArray(data.items) ? data.items : []);
+            }
+        } catch (error) {
+            if ((error as Error).name === "AbortError") return;
+            console.error("Failed to fetch wallet ledger:", error);
+        }
+    }, [id, baseUrl, getAuthHeaders]);
+
+    const fetchWalletEnrollments = useCallback(async (signal?: AbortSignal) => {
+        if (!id) return;
+        try {
+            const res = await fetch(`${baseUrl}/api/admin/billing/users/${id}/enrollments?limit=50`, { headers: getAuthHeaders(), signal });
+            if (res.ok) {
+                const data = await res.json();
+                setWalletEnrollments(Array.isArray(data.items) ? data.items : []);
+            }
+        } catch (error) {
+            if ((error as Error).name === "AbortError") return;
+            console.error("Failed to fetch enrollments:", error);
+        }
+    }, [id, baseUrl, getAuthHeaders]);
+
+    const fetchWalletHolds = useCallback(async (signal?: AbortSignal) => {
+        if (!id) return;
+        try {
+            const res = await fetch(`${baseUrl}/api/admin/billing/holds?user_id=${id}&limit=50`, { headers: getAuthHeaders(), signal });
+            if (res.ok) {
+                const data = await res.json();
+                setWalletHolds(Array.isArray(data.items) ? data.items : []);
+            }
+        } catch (error) {
+            if ((error as Error).name === "AbortError") return;
+            console.error("Failed to fetch holds:", error);
+        }
+    }, [id, baseUrl, getAuthHeaders]);
+
+    const fetchPrograms = useCallback(async (signal?: AbortSignal) => {
+        try {
+            const res = await fetch(`${baseUrl}/api/admin/billing/programs?status=active&limit=200`, { headers: getAuthHeaders(), signal });
+            if (res.ok) {
+                const data = await res.json();
+                setPrograms(Array.isArray(data.items) ? data.items : []);
+            }
+        } catch (error) {
+            if ((error as Error).name === "AbortError") return;
+            console.error("Failed to fetch programs:", error);
+        }
+    }, [baseUrl, getAuthHeaders]);
+
+    const fetchWalletData = useCallback(async () => {
+        const controller = new AbortController();
+        await Promise.all([
+            fetchWalletSummary(controller.signal),
+            fetchWalletLots(controller.signal),
+            fetchWalletLedger(controller.signal),
+            fetchWalletEnrollments(controller.signal),
+            fetchWalletHolds(controller.signal),
+            fetchPrograms(controller.signal),
+        ]);
+        return () => controller.abort();
+    }, [fetchWalletSummary, fetchWalletLots, fetchWalletLedger, fetchWalletEnrollments, fetchWalletHolds, fetchPrograms]);
+
     useEffect(() => {
         if (!id) return;
         const controller = new AbortController();
@@ -369,9 +533,19 @@ export default function UserDetailPage() {
         fetchActivity(controller.signal);
         fetchFullUserData(controller.signal);
         fetchQuestionHistory(controller.signal);
-        fetchPlans(controller.signal);
         return () => controller.abort();
-    }, [id, fetchUserDetail, fetchActivity, fetchFullUserData, fetchQuestionHistory, fetchPlans]);
+    }, [id, fetchUserDetail, fetchActivity, fetchFullUserData, fetchQuestionHistory]);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        const role = localStorage.getItem("user_role") || "";
+        setIsSuperAdmin(role === "superadmin" || role === "system_admin");
+    }, []);
+
+    useEffect(() => {
+        if (activeTab !== "Wallet & Programs") return;
+        fetchWalletData();
+    }, [activeTab, fetchWalletData]);
 
     const handleQuickAction = async (action: string) => {
         try {
@@ -436,8 +610,7 @@ export default function UserDetailPage() {
                 headers: getAuthHeaders(true),
                 body: JSON.stringify({
                     quota_questions_total: newQuotaQuestions,
-                    quota_scans_total: newQuotaScans,
-                    subscription_tier: newTier
+                    quota_scans_total: newQuotaScans
                 })
             });
             if (res.ok) {
@@ -492,21 +665,26 @@ export default function UserDetailPage() {
     const handleGrantCredits = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const res = await fetch(`${baseUrl}/api/admin/billing/users/${id}/lots`, {
+            const res = await fetch(`${baseUrl}/api/admin/billing/users/${id}/grant`, {
                 method: "POST",
                 headers: getAuthHeaders(true),
                 body: JSON.stringify({
                     credits: grantAmount,
                     reason: grantReason,
                     lot_type: grantType,
-                    expires_days: 365
+                    expires_days: grantExpiryDays,
+                    idempotency_key: grantIdempotencyKey || null
                 })
             });
             if (res.ok) {
-                alert("Credits granted successfully!");
+                const data = await res.json();
                 setIsGrantModalOpen(false);
-                fetchFullUserData();
+                setGrantReason("");
+                setGrantIdempotencyKey("");
+                setWalletSummary(data.wallet_summary || null);
+                fetchWalletData();
                 fetchUserDetail();
+                alert("Credits granted successfully!");
             } else {
                 const err = await res.json();
                 alert(`Error: ${err.detail}`);
@@ -518,17 +696,20 @@ export default function UserDetailPage() {
     };
 
     const handleForceReconcile = async () => {
-        if (!confirm("Are you sure you want to force reconciliation? This will overwrite the cached balance.")) return;
+        const reason = prompt("Reason for reconciliation (required):");
+        if (!reason) return;
         try {
             const res = await fetch(`${baseUrl}/api/admin/billing/users/${id}/reconcile`, {
                 method: "POST",
-                headers: getAuthHeaders()
+                headers: getAuthHeaders(true),
+                body: JSON.stringify({ reason, idempotency_key: `reconcile_${id}_${Date.now()}` })
             });
             if (res.ok) {
                 const data = await res.json();
-                alert(`Reconciled. Old: ${data.old_balance}, New: ${data.new_balance}`);
-                fetchFullUserData();
+                setWalletSummary(data.wallet_summary || null);
+                fetchWalletData();
                 fetchUserDetail();
+                alert("Reconciliation completed.");
             } else {
                 alert("Reconciliation failed.");
             }
@@ -540,21 +721,29 @@ export default function UserDetailPage() {
     const handleIssueRefund = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const res = await fetch(`${baseUrl}/api/admin/billing/refunds`, {
+            const res = await fetch(`${baseUrl}/api/admin/billing/users/${id}/refund`, {
                 method: "POST",
                 headers: getAuthHeaders(true),
                 body: JSON.stringify({
-                    user_id: parseInt(id as string),
                     credits: refundAmount,
                     reason: refundReason,
-                    reason_code: refundReasonCode
+                    reason_code: refundReasonCode,
+                    source_payment_id: refundPaymentId || null,
+                    source_attempt_id: refundAttemptId || null,
+                    idempotency_key: refundIdempotencyKey || null
                 })
             });
             if (res.ok) {
-                alert("Refund issued successfully!");
+                const data = await res.json();
                 setIsRefundModalOpen(false);
-                fetchFullUserData();
+                setRefundReason("");
+                setRefundPaymentId("");
+                setRefundAttemptId("");
+                setRefundIdempotencyKey("");
+                setWalletSummary(data.wallet_summary || null);
+                fetchWalletData();
                 fetchUserDetail();
+                alert("Refund issued successfully!");
             } else {
                 const err = await res.json();
                 alert(`Error: ${err.detail}`);
@@ -564,6 +753,125 @@ export default function UserDetailPage() {
             alert("Failed to issue refund.");
         }
     };
+
+    const handleEnrollProgram = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!enrollProgramId) return;
+        try {
+            const res = await fetch(`${baseUrl}/api/admin/billing/users/${id}/enroll`, {
+                method: "POST",
+                headers: getAuthHeaders(true),
+                body: JSON.stringify({
+                    program_id: parseInt(enrollProgramId, 10),
+                    reason: enrollReason,
+                    idempotency_key: enrollIdempotencyKey || null
+                })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setIsEnrollModalOpen(false);
+                setEnrollReason("");
+                setEnrollProgramId("");
+                setEnrollIdempotencyKey("");
+                setWalletSummary(data.wallet_summary || null);
+                fetchWalletData();
+                alert("Enrollment successful!");
+            } else {
+                const err = await res.json();
+                alert(`Error: ${err.detail}`);
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Failed to enroll user.");
+        }
+    };
+
+    const handleUnenrollProgram = async (programId: number) => {
+        const reason = prompt("Reason for unenrollment (required):");
+        if (!reason) return;
+        try {
+            const res = await fetch(`${baseUrl}/api/admin/billing/users/${id}/unenroll`, {
+                method: "POST",
+                headers: getAuthHeaders(true),
+                body: JSON.stringify({
+                    program_id: programId,
+                    reason
+                })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setWalletSummary(data.wallet_summary || null);
+                fetchWalletData();
+            } else {
+                const err = await res.json();
+                alert(`Error: ${err.detail}`);
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Failed to unenroll user.");
+        }
+    };
+
+    const handleGrantProgramNow = async (programId: number) => {
+        const reason = prompt("Reason for grant (required):");
+        if (!reason) return;
+        try {
+            const res = await fetch(`${baseUrl}/api/admin/billing/users/${id}/program-grant`, {
+                method: "POST",
+                headers: getAuthHeaders(true),
+                body: JSON.stringify({
+                    program_id: programId,
+                    reason
+                })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setWalletSummary(data.wallet_summary || null);
+                fetchWalletData();
+            } else {
+                const err = await res.json();
+                alert(`Error: ${err.detail}`);
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Failed to grant program credits.");
+        }
+    };
+
+    const handleReleaseHold = async (holdId: number) => {
+        const reason = prompt("Reason for forced hold release (required):");
+        if (!reason) return;
+        try {
+            const res = await fetch(`${baseUrl}/api/admin/billing/holds/${holdId}/release`, {
+                method: "POST",
+                headers: getAuthHeaders(true),
+                body: JSON.stringify({ reason, idempotency_key: `hold_release_${holdId}_${Date.now()}` })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setWalletSummary(data.wallet_summary || null);
+                fetchWalletData();
+            } else {
+                const err = await res.json();
+                alert(`Error: ${err.detail}`);
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Failed to release hold.");
+        }
+    };
+
+    const cachedBalance = walletSummary?.cached_balance ?? user?.credits_balance ?? 0;
+    const computedBalance = walletSummary?.computed_balance ?? cachedBalance;
+    const balanceDelta = walletSummary?.delta ?? computedBalance - cachedBalance;
+    const pendingHolds = walletSummary?.pending_holds ?? 0;
+    const pendingHoldCredits = walletSummary?.pending_hold_credits ?? 0;
+    const expiringSoonCredits = walletSummary?.expiring_soon_credits ?? 0;
+    const expiringSoonLots = walletSummary?.expiring_soon_lots ?? 0;
+    const activeLots = walletSummary?.active_lots ?? 0;
+    const totalLots = walletSummary?.total_lots ?? walletLots.length;
+    const enrolledProgramIds = new Set(walletEnrollments.map((enrollment) => enrollment.program_id));
+    const legacyPlanLabel = user ? formatPlanName(user.plan_name, user.plan_slug, user.plan_slug) : "Unassigned Plan";
 
     if (loading) return (
         <div className="flex-1 flex items-center justify-center bg-slate-50 dark:bg-[#0F172A]">
@@ -823,18 +1131,11 @@ export default function UserDetailPage() {
                                             </div>
                                         </div>
                                         <div className="space-y-3">
-                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Subscription Plan</p>
-                                            <select
-                                                className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white focus:ring-admin-primary"
-                                                value={newTier}
-                                                onChange={(e) => setNewTier(e.target.value)}
-                                            >
-                                                {availablePlans.map(plan => (
-                                                    <option key={plan.id} value={plan.slug}>
-                                                        {plan.name} ({plan.slug})
-                                                    </option>
-                                                ))}
-                                            </select>
+                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Legacy Plan (Read Only)</p>
+                                            <div className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white">
+                                                {user.plan_slug ?? user.subscription_tier ?? "none"}
+                                            </div>
+                                            <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">LEGACY - DO NOT USE</p>
                                         </div>
                                         <button
                                             onClick={handleUpdateUser}
@@ -1222,10 +1523,11 @@ export default function UserDetailPage() {
                                     <div>
                                         <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400 mb-1">Wallet Summary</p>
                                         <h4 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-                                            {Number(user.credits_balance || 0).toFixed(2)} Credits
+                                            {computedBalance.toFixed(2)} Credits
                                         </h4>
-                                        <p className="text-xs uppercase tracking-[0.5em] text-slate-500">
-                                            Current Usable Balance
+                                        <p className="text-xs uppercase tracking-[0.5em] text-slate-500">Computed Balance (Source of Truth)</p>
+                                        <p className="text-xs text-slate-500 mt-2">
+                                            Cached: {cachedBalance.toFixed(2)} • Delta: {balanceDelta.toFixed(2)}
                                         </p>
                                     </div>
                                     <div className="flex flex-col items-start md:items-end gap-2">
@@ -1243,31 +1545,60 @@ export default function UserDetailPage() {
                                                 Refund
                                             </button>
                                             <button
+                                                onClick={() => setIsEnrollModalOpen(true)}
+                                                className="px-3 py-1 bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 text-[10px] font-bold uppercase tracking-widest rounded border border-indigo-500/20 transition-all"
+                                            >
+                                                Enroll Program
+                                            </button>
+                                            <button
                                                 onClick={handleForceReconcile}
                                                 className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white text-[10px] font-bold uppercase tracking-widest rounded border border-slate-200 dark:border-slate-700 transition-all"
                                                 title="Force Reconcile"
                                             >
                                                 <span className="material-symbols-outlined text-[14px]">sync</span>
                                             </button>
+                                            <button
+                                                onClick={() => fetchWalletData()}
+                                                className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white text-[10px] font-bold uppercase tracking-widest rounded border border-slate-200 dark:border-slate-700 transition-all"
+                                            >
+                                                Refresh
+                                            </button>
                                         </div>
-                                        <span className="text-[10px] uppercase tracking-[0.4em] text-slate-500 text-right w-full mt-2">Tier Status</span>
+                                        <span className="text-[10px] uppercase tracking-[0.4em] text-slate-500 text-right w-full mt-2">Legacy Plan (Read Only)</span>
                                         <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-700">
-                                            {user.subscription_tier.toUpperCase()}
+                                            {legacyPlanLabel}
                                         </span>
+                                        <span className="text-[10px] font-bold uppercase tracking-widest text-amber-500">LEGACY - DO NOT USE</span>
                                     </div>
                                 </div>
                                 <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                     <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                        <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Cached Balance</p>
+                                        <p className="text-lg font-bold text-slate-900 dark:text-white">{cachedBalance.toFixed(2)}</p>
+                                    </div>
+                                    <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                        <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Computed Balance</p>
+                                        <p className="text-lg font-bold text-slate-900 dark:text-white">{computedBalance.toFixed(2)}</p>
+                                    </div>
+                                    <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                        <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Delta Mismatch</p>
+                                        <p className={`text-lg font-bold ${balanceDelta === 0 ? "text-slate-900 dark:text-white" : balanceDelta > 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                                            {balanceDelta.toFixed(2)}
+                                        </p>
+                                    </div>
+                                    <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                        <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Pending Holds</p>
+                                        <p className="text-lg font-bold text-slate-900 dark:text-white">{pendingHolds}</p>
+                                        <p className="text-[10px] text-slate-500">{pendingHoldCredits.toFixed(2)} credits</p>
+                                    </div>
+                                    <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                        <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Expiring Soon</p>
+                                        <p className="text-lg font-bold text-slate-900 dark:text-white">{expiringSoonCredits.toFixed(2)}</p>
+                                        <p className="text-[10px] text-slate-500">{expiringSoonLots} lots</p>
+                                    </div>
+                                    <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
                                         <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Active Lots</p>
-                                        <p className="text-lg font-bold text-slate-900 dark:text-white">{(fullData?.credit_lots || []).filter(l => l.status === 'ACTIVE').length}</p>
-                                    </div>
-                                    <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
-                                        <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Total Enrollment</p>
-                                        <p className="text-lg font-bold text-slate-900 dark:text-white">{fullData?.enrollments?.length || 0}</p>
-                                    </div>
-                                    <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
-                                        <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Plan (Legacy)</p>
-                                        <p className="text-lg font-bold text-slate-900 dark:text-white">{user.plan_slug ?? "none"}</p>
+                                        <p className="text-lg font-bold text-slate-900 dark:text-white">{activeLots} / {totalLots}</p>
                                     </div>
                                     <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
                                         <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">User ID</p>
@@ -1278,54 +1609,174 @@ export default function UserDetailPage() {
 
                             <DataTable
                                 title="Credit Lots (Wallet Batches)"
-                                rows={fullData?.credit_lots || []}
+                                rows={walletLots}
                                 columns={[
                                     { key: "id", label: "ID" },
                                     { key: "lot_type", label: "Type" },
-                                    { key: "credits_remaining", label: "Remaining", render: (v) => Number(v).toFixed(2) },
-                                    { key: "credits_total", label: "Total", render: (v) => Number(v).toFixed(2) },
-                                    { key: "expires_at", label: "Expires", render: (v) => v ? new Date(v as string).toLocaleDateString() : 'Never' },
+                                    { key: "credits_total", label: "Total", render: (v) => Number(v ?? 0).toFixed(2) },
+                                    { key: "credits_remaining", label: "Remaining", render: (v) => Number(v ?? 0).toFixed(2) },
+                                    { key: "expires_at", label: "Expires", render: (v) => v ? new Date(v as string).toLocaleDateString() : "Never" },
                                     { key: "status", label: "Status" },
-                                    { key: "source", label: "Source" }
-                                ]}
-                            />
-
-                            <DataTable
-                                title="Program Enrollments"
-                                rows={fullData?.enrollments || []}
-                                columns={[
-                                    { key: "id", label: "ID" },
-                                    { key: "program_id", label: "Program ID" },
-                                    { key: "status", label: "Status" },
-                                    { key: "started_at", label: "Started", render: (v) => formatDateTime(v) },
-                                    { key: "last_grant_month", label: "Last Grant" }
+                                    {
+                                        key: "source_label",
+                                        label: "Source",
+                                        render: (_, row) => {
+                                            const sourceLabel = row.source_label ? String(row.source_label) : "n/a";
+                                            const meta = row.source_meta ? renderShortText(JSON.stringify(row.source_meta), 140) : "";
+                                            return meta ? `${sourceLabel} • ${meta}` : sourceLabel;
+                                        }
+                                    }
                                 ]}
                             />
 
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                 <DataTable
-                                    title="Recent Ledger"
-                                    rows={fullData?.usage_ledger || []}
+                                    title="Ledger"
+                                    rows={walletLedger}
                                     columns={[
                                         { key: "created_at", label: "Date", render: (value) => formatDateTime(value) },
-                                        { key: "transaction_type", label: "Type" },
-                                        { key: "amount", label: "Amount" },
-                                        { key: "balance_after", label: "Balance" },
-                                        { key: "reference_id", label: "Reference" }
-                                    ]}
-                                />
-                                <DataTable
-                                    title="Recent Payments"
-                                    rows={payments}
-                                    columns={[
-                                        { key: "created_at", label: "Date", render: (value) => formatDateTime(value) },
-                                        { key: "amount", label: "Amount" },
-                                        { key: "currency", label: "Currency" },
-                                        { key: "status", label: "Status" },
-                                        { key: "transaction_id", label: "Transaction" }
+                                        { key: "event_type", label: "Event" },
+                                        {
+                                            key: "credits_delta",
+                                            label: "Delta",
+                                            render: (value) => {
+                                                const amount = Number(value ?? 0);
+                                                return `${amount > 0 ? "+" : ""}${amount.toFixed(2)}`;
+                                            }
+                                        },
+                                        { key: "credits_before", label: "Before", render: (v) => Number(v ?? 0).toFixed(2) },
+                                        { key: "credits_after", label: "After", render: (v) => Number(v ?? 0).toFixed(2) },
+                                        { key: "reference", label: "Reference" },
+                                        { key: "request_id", label: "Request ID" }
                                     ]}
                                 />
                             </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <DataTable
+                                    title="Program Enrollments"
+                                    rows={walletEnrollments}
+                                    columns={[
+                                        { key: "id", label: "ID" },
+                                        {
+                                            key: "program_id",
+                                            label: "Program",
+                                            render: (_, row) => row.program_name ? `${row.program_name} (#${row.program_id})` : `#${row.program_id}`
+                                        },
+                                        { key: "status", label: "Status" },
+                                        { key: "started_at", label: "Started", render: (v) => formatDateTime(v) },
+                                        { key: "next_grant_date", label: "Next Grant", render: (v) => formatDateTime(v) },
+                                        { key: "last_grant_month", label: "Last Grant" },
+                                        {
+                                            key: "actions",
+                                            label: "Actions",
+                                            render: (_, row) => (
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => handleUnenrollProgram(Number(row.program_id))}
+                                                        className="px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-rose-500 border border-rose-500/30 rounded"
+                                                    >
+                                                        Unenroll
+                                                    </button>
+                                                    {isSuperAdmin && (
+                                                        <button
+                                                            onClick={() => handleGrantProgramNow(Number(row.program_id))}
+                                                            className="px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-indigo-500 border border-indigo-500/30 rounded"
+                                                        >
+                                                            Grant Now
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )
+                                        }
+                                    ]}
+                                />
+
+                                <DataTable
+                                    title="Active Holds"
+                                    rows={walletHolds}
+                                    columns={[
+                                        { key: "id", label: "Hold ID" },
+                                        { key: "request_id", label: "Request ID" },
+                                        { key: "reserved_credits", label: "Reserved", render: (v) => Number(v ?? 0).toFixed(2) },
+                                        { key: "status", label: "Status" },
+                                        { key: "created_at", label: "Created", render: (v) => formatDateTime(v) },
+                                        {
+                                            key: "age_seconds",
+                                            label: "Age",
+                                            render: (v) => {
+                                                const seconds = Number(v ?? 0);
+                                                if (seconds < 60) return `${seconds}s`;
+                                                const minutes = Math.floor(seconds / 60);
+                                                if (minutes < 60) return `${minutes}m`;
+                                                const hours = Math.floor(minutes / 60);
+                                                return `${hours}h`;
+                                            }
+                                        },
+                                        {
+                                            key: "actions",
+                                            label: "Actions",
+                                            render: (_, row) => (
+                                                <div>
+                                                    {isSuperAdmin && row.status === "held" ? (
+                                                        <button
+                                                            onClick={() => handleReleaseHold(Number(row.id))}
+                                                            className="px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-amber-500 border border-amber-500/30 rounded"
+                                                        >
+                                                            Release
+                                                        </button>
+                                                    ) : (
+                                                        <span className="text-slate-400 text-[10px]">n/a</span>
+                                                    )}
+                                                </div>
+                                            )
+                                        }
+                                    ]}
+                                />
+                            </div>
+
+                            <DataTable
+                                title="Available Credit Programs"
+                                rows={programs}
+                                columns={[
+                                    { key: "id", label: "ID" },
+                                    { key: "name", label: "Name" },
+                                    { key: "status", label: "Status" },
+                                    {
+                                        key: "actions",
+                                        label: "Actions",
+                                        render: (_, row) => {
+                                            const programId = Number(row.id);
+                                            const isEnrolled = enrolledProgramIds.has(programId);
+                                            return isEnrolled ? (
+                                                <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-500">Enrolled</span>
+                                            ) : (
+                                                <button
+                                                    onClick={() => {
+                                                        setEnrollProgramId(String(programId));
+                                                        setIsEnrollModalOpen(true);
+                                                    }}
+                                                    className="px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-indigo-500 border border-indigo-500/30 rounded"
+                                                >
+                                                    Enroll
+                                                </button>
+                                            );
+                                        }
+                                    }
+                                ]}
+                            />
+
+                            <DataTable
+                                title="Recent Payments"
+                                rows={payments}
+                                columns={[
+                                    { key: "created_at", label: "Date", render: (value) => formatDateTime(value) },
+                                    { key: "amount", label: "Amount" },
+                                    { key: "currency", label: "Currency" },
+                                    { key: "status", label: "Status" },
+                                    { key: "transaction_id", label: "Transaction" }
+                                ]}
+                            />
                         </div>
                     )}
 
@@ -1499,8 +1950,10 @@ export default function UserDetailPage() {
                                     className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
                                 >
                                     <option value="ADJUSTMENT">Adjustment</option>
+                                    <option value="GIFT">Gift</option>
                                     <option value="BONUS">Bonus</option>
-                                    <option value="PURCHASE">Purchase</option>
+                                    <option value="PROMO">Promo</option>
+                                    <option value="TOPUP">Topup</option>
                                 </select>
                             </div>
                             <div>
@@ -1515,6 +1968,17 @@ export default function UserDetailPage() {
                                 />
                             </div>
                             <div>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Expires In (Days)</label>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    required
+                                    value={grantExpiryDays}
+                                    onChange={e => setGrantExpiryDays(Number(e.target.value))}
+                                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
+                                />
+                            </div>
+                            <div>
                                 <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Reason</label>
                                 <input
                                     type="text"
@@ -1523,6 +1987,16 @@ export default function UserDetailPage() {
                                     onChange={e => setGrantReason(e.target.value)}
                                     className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
                                     placeholder="Explanation for audit log..."
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Idempotency Key (Optional)</label>
+                                <input
+                                    type="text"
+                                    value={grantIdempotencyKey}
+                                    onChange={e => setGrantIdempotencyKey(e.target.value)}
+                                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
+                                    placeholder="grant_{userId}_{timestamp}"
                                 />
                             </div>
                             <div className="flex justify-end gap-3 pt-4">
@@ -1569,6 +2043,26 @@ export default function UserDetailPage() {
                                 />
                             </div>
                             <div>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Source Payment ID (Optional)</label>
+                                <input
+                                    type="text"
+                                    value={refundPaymentId}
+                                    onChange={e => setRefundPaymentId(e.target.value)}
+                                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
+                                    placeholder="payment_..."
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Source Attempt ID (Optional)</label>
+                                <input
+                                    type="text"
+                                    value={refundAttemptId}
+                                    onChange={e => setRefundAttemptId(e.target.value)}
+                                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
+                                    placeholder="attempt_..."
+                                />
+                            </div>
+                            <div>
                                 <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Explanation</label>
                                 <input
                                     type="text"
@@ -1579,9 +2073,76 @@ export default function UserDetailPage() {
                                     placeholder="Detailed reason..."
                                 />
                             </div>
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Idempotency Key (Optional)</label>
+                                <input
+                                    type="text"
+                                    value={refundIdempotencyKey}
+                                    onChange={e => setRefundIdempotencyKey(e.target.value)}
+                                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
+                                    placeholder="refund_{userId}_{timestamp}"
+                                />
+                            </div>
                             <div className="flex justify-end gap-3 pt-4">
                                 <button type="button" onClick={() => setIsRefundModalOpen(false)} className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">Cancel</button>
                                 <button type="submit" className="px-6 py-2 bg-amber-500 text-white font-bold rounded-lg hover:bg-amber-600 transition-all">Issue Refund</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Enroll Program Modal */}
+            {isEnrollModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-[#111827] w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
+                        <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-white">Enroll In Credit Program</h3>
+                            <button onClick={() => setIsEnrollModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+                        <form onSubmit={handleEnrollProgram} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Program</label>
+                                <select
+                                    value={enrollProgramId}
+                                    onChange={e => setEnrollProgramId(e.target.value)}
+                                    required
+                                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
+                                >
+                                    <option value="">Select program</option>
+                                    {programs.map((program) => (
+                                        <option key={program.id} value={String(program.id)}>
+                                            {program.name} (#{program.id})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Reason</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={enrollReason}
+                                    onChange={e => setEnrollReason(e.target.value)}
+                                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
+                                    placeholder="Explanation for audit log..."
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Idempotency Key (Optional)</label>
+                                <input
+                                    type="text"
+                                    value={enrollIdempotencyKey}
+                                    onChange={e => setEnrollIdempotencyKey(e.target.value)}
+                                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
+                                    placeholder="enroll_{userId}_{timestamp}"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-3 pt-4">
+                                <button type="button" onClick={() => setIsEnrollModalOpen(false)} className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">Cancel</button>
+                                <button type="submit" className="px-6 py-2 bg-indigo-500 text-white font-bold rounded-lg hover:bg-indigo-600 transition-all">Enroll</button>
                             </div>
                         </form>
                     </div>

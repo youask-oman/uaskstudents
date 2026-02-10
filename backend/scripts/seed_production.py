@@ -525,16 +525,79 @@ def _seed_schools(session: Session, app_env: str) -> Tuple[int, Dict[str, int]]:
 def _seed_internal_users(session: Session, app_env: str, allow_user_seeding: bool, dev_fixtures: bool) -> Tuple[int, Dict[str, int]]:
     if not allow_user_seeding:
         return len(session.exec(select(User).where(User.is_internal == True).where(User.email.like("%@uask.ai"))).all()), _res()
-    path = SEED_DATA_DIR / "internal_users.json"
-    payload = _load_json(path) if path.exists() else _load_json(SEED_DATA_DIR / "internal_users.example.json")
+    override_path = os.environ.get("SEED_INTERNAL_USERS_JSON")
+    if override_path:
+        path = Path(override_path).expanduser()
+        if not path.is_absolute():
+            path = ROOT / path
+        if not path.exists():
+            raise RuntimeError(f"SEED_INTERNAL_USERS_JSON not found: {path}")
+        payload = _load_json(path)
+    else:
+        path = SEED_DATA_DIR / "internal_users.json"
+        payload = _load_json(path) if path.exists() else _load_json(SEED_DATA_DIR / "internal_users.example.json")
+
+    if not override_path:
+        if app_env == "DEV":
+            target_email = os.environ.get("SEED_DEV_SUPERADMIN_EMAIL", "admin@uask.ai").strip().lower()
+            superadmin_row = None
+            for row in payload:
+                if row.get("email", "").strip().lower() == target_email:
+                    superadmin_row = row
+                    break
+            if not superadmin_row and payload:
+                superadmin_row = payload[0]
+            if not superadmin_row:
+                superadmin_row = {
+                    "email": target_email,
+                    "full_name": "Dev Superadmin",
+                    "role": "superadmin",
+                    "is_verified": True,
+                }
+                payload.insert(0, superadmin_row)
+
+            superadmin_row["role"] = "superadmin"
+            superadmin_row.pop("password_hash", None)
+            superadmin_row["password_env"] = "SEED_DEV_DEFAULT_PASSWORD"
+            for row in payload:
+                if row is not superadmin_row and row.get("role") == "superadmin":
+                    row["role"] = "admin"
+        else:
+            for row in payload:
+                if row.get("role") == "superadmin":
+                    row["role"] = "admin"
     default_password = os.environ.get("SEED_DEV_DEFAULT_PASSWORD", "DevOnlyChangeMe123!")
-    checksum = _sha256_payload([{k: r.get(k) for k in ("email", "full_name", "role")} for r in payload])
+    checksum_payload = []
+    for row in payload:
+        password_env = row.get("password_env")
+        password_fingerprint = None
+        if password_env:
+            resolved = os.environ.get(password_env, default_password)
+            password_fingerprint = hashlib.sha256(resolved.encode("utf-8")).hexdigest()
+        checksum_payload.append(
+            {
+                "email": row.get("email"),
+                "full_name": row.get("full_name"),
+                "role": row.get("role"),
+                "password_env": password_env,
+                "password_fingerprint": password_fingerprint,
+            }
+        )
+    checksum = _sha256_payload(checksum_payload)
     if _reg_same(session, "internal_users", checksum):
         return len(session.exec(select(User).where(User.is_internal == True).where(User.email.like("%@uask.ai"))).all()), _res(s=len(payload))
     c = u = s = 0
     for row in payload:
         email = row["email"].strip().lower()
         cur = session.exec(select(User).where(User.email == email)).first()
+        password_hash = row.get("password_hash")
+        password_env = row.get("password_env")
+        force_password_update = False
+        if password_env and not password_hash:
+            plain = os.environ.get(password_env, default_password)
+            password_hash = get_password_hash(plain)
+            force_password_update = True
+
         if cur:
             changed = False
             for key, val in [
@@ -546,8 +609,8 @@ def _seed_internal_users(session: Session, app_env: str, allow_user_seeding: boo
                 if getattr(cur, key) != val:
                     setattr(cur, key, val)
                     changed = True
-            if row.get("password_hash") and cur.password_hash != row["password_hash"]:
-                cur.password_hash = row["password_hash"]
+            if password_hash and (force_password_update or cur.password_hash != password_hash):
+                cur.password_hash = password_hash
                 changed = True
             if changed:
                 session.add(cur)
@@ -555,7 +618,6 @@ def _seed_internal_users(session: Session, app_env: str, allow_user_seeding: boo
             else:
                 s += 1
         else:
-            password_hash = row.get("password_hash")
             if not password_hash:
                 plain = os.environ.get(row.get("password_env", ""), default_password)
                 password_hash = get_password_hash(plain)

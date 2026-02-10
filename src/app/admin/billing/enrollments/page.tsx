@@ -45,7 +45,7 @@ export default function GlobalEnrollmentsPage() {
 
     const fetchEnrollments = async () => {
         try {
-            const res = await fetch(`${API_BASE}/admin/billing/programs/enrollments/all?limit=100`, {
+            const res = await fetch(`${API_BASE}/api/admin/billing/programs/enrollments/all?limit=100`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {
@@ -62,7 +62,7 @@ export default function GlobalEnrollmentsPage() {
 
     const fetchPrograms = async () => {
         try {
-            const res = await fetch(`${API_BASE}/admin/billing/programs?status=active`, {
+            const res = await fetch(`${API_BASE}/api/admin/billing/programs?status=active`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {
@@ -77,7 +77,7 @@ export default function GlobalEnrollmentsPage() {
     const handleEnroll = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const res = await fetch(`${API_BASE}/admin/billing/programs/enrollments`, {
+            const res = await fetch(`${API_BASE}/api/admin/billing/programs/enrollments`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -109,7 +109,7 @@ export default function GlobalEnrollmentsPage() {
         if (!reason) return;
 
         try {
-            const res = await fetch(`${API_BASE}/admin/billing/programs/enrollments/unenroll`, {
+            const res = await fetch(`${API_BASE}/api/admin/billing/programs/enrollments/unenroll`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
