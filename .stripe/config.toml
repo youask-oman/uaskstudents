@@ -1,0 +1,13 @@
+color = ''
+project-name = 'default'
+
+[default]
+account_id = 'acct_1SzL2V1jBgqm5egs'
+device_name = '1bf17d251c89'
+display_name = 'uask test'
+live_mode_api_key = 'rk_live_***********************************************************************************************8oG1'
+live_mode_key_expires_at = '2026-05-11'
+live_mode_pub_key = 'pk_live_51SzL2V1jBgqm5egsUbVMWcEVJyanesFoTOLupRc5aBc7t1YIHG9fpRkB05Tgfqfl0kMslyXyZe6qLQsSraazzwzb00Dj9MKbNY'
+test_mode_api_key = 'sk_test_51SzL2V1jBgqm5egs9kLgndC0nuw2THkro883IltJErlq73i42U7kqqYd77azhjf38i1Vo7Y7UqjoEMK7KqhBATQW00QuHoL2Sn'
+test_mode_key_expires_at = '2026-05-11'
+test_mode_pub_key = 'pk_test_51SzL2V1jBgqm5egs8zw09BhHuIMfmXFZ0BYwwLQx1NevAy71vX7t5561XeUJH2qYIhEZphxgriGOjK0i0t1hVYrG00faiXLBCG'

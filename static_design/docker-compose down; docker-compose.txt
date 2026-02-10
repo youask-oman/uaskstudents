@@ -1,7 +1,7 @@
 docker-compose down; docker-compose up -d --build
 
 taskkill /IM uvicorn.exe /F
-uvicorn app.main:app --port 8000 --log-level debug
+uvicorn app.main:app --port 9000 --log-level debug
 
 docker compose exec -e APP_ENV=DEV orchestrator python scripts/run_admin_smoke_all.py
 
@@ -68,3 +68,39 @@ docker cp "${cid}:${remote}" $local
 Select-String -Path $local -Pattern "^-- PostgreSQL database dump" | Out-Null
 
 Write-Host "OK: $local"
+
+
+
+
+stripe login
+stripe listen --forward-to http://127.0.0.1:9000/api/v1/stripe/webhook
+
+
+stripe 
+
+>>   -v ${PWD}\.stripe:/root/.config/stripe `
+>>   stripe/stripe-cli:latest login
+Your pairing code is: finest-humour-roomy-prompt
+This pairing code verifies your authentication with Stripe.
+To authenticate with Stripe, please go to: https://dashboard.stripe.com/stripecli/confirm_auth?t=Z3xz6R9y2tpIfWAcNHhvQKAGoX9idGPt
+> Done! The Stripe CLI is configured for uask test with account id acct_1SzL2V1jBgqm5egs
+
+Please note: this key will expire after 90 days, at which point you'll need to re-authenticate.
+PS E:\uaskstudents> 
+
+
+>>   -v ${PWD}\.stripe:/root/.config/stripe `
+>>   stripe/stripe-cli:latest login
+Your pairing code is: finest-humour-roomy-prompt
+This pairing code verifies your authentication with Stripe.
+To authenticate with Stripe, please go to: https://dashboard.stripe.com/stripecli/confirm_auth?t=Z3xz6R9y2tpIfWAcNHhvQKAGoX9idGPt
+> Done! The Stripe CLI is configured for uask test with account id acct_1SzL2V1jBgqm5egs
+
+Please note: this key will expire after 90 days, at which point you'll need to re-authenticate.
+PS E:\uaskstudents> docker run --rm -it `
+>>   -v ${PWD}\.stripe:/root/.config/stripe `
+>>   stripe/stripe-cli:latest listen --forward-to http://host.docker.internal:9000/api/v1/stripe/webhook
+> Ready! You are using Stripe API Version [2026-01-28.clover]. Your webhook signing secret is whsec_8640921e9ce76e895a641993e5039e0368a75be608d1ee32600dec4e697adb4b (^C to quit)
+
+
+
