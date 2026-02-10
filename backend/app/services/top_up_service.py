@@ -2,10 +2,11 @@
 from typing import List, Optional
 from sqlmodel import Session, select
 from datetime import datetime
-from app.models import TopUpProduct, User, Payment, CreditLot, UsageLedger, TopUpOrder
+from app.models import TopUpProduct, User, Payment, CreditLot, UsageLedger, TopUpOrder, BillingLedger
 from app.services.credit_wallet_service import credit_wallet_service
 from app.services.subscription_service import subscription_service
 from app.services.invoice_service import invoice_service
+from app.jobs.nightly_reconciliation import compute_user_balance
 
 class TopUpService:
     def list_products(self, session: Session) -> List[TopUpProduct]:
@@ -103,6 +104,7 @@ class TopUpService:
         session.add(payment)
         
         # 2. Add Credits (Creates Lot)
+        computed_before = compute_user_balance(session, user_id)
         lot = credit_wallet_service.add_credits(
             session,
             user_id,
@@ -112,6 +114,9 @@ class TopUpService:
             lot_type="TOPUP",
             external_ref=external_ref
         )
+        lot.amount_paid = product.price_usd
+        lot.currency = "USD"
+        lot.source_payment_id = external_ref
         
         # 3. Create Usage Ledger (CREDIT)
         # We need to sync Subscription balance here too.
@@ -157,6 +162,32 @@ class TopUpService:
             order.status = "FULFILLED"
             session.add(order)
 
+        # 5. Billing ledger + cached balance
+        computed_after = compute_user_balance(session, user_id)
+        ledger = BillingLedger(
+            user_id=user_id,
+            action_type="TOPUP",
+            request_id=external_ref,
+            status="SETTLED",
+            credits_charged=0,
+            estimated_credits=0,
+            actual_credits=0,
+            delta_credits=float(product.credits),
+            credits_before=computed_before,
+            credits_after=computed_after,
+        )
+        session.add(ledger)
+        session.flush()
+
+        order.fulfill_credit_lot_id = lot.id
+        order.fulfill_usage_ledger_id = ledger.id
+        session.add(order)
+
+        user = session.get(User, user_id)
+        if user:
+            user.credits_balance = float(computed_after)
+            session.add(user)
+
         # 5. Create Invoice
         try:
             invoice_service.create_topup_invoice(session, order, payment)
@@ -171,7 +202,8 @@ class TopUpService:
             "status": "success",
             "lot_id": lot.id,
             "credits_added": product.credits,
-            "new_balance": sub.credits_balance
+            "new_balance": float(computed_after),
+            "ledger_id": ledger.id,
         }
 
 top_up_service = TopUpService()

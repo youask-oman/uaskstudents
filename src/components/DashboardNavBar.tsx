@@ -7,10 +7,10 @@ import { fetchWalletSummary, WalletSummary } from "@/lib/wallet";
 import { useTheme } from "@/hooks/useTheme";
 
 type StoredUser = {
-    email-: string;
-    role-: string;
-    avatar_url-: string;
-    full_name-: string;
+    email?: string;
+    role?: string;
+    avatar_url?: string;
+    full_name?: string;
 };
 
 const getStoredUser = (): StoredUser | null => {
@@ -48,11 +48,11 @@ export default function DashboardNavBar() {
         const refreshUserInfo = () => {
             if (typeof window === "undefined") return;
             const storedUser = getStoredUser();
-            setUserName(storedUser-.full_name || localStorage.getItem("user_name") || "Guest");
-            setUserEmail(storedUser-.email || "");
-            setUserRole(storedUser-.role || "student");
+            setUserName(storedUser?.full_name || localStorage.getItem("user_name") || "Guest");
+            setUserEmail(storedUser?.email || "");
+            setUserRole(storedUser?.role || "student");
             setUserTier("free");
-            setUserAvatar(storedUser-.avatar_url || localStorage.getItem("user_avatar") || "");
+            setUserAvatar(storedUser?.avatar_url || localStorage.getItem("user_avatar") || "");
         };
 
         const refreshWallet = async () => {
@@ -102,18 +102,18 @@ export default function DashboardNavBar() {
                 <div className="flex justify-between items-center h-16">
                     <Link href="/dashboard" className="flex items-center gap-3">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={mounted && isDark - "/logo-dark.png" : "/logo.png"} alt="uask.ai" className="h-8 w-auto" />
+                        <img src={mounted && isDark ? "/logo-dark.png" : "/logo.png"} alt="uask.ai" className="h-8 w-auto" />
                         <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">uask.ai</span>
                     </Link>
                     <nav className="hidden md:flex space-x-8">
                         <Link
-                            className={`${pathname === "/dashboard" && !currentTab - "text-primary dark:text-white border-b-2 border-primary pb-1" : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white"} transition-colors text-sm font-medium`}
+                            className={`${pathname === "/dashboard" && !currentTab ? "text-primary dark:text-white border-b-2 border-primary pb-1" : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white"} transition-colors text-sm font-medium`}
                             href="/dashboard"
                         >
                             Dashboard
                         </Link>
                         <Link
-                            className={`${pathname === "/solve" - "text-primary dark:text-white border-b-2 border-primary pb-1" : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white"} transition-colors text-sm font-medium`}
+                            className={`${pathname === "/solve"  ? "text-primary dark:text-white border-b-2 border-primary pb-1" : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white"} transition-colors text-sm font-medium`}
                             href="/solve"
                             onClick={(e) => {
                                 if (pathname === "/solve") {
@@ -125,8 +125,8 @@ export default function DashboardNavBar() {
                             New Solve
                         </Link>
                         <Link
-                            className={`${pathname === "/dashboard" && currentTab === "history" - "text-primary dark:text-white border-b-2 border-primary pb-1" : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white"} transition-colors text-sm font-medium`}
-                            href="/dashboard-tab=history"
+                            className={`${pathname === "/dashboard" && currentTab === "history" ? "text-primary dark:text-white border-b-2 border-primary pb-1" : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white"} transition-colors text-sm font-medium`}
+                            href="/dashboard?tab=history"
                         >
                             History
                         </Link>
@@ -149,7 +149,7 @@ export default function DashboardNavBar() {
                             className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors flex items-center"
                             aria-label="Toggle Dark Mode"
                         >
-                            <span className="material-symbols-outlined">{mounted && isDark - 'light_mode' : 'dark_mode'}</span>
+                            <span className="material-symbols-outlined">{mounted && isDark ? 'light_mode' : 'dark_mode'}</span>
                         </button>
                         <button className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors flex items-center">
                             <span className="material-symbols-outlined">notifications</span>
@@ -161,7 +161,7 @@ export default function DashboardNavBar() {
                         >
                             <button className="flex items-center gap-3 focus:outline-none">
                                 <div className="w-9 h-9 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center overflow-hidden">
-                                    {userAvatar - (
+                                    {userAvatar ? (
                                         <>
                                             {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <img

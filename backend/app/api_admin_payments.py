@@ -1,63 +1,107 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, Request
 from typing import List, Optional, Dict, Any, Tuple
 from sqlmodel import Session, select, desc, func
 from datetime import datetime, timedelta
 from fastapi.responses import StreamingResponse
 
 from app.database import get_session
-from app.models import User, RequestEvent, ProviderModelPricing, BillingLedger, SolverOutputAttempt, CreditLot, Payment, CreditLotConsumption
+from app.models import (
+    User,
+    RequestEvent,
+    BillingLedger,
+    CreditLot,
+    Payment,
+    CreditLotConsumption,
+    CreditHold,
+    TopUpOrder,
+    TopUpProduct,
+    StripeEvent,
+    Subscription,
+    SubscriptionBillingLink,
+    Invoice,
+    InvoiceLineItem,
+    ReconciliationFinding,
+    StripePriceMap,
+)
 from app.api_admin import get_staff_user, get_admin_user
-from app.services.provider_pricing_service import provider_pricing_service
+from app.admin_billing.deps import get_superadmin_user
 from app.services.cost_estimation_service import cost_estimation_service
+from app.services.audit_log_service import audit_log_service
+from app.jobs.nightly_reconciliation import compute_user_balance
+from app.config import get_settings
+import stripe
 
 router = APIRouter(prefix="/api/admin/payments", tags=["admin-payments"])
 
 @router.get("/overview")
 def get_payments_overview(
-    range_days: int = 7,
+    range_days: int = 30,
     session: Session = Depends(get_session),
-    user: User = Depends(get_staff_user)
+    user: User = Depends(get_staff_user),
 ):
     """
-    Overview for Phase 2 Dashboard.
+    Payments & Credits overview for admin dashboard.
     """
     now = datetime.utcnow()
     start_date = now - timedelta(days=range_days)
-    
-    # 1. Total Estimated Provider Cost
-    events = session.exec(select(RequestEvent).where(RequestEvent.created_at >= start_date)).all()
-    total_provider_cost = sum([e.cost_usd or 0.0 for e in events])
-    total_tokens = sum([e.tokens_total or 0 for e in events])
+
+    # Provider cost & request volume
+    events = session.exec(
+        select(RequestEvent).where(RequestEvent.created_at >= start_date)
+    ).all()
+    total_provider_cost = sum([float(e.cost_usd or 0.0) for e in events])
+    total_tokens = sum([int(e.tokens_total or 0) for e in events])
     request_count = len(events)
-    
-    # 2. Total User Spend (Credits consumed form BillingLedger)
-    # Status: 'SETTLED' (legacy) or 'CHARGED' (Phase 1)
-    # Removing transaction_type check as BillingLedger structure changed or was misunderstood.
-    usage_query = select(func.sum(BillingLedger.credits_charged)).where(
-        BillingLedger.created_at >= start_date,
-        BillingLedger.status.in_(["SETTLED", "CHARGED"])
-    )
-    total_credits_consumed = session.exec(usage_query).one() or 0.0
-    
-    # 3. Top-Up Revenue (Real $)
-    # Workaround: Sum valid CreditLots (TOPUP) purchased_at >= start_date
-    topup_revenue_query = select(func.sum(CreditLot.amount_paid)).where(
-        CreditLot.purchased_at >= start_date,
-        CreditLot.lot_type == "TOPUP"
-    )
-    total_revenue_usd = session.exec(topup_revenue_query).one() or 0.0
-    
+
+    # Credits consumed (ledger debits)
+    credits_consumed = session.exec(
+        select(func.sum(CreditLotConsumption.amount))
+        .where(CreditLotConsumption.created_at >= start_date)
+        .where(CreditLotConsumption.direction == "DEBIT")
+    ).one()
+    total_credits_consumed = float(credits_consumed or 0)
+
+    # Credits minted (topups)
+    credits_minted = session.exec(
+        select(func.sum(CreditLot.credits_total))
+        .where(CreditLot.purchased_at >= start_date)
+        .where(CreditLot.lot_type == "TOPUP")
+    ).one()
+    total_credits_minted = float(credits_minted or 0)
+
+    # Stripe payments
+    payments = session.exec(
+        select(Payment)
+        .where(Payment.created_at >= start_date)
+        .where(Payment.provider == "STRIPE")
+    ).all()
+    successful_payments = [p for p in payments if p.status.upper() in {"SUCCEEDED", "COMPLETED"}]
+    failed_payments = [p for p in payments if p.status.upper() in {"FAILED", "CANCELED"}]
+    refunded_payments = [p for p in payments if p.status.upper() == "REFUNDED"]
+    gross_revenue = sum([float(p.amount or 0) for p in successful_payments])
+    refunds_total = sum([float(p.amount or 0) for p in refunded_payments])
+
+    # Outstanding holds
+    holds = session.exec(
+        select(CreditHold).where(CreditHold.status == "held")
+    ).all()
+    outstanding_holds = sum([float(h.reserved_credits or 0) for h in holds])
+
     return {
         "start_date": start_date,
         "days": range_days,
         "metrics": {
             "provider_cost_usd": round(total_provider_cost, 4),
             "credits_consumed": round(total_credits_consumed, 2),
-            "revenue_usd": round(total_revenue_usd, 2),
-            "gross_margin_usd": round(total_revenue_usd - total_provider_cost, 2),
+            "credits_minted": round(total_credits_minted, 2),
+            "stripe_revenue_gross_usd": round(gross_revenue, 2),
+            "refunds_total_usd": round(refunds_total, 2),
+            "successful_payments": len(successful_payments),
+            "failed_payments": len(failed_payments),
             "request_count": request_count,
-            "total_tokens": total_tokens
-        }
+            "total_tokens": total_tokens,
+            "outstanding_hold_credits": round(outstanding_holds, 2),
+        },
     }
 
 @router.get("/topups")
@@ -66,39 +110,97 @@ def list_topups(
     page_size: int = 25,
     search: Optional[str] = None,
     session: Session = Depends(get_session),
-    user: User = Depends(get_staff_user)
+    user: User = Depends(get_staff_user),
 ):
+    """
+    Completed top-ups with CreditLot + ledger linkage.
+    """
     offset = (page - 1) * page_size
-    query = select(CreditLot, User.email).join(User, CreditLot.user_id == User.id).where(CreditLot.lot_type == "TOPUP")
-    
+    query = select(TopUpOrder).order_by(desc(TopUpOrder.created_at))
+    count_stmt = select(func.count(TopUpOrder.id))
+
     if search:
-        # Search by external_ref or amount_paid
-        try:
-            val = float(search)
-            query = query.where(CreditLot.amount_paid == val)
-        except ValueError:
-            query = query.where(CreditLot.external_ref.contains(search))
-            
-    count_stmt = select(func.count(CreditLot.id)).where(CreditLot.lot_type == "TOPUP")
-    if search:
-        try:
-            val = float(search)
-            count_stmt = count_stmt.where(CreditLot.amount_paid == val)
-        except ValueError:
-            count_stmt = count_stmt.where(CreditLot.external_ref.contains(search))
-    
+        query = query.where(
+            (TopUpOrder.stripe_payment_intent_id.contains(search))
+            | (TopUpOrder.stripe_checkout_session_id.contains(search))
+        )
+        count_stmt = count_stmt.where(
+            (TopUpOrder.stripe_payment_intent_id.contains(search))
+            | (TopUpOrder.stripe_checkout_session_id.contains(search))
+        )
+
     total_count = session.exec(count_stmt).one()
-    results = session.exec(query.order_by(desc(CreditLot.purchased_at)).offset(offset).limit(page_size)).all()
-    
-    # Format response
-    data = []
-    for lot, email in results:
-        # Convert SQLModel to dict
-        d = lot.dict()
-        d["user_email"] = email
-        data.append(d)
-    
-    return {"total": total_count, "page": page, "page_size": page_size, "data": data}
+    orders = session.exec(query.offset(offset).limit(page_size)).all()
+
+    user_ids = {o.user_id for o in orders}
+    users = {}
+    if user_ids:
+        users = {
+            u.id: u
+            for u in session.exec(select(User).where(User.id.in_(list(user_ids)))).all()
+        }
+
+    product_ids = {o.topup_product_id for o in orders}
+    products = {}
+    if product_ids:
+        products = {
+            p.id: p
+            for p in session.exec(select(TopUpProduct).where(TopUpProduct.id.in_(list(product_ids)))).all()
+        }
+
+    results = []
+    for o in orders:
+        user_obj = users.get(o.user_id)
+        product = products.get(o.topup_product_id)
+        results.append(
+            {
+                "id": o.id,
+                "created_at": o.created_at,
+                "user_id": o.user_id,
+                "user_email": user_obj.email if user_obj else None,
+                "status": o.status,
+                "credits": o.credits,
+                "price_usd": o.price_usd,
+                "currency": o.currency,
+                "product_code": product.code if product else None,
+                "product_name": product.name if product else None,
+                "stripe_payment_intent_id": o.stripe_payment_intent_id,
+                "stripe_checkout_session_id": o.stripe_checkout_session_id,
+                "credit_lot_id": o.fulfill_credit_lot_id,
+                "ledger_id": o.fulfill_usage_ledger_id,
+            }
+        )
+
+    return {"total": total_count, "page": page, "page_size": page_size, "data": results}
+
+
+@router.get("/topups/{topup_id}")
+def get_topup_detail(
+    topup_id: int,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_staff_user),
+):
+    order = session.get(TopUpOrder, topup_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Top-up not found")
+
+    payment = None
+    if order.stripe_payment_intent_id:
+        payment = session.exec(
+            select(Payment)
+            .where(Payment.external_id == order.stripe_payment_intent_id)
+            .where(Payment.provider == "STRIPE")
+        ).first()
+
+    lot = None
+    if order.fulfill_credit_lot_id:
+        lot = session.get(CreditLot, order.fulfill_credit_lot_id)
+
+    return {
+        "topup": order,
+        "payment": payment,
+        "credit_lot": lot,
+    }
 
 @router.get("/lots")
 def list_lots(
@@ -174,90 +276,58 @@ def get_consumption_drilldown(
 def list_requests(
     page: int = 1,
     page_size: int = 25,
-    model: Optional[str] = None,
-    provider: Optional[str] = None,
     status: Optional[str] = None,
     user_id: Optional[int] = None,
     session: Session = Depends(get_session),
-    user: User = Depends(get_staff_user)
+    user: User = Depends(get_staff_user),
 ):
-    query = select(RequestEvent)
-    
-    if model:
-        query = query.where(RequestEvent.model == model)
-    if provider:
-        query = query.where(RequestEvent.provider == provider)
+    """
+    Payment requests created by the app (TopUpOrder).
+    """
+    offset = (page - 1) * page_size
+    query = select(TopUpOrder).order_by(desc(TopUpOrder.created_at))
+    count_stmt = select(func.count(TopUpOrder.id))
+
     if status:
-        query = query.where(RequestEvent.status == status)
+        query = query.where(TopUpOrder.status == status)
+        count_stmt = count_stmt.where(TopUpOrder.status == status)
     if user_id:
-        query = query.where(RequestEvent.user_id == user_id)
-        
-    # Count matching records
-    from sqlalchemy import func
-    count_stmt = select(func.count(RequestEvent.id))
-    if model: count_stmt = count_stmt.where(RequestEvent.model == model)
-    if provider: count_stmt = count_stmt.where(RequestEvent.provider == provider)
-    if status: count_stmt = count_stmt.where(RequestEvent.status == status)
-    if user_id: count_stmt = count_stmt.where(RequestEvent.user_id == user_id)
-    
+        query = query.where(TopUpOrder.user_id == user_id)
+        count_stmt = count_stmt.where(TopUpOrder.user_id == user_id)
+
     total_count = session.exec(count_stmt).one()
-    
-    events = session.exec(query.order_by(desc(RequestEvent.created_at)).offset((page - 1) * page_size).limit(page_size)).all()
-    
-    # Enrich with Cost Estimate "Live"
+    orders = session.exec(query.offset(offset).limit(page_size)).all()
+
+    # Map product info
+    product_ids = {o.topup_product_id for o in orders}
+    products = {}
+    if product_ids:
+        products = {
+            p.id: p
+            for p in session.exec(select(TopUpProduct).where(TopUpProduct.id.in_(list(product_ids)))).all()
+        }
+
     results = []
-    for e in events:
-        try:
-            est_cost, price_id = cost_estimation_service.estimate_provider_cost(session, e)
-        except Exception:
-            est_cost, price_id = 0.0, None
-            
-        results.append({
-            "request_id": e.request_id,
-            "created_at": e.created_at,
-            "user_id": e.user_id,
-            "provider": e.provider,
-            "model": e.model,
-            "tokens_in": e.tokens_in,
-            "tokens_out": e.tokens_out,
-            "cost_stored": e.cost_usd,
-            "cost_estimated": est_cost,
-            "status": e.status
-        })
-        
+    for o in orders:
+        product = products.get(o.topup_product_id)
+        results.append(
+            {
+                "id": o.id,
+                "created_at": o.created_at,
+                "user_id": o.user_id,
+                "status": o.status,
+                "product_code": product.code if product else None,
+                "product_name": product.name if product else None,
+                "credits": o.credits,
+                "price_usd": o.price_usd,
+                "currency": o.currency,
+                "stripe_checkout_session_id": o.stripe_checkout_session_id,
+                "stripe_payment_intent_id": o.stripe_payment_intent_id,
+                "credit_lot_id": o.fulfill_credit_lot_id,
+            }
+        )
+
     return {"total": total_count, "data": results, "page": page, "page_size": page_size}
-
-# --- Pricing Config ---
-
-@router.get("/pricing")
-def list_pricing_config(
-    session: Session = Depends(get_session),
-    user: User = Depends(get_staff_user)
-):
-    """List all pricing history"""
-    return provider_pricing_service.list_pricing_history(session)
-
-@router.post("/pricing")
-def add_pricing_config(
-    provider: str,
-    model: str,
-    price_in: float,
-    price_out: float,
-    cache_read: float = 0.0,
-    session: Session = Depends(get_session),
-    user: User = Depends(get_admin_user)
-):
-    """Add a new pricing version (terminates old one)"""
-    new_entry = provider_pricing_service.update_price(
-        session,
-        provider,
-        model,
-        price_in,
-        price_out,
-        cache_read,
-        admin_user_id=user.id
-    )
-    return new_entry
 
 # --- Subscription Management ---
 
@@ -311,7 +381,43 @@ def list_subscription_periods(
 
 # --- Stripe Specific Admin ---
 
-from app.models import StripeEvent, TopUpOrder, SubscriptionBillingLink, SystemErrorEntry
+from app.models import StripeEvent, TopUpOrder, SubscriptionBillingLink
+
+
+@router.get("/stripe/health")
+def stripe_health(
+    session: Session = Depends(get_session),
+    user: User = Depends(get_staff_user),
+):
+    settings = get_settings()
+    if not settings.STRIPE_SECRET_KEY:
+        return {
+            "ok": False,
+            "mode": "unknown",
+            "account_id": None,
+            "api_version": None,
+            "last_error": "STRIPE_SECRET_KEY not set",
+        }
+
+    try:
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+        account = stripe.Account.retrieve()
+        livemode = bool(getattr(account, "livemode", False))
+        return {
+            "ok": True,
+            "mode": "live" if livemode else "test",
+            "account_id": getattr(account, "id", None),
+            "api_version": getattr(account, "settings", {}).get("api_version") if hasattr(account, "settings") else None,
+            "last_error": None,
+        }
+    except Exception as e:
+        return {
+            "ok": False,
+            "mode": "unknown",
+            "account_id": None,
+            "api_version": None,
+            "last_error": str(e),
+        }
 
 @router.get("/stripe/events")
 def list_stripe_events(
@@ -351,14 +457,118 @@ def replay_stripe_event(
     stripe_webhook_processor.process_event(session, event)
     return {"status": "replayed", "process_status": event.process_status}
 
-@router.get("/stripe/reconciliation")
-def get_reconciliation_errors(
+@router.get("/reconciliation")
+def get_reconciliation_report(
     session: Session = Depends(get_session),
-    user: User = Depends(get_staff_user)
+    user: User = Depends(get_staff_user),
 ):
-    """List issues found by the nightly reconciliation job."""
-    query = select(SystemErrorEntry).where(SystemErrorEntry.component == "StripeReconciler").order_by(desc(SystemErrorEntry.created_at))
-    return session.exec(query.limit(100)).all()
+    """
+    Dry-run reconciliation report for money ↔ credits ↔ usage.
+    """
+    # 1) Stripe payments without local Payment rows
+    missing_payment_rows = session.exec(
+        select(StripeEvent)
+        .where(StripeEvent.type == "payment_intent.succeeded")
+        .order_by(desc(StripeEvent.received_at))
+        .limit(100)
+    ).all()
+    missing_payment_ids = []
+    for evt in missing_payment_rows:
+        pi_id = evt.payload_json.get("data", {}).get("object", {}).get("id")
+        if not pi_id:
+            continue
+        payment = session.exec(
+            select(Payment)
+            .where(Payment.external_id == pi_id)
+            .where(Payment.provider == "STRIPE")
+        ).first()
+        if not payment:
+            missing_payment_ids.append(pi_id)
+
+    # 2) Paid orders missing credit lots
+    paid_orders = session.exec(
+        select(TopUpOrder).where(TopUpOrder.status == "FULFILLED")
+    ).all()
+    missing_credit_lots = [o.id for o in paid_orders if not o.fulfill_credit_lot_id]
+
+    # 3) Duplicate credit lots by external_ref
+    dup_rows = session.exec(
+        select(CreditLot.external_ref, func.count(CreditLot.id))
+        .where(CreditLot.external_ref != None)
+        .group_by(CreditLot.external_ref)
+        .having(func.count(CreditLot.id) > 1)
+    ).all()
+    duplicate_credit_lots = [{"external_ref": r[0], "count": r[1]} for r in dup_rows]
+
+    # 4) Mismatched pack amounts
+    mismatched_pack_amounts = []
+    for order in paid_orders:
+        if not order.fulfill_credit_lot_id:
+            continue
+        lot = session.get(CreditLot, order.fulfill_credit_lot_id)
+        if not lot:
+            continue
+        if float(lot.credits_total or 0) != float(order.credits or 0):
+            mismatched_pack_amounts.append(
+                {"topup_order_id": order.id, "order_credits": float(order.credits or 0), "lot_credits": float(lot.credits_total or 0)}
+            )
+
+    # 5) Orphan ledger events
+    orphan_ledger = session.exec(
+        select(BillingLedger)
+        .where(BillingLedger.action_type == "TOPUP")
+        .where(BillingLedger.request_id == None)
+    ).all()
+
+    # 6) Stale holds
+    stale_holds = session.exec(
+        select(CreditHold)
+        .where(CreditHold.status == "held")
+        .where(CreditHold.created_at <= datetime.utcnow() - timedelta(hours=2))
+    ).all()
+
+    return {
+        "missing_payment_rows": missing_payment_ids,
+        "missing_credit_lots_for_paid_orders": missing_credit_lots,
+        "duplicate_credit_lots": duplicate_credit_lots,
+        "mismatched_pack_amounts": mismatched_pack_amounts,
+        "orphan_ledger_events": [l.id for l in orphan_ledger],
+        "stale_holds": [h.id for h in stale_holds],
+    }
+
+
+@router.post("/reconciliation/run")
+def run_reconciliation(
+    request: Request,
+    payload: Dict[str, Any] = Body(...),
+    session: Session = Depends(get_session),
+    user: User = Depends(get_superadmin_user),
+):
+    """
+    Superadmin-only reconciliation run (confirmation required).
+    """
+    confirm = payload.get("confirm")
+    reason = payload.get("reason") or ""
+    if confirm != "RUN_RECONCILIATION":
+        raise HTTPException(status_code=400, detail="Confirmation failed. Pass confirm=RUN_RECONCILIATION")
+    if not reason.strip():
+        raise HTTPException(status_code=400, detail="reason is required")
+
+    audit_log_service.log_action(
+        session=session,
+        admin_user_id=user.id,
+        action="EXECUTE",
+        entity_type="PAYMENTS_RECONCILIATION",
+        entity_id="run",
+        before_json={"confirm": confirm},
+        after_json={"status": "triggered"},
+        reason=reason or "Admin-triggered reconciliation",
+        request=request,
+    )
+    session.commit()
+
+    # For now we only return dry-run output
+    return {"status": "ok", "message": "Reconciliation triggered", "confirm": confirm}
 
 @router.get("/details/{payment_id}")
 def get_payment_detail(

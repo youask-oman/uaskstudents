@@ -1,13 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, Request
 from sqlmodel import Session, select, desc, and_, or_
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from app.database import get_session
 from app.models import (
-    User, ProviderModelPricing, ProviderPricingAuditEvent, 
-    ProviderPricingAction, SystemConfigVersion, SystemConfig
+    User,
+    ProviderModelPricing,
+    ProviderPricingAuditEvent,
+    ProviderPricingAction,
+    SystemConfigVersion,
+    SystemConfig,
+    TopUpProduct,
+    StripePriceMap,
 )
+from app.models.admin_audit_log import AdminAuditLog
 from app.api_admin import get_staff_user, get_admin_user
+from app.admin_billing.deps import get_superadmin_user
+from app.services.audit_log_service import audit_log_service
 from app.services.admin_config_service import admin_config_service
 
 router = APIRouter(prefix="/api/admin/payments", tags=["admin-payments-config"])
@@ -89,6 +98,184 @@ def update_payments_config(
 # --- Provider Model Pricing (CRUD) ---
 
 @router.get("/pricing")
+def list_payments_pricing(
+    provider: Optional[str] = "openai",
+    model: Optional[str] = None,
+    show_inactive_gpt5: bool = Query(False, description="Show inactive GPT-5 family models"),
+    all_history: bool = Query(False, description="Show all historical versions"),
+    session: Session = Depends(get_session),
+    user: User = Depends(get_staff_user),
+):
+    """
+    Combined pricing view: provider pricing + credit packs + Stripe price map.
+    """
+    provider_pricing = list_provider_pricing(
+        provider=provider,
+        model=model,
+        show_inactive_gpt5=show_inactive_gpt5,
+        all_history=all_history,
+        session=session,
+        user=user,
+    )
+
+    packs = session.exec(select(TopUpProduct).order_by(TopUpProduct.id.desc())).all()
+    price_map = session.exec(select(StripePriceMap).order_by(StripePriceMap.id.desc())).all()
+
+    return {
+        "provider_pricing": provider_pricing,
+        "topup_packs": packs,
+        "stripe_price_map": price_map,
+    }
+
+
+@router.post("/pricing")
+def mutate_payments_pricing(
+    payload: Dict[str, Any] = Body(...),
+    request: Request = None,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_superadmin_user),
+):
+    """
+    Mutate top-up packs or Stripe price mappings (superadmin only).
+    Payload shape:
+      { kind: "TOPUP_PACK"|"STRIPE_PRICE_MAP", action: "create"|"update"|"deactivate", data: {...}, reason: "..." }
+    """
+    kind = payload.get("kind")
+    action = payload.get("action")
+    data = payload.get("data") or {}
+    reason = payload.get("reason") or ""
+    idempotency_key = payload.get("idempotency_key")
+    if not reason.strip():
+        raise HTTPException(status_code=400, detail="reason is required")
+
+    if idempotency_key:
+        existing = session.exec(
+            select(AdminAuditLog).where(AdminAuditLog.idempotency_key == idempotency_key)
+        ).first()
+        if existing:
+            return {"status": "idempotent_replay", "audit_id": existing.id}
+
+    if kind == "TOPUP_PACK":
+        pack_id = data.get("id")
+        if action == "create":
+            pack = TopUpProduct(
+                code=data.get("code"),
+                name=data.get("name"),
+                credits=int(data.get("credits")),
+                price_usd=float(data.get("price_usd")),
+                is_active=bool(data.get("is_active", True)),
+                metadata_json=data.get("metadata_json"),
+            )
+            session.add(pack)
+            session.flush()
+            audit_log_service.log_action(
+                session=session,
+                admin_user_id=user.id,
+                action="CREATE",
+                entity_type="TOPUP_PRODUCT",
+                entity_id=str(pack.id),
+                before_json={"status": "new"},
+                after_json={"code": pack.code, "credits": pack.credits, "price_usd": pack.price_usd},
+                reason=reason,
+                idempotency_key=idempotency_key,
+                request=request,
+            )
+            session.commit()
+            session.refresh(pack)
+            return pack
+        if action in {"update", "deactivate"}:
+            if not pack_id:
+                raise HTTPException(status_code=400, detail="id required for update/deactivate")
+            pack = session.get(TopUpProduct, int(pack_id))
+            if not pack:
+                raise HTTPException(status_code=404, detail="Pack not found")
+            before = {"code": pack.code, "credits": pack.credits, "price_usd": pack.price_usd, "is_active": pack.is_active}
+            if action == "deactivate":
+                pack.is_active = False
+            else:
+                for field in ["name", "credits", "price_usd", "is_active", "metadata_json"]:
+                    if field in data:
+                        setattr(pack, field, data[field])
+            session.add(pack)
+            audit_log_service.log_action(
+                session=session,
+                admin_user_id=user.id,
+                action="UPDATE" if action == "update" else "DELETE",
+                entity_type="TOPUP_PRODUCT",
+                entity_id=str(pack.id),
+                before_json=before,
+                after_json={"code": pack.code, "credits": pack.credits, "price_usd": pack.price_usd, "is_active": pack.is_active},
+                reason=reason,
+                idempotency_key=idempotency_key,
+                request=request,
+            )
+            session.commit()
+            session.refresh(pack)
+            return pack
+        raise HTTPException(status_code=400, detail="Unsupported action for TOPUP_PACK")
+
+    if kind == "STRIPE_PRICE_MAP":
+        mapping_id = data.get("id")
+        if action == "create":
+            mapping = StripePriceMap(
+                kind=data.get("kind"),
+                internal_code=data.get("internal_code"),
+                stripe_price_id=data.get("stripe_price_id"),
+                currency=data.get("currency") or "USD",
+                active=bool(data.get("active", True)),
+            )
+            session.add(mapping)
+            session.flush()
+            audit_log_service.log_action(
+                session=session,
+                admin_user_id=user.id,
+                action="CREATE",
+                entity_type="STRIPE_PRICE_MAP",
+                entity_id=str(mapping.id),
+                before_json={"status": "new"},
+                after_json={"kind": mapping.kind, "internal_code": mapping.internal_code, "stripe_price_id": mapping.stripe_price_id},
+                reason=reason,
+                idempotency_key=idempotency_key,
+                request=request,
+            )
+            session.commit()
+            session.refresh(mapping)
+            return mapping
+        if action in {"update", "deactivate"}:
+            if not mapping_id:
+                raise HTTPException(status_code=400, detail="id required for update/deactivate")
+            mapping = session.get(StripePriceMap, int(mapping_id))
+            if not mapping:
+                raise HTTPException(status_code=404, detail="Mapping not found")
+            before = {"kind": mapping.kind, "internal_code": mapping.internal_code, "stripe_price_id": mapping.stripe_price_id, "active": mapping.active}
+            if action == "deactivate":
+                mapping.active = False
+            else:
+                for field in ["kind", "internal_code", "stripe_price_id", "currency", "active"]:
+                    if field in data:
+                        setattr(mapping, field, data[field])
+            session.add(mapping)
+            audit_log_service.log_action(
+                session=session,
+                admin_user_id=user.id,
+                action="UPDATE" if action == "update" else "DELETE",
+                entity_type="STRIPE_PRICE_MAP",
+                entity_id=str(mapping.id),
+                before_json=before,
+                after_json={"kind": mapping.kind, "internal_code": mapping.internal_code, "stripe_price_id": mapping.stripe_price_id, "active": mapping.active},
+                reason=reason,
+                idempotency_key=idempotency_key,
+                request=request,
+            )
+            session.commit()
+            session.refresh(mapping)
+            return mapping
+        raise HTTPException(status_code=400, detail="Unsupported action for STRIPE_PRICE_MAP")
+
+    raise HTTPException(status_code=400, detail="Unsupported pricing kind")
+
+
+@router.get("/pricing/provider")
 def list_provider_pricing(
     provider: Optional[str] = "openai",
     model: Optional[str] = None,
@@ -141,11 +328,11 @@ def list_provider_pricing(
             "provider": "openai",
             "model": model or ("gpt-5*" if show_inactive_gpt5 else "gpt-5-mini"),
             "show_inactive_gpt5": show_inactive_gpt5,
-            "all_history": all_history
-        }
+            "all_history": all_history,
+        },
     }
 
-@router.post("/pricing")
+@router.post("/pricing/provider")
 def create_provider_pricing(
     pricing: ProviderModelPricing,
     reason: str = Body(..., embed=True),
@@ -232,7 +419,7 @@ def create_provider_pricing(
     session.refresh(pricing)
     return pricing
 
-@router.put("/pricing/{pricing_id}")
+@router.put("/pricing/provider/{pricing_id}")
 def update_provider_pricing(
     pricing_id: int,
     updates: Dict[str, Any] = Body(...),
@@ -273,7 +460,7 @@ def update_provider_pricing(
     session.commit()
     return pricing
 
-@router.delete("/pricing/{pricing_id}")
+@router.delete("/pricing/provider/{pricing_id}")
 def retire_provider_pricing(
     pricing_id: int,
     reason: str = Body(..., embed=True),

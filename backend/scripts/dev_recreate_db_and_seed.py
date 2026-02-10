@@ -84,9 +84,10 @@ def nuke_db():
         result = conn.execute(text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'"))
         tables = [row[0] for row in result]
         
-        tables_to_truncate = [t for t in tables if t != 'alembic_version']
+        tables_to_truncate = [t for t in tables if t != "alembic_version"]
         if tables_to_truncate:
-             cmd = f"TRUNCATE TABLE {', '.join(f'\"{t}\"' for t in tables_to_truncate)} CASCADE;"
+             quoted = [f"\"{t}\"" for t in tables_to_truncate]
+             cmd = f"TRUNCATE TABLE {', '.join(quoted)} CASCADE;"
              log(f"Truncating {len(tables_to_truncate)} tables...")
              conn.execute(text(cmd))
              conn.commit()

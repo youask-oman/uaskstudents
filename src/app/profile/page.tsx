@@ -93,8 +93,8 @@ export default function ProfilePage() {
             .then(res => res.json())
             .then(data => {
                 setProfile(data);
-                setFullName(data.full_name);
-                setEmail(data.email);
+                setFullName(data.full_name ?? "");
+                setEmail(data.email ?? "");
                 setAcademicLevel(data.academic_level || "Undergraduate - Year 2");
                 setTimezone(data.timezone || "GMT (UTC +0:00)");
                 setTheme(data.theme || "light");
@@ -518,7 +518,7 @@ export default function ProfilePage() {
                                 <div className="flex gap-6 items-center pb-4 border-b border-slate-100 dark:border-slate-800">
                                     <div className="relative">
                                         <div className="size-20 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-2xl overflow-hidden">
-                                            {fullName.split(' ').map(n => n[0]).join('') || "JS"}
+                                            {((fullName || "User").split(' ').map(n => n[0]).join('') || "JS").slice(0, 2)}
                                         </div>
                                         <button className="absolute bottom-0 right-0 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 size-7 rounded-full flex items-center justify-center hover:bg-slate-50 transition-colors">
                                             <span className="material-symbols-outlined text-sm">edit</span>

@@ -13,9 +13,10 @@ export async function POST(req: Request) {
 
         const doc = await buildDocxFromPayload(safe);
         const buf = await docxToBuffer(doc);
+        const buffer = buf instanceof Uint8Array ? buf : new Uint8Array(buf as ArrayBuffer);
 
         const fileName = `${safe.docTitle}`.replace(/[^\w\d-_ ]+/g, "").slice(0, 80) || "export";
-        return new NextResponse(buf as any, {
+        return new NextResponse(buffer, {
             status: 200,
             headers: {
                 "Content-Type":
@@ -23,10 +24,10 @@ export async function POST(req: Request) {
                 "Content-Disposition": `attachment; filename="${fileName}.docx"`,
             },
         });
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error("[DOCX_EXPORT_FAIL]", e);
         return NextResponse.json(
-            { ok: false, error: "DOCX export failed", detail: String(e?.message || e) },
+            { ok: false, error: "DOCX export failed", detail: String(e instanceof Error ? e.message : e) },
             { status: 500 }
         );
     }

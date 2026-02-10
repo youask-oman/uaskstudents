@@ -1,8 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 
 type Subscription = {
     id: number;
@@ -13,8 +12,17 @@ type Subscription = {
     current_period_end: string;
     credits_balance: number;
     credits_used_this_period: number;
-    feature_usage: any;
+    feature_usage: Record<string, unknown> | null;
     auto_renew: boolean;
+};
+
+type SubscriptionPeriod = {
+    id: number;
+    status: string;
+    period_start: string;
+    period_end: string;
+    granted_credits: number;
+    grant_lot_id?: number | null;
 };
 
 async function fetchAdmin(path: string) {
@@ -46,17 +54,15 @@ export default function AdminSubscriptionsPage() {
     const [subs, setSubs] = useState<Subscription[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    const router = useRouter();
-
     const [selectedSub, setSelectedSub] = useState<number | null>(null);
-    const [periods, setPeriods] = useState<any[]>([]);
+    const [periods, setPeriods] = useState<SubscriptionPeriod[]>([]);
     const [periodsLoading, setPeriodsLoading] = useState(false);
 
     const [page, setPage] = useState(1);
     const [total, setTotal] = useState(0);
     const [statusFilter, setStatusFilter] = useState("");
 
-    const fetchSubs = async () => {
+    const fetchSubs = useCallback(async () => {
         setLoading(true);
         setError("");
         try {
@@ -69,20 +75,20 @@ export default function AdminSubscriptionsPage() {
             const data = await fetchAdmin(`/subscriptions?${params.toString()}`);
             setSubs(data.data);
             setTotal(data.total);
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Request failed");
         } finally {
             setLoading(false);
         }
-    };
+    }, [page, statusFilter]);
 
     const fetchPeriods = async (subId: number) => {
         setSelectedSub(subId);
         setPeriodsLoading(true);
         try {
             const data = await fetchAdmin(`/subscriptions/${subId}/periods`);
-            setPeriods(data);
-        } catch (err: any) {
+            setPeriods(data as SubscriptionPeriod[]);
+        } catch (err: unknown) {
             console.error(err);
         } finally {
             setPeriodsLoading(false);
@@ -91,10 +97,13 @@ export default function AdminSubscriptionsPage() {
 
     useEffect(() => {
         fetchSubs();
-    }, []);
+    }, [fetchSubs]);
 
     return (
         <div className="p-8 max-w-7xl mx-auto space-y-6">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 font-semibold">
+                Legacy subscriptions are read-only while credit programs are active. No new subscriptions can be created here.
+            </div>
             <header className="flex justify-between items-center">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Legacy Subscriptions</h1>
@@ -147,7 +156,7 @@ export default function AdminSubscriptionsPage() {
                             ) : subs.length === 0 ? (
                                 <tr><td colSpan={8} className="p-8 text-center text-slate-500">No subscriptions found.</td></tr>
                             ) : (
-                                subs.map((sub: any) => (
+                                subs.map((sub) => (
                                     <tr key={sub.id} className={`hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${selectedSub === sub.id ? 'bg-indigo-50/50 dark:bg-indigo-900/10' : ''}`}>
                                         <td className="p-4 font-mono text-sm text-slate-600 dark:text-slate-400">#{sub.id}</td>
                                         <td className="p-4 font-medium text-slate-900 dark:text-white">{sub.user_id}</td>

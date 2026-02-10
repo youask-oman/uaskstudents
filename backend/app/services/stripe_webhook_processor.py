@@ -1,14 +1,24 @@
 
 from sqlmodel import Session, select
 from app.models import (
-    StripeEvent, TopUpOrder, Payment, User, CreditLot, 
-    UsageLedger, Subscription, SubscriptionBillingLink, SubscriptionPeriod
+    StripeEvent,
+    TopUpOrder,
+    Payment,
+    User,
+    CreditLot,
+    UsageLedger,
+    Subscription,
+    SubscriptionBillingLink,
+    SubscriptionPeriod,
+    BillingLedger,
 )
 from app.services.credit_wallet_service import credit_wallet_service
 from app.services.subscription_service import subscription_service
 from app.services.invoice_service import invoice_service
 from datetime import datetime
+from decimal import Decimal
 import logging
+from app.jobs.nightly_reconciliation import compute_user_balance
 
 class StripeWebhookProcessor:
     def process_event(self, session: Session, stripe_event: StripeEvent):
@@ -133,6 +143,7 @@ class StripeWebhookProcessor:
             session.add(payment)
 
         # 2. Add Credits (CreditLot)
+        computed_before = compute_user_balance(session, order.user_id)
         lot = credit_wallet_service.add_credits(
             session,
             order.user_id,
@@ -142,31 +153,57 @@ class StripeWebhookProcessor:
             lot_type="TOPUP",
             external_ref=pi_id
         )
+        lot.amount_paid = order.price_usd
+        lot.currency = order.currency
+        lot.source_payment_id = pi_id
         session.flush()
 
         # 3. Update Balance and Ledger
         user = session.get(User, order.user_id)
         sub = subscription_service.get_or_create_subscription(session, user)
-        sub.credits_balance += order.credits
+        credit_delta = Decimal(str(order.credits))
+        sub.credits_balance = (sub.credits_balance or Decimal("0")) + credit_delta
         session.add(sub)
         
         ledger = UsageLedger(
             subscription_id=sub.id,
             transaction_type="CREDIT",
-            amount=order.credits,
+            amount=credit_delta,
             balance_after=sub.credits_balance,
             reference_id=pi_id,
             meta={"topup_order_id": order.id, "source": "STRIPE"}
         )
         session.add(ledger)
         
-        # 4. Mark Order FULFILLED
+        # 4. Billing ledger + cached balance
+        computed_after = compute_user_balance(session, order.user_id)
+        billing_ledger = BillingLedger(
+            user_id=order.user_id,
+            action_type="TOPUP",
+            request_id=pi_id,
+            status="SETTLED",
+            credits_charged=0,
+            estimated_credits=0,
+            actual_credits=0,
+            delta_credits=credit_delta,
+            credits_before=computed_before,
+            credits_after=computed_after,
+        )
+        session.add(billing_ledger)
+        session.flush()
+
+        user = session.get(User, order.user_id)
+        if user:
+            user.credits_balance = float(computed_after)
+            session.add(user)
+
+        # 5. Mark Order FULFILLED
         order.status = "FULFILLED"
         order.fulfill_credit_lot_id = lot.id
-        order.fulfill_usage_ledger_id = ledger.id
+        order.fulfill_usage_ledger_id = billing_ledger.id
         session.add(order)
         
-        # 5. Create Invoice (Receipt)
+        # 6. Create Invoice (Receipt)
         try:
             invoice_service.create_topup_invoice(session, order, payment)
         except Exception as e:

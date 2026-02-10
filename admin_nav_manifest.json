@@ -229,6 +229,16 @@
     },
     {
       "type": "link",
+      "label": "Payments",
+      "href": "/adminpayments",
+      "icon": "payments",
+      "page_title": "Payments Dashboard",
+      "api_checks": [
+        "/api/admin/payments/overview"
+      ]
+    },
+    {
+      "type": "link",
       "label": "Feature Flags",
       "href": "/admin/billing/flags",
       "icon": "flag",

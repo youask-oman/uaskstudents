@@ -26,6 +26,7 @@ from app.models import (
     School,
     SeedRegistry,
     SystemConfig,
+    TopUpProduct,
     TrimStrategyEnum,
     User,
 )
@@ -499,6 +500,33 @@ def _seed_programs_and_plans(session: Session, app_env: str) -> Tuple[int, int, 
     return p_count, pl_count, {"p_ops": _res(pc, pu, ps), "pl_ops": _res(plc, plu, pls)}
 
 
+def _seed_topup_products(session: Session) -> Tuple[int, Dict[str, int]]:
+    existing = session.exec(select(TopUpProduct)).all()
+    if existing:
+        return len(existing), _res(s=len(existing))
+
+    defaults = [
+        ("topup_5", "$5 Pack", 550, 5.0),
+        ("topup_10", "$10 Pack", 1200, 10.0),
+        ("topup_25", "$25 Pack", 3250, 25.0),
+        ("topup_50", "$50 Pack", 7000, 50.0),
+    ]
+    created = 0
+    for code, name, credits, price in defaults:
+        session.add(
+            TopUpProduct(
+                code=code,
+                name=name,
+                credits=credits,
+                price_usd=price,
+                is_active=True,
+            )
+        )
+        created += 1
+    session.commit()
+    return created, _res(c=created)
+
+
 def _seed_schools(session: Session, app_env: str) -> Tuple[int, Dict[str, int]]:
     ca_csv = ROOT / "data" / "schools_ca.csv"
     us_csv = ROOT / "data" / "schools_us.csv"
@@ -690,6 +718,8 @@ def run_seed(app_env: str, rotate_passwords: bool, dev_fixtures: bool, allow_use
         p_count, pl_count, ops_map = _seed_programs_and_plans(session, app_env)
         summary["creditprogramdefinition"] = {"row_count": p_count, **ops_map["p_ops"]}
         summary["plan"] = {"row_count": pl_count, **ops_map["pl_ops"]}
+        pack_count, pack_ops = _seed_topup_products(session)
+        summary["topup_product"] = {"row_count": pack_count, **pack_ops}
         count, ops = _seed_schools(session, app_env)
         summary["school"] = {"row_count": count, **ops}
         count, ops = _seed_internal_users(session, app_env, allow_user_seeding, dev_fixtures)
@@ -717,6 +747,7 @@ def main() -> None:
         "providermodelpricing",
         "creditprogramdefinition",
         "plan",
+        "topup_product",
         "school",
         "user",
         "payment",

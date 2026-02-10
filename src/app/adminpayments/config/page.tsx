@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 // --- API Helper ---
 async function fetchAdmin(path: string, options: RequestInit = {}) {
@@ -10,12 +9,14 @@ async function fetchAdmin(path: string, options: RequestInit = {}) {
         window.location.href = "/login?redirect=" + window.location.pathname;
         return;
     }
+    const requestId = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Date.now());
 
     const res = await fetch(`/api/admin/payments${path}`, {
         ...options,
         headers: {
             "Authorization": `Bearer ${token}`,
             "Content-Type": "application/json",
+            "X-Request-ID": requestId,
             ...options.headers
         }
     });
@@ -27,24 +28,55 @@ async function fetchAdmin(path: string, options: RequestInit = {}) {
     }
 
     if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || "Request failed");
+        const responseRequestId = res.headers.get("X-Request-ID") || requestId;
+        let detail = "Request failed";
+        try {
+            const err = await res.json();
+            detail = err.detail || detail;
+        } catch {}
+        const error = new Error(detail) as Error & { requestId?: string | null };
+        error.requestId = responseRequestId;
+        throw error;
     }
 
-    return res.json();
+    const data = await res.json();
+    return { data, requestId: res.headers.get("X-Request-ID") || requestId };
 }
 
 type Tab = "pricing" | "economics" | "stripe" | "invoice";
 
+type PaymentsConfig = Record<string, unknown>;
+
+type ProviderPricing = {
+    id?: number;
+    provider: string;
+    model: string;
+    price_in_per_1m: number;
+    price_out_per_1m: number;
+    price_cached_in_per_1m?: number;
+    effective_from?: string | null;
+    effective_to?: string | null;
+    status?: string;
+};
+
+type StripeHealth = {
+    ok: boolean;
+    mode?: string;
+    account_id?: string | null;
+    api_version?: string | null;
+    last_error?: string | null;
+};
+
 export default function AdminPaymentsConfigPage() {
-    const READ_ONLY = true;
+    const READ_ONLY = false;
     const [tab, setTab] = useState<Tab>("pricing");
     const [loading, setLoading] = useState(false);
-    const [config, setConfig] = useState<any>(null);
-    const [pricing, setPricing] = useState<any[]>([]);
+    const [config, setConfig] = useState<PaymentsConfig | null>(null);
+    const [pricing, setPricing] = useState<ProviderPricing[]>([]);
     const [reason, setReason] = useState("");
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
+    const [stripeHealth, setStripeHealth] = useState<StripeHealth | null>(null);
 
     const [newPricing, setNewPricing] = useState({
         provider: "openai",
@@ -62,20 +94,24 @@ export default function AdminPaymentsConfigPage() {
     const loadAll = async () => {
         setLoading(true);
         try {
-            const [cfgData, pricingData] = await Promise.all([
+            const [cfgData, pricingData, stripeData] = await Promise.all([
                 fetchAdmin("/config"),
-                fetchAdmin("/pricing?all_history=true")
+                fetchAdmin("/pricing/provider?all_history=true"),
+                fetchAdmin("/stripe/health"),
             ]);
-            setConfig(cfgData.config);
-            setPricing(pricingData);
-        } catch (err: any) {
-            setError(err.message);
+            setConfig(cfgData.data.config);
+            setPricing(pricingData.data.pricing || []);
+            setStripeHealth(stripeData.data);
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Request failed";
+            const requestId = err instanceof Error && "requestId" in err ? (err as { requestId?: string | null }).requestId : null;
+            setError(message + (requestId ? ` (request_id: ${requestId})` : ""));
         } finally {
             setLoading(false);
         }
     };
 
-    const handleUpdateConfig = async (sectionUpdates: any) => {
+    const handleUpdateConfig = async (sectionUpdates: Partial<PaymentsConfig>) => {
         if (READ_ONLY) {
             setError("Legacy payments console is read-only. Use Billing Control Center for credit operations.");
             return;
@@ -95,8 +131,8 @@ export default function AdminPaymentsConfigPage() {
             setSuccess("Configuration updated successfully");
             setReason("");
             loadAll();
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Request failed");
         } finally {
             setLoading(false);
         }
@@ -122,15 +158,15 @@ export default function AdminPaymentsConfigPage() {
                 },
                 reason
             };
-            await fetchAdmin("/pricing", {
+            await fetchAdmin("/pricing/provider", {
                 method: "POST",
                 body: JSON.stringify(payload)
             });
             setSuccess("New pricing version created");
             setReason("");
             loadAll();
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Request failed");
         } finally {
             setLoading(false);
         }
@@ -150,15 +186,15 @@ export default function AdminPaymentsConfigPage() {
         setError("");
         setLoading(true);
         try {
-            await fetchAdmin(`/pricing/${id}`, {
+            await fetchAdmin(`/pricing/provider/${id}`, {
                 method: "DELETE",
                 body: JSON.stringify({ reason })
             });
             setSuccess("Pricing entry retired");
             setReason("");
             loadAll();
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Request failed");
         } finally {
             setLoading(false);
         }
@@ -189,7 +225,7 @@ export default function AdminPaymentsConfigPage() {
 
             {READ_ONLY && (
                 <div className="mb-6 p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-sm font-semibold">
-                    Legacy payments console is read-only. Use the Billing Control Center for active credit operations.
+                    Payments config is read-only in this environment.
                 </div>
             )}
             {/* Global Reason Box */}
@@ -454,22 +490,19 @@ export default function AdminPaymentsConfigPage() {
                         <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
                         <h3 className="text-xl font-bold mb-8">Stripe Integration Status</h3>
                         <div className="flex gap-4 mb-12">
-                            <div className="flex-1 p-6 bg-emerald-50 dark:bg-emerald-950/20 rounded-2xl border border-emerald-100 dark:border-emerald-900/50 flex flex-col items-center text-center">
-                                <span className="material-symbols-outlined text-emerald-500 text-3xl mb-2">check_circle</span>
-                                <h4 className="font-bold text-emerald-900 dark:text-emerald-100">API Key</h4>
-                                <p className="text-xs text-emerald-600 dark:text-emerald-400">STRIPE_SECRET_KEY is present in environment.</p>
-                            </div>
-                            <div className="flex-1 p-6 bg-emerald-50 dark:bg-emerald-950/20 rounded-2xl border border-emerald-100 dark:border-emerald-900/50 flex flex-col items-center text-center">
-                                <span className="material-symbols-outlined text-emerald-500 text-3xl mb-2">check_circle</span>
-                                <h4 className="font-bold text-emerald-900 dark:text-emerald-100">Webhook Secret</h4>
-                                <p className="text-xs text-emerald-600 dark:text-emerald-400">STRIPE_WEBHOOK_SECRET is present in environment.</p>
+                            <div className={`flex-1 p-6 rounded-2xl border ${stripeHealth?.ok ? "bg-emerald-50 border-emerald-100" : "bg-red-50 border-red-100"} flex flex-col items-center text-center`}>
+                                <span className={`material-symbols-outlined text-3xl mb-2 ${stripeHealth?.ok ? "text-emerald-500" : "text-red-500"}`}>{stripeHealth?.ok ? "check_circle" : "error"}</span>
+                                <h4 className={`font-bold ${stripeHealth?.ok ? "text-emerald-900" : "text-red-900"}`}>Stripe API</h4>
+                                <p className="text-xs text-slate-500">Mode: {stripeHealth?.mode || "unknown"}</p>
+                                <p className="text-xs text-slate-500">Account: {stripeHealth?.account_id || "-"}</p>
+                                {!stripeHealth?.ok && <p className="text-xs text-red-600">{stripeHealth?.last_error}</p>}
                             </div>
                         </div>
 
                         <h3 className="text-xl font-bold mb-6">Price ID Mappings</h3>
                         <p className="text-sm text-slate-500 mb-8">Map internal product/plan codes to Stripe Price IDs (e.g. `price_1P...`).</p>
                         <div className="space-y-4">
-                            {["topup-60", "topup-300", "topup-1000", "plan-standard", "plan-research"].map(key => (
+                            {Object.keys(config.stripe_mappings || {}).map(key => (
                                 <div key={key} className="flex items-center gap-4 bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
                                     <div className="w-40 font-bold text-xs uppercase tracking-widest text-slate-400">{key}</div>
                                     <input

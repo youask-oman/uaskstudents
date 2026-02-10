@@ -42,19 +42,19 @@ export async function POST(req: NextRequest) {
             },
         });
 
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error("[PDF Export] Error:", err);
 
-        if (err.name === "ZodError") {
+        if (err && typeof err === "object" && "name" in err && (err as { name?: string }).name === "ZodError") {
             return NextResponse.json({
                 error: "Invalid payload",
-                details: err.errors
+                details: (err as { errors?: unknown }).errors
             }, { status: 400 });
         }
 
         return NextResponse.json({
             error: "Failed to generate PDF",
-            message: err.message
+            message: err instanceof Error ? err.message : String(err)
         }, { status: 500 });
     }
 }

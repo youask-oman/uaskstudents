@@ -50,15 +50,17 @@ class CreditWalletService:
         Add a new batch of credits to the user's wallet.
         """
         from datetime import timedelta
+        from decimal import Decimal
         
+        amount_dec = Decimal(str(amount))
         final_expires_at = expires_at
         if final_expires_at is None and expiry_days:
              final_expires_at = datetime.utcnow() + timedelta(days=expiry_days)
         
         lot = CreditLot(
             user_id=user_id,
-            credits_total=amount,
-            credits_remaining=amount,
+            credits_total=amount_dec,
+            credits_remaining=amount_dec,
             expires_at=final_expires_at,
             source=source,
             lot_type=lot_type,
@@ -74,13 +76,13 @@ class CreditWalletService:
             from app.models import UsageLedger
             
             sub = user.subscription
-            sub.credits_balance += amount
+            sub.credits_balance += amount_dec
             
             # Create Audit Entry
             ledger_entry = UsageLedger(
                 subscription_id=sub.id,
                 transaction_type="CREDIT",
-                amount=amount,
+                amount=amount_dec,
                 balance_after=sub.credits_balance,
                 reference_id=external_ref,
                 meta={"source": source, "lot_type": lot_type}

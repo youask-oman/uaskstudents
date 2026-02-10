@@ -435,11 +435,12 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     let input = 0;
     let output = 0;
     let total = 0;
-    session?.messages?.forEach((msg: any) => {
+    (session?.messages || []).forEach((msg: SessionMessage) => {
       if (msg.role === "assistant") {
-        const inT = Number(msg.input_tokens || 0);
-        const outT = Number(msg.output_tokens || 0);
-        const usedT = Number(msg.tokens_used || 0);
+        const record = msg as unknown as Record<string, unknown>;
+        const inT = Number(record.input_tokens || 0);
+        const outT = Number(record.output_tokens || 0);
+        const usedT = Number(record.tokens_used || 0);
         input += inT;
         output += outT;
         total += usedT || (inT + outT);

@@ -37,7 +37,7 @@ export default function AdminPaymentsLayout({
             name: localStorage.getItem("user_name") ?? "Admin User",
             role: role,
             avatar: localStorage.getItem("user_avatar") ?? "",
-            authorized: (role === "admin" || role === "devops") && !!token,
+            authorized: (role === "admin" || role === "superadmin") && !!token,
         };
 
         // Defer update to avoid synchronous state update warning
@@ -82,8 +82,8 @@ export default function AdminPaymentsLayout({
                         <div className="flex items-center gap-3 px-2">
                             <img src="/logo-dark.png" alt="uask.ai" className="h-8 w-auto invert brightness-0 grayscale-0" style={{ filter: "brightness(0) invert(1)" }} />
                             <div className="flex flex-col">
-                                <h1 className="text-white text-base font-bold leading-none">Legacy Payments</h1>
-                                <p className="text-emerald-400 text-[10px] uppercase tracking-widest font-semibold mt-1">Legacy Stripe</p>
+                                <h1 className="text-white text-base font-bold leading-none">Payments Console</h1>
+                                <p className="text-emerald-400 text-[10px] uppercase tracking-widest font-semibold mt-1">Stripe + Credits</p>
                             </div>
                         </div>
                         <nav className="flex flex-col gap-1">
@@ -124,9 +124,6 @@ export default function AdminPaymentsLayout({
 
                 {/* Main Content Shell */}
                 <main className="flex-1 flex flex-col overflow-y-auto w-full bg-slate-50 dark:bg-[#0f1117]">
-                    <div className="sticky top-0 z-40 bg-amber-100 text-amber-900 border-b border-amber-200 px-6 py-3 text-xs font-bold uppercase tracking-widest">
-                        Legacy Payments Area - Read Only. Use Billing Control Center for credit operations.
-                    </div>
                     {children}
                 </main>
             </div>

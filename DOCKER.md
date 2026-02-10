@@ -120,8 +120,8 @@ docker compose logs worker --tail 50
 ### Verify health status
 
 ```bash
-curl http://localhost:8000/health
-curl http://localhost:8000/ready
+curl http://localhost:9000/health
+curl http://localhost:9000/ready
 ```
 
 ## Production Deployment Checklist
