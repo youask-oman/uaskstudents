@@ -8,7 +8,7 @@ from app.auth import SECRET_KEY, ALGORITHM
 
 from app.database import get_session
 from app.services.top_up_service import top_up_service
-from app.models import User
+from app.models import User, TopUpOrder
 
 # Define Router
 router = APIRouter(prefix="/topups", tags=["topups"])
@@ -61,6 +61,9 @@ class ConfirmRequest(BaseModel):
     product_code: str
     external_ref: str # PaymentIntent ID
     # Idempotency key logic? We use external_ref as unique key for now.
+
+class StripeConfirmSessionRequest(BaseModel):
+    session_id: str
 
 class ConfirmResponse(BaseModel):
     status: str
@@ -148,3 +151,59 @@ async def confirm_topup(
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/stripe/confirm-session")
+async def confirm_stripe_session(
+    req: StripeConfirmSessionRequest,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    """
+    Confirm a Stripe checkout session and fulfill the top-up if paid.
+    This is a fallback for when webhooks are delayed or missed.
+    """
+    from app.services.stripe_service import stripe_service
+    from app.services.stripe_webhook_processor import stripe_webhook_processor
+
+    try:
+        stripe_session = stripe_service.get_checkout_session(req.session_id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid Stripe session: {e}")
+
+    metadata = stripe_session.get("metadata", {}) or {}
+    order_id = metadata.get("topup_order_id")
+    if not order_id:
+        raise HTTPException(status_code=400, detail="Missing top-up order id in Stripe session metadata")
+
+    order = session.get(TopUpOrder, int(order_id))
+    if not order:
+        raise HTTPException(status_code=404, detail="Top-up order not found")
+    if order.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Order does not belong to current user")
+
+    # If already fulfilled, return current state
+    if order.status == "FULFILLED":
+        return {
+            "status": "fulfilled",
+            "order_id": order.id,
+            "payment_intent_id": order.stripe_payment_intent_id,
+        }
+
+    if stripe_session.get("payment_status") != "paid":
+        return {
+            "status": "pending",
+            "order_id": order.id,
+            "payment_status": stripe_session.get("payment_status"),
+        }
+
+    order.stripe_checkout_session_id = stripe_session.get("id")
+    order.stripe_payment_intent_id = stripe_session.get("payment_intent")
+    session.add(order)
+    session.commit()
+
+    stripe_webhook_processor.fulfill_topup(session, order)
+    return {
+        "status": "fulfilled",
+        "order_id": order.id,
+        "payment_intent_id": order.stripe_payment_intent_id,
+    }

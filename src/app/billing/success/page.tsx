@@ -1,11 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DashboardNavBar from "@/components/DashboardNavBar";
+import { API_BASE_URL, parseApiError } from "@/lib/api";
+import { useToast } from "@/components/ui/ToastProvider";
 import { fetchWalletSummary, WalletSummary } from "@/lib/wallet";
 
+type TopUpProduct = {
+    id: number;
+    code: string;
+    name: string;
+    usd_amount: number;
+    credits: number;
+    currency: string;
+    is_active: boolean;
+};
+
 export default function BillingSuccessPage() {
+    const { pushToast } = useToast();
     const [wallet, setWallet] = useState<WalletSummary | null>(null);
+    const [lastBalance, setLastBalance] = useState<number | null>(null);
+    const [purchasedCredits, setPurchasedCredits] = useState<number | null>(null);
+    const [productCode, setProductCode] = useState<string | null>(null);
 
     useEffect(() => {
         const loadWallet = async () => {
@@ -18,6 +34,105 @@ export default function BillingSuccessPage() {
         };
         void loadWallet();
     }, []);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        const params = new URLSearchParams(window.location.search);
+        const product = params.get("product");
+        if (product) setProductCode(product);
+        const storedBalance = localStorage.getItem("topup_last_balance");
+        const storedCredits = localStorage.getItem("topup_last_product_credits");
+        setLastBalance(storedBalance ? Number(storedBalance) : null);
+        setPurchasedCredits(storedCredits ? Number(storedCredits) : null);
+    }, []);
+
+    useEffect(() => {
+        const confirmStripeSession = async () => {
+            if (typeof window === "undefined") return;
+            const params = new URLSearchParams(window.location.search);
+            const sessionId = params.get("session_id");
+            if (!sessionId) return;
+            const token = localStorage.getItem("token");
+            if (!token) return;
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/v1/topups/stripe/confirm-session`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ session_id: sessionId }),
+                });
+                if (!res.ok) {
+                    const err = await parseApiError(res);
+                    pushToast({
+                        type: "error",
+                        title: "Top-up verification failed",
+                        message: err.message,
+                        requestId: err.requestId,
+                    });
+                    return;
+                }
+                const result = await res.json();
+                if (result.status === "pending") {
+                    pushToast({
+                        type: "info",
+                        title: "Payment still processing",
+                        message: "Stripe has not confirmed the payment yet. Please refresh in a moment.",
+                    });
+                } else if (result.status === "fulfilled") {
+                    pushToast({
+                        type: "success",
+                        title: "Top-up completed",
+                        message: "Credits have been added to your wallet.",
+                    });
+                    try {
+                        const summary = await fetchWalletSummary();
+                        setWallet(summary);
+                    } catch {
+                        // ignore refresh errors
+                    }
+                }
+            } catch (error) {
+                pushToast({
+                    type: "error",
+                    title: "Top-up verification failed",
+                    message: error instanceof Error ? error.message : "Unexpected error",
+                });
+            }
+        };
+
+        void confirmStripeSession();
+    }, [pushToast]);
+
+    useEffect(() => {
+        const loadProductCredits = async () => {
+            if (!productCode || purchasedCredits != null) return;
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/v1/topups/products`);
+                if (!res.ok) return;
+                const products = (await res.json()) as TopUpProduct[];
+                const match = products.find((item) => item.code === productCode);
+                if (match) setPurchasedCredits(match.credits);
+            } catch {
+                return;
+            }
+        };
+        void loadProductCredits();
+    }, [productCode, purchasedCredits]);
+
+    const effectiveOldBalance = useMemo(() => {
+        if (lastBalance != null) return lastBalance;
+        if (wallet && purchasedCredits != null) return wallet.computed_balance - purchasedCredits;
+        if (wallet) return wallet.computed_balance;
+        return null;
+    }, [lastBalance, purchasedCredits, wallet]);
+
+    const expectedNewBalance = useMemo(() => {
+        if (effectiveOldBalance == null || purchasedCredits == null) return null;
+        return effectiveOldBalance + purchasedCredits;
+    }, [effectiveOldBalance, purchasedCredits]);
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-200">
@@ -33,10 +148,41 @@ export default function BillingSuccessPage() {
                     <p className="text-slate-500 dark:text-slate-400 mb-6">
                         Your payment is being processed. Credits will appear once the checkout completes.
                     </p>
-                    {wallet && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                            <div className="text-xs uppercase tracking-widest text-slate-400">Old Balance</div>
+                            <div className="font-semibold text-slate-900 dark:text-white">
+                                {effectiveOldBalance != null ? `${effectiveOldBalance.toFixed(2)} credits` : "--"}
+                            </div>
+                        </div>
+                        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                            <div className="text-xs uppercase tracking-widest text-slate-400">Purchased</div>
+                            <div className="font-semibold text-slate-900 dark:text-white">
+                                {purchasedCredits != null ? `+${purchasedCredits.toFixed(2)} credits` : "--"}
+                            </div>
+                            {productCode && (
+                                <div className="text-[10px] uppercase tracking-widest text-slate-400 mt-1">
+                                    {productCode}
+                                </div>
+                            )}
+                        </div>
+                        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                            <div className="text-xs uppercase tracking-widest text-slate-400">Expected New Balance</div>
+                            <div className="font-semibold text-slate-900 dark:text-white">
+                                {expectedNewBalance != null ? `${expectedNewBalance.toFixed(2)} credits` : "--"}
+                            </div>
+                        </div>
+                    </div>
+                    {wallet ? (
                         <div className="inline-flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-4 py-2 rounded-full text-sm text-slate-600 dark:text-slate-300">
                             Current balance: <span className="font-semibold text-slate-900 dark:text-white">{wallet.computed_balance.toFixed(2)} credits</span>
                         </div>
+                    ) : (
+                        expectedNewBalance != null && (
+                            <div className="inline-flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-4 py-2 rounded-full text-sm text-slate-600 dark:text-slate-300">
+                                Current balance: <span className="font-semibold text-slate-900 dark:text-white">{expectedNewBalance.toFixed(2)} credits</span>
+                            </div>
+                        )
                     )}
                     <div className="mt-8 flex justify-center gap-4">
                         <a

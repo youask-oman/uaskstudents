@@ -1,0 +1,1 @@
+{"topic":"Linear equation","confidence_score":0.98,"steps":[{"index":1,"title":"Isolate the term with x","explanation":"Subtract 7 from both sides to get 2x = 12.","math_latex":"2x=12"},{"index":2,"title":"Solve for x","explanation":"Divide both sides by 2 to find x = 6.","math_latex":"\\frac{2x}{2}=\\frac{12}{2}"}],"final_answer":"x = 6"}

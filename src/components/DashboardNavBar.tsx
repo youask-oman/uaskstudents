@@ -75,8 +75,9 @@ export default function DashboardNavBar() {
         const handleStorage = (event: StorageEvent) => {
             if (!event.key) return;
             if (event.key === "theme") return;
-            if (event.key.startsWith("user")) {
+            if (event.key.startsWith("user") || event.key === "token" || event.key === "user_id") {
                 refreshUserInfo();
+                void refreshWallet();
             }
         };
 
@@ -84,10 +85,16 @@ export default function DashboardNavBar() {
         void refreshWallet();
         document.addEventListener("mousedown", handleClickOutside);
         window.addEventListener("storage", handleStorage);
+        window.addEventListener("focus", refreshWallet);
+        const refreshInterval = window.setInterval(() => {
+            void refreshWallet();
+        }, 20000);
 
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
             window.removeEventListener("storage", handleStorage);
+            window.removeEventListener("focus", refreshWallet);
+            window.clearInterval(refreshInterval);
         };
     }, []);
 

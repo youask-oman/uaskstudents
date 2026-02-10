@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import DashboardNavBar from "@/components/DashboardNavBar";
 import { API_BASE_URL, parseApiError } from "@/lib/api";
+import { fetchWalletSummary } from "@/lib/wallet";
 import { useToast } from "@/components/ui/ToastProvider";
 
 const PAGE_TITLE = "Top Up Credits";
@@ -59,7 +60,17 @@ export default function BillingPaymentPage() {
 
         setActiveCode(product.code);
         try {
-            const successUrl = `${window.location.origin}/billing/success?product=${encodeURIComponent(product.code)}`;
+            try {
+                const summary = await fetchWalletSummary();
+                localStorage.setItem("topup_last_balance", String(summary.computed_balance ?? ""));
+            } catch {
+                localStorage.removeItem("topup_last_balance");
+            }
+            localStorage.setItem("topup_last_product_code", product.code);
+            localStorage.setItem("topup_last_product_credits", String(product.credits));
+            localStorage.setItem("topup_last_started_at", new Date().toISOString());
+
+            const successUrl = `${window.location.origin}/billing/success?product=${encodeURIComponent(product.code)}&session_id={CHECKOUT_SESSION_ID}`;
             const cancelUrl = `${window.location.origin}/billing/payment?status=cancelled`;
             const res = await fetch(`${API_BASE_URL}/api/v1/topups/stripe/checkout`, {
                 method: "POST",

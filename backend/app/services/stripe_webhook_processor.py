@@ -6,14 +6,12 @@ from app.models import (
     Payment,
     User,
     CreditLot,
-    UsageLedger,
     Subscription,
     SubscriptionBillingLink,
     SubscriptionPeriod,
     BillingLedger,
 )
 from app.services.credit_wallet_service import credit_wallet_service
-from app.services.subscription_service import subscription_service
 from app.services.invoice_service import invoice_service
 from datetime import datetime
 from decimal import Decimal
@@ -158,22 +156,8 @@ class StripeWebhookProcessor:
         lot.source_payment_id = pi_id
         session.flush()
 
-        # 3. Update Balance and Ledger
-        user = session.get(User, order.user_id)
-        sub = subscription_service.get_or_create_subscription(session, user)
+        # 3. Compute delta for billing ledger (subscription + usage ledger are handled in credit_wallet_service.add_credits)
         credit_delta = Decimal(str(order.credits))
-        sub.credits_balance = (sub.credits_balance or Decimal("0")) + credit_delta
-        session.add(sub)
-        
-        ledger = UsageLedger(
-            subscription_id=sub.id,
-            transaction_type="CREDIT",
-            amount=credit_delta,
-            balance_after=sub.credits_balance,
-            reference_id=pi_id,
-            meta={"topup_order_id": order.id, "source": "STRIPE"}
-        )
-        session.add(ledger)
         
         # 4. Billing ledger + cached balance
         computed_after = compute_user_balance(session, order.user_id)

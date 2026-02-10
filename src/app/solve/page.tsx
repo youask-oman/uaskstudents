@@ -468,6 +468,16 @@ export default function DashboardPage() {
     const estimatedQuestionCount = activeTab === "text"
         ? Math.max(1, multiQuestionResult.suggestedSplits.length || 1)
         : 1;
+    const estimatedSolveCost = useMemo(() => {
+        if (!estimate) return null;
+        return estimate.per_question_credits * estimatedQuestionCount;
+    }, [estimate, estimatedQuestionCount]);
+    const hasEnoughCredits = readyWallet && estimatedSolveCost != null
+        ? readyWallet.computed_balance >= estimatedSolveCost
+        : true;
+    const creditBlockReason = readyWallet && estimatedSolveCost != null && !hasEnoughCredits
+        ? `Insufficient credits. Need ${estimatedSolveCost.toFixed(2)} credits.`
+        : null;
 
     useEffect(() => {
         const stored = typeof window !== "undefined" ? localStorage.getItem("uask.solveTier") : null;
@@ -859,6 +869,14 @@ export default function DashboardPage() {
         if (isSolving) return;
         if (!tokenPolicyReady) {
             setInputError("Token policy unavailable. Please refresh.");
+            return;
+        }
+        if (!hasEnoughCredits) {
+            pushToast({
+                title: "Insufficient credits",
+                description: creditBlockReason || "Please top up your wallet before solving.",
+                variant: "error",
+            });
             return;
         }
 
@@ -1663,8 +1681,8 @@ export default function DashboardPage() {
                                                         </button>
                                                         <button
                                                             onClick={() => handleSolve()}
-                                                            disabled={isSolving || isInputTooShort(query) || !!tokenBlockReason || isBlockingInputError(inputError)}
-                                                            title={tokenBlockReason || undefined}
+                                                            disabled={isSolving || isInputTooShort(query) || !!tokenBlockReason || isBlockingInputError(inputError) || !hasEnoughCredits}
+                                                            title={tokenBlockReason || creditBlockReason || undefined}
                                                             className="relative flex items-center gap-2 bg-primary hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-bold transition-all shadow-lg shadow-primary/25 text-sm overflow-hidden"
                                                         >
                                                             {isSolving && (

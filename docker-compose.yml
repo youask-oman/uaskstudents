@@ -52,6 +52,14 @@ services:
       - ./reports:/src/reports
       - ./test-results:/src/test-results
 
+  stripe_cli:
+    image: stripe/stripe-cli:latest
+    command: listen --forward-to http://host.docker.internal:9000/api/webhooks/stripe
+    volumes:
+      - ./.stripe:/root/.config/stripe
+    restart: unless-stopped
+    profiles: ["stripe"]
+
   worker:
     image: uask-worker:prod
     build:
