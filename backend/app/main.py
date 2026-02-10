@@ -1,5 +1,8 @@
-from fastapi import FastAPI, Request
 from dotenv import load_dotenv
+# Ensure .env is loaded before importing modules that read settings.
+load_dotenv()
+
+from fastapi import FastAPI, Request
 from app.database import create_db_and_tables, get_session
 from sqlmodel import Session, select
 import logging
@@ -16,8 +19,6 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi import HTTPException
 from app.config import get_settings
-
-load_dotenv()
 
 app = FastAPI(title="UAsk.ai Orchestrator")
 app.state.limiter = limiter

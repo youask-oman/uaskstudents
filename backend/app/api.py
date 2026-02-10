@@ -93,6 +93,7 @@ from app.services.intent import should_require_visual
 
 
 from app.auth import verify_password, create_access_token, Token, get_password_hash
+from app.api_admin import get_current_user
 from app.admin_billing.deps import get_admin_user
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -1033,6 +1034,11 @@ class PreferenceUpdateRequest(BaseModel):
     theme: Optional[str] = None
     preferred_language: Optional[str] = None
     solving_mode: Optional[str] = None
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+    confirm_password: Optional[str] = None
 
 class UserUsageStats(BaseModel):
     questions_count: int
@@ -7764,6 +7770,25 @@ async def update_user_preferences(request: PreferenceUpdateRequest, user_id: int
     db.commit()
     db.refresh(user)
     return {"status": "ok", "message": "Preferences updated"}
+
+@api_router.post("/user/change-password")
+async def change_user_password(
+    request: ChangePasswordRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user)
+):
+    if request.confirm_password is not None and request.new_password != request.confirm_password:
+        raise HTTPException(status_code=400, detail="Passwords do not match")
+    if len(request.new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    if not verify_password(request.current_password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Incorrect current password")
+
+    user.password_hash = get_password_hash(request.new_password)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return {"status": "ok", "message": "Password updated"}
 
 # --- Token Tracking & Save Functionality ---
 

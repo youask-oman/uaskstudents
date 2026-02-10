@@ -1,7 +1,7 @@
 [
   {
     "context_budget_tokens": null,
-    "created_at": "2026-02-10T19:19:34.086613+00:00",
+    "created_at": "2026-02-10T20:42:37.208072+00:00",
     "developer_prompt_id": "solve_free_v1",
     "global_system_prompt_id": "global_system_prompt_v1",
     "id": "da5397f0-a38a-47e7-949c-d3ee1576f472",
@@ -23,12 +23,12 @@
     "timeout_ms": 10000,
     "top_p": null,
     "trim_strategy": "trim_context_first",
-    "updated_at": "2026-02-10T19:19:34.086668+00:00",
+    "updated_at": "2026-02-10T20:42:37.208131+00:00",
     "updated_by": "System Admin"
   },
   {
     "context_budget_tokens": null,
-    "created_at": "2026-02-10T19:19:34.089788+00:00",
+    "created_at": "2026-02-10T20:42:37.211214+00:00",
     "developer_prompt_id": "plot_trigger_v1",
     "global_system_prompt_id": "plot_trigger_v1",
     "id": "8e23a00c-c9e6-40d7-a51e-e226909bd83d",
@@ -50,12 +50,12 @@
     "timeout_ms": 8000,
     "top_p": null,
     "trim_strategy": "trim_user_first",
-    "updated_at": "2026-02-10T19:19:34.089847+00:00",
+    "updated_at": "2026-02-10T20:42:37.211272+00:00",
     "updated_by": "System Admin"
   },
   {
     "context_budget_tokens": null,
-    "created_at": "2026-02-10T19:19:34.091383+00:00",
+    "created_at": "2026-02-10T20:42:37.212884+00:00",
     "developer_prompt_id": "solve_standard_v1",
     "global_system_prompt_id": "global_system_prompt_v1",
     "id": "a52a794b-e3f1-4a17-821c-7a7c9d628ecb",
@@ -77,12 +77,12 @@
     "timeout_ms": 60000,
     "top_p": 0.95,
     "trim_strategy": "summarize_context",
-    "updated_at": "2026-02-10T19:19:34.091442+00:00",
+    "updated_at": "2026-02-10T20:42:37.212940+00:00",
     "updated_by": "System Admin"
   },
   {
     "context_budget_tokens": null,
-    "created_at": "2026-02-10T19:19:34.092862+00:00",
+    "created_at": "2026-02-10T20:42:37.214727+00:00",
     "developer_prompt_id": "plot_trigger_v1",
     "global_system_prompt_id": "plot_trigger_v1",
     "id": "d8017588-0b0e-49f8-b785-867a77150c24",
@@ -104,12 +104,12 @@
     "timeout_ms": 8000,
     "top_p": null,
     "trim_strategy": "trim_user_first",
-    "updated_at": "2026-02-10T19:19:34.092917+00:00",
+    "updated_at": "2026-02-10T20:42:37.214792+00:00",
     "updated_by": "System Admin"
   },
   {
     "context_budget_tokens": null,
-    "created_at": "2026-02-10T19:19:34.094944+00:00",
+    "created_at": "2026-02-10T20:42:37.216525+00:00",
     "developer_prompt_id": "plot_spec_v1",
     "global_system_prompt_id": "plot_spec_v1",
     "id": "47bc72e2-5a07-4e8f-97d8-0e12ff3bda60",
@@ -131,12 +131,12 @@
     "timeout_ms": 12000,
     "top_p": null,
     "trim_strategy": "trim_user_first",
-    "updated_at": "2026-02-10T19:19:34.095000+00:00",
+    "updated_at": "2026-02-10T20:42:37.216590+00:00",
     "updated_by": "System Admin"
   },
   {
     "context_budget_tokens": null,
-    "created_at": "2026-02-10T19:19:34.097049+00:00",
+    "created_at": "2026-02-10T20:42:37.218291+00:00",
     "developer_prompt_id": "solve_research_v1",
     "global_system_prompt_id": "global_system_prompt_v1",
     "id": "91e41ee4-fe09-4be4-814f-3cf7e4849642",
@@ -158,12 +158,12 @@
     "timeout_ms": 80000,
     "top_p": 0.95,
     "trim_strategy": "summarize_context",
-    "updated_at": "2026-02-10T19:19:34.097105+00:00",
+    "updated_at": "2026-02-10T20:42:37.218344+00:00",
     "updated_by": "System Admin"
   },
   {
     "context_budget_tokens": null,
-    "created_at": "2026-02-10T19:19:34.098666+00:00",
+    "created_at": "2026-02-10T20:42:37.220164+00:00",
     "developer_prompt_id": "plot_trigger_v1",
     "global_system_prompt_id": "plot_trigger_v1",
     "id": "78cd310c-256d-407b-8f47-911ea56c71ea",
@@ -185,12 +185,12 @@
     "timeout_ms": 8000,
     "top_p": null,
     "trim_strategy": "trim_user_first",
-    "updated_at": "2026-02-10T19:19:34.098720+00:00",
+    "updated_at": "2026-02-10T20:42:37.220224+00:00",
     "updated_by": "System Admin"
   },
   {
     "context_budget_tokens": null,
-    "created_at": "2026-02-10T19:19:34.100213+00:00",
+    "created_at": "2026-02-10T20:42:37.221897+00:00",
     "developer_prompt_id": "plot_spec_v1",
     "global_system_prompt_id": "plot_spec_v1",
     "id": "e680c826-2084-47dc-a1b3-f59fb8c58a96",
@@ -212,12 +212,12 @@
     "timeout_ms": 12000,
     "top_p": null,
     "trim_strategy": "trim_user_first",
-    "updated_at": "2026-02-10T19:19:34.100274+00:00",
+    "updated_at": "2026-02-10T20:42:37.221956+00:00",
     "updated_by": "System Admin"
   },
   {
     "context_budget_tokens": null,
-    "created_at": "2026-02-10T19:19:34.101769+00:00",
+    "created_at": "2026-02-10T20:42:37.223763+00:00",
     "developer_prompt_id": "solve_final_answer_v1",
     "global_system_prompt_id": "global_system_prompt_v1",
     "id": "c0119076-a082-4bfb-b634-b80b40ce2d99",
@@ -239,7 +239,7 @@
     "timeout_ms": 20000,
     "top_p": 0.9,
     "trim_strategy": "summarize_context",
-    "updated_at": "2026-02-10T19:19:34.101826+00:00",
+    "updated_at": "2026-02-10T20:42:37.223819+00:00",
     "updated_by": "System Admin"
   }
 ]

@@ -83,6 +83,12 @@ export default function ProfilePage() {
     const [showWhatsappSecret, setShowWhatsappSecret] = useState(false);
     const [whatsappEnabled, setWhatsappEnabled] = useState(true);
 
+    // Security (password)
+    const [currentPassword, setCurrentPassword] = useState("");
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [updatingPassword, setUpdatingPassword] = useState(false);
+
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
     useEffect(() => {
@@ -412,6 +418,81 @@ export default function ProfilePage() {
 
     const profileCompleteness = calculateProfileCompleteness();
     const isLocationComplete = !!profileCountry && !!profileProvinceState && !!gradeLevel;
+
+    const handleUpdatePassword = async () => {
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            pushToast({
+                type: "error",
+                title: "Missing fields",
+                message: "Please fill out all password fields.",
+            });
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            pushToast({
+                type: "error",
+                title: "Passwords do not match",
+                message: "Please confirm your new password.",
+            });
+            return;
+        }
+        if (newPassword.length < 8) {
+            pushToast({
+                type: "error",
+                title: "Password too short",
+                message: "Password must be at least 8 characters.",
+            });
+            return;
+        }
+
+        const token = localStorage.getItem("token");
+        if (!token) {
+            window.location.href = "/login?redirect=/profile";
+            return;
+        }
+
+        setUpdatingPassword(true);
+        try {
+            const res = await fetch(`${apiBaseUrl}/api/v1/user/change-password`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    current_password: currentPassword,
+                    new_password: newPassword,
+                    confirm_password: confirmPassword,
+                }),
+            });
+            if (!res.ok) {
+                const err = await parseApiError(res);
+                pushToast({
+                    type: "error",
+                    title: "Update failed",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
+                return;
+            }
+            pushToast({
+                type: "success",
+                title: "Password updated",
+                message: "Your password has been updated successfully.",
+            });
+            setCurrentPassword("");
+            setNewPassword("");
+            setConfirmPassword("");
+        } catch (error) {
+            pushToast({
+                type: "error",
+                title: "Update failed",
+                message: error instanceof Error ? error.message : "Unexpected error",
+            });
+        } finally {
+            setUpdatingPassword(false);
+        }
+    };
 
     const tabs: { id: TabId; label: string; icon: string }[] = [
         { id: 'profile', label: 'Profile', icon: 'person' },
@@ -1030,22 +1111,42 @@ export default function ProfilePage() {
                                 <div className="space-y-4">
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold">Current Password</label>
-                                        <input className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl h-12 px-4 text-sm outline-none" type="password" placeholder="********" />
+                                        <input
+                                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl h-12 px-4 text-sm outline-none"
+                                            type="password"
+                                            placeholder="********"
+                                            value={currentPassword}
+                                            onChange={(e) => setCurrentPassword(e.target.value)}
+                                        />
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <label className="text-sm font-bold">New Password</label>
-                                            <input className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl h-12 px-4 text-sm outline-none" type="password" />
+                                            <input
+                                                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl h-12 px-4 text-sm outline-none"
+                                                type="password"
+                                                value={newPassword}
+                                                onChange={(e) => setNewPassword(e.target.value)}
+                                            />
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-sm font-bold">Confirm New Password</label>
-                                            <input className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl h-12 px-4 text-sm outline-none" type="password" />
+                                            <input
+                                                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl h-12 px-4 text-sm outline-none"
+                                                type="password"
+                                                value={confirmPassword}
+                                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                            />
                                         </div>
                                     </div>
                                 </div>
                                 <div className="flex justify-end pt-4">
-                                    <button className="px-8 py-3 bg-red-600 text-white text-sm font-bold rounded-xl hover:bg-red-700 transition-all">
-                                        Update Password
+                                    <button
+                                        onClick={handleUpdatePassword}
+                                        disabled={updatingPassword}
+                                        className="px-8 py-3 bg-red-600 text-white text-sm font-bold rounded-xl hover:bg-red-700 transition-all disabled:opacity-60"
+                                    >
+                                        {updatingPassword ? "Updating..." : "Update Password"}
                                     </button>
                                 </div>
                             </div>

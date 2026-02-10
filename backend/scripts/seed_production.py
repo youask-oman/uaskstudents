@@ -596,6 +596,7 @@ def _seed_internal_users(session: Session, app_env: str, allow_user_seeding: boo
                 if row.get("role") == "superadmin":
                     row["role"] = "admin"
     default_password = os.environ.get("SEED_DEV_DEFAULT_PASSWORD", "DevOnlyChangeMe123!")
+    dev_password_hash = get_password_hash(default_password) if app_env == "DEV" else None
     checksum_payload = []
     for row in payload:
         password_env = row.get("password_env")
@@ -622,7 +623,12 @@ def _seed_internal_users(session: Session, app_env: str, allow_user_seeding: boo
         password_hash = row.get("password_hash")
         password_env = row.get("password_env")
         force_password_update = False
-        if password_env and not password_hash:
+
+        if app_env == "DEV":
+            # In DEV, force all internal users to the same known password.
+            password_hash = dev_password_hash
+            force_password_update = True
+        elif password_env and not password_hash:
             plain = os.environ.get(password_env, default_password)
             password_hash = get_password_hash(plain)
             force_password_update = True

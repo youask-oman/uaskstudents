@@ -140,7 +140,7 @@ def active_seed():
         admin = User(
             email="admin@uask.ai",
             full_name="System Admin",
-            password_hash=get_password_hash("admin123"),  # Default password: admin123
+            password_hash=get_password_hash(os.environ.get("SEED_DEV_DEFAULT_PASSWORD", "admin1234")),  # Default password from env
             role="admin",
             subscription_tier="enterprise",
             subscription_status="active",
@@ -171,7 +171,7 @@ def active_seed():
             s = User(
                 email=email,
                 full_name=name,
-                password_hash=get_password_hash("student123"),  # Default password: student123
+                password_hash=get_password_hash(os.environ.get("SEED_DEV_DEFAULT_PASSWORD", "admin1234")),  # Default password from env
                 role="student",
                 academic_level="Undergraduate",
                 subscription_tier=tier,
@@ -234,7 +234,7 @@ def active_seed():
             s = User(
                 email=email,
                 full_name=name,
-                password_hash=get_password_hash("student123"),
+                password_hash=get_password_hash(os.environ.get("SEED_DEV_DEFAULT_PASSWORD", "admin1234")),
                 role="student",
                 academic_level="High School",
                 subscription_tier=tier,
