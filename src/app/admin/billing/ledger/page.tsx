@@ -13,9 +13,9 @@ interface LedgerEntry {
     action_type: string;
     request_id: string | null;
     status: string;
-    credits_charged: number;
-    credits_before: number;
-    credits_after: number;
+    credits_charged: number | null;
+    credits_before: number | null;
+    credits_after: number | null;
     tier: string | null;
     created_at: string;
 }
@@ -27,6 +27,9 @@ export default function LedgerExplorerPage() {
     const [loading, setLoading] = useState(true);
     const [total, setTotal] = useState(0);
     const [filterUser, setFilterUser] = useState('');
+
+    const formatCredits = (value: number | null | undefined) =>
+        typeof value === 'number' && Number.isFinite(value) ? value.toFixed(2) : '0.00';
 
     const fetchLedger = useCallback(async (userId?: string) => {
         setLoading(true);
@@ -147,17 +150,17 @@ export default function LedgerExplorerPage() {
                                     </Link>
                                 </td>
                                 <td className="px-8 py-6">
-                                    <span className={`text-sm font-black italic ${entry.credits_charged > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-                                        {entry.credits_charged > 0 ? '-' : '+'}{Math.abs(entry.credits_charged).toFixed(2)}
-                                    </span>
-                                </td>
-                                <td className="px-8 py-6">
-                                    <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
-                                        <span>{entry.credits_before.toFixed(2)}</span>
-                                        <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-                                        <span className="text-slate-900 dark:text-slate-200">{entry.credits_after.toFixed(2)}</span>
-                                    </div>
-                                </td>
+                    <span className={`text-sm font-black italic ${entry.credits_charged > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                        {(entry.credits_charged ?? 0) > 0 ? '-' : '+'}{formatCredits(Math.abs(entry.credits_charged ?? 0))}
+                    </span>
+                </td>
+                <td className="px-8 py-6">
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
+                        <span>{formatCredits(entry.credits_before)}</span>
+                        <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                        <span className="text-slate-900 dark:text-slate-200">{formatCredits(entry.credits_after)}</span>
+                    </div>
+                </td>
                                 <td className="px-8 py-6">
                                     <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10px] font-black uppercase tracking-widest border border-slate-200 dark:border-slate-700">
                                         {entry.status}

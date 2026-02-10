@@ -18,8 +18,17 @@ from app.api_admin import get_staff_user, get_admin_user
 from app.admin_billing.deps import get_superadmin_user
 from app.services.audit_log_service import audit_log_service
 from app.services.admin_config_service import admin_config_service
+from app.config import get_settings
+import stripe
 
 router = APIRouter(prefix="/api/admin/payments", tags=["admin-payments-config"])
+
+EXPECTED_TOPUP_PACKS = {
+    "topup_5": {"price_usd": 5.0, "credits": 550},
+    "topup_10": {"price_usd": 10.0, "credits": 1200},
+    "topup_25": {"price_usd": 25.0, "credits": 3250},
+    "topup_50": {"price_usd": 50.0, "credits": 7000},
+}
 
 # --- Payment Strategy Config (SystemConfig) ---
 
@@ -125,6 +134,105 @@ def list_payments_pricing(
         "provider_pricing": provider_pricing,
         "topup_packs": packs,
         "stripe_price_map": price_map,
+    }
+
+
+@router.post("/stripe/sync_mappings")
+def sync_stripe_mappings(
+    session: Session = Depends(get_session),
+    user: User = Depends(get_admin_user),
+):
+    settings = get_settings()
+    if not settings.STRIPE_SECRET_KEY:
+        raise HTTPException(status_code=400, detail="STRIPE_SECRET_KEY not set")
+
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    try:
+        prices = stripe.Price.list(
+            active=True,
+            type="one_time",
+            limit=100,
+            expand=["data.product"],
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Stripe error: {e}")
+
+    price_map_by_amount: Dict[int, Dict[str, Any]] = {}
+    for price in prices.data:
+        product = getattr(price, "product", None)
+        product_name = getattr(product, "name", None)
+        if product_name != "UAsk Credits":
+            continue
+        if price.currency != "usd":
+            continue
+        if price.unit_amount is None:
+            continue
+        price_map_by_amount[int(price.unit_amount)] = {
+            "price_id": price.id,
+            "product_id": getattr(product, "id", None),
+        }
+
+    missing = []
+    upserts = []
+    for code, cfg in EXPECTED_TOPUP_PACKS.items():
+        amount_cents = int(cfg["price_usd"] * 100)
+        stripe_entry = price_map_by_amount.get(amount_cents)
+        if not stripe_entry:
+            missing.append({"code": code, "amount_cents": amount_cents})
+            continue
+
+        pack = session.exec(select(TopUpProduct).where(TopUpProduct.code == code)).first()
+        if not pack:
+            pack = TopUpProduct(
+                code=code,
+                name=f"${int(cfg['price_usd'])} Pack",
+                credits=int(cfg["credits"]),
+                price_usd=float(cfg["price_usd"]),
+                is_active=True,
+            )
+            session.add(pack)
+            session.flush()
+        else:
+            pack.credits = int(cfg["credits"])
+            pack.price_usd = float(cfg["price_usd"])
+            pack.is_active = True
+            session.add(pack)
+
+        mapping = session.exec(
+            select(StripePriceMap).where(
+                StripePriceMap.kind == "TOPUP",
+                StripePriceMap.internal_code == code,
+            )
+        ).first()
+        if not mapping:
+            mapping = StripePriceMap(
+                kind="TOPUP",
+                internal_code=code,
+                stripe_price_id=stripe_entry["price_id"],
+                currency="USD",
+                active=True,
+            )
+            session.add(mapping)
+        else:
+            mapping.stripe_price_id = stripe_entry["price_id"]
+            mapping.currency = "USD"
+            mapping.active = True
+            session.add(mapping)
+
+        upserts.append({
+            "code": code,
+            "price_id": stripe_entry["price_id"],
+            "product_id": stripe_entry["product_id"],
+        })
+
+    if missing:
+        session.rollback()
+        raise HTTPException(status_code=400, detail={"missing_prices": missing})
+
+    session.commit()
+    return {
+        "status": "ok",
+        "updated": upserts,
     }
 
 

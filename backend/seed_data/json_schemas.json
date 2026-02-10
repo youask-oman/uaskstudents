@@ -731,11 +731,11 @@
       "strict": true,
       "type": "json_schema"
     },
-    "created_at": "2026-02-10T05:44:34.295892+00:00",
+    "created_at": "2026-02-10T19:19:34.029489+00:00",
     "id": "fcdcf420-ae30-428f-9a96-180476a0f175",
     "is_active": false,
     "schema_id": "openai_image_extract_v1.schema.json",
-    "updated_at": "2026-02-10T05:44:34.295950+00:00",
+    "updated_at": "2026-02-10T19:19:34.029559+00:00",
     "updated_by": "System Admin",
     "version": 1
   },
@@ -1394,11 +1394,11 @@
       "strict": true,
       "type": "json_schema"
     },
-    "created_at": "2026-02-10T05:44:34.298398+00:00",
+    "created_at": "2026-02-10T19:19:34.031808+00:00",
     "id": "756868d8-5c77-419c-9f32-ee9da2d45439",
     "is_active": true,
     "schema_id": "openai_image_extract_v1.schema.json",
-    "updated_at": "2026-02-10T05:44:34.298457+00:00",
+    "updated_at": "2026-02-10T19:19:34.031863+00:00",
     "updated_by": "System Admin",
     "version": 2
   },
@@ -1439,11 +1439,11 @@
       "strict": true,
       "type": "json_schema"
     },
-    "created_at": "2026-02-10T05:44:34.300158+00:00",
+    "created_at": "2026-02-10T19:19:34.033258+00:00",
     "id": "b436e3d2-50e2-4a10-afce-e17e988bee9f",
     "is_active": true,
     "schema_id": "plot_spec_v1.schema.json",
-    "updated_at": "2026-02-10T05:44:34.300219+00:00",
+    "updated_at": "2026-02-10T19:19:34.033317+00:00",
     "updated_by": "System Admin",
     "version": 1
   },
@@ -1621,11 +1621,11 @@
       "strict": true,
       "type": "json_schema"
     },
-    "created_at": "2026-02-10T05:44:34.301469+00:00",
+    "created_at": "2026-02-10T19:19:34.034225+00:00",
     "id": "3e3023a7-ff83-4607-aa10-ccc208710288",
     "is_active": true,
     "schema_id": "plot_trigger_v1.schema.json",
-    "updated_at": "2026-02-10T05:44:34.301531+00:00",
+    "updated_at": "2026-02-10T19:19:34.034281+00:00",
     "updated_by": "System Admin",
     "version": 1
   },
@@ -2080,13 +2080,13 @@
         "title": "YouAsk Solver Output Schema (Final Answer Only)",
         "type": "object"
       },
-      "strict": true
+      "strict": false
     },
-    "created_at": "2026-02-10T05:44:34.302583+00:00",
+    "created_at": "2026-02-10T19:19:34.035230+00:00",
     "id": "c9adc461-cb6e-42e6-b3ef-ac4f0846c139",
     "is_active": true,
     "schema_id": "solve_final_answer_v1.schema.json",
-    "updated_at": "2026-02-10T05:44:34.302645+00:00",
+    "updated_at": "2026-02-10T19:19:34.035284+00:00",
     "updated_by": "System Admin",
     "version": 1
   },
@@ -2167,11 +2167,11 @@
       "strict": true,
       "type": "json_schema"
     },
-    "created_at": "2026-02-10T05:44:34.303792+00:00",
+    "created_at": "2026-02-10T19:19:34.036238+00:00",
     "id": "9b74be2a-0646-4e7e-8e42-f3d8fa6b4f4d",
     "is_active": true,
     "schema_id": "solve_free_minimal_v1.schema.json",
-    "updated_at": "2026-02-10T05:44:34.303849+00:00",
+    "updated_at": "2026-02-10T19:19:34.036290+00:00",
     "updated_by": "System Admin",
     "version": 1
   },
@@ -3313,11 +3313,11 @@
       "strict": false,
       "type": "json_schema"
     },
-    "created_at": "2026-02-10T05:44:34.304810+00:00",
+    "created_at": "2026-02-10T19:19:34.037163+00:00",
     "id": "a97178f6-a2d5-4df6-b436-cd40781e89b6",
     "is_active": true,
     "schema_id": "solve_research_detailed_v1.schema.json",
-    "updated_at": "2026-02-10T05:44:34.304863+00:00",
+    "updated_at": "2026-02-10T19:19:34.037215+00:00",
     "updated_by": "System Admin",
     "version": 1
   },
@@ -4409,11 +4409,11 @@
       "strict": true,
       "type": "json_schema"
     },
-    "created_at": "2026-02-10T05:44:34.306267+00:00",
+    "created_at": "2026-02-10T19:19:34.038713+00:00",
     "id": "7d20c046-1a5e-4558-b50f-0586b4f9a5b2",
     "is_active": true,
     "schema_id": "solve_standard_detailed_v1.schema.json",
-    "updated_at": "2026-02-10T05:44:34.306323+00:00",
+    "updated_at": "2026-02-10T19:19:34.038772+00:00",
     "updated_by": "System Admin",
     "version": 1
   }

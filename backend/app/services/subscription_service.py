@@ -301,6 +301,7 @@ class SubscriptionService:
 
         # Daily Cap Check
         if feats.daily_credit_cap > 0:
+             from decimal import Decimal
              # Calculate usage for today
              start_of_day = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
              # UsageLedger links to subscription, which links to user.
@@ -312,28 +313,33 @@ class SubscriptionService:
                  .where(UsageLedger.created_at >= start_of_day)
                  .where(UsageLedger.transaction_type == "DEBIT") # Only count debits
              ).one() or 0.0
-             
+             daily_used_decimal = daily_used if isinstance(daily_used, Decimal) else Decimal(str(daily_used))
              # Estimate cost of this request?
              # We haven't calculated `cost` variable yet in this function (it's below at step 5).
              # We can pre-calculate cost or check strictly strictly strict?
              # Let's peek cost.
              peek_cost = self.calculate_cost(plan, tier, source)
-             if (daily_used + peek_cost) > feats.daily_credit_cap:
+             peek_cost_decimal = peek_cost if isinstance(peek_cost, Decimal) else Decimal(str(peek_cost))
+             daily_cap = feats.daily_credit_cap if isinstance(feats.daily_credit_cap, Decimal) else Decimal(str(feats.daily_credit_cap))
+             if (daily_used_decimal + peek_cost_decimal) > daily_cap:
                   return {"allowed": False, "reason": "Daily credit limit reached", "error_code": "CAP_EXCEEDED", "cap": "daily_credits"}
 
 
         # 5. Calculate Cost
         is_make_it_right = action_request.get("is_make_it_right", False)
-        cost = 0.0
+        from decimal import Decimal
+        cost = Decimal("0")
         
         if is_make_it_right:
              if feature_usage.get("make_it_right", 0) >= feats.make_it_right_monthly_cap:
                  # Cap exceeded, charge normal price
-                 cost = self.calculate_cost(plan, tier, source)
+                 cost_val = self.calculate_cost(plan, tier, source)
+                 cost = cost_val if isinstance(cost_val, Decimal) else Decimal(str(cost_val))
              else:
-                 cost = 0.0
+                 cost = Decimal("0")
         else:
-             cost = self.calculate_cost(plan, tier, source)
+             cost_val = self.calculate_cost(plan, tier, source)
+             cost = cost_val if isinstance(cost_val, Decimal) else Decimal(str(cost_val))
 
         # 6. Check Balance
         if subscription.credits_balance < cost:
@@ -356,8 +362,10 @@ class SubscriptionService:
         """
         Actually deduuct credits and log to ledger.
         """
-        subscription.credits_balance -= cost
-        subscription.credits_used_this_period += cost
+        from decimal import Decimal
+        cost_decimal = cost if isinstance(cost, Decimal) else Decimal(str(cost))
+        subscription.credits_balance -= cost_decimal
+        subscription.credits_used_this_period += cost_decimal
         
         # Update feature counters if needed
         fs = dict(subscription.feature_usage or {})
@@ -365,7 +373,7 @@ class SubscriptionService:
             fs["ocr"] = fs.get("ocr", 0) + 1
         if meta.get("has_voice"):
             fs["voice"] = fs.get("voice", 0) + 1
-        if meta.get("is_make_it_right") and cost == 0:
+        if meta.get("is_make_it_right") and cost_decimal == 0:
             fs["make_it_right"] = fs.get("make_it_right", 0) + 1
             
         subscription.feature_usage = fs
@@ -374,7 +382,7 @@ class SubscriptionService:
         ledger = UsageLedger(
             subscription_id=subscription.id,
             transaction_type="DEBIT",
-            amount=cost,
+            amount=cost_decimal,
             balance_after=subscription.credits_balance,
             reference_id=ref_id,
             meta=meta
@@ -383,13 +391,13 @@ class SubscriptionService:
         session.flush() # Get ID for allocation
         
         # Phase 2: Allocator Integration
-        if cost > 0:
+        if cost_decimal > 0:
             try:
                 from app.services.credit_lot_allocator import credit_lot_allocator
                 credit_lot_allocator.consume_credits(
                     session,
                     subscription.user_id,
-                    cost,
+                    cost_decimal,
                     usage_ledger_id=ledger.id,
                     subscription_id=subscription.id
                 )
@@ -402,14 +410,16 @@ class SubscriptionService:
     def refund_credits(self, session: Session, subscription_id: int, amount: float, reason: str, ref_id: str):
         sub = session.get(Subscription, subscription_id)
         if sub:
-            sub.credits_balance += amount
-            sub.credits_used_this_period -= amount # Revert usage stats? Maybe just refund balance.
+            from decimal import Decimal
+            amount_decimal = amount if isinstance(amount, Decimal) else Decimal(str(amount))
+            sub.credits_balance += amount_decimal
+            sub.credits_used_this_period -= amount_decimal # Revert usage stats? Maybe just refund balance.
             session.add(sub)
             
             ledger = UsageLedger(
                 subscription_id=sub.id,
                 transaction_type="REFUND",
-                amount=amount,
+                amount=amount_decimal,
                 balance_after=sub.credits_balance,
                 reference_id=ref_id,
                 meta={"reason": reason}

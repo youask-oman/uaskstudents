@@ -402,7 +402,16 @@ export default function DashboardPage() {
     const [walletPrograms, setWalletPrograms] = useState<WalletProgramEnrollment[]>([]);
     const [walletLoaded, setWalletLoaded] = useState(false);
     const [walletError, setWalletError] = useState<string | null>(null);
-    const [userProfile, setUserProfile] = useState<Record<string, unknown> | null>(null);
+    type TrustedProfile = {
+        grade_level?: string | null;
+        region_country?: string | null;
+        region_state_province?: string | null;
+        is_public?: boolean;
+        school_name?: string | null;
+        profile_province_state?: string | null;
+        profile_country?: string | null;
+    };
+    const [userProfile, setUserProfile] = useState<TrustedProfile | null>(null);
     const [estimate, setEstimate] = useState<CreditsEstimateResponse | null>(null);
     const [tokenPolicy, setTokenPolicy] = useState<TokenPolicy | null>(null);
     const [tokenPolicyLoaded, setTokenPolicyLoaded] = useState(false);
@@ -933,9 +942,9 @@ export default function DashboardPage() {
                             tier: mapTierToApi(selectedSolveTier),
                             trusted_context: {
                                 learning_mode: selectedGoal,
-                                grade_level: trustedProfile?.grade_level || undefined,
-                                region_country: trustedProfile?.region_country || undefined,
-                                region_state_province: trustedProfile?.region_state_province || undefined
+                                grade_level: userProfile?.grade_level || undefined,
+                                region_country: userProfile?.region_country || undefined,
+                                region_state_province: userProfile?.region_state_province || undefined
                             },
                             features_used: features,
                             graph_mode: graphMode,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { API_BASE_URL } from "@/lib/api";
 
 export default function AdminDataPage() {
     const [tables, setTables] = useState<string[]>([]);
@@ -13,7 +14,7 @@ export default function AdminDataPage() {
     const [offset, setOffset] = useState(0);
     const [order, setOrder] = useState<"asc" | "desc">("desc");
 
-    const fallbackUrl = process.env.NEXT_PUBLIC_API_FALLBACK_URL || "http://127.0.0.1:8000";
+    const fallbackUrl = process.env.NEXT_PUBLIC_API_FALLBACK_URL || API_BASE_URL || "http://127.0.0.1:8000";
     const getHeaders = (): HeadersInit => {
         const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
         const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -26,7 +27,7 @@ export default function AdminDataPage() {
         const fetchTables = async () => {
             try {
                 let res: Response | null = null;
-                res = await fetch(`/api/admin/db/tables`, { headers: getHeaders(), signal: controller.signal });
+                res = await fetch(`${API_BASE_URL}/api/admin/db/tables`, { headers: getHeaders(), signal: controller.signal });
                 if (!res.ok) {
                     res = await fetch(`${fallbackUrl}/api/v1/admin/db/tables`, { headers: getHeaders(), signal: controller.signal });
                 }
@@ -55,7 +56,7 @@ export default function AdminDataPage() {
         const fetchRows = async () => {
             try {
                 let res: Response | null = null;
-                res = await fetch(`/api/admin/db/table/${encodeURIComponent(selectedTable)}?limit=${limit}&offset=${offset}&order=${order}`, { headers: getHeaders(), signal: controller.signal });
+                res = await fetch(`${API_BASE_URL}/api/admin/db/table/${encodeURIComponent(selectedTable)}?limit=${limit}&offset=${offset}&order=${order}`, { headers: getHeaders(), signal: controller.signal });
                 if (!res.ok) {
                     res = await fetch(`${fallbackUrl}/api/v1/admin/db/table/${encodeURIComponent(selectedTable)}?limit=${limit}&offset=${offset}&order=${order}`, { headers: getHeaders(), signal: controller.signal });
                 }

@@ -93,6 +93,14 @@ def nuke_db():
              conn.commit()
         else:
             log("No tables to truncate.")
+            # If schema is empty, bootstrap base tables
+            try:
+                from sqlmodel import SQLModel
+                from app import models  # noqa: F401
+                SQLModel.metadata.create_all(engine)
+                log("Bootstrapped base schema via SQLModel.metadata.create_all.")
+            except Exception as e:
+                raise RuntimeError(f"Failed to bootstrap schema: {e}")
 
 def run_migrations():
     log("SECTION: Migrations")

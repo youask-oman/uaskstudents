@@ -153,6 +153,22 @@ def _normalize_openai_schema_wrapper(raw: Optional[Dict[str, Any]]) -> Optional[
         validate_schema_wrapper(result, context="normalize_wrapper (chat variant)")
         return result
 
+    # Legacy/partial wrapper variant: {"name": "...", "schema": {...}, "strict": true}
+    if "type" not in keys and {"name", "schema"}.issubset(keys):
+        if not raw.get("name") or not isinstance(raw.get("name"), str):
+            raise SchemaWrapperCorruptError(
+                f"json_schema.name must be non-empty string, got {raw.get('name')!r}",
+                wrapper_keys=list(keys),
+            )
+        result = {
+            "type": "json_schema",
+            "name": raw.get("name"),
+            "strict": bool(raw.get("strict", True)),
+            "schema": raw.get("schema", {}),
+        }
+        validate_schema_wrapper(result, context="normalize_wrapper (legacy variant)")
+        return result
+
     # FATAL: Half-wrapper detected: {"schema": {...}} (THIS IS A BUG UPSTREAM)
     if keys == {"schema"} and isinstance(raw.get("schema"), dict):
         raise SchemaWrapperCorruptError(

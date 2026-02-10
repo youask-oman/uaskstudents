@@ -1,6 +1,6 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Body, Header
-from sqlmodel import Session
+from sqlmodel import Session, select
 from typing import List, Optional
 from pydantic import BaseModel
 from jose import jwt, JWTError
@@ -43,9 +43,15 @@ class TopUpProductRead(BaseModel):
     name: str
     credits: int
     price_usd: float
+    stripe_price_id: Optional[str] = None
 
 class CheckoutRequest(BaseModel):
     product_code: str
+
+class StripeCheckoutRequest(BaseModel):
+    product_code: str
+    success_url: str
+    cancel_url: str
 
 class CheckoutResponse(BaseModel):
     checkout_url: str
@@ -74,12 +80,18 @@ from app.models import User
 async def list_products(session: Session = Depends(get_session)):
     """List available top-up bundles."""
     products = top_up_service.list_products(session)
+    from app.models import StripePriceMap
+    mappings = session.exec(
+        select(StripePriceMap).where(StripePriceMap.kind == "TOPUP")
+    ).all()
+    map_by_code = {m.internal_code: m.stripe_price_id for m in mappings}
     return [
         TopUpProductRead(
             code=p.code,
             name=p.name,
             credits=p.credits,
-            price_usd=p.price_usd
+            price_usd=p.price_usd,
+            stripe_price_id=map_by_code.get(p.code)
         ) for p in products
     ]
 
@@ -101,16 +113,14 @@ async def create_checkout(
 
 @router.post("/stripe/checkout")
 async def create_stripe_checkout(
-    req: CheckoutRequest,
-    success_url: str = Body(..., embed=True),
-    cancel_url: str = Body(..., embed=True),
+    req: StripeCheckoutRequest,
     user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
     """Initiate Stripe checkout session."""
     try:
         return top_up_service.create_stripe_checkout_session(
-            session, user.id, req.product_code, success_url, cancel_url
+            session, user.id, req.product_code, req.success_url, req.cancel_url
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

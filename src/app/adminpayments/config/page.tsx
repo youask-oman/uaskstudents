@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { API_BASE_URL } from "@/lib/api";
 
 // --- API Helper ---
 async function fetchAdmin(path: string, options: RequestInit = {}) {
@@ -10,16 +11,30 @@ async function fetchAdmin(path: string, options: RequestInit = {}) {
         return;
     }
     const requestId = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Date.now());
+    const baseUrl = API_BASE_URL;
+    const fallbackUrl = process.env.NEXT_PUBLIC_API_FALLBACK_URL || API_BASE_URL || "http://127.0.0.1:8000";
 
-    const res = await fetch(`/api/admin/payments${path}`, {
-        ...options,
-        headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json",
-            "X-Request-ID": requestId,
-            ...options.headers
+    const attemptFetch = async (urlBase: string) =>
+        fetch(`${urlBase}/api/admin/payments${path}`, {
+            ...options,
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json",
+                "X-Request-ID": requestId,
+                ...options.headers
+            }
+        });
+
+    let res: Response;
+    try {
+        res = await attemptFetch(baseUrl);
+    } catch (err) {
+        if (baseUrl !== fallbackUrl) {
+            res = await attemptFetch(fallbackUrl);
+        } else {
+            throw err;
         }
-    });
+    }
 
     if (res.status === 401) {
         localStorage.removeItem("token");
@@ -77,6 +92,7 @@ export default function AdminPaymentsConfigPage() {
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
     const [stripeHealth, setStripeHealth] = useState<StripeHealth | null>(null);
+    const [syncingStripe, setSyncingStripe] = useState(false);
 
     const [newPricing, setNewPricing] = useState({
         provider: "openai",
@@ -197,6 +213,21 @@ export default function AdminPaymentsConfigPage() {
             setError(err instanceof Error ? err.message : "Request failed");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleSyncStripeMappings = async () => {
+        setError("");
+        setSuccess("");
+        setSyncingStripe(true);
+        try {
+            await fetchAdmin("/stripe/sync_mappings", { method: "POST" });
+            setSuccess("Stripe mappings synced successfully");
+            loadAll();
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Sync failed");
+        } finally {
+            setSyncingStripe(false);
         }
     };
 
@@ -502,17 +533,18 @@ export default function AdminPaymentsConfigPage() {
                         <h3 className="text-xl font-bold mb-6">Price ID Mappings</h3>
                         <p className="text-sm text-slate-500 mb-8">Map internal product/plan codes to Stripe Price IDs (e.g. `price_1P...`).</p>
                         <div className="space-y-4">
-                            {Object.keys(config.stripe_mappings || {}).map(key => (
+                            {Object.keys(config?.stripe_mappings || {}).map(key => (
                                 <div key={key} className="flex items-center gap-4 bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
                                     <div className="w-40 font-bold text-xs uppercase tracking-widest text-slate-400">{key}</div>
                                     <input
                                         type="text"
                                         placeholder="price_1P..."
                                         className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-sm outline-none font-mono"
-                                        value={config.stripe_mappings[key] || ""}
+                                        value={(config?.stripe_mappings || {})[key] || ""}
                                         onChange={(e) => {
-                                            const newMaps = { ...config.stripe_mappings, [key]: e.target.value };
-                                            setConfig({ ...config, stripe_mappings: newMaps });
+                                            const currentMaps = config?.stripe_mappings || {};
+                                            const newMaps = { ...currentMaps, [key]: e.target.value };
+                                            setConfig({ ...(config || {}), stripe_mappings: newMaps });
                                         }}
                                     />
                                 </div>
@@ -520,10 +552,10 @@ export default function AdminPaymentsConfigPage() {
                         </div>
                         <div className="mt-12 flex justify-end">
                             <button
-                                onClick={() => handleUpdateConfig(config)}
+                                onClick={handleSyncStripeMappings}
                                 className="px-8 py-4 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/25 hover:bg-primary-hover transition-all"
                             >
-                                Sync Stripe Mappings
+                                {syncingStripe ? "Syncing..." : "Sync Stripe Mappings"}
                             </button>
                         </div>
                         </div>

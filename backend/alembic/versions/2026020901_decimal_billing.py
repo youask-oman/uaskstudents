@@ -138,7 +138,7 @@ def upgrade():
     
     # User cached balance
     # User cached balance - Column was missing in previous migration
-    op.add_column('user', sa.Column('credits_balance', NUMERIC(20, 10), server_default='0.0'))
+    op.execute("ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS credits_balance NUMERIC(20, 10) DEFAULT '0.0'")
 
 
 def downgrade():

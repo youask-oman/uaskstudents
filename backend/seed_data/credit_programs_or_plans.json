@@ -1,11 +1,11 @@
 {
   "credit_programs": [
     {
-      "created_at": "2026-02-10T05:44:34.406836+00:00",
+      "created_at": "2026-02-10T19:19:34.146245+00:00",
       "created_by": null,
       "description": null,
       "display_price_monthly_usd": null,
-      "effective_from": "2026-02-10T05:44:34.406769+00:00",
+      "effective_from": "2026-02-10T19:19:34.146180+00:00",
       "effective_to": null,
       "entitlements": {
         "allow_ocr": true,
@@ -17,20 +17,20 @@
         "max_daily_solves": 1000
       },
       "gift_expiry_window_days": 60,
-      "id": 173,
+      "id": 15,
       "monthly_gift_credits": "2000.0000000000",
       "name": "Enterprise Tier",
       "purchase_bonus_rules": null,
       "slug": "enterprise_tier",
       "status": "active",
-      "updated_at": "2026-02-10T05:44:34.406883+00:00"
+      "updated_at": "2026-02-10T19:19:34.146289+00:00"
     },
     {
-      "created_at": "2026-02-10T05:44:34.409156+00:00",
+      "created_at": "2026-02-10T19:19:34.148731+00:00",
       "created_by": null,
       "description": null,
       "display_price_monthly_usd": null,
-      "effective_from": "2026-02-10T05:44:34.409082+00:00",
+      "effective_from": "2026-02-10T19:19:34.148660+00:00",
       "effective_to": null,
       "entitlements": {
         "allow_ocr": true,
@@ -40,20 +40,20 @@
         "max_daily_solves": 5
       },
       "gift_expiry_window_days": 30,
-      "id": 174,
+      "id": 16,
       "monthly_gift_credits": "10.0000000000",
       "name": "Free Tier",
       "purchase_bonus_rules": null,
       "slug": "free_tier",
       "status": "active",
-      "updated_at": "2026-02-10T05:44:34.409201+00:00"
+      "updated_at": "2026-02-10T19:19:34.148782+00:00"
     },
     {
-      "created_at": "2026-02-10T05:44:34.410480+00:00",
+      "created_at": "2026-02-10T19:19:34.150012+00:00",
       "created_by": null,
       "description": null,
       "display_price_monthly_usd": null,
-      "effective_from": "2026-02-10T05:44:34.410415+00:00",
+      "effective_from": "2026-02-10T19:19:34.149949+00:00",
       "effective_to": null,
       "entitlements": {
         "allow_ocr": true,
@@ -65,58 +65,58 @@
         "max_daily_solves": 200
       },
       "gift_expiry_window_days": 45,
-      "id": 175,
+      "id": 17,
       "monthly_gift_credits": "500.0000000000",
       "name": "Pro Tier",
       "purchase_bonus_rules": null,
       "slug": "pro_tier",
       "status": "active",
-      "updated_at": "2026-02-10T05:44:34.410529+00:00"
+      "updated_at": "2026-02-10T19:19:34.150063+00:00"
     },
     {
-      "created_at": "2026-02-10T05:44:34.411613+00:00",
+      "created_at": "2026-02-10T19:19:34.151131+00:00",
       "created_by": null,
       "description": "Smoke test program updated",
       "display_price_monthly_usd": null,
-      "effective_from": "2026-02-10T05:44:34.411556+00:00",
+      "effective_from": "2026-02-10T19:19:34.151077+00:00",
       "effective_to": null,
       "entitlements": {
         "tier": "STANDARD"
       },
       "gift_expiry_window_days": 30,
-      "id": 176,
+      "id": 18,
       "monthly_gift_credits": "25.0000000000",
       "name": "Smoke Program 1770699244 Updated",
       "purchase_bonus_rules": null,
       "slug": "smoke_program_1770699244",
       "status": "archived",
-      "updated_at": "2026-02-10T05:44:34.411658+00:00"
+      "updated_at": "2026-02-10T19:19:34.151222+00:00"
     },
     {
-      "created_at": "2026-02-10T05:44:34.412579+00:00",
+      "created_at": "2026-02-10T19:19:34.152197+00:00",
       "created_by": null,
       "description": "Smoke test program updated",
       "display_price_monthly_usd": null,
-      "effective_from": "2026-02-10T05:44:34.412522+00:00",
+      "effective_from": "2026-02-10T19:19:34.152143+00:00",
       "effective_to": null,
       "entitlements": {
         "tier": "STANDARD"
       },
       "gift_expiry_window_days": 30,
-      "id": 177,
+      "id": 19,
       "monthly_gift_credits": "25.0000000000",
       "name": "Smoke Program 1770701245 Updated",
       "purchase_bonus_rules": null,
       "slug": "smoke_program_1770701245",
       "status": "archived",
-      "updated_at": "2026-02-10T05:44:34.412635+00:00"
+      "updated_at": "2026-02-10T19:19:34.152255+00:00"
     },
     {
-      "created_at": "2026-02-10T05:44:34.413720+00:00",
+      "created_at": "2026-02-10T19:19:34.153255+00:00",
       "created_by": null,
       "description": null,
       "display_price_monthly_usd": null,
-      "effective_from": "2026-02-10T05:44:34.413672+00:00",
+      "effective_from": "2026-02-10T19:19:34.153203+00:00",
       "effective_to": null,
       "entitlements": {
         "allow_ocr": true,
@@ -127,18 +127,18 @@
         "max_daily_solves": 50
       },
       "gift_expiry_window_days": 30,
-      "id": 178,
+      "id": 20,
       "monthly_gift_credits": "100.0000000000",
       "name": "Standard Tier",
       "purchase_bonus_rules": null,
       "slug": "standard_tier",
       "status": "active",
-      "updated_at": "2026-02-10T05:44:34.413761+00:00"
+      "updated_at": "2026-02-10T19:19:34.153297+00:00"
     }
   ],
   "plans": [
     {
-      "created_at": "2026-02-10T05:44:34.416189+00:00",
+      "created_at": "2026-02-10T19:19:34.155601+00:00",
       "credits_per_month": 600,
       "features": {
         "allow_plot": true,
@@ -150,7 +150,7 @@
         "ocr_monthly_cap": 200,
         "voice_monthly_cap": 100
       },
-      "id": 219,
+      "id": 11,
       "is_active": true,
       "multipliers": {
         "credits": {
@@ -199,7 +199,7 @@
       "version": 1
     },
     {
-      "created_at": "2026-02-10T05:44:34.418909+00:00",
+      "created_at": "2026-02-10T19:19:34.157311+00:00",
       "credits_per_month": 50,
       "features": {
         "allow_plot": true,
@@ -211,7 +211,7 @@
         "ocr_monthly_cap": 3,
         "voice_monthly_cap": 3
       },
-      "id": 220,
+      "id": 12,
       "is_active": true,
       "multipliers": {
         "credits": {
@@ -260,7 +260,7 @@
       "version": 1
     },
     {
-      "created_at": "2026-02-10T05:44:34.420285+00:00",
+      "created_at": "2026-02-10T19:19:34.158813+00:00",
       "credits_per_month": 50000,
       "features": {
         "allow_plot": true,
@@ -272,7 +272,7 @@
         "ocr_monthly_cap": 200,
         "voice_monthly_cap": 100
       },
-      "id": 221,
+      "id": 13,
       "is_active": true,
       "multipliers": {
         "credits": {
@@ -314,7 +314,7 @@
       "version": 1
     },
     {
-      "created_at": "2026-02-10T05:44:34.421520+00:00",
+      "created_at": "2026-02-10T19:19:34.159802+00:00",
       "credits_per_month": 300,
       "features": {
         "allow_plot": true,
@@ -326,7 +326,7 @@
         "ocr_monthly_cap": 100,
         "voice_monthly_cap": 50
       },
-      "id": 222,
+      "id": 14,
       "is_active": true,
       "multipliers": {
         "credits": {
@@ -368,7 +368,7 @@
       "version": 1
     },
     {
-      "created_at": "2026-02-10T05:44:34.422770+00:00",
+      "created_at": "2026-02-10T19:19:34.160820+00:00",
       "credits_per_month": 300,
       "features": {
         "allow_plot": true,
@@ -380,7 +380,7 @@
         "ocr_monthly_cap": 100,
         "voice_monthly_cap": 50
       },
-      "id": 223,
+      "id": 15,
       "is_active": true,
       "multipliers": {
         "credits": {

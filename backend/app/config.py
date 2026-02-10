@@ -18,6 +18,8 @@ class Settings:
         self.STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
         self.STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
         self.STRIPE_ENABLED = bool(self.STRIPE_SECRET_KEY)
+        self.STRIPE_LIVE_MODE = os.environ.get("STRIPE_LIVE_MODE", "false").lower() == "true"
+        self.STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
 
 @lru_cache()
 def get_settings():

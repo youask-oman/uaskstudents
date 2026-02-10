@@ -5309,33 +5309,76 @@ async def solve_v3_stream_endpoint(
         "mode": body.requested_mode,
         "has_ocr": body.features_used.get("ocr_used", False) if body.features_used else False,
         "has_voice": body.features_used.get("voice_used", False) if body.features_used else False,
-        "reference_id": request_id, 
-        "source_type": None
+        "reference_id": request_id,
+        "source_type": None,
     }
-    
-    entitlement = subscription_service.check_entitlement_and_debit(session, user_id, action_req)
-    if not entitlement["allowed"]:
-         # Strict HTTP Status Mapping (Phase 4)
-         err_code = entitlement.get("error_code")
-         detail_msg = entitlement.get("reason", "Credit check failed")
-         
-         if err_code == "TIER_NOT_ALLOWED":
-             raise HTTPException(status_code=403, detail=detail_msg)
-         elif err_code == "CAP_EXCEEDED":
-             raise HTTPException(status_code=429, detail=detail_msg)
-         elif err_code == "INSUFFICIENT_CREDITS":
-             raise HTTPException(status_code=402, detail=detail_msg)
-         else:
-             raise HTTPException(status_code=402, detail=detail_msg) # Fallback
-         
-    # Execute Debit if not already processed
-    subscription = entitlement["subscription"]
-    cost = entitlement["cost"]
-    debit_meta = entitlement["meta"]
-    should_refund = (entitlement.get("status") != "already_processed" and cost > 0)
-    
-    if entitlement.get("status") != "already_processed":
-        subscription_service.execute_debit(session, subscription, cost, debit_meta, request_id)
+
+    from app.services.billing_feature_flags import is_billing_v2_enabled
+    use_billing_v2 = is_billing_v2_enabled(user_id)
+    billing_v2_hold_id = None
+    billing_v2_cost = None
+
+    if use_billing_v2:
+        from decimal import Decimal
+        from app.services.billing_ledger_service_v2 import billing_ledger_service_v2
+        from app.services.billing_exceptions import InsufficientCreditsError
+        from app.models import Plan
+
+        # Derive pricing from plan multipliers (flat tier costs)
+        plan = None
+        if user_obj and user_obj.subscription and user_obj.subscription.plan:
+            plan = user_obj.subscription.plan
+        if not plan:
+            sub_obj = subscription_service.get_or_create_subscription(session, user_obj or session.get(User, user_id))
+            plan = session.get(Plan, sub_obj.plan_id) if sub_obj else None
+        if not plan:
+            subscription_service.ensure_plans_exist(session)
+            plan = session.exec(select(Plan).where(Plan.slug == "free")).first()
+
+        source_type = "text"
+        if action_req["has_voice"]:
+            source_type = "voice"
+        elif action_req["has_ocr"]:
+            source_type = "snap_image"
+
+        billing_v2_cost = float(subscription_service.calculate_cost(plan, effective_billing_tier, source_type))
+        try:
+            hold_result = billing_ledger_service_v2.create_hold(
+                session=session,
+                user_id=user_id,
+                request_id=request_id,
+                estimated_credits=Decimal(str(billing_v2_cost)),
+                attempt_id=attempt_id,
+                idempotency_key=body.idempotency_key,
+            )
+            billing_v2_hold_id = hold_result.hold_id
+            session.commit()
+        except InsufficientCreditsError as e:
+            raise HTTPException(status_code=402, detail=f"Insufficient credits: required={e.required}, available={e.available}")
+    else:
+        entitlement = subscription_service.check_entitlement_and_debit(session, user_id, action_req)
+        if not entitlement["allowed"]:
+            # Strict HTTP Status Mapping (Phase 4)
+            err_code = entitlement.get("error_code")
+            detail_msg = entitlement.get("reason", "Credit check failed")
+            
+            if err_code == "TIER_NOT_ALLOWED":
+                raise HTTPException(status_code=403, detail=detail_msg)
+            elif err_code == "CAP_EXCEEDED":
+                raise HTTPException(status_code=429, detail=detail_msg)
+            elif err_code == "INSUFFICIENT_CREDITS":
+                raise HTTPException(status_code=402, detail=detail_msg)
+            else:
+                raise HTTPException(status_code=402, detail=detail_msg) # Fallback
+
+        # Execute Debit if not already processed
+        subscription = entitlement["subscription"]
+        cost = entitlement["cost"]
+        debit_meta = entitlement["meta"]
+        should_refund = (entitlement.get("status") != "already_processed" and cost > 0)
+        
+        if entitlement.get("status") != "already_processed":
+            subscription_service.execute_debit(session, subscription, cost, debit_meta, request_id)
 
     async def _inner_generate():
         start_total = time.perf_counter()
@@ -5348,6 +5391,13 @@ async def solve_v3_stream_endpoint(
         deduct_attempted = {"credits": False, "ocr": False, "voice": False}
         deduct_committed = False
         features_used = body.features_used or {}
+        def _release_hold_if_needed():
+            if use_billing_v2 and (billing_v2_cost or 0) > 0:
+                try:
+                    from app.services.billing_ledger_service_v2 import billing_ledger_service_v2
+                    billing_ledger_service_v2.release_hold(session, request_id=request_id, attempt_id=attempt_id)
+                except Exception:
+                    pass
         raw_problem_text = (
             body.confirmed_text or
             body.confirmed_markdown or
@@ -5431,6 +5481,7 @@ async def solve_v3_stream_endpoint(
                 "problem_text": problem_text,
                 "error": f"{error_code}: {profile_err}",
             })
+            _release_hold_if_needed()
             yield f"event: done\ndata: {json.dumps({'ok': False, 'error': {'code': error_code, 'message': str(profile_err), 'request_id': request_id, 'tier': effective_tier, 'mode': 'SOLVE', 'provider': stream_provider, 'details': error_details}})}\n\n"
             return
         print(f"[SOLVER_V3_STREAM] Resolved Profile: Tier={profile.tier}, Mode={profile.mode}, MaxTokens={profile.max_output_tokens}")
@@ -5493,6 +5544,7 @@ async def solve_v3_stream_endpoint(
                 "problem_text": problem_text,
                 "error": "no_input"
             })
+            _release_hold_if_needed()
             record_request_event(session, {
                 "request_id": request_id,
                 "user_id": user_id,
@@ -5551,74 +5603,78 @@ async def solve_v3_stream_endpoint(
             "voice": action_req["has_voice"]
         }
 
-        check_result = subscription_service.check_entitlement_and_debit(session, user_id, action_req)
-        if not check_result["allowed"]:
-            log_solve_trace({
-                "request_id": request_id,
-                "user_id": user_id,
-                "seat_id": None,
-                "plan_key": plan_key,
-                "ui_goal": learning_mode,
-                "ui_style": requested_mode,
-                "resolved_profile_key": profile_key,
-                "resolved_system_file_path": profile.system_asset_path or profile.system_relative_path,
-                "resolved_schema_file_path": profile.schema_asset_path or profile.schema_relative_path,
-                "schema_name": None,
-                "max_output_tokens_sent": effective_max_tokens,
-                "model_sent": stream_model,
-                "cache_hit": False,
-                "openai_calls_count": 0,
-                "repair_attempted": False,
-                "prompt_tokens_estimate": None,
-                "input_tokens": None,
-                "output_tokens": None,
-                "cached_tokens": None,
-                "deduct_attempted": deduct_attempted,
-                "deduct_committed": False,
-                "openai_payload": None,
-                "problem_text": problem_text,
-                "error": f"entitlement_denied: {check_result.get('reason')}"
-            })
-            record_request_event(session, {
-                "request_id": request_id,
-                "user_id": user_id,
-                "mode": requested_mode,
-                "learning_mode": learning_mode,
-                "subject": body.subject,
-                "grade_level": user_obj.grade_level if user_obj else None,
-                "model": os.environ.get("OPENAI_MODEL_DEFAULT"),
-                "provider": stream_provider,
-                "route": "solve_v3_stream",
-                "tokens_in": None,
-                "tokens_out": None,
-                "tokens_total": None,
-                "cost_usd": 0.0,
-                "latency_ms": None,
-                "status": "error",
-                "error_type": "entitlement_denied",
-                "schema_valid": None,
-                "verification_pass": False,
-                "is_stream": True,
-                "is_cached": False,
-                "credit_deducted": False,
-                "credit_amount": None,
-                "ocr_used": action_req["has_ocr"],
-                "voice_used": action_req["has_voice"],
-                "response_truncated": False
-            })
-            raise HTTPException(status_code=402, detail=f"Entitlement Check Failed: {check_result['reason']}")
+        if use_billing_v2:
+            debit_cost = float(billing_v2_cost or 0.0)
+            should_refund = debit_cost > 0
+        else:
+            check_result = subscription_service.check_entitlement_and_debit(session, user_id, action_req)
+            if not check_result["allowed"]:
+                log_solve_trace({
+                    "request_id": request_id,
+                    "user_id": user_id,
+                    "seat_id": None,
+                    "plan_key": plan_key,
+                    "ui_goal": learning_mode,
+                    "ui_style": requested_mode,
+                    "resolved_profile_key": profile_key,
+                    "resolved_system_file_path": profile.system_asset_path or profile.system_relative_path,
+                    "resolved_schema_file_path": profile.schema_asset_path or profile.schema_relative_path,
+                    "schema_name": None,
+                    "max_output_tokens_sent": effective_max_tokens,
+                    "model_sent": stream_model,
+                    "cache_hit": False,
+                    "openai_calls_count": 0,
+                    "repair_attempted": False,
+                    "prompt_tokens_estimate": None,
+                    "input_tokens": None,
+                    "output_tokens": None,
+                    "cached_tokens": None,
+                    "deduct_attempted": deduct_attempted,
+                    "deduct_committed": False,
+                    "openai_payload": None,
+                    "problem_text": problem_text,
+                    "error": f"entitlement_denied: {check_result.get('reason')}"
+                })
+                record_request_event(session, {
+                    "request_id": request_id,
+                    "user_id": user_id,
+                    "mode": requested_mode,
+                    "learning_mode": learning_mode,
+                    "subject": body.subject,
+                    "grade_level": user_obj.grade_level if user_obj else None,
+                    "model": os.environ.get("OPENAI_MODEL_DEFAULT"),
+                    "provider": stream_provider,
+                    "route": "solve_v3_stream",
+                    "tokens_in": None,
+                    "tokens_out": None,
+                    "tokens_total": None,
+                    "cost_usd": 0.0,
+                    "latency_ms": None,
+                    "status": "error",
+                    "error_type": "entitlement_denied",
+                    "schema_valid": None,
+                    "verification_pass": False,
+                    "is_stream": True,
+                    "is_cached": False,
+                    "credit_deducted": False,
+                    "credit_amount": None,
+                    "ocr_used": action_req["has_ocr"],
+                    "voice_used": action_req["has_voice"],
+                    "response_truncated": False
+                })
+                raise HTTPException(status_code=402, detail=f"Entitlement Check Failed: {check_result['reason']}")
 
-        sub_id = check_result["subscription"].id
-        debit_cost = check_result["cost"]
-        subscription_service.execute_debit(
-            session,
-            check_result["subscription"],
-            debit_cost,
-            {"action": "solve_v3_stream", **action_req},
-            request_id
-        )
-        session.commit()
-        deduct_committed = True
+            sub_id = check_result["subscription"].id
+            debit_cost = check_result["cost"]
+            subscription_service.execute_debit(
+                session,
+                check_result["subscription"],
+                debit_cost,
+                {"action": "solve_v3_stream", **action_req},
+                request_id
+            )
+            session.commit()
+            deduct_committed = True
 
         output_format = "json_schema"
 
@@ -5719,6 +5775,7 @@ async def solve_v3_stream_endpoint(
                 "problem_text": problem_text,
                 "error": f"validation_error: {e.detail}"
             })
+            _release_hold_if_needed()
             record_request_event(session, {
                 "request_id": request_id,
                 "user_id": user_id,
@@ -5837,15 +5894,19 @@ async def solve_v3_stream_endpoint(
                         session.add(attempt)
                         session.commit()
                 elif chunk["type"] == "failure":
-                    if should_refund and cost > 0:
+                    if should_refund and debit_cost > 0:
                         try:
-                            subscription_service.refund_credits(
-                                session,
-                                subscription.id,
-                                cost,
-                                "Solver failed",
-                                request_id,
-                            )
+                            if use_billing_v2:
+                                from app.services.billing_ledger_service_v2 import billing_ledger_service_v2
+                                billing_ledger_service_v2.release_hold(session, request_id=request_id, attempt_id=attempt_id)
+                            else:
+                                subscription_service.refund_credits(
+                                    session,
+                                    subscription.id,
+                                    debit_cost,
+                                    "Solver failed",
+                                    request_id,
+                                )
                         except Exception:
                             pass
                     # Handle early termination
@@ -6100,13 +6161,17 @@ async def solve_v3_stream_endpoint(
                 session.commit()
 
                 if deduct_committed and debit_cost > 0:
-                    subscription_service.refund_credits(
-                        session,
-                        sub_id,
-                        debit_cost,
-                        "Stream schema validation failed",
-                        request_id,
-                    )
+                    if use_billing_v2:
+                        from app.services.billing_ledger_service_v2 import billing_ledger_service_v2
+                        billing_ledger_service_v2.release_hold(session, request_id=request_id, attempt_id=attempt_id)
+                    else:
+                        subscription_service.refund_credits(
+                            session,
+                            sub_id,
+                            debit_cost,
+                            "Stream schema validation failed",
+                            request_id,
+                        )
 
                 log_solve_trace({
                     "request_id": request_id,
@@ -6467,6 +6532,27 @@ async def solve_v3_stream_endpoint(
                 "developer_prompt_version": binding_meta.get("developer_prompt_version"),
                 "output_schema_version": binding_meta.get("output_schema_version"),
             })
+
+            if use_billing_v2 and debit_cost > 0:
+                from decimal import Decimal
+                from app.services.billing_ledger_service_v2 import billing_ledger_service_v2
+                cost_usd = _calc_cost(
+                    openai_telemetry.get("total_tokens"),
+                    openai_telemetry.get("model"),
+                    openai_telemetry.get("input_tokens"),
+                    openai_telemetry.get("output_tokens"),
+                )
+                billing_ledger_service_v2.settle_hold(
+                    session=session,
+                    request_id=request_id,
+                    actual_credits=Decimal(str(debit_cost)),
+                    tier=effective_billing_tier.upper(),
+                    provider_cost_usd=Decimal(str(cost_usd or 0.0)),
+                    attempt_id=attempt_id,
+                    is_billable=True,
+                )
+                session.commit()
+                deduct_committed = True
             record_request_event(session, {
                 "request_id": request_id,
                 "user_id": user_id,
@@ -8487,6 +8573,7 @@ async def admin_get_model_routing(db: Session = Depends(get_session), admin: Use
 async def admin_get_quotas(db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     """Admin only: List users and their usage for quota management"""
     from datetime import timedelta
+    from decimal import Decimal
     now = datetime.utcnow()
     last_24h = now - timedelta(days=1)
     
@@ -8494,7 +8581,7 @@ async def admin_get_quotas(db: Session = Depends(get_session), admin: User = Dep
     quota_items = []
     daily_active_holders = 0
     total_daily_tokens = 0
-    total_daily_credits_used = 0.0
+    total_daily_credits_used = Decimal("0")
     total_daily_credit_cap = 0.0
     
     for u in users:
@@ -8519,9 +8606,9 @@ async def admin_get_quotas(db: Session = Depends(get_session), admin: User = Dep
                 .where(UsageLedger.transaction_type == "DEBIT")
                 .where(UsageLedger.created_at >= last_24h)
             ).all()
-            daily_credits_used = sum([l.amount for l in daily_ledger])
+            daily_credits_used = sum([l.amount for l in daily_ledger], Decimal("0"))
         else:
-            daily_credits_used = 0.0
+            daily_credits_used = Decimal("0")
 
         total_daily_credits_used += daily_credits_used
         if daily_credit_cap > 0:
@@ -8536,7 +8623,7 @@ async def admin_get_quotas(db: Session = Depends(get_session), admin: User = Dep
         if override_token_limit and override_token_limit > 0:
             usage_pct = int((daily_tokens / override_token_limit) * 100)
         elif daily_credit_cap > 0:
-            usage_pct = int((daily_credits_used / daily_credit_cap) * 100)
+            usage_pct = int((float(daily_credits_used) / daily_credit_cap) * 100)
         
         last_active = (u.last_active_at or u.created_at or now)
         diff = now - last_active
@@ -8566,7 +8653,7 @@ async def admin_get_quotas(db: Session = Depends(get_session), admin: User = Dep
     total_tokens_24h = total_daily_tokens
     global_consumption = 0.0
     if total_daily_credit_cap > 0:
-        global_consumption = min((total_daily_credits_used / total_daily_credit_cap) * 100, 100.0)
+        global_consumption = min((float(total_daily_credits_used) / total_daily_credit_cap) * 100, 100.0)
     
     return AdminQuotaListResponse(
         users=quota_items,

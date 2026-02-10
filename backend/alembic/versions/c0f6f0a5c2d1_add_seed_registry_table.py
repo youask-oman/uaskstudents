@@ -19,21 +19,23 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.create_table(
-        "seed_registry",
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("seed_name", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("seed_version", sa.Integer(), nullable=False, server_default=sa.text("1")),
-        sa.Column("applied_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("git_sha", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-        sa.Column("environment", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("row_count", sa.Integer(), nullable=True),
-        sa.Column("checksum", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-        sa.Column("notes", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-        sa.PrimaryKeyConstraint("id"),
+    op.execute(
+        """
+        CREATE TABLE IF NOT EXISTS seed_registry (
+            id SERIAL PRIMARY KEY,
+            seed_name VARCHAR NOT NULL,
+            seed_version INTEGER DEFAULT 1 NOT NULL,
+            applied_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+            git_sha VARCHAR,
+            environment VARCHAR NOT NULL,
+            row_count INTEGER,
+            checksum VARCHAR,
+            notes VARCHAR
+        )
+        """
     )
-    op.create_index(op.f("ix_seed_registry_seed_name"), "seed_registry", ["seed_name"], unique=True)
-    op.create_index(op.f("ix_seed_registry_environment"), "seed_registry", ["environment"], unique=False)
+    op.execute("CREATE UNIQUE INDEX IF NOT EXISTS ix_seed_registry_seed_name ON seed_registry (seed_name)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_seed_registry_environment ON seed_registry (environment)")
 
 
 def downgrade() -> None:

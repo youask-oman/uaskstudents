@@ -43,6 +43,7 @@ export default function AdminQuotasPage() {
     const [pageIndex, setPageIndex] = useState(0);
     const pageSize = 15;
     const baseUrl = API_BASE_URL;
+    const fallbackUrl = process.env.NEXT_PUBLIC_API_FALLBACK_URL || API_BASE_URL || "http://127.0.0.1:8000";
 
     const fetchData = useCallback(
         async (signal?: AbortSignal) => {
@@ -51,12 +52,25 @@ export default function AdminQuotasPage() {
             const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
 
             try {
-                const res = await fetch(`${baseUrl}/api/v1/admin/quotas`, { headers, signal });
-                if (!res.ok) {
-                    throw new Error("Failed to load quotas.");
+                const attemptFetch = async (urlBase: string) => {
+                    const res = await fetch(`${urlBase}/api/v1/admin/quotas`, { headers, signal });
+                    if (!res.ok) {
+                        throw new Error("Failed to load quotas.");
+                    }
+                    return res.json();
+                };
+
+                try {
+                    const json = await attemptFetch(baseUrl);
+                    setData(json as QuotaData);
+                } catch (err) {
+                    if (baseUrl !== fallbackUrl) {
+                        const json = await attemptFetch(fallbackUrl);
+                        setData(json as QuotaData);
+                    } else {
+                        throw err;
+                    }
                 }
-                const json = await res.json();
-                setData(json as QuotaData);
             } catch (err) {
                 if ((err as Error).name === "AbortError") {
                     return;

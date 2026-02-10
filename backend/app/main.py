@@ -15,11 +15,13 @@ from app.services.llm.manager import get_configured_openai_model
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi import HTTPException
+from app.config import get_settings
 
 load_dotenv()
 
 app = FastAPI(title="UAsk.ai Orchestrator")
 app.state.limiter = limiter
+logger = logging.getLogger("app")
 
 # Global Exception Handlers
 @app.exception_handler(HTTPException)
@@ -307,6 +309,21 @@ from app.admin_billing.billing_packs import router as billing_packs_router
 app.include_router(api_router, prefix="/api/v1")
 app.include_router(topup_router, prefix="/api/v1")
 app.include_router(stripe_router, prefix="/api/v1")
+
+@app.on_event("startup")
+async def log_stripe_env():
+    settings = get_settings()
+    key = settings.STRIPE_SECRET_KEY or ""
+    masked = ""
+    if key:
+        masked = f"{key[:7]}***{key[-4:]}" if len(key) > 11 else "***"
+    logger.info(
+        "Stripe env loaded: STRIPE_SECRET_KEY=%s STRIPE_LIVE_MODE=%s",
+        "SET" if key else "MISSING",
+        settings.STRIPE_LIVE_MODE,
+    )
+    if key:
+        logger.info("Stripe key masked: %s", masked)
 app.include_router(billing_router, prefix="/api/v1")
 app.include_router(wallet_router, prefix="/api/v1")
 app.include_router(admin_router)
