@@ -27,9 +27,32 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     from app.trace import TraceContext
     logger = logging.getLogger("api")
     logger.info(f"Response: {exc.status_code} | {exc.detail}", extra=TraceContext.get_all())
+    request_id = TraceContext.get().request_id if hasattr(TraceContext, 'get') else None
+    status_code = exc.status_code
+    code_map = {
+        400: "bad_request",
+        401: "auth_required",
+        402: "insufficient_credits",
+        403: "forbidden",
+        404: "not_found",
+        409: "conflict",
+        422: "validation_error",
+        429: "rate_limit",
+    }
+    message = exc.detail if isinstance(exc.detail, str) else (exc.detail.get("message") if isinstance(exc.detail, dict) else "Request failed")
+    error_payload = {
+        "error": {
+            "code": code_map.get(status_code, "http_error"),
+            "message": message,
+            "request_id": request_id,
+            "details": exc.detail if not isinstance(exc.detail, str) else None,
+        },
+        "detail": exc.detail,
+        "request_id": request_id,
+    }
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail},
+        content=error_payload,
     )
 
 @app.exception_handler(RequestValidationError)
@@ -37,9 +60,19 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     from app.trace import TraceContext
     logger = logging.getLogger("api")
     logger.info(f"Response: 422 | Validation Error", extra=TraceContext.get_all())
+    request_id = TraceContext.get().request_id if hasattr(TraceContext, 'get') else None
     return JSONResponse(
         status_code=422,
-        content={"detail": exc.errors()},
+        content={
+            "error": {
+                "code": "validation_error",
+                "message": "Validation error",
+                "request_id": request_id,
+                "details": exc.errors(),
+            },
+            "detail": exc.errors(),
+            "request_id": request_id,
+        },
     )
 
 @app.exception_handler(Exception)
@@ -47,9 +80,19 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     from app.trace import TraceContext
     logger = logging.getLogger("api")
     logger.error(f"Response: 500 | Unhandled Error: {str(exc)}", exc_info=True, extra=TraceContext.get_all())
+    request_id = TraceContext.get().request_id if hasattr(TraceContext, 'get') else None
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal Server Error", "request_id": TraceContext.get().request_id if hasattr(TraceContext, 'get') else None},
+        content={
+            "error": {
+                "code": "internal_error",
+                "message": "Internal Server Error",
+                "request_id": request_id,
+                "details": None,
+            },
+            "detail": "Internal Server Error",
+            "request_id": request_id,
+        },
     )
 
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)

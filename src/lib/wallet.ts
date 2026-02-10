@@ -126,11 +126,18 @@ export type CreditsEstimateResponse = {
     per_question_credits: number;
     breakdown: Record<string, unknown>;
     pricing_version: string;
+    pricing_version_plan?: string;
+    pricing_version_token_config?: number;
 };
 
 export type SolveTier = "FREE" | "STANDARD" | "RESEARCH" | "SHORT";
 export type SolveInputType = "text" | "snap" | "voice";
 export type SolveAssetType = "none" | "image" | "pdf";
+
+function mapTierToApi(tier: SolveTier): string {
+    if (tier === "FREE") return "three_step";
+    return tier.toLowerCase();
+}
 
 export async function fetchCreditsEstimate(payload: {
     tier: SolveTier;
@@ -147,7 +154,10 @@ export async function fetchCreditsEstimate(payload: {
     const res = await fetch(`${API_BASE_URL}/api/v1/credits/estimate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+            ...payload,
+            tier: mapTierToApi(payload.tier),
+        }),
     });
     if (!res.ok) {
         const err = await parseApiError(res);

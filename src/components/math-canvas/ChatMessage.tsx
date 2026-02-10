@@ -3,8 +3,6 @@
 import React from "react";
 import MathRenderer from "@/components/math/MathRendererSwitch";
 import VisualRenderer from "@/components/workspace/VisualRenderer";
-import RecognitionBox from "./RecognitionBox";
-import SolutionStepsBlock from "./SolutionStepsBlock";
 import { ChartPayload, NormalizedChatMessage, NormalizedContentItem } from "./types";
 import styles from "./MathCanvas.module.css";
 

@@ -157,6 +157,8 @@ _TIER_ORDER = {"FREE": 0, "SHORT": 1, "STANDARD": 2, "RESEARCH": 3}
 
 def _normalize_tier_for_prompt_binding(value: Optional[str]) -> str:
     raw = (value or "").strip().lower()
+    if raw in {"three_step", "free"}:
+        return "FREE"
     if raw in {"research", "enterprise", "family", "family_standard"}:
         return "RESEARCH"
     if raw in {"standard", "student_standard", "pro", "premium"}:
@@ -166,13 +168,24 @@ def _normalize_tier_for_prompt_binding(value: Optional[str]) -> str:
     return "FREE"
 
 
-def _clamp_requested_tier(requested_tier: Optional[str], entitled_tier_slug: str) -> Dict[str, str]:
-    entitled = _normalize_tier_for_prompt_binding(entitled_tier_slug)
-    requested = _normalize_tier_for_prompt_binding(requested_tier) if requested_tier else entitled
-    effective = requested if _TIER_ORDER[requested] <= _TIER_ORDER[entitled] else entitled
+def _externalize_tier(value: str) -> str:
     return {
-        "tier_requested": requested,
-        "tier_effective": effective,
+        "FREE": "three_step",
+        "SHORT": "short",
+        "STANDARD": "standard",
+        "RESEARCH": "research",
+    }.get(value, "three_step")
+
+
+def _clamp_requested_tier(requested_tier: Optional[str], entitled_tier_slug: str) -> Dict[str, str]:
+    entitled_internal = _normalize_tier_for_prompt_binding(entitled_tier_slug)
+    requested_internal = _normalize_tier_for_prompt_binding(requested_tier) if requested_tier else entitled_internal
+    effective_internal = requested_internal if _TIER_ORDER[requested_internal] <= _TIER_ORDER[entitled_internal] else entitled_internal
+    return {
+        "tier_requested": _externalize_tier(requested_internal),
+        "tier_effective": _externalize_tier(effective_internal),
+        "tier_requested_internal": requested_internal,
+        "tier_effective_internal": effective_internal,
     }
 
 
@@ -681,6 +694,18 @@ class SolveRequest(BaseModel):
     graph_mode: Optional[str] = Field("auto", description="Graph mode: off | auto | on")
     attach_to_step_id: Optional[int] = Field(None, description="Step ID to attach plot to, or null for standalone")
     force_validity: Optional[bool] = Field(False, description="Whether to bypass strict math validation checks")
+    idempotency_key: Optional[str] = Field(
+        None,
+        description="Client-provided idempotency key (UUID) to prevent duplicate charges"
+    )
+    debug_simulated_tokens: Optional[Dict[str, Any]] = Field(
+        None,
+        description="DEV/TEST only. Override token telemetry for fake solver."
+    )
+    debug_force_error: Optional[bool] = Field(
+        False,
+        description="DEV/TEST only. Force solver failure for testing."
+    )
 
 from app.models import Plan, Subscription, UsageLedger
 from app.services.subscription_service import subscription_service
@@ -4128,6 +4153,18 @@ async def solve_problem(
     
     # Calculate final tokens (prefer telemetry)
     telemetry_data = solution_data.get("_telemetry") or solution_data.get("telemetry") or {}
+    try:
+        plan_version = None
+        if user and user.subscription and user.subscription.plan:
+            from app.schemas.pricing import PlanMultipliers
+            mults = PlanMultipliers(**(user.subscription.plan.multipliers or {}))
+            plan_version = str(mults.version)
+        from app.services.pricing_service import pricing_service
+        token_version = pricing_service.get_pricing_config(session).config_version_id
+        telemetry_data["pricing_version_plan"] = plan_version
+        telemetry_data["config_version_id"] = token_version
+    except Exception:
+        pass
     telemetry_data["learning_mode"] = new_chat.learning_mode
     telemetry_data["requested_mode"] = new_chat.requested_mode
     telemetry_data["solve_tier"] = new_chat.solve_tier
@@ -4314,6 +4351,7 @@ async def solve_v3_runtime_meta(
     tier_policy = _clamp_requested_tier(tier, entitled_tier_slug)
     tier_requested = tier_policy["tier_requested"]
     tier_effective = tier_policy["tier_effective"]
+    tier_effective_internal = tier_policy["tier_effective_internal"]
     mode_label = (mode_family or "SOLVE").strip().upper()
     # Free-form mode disabled - always use json_schema
     output_format = "json_schema"
@@ -4324,7 +4362,7 @@ async def solve_v3_runtime_meta(
             user=user,
             requested_mode=requested_mode,
             learning_mode="solve",
-            force_tier=tier_effective,
+          force_tier=tier_effective_internal,
             mode_family=mode_label,
             provider=provider,
         )
@@ -4396,9 +4434,14 @@ async def solve_v3_endpoint(
     from app.services.subscription_service import subscription_service
     from app.services.solver_v3 import get_solver_v3
     import base64
+
+    app_env = os.environ.get("APP_ENV", "").upper()
+    debug_allowed = app_env in {"DEV", "TEST"} or os.environ.get("BILLING_FAKE_SOLVER_ENABLED", "").lower() == "true"
+    if (body.debug_simulated_tokens or body.debug_force_error) and not debug_allowed:
+        raise HTTPException(status_code=400, detail="debug_simulated_tokens not allowed in this environment")
     
-    # Generate unique Request ID
-    request_id = str(uuid.uuid4())
+    # Generate unique Request ID (idempotent when idempotency_key is provided)
+    request_id = (body.idempotency_key or "").strip() or str(uuid.uuid4())
     requested_mode = body.requested_mode or "minimal"
     learning_mode = (body.trusted_context or {}).get("learning_mode", "solve")
     features_used = body.features_used or {}
@@ -4473,6 +4516,7 @@ async def solve_v3_endpoint(
     tier_policy = _clamp_requested_tier(body.tier, entitled_tier_slug)
     requested_tier = tier_policy["tier_requested"]
     effective_tier = tier_policy["tier_effective"]
+    effective_tier_internal = tier_policy["tier_effective_internal"]
     solve_provider = "openai"
     configured_model = get_configured_openai_model()
     try:
@@ -4481,7 +4525,7 @@ async def solve_v3_endpoint(
             user,
             requested_mode=requested_mode,
             learning_mode=learning_mode,
-            force_tier=effective_tier,
+            force_tier=effective_tier_internal,
             mode_family="SOLVE",
             provider=solve_provider,
         )
@@ -4669,7 +4713,9 @@ async def solve_v3_endpoint(
                     learning_mode=learning_mode,
                     image_url=body.image_url,
                     max_output_tokens=effective_max_tokens,
-                    user_tier=effective_tier
+                    user_tier=effective_tier,
+                    debug_simulated_tokens=body.debug_simulated_tokens,
+                    debug_force_error=bool(body.debug_force_error),
                 )
                 
 
@@ -5135,10 +5181,16 @@ async def solve_v3_stream_endpoint(
     from app.services.llm.manager import get_configured_openai_model
     from app.llm_profiles.profile_resolver import ProfileResolutionError
 
-    # 0. Phase 1 Hardening: Distinct IDs
-    request_id = str(uuid.uuid4())
+    # 0. Phase 1 Hardening: Distinct IDs (idempotent when idempotency_key is provided)
+    request_id = (body.idempotency_key or "").strip() or str(uuid.uuid4())
     attempt_id = str(uuid.uuid4())
     attempt = None
+    app_env = os.environ.get("APP_ENV", "").upper()
+    debug_allowed = app_env in {"DEV", "TEST"} or os.environ.get("BILLING_FAKE_SOLVER_ENABLED", "").lower() == "true"
+    if (body.debug_simulated_tokens or body.debug_force_error) and not debug_allowed:
+        raise HTTPException(status_code=400, detail="debug_simulated_tokens not allowed in this environment")
+    debug_simulated_tokens = body.debug_simulated_tokens
+    debug_force_error = bool(body.debug_force_error)
     graph_mode = getattr(body, 'graph_mode', 'auto')
     # DEBUG: Write to file to confirm graph_mode value
     with open("graph_mode_trace.log", "a") as f:
@@ -5157,6 +5209,39 @@ async def solve_v3_stream_endpoint(
         phase="solve_v3_stream",
         status="pending"
     )
+
+    # Idempotency: return existing attempt for same request_id
+    if body.idempotency_key:
+        from app.models import SolverOutputAttempt
+        existing_attempt = session.exec(
+            select(SolverOutputAttempt).where(SolverOutputAttempt.request_id == request_id)
+        ).first()
+        if existing_attempt:
+            attempt_id = existing_attempt.attempt_id
+            TraceContext.set(
+                trace_id=str(uuid.uuid4()),
+                request_id=request_id,
+                attempt_id=attempt_id,
+                phase="solve_v3_stream",
+                status="idempotent_replay"
+            )
+
+            async def _replay():
+                meta = {
+                    "request_id": request_id,
+                    "attempt_id": attempt_id,
+                    "status": existing_attempt.status,
+                    "tier_requested": (body.tier or "").lower(),
+                    "tier_effective": (body.tier or "").lower(),
+                }
+                yield f"event: meta\ndata: {json.dumps(meta)}\n\n"
+                if existing_attempt.status == "success" and existing_attempt.session_id:
+                    yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': True, 'session_id': existing_attempt.session_id, 'message_id': existing_attempt.message_id})}\n\n"
+                elif existing_attempt.status in {"failure", "ambiguous"}:
+                    yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': False, 'error': {'code': existing_attempt.failure_code or 'ambiguous_response', 'message': existing_attempt.error_message or 'Previous attempt failed', 'request_id': request_id}})}\n\n"
+                else:
+                    yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': False, 'error': {'code': 'in_progress', 'message': 'Attempt already in progress', 'request_id': request_id}})}\n\n"
+            return StreamingResponse(_replay(), media_type="text/event-stream")
     
     # Phase 1: Create Attempt Record (Pending)
     try:
@@ -5201,9 +5286,23 @@ async def solve_v3_stream_endpoint(
     tier_policy = _clamp_requested_tier(body.tier, effective_tier_slug)
     requested_tier = tier_policy["tier_requested"]
     effective_tier = tier_policy["tier_effective"]
+    requested_tier_internal = tier_policy["tier_requested_internal"]
+    effective_tier_internal = tier_policy["tier_effective_internal"]
     stream_provider = "openai"
     stream_model = get_configured_openai_model()
     effective_billing_tier = effective_tier.lower()
+
+    plan_pricing_version = None
+    try:
+        if user_obj and user_obj.subscription and user_obj.subscription.plan:
+            from app.schemas.pricing import PlanMultipliers
+            mults = PlanMultipliers(**(user_obj.subscription.plan.multipliers or {}))
+            plan_pricing_version = str(mults.version)
+    except Exception:
+        plan_pricing_version = None
+
+    from app.services.pricing_service import pricing_service
+    token_config_version = pricing_service.get_pricing_config(session).config_version_id
 
     action_req = {
         "tier": effective_billing_tier,
@@ -5299,7 +5398,7 @@ async def solve_v3_stream_endpoint(
                 user_obj,
                 requested_mode=requested_mode,
                 learning_mode=learning_mode,
-                force_tier=effective_tier,
+                force_tier=effective_tier_internal,
                 mode_family="SOLVE",
                 provider=stream_provider,
             )
@@ -5540,6 +5639,8 @@ async def solve_v3_stream_endpoint(
             "mode_family": "SOLVE",
             "tier_requested": requested_tier,
             "effective_tier": effective_tier,
+            "pricing_version_plan": plan_pricing_version,
+            "config_version_id": token_config_version,
             "prompt_binding_id": binding_meta.get("binding_id"),
             "global_system_prompt_id": binding_meta.get("global_system_prompt_id"),
             "developer_prompt_id": binding_meta.get("developer_prompt_id"),
@@ -5558,6 +5659,8 @@ async def solve_v3_stream_endpoint(
             "model": stream_model,
             "tier_requested": requested_tier,
             "tier_effective": effective_tier,
+            "pricing_version_plan": plan_pricing_version,
+            "config_version_id": token_config_version,
             "mode": "SOLVE",
             "prompt_binding_id": binding_meta.get("binding_id"),
             "global_system_prompt_id": binding_meta.get("global_system_prompt_id"),
@@ -5710,7 +5813,9 @@ async def solve_v3_stream_endpoint(
                 json_schema_config=profile.json_schema_content,
                 requested_mode=requested_mode,
                 trusted_context={"learning_mode": learning_mode},
-                attempt_id=attempt_id
+                attempt_id=attempt_id,
+                debug_simulated_tokens=debug_simulated_tokens,
+                debug_force_error=debug_force_error,
             ):
                 # METRIC: Count chunk types
                 ctype = chunk.get("type", "unknown")
@@ -5732,6 +5837,17 @@ async def solve_v3_stream_endpoint(
                         session.add(attempt)
                         session.commit()
                 elif chunk["type"] == "failure":
+                    if should_refund and cost > 0:
+                        try:
+                            subscription_service.refund_credits(
+                                session,
+                                subscription.id,
+                                cost,
+                                "Solver failed",
+                                request_id,
+                            )
+                        except Exception:
+                            pass
                     # Handle early termination
                     yield f"event: done\ndata: {json.dumps({'ok': False, 'error': chunk['error']})}\n\n"
                     return
@@ -10351,6 +10467,18 @@ async def get_attempt_status(
     if not attempt:
         raise HTTPException(status_code=404, detail="Attempt not found")
         
+    from app.models import BillingLedger, CreditHold
+    ledger = session.exec(
+        select(BillingLedger)
+        .where(BillingLedger.request_id == attempt.request_id)
+        .order_by(BillingLedger.created_at.desc())
+    ).first()
+    hold = session.exec(
+        select(CreditHold)
+        .where(CreditHold.request_id == attempt.request_id)
+        .order_by(CreditHold.created_at.desc())
+    ).first()
+
     return {
         "attempt_id": attempt.attempt_id,
         "request_id": attempt.request_id,
@@ -10359,7 +10487,24 @@ async def get_attempt_status(
         "error_message": attempt.error_message,
         "clarification_count": attempt.clarification_count,
         "created_at": attempt.created_at,
-        "updated_at": attempt.updated_at
+        "updated_at": attempt.updated_at,
+        "telemetry": {
+            "provider": attempt.provider,
+            "model": attempt.model,
+            "input_tokens": attempt.input_tokens,
+            "output_tokens": attempt.output_tokens,
+            "total_tokens": attempt.total_tokens,
+        },
+        "billing": {
+            "ledger_id": ledger.id if ledger else None,
+            "ledger_status": ledger.status if ledger else None,
+            "credits_charged": float(ledger.credits_charged) if ledger else None,
+            "credits_before": float(ledger.credits_before) if ledger else None,
+            "credits_after": float(ledger.credits_after) if ledger else None,
+            "config_version_id": ledger.config_version_id if ledger else None,
+            "hold_id": hold.id if hold else None,
+            "hold_status": hold.status if hold else None,
+        },
     }
 
 
@@ -10414,6 +10559,82 @@ async def stream_attempt_events(
             pubsub.close()
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@api_router.get("/dev/solve_debug")
+async def dev_solve_debug(
+    user_id: int = Query(...),
+    session: Session = Depends(get_session)
+):
+    app_env = os.environ.get("APP_ENV", "").upper()
+    if app_env not in {"DEV", "TEST"} and os.environ.get("BILLING_FAKE_SOLVER_ENABLED", "").lower() != "true":
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    from app.models import BillingLedger, CreditHold, CreditLotConsumption, SolverOutputAttempt
+
+    attempt = session.exec(
+        select(SolverOutputAttempt)
+        .where(SolverOutputAttempt.user_id == user_id)
+        .order_by(SolverOutputAttempt.created_at.desc())
+    ).first()
+    ledger = session.exec(
+        select(BillingLedger)
+        .where(BillingLedger.user_id == user_id)
+        .order_by(BillingLedger.created_at.desc())
+    ).first()
+    hold = session.exec(
+        select(CreditHold)
+        .where(CreditHold.user_id == user_id)
+        .order_by(CreditHold.created_at.desc())
+    ).first()
+    consumption = session.exec(
+        select(CreditLotConsumption)
+        .where(CreditLotConsumption.user_id == user_id)
+        .order_by(CreditLotConsumption.created_at.desc())
+        .limit(5)
+    ).all()
+
+    return {
+        "attempt": {
+            "attempt_id": attempt.attempt_id if attempt else None,
+            "request_id": attempt.request_id if attempt else None,
+            "status": attempt.status if attempt else None,
+            "input_tokens": attempt.input_tokens if attempt else None,
+            "output_tokens": attempt.output_tokens if attempt else None,
+            "total_tokens": attempt.total_tokens if attempt else None,
+            "provider": attempt.provider if attempt else None,
+            "model": attempt.model if attempt else None,
+            "created_at": attempt.created_at if attempt else None,
+        },
+        "ledger": {
+            "id": ledger.id if ledger else None,
+            "request_id": ledger.request_id if ledger else None,
+            "status": ledger.status if ledger else None,
+            "credits_charged": float(ledger.credits_charged) if ledger else None,
+            "credits_before": float(ledger.credits_before) if ledger else None,
+            "credits_after": float(ledger.credits_after) if ledger else None,
+            "token_usage_json": ledger.token_usage_json if ledger else None,
+        },
+        "hold": {
+            "id": hold.id if hold else None,
+            "request_id": hold.request_id if hold else None,
+            "status": hold.status if hold else None,
+            "reserved_credits": float(hold.reserved_credits) if hold else None,
+        },
+        "consumption": [
+            {
+                "id": row.id,
+                "credit_lot_id": row.credit_lot_id,
+                "usage_ledger_id": row.usage_ledger_id,
+                "ledger_event_id": row.ledger_event_id,
+                "attempt_id": row.attempt_id,
+                "direction": row.direction,
+                "amount": float(row.amount),
+                "created_at": row.created_at,
+            }
+            for row in (consumption or [])
+        ],
+    }
 
 
 

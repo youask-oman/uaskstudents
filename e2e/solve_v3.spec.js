@@ -1,4 +1,4 @@
-const { expect, test } = require("@playwright/test");
+import { expect, test } from "@playwright/test";
 
 test("Persistence Flow: Restore state on refresh (Mocked)", async ({ page }) => {
     // Mock user login

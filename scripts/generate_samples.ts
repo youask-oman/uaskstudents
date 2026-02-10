@@ -3,6 +3,7 @@ import { buildDocxFromPayload } from "../src/lib/export/docx/buildDocxFromPayloa
 import { docxToBuffer } from "../src/lib/export/docx/docxToBuffer";
 import { writeFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
+import type { ExportSolutionPayload } from "../src/lib/export/docx/validate";
 
 // Ensure tmp directory exists
 const tmpDir = join(process.cwd(), "tmp");
@@ -49,7 +50,7 @@ const run = async () => {
         }]
     };
 
-    const doc1 = await buildDocxFromPayload(sample1 as any);
+    const doc1 = await buildDocxFromPayload(sample1 as ExportSolutionPayload);
     const buf1 = await docxToBuffer(doc1);
     writeFileSync(join(tmpDir, "sample_1_matrix.docx"), buf1);
     console.log("Saved tmp/sample_1_matrix.docx");
@@ -91,7 +92,7 @@ const run = async () => {
         }]
     };
 
-    const doc2 = await buildDocxFromPayload(sample2 as any);
+    const doc2 = await buildDocxFromPayload(sample2 as ExportSolutionPayload);
     const buf2 = await docxToBuffer(doc2);
     writeFileSync(join(tmpDir, "sample_2_calculus.docx"), buf2);
     console.log("Saved tmp/sample_2_calculus.docx");

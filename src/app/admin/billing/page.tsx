@@ -42,11 +42,13 @@ export default function BillingControlCenter() {
 
     // Diagnostics state
     const [diagUserId, setDiagUserId] = useState("");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [diagResult, setDiagResult] = useState<any>(null);
+    const [diagResult, setDiagResult] = useState<Record<string, unknown> | null>(null);
     const [seedAmount, setSeedAmount] = useState(1000);
 
-    const getToken = () => typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const getToken = useCallback(
+        () => (typeof window !== "undefined" ? localStorage.getItem("token") : null),
+        [],
+    );
 
     const fetchConfig = useCallback(async (type: string) => {
         setLoading(true);
@@ -84,7 +86,7 @@ export default function BillingControlCenter() {
             });
         }
         setLoading(false);
-    }, []);
+    }, [getToken, pushToast]);
 
     const fetchTransactions = useCallback(async () => {
         setLoading(true);
@@ -104,7 +106,7 @@ export default function BillingControlCenter() {
             });
         }
         setLoading(false);
-    }, []);
+    }, [getToken, pushToast]);
 
     const fetchHistory = useCallback(async (type: string) => {
         setLoading(true);
@@ -125,7 +127,7 @@ export default function BillingControlCenter() {
             });
         }
         setLoading(false);
-    }, []);
+    }, [getToken, pushToast]);
 
     const saveConfig = async (type: string, value: Record<string, unknown>) => {
         if (!changeMsg.trim()) {

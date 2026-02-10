@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { API_BASE_URL, parseApiError } from '@/lib/api';
@@ -32,15 +32,7 @@ export default function ActiveHoldsPage() {
     const [loading, setLoading] = useState(true);
     const [isSuper, setIsSuper] = useState(false);
 
-    useEffect(() => {
-        fetchData();
-        const storedRole = typeof window !== 'undefined' ? localStorage.getItem('user_role') : '';
-        if (storedRole === 'system_admin' || storedRole === 'superadmin') {
-            setIsSuper(true);
-        }
-    }, []);
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             const [holdsRes, statsRes] = await Promise.all([
@@ -86,7 +78,15 @@ export default function ActiveHoldsPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [token, pushToast]);
+
+    useEffect(() => {
+        fetchData();
+        const storedRole = typeof window !== 'undefined' ? localStorage.getItem('user_role') : '';
+        if (storedRole === 'system_admin' || storedRole === 'superadmin') {
+            setIsSuper(true);
+        }
+    }, [fetchData]);
 
     const handleRelease = async (holdId: number) => {
         const reason = prompt('Reason for forced release?');
@@ -148,7 +148,7 @@ export default function ActiveHoldsPage() {
                         <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight italic">Active Credit Holds</h1>
                     </div>
                     <p className="text-sm font-medium text-slate-500 max-w-2xl">
-                        Monitor credits that are temporarily reserved for active requests. Holds are typically finalized within seconds, but may occasionally become "stuck" due to worker crashes.
+                        Monitor credits that are temporarily reserved for active requests. Holds are typically finalized within seconds, but may occasionally become &quot;stuck&quot; due to worker crashes.
                     </p>
                 </div>
                 <button

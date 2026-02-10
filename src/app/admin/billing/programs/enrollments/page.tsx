@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface Enrollment {
@@ -23,11 +23,7 @@ export default function EnrollmentsPage() {
 
     const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
 
-    useEffect(() => {
-        fetchEnrollments();
-    }, []);
-
-    const fetchEnrollments = async () => {
+    const fetchEnrollments = useCallback(async () => {
         try {
             // Fetch from all programs (first get programs, then enrollments)
             const progRes = await fetch(`${API_BASE}/api/admin/billing/programs?limit=100`, {
@@ -50,12 +46,16 @@ export default function EnrollmentsPage() {
                 setEnrollments(allEnrollments);
                 setTotal(allEnrollments.length);
             }
-        } catch (e) {
-            console.error('Failed to load enrollments');
+        } catch (err) {
+            console.error('Failed to load enrollments', err);
         } finally {
             setLoading(false);
         }
-    };
+    }, [API_BASE, token]);
+
+    useEffect(() => {
+        fetchEnrollments();
+    }, [fetchEnrollments]);
 
     const filtered = search
         ? enrollments.filter(

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { API_BASE_URL, parseApiError } from '@/lib/api';
@@ -37,11 +37,7 @@ export default function CreditProgramsPage() {
         reason: ''
     });
 
-    useEffect(() => {
-        fetchPrograms();
-    }, []);
-
-    const fetchPrograms = async () => {
+    const fetchPrograms = useCallback(async () => {
         try {
             const res = await fetch(`${API_BASE_URL}/api/admin/billing/programs?limit=50`, {
                 headers: { Authorization: `Bearer ${token}` },
@@ -59,17 +55,21 @@ export default function CreditProgramsPage() {
                     requestId: err.requestId,
                 });
             }
-        } catch (e) {
-            console.error('Failed to load programs');
+        } catch (err) {
+            console.error('Failed to load programs', err);
             pushToast({
                 type: "error",
                 title: "Failed to load programs",
-                message: e instanceof Error ? e.message : "Unexpected error",
+                message: err instanceof Error ? err.message : "Unexpected error",
             });
         } finally {
             setLoading(false);
         }
-    };
+    }, [token, pushToast]);
+
+    useEffect(() => {
+        fetchPrograms();
+    }, [fetchPrograms]);
 
     const handleOpenCreate = () => {
         setEditingProgram(null);
@@ -107,7 +107,7 @@ export default function CreditProgramsPage() {
             const method = editingProgram ? 'PUT' : 'POST';
             const idempotencyKey = `${editingProgram ? "program_update" : "program_create"}_${Date.now()}`;
 
-            const payload: any = {
+            const payload: Record<string, unknown> = {
                 name: formData.name,
                 description: formData.description,
                 monthly_gift_credits: formData.monthly_gift_credits,

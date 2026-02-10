@@ -34,12 +34,20 @@ export function renderHtmlFromPayload(payload: ExportSolutionPayload): string {
         return text.split("\n").map(line => `<p>${line}</p>`).join("");
     };
 
-    const renderPlotSvg = (block: any) => {
+    type PlotPoint = { x: number; y: number };
+    type PlotBlock = Extract<ExportSolutionPayload["pages"][number]["blocks"][number], { type: "plot" }> & {
+        points: PlotPoint[];
+        title?: string;
+        xLabel?: string;
+        yLabel?: string;
+    };
+
+    const renderPlotSvg = (block: PlotBlock) => {
         const width = 520;
         const height = 240;
         const padding = 24;
-        const xs = block.points.map((p: any) => p.x);
-        const ys = block.points.map((p: any) => p.y);
+        const xs = block.points.map((p) => p.x);
+        const ys = block.points.map((p) => p.y);
         const minX = Math.min(...xs);
         const maxX = Math.max(...xs);
         const minY = Math.min(...ys);
@@ -48,7 +56,7 @@ export function renderHtmlFromPayload(payload: ExportSolutionPayload): string {
         const spanY = Math.max(1e-9, maxY - minY);
 
         const path = block.points
-            .map((p: any, idx: number) => {
+            .map((p, idx) => {
                 const px = padding + ((p.x - minX) / spanX) * (width - padding * 2);
                 const py = height - padding - ((p.y - minY) / spanY) * (height - padding * 2);
                 return `${idx === 0 ? "M" : "L"}${px.toFixed(2)} ${py.toFixed(2)}`;
@@ -138,7 +146,7 @@ export function renderHtmlFromPayload(payload: ExportSolutionPayload): string {
             } else if (block.type === "plot") {
                 content = `
                     <div class="card">
-                        ${renderPlotSvg(block)}
+                        ${renderPlotSvg(block as PlotBlock)}
                     </div>
                 `;
             }

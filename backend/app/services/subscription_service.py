@@ -24,10 +24,10 @@ class SubscriptionService:
             free_mults = PlanMultipliers(
                 credits=CreditsConfig(
                     solve=SolveCreditsConfig(
-                        free=TierPricingConfig(text=1, snap_image=2, snap_pdf=3, voice=2),
-                        # Standard/Research are expensive on Free plan
-                        standard=TierPricingConfig(text=1000, snap_image=1000, snap_pdf=1000, voice=1000),
-                        research=TierPricingConfig(text=1000, snap_image=1000, snap_pdf=1000, voice=1000)
+                        free=TierPricingConfig(text=5, snap_image=5, snap_pdf=5, voice=5),
+                        short=TierPricingConfig(text=7, snap_image=7, snap_pdf=7, voice=7),
+                        standard=TierPricingConfig(text=10, snap_image=10, snap_pdf=10, voice=10),
+                        research=TierPricingConfig(text=25, snap_image=25, snap_pdf=25, voice=25)
                     )
                 )
             )
@@ -50,11 +50,10 @@ class SubscriptionService:
                 credits=CreditsConfig(
                     solve=SolveCreditsConfig(
                         # Free Tier usage for Students
-                        free=TierPricingConfig(text=1, snap_image=2, snap_pdf=3, voice=2),
-                        # Standard Tier usage for Students
-                        standard=TierPricingConfig(text=2, snap_image=3, snap_pdf=4, voice=3),
-                        # Research Tier usage for Students
-                        research=TierPricingConfig(text=4, snap_image=5, snap_pdf=6, voice=5)
+                        free=TierPricingConfig(text=5, snap_image=5, snap_pdf=5, voice=5),
+                        short=TierPricingConfig(text=7, snap_image=7, snap_pdf=7, voice=7),
+                        standard=TierPricingConfig(text=10, snap_image=10, snap_pdf=10, voice=10),
+                        research=TierPricingConfig(text=25, snap_image=25, snap_pdf=25, voice=25)
                     )
                 )
             )
@@ -154,6 +153,17 @@ class SubscriptionService:
         tier: "free", "standard", "research"
         source_type: "text", "snap_image", "snap_pdf", "voice"
         """
+        # Business rule: flat credits per solve (tier-based)
+        tier_key = (tier or "").strip().lower()
+        if tier_key in {"three_step", "free"}:
+            return 5.0
+        if tier_key == "short":
+            return 7.0
+        if tier_key == "standard":
+            return 10.0
+        if tier_key == "research":
+            return 25.0
+
         multipliers_data = plan.multipliers or {}
         
         # Parse into Pydantic model for validation/access
@@ -248,7 +258,19 @@ class SubscriptionService:
             elif mode == "research":
                 tier = "research"
             else:
-                tier = "free"
+                tier = "three_step"
+        else:
+            raw_tier = str(tier).lower()
+            if raw_tier in {"free", "three_step"}:
+                tier = "three_step"
+            elif raw_tier in {"short"}:
+                tier = "short"
+            elif raw_tier in {"standard"}:
+                tier = "standard"
+            elif raw_tier in {"research"}:
+                tier = "research"
+            else:
+                tier = "standard"
         
         source = action_request.get("source_type")
         if not source:

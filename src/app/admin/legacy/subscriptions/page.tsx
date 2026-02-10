@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface LegacyPlan {
@@ -21,11 +21,7 @@ export default function LegacySubscriptionsPage() {
 
     const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
 
-    useEffect(() => {
-        fetchPlans();
-    }, []);
-
-    const fetchPlans = async () => {
+    const fetchPlans = useCallback(async () => {
         try {
             const res = await fetch(`${API_BASE}/api/v1/admin/plans`, {
                 headers: { Authorization: `Bearer ${token}` },
@@ -34,12 +30,16 @@ export default function LegacySubscriptionsPage() {
                 const data = await res.json();
                 setPlans(Array.isArray(data) ? data : []);
             }
-        } catch (e) {
-            console.error('Failed to load legacy subscriptions');
+        } catch (err) {
+            console.error('Failed to load legacy subscriptions', err);
         } finally {
             setLoading(false);
         }
-    };
+    }, [API_BASE, token]);
+
+    useEffect(() => {
+        fetchPlans();
+    }, [fetchPlans]);
 
     if (loading) {
         return (

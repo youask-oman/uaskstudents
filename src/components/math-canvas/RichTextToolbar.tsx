@@ -48,8 +48,7 @@ export default function RichTextToolbar({
         type="button"
         className={`${styles.actionButtonDual} ${styles.actionButtonSecondary}`}
         onClick={() => {
-          // eslint-disable-next-line no-restricted-globals
-          if (confirm("Delete current page? This cannot be undone.")) {
+          if (window.confirm("Delete current page? This cannot be undone.")) {
             onDeletePage();
           }
         }}

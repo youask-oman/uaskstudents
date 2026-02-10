@@ -25,7 +25,8 @@ export function renderHtmlFromPayload(payload: ExportSolutionPayload) {
             .join("");
     }
 
-    function renderBlock(b: any) {
+    type Block = ExportSolutionPayload["pages"][number]["blocks"][number];
+    function renderBlock(b: Block) {
         if (b.type === "problem") {
             return `
         <div class="card card-problem">

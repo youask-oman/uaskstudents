@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -55,13 +55,7 @@ export default function UserWalletPage() {
     const [granting, setGranting] = useState(false);
     const [refunding, setRefunding] = useState(false);
 
-    useEffect(() => {
-        if (userId) {
-            fetchData();
-        }
-    }, [userId]);
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         try {
             const [walletRes, lotsRes, ledgerRes] = await Promise.all([
                 fetch(`${API_BASE_URL}/api/admin/billing/users/${userId}/wallet`, {
@@ -109,17 +103,23 @@ export default function UserWalletPage() {
                     requestId: err.requestId,
                 });
             }
-        } catch (e) {
-            console.error('Failed to load wallet');
+        } catch (err) {
+            console.error('Failed to load wallet', err);
             pushToast({
                 type: "error",
                 title: "Failed to load wallet",
-                message: e instanceof Error ? e.message : "Unexpected error",
+                message: err instanceof Error ? err.message : "Unexpected error",
             });
         } finally {
             setLoading(false);
         }
-    };
+    }, [token, userId, pushToast]);
+
+    useEffect(() => {
+        if (userId) {
+            fetchData();
+        }
+    }, [userId, fetchData]);
 
     const grantCredits = async () => {
         const credits = prompt('Enter credit amount to grant:');

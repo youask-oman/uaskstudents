@@ -1,7 +1,7 @@
 
 import katex from "katex";
 import type { ExportSolutionPayload } from "@/lib/export/docx/validate";
-import type { CanvasElement, CanvasPageData, StepRow } from "../types";
+import type { CanvasPageData, StepRow } from "../types";
 
 export interface SolutionExportPayload {
   pages: CanvasPageData[];
@@ -185,8 +185,15 @@ export const suggestExportFileName = (
   return `uask-solution-${slug}-${day}.${extension}`;
 };
 
-const renderPlotSvg = (element: CanvasElement): string => {
-  if (element.type !== "plot" || element.points.length < 2) return "";
+type PlotLike = {
+  title?: string;
+  xLabel?: string;
+  yLabel?: string;
+  points: { x: number; y: number }[];
+};
+
+const renderPlotSvg = (element: PlotLike): string => {
+  if (element.points.length < 2) return "";
   const width = 520;
   const height = 240;
   const padding = 24;
@@ -320,7 +327,7 @@ const renderPage = (page: CanvasPageData, pageIndex: number): string => {
           }
             ${block.plots && block.plots.length > 0 ? `
               <div class="block-plots">
-                ${block.plots.map(p => renderPlotSvg({ type: "plot", ...p } as any)).join("")}
+                ${block.plots.map(p => renderPlotSvg(p)).join("")}
               </div>
             ` : ""}
           </section>
@@ -453,45 +460,6 @@ export const buildExportHtml = (payload: SolutionExportPayload): string => {
 </html>`;
 };
 
-const exportViaHiddenFrame = (html: string): void => {
-  if (typeof document === "undefined" || typeof window === "undefined" || !document.body) {
-    throw new Error("PDF export is unavailable in this environment.");
-  }
-
-  const frame = document.createElement("iframe");
-  frame.setAttribute("aria-hidden", "true");
-  frame.tabIndex = -1;
-  frame.style.position = "fixed";
-  frame.style.width = "0";
-  frame.style.height = "0";
-  frame.style.border = "0";
-  frame.style.opacity = "0";
-  frame.style.pointerEvents = "none";
-
-  const cleanup = () => {
-    if (frame.parentElement) frame.parentElement.removeChild(frame);
-  };
-
-  const cleanupTimer = window.setTimeout(cleanup, 60_000);
-  frame.addEventListener(
-    "load",
-    () => {
-      const frameWindow = frame.contentWindow;
-      if (!frameWindow) return;
-      const finish = () => {
-        window.clearTimeout(cleanupTimer);
-        cleanup();
-        frameWindow.removeEventListener("afterprint", finish);
-      };
-      frameWindow.addEventListener("afterprint", finish);
-    },
-    { once: true },
-  );
-
-  document.body.appendChild(frame);
-  frame.srcdoc = html;
-};
-
 export const exportCanvasToPdf = async (payload: SolutionExportPayload): Promise<void> => {
   try {
     const exportPayload = mapToExportPayload(payload);
@@ -541,7 +509,8 @@ const mapToExportPayload = (payload: SolutionExportPayload): ExportSolutionPaylo
           }];
         }
         if (block.type === "steps") {
-          const out: any[] = [];
+          type ExportBlock = ExportSolutionPayload["pages"][number]["blocks"][number];
+          const out: ExportBlock[] = [];
 
           out.push({
             type: "problem",

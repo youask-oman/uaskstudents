@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ToastProvider } from "@/components/ui/ToastProvider";
@@ -80,7 +81,15 @@ export default function AdminPaymentsLayout({
                 <aside className="w-64 flex-shrink-0 bg-slate-900 text-white border-r border-slate-800 flex flex-col justify-between p-4 transition-colors">
                     <div className="flex flex-col gap-8">
                         <div className="flex items-center gap-3 px-2">
-                            <img src="/logo-dark.png" alt="uask.ai" className="h-8 w-auto invert brightness-0 grayscale-0" style={{ filter: "brightness(0) invert(1)" }} />
+                            <Image
+                                src="/logo-dark.png"
+                                alt="uask.ai"
+                                width={96}
+                                height={32}
+                                className="h-8 w-auto invert brightness-0 grayscale-0"
+                                style={{ filter: "brightness(0) invert(1)" }}
+                                priority
+                            />
                             <div className="flex flex-col">
                                 <h1 className="text-white text-base font-bold leading-none">Payments Console</h1>
                                 <p className="text-emerald-400 text-[10px] uppercase tracking-widest font-semibold mt-1">Stripe + Credits</p>

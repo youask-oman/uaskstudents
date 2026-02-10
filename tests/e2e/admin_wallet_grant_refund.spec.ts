@@ -6,7 +6,7 @@ const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL || "admin@uask.ai";
 const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD || "DevOnlyChangeMe123!";
 const API_BASE = process.env.PLAYWRIGHT_API_BASE_URL || "http://localhost:8000";
 
-async function loginAsAdmin(page: any) {
+async function loginAsAdmin(page: Page) {
     await page.goto("/login");
     await page.locator('input[type="email"]').fill(ADMIN_EMAIL);
     await page.locator('input[type="password"]').fill(ADMIN_PASSWORD);
@@ -64,3 +64,4 @@ test("admin wallet grant/refund updates lots + ledger", async ({ page, request }
     await page.waitForTimeout(1000);
     await page.screenshot({ path: path.join(shotsDir, "admin-wallet-after.png"), fullPage: true });
 });
+

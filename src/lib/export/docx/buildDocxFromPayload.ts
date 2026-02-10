@@ -82,10 +82,14 @@ async function mathParagraphs(math: string[] | undefined): Promise<Paragraph[]> 
         const w = Math.round(width * scale);
         const h = Math.round(height * scale);
 
+        const imageConfig: ConstructorParameters<typeof ImageRun>[0] = {
+            data: png,
+            transformation: { width: w, height: h },
+        };
         out.push(
             new Paragraph({
                 alignment: AlignmentType.CENTER,
-                children: [new ImageRun({ data: png, transformation: { width: w, height: h } } as any)],
+                children: [new ImageRun(imageConfig)],
             })
         );
     }
@@ -93,7 +97,7 @@ async function mathParagraphs(math: string[] | undefined): Promise<Paragraph[]> 
 }
 
 export async function buildDocxFromPayload(payload: ExportSolutionPayload): Promise<Document> {
-    const children: any[] = [];
+    const children: (Paragraph | Table)[] = [];
 
     // Title
     children.push(

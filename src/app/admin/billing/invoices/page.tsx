@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 
@@ -26,11 +26,7 @@ export default function InvoicesPage() {
 
     const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
 
-    useEffect(() => {
-        fetchInvoices();
-    }, []);
-
-    const fetchInvoices = async () => {
+    const fetchInvoices = useCallback(async () => {
         setLoading(true);
         try {
             const res = await fetch(`${API_BASE}/api/admin/billing/invoices?limit=50`, {
@@ -41,12 +37,16 @@ export default function InvoicesPage() {
                 setInvoices(data.items || []);
                 setTotal(data.total || 0);
             }
-        } catch (e) {
-            console.error('Failed to load invoices');
+        } catch (err) {
+            console.error('Failed to load invoices', err);
         } finally {
             setLoading(false);
         }
-    };
+    }, [API_BASE, token]);
+
+    useEffect(() => {
+        fetchInvoices();
+    }, [fetchInvoices]);
 
     if (loading && invoices.length === 0) {
         return (

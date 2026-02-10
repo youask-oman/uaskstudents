@@ -177,16 +177,6 @@ const formatPlanName = (planName?: string, slug?: string, fallback?: string) => 
     return "Unassigned Plan";
 };
 
-const formatCurrencyFromCents = (cents?: number) => {
-    if (cents === null || cents === undefined) return "Free";
-    return `$${(cents / 100).toFixed(2)}`;
-};
-
-const formatCreditsLabel = (credits?: number) => {
-    if (credits === null || credits === undefined) return "Credits TBD";
-    return `${credits.toLocaleString()} credits / mo`;
-};
-
 const FieldGrid = ({ data, title }: { data: GenericRecord | undefined; title: string }) => {
     const entries = Object.entries(data || {});
     return (

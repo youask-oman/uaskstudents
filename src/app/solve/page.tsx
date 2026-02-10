@@ -2,8 +2,7 @@
 
 import DashboardNavBar from "@/components/DashboardNavBar";
 import { useState, useEffect, useRef, useMemo } from "react";
-import Link from "next/link";
-import ProgressTimeline, { TimelineStep } from "@/components/solve/ProgressTimeline";
+import type { TimelineStep } from "@/components/solve/ProgressTimeline";
 import { useRouter } from "next/navigation";
 import MathRenderer from "@/components/math/MathRendererSwitch";
 import MathRendererMJX from "@/components/MathRendererMJX";
@@ -71,6 +70,9 @@ interface VoiceArtifact {
 interface StreamingTelemetry {
     provider?: string;
     model?: string;
+    input_tokens?: number;
+    output_tokens?: number;
+    cached_tokens?: number;
     total_tokens?: number;
     latency_ms_openai?: number;
     truncated?: boolean;
@@ -117,24 +119,38 @@ interface VoiceFeatures {
     voice_transcript_confidence?: number;
 }
 
-type FeaturesUsed = Partial<OcrMetadata & VoiceFeatures> & {
-    ocr_used?: boolean;
-    ocr_engine?: string;
-    ocr_source?: string;
-    ocr_warnings?: string[];
-    voice_used?: boolean;
-    plot_requested?: boolean;
-};
+interface DebugAttemptDetails {
+    billing?: {
+        credits_charged?: number;
+        credits_after?: number;
+    };
+}
 
 export default function DashboardPage() {
     const { pushToast } = useToast();
     const useSnapSolveUploadPanelV2 = process.env.NEXT_PUBLIC_SNAP_SOLVE_UPLOAD_PANEL_V2 !== "false";
+    const devToolsEnabled = process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_ENABLE_DEV_TOOLS === "true";
+    const mapTierToApi = (tier: SolveTier) => (tier === "FREE" ? "three_step" : tier.toLowerCase());
+    const formatDebugNumber = (value?: number) => (value === undefined ? "-" : Number(value));
     const [activeTab, setActiveTab] = useState<'text' | 'snap' | 'voice'>('text');
     const [history, setHistory] = useState<ChatSession[]>([]);
     const [query, setQuery] = useState("sqrt(x+5) = x - 1");
     const [isSolving, setIsSolving] = useState(false);
     const [onlineUsers, setOnlineUsers] = useState<ActiveUser[]>([]);
     const [isPublic, setIsPublic] = useState(false);
+    const [debugSimTokens, setDebugSimTokens] = useState({
+        input_tokens: 2000,
+        output_tokens: 1000,
+        cached_tokens: 250,
+        model: "gpt-5-mini",
+        provider: "openai_simulated",
+    });
+    const [debugForceError, setDebugForceError] = useState(false);
+    const [reuseIdempotencyKey, setReuseIdempotencyKey] = useState(true);
+    const [lastIdempotencyKey, setLastIdempotencyKey] = useState<string | null>(null);
+    const [stayOnSolveResult, setStayOnSolveResult] = useState(true);
+    const [debugAttemptDetails, setDebugAttemptDetails] = useState<DebugAttemptDetails | null>(null);
+    const [lastSolveError, setLastSolveError] = useState<{ code?: string; message?: string; request_id?: string } | null>(null);
 
     const [activeMode, setActiveMode] = useState<ModeId | null>(null);
     const [isSeeAllOpen, setIsSeeAllOpen] = useState(false);
@@ -203,7 +219,6 @@ export default function DashboardPage() {
         { key: "schema_validate", label: "Strict Validation", description: "Checking schema v1.0...", status: "pending", icon: "verified_user" },
         { key: "completed", label: "Packet Delivery", description: "Assembling response...", status: "pending", icon: "network_check" },
     ]);
-    const [solveError, setSolveError] = useState<{ code?: string; message: string } | null>(null);
 
     // SSE / Polling Event Listener
     useEffect(() => {
@@ -221,7 +236,8 @@ export default function DashboardPage() {
             }));
         };
 
-        const handleBackendEvent = (data: any) => {
+        type BackendEvent = { phase?: string; status?: string; metadata?: Record<string, unknown> };
+        const handleBackendEvent = (data: BackendEvent) => {
             const { phase, status, metadata } = data;
 
             if (phase === "attempt_created") {
@@ -254,7 +270,6 @@ export default function DashboardPage() {
                 updateStep("completed", "completed", "Solve complete.");
             } else if (phase === "completed_failure") {
                 updateStep("completed", "failed", "Solve failed.");
-                setSolveError({ code: metadata?.code, message: metadata?.error || "Solve failed." });
             } else if (phase === "clarification_needed") {
                 updateStep("completed", "active", "Clarification requested.");
             }
@@ -289,7 +304,6 @@ export default function DashboardPage() {
                             if (pollInterval) clearInterval(pollInterval);
                         } else if (data.status === "failure") {
                             setPipelineStages(prev => prev.map(s => s.status === "completed" ? s : { ...s, status: "failed" }));
-                            setSolveError({ code: data.failure_code, message: data.error_message });
                             if (pollInterval) clearInterval(pollInterval);
                         } else if (data.status === "ambiguous") {
                             if (pollInterval) clearInterval(pollInterval);
@@ -316,6 +330,7 @@ export default function DashboardPage() {
         const payloadObj = toObject(payload);
         const nested = toObject(payloadObj.solve_meta ?? payloadObj);
         const versions = toObject(nested.prompt_versions ?? payloadObj.prompt_versions);
+        const tokenConfig = toObject(payloadObj.token_config ?? nested.token_config);
         return {
             request_id: (payloadObj.request_id as string | undefined) ?? (nested.request_id as string | undefined),
             provider: (payloadObj.provider as string | undefined) ?? (nested.provider as string | undefined),
@@ -353,7 +368,7 @@ export default function DashboardPage() {
             output_schema_version:
                 (payloadObj.output_schema_version as number | undefined) ??
                 (versions.schema as number | undefined),
-            token_config: (payloadObj.token_config as any) ?? (nested.token_config as any),
+            token_config: Object.keys(tokenConfig).length ? tokenConfig : undefined,
         };
     };
 
@@ -364,7 +379,7 @@ export default function DashboardPage() {
     ): Promise<StreamingRuntimeMeta> => {
         const queryParams = new URLSearchParams({
             user_id: userId,
-            tier: tier.toLowerCase(),
+            tier: mapTierToApi(tier),
             mode_family: "SOLVE",
             requested_mode: requestedMode,
         });
@@ -387,9 +402,8 @@ export default function DashboardPage() {
     const [walletPrograms, setWalletPrograms] = useState<WalletProgramEnrollment[]>([]);
     const [walletLoaded, setWalletLoaded] = useState(false);
     const [walletError, setWalletError] = useState<string | null>(null);
-    const [userProfile, setUserProfile] = useState<any | null>(null);
+    const [userProfile, setUserProfile] = useState<Record<string, unknown> | null>(null);
     const [estimate, setEstimate] = useState<CreditsEstimateResponse | null>(null);
-    const [estimateError, setEstimateError] = useState<string | null>(null);
     const [tokenPolicy, setTokenPolicy] = useState<TokenPolicy | null>(null);
     const [tokenPolicyLoaded, setTokenPolicyLoaded] = useState(false);
     const [tokenPolicyError, setTokenPolicyError] = useState<string | null>(null);
@@ -468,7 +482,6 @@ export default function DashboardPage() {
         if (!tokenPolicyReady) return;
         const runEstimate = async () => {
             try {
-                setEstimateError(null);
                 const inputType = activeTab === "snap" ? "snap" : activeTab === "voice" ? "voice" : "text";
                 const response = await fetchCreditsEstimate({
                     tier: selectedSolveTier,
@@ -483,9 +496,8 @@ export default function DashboardPage() {
                     },
                 });
                 setEstimate(response);
-            } catch (e) {
+            } catch {
                 setEstimate(null);
-                setEstimateError(e instanceof Error ? e.message : "Unable to estimate credits");
             }
         };
         void runEstimate();
@@ -625,7 +637,7 @@ export default function DashboardPage() {
         restoreAttempt();
         const interval = setInterval(fetchOnline, 30000);
         return () => clearInterval(interval);
-    }, [router]);
+    }, [router, pushToast]);
 
     const handleSuggestionClick = (suggestion: Suggestion) => {
         setMathModeEnabled(true);
@@ -868,6 +880,7 @@ export default function DashboardPage() {
         setStreamingTelemetry(null);
         setStreamingMeta(null);
         setSolveStartTime(Date.now());
+        setLastSolveError(null);
 
         // Reset Phase 1 Clarification
         setIsClarifying(false);
@@ -876,9 +889,18 @@ export default function DashboardPage() {
         setClarificationHistory([]);
         setActiveAttemptId(null);
 
+        const createIdempotencyKey = () =>
+            typeof crypto !== "undefined" && "randomUUID" in crypto
+                ? crypto.randomUUID()
+                : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
         try {
             const streamCandidates = ["/api/v1/solve_v3_stream"];
-            const requestedMode = (selectedSolveTier === 'FREE' || selectedSolveTier === 'SHORT') ? 'minimal' : 'detailed';
+            const requestedMode = (selectedSolveTier === "FREE" || selectedSolveTier === "SHORT") ? "minimal" : "detailed";
+            const idempotencyKey = (devToolsEnabled && reuseIdempotencyKey && lastIdempotencyKey)
+                ? lastIdempotencyKey
+                : createIdempotencyKey();
+            setLastIdempotencyKey(idempotencyKey);
 
             void fetchSolveRuntimeMeta(userId, selectedSolveTier, requestedMode)
                 .then((runtimeMeta) => {
@@ -908,7 +930,7 @@ export default function DashboardPage() {
                         body: JSON.stringify({
                             confirmed_text: textToSolve,
                             requested_mode: requestedMode,
-                            tier: selectedSolveTier.toLowerCase(),
+                            tier: mapTierToApi(selectedSolveTier),
                             trusted_context: {
                                 learning_mode: selectedGoal,
                                 grade_level: trustedProfile?.grade_level || undefined,
@@ -918,7 +940,12 @@ export default function DashboardPage() {
                             features_used: features,
                             graph_mode: graphMode,
                             attach_to_step_id: attachToStepId,
-                            force_validity: mathValidityConfirmed
+                            force_validity: mathValidityConfirmed,
+                            idempotency_key: idempotencyKey,
+                            ...(devToolsEnabled ? {
+                                debug_simulated_tokens: debugSimTokens,
+                                debug_force_error: debugForceError
+                            } : {})
                         })
                     });
                     break;
@@ -958,32 +985,7 @@ export default function DashboardPage() {
                     } else if (trimmedLine.startsWith('data: ')) {
                         try {
                             const data = JSON.parse(trimmedLine.slice(6));
-                            if (currentEvent === 'delta') {
-                                setStreamingContent(prev => prev + data.text);
-                            } else if (currentEvent === 'stage') {
-                                setCurrentStage(data.name);
-                            } else if (currentEvent === 'telemetry') {
-                                setStreamingTelemetry(data?.telemetry ?? data);
-                            } else if (currentEvent === 'done') {
-                                if (data.ok) {
-                                    setSolveProgress(100);
-                                    localStorage.removeItem("uask.activeAttemptId");
-                                    localStorage.removeItem("uask.activeQuery");
-                                    setTimeout(() => router.push(`/chat/${data.session_id}`), 500);
-                                } else if (data.error?.code === "ambiguous_response") {
-                                    setIsClarifying(true);
-                                    setClarificationMessage(data.error.refusal || data.error.message);
-                                    setActiveAttemptId(data.error.request_id);
-                                    if (data.error.request_id) {
-                                        localStorage.setItem("uask.activeAttemptId", data.error.request_id);
-                                        localStorage.setItem("uask.activeQuery", textToSolve);
-                                    }
-                                } else {
-                                    localStorage.removeItem("uask.activeAttemptId");
-                                    localStorage.removeItem("uask.activeQuery");
-                                    throw new Error(data.error?.message || "Solve failed");
-                                }
-                            } else if (currentEvent === 'meta') {
+                            if (currentEvent === "meta") {
                                 setStreamingMeta(data);
                                 if (data.attempt_id) {
                                     setActiveAttemptId(data.attempt_id);
@@ -995,6 +997,56 @@ export default function DashboardPage() {
                                     localStorage.setItem("uask.activeAttemptId", parsedMeta.request_id);
                                     localStorage.setItem("uask.activeQuery", textToSolve);
                                     setActiveAttemptId(parsedMeta.request_id);
+                                }
+                            } else if (currentEvent === "delta") {
+                                setStreamingContent((prev) => prev + data.text);
+                            } else if (currentEvent === "stage") {
+                                setCurrentStage(data.name);
+                            } else if (currentEvent === "telemetry") {
+                                setStreamingTelemetry(data?.telemetry ?? data);
+                            } else if (currentEvent === "done") {
+                                if (data.ok) {
+                                    setSolveProgress(100);
+                                    localStorage.removeItem("uask.activeAttemptId");
+                                    localStorage.removeItem("uask.activeQuery");
+                                    if (devToolsEnabled && stayOnSolveResult) {
+                                        if (streamingMeta?.attempt_id) {
+                                            try {
+                                                const attemptRes = await fetch(`/api/v1/attempt/${streamingMeta.attempt_id}`, {
+                                                    method: "GET",
+                                                    credentials: "include",
+                                                });
+                                                if (attemptRes.ok) {
+                                                    const attemptPayload = await attemptRes.json();
+                                                    setDebugAttemptDetails(attemptPayload);
+                                                }
+                                            } catch {
+                                                // ignore debug fetch failures
+                                            }
+                                        }
+                                    } else {
+                                        setTimeout(() => router.push(`/chat/${data.session_id}`), 500);
+                                    }
+                                } else if (data.error?.code === "ambiguous_response") {
+                                    setIsClarifying(true);
+                                    setClarificationMessage(data.error.refusal || data.error.message);
+                                    setActiveAttemptId(data.error.request_id);
+                                    if (data.error.request_id) {
+                                        localStorage.setItem("uask.activeAttemptId", data.error.request_id);
+                                        localStorage.setItem("uask.activeQuery", textToSolve);
+                                    }
+                                } else {
+                                    localStorage.removeItem("uask.activeAttemptId");
+                                    localStorage.removeItem("uask.activeQuery");
+                                    if (data.error?.request_id) {
+                                        setStreamingMeta((prev) => ({ ...(prev || {}), request_id: data.error.request_id }));
+                                    }
+                                    setLastSolveError({
+                                        code: data.error?.code,
+                                        message: data.error?.message,
+                                        request_id: data.error?.request_id,
+                                    });
+                                    throw new Error(data.error?.message || "Solve failed");
                                 }
                             }
                         } catch (e) {
@@ -2082,6 +2134,108 @@ export default function DashboardPage() {
                     </div>
                 </div>
             </main>
+
+            {devToolsEnabled && (
+                <section className="max-w-7xl mx-auto px-4 pb-10">
+                    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 text-sm">
+                        <div className="flex items-center justify-between gap-4 mb-3">
+                            <h3 className="font-semibold text-slate-900 dark:text-slate-100">Simulated Solve Debug (DEV)</h3>
+                            <div className="text-xs text-slate-500">Controlled tokens, idempotency, and error simulation</div>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                            <label className="text-xs text-slate-600 dark:text-slate-300">
+                                Input Tokens
+                                <input
+                                    type="number"
+                                    className="mt-1 w-full rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-2 py-1"
+                                    value={debugSimTokens.input_tokens}
+                                    onChange={(e) => setDebugSimTokens((prev) => ({ ...prev, input_tokens: Number(e.target.value) }))}
+                                />
+                            </label>
+                            <label className="text-xs text-slate-600 dark:text-slate-300">
+                                Output Tokens
+                                <input
+                                    type="number"
+                                    className="mt-1 w-full rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-2 py-1"
+                                    value={debugSimTokens.output_tokens}
+                                    onChange={(e) => setDebugSimTokens((prev) => ({ ...prev, output_tokens: Number(e.target.value) }))}
+                                />
+                            </label>
+                            <label className="text-xs text-slate-600 dark:text-slate-300">
+                                Cached Tokens
+                                <input
+                                    type="number"
+                                    className="mt-1 w-full rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-2 py-1"
+                                    value={debugSimTokens.cached_tokens}
+                                    onChange={(e) => setDebugSimTokens((prev) => ({ ...prev, cached_tokens: Number(e.target.value) }))}
+                                />
+                            </label>
+                            <label className="text-xs text-slate-600 dark:text-slate-300">
+                                Model
+                                <input
+                                    type="text"
+                                    className="mt-1 w-full rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-2 py-1"
+                                    value={debugSimTokens.model}
+                                    onChange={(e) => setDebugSimTokens((prev) => ({ ...prev, model: e.target.value }))}
+                                />
+                            </label>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                            <label className="text-xs text-slate-600 dark:text-slate-300">
+                                Provider
+                                <input
+                                    type="text"
+                                    className="mt-1 w-full rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-2 py-1"
+                                    value={debugSimTokens.provider}
+                                    onChange={(e) => setDebugSimTokens((prev) => ({ ...prev, provider: e.target.value }))}
+                                />
+                            </label>
+                            <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 mt-6">
+                                <input
+                                    type="checkbox"
+                                    checked={debugForceError}
+                                    onChange={(e) => setDebugForceError(e.target.checked)}
+                                />
+                                Force Error
+                            </label>
+                            <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 mt-6">
+                                <input
+                                    type="checkbox"
+                                    checked={reuseIdempotencyKey}
+                                    onChange={(e) => setReuseIdempotencyKey(e.target.checked)}
+                                />
+                                Reuse Idempotency Key
+                            </label>
+                            <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 mt-6">
+                                <input
+                                    type="checkbox"
+                                    checked={stayOnSolveResult}
+                                    onChange={(e) => setStayOnSolveResult(e.target.checked)}
+                                />
+                                Stay On Result
+                            </label>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-600 dark:text-slate-300">
+                            <div>
+                                <div>Attempt ID: {streamingMeta?.attempt_id || "-"}</div>
+                                <div>Request ID: {streamingMeta?.request_id || "-"}</div>
+                                <div>Tier: {streamingMeta?.tier_effective || streamingMeta?.tier_requested || "-"}</div>
+                                <div>Credits Charged: {formatDebugNumber(debugAttemptDetails?.billing?.credits_charged)}</div>
+                                <div>Credits After: {formatDebugNumber(debugAttemptDetails?.billing?.credits_after)}</div>
+                                <div>Error Code: {lastSolveError?.code ?? "-"}</div>
+                                <div>Error Request ID: {lastSolveError?.request_id ?? "-"}</div>
+                            </div>
+                            <div>
+                                <div>Input Tokens: {streamingTelemetry?.input_tokens ?? "-"}</div>
+                                <div>Output Tokens: {streamingTelemetry?.output_tokens ?? "-"}</div>
+                                <div>Cached Tokens: {streamingTelemetry?.cached_tokens ?? "-"}</div>
+                                <div>Total Tokens: {streamingTelemetry?.total_tokens ?? "-"}</div>
+                                <div>Model: {streamingTelemetry?.model ?? "-"}</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            )}
 
             <footer className="max-w-7xl mx-auto px-4 py-8 border-t border-slate-200 dark:border-slate-800 text-center">
                 <p className="text-slate-400 text-xs font-medium">© {new Date().getFullYear()} YouAsk AI LLM Math Solver Labs. All rights reserved.</p>

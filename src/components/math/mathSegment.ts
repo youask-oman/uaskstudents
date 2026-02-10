@@ -80,7 +80,7 @@ export const segmentMath = (content: string): MathSegment[] => {
             const rest = content.slice(next.index);
 
             // Base pattern: command identifier
-            let pattern = triggerType === "command"
+            const pattern = triggerType === "command"
                 ? `^\\\\${capturedCmd}`
                 : `^([a-zA-Z0-9]+)`;
 

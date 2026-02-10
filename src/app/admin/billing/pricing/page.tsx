@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { API_BASE_URL, parseApiError } from '@/lib/api';
@@ -36,11 +36,7 @@ export default function ProviderPricingPage() {
         reason: ''
     });
 
-    useEffect(() => {
-        fetchPricing();
-    }, [showInactive]);
-
-    const fetchPricing = async () => {
+    const fetchPricing = useCallback(async () => {
         try {
             const res = await fetch(`${API_BASE_URL}/api/admin/billing/pricing?show_inactive_gpt5=${showInactive}`, {
                 headers: { Authorization: `Bearer ${token}` },
@@ -57,17 +53,21 @@ export default function ProviderPricingPage() {
                     requestId: err.requestId,
                 });
             }
-        } catch (e) {
-            console.error('Failed to load pricing');
+        } catch (err) {
+            console.error('Failed to load pricing', err);
             pushToast({
                 type: "error",
                 title: "Failed to load pricing",
-                message: e instanceof Error ? e.message : "Unexpected error",
+                message: err instanceof Error ? err.message : "Unexpected error",
             });
         } finally {
             setLoading(false);
         }
-    };
+    }, [token, pushToast, showInactive]);
+
+    useEffect(() => {
+        fetchPricing();
+    }, [fetchPricing]);
 
     const handleOpenCreate = () => {
         setFormData({

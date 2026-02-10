@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { API_BASE_URL, parseApiError } from '@/lib/api';
 import { useToast } from '@/components/ui/ToastProvider';
@@ -31,11 +31,7 @@ export default function HealthPage() {
     const [loading, setLoading] = useState(true);
     const [running, setRunning] = useState(false);
 
-    useEffect(() => {
-        fetchData();
-    }, []);
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         try {
             const [healthRes, mismatchRes] = await Promise.all([
                 fetch(`${API_BASE_URL}/api/admin/billing/health`, {
@@ -79,7 +75,11 @@ export default function HealthPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [token, pushToast]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
     const runReconciliation = async () => {
         if (!confirm('Run reconciliation job now? This may take a while.')) return;

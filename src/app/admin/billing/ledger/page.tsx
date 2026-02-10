@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { API_BASE_URL, parseApiError } from '@/lib/api';
@@ -28,11 +28,7 @@ export default function LedgerExplorerPage() {
     const [total, setTotal] = useState(0);
     const [filterUser, setFilterUser] = useState('');
 
-    useEffect(() => {
-        fetchLedger();
-    }, []);
-
-    const fetchLedger = async (userId?: string) => {
+    const fetchLedger = useCallback(async (userId?: string) => {
         setLoading(true);
         try {
             const url = userId
@@ -55,17 +51,21 @@ export default function LedgerExplorerPage() {
                     requestId: err.requestId,
                 });
             }
-        } catch (e) {
-            console.error('Failed to load ledger');
+        } catch (err) {
+            console.error('Failed to load ledger', err);
             pushToast({
                 type: "error",
                 title: "Failed to load ledger",
-                message: e instanceof Error ? e.message : "Unexpected error",
+                message: err instanceof Error ? err.message : "Unexpected error",
             });
         } finally {
             setLoading(false);
         }
-    };
+    }, [token, pushToast]);
+
+    useEffect(() => {
+        fetchLedger();
+    }, [fetchLedger]);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();

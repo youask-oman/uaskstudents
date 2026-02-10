@@ -18,10 +18,11 @@ export async function POST(req: Request) {
                 "Content-Disposition": `attachment; filename="${fileName}.pdf"`,
             },
         });
-    } catch (e: any) {
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
         console.error("[PDF_EXPORT_FAIL]", e);
         return NextResponse.json(
-            { ok: false, error: "PDF export failed", detail: String(e?.message || e) },
+            { ok: false, error: "PDF export failed", detail: message },
             { status: 500 }
         );
     }

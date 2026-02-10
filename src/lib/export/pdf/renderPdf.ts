@@ -22,7 +22,7 @@ export async function renderPdf(options: RenderPdfOptions): Promise<Buffer> {
 
         const headerTemplate = `
             <div style="font-size: 8px; width: 100%; text-align: right; padding-right: 1.5cm; color: #999; font-family: 'Inter', sans-serif;">
-                <span class="title"></span>
+                <span class="title">${docTitle}</span>
             </div>
         `;
 

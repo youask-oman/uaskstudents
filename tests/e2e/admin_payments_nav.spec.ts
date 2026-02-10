@@ -1,11 +1,12 @@
-﻿import { test, expect } from "@playwright/test";
+import { test, expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import fs from "fs";
 import path from "path";
 
 const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL || "admin@uask.ai";
 const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD || "DevOnlyChangeMe123!";
 
-async function loginAsAdmin(page: any) {
+async function loginAsAdmin(page: Page) {
     await page.goto("/login");
     await page.locator('input[type="email"]').fill(ADMIN_EMAIL);
     await page.locator('input[type="password"]').fill(ADMIN_PASSWORD);
@@ -51,3 +52,4 @@ test("admin payments dashboard navigation", async ({ page }) => {
         await page.screenshot({ path: path.join(shotsDir, `${slug}.png`), fullPage: true });
     }
 });
+

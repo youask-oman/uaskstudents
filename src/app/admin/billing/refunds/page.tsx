@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { API_BASE_URL, parseApiError } from '@/lib/api';
@@ -30,15 +30,7 @@ export default function RefundCenterPage() {
     const [reason, setReason] = useState('');
     const [reasonCode, setReasonCode] = useState('SERVICE_ISSUE');
 
-    useEffect(() => {
-        fetchRefunds();
-        const storedRole = typeof window !== 'undefined' ? localStorage.getItem('user_role') : '';
-        if (storedRole === 'system_admin' || storedRole === 'superadmin') {
-            setIsSuper(true);
-        }
-    }, []);
-
-    const fetchRefunds = async () => {
+    const fetchRefunds = useCallback(async () => {
         try {
             const res = await fetch(`${API_BASE_URL}/api/admin/billing/refunds?limit=50`, {
                 headers: { Authorization: `Bearer ${token}` },
@@ -55,17 +47,25 @@ export default function RefundCenterPage() {
                     requestId: err.requestId,
                 });
             }
-        } catch (e) {
-            console.error('Failed to load refunds');
+        } catch (err) {
+            console.error('Failed to load refunds', err);
             pushToast({
                 type: "error",
                 title: "Failed to load refunds",
-                message: e instanceof Error ? e.message : "Unexpected error",
+                message: err instanceof Error ? err.message : "Unexpected error",
             });
         } finally {
             setLoading(false);
         }
-    };
+    }, [token, pushToast]);
+
+    useEffect(() => {
+        fetchRefunds();
+        const storedRole = typeof window !== 'undefined' ? localStorage.getItem('user_role') : '';
+        if (storedRole === 'system_admin' || storedRole === 'superadmin') {
+            setIsSuper(true);
+        }
+    }, [fetchRefunds]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

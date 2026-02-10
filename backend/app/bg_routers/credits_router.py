@@ -148,12 +148,13 @@ class EstimateAddons(BaseModel):
     plot: bool = False
 
 class CreditsEstimateRequest(BaseModel):
-    tier: str # FREE, STANDARD, RESEARCH
+    tier: str # three_step, short, standard, research
     mode: str = "SOLVE" # SOLVE, VERIFY, etc.
-    input_type: str = "text" # text, snap, voice
+    input_type: str = "text" # text, ocr_image, ocr_pdf, voice
     asset_type: str = "none"
     question_count: int = Field(default=1, ge=1, le=100)
     addons: EstimateAddons = Field(default_factory=EstimateAddons)
+    graph_mode: Optional[str] = None
 
 class CapChecks(BaseModel):
     daily_ok: bool
@@ -172,6 +173,8 @@ class CreditsEstimateResponse(BaseModel):
     breakdown: CreditsEstimateBreakdown
     cap_checks: CapChecks
     pricing_version: str
+    pricing_version_plan: str
+    pricing_version_token_config: Optional[int] = None
 
 
 # --- Logic ---
@@ -220,31 +223,27 @@ async def estimate_credits(
 
     # 3. Determine Cost
     # Map input tier (string) to config key
-    tier_key = body.tier.lower() # free, standard, research
-    
-    # Safety check for tier existence
-    if not hasattr(multipliers.credits.solve, tier_key):
-        tier_key = "standard" # Fallback
-    
-    tier_config = getattr(multipliers.credits.solve, tier_key)
-    
-    # Calculate Base Cost
-    base_cost = 0.0
-    reason_str = f"solve.{tier_key}"
-    
-    if body.input_type == "voice":
-        base_cost = float(tier_config.voice)
-        reason_str += ".voice"
-    elif body.input_type == "snap":
-        if body.asset_type == "pdf":
-            base_cost = float(tier_config.snap_pdf)
-            reason_str += ".snap_pdf"
-        else:
-            base_cost = float(tier_config.snap_image)
-            reason_str += ".snap_image"
+    raw_tier = body.tier.lower()
+    if raw_tier in {"three_step", "free"}:
+        tier_key = "three_step"
+    elif raw_tier in {"short"}:
+        tier_key = "short"
+    elif raw_tier in {"standard"}:
+        tier_key = "standard"
+    elif raw_tier in {"research"}:
+        tier_key = "research"
     else:
-        base_cost = float(tier_config.text)
-        reason_str += ".text"
+        tier_key = "standard"
+    
+    # Flat credits per solve (business rule)
+    tier_costs = {
+        "three_step": 5.0,
+        "short": 7.0,
+        "standard": 10.0,
+        "research": 25.0,
+    }
+    base_cost = tier_costs.get(tier_key, 10.0)
+    reason_str = f"solve.{tier_key}.flat"
         
     # Addons
     addons_cost = 0.0
@@ -258,15 +257,11 @@ async def estimate_credits(
     # If mode=SOLVE and verify requested:
     verify_req = body.addons.verification_requested or body.addons.verify
     if verify_req and features.allow_verify:
-        v_cost = getattr(multipliers.credits.verify, tier_key, 1)
-        addons_cost += v_cost
-        addon_detail["verify"] = float(v_cost)
+        addon_detail["verify"] = 0.0
         
     plot_req = body.addons.plot_requested or body.addons.plot
     if plot_req and features.allow_plot:
-        p_cost = multipliers.credits.plot_spec # or trigger
-        addons_cost += p_cost
-        addon_detail["plot"] = float(p_cost)
+        addon_detail["plot"] = 0.0
 
     per_question = base_cost + addons_cost
     total = per_question * body.question_count
@@ -301,6 +296,8 @@ async def estimate_credits(
                 voice_ok = False
                 
     
+    from app.services.pricing_service import pricing_service
+    token_config_version = pricing_service.get_pricing_config(session).config_version_id
     return CreditsEstimateResponse(
         total_credits=total,
         per_question_credits=per_question,
@@ -314,5 +311,7 @@ async def estimate_credits(
             ocr_ok=ocr_ok,
             voice_ok=voice_ok
         ),
-        pricing_version=str(multipliers.version)
+        pricing_version=str(multipliers.version),
+        pricing_version_plan=str(multipliers.version),
+        pricing_version_token_config=token_config_version
     )

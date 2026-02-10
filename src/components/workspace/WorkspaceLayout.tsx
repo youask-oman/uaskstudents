@@ -125,8 +125,6 @@ export default function WorkspaceLayout({
     problem,
     analysisPlan = [],
     finalAnswer,
-    finalAnswerMode = "prose",
-    confidence = 99,
     sessionId,
     initialSaved = false,
     telemetry,

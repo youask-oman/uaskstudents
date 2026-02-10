@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import type { Editor } from "@tiptap/core";
 import MathRenderer from "@/components/math/MathRendererSwitch";
 import VisualRenderer from "@/components/workspace/VisualRenderer";
@@ -314,9 +315,11 @@ const ElementView = React.memo(function ElementView({
       ) : null}
 
       {element.type === "image" ? (
-        <img
+        <Image
           src={element.src}
           alt={element.alt || "User image"}
+          width={Math.max(1, Math.floor(width))}
+          height={Math.max(1, Math.floor(height))}
           draggable={false}
           style={{ width: "100%", height: "100%", objectFit: "contain", userSelect: "none" }}
         />

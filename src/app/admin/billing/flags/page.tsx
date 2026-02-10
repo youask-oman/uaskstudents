@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface FeatureFlags {
@@ -34,14 +34,7 @@ export default function BillingFlagsPage() {
 
     const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
 
-    useEffect(() => {
-        if (token) {
-            fetchFlags();
-            fetchAudit();
-        }
-    }, [token]);
-
-    const fetchFlags = async () => {
+    const fetchFlags = useCallback(async () => {
         try {
             const res = await fetch(`${API_BASE}/api/admin/billing/flags`, {
                 headers: { Authorization: `Bearer ${token}` },
@@ -49,14 +42,15 @@ export default function BillingFlagsPage() {
             if (res.ok) {
                 setFlags(await res.json());
             }
-        } catch (e) {
+        } catch (err) {
+            console.error("Failed to load flags", err);
             setError('Failed to load flags');
         } finally {
             setLoading(false);
         }
-    };
+    }, [API_BASE, token]);
 
-    const fetchAudit = async () => {
+    const fetchAudit = useCallback(async () => {
         try {
             const res = await fetch(`${API_BASE}/api/admin/billing/flags/audit?limit=20`, {
                 headers: { Authorization: `Bearer ${token}` },
@@ -64,10 +58,17 @@ export default function BillingFlagsPage() {
             if (res.ok) {
                 setAudit(await res.json());
             }
-        } catch (e) {
-            console.error('Failed to load audit');
+        } catch (err) {
+            console.error('Failed to load audit', err);
         }
-    };
+    }, [API_BASE, token]);
+
+    useEffect(() => {
+        if (token) {
+            fetchFlags();
+            fetchAudit();
+        }
+    }, [token, fetchFlags, fetchAudit]);
 
     const updateFlags = async (updates: Partial<FeatureFlags>) => {
         if (!reason.trim()) {
@@ -93,7 +94,8 @@ export default function BillingFlagsPage() {
                 const data = await res.json();
                 setError(data.detail || 'Failed to update');
             }
-        } catch (e) {
+        } catch (err) {
+            console.error("Failed to update flags", err);
             setError('Failed to update flags');
         } finally {
             setSaving(false);

@@ -110,20 +110,15 @@ export default function EditorToolbar({
     [],
   );
 
-  const [viewState, setViewState] = useState(() => buildViewState(activeEditor || null));
+  const [, setEditorVersion] = useState(0);
+  const viewState = buildViewState(activeEditor || null);
 
   useEffect(() => {
-    if (!activeEditor) {
-      setViewState(buildViewState(null));
-      return;
-    }
+    if (!activeEditor) return;
 
     const handler = () => {
-      setViewState(buildViewState(activeEditor));
+      setEditorVersion((prev) => prev + 1);
     };
-
-    // Initialize immediately
-    handler();
 
     activeEditor.on("selectionUpdate", handler);
     activeEditor.on("transaction", handler);

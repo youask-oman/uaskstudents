@@ -242,7 +242,9 @@ class SolverV3:
         image_url: Optional[str] = None,
         max_output_tokens: Optional[int] = None,
         # Phase 1: Attempt Tracking
-        attempt_id: Optional[str] = None
+        attempt_id: Optional[str] = None,
+        debug_simulated_tokens: Optional[Dict[str, Any]] = None,
+        debug_force_error: bool = False,
     ) -> Dict[str, Any]:
 
         
@@ -1230,7 +1232,9 @@ class SolverV3:
         json_schema_config: Optional[Dict[str, Any]] = None,
         trusted_context: Optional[Dict[str, Any]] = None,
         requested_mode: str = "minimal",
-        attempt_id: Optional[str] = None
+        attempt_id: Optional[str] = None,
+        debug_simulated_tokens: Optional[Dict[str, Any]] = None,
+        debug_force_error: bool = False,
     ) -> AsyncIterator[Dict[str, Any]]:
 
         """
@@ -2089,10 +2093,19 @@ class SolverV3:
 import asyncio
 
 _solver_instance = None
+_fake_solver_instance = None
 
 def get_solver_v3():
 
-    global _solver_instance
+    global _solver_instance, _fake_solver_instance
+
+    app_env = os.environ.get("APP_ENV", "").upper()
+    fake_enabled = os.environ.get("BILLING_FAKE_SOLVER_ENABLED", "").lower() == "true"
+    if fake_enabled or app_env == "TEST":
+        if not _fake_solver_instance:
+            from app.services.fake_solver_v3 import FakeSolverV3
+            _fake_solver_instance = FakeSolverV3()
+        return _fake_solver_instance
 
     if not _solver_instance:
 

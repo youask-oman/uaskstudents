@@ -145,7 +145,7 @@ export default function AdminQuotasPage() {
         } finally {
             setIsSaving(false);
         }
-    }, [baseUrl, fetchData, overrideConcurrency, overrideDuration, overrideTokens, selectedUser]);
+    }, [baseUrl, fetchData, overrideConcurrency, overrideDuration, overrideTokens, selectedUser, pushToast]);
 
     if (isLoading && !data) {
         return <div className="p-8 text-slate-400">Loading quota details...</div>;

@@ -25,7 +25,7 @@ interface TokenizerState {
 function tokenizeAtTopLevel(latex: string, separator: RegExp): string[] {
     const results: string[] = [];
     let current = "";
-    let state: TokenizerState = { depth: 0, inTextCommand: false, textBraceDepth: 0 };
+    const state: TokenizerState = { depth: 0, inTextCommand: false, textBraceDepth: 0 };
     let i = 0;
 
     while (i < latex.length) {
@@ -212,7 +212,7 @@ function buildAlignedEnvironment(clauses: string[]): string {
         const alignment = findAlignmentPoint(clause);
         if (alignment) {
             // Remove trailing comma if present
-            let after = alignment.after.replace(/,\s*$/, "");
+            const after = alignment.after.replace(/,\s*$/, "");
             alignedLines.push(`${alignment.before} &${alignment.operator} ${after}`);
         } else {
             // No alignment point, just add the line
@@ -232,7 +232,7 @@ export function parseLatexToBlocks(rawLatex: string): LayoutBlock[] {
     }
 
     const blocks: LayoutBlock[] = [];
-    let latex = rawLatex.trim();
+    const latex = rawLatex.trim();
 
     // Step 1: Split by explicit \\ line breaks first
     const lineBreakParts = tokenizeAtTopLevel(latex, /\\\\/);
@@ -346,7 +346,7 @@ export function needsWrapping(latex: string, maxCharsPerLine: number = 80): bool
 /**
  * Wrap long math expressions for better display
  */
-export function wrapLongMath(latex: string, maxWidth: number = 60): string {
+export function wrapLongMath(latex: string): string {
     // If it already has alignment, don't modify
     if (/\\begin\{(aligned|align|gather|split)\}/.test(latex)) {
         return latex;

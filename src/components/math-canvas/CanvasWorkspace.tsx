@@ -271,7 +271,7 @@ export default function CanvasWorkspace({
     } finally {
       setSavingVersion(false);
     }
-  }, [savingVersion, sessionId, state.pages]);
+  }, [savingVersion, sessionId, state.pages, versionOptions.length]);
 
   const handleLoadVersion = useCallback(() => {
     if (!selectedVersion) return;
@@ -347,7 +347,7 @@ export default function CanvasWorkspace({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activePage, dispatch, state.activePageId, viewMode]);
+  }, [activePage, dispatch, state.activePageId, state.activeTool, state.selection.elementIds.length, viewMode]);
 
   useEffect(() => {
     if (viewMode === "student_report") return;

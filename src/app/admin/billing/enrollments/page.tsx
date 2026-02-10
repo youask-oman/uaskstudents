@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { API_BASE_URL, parseApiError } from '@/lib/api';
@@ -41,12 +41,7 @@ export default function GlobalEnrollmentsPage() {
         reason: ''
     });
 
-    useEffect(() => {
-        fetchEnrollments();
-        fetchPrograms();
-    }, []);
-
-    const fetchEnrollments = async () => {
+    const fetchEnrollments = useCallback(async () => {
         try {
             const res = await fetch(`${API_BASE_URL}/api/admin/billing/programs/enrollments/all?limit=100`, {
                 headers: { Authorization: `Bearer ${token}` },
@@ -74,9 +69,9 @@ export default function GlobalEnrollmentsPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [token, pushToast]);
 
-    const fetchPrograms = async () => {
+    const fetchPrograms = useCallback(async () => {
         try {
             const res = await fetch(`${API_BASE_URL}/api/admin/billing/programs?status=active`, {
                 headers: { Authorization: `Bearer ${token}` },
@@ -101,7 +96,12 @@ export default function GlobalEnrollmentsPage() {
                 message: e instanceof Error ? e.message : "Unexpected error",
             });
         }
-    };
+    }, [token, pushToast]);
+
+    useEffect(() => {
+        fetchEnrollments();
+        fetchPrograms();
+    }, [fetchEnrollments, fetchPrograms]);
 
     const handleEnroll = async (e: React.FormEvent) => {
         e.preventDefault();
