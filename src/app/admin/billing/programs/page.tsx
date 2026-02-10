@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import { API_BASE_URL, parseApiError } from '@/lib/api';
+import { useToast } from '@/components/ui/ToastProvider';
 
 interface Program {
     id: number;
@@ -18,6 +20,7 @@ interface Program {
 
 export default function CreditProgramsPage() {
     const { token } = useAuth();
+    const { pushToast } = useToast();
     const [programs, setPrograms] = useState<Program[]>([]);
     const [loading, setLoading] = useState(true);
     const [total, setTotal] = useState(0);
@@ -34,24 +37,35 @@ export default function CreditProgramsPage() {
         reason: ''
     });
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
-
     useEffect(() => {
         fetchPrograms();
     }, []);
 
     const fetchPrograms = async () => {
         try {
-            const res = await fetch(`${API_BASE}/api/admin/billing/programs?limit=50`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/billing/programs?limit=50`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {
                 const data = await res.json();
                 setPrograms(data.items);
                 setTotal(data.total);
+            } else {
+                const err = await parseApiError(res);
+                pushToast({
+                    type: "error",
+                    title: "Failed to load programs",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
             }
         } catch (e) {
             console.error('Failed to load programs');
+            pushToast({
+                type: "error",
+                title: "Failed to load programs",
+                message: e instanceof Error ? e.message : "Unexpected error",
+            });
         } finally {
             setLoading(false);
         }
@@ -87,17 +101,19 @@ export default function CreditProgramsPage() {
         e.preventDefault();
         try {
             const url = editingProgram
-                ? `${API_BASE}/api/admin/billing/programs/${editingProgram.id}`
-                : `${API_BASE}/api/admin/billing/programs`;
+                ? `${API_BASE_URL}/api/admin/billing/programs/${editingProgram.id}`
+                : `${API_BASE_URL}/api/admin/billing/programs`;
 
             const method = editingProgram ? 'PUT' : 'POST';
+            const idempotencyKey = `${editingProgram ? "program_update" : "program_create"}_${Date.now()}`;
 
             const payload: any = {
                 name: formData.name,
                 description: formData.description,
                 monthly_gift_credits: formData.monthly_gift_credits,
                 gift_expiry_window_days: formData.gift_expiry_window_days,
-                reason: formData.reason
+                reason: formData.reason,
+                idempotency_key: idempotencyKey
             };
 
             if (!editingProgram) {
@@ -117,13 +133,27 @@ export default function CreditProgramsPage() {
             if (res.ok) {
                 setIsModalOpen(false);
                 fetchPrograms();
+                pushToast({
+                    type: "success",
+                    title: editingProgram ? "Program updated" : "Program created",
+                    message: `${formData.name} saved successfully.`,
+                });
             } else {
-                const err = await res.json();
-                alert(`Error: ${err.detail}`);
+                const err = await parseApiError(res);
+                pushToast({
+                    type: "error",
+                    title: "Failed to save program",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
             }
         } catch (error) {
             console.error(error);
-            alert('Failed to save program');
+            pushToast({
+                type: "error",
+                title: "Failed to save program",
+                message: error instanceof Error ? error.message : "Unexpected error",
+            });
         }
     };
 
@@ -132,22 +162,38 @@ export default function CreditProgramsPage() {
         if (!reason) return;
 
         try {
-            const res = await fetch(`${API_BASE}/api/admin/billing/programs/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/billing/programs/${id}`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({ reason })
+                body: JSON.stringify({ reason, idempotency_key: `program_deactivate_${id}_${Date.now()}` })
             });
 
             if (res.ok) {
                 fetchPrograms();
+                pushToast({
+                    type: "success",
+                    title: "Program archived",
+                    message: "The program has been archived successfully.",
+                });
             } else {
-                alert('Failed to deactivate');
+                const err = await parseApiError(res);
+                pushToast({
+                    type: "error",
+                    title: "Failed to archive program",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
             }
         } catch (error) {
             console.error(error);
+            pushToast({
+                type: "error",
+                title: "Failed to archive program",
+                message: error instanceof Error ? error.message : "Unexpected error",
+            });
         }
     };
 
@@ -186,6 +232,7 @@ export default function CreditProgramsPage() {
                     </Link>
                     <button
                         onClick={handleOpenCreate}
+                        data-testid="program-new"
                         className="flex items-center gap-2 px-6 py-3 bg-admin-primary hover:bg-blue-600 text-white text-sm font-bold rounded-2xl shadow-xl shadow-admin-primary/25 transition-all"
                     >
                         <span className="material-symbols-outlined text-[20px]">add</span>
@@ -263,6 +310,7 @@ export default function CreditProgramsPage() {
                                     <div className="flex justify-end gap-2">
                                         <button
                                             onClick={() => handleOpenEdit(program)}
+                                            data-testid={`program-edit-${program.id}`}
                                             className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-slate-500 transition-colors"
                                         >
                                             <span className="material-symbols-outlined text-[18px]">edit</span>
@@ -270,6 +318,7 @@ export default function CreditProgramsPage() {
                                         {program.status !== 'archived' && (
                                             <button
                                                 onClick={() => handleDeactivate(program.id)}
+                                                data-testid={`program-archive-${program.id}`}
                                                 className="p-2 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-lg text-red-500 transition-colors"
                                             >
                                                 <span className="material-symbols-outlined text-[18px]">archive</span>
@@ -313,14 +362,15 @@ export default function CreditProgramsPage() {
                             {!editingProgram && (
                                 <div>
                                     <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Slug (Unique ID)</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        value={formData.slug}
-                                        onChange={e => setFormData({ ...formData, slug: e.target.value })}
-                                        className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none font-mono text-sm"
-                                        placeholder="e.g. pro-plan-2026"
-                                    />
+                                <input
+                                    type="text"
+                                    required
+                                    value={formData.slug}
+                                    onChange={e => setFormData({ ...formData, slug: e.target.value })}
+                                    data-testid="program-slug"
+                                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none font-mono text-sm"
+                                    placeholder="e.g. pro-plan-2026"
+                                />
                                 </div>
                             )}
                             <div>
@@ -330,6 +380,7 @@ export default function CreditProgramsPage() {
                                     required
                                     value={formData.name}
                                     onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                    data-testid="program-name"
                                     className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
                                     placeholder="Pro Membership"
                                 />
@@ -374,6 +425,7 @@ export default function CreditProgramsPage() {
                                     required
                                     value={formData.reason}
                                     onChange={e => setFormData({ ...formData, reason: e.target.value })}
+                                    data-testid="program-reason"
                                     className="w-full p-3 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-900/30 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none text-sm"
                                     placeholder="Why are you making this change?"
                                 />
@@ -389,6 +441,7 @@ export default function CreditProgramsPage() {
                                 </button>
                                 <button
                                     type="submit"
+                                    data-testid="program-submit"
                                     className="px-6 py-2 bg-admin-primary text-white font-bold rounded-lg shadow-lg hover:bg-blue-600 transition-all"
                                 >
                                     {editingProgram ? 'Save Changes' : 'Create Program'}

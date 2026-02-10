@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useToast } from "@/components/ui/ToastProvider";
 import { useSearchParams, useRouter } from "next/navigation";
 
 // --- Types ---
@@ -90,6 +91,8 @@ async function fetchAdmin(path: string, options: RequestInit = {}) {
 }
 
 export default function AdminPaymentsPage() {
+    const READ_ONLY = true;
+    const { pushToast } = useToast();
     const searchParams = useSearchParams();
     const router = useRouter();
     const tab = searchParams.get("tab") || "overview";
@@ -124,7 +127,11 @@ export default function AdminPaymentsPage() {
             const url = URL.createObjectURL(blob);
             window.open(url, "_blank");
         } catch (e: any) {
-            alert("Error loading invoice: " + e.message);
+            pushToast({
+                type: "error",
+                title: "Invoice load failed",
+                message: e?.message || "Unexpected error",
+            });
         }
     };
 
@@ -456,18 +463,28 @@ export default function AdminPaymentsPage() {
                                     {e.last_error && <p className="text-[10px] text-red-500 mt-1 max-w-xs truncate">{e.last_error}</p>}
                                 </td>
                                 <td className="px-6 py-3 text-right">
-                                    <button
-                                        onClick={() => {
-                                            if (confirm("Replay this event?")) {
-                                                fetchAdmin(`/stripe/events/${e.stripe_event_id}/replay`, { method: "POST" })
-                                                    .then(() => window.location.reload())
-                                                    .catch(err => alert(err));
-                                            }
-                                        }}
-                                        className="text-emerald-600 hover:text-emerald-700 font-medium text-xs"
-                                    >
-                                        Replay
-                                    </button>
+                                    {READ_ONLY ? (
+                                        <span className="text-xs text-slate-400 font-semibold">Read-only</span>
+                                    ) : (
+                                        <button
+                                            onClick={() => {
+                                                if (confirm("Replay this event?")) {
+                                                    fetchAdmin(`/stripe/events/${e.stripe_event_id}/replay`, { method: "POST" })
+                                                        .then(() => window.location.reload())
+                                                        .catch(err => {
+                                                            pushToast({
+                                                                type: "error",
+                                                                title: "Replay failed",
+                                                                message: err instanceof Error ? err.message : String(err),
+                                                            });
+                                                        });
+                                                }
+                                            }}
+                                            className="text-emerald-600 hover:text-emerald-700 font-medium text-xs"
+                                        >
+                                            Replay
+                                        </button>
+                                    )}
                                 </td>
                             </tr>
                         ))}
@@ -542,7 +559,13 @@ export default function AdminPaymentsPage() {
             {tab === "invoices" && renderInvoices()}
             {tab === "stripe_events" && renderStripeEvents()}
             {tab === "reconciliation" && renderReconciliation()}
-            {tab === "credits" && <div className="p-8">Credits View (Coming Soon)</div>}
+            {tab === "credits" && (
+                <div className="p-8">
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 text-amber-900 p-4 text-sm">
+                        Legacy credits view has been retired. Use the Billing Control Center ledger and wallet views.
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

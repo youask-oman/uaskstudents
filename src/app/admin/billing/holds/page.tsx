@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import { API_BASE_URL, parseApiError } from '@/lib/api';
+import { useToast } from '@/components/ui/ToastProvider';
 
 interface CreditHold {
     id: number;
@@ -24,12 +26,11 @@ interface Stats {
 
 export default function ActiveHoldsPage() {
     const { token } = useAuth();
+    const { pushToast } = useToast();
     const [holds, setHolds] = useState<CreditHold[]>([]);
     const [stats, setStats] = useState<Stats | null>(null);
     const [loading, setLoading] = useState(true);
     const [isSuper, setIsSuper] = useState(false);
-
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
 
     useEffect(() => {
         fetchData();
@@ -43,10 +44,10 @@ export default function ActiveHoldsPage() {
         setLoading(true);
         try {
             const [holdsRes, statsRes] = await Promise.all([
-                fetch(`${API_BASE}/api/admin/billing/holds?limit=50`, {
+                fetch(`${API_BASE_URL}/api/admin/billing/holds?limit=50`, {
                     headers: { Authorization: `Bearer ${token}` },
                 }),
-                fetch(`${API_BASE}/api/admin/billing/holds/stats`, {
+                fetch(`${API_BASE_URL}/api/admin/billing/holds/stats`, {
                     headers: { Authorization: `Bearer ${token}` },
                 })
             ]);
@@ -54,13 +55,34 @@ export default function ActiveHoldsPage() {
             if (holdsRes.ok) {
                 const data = await holdsRes.json();
                 setHolds(data.items);
+            } else {
+                const err = await parseApiError(holdsRes);
+                pushToast({
+                    type: "error",
+                    title: "Failed to load holds",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
             }
             if (statsRes.ok) {
                 const data = await statsRes.json();
                 setStats(data);
+            } else {
+                const err = await parseApiError(statsRes);
+                pushToast({
+                    type: "error",
+                    title: "Failed to load hold stats",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
             }
         } catch (e) {
             console.error('Failed to load holds');
+            pushToast({
+                type: "error",
+                title: "Failed to load holds",
+                message: e instanceof Error ? e.message : "Unexpected error",
+            });
         } finally {
             setLoading(false);
         }
@@ -71,23 +93,36 @@ export default function ActiveHoldsPage() {
         if (!reason) return;
 
         try {
-            const res = await fetch(`${API_BASE}/api/admin/billing/holds/${holdId}/release`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/billing/holds/${holdId}/release`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ reason })
+                body: JSON.stringify({ reason, idempotency_key: `hold_release_${holdId}_${Date.now()}` })
             });
             if (res.ok) {
                 fetchData();
-                alert('Hold released successfully');
+                pushToast({
+                    type: "success",
+                    title: "Hold released",
+                    message: "The hold was released successfully.",
+                });
             } else {
-                const data = await res.json();
-                alert(data.detail || 'Failed to release hold');
+                const err = await parseApiError(res);
+                pushToast({
+                    type: "error",
+                    title: "Failed to release hold",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
             }
         } catch (e) {
-            alert('Error releasing hold');
+            pushToast({
+                type: "error",
+                title: "Failed to release hold",
+                message: e instanceof Error ? e.message : "Unexpected error",
+            });
         }
     };
 

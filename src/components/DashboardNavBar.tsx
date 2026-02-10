@@ -3,16 +3,14 @@
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import UsageMeter from "@/components/ui/UsageMeter";
-import { SubscriptionResponse, fetchSubscription } from "@/lib/subscription";
+import { fetchWalletSummary, WalletSummary } from "@/lib/wallet";
 import { useTheme } from "@/hooks/useTheme";
 
 type StoredUser = {
-    email?: string;
-    role?: string;
-    subscription_tier?: string;
-    avatar_url?: string;
-    full_name?: string;
+    email-: string;
+    role-: string;
+    avatar_url-: string;
+    full_name-: string;
 };
 
 const getStoredUser = (): StoredUser | null => {
@@ -34,9 +32,9 @@ export default function DashboardNavBar() {
     const [userName, setUserName] = useState("Guest");
     const [userEmail, setUserEmail] = useState("");
     const [userRole, setUserRole] = useState("student");
-    const [userTier, setUserTier] = useState("free");
     const [userAvatar, setUserAvatar] = useState("");
-    const [subscription, setSubscription] = useState<SubscriptionResponse | null>(null);
+    const [userTier, setUserTier] = useState("free");
+    const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
 
     const router = useRouter();
     const pathname = usePathname();
@@ -50,22 +48,21 @@ export default function DashboardNavBar() {
         const refreshUserInfo = () => {
             if (typeof window === "undefined") return;
             const storedUser = getStoredUser();
-            setUserName(storedUser?.full_name || localStorage.getItem("user_name") || "Guest");
-            setUserEmail(storedUser?.email || "");
-            setUserRole(storedUser?.role || "student");
-            setUserTier(storedUser?.subscription_tier || "free");
-            setUserAvatar(storedUser?.avatar_url || localStorage.getItem("user_avatar") || "");
+            setUserName(storedUser-.full_name || localStorage.getItem("user_name") || "Guest");
+            setUserEmail(storedUser-.email || "");
+            setUserRole(storedUser-.role || "student");
+            setUserTier("free");
+            setUserAvatar(storedUser-.avatar_url || localStorage.getItem("user_avatar") || "");
         };
 
-        const refreshSubscription = async () => {
+        const refreshWallet = async () => {
             if (typeof window === "undefined") return;
-            const userId = localStorage.getItem("user_id");
-            if (!userId) return;
             try {
-                const sub = await fetchSubscription(userId);
-                setSubscription(sub);
+                const summary = await fetchWalletSummary();
+                setWalletSummary(summary);
+                setUserTier(summary.effective_tier || "FREE");
             } catch (error) {
-                console.warn("Failed to load subscription for navbar:", error);
+                console.warn("Failed to load wallet for navbar:", error);
             }
         };
 
@@ -84,7 +81,7 @@ export default function DashboardNavBar() {
         };
 
         refreshUserInfo();
-        void refreshSubscription();
+        void refreshWallet();
         document.addEventListener("mousedown", handleClickOutside);
         window.addEventListener("storage", handleStorage);
 
@@ -105,18 +102,18 @@ export default function DashboardNavBar() {
                 <div className="flex justify-between items-center h-16">
                     <Link href="/dashboard" className="flex items-center gap-3">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={mounted && isDark ? "/logo-dark.png" : "/logo.png"} alt="uask.ai" className="h-8 w-auto" />
+                        <img src={mounted && isDark - "/logo-dark.png" : "/logo.png"} alt="uask.ai" className="h-8 w-auto" />
                         <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">uask.ai</span>
                     </Link>
                     <nav className="hidden md:flex space-x-8">
                         <Link
-                            className={`${pathname === "/dashboard" && !currentTab ? "text-primary dark:text-white border-b-2 border-primary pb-1" : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white"} transition-colors text-sm font-medium`}
+                            className={`${pathname === "/dashboard" && !currentTab - "text-primary dark:text-white border-b-2 border-primary pb-1" : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white"} transition-colors text-sm font-medium`}
                             href="/dashboard"
                         >
                             Dashboard
                         </Link>
                         <Link
-                            className={`${pathname === "/solve" ? "text-primary dark:text-white border-b-2 border-primary pb-1" : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white"} transition-colors text-sm font-medium`}
+                            className={`${pathname === "/solve" - "text-primary dark:text-white border-b-2 border-primary pb-1" : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white"} transition-colors text-sm font-medium`}
                             href="/solve"
                             onClick={(e) => {
                                 if (pathname === "/solve") {
@@ -128,27 +125,22 @@ export default function DashboardNavBar() {
                             New Solve
                         </Link>
                         <Link
-                            className={`${pathname === "/dashboard" && currentTab === "history" ? "text-primary dark:text-white border-b-2 border-primary pb-1" : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white"} transition-colors text-sm font-medium`}
-                            href="/dashboard?tab=history"
+                            className={`${pathname === "/dashboard" && currentTab === "history" - "text-primary dark:text-white border-b-2 border-primary pb-1" : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white"} transition-colors text-sm font-medium`}
+                            href="/dashboard-tab=history"
                         >
                             History
                         </Link>
-                        <Link className="text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white transition-colors text-sm font-medium" href="#">Resources</Link>
                     </nav>
-                    {subscription && (
+                    {walletSummary && (
                         <div className="hidden lg:flex items-center gap-3">
-                            <UsageMeter
-                                label="Credits"
-                                used={subscription.usage.credits_used}
-                                limit={subscription.plan.credits_monthly}
-                                icon="payments"
-                            />
-                            <UsageMeter
-                                label="OCR"
-                                used={subscription.usage.ocr_used}
-                                limit={subscription.usage.ocr_limit}
-                                icon="document_scanner"
-                            />
+                            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold">
+                                <span className="material-symbols-outlined text-[16px]">payments</span>
+                                {walletSummary.computed_balance.toFixed(2)} credits
+                            </div>
+                            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold">
+                                <span className="material-symbols-outlined text-[16px]">hourglass_empty</span>
+                                {walletSummary.pending_hold_credits.toFixed(2)} on hold
+                            </div>
                         </div>
                     )}
                     <div className="flex items-center gap-4">
@@ -157,7 +149,7 @@ export default function DashboardNavBar() {
                             className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors flex items-center"
                             aria-label="Toggle Dark Mode"
                         >
-                            <span className="material-symbols-outlined">{mounted && isDark ? 'light_mode' : 'dark_mode'}</span>
+                            <span className="material-symbols-outlined">{mounted && isDark - 'light_mode' : 'dark_mode'}</span>
                         </button>
                         <button className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors flex items-center">
                             <span className="material-symbols-outlined">notifications</span>
@@ -169,7 +161,7 @@ export default function DashboardNavBar() {
                         >
                             <button className="flex items-center gap-3 focus:outline-none">
                                 <div className="w-9 h-9 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center overflow-hidden">
-                                    {userAvatar ? (
+                                    {userAvatar - (
                                         <>
                                             {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <img
@@ -193,7 +185,7 @@ export default function DashboardNavBar() {
                                         <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{userName}</p>
                                         <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{userEmail}</p>
                                         <div className="mt-2 text-xs inline-flex items-center px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium capitalize">
-                                            {userRole} • {userTier}
+                                            {userRole} - {userTier}
                                         </div>
                                     </div>
 
@@ -213,7 +205,7 @@ export default function DashboardNavBar() {
                                         <Link href="/billing" className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                                             <div className="flex items-center gap-2">
                                                 <span className="material-symbols-outlined text-[18px]">credit_card</span>
-                                                Subscription
+                                                Wallet & Programs
                                             </div>
                                         </Link>
                                     </div>

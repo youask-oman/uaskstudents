@@ -167,7 +167,7 @@ export default function AdminDashboardPage() {
         { label: "Overview", href: "/admin/dashboard" },
         { label: "Users", href: "/admin/users" },
         { label: "Quotas", href: "/admin/quotas" },
-        { label: "Subscriptions", href: "/admin/subscriptions" },
+        { label: "Legacy Subscriptions", href: "/admin/legacy/subscriptions" },
         { label: "Prompt Registry", href: "/admin/prompt-registry" },
         { label: "Prompt Bindings", href: "/admin/prompt-bindings" },
         { label: "Logs", href: "/admin/logs" },

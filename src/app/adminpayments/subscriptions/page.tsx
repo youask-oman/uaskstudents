@@ -97,7 +97,7 @@ export default function AdminSubscriptionsPage() {
         <div className="p-8 max-w-7xl mx-auto space-y-6">
             <header className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Subscriptions</h1>
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Legacy Subscriptions</h1>
                     <p className="text-slate-500 dark:text-slate-400">Phase 3: Monthly Grants & Overage</p>
                 </div>
                 <div className="flex gap-4">

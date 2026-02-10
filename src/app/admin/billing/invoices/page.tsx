@@ -70,7 +70,7 @@ export default function InvoicesPage() {
                         <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight italic">Invoice Center</h1>
                     </div>
                     <p className="text-sm font-medium text-slate-500 max-w-2xl">
-                        Immutable billing invoices generated for top-ups and subscriptions.
+                        Immutable billing invoices generated for top-ups and legacy subscriptions.
                     </p>
                 </div>
                 <button

@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react";
 import StudentLayout from "@/components/layout/StudentLayout";
+import { useToast } from "@/components/ui/ToastProvider";
+import { parseApiError } from "@/lib/api";
+import { fetchWalletPrograms, fetchWalletSummary, WalletProgramEnrollment, WalletSummary } from "@/lib/wallet";
 
 type TabId = 'profile' | 'location' | 'preferences' | 'billing' | 'security';
 
@@ -14,8 +17,8 @@ interface ProfileData {
     theme: string;
     preferred_language: string;
     solving_mode: string;
-    subscription_tier: string;
-    subscription_status: string;
+    subscription_tier?: string;
+    subscription_status?: string;
     // Location profile
     profile_country?: string;
     profile_province_state?: string;
@@ -38,10 +41,15 @@ interface SchoolSearchResult {
 }
 
 export default function ProfilePage() {
+    const { pushToast } = useToast();
     const [activeTab, setActiveTab] = useState<TabId>('profile');
     const [profile, setProfile] = useState<ProfileData | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
+    const [walletPrograms, setWalletPrograms] = useState<WalletProgramEnrollment[]>([]);
+    const [walletLoading, setWalletLoading] = useState(true);
+    const [walletError, setWalletError] = useState<string | null>(null);
 
     // Form states
     const [fullName, setFullName] = useState("");
@@ -116,6 +124,39 @@ export default function ProfilePage() {
             .catch(console.error);
     }, [apiBaseUrl]);
 
+    useEffect(() => {
+        let active = true;
+        const loadWallet = async () => {
+            try {
+                const [summary, programs] = await Promise.all([
+                    fetchWalletSummary(),
+                    fetchWalletPrograms(25, 0),
+                ]);
+                if (!active) return;
+                setWalletSummary(summary);
+                setWalletPrograms(programs.items || []);
+                setWalletError(null);
+            } catch (err) {
+                if (!active) return;
+                const message = err instanceof Error ? err.message : "Unable to load wallet";
+                const requestId = err && typeof err === "object" && "requestId" in err ? (err as { requestId?: string }).requestId : undefined;
+                setWalletError(message);
+                pushToast({
+                    type: "error",
+                    title: "Wallet unavailable",
+                    message,
+                    requestId,
+                });
+            } finally {
+                if (active) setWalletLoading(false);
+            }
+        };
+        void loadWallet();
+        return () => {
+            active = false;
+        };
+    }, [pushToast]);
+
     // Fetch provinces when country changes
     useEffect(() => {
         if (!profileCountry) {
@@ -179,12 +220,21 @@ export default function ProfilePage() {
                 })
             });
             if (res.ok) {
-                alert("Profile updated successfully!");
+                pushToast({
+                    type: "success",
+                    title: "Profile updated",
+                    message: "Your profile details were saved.",
+                });
                 // Update local storage if needed
                 localStorage.setItem("user_name", fullName);
             }
         } catch (err) {
             console.error(err);
+            pushToast({
+                type: "error",
+                title: "Profile update failed",
+                message: err instanceof Error ? err.message : "Unexpected error",
+            });
         } finally {
             setSaving(false);
         }
@@ -194,7 +244,7 @@ export default function ProfilePage() {
         const userId = localStorage.getItem("user_id");
         setSaving(true);
         try {
-            const res = await fetch(`http://127.0.0.1:8000/api/v1/user/preferences?user_id=${userId}`, {
+            const res = await fetch(`${apiBaseUrl}/api/v1/user/preferences?user_id=${userId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -204,7 +254,11 @@ export default function ProfilePage() {
                 })
             });
             if (res.ok) {
-                alert("Preferences updated!");
+                pushToast({
+                    type: "success",
+                    title: "Preferences updated",
+                    message: "Your preferences were saved.",
+                });
                 // Apply theme immediately
                 if (theme === 'dark') {
                     document.documentElement.classList.add('dark');
@@ -214,6 +268,11 @@ export default function ProfilePage() {
             }
         } catch (err) {
             console.error(err);
+            pushToast({
+                type: "error",
+                title: "Preferences update failed",
+                message: err instanceof Error ? err.message : "Unexpected error",
+            });
         } finally {
             setSaving(false);
         }
@@ -224,11 +283,19 @@ export default function ProfilePage() {
 
         // Validate required fields
         if (!profileCountry || !profileProvinceState || !gradeLevel) {
-            alert("Please select your Country, Province/State, and Grade Level.");
+            pushToast({
+                type: "error",
+                title: "Missing location fields",
+                message: "Please select your Country, Province/State, and Grade Level.",
+            });
             return;
         }
         if (schoolQuery.trim().length > 0 && !schoolId) {
-            alert("Please select a school from the dropdown list before saving.");
+            pushToast({
+                type: "error",
+                title: "Select a school",
+                message: "Please select a school from the dropdown list before saving.",
+            });
             return;
         }
 
@@ -247,7 +314,11 @@ export default function ProfilePage() {
 
             if (res.ok) {
                 const data = await res.json();
-                alert("Location profile saved! Your tutor will now adapt to your curriculum.");
+                pushToast({
+                    type: "success",
+                    title: "Location profile saved",
+                    message: "Your tutor will now adapt to your curriculum.",
+                });
                 // Update local profile
                 if (profile) {
                     setProfile({
@@ -263,12 +334,21 @@ export default function ProfilePage() {
                 setSelectedSchoolName(data.school_name || "");
                 setSchoolQuery(data.school_name || "");
             } else {
-                const error = await res.json();
-                alert(`Error: ${error.detail || "Failed to update location"}`);
+                const err = await parseApiError(res);
+                pushToast({
+                    type: "error",
+                    title: "Location update failed",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
             }
         } catch (err) {
             console.error(err);
-            alert("Failed to save location profile. Please try again.");
+            pushToast({
+                type: "error",
+                title: "Location update failed",
+                message: err instanceof Error ? err.message : "Unexpected error",
+            });
         } finally {
             setSaving(false);
         }
@@ -337,7 +417,7 @@ export default function ProfilePage() {
         { id: 'profile', label: 'Profile', icon: 'person' },
         { id: 'location', label: 'Location & School', icon: 'school' },
         { id: 'preferences', label: 'Preferences', icon: 'settings' },
-        { id: 'billing', label: 'Plan & Billing', icon: 'credit_card' },
+        { id: 'billing', label: 'Wallet & Programs', icon: 'credit_card' },
         { id: 'security', label: 'Security', icon: 'shield' },
     ];
 
@@ -554,8 +634,8 @@ export default function ProfilePage() {
                                             className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl h-12 px-4 text-sm focus:ring-2 focus:ring-primary outline-none appearance-none cursor-pointer"
                                         >
                                             <option value="">Select your country...</option>
-                                            <option value="USA">🇺🇸 United States</option>
-                                            <option value="Canada">🇨🇦 Canada</option>
+                                            <option value="USA">United States</option>
+                                            <option value="Canada">Canada</option>
                                         </select>
                                     </div>
 
@@ -729,8 +809,8 @@ export default function ProfilePage() {
                                             className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl h-12 px-4 text-sm font-medium focus:ring-2 focus:ring-primary outline-none"
                                         >
                                             <option>English (US)</option>
-                                            <option>Arabic (العربية)</option>
-                                            <option>French (Français)</option>
+                                            <option>Arabic</option>
+                                            <option>French</option>
                                         </select>
                                     </div>
                                 </div>
@@ -798,7 +878,7 @@ export default function ProfilePage() {
                                                     Verification Code
                                                 </label>
                                                 <div className="font-mono text-2xl font-bold text-slate-900 dark:text-white tracking-wider">
-                                                    {showWhatsappSecret ? whatsappSecret : "••••••••"}
+                                                    {showWhatsappSecret ? whatsappSecret : "********"}
                                                 </div>
                                             </div>
                                             <button
@@ -812,7 +892,11 @@ export default function ProfilePage() {
                                             <button
                                                 onClick={() => {
                                                     navigator.clipboard.writeText(whatsappSecret);
-                                                    alert("Code copied to clipboard!");
+                                                    pushToast({
+                                                        type: "success",
+                                                        title: "Copied",
+                                                        message: "Code copied to clipboard.",
+                                                    });
                                                 }}
                                                 className="size-10 flex items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
                                             >
@@ -875,48 +959,62 @@ export default function ProfilePage() {
                         <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-300">
                             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
                                 <div>
-                                    <h2 className="text-xl font-bold">Plan & Billing</h2>
-                                    <p className="text-slate-500 text-sm">You are currently on the <span className="text-primary font-bold">{profile?.subscription_tier || "Pro Student"}</span> plan.</p>
+                                    <h2 className="text-xl font-bold">Wallet & Programs</h2>
+                                    <p className="text-slate-500 text-sm">Your credit balance and active programs.</p>
                                 </div>
-                                <span className="px-3 py-1 bg-green-100 text-green-700 text-[10px] font-bold rounded-full uppercase tracking-wider">ACTIVE</span>
+                                {walletSummary && (
+                                    <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded-full uppercase tracking-wider">
+                                        {walletSummary.effective_tier}
+                                    </span>
+                                )}
                             </div>
                             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div className="space-y-6">
-                                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Quota Usage</h4>
+                                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Wallet Summary</h4>
                                     <div className="space-y-4">
-                                        <div className="space-y-1">
-                                            <div className="flex justify-between text-sm">
-                                                <span className="font-medium">OCR Scans (Images)</span>
-                                                <span className="font-bold">{profile?.usage.scans_count || 0} / {profile?.usage.scans_total || 50}</span>
-                                            </div>
-                                            <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                                                <div
-                                                    className="bg-primary h-full transition-all duration-500"
-                                                    style={{ width: `${(profile?.usage.scans_count || 0) / (profile?.usage.scans_total || 50) * 100}%` }}
-                                                ></div>
-                                            </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="font-medium">Computed Balance</span>
+                                            <span className="font-bold">{walletSummary ? walletSummary.computed_balance.toFixed(2) : "--"} credits</span>
                                         </div>
-                                        <div className="space-y-1">
-                                            <div className="flex justify-between text-sm">
-                                                <span className="font-medium">Monthly Questions</span>
-                                                <span className="font-bold">{profile?.usage.questions_count || 0} / {profile?.usage.questions_total || 100}</span>
-                                            </div>
-                                            <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                                                <div
-                                                    className="bg-primary h-full transition-all duration-500"
-                                                    style={{ width: `${(profile?.usage.questions_count || 0) / (profile?.usage.questions_total || 100) * 100}%` }}
-                                                ></div>
-                                            </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="font-medium">Cached Balance</span>
+                                            <span className="font-bold">{walletSummary ? walletSummary.cached_balance.toFixed(2) : "--"} credits</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="font-medium">Pending Holds</span>
+                                            <span className="font-bold">{walletSummary ? walletSummary.pending_hold_credits.toFixed(2) : "--"} credits</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="font-medium">Expiring Soon</span>
+                                            <span className="font-bold">{walletSummary ? walletSummary.expiring_soon_credits.toFixed(2) : "--"} credits</span>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
                                     <div>
-                                        <h4 className="text-sm font-bold mb-1">Next Payment</h4>
-                                        <p className="text-3xl font-black">$9.99<span className="text-sm font-normal text-slate-400"> /mo</span></p>
-                                        <p className="text-xs text-slate-500 mt-2">Next billing date: Jan 24, 2026</p>
+                                        <h4 className="text-sm font-bold mb-3">Active Programs</h4>
+                                        {walletLoading ? (
+                                            <p className="text-sm text-slate-500">Loading wallet programs...</p>
+                                        ) : walletError ? (
+                                            <p className="text-sm text-rose-500">Wallet data unavailable.</p>
+                                        ) : walletPrograms.length === 0 ? (
+                                            <p className="text-sm text-slate-500">No active programs.</p>
+                                        ) : (
+                                            <ul className="space-y-2">
+                                                {walletPrograms.map((program) => (
+                                                    <li key={program.id} className="text-sm text-slate-700 dark:text-slate-300">
+                                                        {program.program_name || program.program_slug}
+                                                        {program.next_grant_date && (
+                                                            <span className="block text-[11px] text-slate-500">
+                                                                Next grant: {new Date(program.next_grant_date).toLocaleDateString()}
+                                                            </span>
+                                                        )}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
                                     </div>
-                                    <button className="mt-6 text-primary text-sm font-bold hover:underline text-left">View billing history</button>
+                                    <a href="/billing" className="mt-6 text-primary text-sm font-bold hover:underline text-left">Open wallet & history</a>
                                 </div>
                             </div>
                         </section>
@@ -932,7 +1030,7 @@ export default function ProfilePage() {
                                 <div className="space-y-4">
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold">Current Password</label>
-                                        <input className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl h-12 px-4 text-sm outline-none" type="password" placeholder="••••••••" />
+                                        <input className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl h-12 px-4 text-sm outline-none" type="password" placeholder="********" />
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">

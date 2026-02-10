@@ -37,6 +37,7 @@ async function fetchAdmin(path: string, options: RequestInit = {}) {
 type Tab = "pricing" | "economics" | "stripe" | "invoice";
 
 export default function AdminPaymentsConfigPage() {
+    const READ_ONLY = true;
     const [tab, setTab] = useState<Tab>("pricing");
     const [loading, setLoading] = useState(false);
     const [config, setConfig] = useState<any>(null);
@@ -75,6 +76,10 @@ export default function AdminPaymentsConfigPage() {
     };
 
     const handleUpdateConfig = async (sectionUpdates: any) => {
+        if (READ_ONLY) {
+            setError("Legacy payments console is read-only. Use Billing Control Center for credit operations.");
+            return;
+        }
         if (!reason) {
             setError("Reason is required for all changes");
             return;
@@ -98,6 +103,10 @@ export default function AdminPaymentsConfigPage() {
     };
 
     const handleCreatePricing = async () => {
+        if (READ_ONLY) {
+            setError("Legacy payments console is read-only. Use Billing Control Center for credit operations.");
+            return;
+        }
         if (!reason) {
             setError("Reason is required for new pricing version");
             return;
@@ -128,6 +137,10 @@ export default function AdminPaymentsConfigPage() {
     };
 
     const handleRetirePricing = async (id: number) => {
+        if (READ_ONLY) {
+            setError("Legacy payments console is read-only. Use Billing Control Center for credit operations.");
+            return;
+        }
         if (!reason) {
             setError("Reason is required to retire pricing");
             return;
@@ -174,6 +187,11 @@ export default function AdminPaymentsConfigPage() {
                 </div>
             )}
 
+            {READ_ONLY && (
+                <div className="mb-6 p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-sm font-semibold">
+                    Legacy payments console is read-only. Use the Billing Control Center for active credit operations.
+                </div>
+            )}
             {/* Global Reason Box */}
             <div className="mb-8 p-4 bg-white dark:bg-slate-800 border-2 border-primary/20 rounded-xl shadow-sm">
                 <label className="block text-xs font-bold text-primary uppercase mb-2 tracking-widest">Global Action Reason (Audit Required)</label>
@@ -183,6 +201,7 @@ export default function AdminPaymentsConfigPage() {
                     placeholder="Describe why you are making these changes..."
                     className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
                     rows={2}
+                    disabled={READ_ONLY}
                 />
             </div>
 
@@ -211,8 +230,9 @@ export default function AdminPaymentsConfigPage() {
             {/* Tab Content */}
             <div className="space-y-8">
                 {tab === "pricing" && (
-                    <div className="space-y-6">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <fieldset disabled={READ_ONLY} className={READ_ONLY ? "opacity-60" : ""}>
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             {/* Create Form */}
                             <div className="lg:col-span-1 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
                                 <h3 className="text-lg font-bold mb-6">Create New Pricing</h3>
@@ -312,12 +332,14 @@ export default function AdminPaymentsConfigPage() {
                                     </table>
                                 </div>
                             </div>
+                            </div>
                         </div>
-                    </div>
+                    </fieldset>
                 )}
 
                 {tab === "economics" && (
-                    <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+                    <fieldset disabled={READ_ONLY} className={READ_ONLY ? "opacity-60" : ""}>
+                        <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
                         <h3 className="text-xl font-bold mb-8">Credit Economics</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                             <div className="space-y-4">
@@ -353,7 +375,7 @@ export default function AdminPaymentsConfigPage() {
                                 </h4>
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center">
-                                        <span className="text-sm font-medium">Standard Plan</span>
+                                        <span className="text-sm font-medium">Legacy Plan: Standard</span>
                                         <input
                                             type="number"
                                             step="0.1"
@@ -366,7 +388,7 @@ export default function AdminPaymentsConfigPage() {
                                         />
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <span className="text-sm font-medium">Research Plan</span>
+                                        <span className="text-sm font-medium">Legacy Plan: Research</span>
                                         <input
                                             type="number"
                                             step="0.1"
@@ -423,11 +445,13 @@ export default function AdminPaymentsConfigPage() {
                                 Save Changes
                             </button>
                         </div>
-                    </div>
+                        </div>
+                    </fieldset>
                 )}
 
                 {tab === "stripe" && (
-                    <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+                    <fieldset disabled={READ_ONLY} className={READ_ONLY ? "opacity-60" : ""}>
+                        <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
                         <h3 className="text-xl font-bold mb-8">Stripe Integration Status</h3>
                         <div className="flex gap-4 mb-12">
                             <div className="flex-1 p-6 bg-emerald-50 dark:bg-emerald-950/20 rounded-2xl border border-emerald-100 dark:border-emerald-900/50 flex flex-col items-center text-center">
@@ -469,11 +493,13 @@ export default function AdminPaymentsConfigPage() {
                                 Sync Stripe Mappings
                             </button>
                         </div>
-                    </div>
+                        </div>
+                    </fieldset>
                 )}
 
                 {tab === "invoice" && (
-                    <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+                    <fieldset disabled={READ_ONLY} className={READ_ONLY ? "opacity-60" : ""}>
+                        <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
                         <h3 className="text-xl font-bold mb-8">Invoice & Tax Policy</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                             <div className="space-y-6">
@@ -541,7 +567,8 @@ export default function AdminPaymentsConfigPage() {
                                 Save Tax & Branding
                             </button>
                         </div>
-                    </div>
+                        </div>
+                    </fieldset>
                 )}
             </div>
         </div>

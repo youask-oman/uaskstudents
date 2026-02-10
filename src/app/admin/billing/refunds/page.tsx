@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import { API_BASE_URL, parseApiError } from '@/lib/api';
+import { useToast } from '@/components/ui/ToastProvider';
 
 interface Refund {
     id: number;
@@ -16,6 +18,7 @@ interface Refund {
 
 export default function RefundCenterPage() {
     const { token } = useAuth();
+    const { pushToast } = useToast();
     const [refunds, setRefunds] = useState<Refund[]>([]);
     const [loading, setLoading] = useState(true);
     const [isSuper, setIsSuper] = useState(false);
@@ -27,8 +30,6 @@ export default function RefundCenterPage() {
     const [reason, setReason] = useState('');
     const [reasonCode, setReasonCode] = useState('SERVICE_ISSUE');
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
-
     useEffect(() => {
         fetchRefunds();
         const storedRole = typeof window !== 'undefined' ? localStorage.getItem('user_role') : '';
@@ -39,15 +40,28 @@ export default function RefundCenterPage() {
 
     const fetchRefunds = async () => {
         try {
-            const res = await fetch(`${API_BASE}/api/admin/billing/refunds?limit=50`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/billing/refunds?limit=50`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {
                 const data = await res.json();
                 setRefunds(data.items);
+            } else {
+                const err = await parseApiError(res);
+                pushToast({
+                    type: "error",
+                    title: "Failed to load refunds",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
             }
         } catch (e) {
             console.error('Failed to load refunds');
+            pushToast({
+                type: "error",
+                title: "Failed to load refunds",
+                message: e instanceof Error ? e.message : "Unexpected error",
+            });
         } finally {
             setLoading(false);
         }
@@ -56,7 +70,7 @@ export default function RefundCenterPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const res = await fetch(`${API_BASE}/api/admin/billing/refunds`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/billing/refunds`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -67,6 +81,7 @@ export default function RefundCenterPage() {
                     credits: parseFloat(credits),
                     reason_code: reasonCode,
                     reason: reason,
+                    idempotency_key: `refund_${targetUser}_${Date.now()}`
                 })
             });
             if (res.ok) {
@@ -75,13 +90,26 @@ export default function RefundCenterPage() {
                 setCredits('');
                 setReason('');
                 fetchRefunds();
-                alert('Refund issued successfully');
+                pushToast({
+                    type: "success",
+                    title: "Refund issued",
+                    message: "Credits have been added to the user wallet.",
+                });
             } else {
-                const err = await res.json();
-                alert(err.detail || 'Failed to issue refund');
+                const err = await parseApiError(res);
+                pushToast({
+                    type: "error",
+                    title: "Refund failed",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
             }
         } catch (e) {
-            alert('Error issuing refund');
+            pushToast({
+                type: "error",
+                title: "Refund failed",
+                message: e instanceof Error ? e.message : "Unexpected error",
+            });
         }
     };
 

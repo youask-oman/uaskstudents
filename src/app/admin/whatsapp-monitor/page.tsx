@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { API_BASE_URL, parseApiError } from "@/lib/api";
+import { useToast } from "@/components/ui/ToastProvider";
 
 interface MonitorEvent {
     direction: "in" | "out";
@@ -25,6 +27,7 @@ interface MonitorResponse {
 }
 
 export default function WhatsAppMonitorPage() {
+    const { pushToast } = useToast();
     const [data, setData] = useState<MonitorResponse | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [phoneFilter, setPhoneFilter] = useState("");
@@ -34,12 +37,17 @@ export default function WhatsAppMonitorPage() {
 
     const fetchData = async () => {
         try {
+            const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+            const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
             const params = new URLSearchParams({ limit: "80" });
             if (phoneFilter.trim()) params.set("phone", phoneFilter.trim());
             if (directionFilter) params.set("direction", directionFilter);
-            const res = await fetch(`/api/admin/whatsapp/monitor?${params.toString()}`);
+            const res = await fetch(`${API_BASE_URL}/api/admin/whatsapp/monitor?${params.toString()}`, {
+                headers,
+            });
             if (!res.ok) {
-                throw new Error("Failed to fetch monitor");
+                const err = await parseApiError(res);
+                throw new Error(err.message);
             }
             const json = await res.json();
             setData(json);
@@ -58,7 +66,10 @@ export default function WhatsAppMonitorPage() {
 
     useEffect(() => {
         if (!streaming) return;
-        const es = new EventSource("/api/admin/whatsapp/monitor/stream");
+        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        const params = new URLSearchParams();
+        if (token) params.set("token", token);
+        const es = new EventSource(`${API_BASE_URL}/api/admin/whatsapp/monitor/stream?${params.toString()}`);
         es.onmessage = (evt) => {
             try {
                 const payload = JSON.parse(evt.data);
@@ -135,7 +146,9 @@ export default function WhatsAppMonitorPage() {
                             const params = new URLSearchParams({ limit: "200" });
                             if (phoneFilter.trim()) params.set("phone", phoneFilter.trim());
                             if (directionFilter) params.set("direction", directionFilter);
-                            window.location.href = `/api/admin/whatsapp/monitor/export?${params.toString()}`;
+                            const token = localStorage.getItem("token");
+                            if (token) params.set("token", token);
+                            window.location.href = `${API_BASE_URL}/api/admin/whatsapp/monitor/export?${params.toString()}`;
                         }}
                         className="px-4 py-2 rounded bg-slate-900 text-white text-sm"
                     >
@@ -151,14 +164,33 @@ export default function WhatsAppMonitorPage() {
                         onClick={async () => {
                             if (!confirm("Are you sure you want to clear the WhatsApp event monitor?")) return;
                             const token = localStorage.getItem("token");
-                            const res = await fetch("/api/v1/admin/whatsapp/all", {
-                                method: "DELETE",
-                                headers: { Authorization: `Bearer ${token}` }
-                            });
-                            if (res.ok) {
-                                fetchData();
-                            } else {
-                                alert("Failed to clear monitor data.");
+                            try {
+                                const res = await fetch(`${API_BASE_URL}/api/v1/admin/whatsapp/all`, {
+                                    method: "DELETE",
+                                    headers: { Authorization: `Bearer ${token}` }
+                                });
+                                if (res.ok) {
+                                    fetchData();
+                                    pushToast({
+                                        type: "success",
+                                        title: "Monitor cleared",
+                                        message: "WhatsApp events cleared successfully.",
+                                    });
+                                } else {
+                                    const err = await parseApiError(res);
+                                    pushToast({
+                                        type: "error",
+                                        title: "Clear failed",
+                                        message: err.message,
+                                        requestId: err.requestId,
+                                    });
+                                }
+                            } catch (e) {
+                                pushToast({
+                                    type: "error",
+                                    title: "Clear failed",
+                                    message: e instanceof Error ? e.message : "Unexpected error",
+                                });
                             }
                         }}
                         className="px-4 py-2 rounded bg-rose-500 hover:bg-rose-600 text-white text-sm font-bold transition-all"

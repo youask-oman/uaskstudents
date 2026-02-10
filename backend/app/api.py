@@ -9340,7 +9340,7 @@ LEGACY_PLAN_MUTATION_DETAIL = (
 )
 
 @api_router.get('/admin/plans')
-async def list_plans(session: Session = Depends(get_session)):
+async def list_plans(session: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     return session.exec(select(Plan)).all()
 
 @api_router.post('/admin/plans')

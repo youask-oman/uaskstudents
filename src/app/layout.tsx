@@ -7,6 +7,7 @@ import "./globals.css";
 import { MathJaxContext } from "better-react-mathjax";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ToastProvider } from "@/components/ui/ToastProvider";
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: '--font-space-grotesk' });
 const lexend = Lexend({ subsets: ["latin"], variable: '--font-lexend' });
@@ -60,9 +61,11 @@ export default function RootLayout({
       <body className="min-h-screen bg-background-light dark:bg-background-dark text-[#111318] dark:text-white transition-colors duration-200">
         <ThemeProvider>
           <AuthProvider>
-            <MathJaxContext config={mathJaxConfig}>
-              {children}
-            </MathJaxContext>
+            <ToastProvider>
+              <MathJaxContext config={mathJaxConfig}>
+                {children}
+              </MathJaxContext>
+            </ToastProvider>
           </AuthProvider>
         </ThemeProvider>
 

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { API_BASE_URL, parseApiError } from "@/lib/api";
+import { useToast } from "@/components/ui/ToastProvider";
 
 interface SolveTrace {
     request_id?: string;
@@ -18,6 +20,7 @@ interface SolveTrace {
 type UserData = Record<string, unknown> | null;
 
 export default function AdminLogsPage() {
+    const { pushToast } = useToast();
     const [traces, setTraces] = useState<SolveTrace[]>([]);
     const [selectedTrace, setSelectedTrace] = useState<SolveTrace | null>(null);
     const [relatedUserData, setRelatedUserData] = useState<UserData>(null);
@@ -30,7 +33,7 @@ export default function AdminLogsPage() {
         const controller = new AbortController();
         const fetchTraces = async () => {
             const token = localStorage.getItem("token");
-            const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+            const baseUrl = API_BASE_URL;
             const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
             try {
                 const res = await fetch(`${baseUrl}/api/v1/admin/solve-traces?limit=500`, { headers, signal: controller.signal });
@@ -67,7 +70,7 @@ export default function AdminLogsPage() {
         const controller = new AbortController();
         const fetchUserData = async () => {
             const token = localStorage.getItem("token");
-            const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+            const baseUrl = API_BASE_URL;
             const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
             setIsLoadingUserData(true);
             try {
@@ -107,7 +110,7 @@ export default function AdminLogsPage() {
                     onClick={async () => {
                         if (!confirm("Are you sure you want to PERMANENTLY delete ALL solve traces/logs?")) return;
                         const token = localStorage.getItem("token");
-                        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+                        const baseUrl = API_BASE_URL;
                         const res = await fetch(`${baseUrl}/api/v1/admin/logs/all`, {
                             method: "DELETE",
                             headers: { Authorization: `Bearer ${token}` }
@@ -115,7 +118,13 @@ export default function AdminLogsPage() {
                         if (res.ok) {
                             window.location.reload();
                         } else {
-                            alert("Failed to clear logs.");
+                            const err = await parseApiError(res);
+                            pushToast({
+                                type: "error",
+                                title: "Failed to clear logs",
+                                message: err.message,
+                                requestId: err.requestId,
+                            });
                         }
                     }}
                     className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-sm font-bold shadow-lg shadow-rose-500/20 transition-all flex items-center gap-2"

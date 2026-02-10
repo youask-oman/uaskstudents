@@ -33,9 +33,10 @@ import {
 // Tier-aware solve imports
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import CostPreview from "@/components/solve/CostPreview";
-import { SubscriptionResponse, fetchSubscription, fetchCreditsEstimate, CreditsEstimateResponse, SolveTier } from "@/lib/subscription";
+import { fetchCreditsEstimate, CreditsEstimateResponse, SolveTier, WalletProgramEnrollment, WalletSummary, fetchWalletPrograms, fetchWalletSummary } from "@/lib/wallet";
 import { TokenPolicy, fetchTokenPolicy } from "@/lib/tokenPolicy";
 import ThemeToggle from "@/components/ThemeToggle";
+import { useToast } from "@/components/ui/ToastProvider";
 
 interface ChatSession {
     id: number;
@@ -126,6 +127,7 @@ type FeaturesUsed = Partial<OcrMetadata & VoiceFeatures> & {
 };
 
 export default function DashboardPage() {
+    const { pushToast } = useToast();
     const useSnapSolveUploadPanelV2 = process.env.NEXT_PUBLIC_SNAP_SOLVE_UPLOAD_PANEL_V2 !== "false";
     const [activeTab, setActiveTab] = useState<'text' | 'snap' | 'voice'>('text');
     const [history, setHistory] = useState<ChatSession[]>([]);
@@ -381,9 +383,11 @@ export default function DashboardPage() {
     // Tier-Aware Solve State
     const selectedGoal = 'solve';
     const [selectedSolveTier, setSelectedSolveTier] = useState<SolveTier>("FREE");
-    const [subscription, setSubscription] = useState<SubscriptionResponse | null>(null);
-    const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
-    const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
+    const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
+    const [walletPrograms, setWalletPrograms] = useState<WalletProgramEnrollment[]>([]);
+    const [walletLoaded, setWalletLoaded] = useState(false);
+    const [walletError, setWalletError] = useState<string | null>(null);
+    const [userProfile, setUserProfile] = useState<any | null>(null);
     const [estimate, setEstimate] = useState<CreditsEstimateResponse | null>(null);
     const [estimateError, setEstimateError] = useState<string | null>(null);
     const [tokenPolicy, setTokenPolicy] = useState<TokenPolicy | null>(null);
@@ -436,18 +440,8 @@ export default function DashboardPage() {
                     : null;
 
     const router = useRouter();
-    const subscriptionReady = subscriptionLoaded && !subscriptionError && !!subscription;
-    const readySubscription = subscriptionReady ? subscription : null;
-    const trustedProfile = readySubscription?.profile ?? null;
-    const accountTier: SolveTier = readySubscription
-        ? (readySubscription.plan.slug === "research"
-            ? "RESEARCH"
-            : readySubscription.plan.slug === "short"
-                ? "SHORT"
-                : readySubscription.plan.slug === "free"
-                    ? "FREE"
-                    : "STANDARD")
-        : "FREE";
+    const walletReady = walletLoaded && !walletError && !!walletSummary;
+    const readyWallet = walletReady ? walletSummary : null;
     const estimatedQuestionCount = activeTab === "text"
         ? Math.max(1, multiQuestionResult.suggestedSplits.length || 1)
         : 1;
@@ -460,25 +454,18 @@ export default function DashboardPage() {
     }, []);
 
     useEffect(() => {
-        if (!subscriptionReady || !readySubscription) return;
+        if (!walletReady || !readyWallet) return;
         const hasStored = typeof window !== "undefined" ? localStorage.getItem("uask.solveTier") : null;
         if (hasStored) return;
-        const defaultTier: SolveTier =
-            readySubscription.plan.slug === "research"
-                ? "RESEARCH"
-                : readySubscription.plan.slug === "short"
-                    ? "SHORT"
-                    : readySubscription.plan.slug === "free"
-                        ? "FREE"
-                        : "STANDARD";
+        const defaultTier: SolveTier = readyWallet.effective_tier || "FREE";
         setSelectedSolveTier(defaultTier);
         if (typeof window !== "undefined") {
             localStorage.setItem("uask.solveTier", defaultTier);
         }
-    }, [subscriptionReady, readySubscription]);
+    }, [walletReady, readyWallet]);
 
     useEffect(() => {
-        if (!subscriptionReady || !readySubscription) return;
+        if (!tokenPolicyReady) return;
         const runEstimate = async () => {
             try {
                 setEstimateError(null);
@@ -502,7 +489,7 @@ export default function DashboardPage() {
             }
         };
         void runEstimate();
-    }, [subscriptionReady, readySubscription, selectedSolveTier, activeTab, estimatedQuestionCount]);
+    }, [tokenPolicyReady, selectedSolveTier, activeTab, estimatedQuestionCount]);
 
     useEffect(() => {
         const userId = localStorage.getItem("user_id");
@@ -529,6 +516,7 @@ export default function DashboardPage() {
                 if (profileRes.ok) {
                     const profile = await profileRes.json();
                     setIsPublic(profile.is_public);
+                    setUserProfile(profile);
 
                     if (profile.is_public) {
                         const onlineRes = await fetch(`/api/v1/users/online`);
@@ -540,18 +528,29 @@ export default function DashboardPage() {
             } catch (e) { console.error(e); }
         };
 
-        // Fetch subscription for tier-aware solve UX
-        const loadSubscription = async () => {
+        // Fetch wallet for tier-aware solve UX
+        const loadWallet = async () => {
             try {
-                const subData = await fetchSubscription(userId);
-                setSubscription(subData);
-                setSubscriptionError(null);
-                setSubscriptionLoaded(true);
+                const [summary, programs] = await Promise.all([
+                    fetchWalletSummary(),
+                    fetchWalletPrograms(50, 0),
+                ]);
+                setWalletSummary(summary);
+                setWalletPrograms(programs.items || []);
+                setWalletError(null);
             } catch (e) {
-                const message = e instanceof Error ? e.message : "Subscription unavailable";
-                console.warn("Failed to load subscription:", message);
-                setSubscriptionError("Unable to load subscription data. Please refresh or contact support.");
-                setSubscriptionLoaded(true);
+                const message = e instanceof Error ? e.message : "Wallet unavailable";
+                const requestId = e && typeof e === "object" && "requestId" in e ? (e as { requestId?: string }).requestId : undefined;
+                console.warn("Failed to load wallet:", message);
+                setWalletError("Unable to load wallet data. Please refresh or contact support.");
+                pushToast({
+                    type: "error",
+                    title: "Wallet unavailable",
+                    message: message,
+                    requestId,
+                });
+            } finally {
+                setWalletLoaded(true);
             }
         };
         const loadTokenPolicy = async () => {
@@ -596,7 +595,11 @@ export default function DashboardPage() {
                     } else if (data.status === "failure") {
                         localStorage.removeItem("uask.activeAttemptId");
                         localStorage.removeItem("uask.activeQuery");
-                        alert(`Previous attempt failed: ${data.error_message || "Unknown error"}`);
+                        pushToast({
+                            type: "error",
+                            title: "Previous attempt failed",
+                            message: data.error_message || "Unknown error",
+                        });
                         setIsSolving(false);
                         setSolveStartTime(null);
                     } else if (data.status === "pending" || data.status === "processing") {
@@ -617,7 +620,7 @@ export default function DashboardPage() {
 
         fetchHistory();
         fetchOnline();
-        loadSubscription();
+        loadWallet();
         loadTokenPolicy();
         restoreAttempt();
         const interval = setInterval(fetchOnline, 30000);
@@ -1002,7 +1005,11 @@ export default function DashboardPage() {
             }
         } catch (err) {
             console.error("[SOLVER_STREAM] Error:", err);
-            alert((err as Error).message || "Failed to generate solution.");
+            pushToast({
+                type: "error",
+                title: "Solve failed",
+                message: (err as Error).message || "Failed to generate solution.",
+            });
         } finally {
             setIsSolving(false);
             setSolveStartTime(null);
@@ -1050,7 +1057,11 @@ export default function DashboardPage() {
             }
         } catch (err) {
             console.error("[CLARIFY] Error:", err);
-            alert((err as Error).message || "Failed to clarify.");
+            pushToast({
+                type: "error",
+                title: "Clarification failed",
+                message: (err as Error).message || "Failed to clarify.",
+            });
         } finally {
             setIsSolving(false);
             setSolveStartTime(null);
@@ -1135,13 +1146,13 @@ export default function DashboardPage() {
                                 <div className="flex flex-col gap-2 flex-grow max-w-[450px]">
                                     <div className="flex justify-between items-end mb-1">
                                         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">Tier</h3>
-                                        {readySubscription && estimate && (
+                                        {readyWallet && estimate && (
                                             <div className="scale-90 origin-right">
                                                 <CostPreview
                                                     perQuestionCost={estimate.per_question_credits}
                                                     questionCount={estimatedQuestionCount}
                                                     breakdown={estimate.breakdown}
-                                                    creditsRemaining={readySubscription.usage.credits_remaining}
+                                                    creditsRemaining={readyWallet.computed_balance}
                                                 />
                                             </div>
                                         )}
@@ -2028,35 +2039,43 @@ export default function DashboardPage() {
                                 <span className="material-symbols-outlined text-primary">school</span>
                                 Your School & Tier
                             </h3>
-                            {readySubscription ? (
+                            {readyWallet ? (
                                 <div className="space-y-2 text-sm">
                                     <p className="text-slate-700 dark:text-slate-300">
                                         <span className="font-semibold">School:</span>{" "}
-                                        {readySubscription.profile.school_name || "Not set"}
+                                        {userProfile?.school_name || "Not set"}
                                     </p>
                                     <p className="text-slate-700 dark:text-slate-300">
                                         <span className="font-semibold">Location:</span>{" "}
-                                        {[readySubscription.profile.region_state_province, readySubscription.profile.region_country].filter(Boolean).join(", ") || "Not set"}
+                                        {[userProfile?.profile_province_state, userProfile?.profile_country].filter(Boolean).join(", ") || "Not set"}
                                     </p>
                                     <p className="text-slate-700 dark:text-slate-300">
-                                        <span className="font-semibold">Subscription:</span> {readySubscription.plan.display_name}
+                                        <span className="font-semibold">Program Tier:</span> {readyWallet.effective_tier}
                                     </p>
+                                    {walletPrograms.length > 0 && (
+                                        <div className="text-xs text-slate-500">
+                                            Active programs: {walletPrograms.map(p => p.program_name || p.program_slug).filter(Boolean).join(", ")}
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
-                                <p className="text-sm text-slate-500">Subscription and school info are loading.</p>
+                                <p className="text-sm text-slate-500">Wallet and school info are loading.</p>
                             )}
                         </div>
 
 
 
-                        {/* Pro Callout */}
+                        {/* Credits Callout */}
                         <div className="relative overflow-hidden bg-slate-900 rounded-xl p-6 text-white group">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-3xl -mr-16 -mt-16 group-hover:bg-primary/40 transition-colors"></div>
                             <div className="relative z-10">
-                                <h4 className="text-lg font-bold mb-2">uask Pro</h4>
-                                <p className="text-slate-400 text-sm mb-4">Unlock unlimited step-by-step solutions and 1-on-1 expert tutor sessions.</p>
-                                <button className="w-full bg-white text-slate-900 font-bold py-2.5 rounded-lg text-sm hover:bg-slate-100 transition-colors">
-                                    Upgrade Now
+                                <h4 className="text-lg font-bold mb-2">Need More Credits?</h4>
+                                <p className="text-slate-400 text-sm mb-4">Top up your wallet to keep solving with your preferred tier.</p>
+                                <button
+                                    onClick={() => router.push("/billing")}
+                                    className="w-full bg-white text-slate-900 font-bold py-2.5 rounded-lg text-sm hover:bg-slate-100 transition-colors"
+                                >
+                                    View Wallet & Packs
                                 </button>
                             </div>
                         </div>

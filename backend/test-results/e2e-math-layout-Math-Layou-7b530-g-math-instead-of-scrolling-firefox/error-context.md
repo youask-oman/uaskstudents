@@ -1,0 +1,56 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]: Session not found.
+  - generic [active]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - navigation [ref=e8]:
+            - button "previous" [disabled] [ref=e9]:
+              - img "previous" [ref=e10]
+            - generic [ref=e12]:
+              - generic [ref=e13]: 1/
+              - text: "1"
+            - button "next" [disabled] [ref=e14]:
+              - img "next" [ref=e15]
+          - img
+        - generic [ref=e17]:
+          - generic [ref=e18]:
+            - img [ref=e19]
+            - generic "Latest available version is detected (16.1.6)." [ref=e21]: Next.js 16.1.6
+            - generic [ref=e22]: Turbopack
+          - img
+      - dialog "Build Error" [ref=e24]:
+        - generic [ref=e27]:
+          - generic [ref=e28]:
+            - generic [ref=e29]:
+              - generic [ref=e31]: Build Error
+              - generic [ref=e32]:
+                - button "Copy Error Info" [disabled] [ref=e33]:
+                  - img [ref=e34]
+                - button "No related documentation found" [disabled] [ref=e36]:
+                  - img [ref=e37]
+                - button "Attach Node.js inspector" [ref=e39] [cursor=pointer]:
+                  - img [ref=e40]
+            - generic [ref=e49]: Reading source code for parsing failed
+          - generic [ref=e51]:
+            - generic [ref=e53]:
+              - img [ref=e55]
+              - generic [ref=e58]: ./src/app/billing/page.tsx
+              - button "Open in editor" [ref=e59] [cursor=pointer]:
+                - img [ref=e61]
+            - generic [ref=e65]: "Reading source code for parsing failed An unexpected error happened while trying to read the source code to parse: failed to convert rope into string Caused by: - invalid utf-8 sequence of 1 bytes from index 4434"
+        - generic [ref=e66]: "1"
+        - generic [ref=e67]: "2"
+    - generic [ref=e72] [cursor=pointer]:
+      - button "Open Next.js Dev Tools" [ref=e73]:
+        - img [ref=e74]
+      - button "Open issues overlay" [ref=e79]:
+        - generic [ref=e80]:
+          - generic [ref=e81]: "0"
+          - generic [ref=e82]: "1"
+        - generic [ref=e83]: Issue
+  - alert [ref=e84]
+```

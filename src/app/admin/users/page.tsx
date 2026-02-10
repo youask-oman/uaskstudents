@@ -149,7 +149,7 @@ export default function AdminUsersPage() {
     };
 
     const exportToCSV = () => {
-    const headers = ["ID", "Name", "Email", "Plan", "Role", "Questions", "Scans", "Last Active"];
+    const headers = ["ID", "Name", "Email", "Legacy Plan", "Role", "Questions", "Scans", "Last Active"];
     const rows = users.map(u => [
         u.id,
         u.full_name,
@@ -210,7 +210,7 @@ export default function AdminUsersPage() {
                 <div className="flex justify-between items-end">
                     <div>
                         <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">User Directory</h1>
-                        <p className="text-slate-400 text-sm mt-1">Manage platform access, roles, and subscription status.</p>
+                        <p className="text-slate-400 text-sm mt-1">Manage platform access, roles, and legacy plan status.</p>
                     </div>
                     <div className="flex gap-3">
                         <button
@@ -264,7 +264,7 @@ export default function AdminUsersPage() {
                                 value={planFilter}
                                 onChange={(e) => setPlanFilter(e.target.value)}
                             >
-                                <option value="">All Plans</option>
+                                <option value="">All Legacy Plans</option>
                                 {availablePlans.map((plan) => (
                                     <option key={plan.slug} value={plan.slug}>
                                         {plan.name}
@@ -284,7 +284,7 @@ export default function AdminUsersPage() {
                     <thead>
                         <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
                             <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">User Information</th>
-                            <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Plan</th>
+                            <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Legacy Plan</th>
                             <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Usage (Q / OCR)</th>
                             <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Role</th>
                             <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Last Active</th>

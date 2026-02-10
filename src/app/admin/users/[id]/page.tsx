@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, type ReactNode } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
+import { API_BASE_URL, parseApiError } from "@/lib/api";
+import { useToast } from "@/components/ui/ToastProvider";
 
 interface AdminNote {
     id: number;
@@ -268,7 +270,8 @@ export default function UserDetailPage() {
     const [isSavingNote, setIsSavingNote] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [isSavingProfile, setIsSavingProfile] = useState(false);
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+    const { pushToast } = useToast();
+    const baseUrl = API_BASE_URL;
     const getAuthHeaders = useCallback((includeJson = false) => {
         const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
         const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
@@ -277,6 +280,19 @@ export default function UserDetailPage() {
         }
         return headers;
     }, []);
+
+    const notifySuccess = (title: string, message: string) => {
+        pushToast({ type: "success", title, message });
+    };
+
+    const notifyError = (title: string, message: string, requestId?: string) => {
+        pushToast({ type: "error", title, message, requestId });
+    };
+
+    const notifyResponseError = async (res: Response, title: string) => {
+        const err = await parseApiError(res);
+        notifyError(title, err.message, err.requestId);
+    };
 
     // Form states for updates
     const [newQuotaQuestions, setNewQuotaQuestions] = useState(0);
@@ -561,10 +577,10 @@ export default function UserDetailPage() {
                 return;
             }
             if (res?.ok) {
-                alert(`${action} successful!`);
+                notifySuccess("Action completed", `${action} successful.`);
                 fetchUserDetail();
             } else if (res) {
-                throw new Error("Action failed.");
+                await notifyResponseError(res, "Action failed");
             }
         } catch (error) {
             console.error("Action failed:", error);
@@ -614,9 +630,10 @@ export default function UserDetailPage() {
                 })
             });
             if (res.ok) {
-                alert("User updated successfully!");
+                notifySuccess("User updated", "Quota settings saved.");
                 fetchUserDetail();
             } else {
+                await notifyResponseError(res, "Update failed");
                 throw new Error("Update failed.");
             }
         } catch (error) {
@@ -647,10 +664,11 @@ export default function UserDetailPage() {
                 body: JSON.stringify(payload)
             });
             if (res.ok) {
-                alert("Profile updated successfully!");
+                notifySuccess("Profile updated", "User profile changes saved.");
                 fetchUserDetail();
                 fetchFullUserData();
             } else {
+                await notifyResponseError(res, "Profile update failed");
                 const detail = await res.text();
                 throw new Error(detail || "Update failed.");
             }
@@ -684,14 +702,13 @@ export default function UserDetailPage() {
                 setWalletSummary(data.wallet_summary || null);
                 fetchWalletData();
                 fetchUserDetail();
-                alert("Credits granted successfully!");
+                notifySuccess("Credits granted", "Adjustment lot created successfully.");
             } else {
-                const err = await res.json();
-                alert(`Error: ${err.detail}`);
+                await notifyResponseError(res, "Grant failed");
             }
         } catch (error) {
             console.error(error);
-            alert("Failed to grant credits.");
+            notifyError("Grant failed", error instanceof Error ? error.message : "Unexpected error");
         }
     };
 
@@ -709,12 +726,13 @@ export default function UserDetailPage() {
                 setWalletSummary(data.wallet_summary || null);
                 fetchWalletData();
                 fetchUserDetail();
-                alert("Reconciliation completed.");
+                notifySuccess("Reconciled", "Wallet cache refreshed.");
             } else {
-                alert("Reconciliation failed.");
+                await notifyResponseError(res, "Reconciliation failed");
             }
         } catch (error) {
             console.error(error);
+            notifyError("Reconciliation failed", error instanceof Error ? error.message : "Unexpected error");
         }
     };
 
@@ -743,14 +761,13 @@ export default function UserDetailPage() {
                 setWalletSummary(data.wallet_summary || null);
                 fetchWalletData();
                 fetchUserDetail();
-                alert("Refund issued successfully!");
+                notifySuccess("Refund issued", "Refund lot created successfully.");
             } else {
-                const err = await res.json();
-                alert(`Error: ${err.detail}`);
+                await notifyResponseError(res, "Refund failed");
             }
         } catch (error) {
             console.error(error);
-            alert("Failed to issue refund.");
+            notifyError("Refund failed", error instanceof Error ? error.message : "Unexpected error");
         }
     };
 
@@ -775,14 +792,13 @@ export default function UserDetailPage() {
                 setEnrollIdempotencyKey("");
                 setWalletSummary(data.wallet_summary || null);
                 fetchWalletData();
-                alert("Enrollment successful!");
+                notifySuccess("Enrollment created", "User enrolled successfully.");
             } else {
-                const err = await res.json();
-                alert(`Error: ${err.detail}`);
+                await notifyResponseError(res, "Enrollment failed");
             }
         } catch (error) {
             console.error(error);
-            alert("Failed to enroll user.");
+            notifyError("Enrollment failed", error instanceof Error ? error.message : "Unexpected error");
         }
     };
 
@@ -803,12 +819,11 @@ export default function UserDetailPage() {
                 setWalletSummary(data.wallet_summary || null);
                 fetchWalletData();
             } else {
-                const err = await res.json();
-                alert(`Error: ${err.detail}`);
+                await notifyResponseError(res, "Unenroll failed");
             }
         } catch (error) {
             console.error(error);
-            alert("Failed to unenroll user.");
+            notifyError("Unenroll failed", error instanceof Error ? error.message : "Unexpected error");
         }
     };
 
@@ -829,12 +844,11 @@ export default function UserDetailPage() {
                 setWalletSummary(data.wallet_summary || null);
                 fetchWalletData();
             } else {
-                const err = await res.json();
-                alert(`Error: ${err.detail}`);
+                await notifyResponseError(res, "Grant failed");
             }
         } catch (error) {
             console.error(error);
-            alert("Failed to grant program credits.");
+            notifyError("Grant failed", error instanceof Error ? error.message : "Unexpected error");
         }
     };
 
@@ -852,12 +866,11 @@ export default function UserDetailPage() {
                 setWalletSummary(data.wallet_summary || null);
                 fetchWalletData();
             } else {
-                const err = await res.json();
-                alert(`Error: ${err.detail}`);
+                await notifyResponseError(res, "Release failed");
             }
         } catch (error) {
             console.error(error);
-            alert("Failed to release hold.");
+            notifyError("Release failed", error instanceof Error ? error.message : "Unexpected error");
         }
     };
 
@@ -1246,8 +1259,8 @@ export default function UserDetailPage() {
 
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                 <FieldGrid data={fullData?.user} title="User Fields" />
-                                <FieldGrid data={fullData?.subscription} title="Subscription Fields" />
-                                <FieldGrid data={fullData?.plan} title="Plan Fields" />
+                                <FieldGrid data={fullData?.subscription} title="Legacy Subscription Fields" />
+                                <FieldGrid data={fullData?.plan} title="Legacy Plan Fields" />
                                 <FieldGrid data={fullData?.quota_overrides?.[0]} title="Quota Override (Latest)" />
                             </div>
 
@@ -1527,19 +1540,21 @@ export default function UserDetailPage() {
                                         </h4>
                                         <p className="text-xs uppercase tracking-[0.5em] text-slate-500">Computed Balance (Source of Truth)</p>
                                         <p className="text-xs text-slate-500 mt-2">
-                                            Cached: {cachedBalance.toFixed(2)} • Delta: {balanceDelta.toFixed(2)}
+                                            Cached: {cachedBalance.toFixed(2)} - Delta: {balanceDelta.toFixed(2)}
                                         </p>
                                     </div>
                                     <div className="flex flex-col items-start md:items-end gap-2">
                                         <div className="flex items-center gap-2">
                                             <button
                                                 onClick={() => setIsGrantModalOpen(true)}
+                                                data-testid="wallet-grant-button"
                                                 className="px-3 py-1 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 text-[10px] font-bold uppercase tracking-widest rounded border border-emerald-500/20 transition-all"
                                             >
                                                 Grant Credits
                                             </button>
                                             <button
                                                 onClick={() => setIsRefundModalOpen(true)}
+                                                data-testid="wallet-refund-button"
                                                 className="px-3 py-1 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 text-[10px] font-bold uppercase tracking-widest rounded border border-amber-500/20 transition-all"
                                             >
                                                 Refund
@@ -1623,7 +1638,7 @@ export default function UserDetailPage() {
                                         render: (_, row) => {
                                             const sourceLabel = row.source_label ? String(row.source_label) : "n/a";
                                             const meta = row.source_meta ? renderShortText(JSON.stringify(row.source_meta), 140) : "";
-                                            return meta ? `${sourceLabel} • ${meta}` : sourceLabel;
+                                            return meta ? `${sourceLabel} - ${meta}` : sourceLabel;
                                         }
                                     }
                                 ]}
@@ -1832,7 +1847,7 @@ export default function UserDetailPage() {
                     {activeTab === "Full Data" && (
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <section className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl">
-                                <h4 className="text-base font-bold text-slate-900 dark:text-white mb-4 tracking-tight">User + Subscription</h4>
+                                <h4 className="text-base font-bold text-slate-900 dark:text-white mb-4 tracking-tight">User + Legacy Subscription</h4>
                                 <pre className="text-[11px] text-slate-300 whitespace-pre-wrap break-words">
                                     {JSON.stringify({ user: fullData?.user, subscription: fullData?.subscription, plan: fullData?.plan }, null, 2)}
                                 </pre>
@@ -1964,6 +1979,7 @@ export default function UserDetailPage() {
                                     required
                                     value={grantAmount}
                                     onChange={e => setGrantAmount(parseFloat(e.target.value))}
+                                    data-testid="grant-amount"
                                     className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
                                 />
                             </div>
@@ -1985,6 +2001,7 @@ export default function UserDetailPage() {
                                     required
                                     value={grantReason}
                                     onChange={e => setGrantReason(e.target.value)}
+                                    data-testid="grant-reason"
                                     className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
                                     placeholder="Explanation for audit log..."
                                 />
@@ -2001,7 +2018,7 @@ export default function UserDetailPage() {
                             </div>
                             <div className="flex justify-end gap-3 pt-4">
                                 <button type="button" onClick={() => setIsGrantModalOpen(false)} className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">Cancel</button>
-                                <button type="submit" className="px-6 py-2 bg-emerald-500 text-white font-bold rounded-lg hover:bg-emerald-600 transition-all">Grant</button>
+                                <button type="submit" data-testid="grant-submit" className="px-6 py-2 bg-emerald-500 text-white font-bold rounded-lg hover:bg-emerald-600 transition-all">Grant</button>
                             </div>
                         </form>
                     </div>
@@ -2039,6 +2056,7 @@ export default function UserDetailPage() {
                                     required
                                     value={refundAmount}
                                     onChange={e => setRefundAmount(parseFloat(e.target.value))}
+                                    data-testid="refund-amount"
                                     className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
                                 />
                             </div>
@@ -2069,6 +2087,7 @@ export default function UserDetailPage() {
                                     required
                                     value={refundReason}
                                     onChange={e => setRefundReason(e.target.value)}
+                                    data-testid="refund-reason"
                                     className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-admin-primary outline-none"
                                     placeholder="Detailed reason..."
                                 />
@@ -2085,7 +2104,7 @@ export default function UserDetailPage() {
                             </div>
                             <div className="flex justify-end gap-3 pt-4">
                                 <button type="button" onClick={() => setIsRefundModalOpen(false)} className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">Cancel</button>
-                                <button type="submit" className="px-6 py-2 bg-amber-500 text-white font-bold rounded-lg hover:bg-amber-600 transition-all">Issue Refund</button>
+                                <button type="submit" data-testid="refund-submit" className="px-6 py-2 bg-amber-500 text-white font-bold rounded-lg hover:bg-amber-600 transition-all">Issue Refund</button>
                             </div>
                         </form>
                     </div>
@@ -2151,3 +2170,5 @@ export default function UserDetailPage() {
         </div>
     );
 }
+
+

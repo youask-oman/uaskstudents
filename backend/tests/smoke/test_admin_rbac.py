@@ -1,15 +1,17 @@
-import pytest
-from fastapi.testclient import TestClient
-from app.main import app
-from app.models import User
-from sqlmodel import Session, select
-from app.database import engine
 import json
 import os
 from pathlib import Path
 
-# Load inventory
-INVENTORY_PATH = Path(__file__).resolve().parents[2] / "reports" / "admin_route_inventory.json"
+import pytest
+
+from fastapi.testclient import TestClient
+from sqlmodel import Session, select
+
+from app.main import app
+from app.models import User
+from app.database import engine
+from scripts.seed_production import run_seed
+
 
 @pytest.fixture
 def non_admin_headers():
@@ -17,22 +19,18 @@ def non_admin_headers():
     with Session(engine) as session:
         user = session.exec(select(User).where(User.role == "employee", User.is_internal == False)).first()
         if not user:
-            # Create one if missing
             from app.auth import get_password_hash
             user = User(
                 email="test-non-admin@example.com",
                 full_name="Test Non Admin",
                 role="employee",
                 is_internal=False,
-                password_hash=get_password_hash("password123")
+                password_hash=get_password_hash("password123"),
             )
             session.add(user)
             session.commit()
             session.refresh(user)
-        
-        # We simulate authentication by providing the user_id in headers if the app supports it for testing
-        # or we generate a real JWT. Let's use the X-User-ID if applicable, 
-        # but realistically we need a real token if RBAC middleware is strict.
+
         from app.auth import create_access_token
         from datetime import timedelta
         access_token = create_access_token(
@@ -40,52 +38,40 @@ def non_admin_headers():
         )
         return {"Authorization": f"Bearer {access_token}"}
 
-def test_admin_rbac_enforcement(non_admin_headers):
-    client = TestClient(app)
-    
-    if not INVENTORY_PATH.exists():
-        pytest.skip("Inventory file missing")
-        
-    with open(INVENTORY_PATH, "r") as f:
-        inventory = json.load(f)
-        
-    endpoints = inventory["backend_endpoints"]
-    
-    # We don't test ALL 135 here because it's slow, but we pick representative ones
-    # focusing on various prefixes and tags.
-    tested_count = 0
-    for ep in endpoints:
-        path = ep["path"]
-        method = ep["methods"][0] if ep["methods"] else "GET"
-        
-        # Skip endpoints that are NOT clearly admin protected (some critical prefixes might be public-ish)
-        if not any(p in path for p in ["/admin", "/api/admin", "/api/v1/admin"]):
-            continue
-            
-        # Skip path param endpoints for now in RBAC check (simple 403 should happen regardless of ID)
-        if "{" in path:
-            # Simple check with dummy ID
-            test_path = path.replace("{user_id}", "999").replace("{sub_id}", "999").replace("{attempt_id}", "999")
-            # If there are other braces, just skip it to be safe
-            if "{" in test_path:
-                continue
-        else:
-            test_path = path
-            
-        if method == "GET":
-            resp = client.get(test_path, headers=non_admin_headers)
-        elif method == "POST":
-            resp = client.post(test_path, headers=non_admin_headers, json={})
-        else:
-            continue
-            
-        # We expect 403 Forbidden or 401 Unauthorized (if token is invalid, but we sent one)
-        # Some endpoints might return 404 if the path doesn't exist (but discovery says it does)
-        # Any non-200/non-500 is generally good for RBAC, but we want 403.
-        assert resp.status_code >= 400, f"Endpoint {method} {test_path} allowed non-admin access! Status: {resp.status_code}"
-        tested_count += 1
-        
-        if tested_count > 20: # Limit to 20 representative endpoints
-            break
 
-    print(f"Tested {tested_count} endpoints for RBAC")
+def _manifest_path() -> Path:
+    for parent in [Path(__file__).resolve()] + list(Path(__file__).resolve().parents):
+        candidate = parent / "admin_nav_manifest.json"
+        if candidate.exists():
+            return candidate
+    candidate = Path("/src/admin_nav_manifest.json")
+    if candidate.exists():
+        return candidate
+    raise AssertionError("admin_nav_manifest.json not found in repo root or /src mount.")
+
+
+def test_admin_rbac_enforcement(non_admin_headers):
+    os.environ["APP_ENV"] = "DEV"
+    os.environ["SEED_DEV_DEFAULT_PASSWORD"] = "DevOnlyChangeMe123!"
+    run_seed(app_env="DEV", rotate_passwords=True, dev_fixtures=False)
+
+    manifest = json.loads(_manifest_path().read_text(encoding="utf-8"))
+    nav_items = manifest.get("nav_items", [])
+    assert nav_items, "Manifest nav_items must not be empty"
+
+    # Restrict to admin-only prefixes to avoid endpoints that are intentionally public.
+    protected_prefixes = ("/api/admin/billing", "/api/v1/admin")
+    protected_paths = []
+    for item in nav_items:
+        if item.get("type") != "link":
+            continue
+        for path in item.get("api_checks", []) or []:
+            if path.startswith(protected_prefixes):
+                protected_paths.append(path)
+
+    assert protected_paths, "No protected admin endpoints found for RBAC check."
+
+    client = TestClient(app)
+    for path in protected_paths:
+        resp = client.get(path, headers=non_admin_headers)
+        assert resp.status_code in (401, 403), f"{path}: expected 401/403, got {resp.status_code}"

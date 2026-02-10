@@ -49,6 +49,8 @@ services:
       - ./backend/data:/app/data:ro
       - ./backend:/app
       - .:/src:ro
+      - ./reports:/src/reports
+      - ./test-results:/src/test-results
 
   worker:
     image: uask-worker:prod

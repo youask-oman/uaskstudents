@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_BASE_URL, parseApiError } from "@/lib/api";
+import { useToast } from "@/components/ui/ToastProvider";
 
 type Tab = "pricing" | "tokens" | "transactions" | "history" | "diagnostics";
 
@@ -27,6 +27,7 @@ interface Transaction {
 }
 
 export default function BillingControlCenter() {
+    const { pushToast } = useToast();
     const [activeTab, setActiveTab] = useState<Tab>("pricing");
     const [loading, setLoading] = useState(false);
     const [pricingConfig, setPricingConfig] = useState<Record<string, unknown>>({});
@@ -50,10 +51,10 @@ export default function BillingControlCenter() {
     const fetchConfig = useCallback(async (type: string) => {
         setLoading(true);
         try {
-            let url = `${API_BASE}/api/admin/config/${type}`;
+            let url = `${API_BASE_URL}/api/admin/config/${type}`;
             // Token limits use a different endpoint
             if (type === "tokens") {
-                url = `${API_BASE}/api/v1/config/token-policy`;
+                url = `${API_BASE_URL}/api/v1/config/token-policy`;
             }
             const res = await fetch(url, {
                 headers: { Authorization: `Bearer ${getToken()}` }
@@ -61,69 +62,121 @@ export default function BillingControlCenter() {
             if (!res.ok) {
                 if (type === "pricing") setPricingConfig({});
                 else setTokensConfig({});
+                const err = await parseApiError(res);
+                pushToast({
+                    type: "error",
+                    title: "Failed to load config",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
                 setLoading(false);
                 return;
             }
             const data = await res.json();
             if (type === "pricing") setPricingConfig(data || {});
             else setTokensConfig(data.policy || data || {});
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error(e);
+            pushToast({
+                type: "error",
+                title: "Failed to load config",
+                message: e instanceof Error ? e.message : "Unexpected error",
+            });
+        }
         setLoading(false);
     }, []);
 
     const fetchTransactions = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_BASE}/api/admin/transactions`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/transactions`, {
                 headers: { Authorization: `Bearer ${getToken()}` }
             });
             if (!res.ok) { setTransactions([]); setLoading(false); return; }
             const data = await res.json();
             setTransactions(Array.isArray(data.data) ? data.data : []);
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error(e);
+            pushToast({
+                type: "error",
+                title: "Failed to load transactions",
+                message: e instanceof Error ? e.message : "Unexpected error",
+            });
+        }
         setLoading(false);
     }, []);
 
     const fetchHistory = useCallback(async (type: string) => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_BASE}/api/admin/config/history/${type}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/config/history/${type}`, {
                 headers: { Authorization: `Bearer ${getToken()}` }
             });
             if (!res.ok) { setHistory([]); setLoading(false); return; }
             const data = await res.json();
             setHistory(Array.isArray(data) ? data : []);
-        } catch (e) { console.error(e); setHistory([]); }
+        } catch (e) {
+            console.error(e);
+            setHistory([]);
+            pushToast({
+                type: "error",
+                title: "Failed to load history",
+                message: e instanceof Error ? e.message : "Unexpected error",
+            });
+        }
         setLoading(false);
     }, []);
 
     const saveConfig = async (type: string, value: Record<string, unknown>) => {
-        if (!changeMsg.trim()) { alert("Please provide a change message"); return; }
+        if (!changeMsg.trim()) {
+            pushToast({ type: "error", title: "Missing change reason", message: "Please provide a change message." });
+            return;
+        }
         setLoading(true);
         try {
-            await fetch(`${API_BASE}/api/admin/config/${type}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/config/${type}`, {
                 method: "PUT",
                 headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
                 body: JSON.stringify({ value, change_msg: changeMsg })
             });
             setChangeMsg("");
-            fetchConfig(type);
-            alert("Saved successfully!");
-        } catch (e) { console.error(e); alert("Save failed"); }
+            if (res.ok) {
+                fetchConfig(type);
+                pushToast({ type: "success", title: "Config saved", message: "Settings updated successfully." });
+            } else {
+                const err = await parseApiError(res);
+                pushToast({
+                    type: "error",
+                    title: "Save failed",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
+            }
+        } catch (e) {
+            console.error(e);
+            pushToast({ type: "error", title: "Save failed", message: e instanceof Error ? e.message : "Unexpected error" });
+        }
         setLoading(false);
     };
 
     const runCalculator = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_BASE}/api/admin/calculator`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/calculator`, {
                 method: "POST",
                 headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
                 body: JSON.stringify(calcInput)
             });
             const data = await res.json();
             setCalcResult(data);
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error(e);
+            pushToast({
+                type: "error",
+                title: "Calculator failed",
+                message: e instanceof Error ? e.message : "Unexpected error",
+            });
+        }
         setLoading(false);
     };
 
@@ -144,12 +197,19 @@ export default function BillingControlCenter() {
             // Check if input is email (contains @) or user ID
             const isEmail = diagUserId.includes("@");
             const param = isEmail ? `email=${encodeURIComponent(diagUserId)}` : `user_id=${diagUserId}`;
-            const res = await fetch(`${API_BASE}/api/admin/diagnostics/credits?${param}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/diagnostics/credits?${param}`, {
                 headers: { Authorization: `Bearer ${getToken()}` }
             });
             const data = await res.json();
             setDiagResult(data);
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error(e);
+            pushToast({
+                type: "error",
+                title: "Diagnostics failed",
+                message: e instanceof Error ? e.message : "Unexpected error",
+            });
+        }
         setLoading(false);
     };
 
@@ -160,14 +220,21 @@ export default function BillingControlCenter() {
             // Check if input is email (contains @) or user ID  
             const isEmail = diagUserId.includes("@");
             const param = isEmail ? `email=${encodeURIComponent(diagUserId)}` : `user_id=${diagUserId}`;
-            const res = await fetch(`${API_BASE}/api/admin/credits/seed?${param}&amount=${seedAmount}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/credits/seed?${param}&amount=${seedAmount}`, {
                 method: "POST",
                 headers: { Authorization: `Bearer ${getToken()}` }
             });
             const data = await res.json();
             setDiagResult(data);
-            alert("Credits seeded successfully!");
-        } catch (e) { console.error(e); }
+            pushToast({ type: "success", title: "Credits seeded", message: "Seed credits issued successfully." });
+        } catch (e) {
+            console.error(e);
+            pushToast({
+                type: "error",
+                title: "Seed failed",
+                message: e instanceof Error ? e.message : "Unexpected error",
+            });
+        }
         setLoading(false);
     };
 

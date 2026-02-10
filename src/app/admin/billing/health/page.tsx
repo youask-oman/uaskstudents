@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { API_BASE_URL, parseApiError } from '@/lib/api';
+import { useToast } from '@/components/ui/ToastProvider';
 
 interface HealthDashboard {
     mismatch_count_today: number;
@@ -23,12 +25,11 @@ interface Mismatch {
 
 export default function HealthPage() {
     const { token } = useAuth();
+    const { pushToast } = useToast();
     const [health, setHealth] = useState<HealthDashboard | null>(null);
     const [mismatches, setMismatches] = useState<Mismatch[]>([]);
     const [loading, setLoading] = useState(true);
     const [running, setRunning] = useState(false);
-
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
 
     useEffect(() => {
         fetchData();
@@ -37,21 +38,44 @@ export default function HealthPage() {
     const fetchData = async () => {
         try {
             const [healthRes, mismatchRes] = await Promise.all([
-                fetch(`${API_BASE}/api/admin/billing/health`, {
+                fetch(`${API_BASE_URL}/api/admin/billing/health`, {
                     headers: { Authorization: `Bearer ${token}` },
                 }),
-                fetch(`${API_BASE}/api/admin/billing/health/mismatches?limit=20`, {
+                fetch(`${API_BASE_URL}/api/admin/billing/health/mismatches?limit=20`, {
                     headers: { Authorization: `Bearer ${token}` },
                 }),
             ]);
 
-            if (healthRes.ok) setHealth(await healthRes.json());
+            if (healthRes.ok) {
+                setHealth(await healthRes.json());
+            } else {
+                const err = await parseApiError(healthRes);
+                pushToast({
+                    type: "error",
+                    title: "Failed to load health",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
+            }
             if (mismatchRes.ok) {
                 const data = await mismatchRes.json();
                 setMismatches(data.items);
+            } else {
+                const err = await parseApiError(mismatchRes);
+                pushToast({
+                    type: "error",
+                    title: "Failed to load mismatches",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
             }
         } catch (e) {
             console.error('Failed to load health data');
+            pushToast({
+                type: "error",
+                title: "Failed to load health data",
+                message: e instanceof Error ? e.message : "Unexpected error",
+            });
         } finally {
             setLoading(false);
         }
@@ -62,26 +86,80 @@ export default function HealthPage() {
 
         setRunning(true);
         try {
-            const res = await fetch(`${API_BASE}/api/admin/billing/health/run-reconciliation`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/billing/health/run-reconciliation`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {
                 const data = await res.json();
-                alert(`Reconciliation complete: ${JSON.stringify(data.stats)}`);
+                pushToast({
+                    type: "success",
+                    title: "Reconciliation complete",
+                    message: `Processed ${data?.stats?.users_processed ?? 0} users.`,
+                });
                 fetchData();
             } else {
-                alert('Failed to run reconciliation');
+                const err = await parseApiError(res);
+                pushToast({
+                    type: "error",
+                    title: "Reconciliation failed",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
             }
         } catch (e) {
-            alert('Error running reconciliation');
+            pushToast({
+                type: "error",
+                title: "Reconciliation failed",
+                message: e instanceof Error ? e.message : "Unexpected error",
+            });
         } finally {
             setRunning(false);
         }
     };
 
     const exportCSV = () => {
-        window.open(`${API_BASE}/api/admin/billing/health/export`, '_blank');
+        window.open(`${API_BASE_URL}/api/admin/billing/health/export`, '_blank');
+    };
+
+    const reconcileUser = async (userId: number, email?: string) => {
+        const reason = prompt(`Reason for reconciling user ${email || userId}?`);
+        if (!reason) return;
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/admin/billing/users/${userId}/reconcile`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    reason,
+                    idempotency_key: `health_reconcile_${userId}_${Date.now()}`,
+                }),
+            });
+            if (res.ok) {
+                pushToast({
+                    type: "success",
+                    title: "User reconciled",
+                    message: `Wallet cache updated for ${email || `User #${userId}`}.`,
+                });
+                fetchData();
+            } else {
+                const err = await parseApiError(res);
+                pushToast({
+                    type: "error",
+                    title: "Failed to reconcile user",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
+            }
+        } catch (e) {
+            pushToast({
+                type: "error",
+                title: "Failed to reconcile user",
+                message: e instanceof Error ? e.message : "Unexpected error",
+            });
+        }
     };
 
     if (loading) {
@@ -158,6 +236,7 @@ export default function HealthPage() {
                             <th className="px-4 py-3 text-left">Computed</th>
                             <th className="px-4 py-3 text-left">Delta</th>
                             <th className="px-4 py-3 text-left">Last Fix</th>
+                            <th className="px-4 py-3 text-left">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -175,11 +254,19 @@ export default function HealthPage() {
                                 <td className="px-4 py-3 text-gray-500">
                                     {m.last_fix_time ? new Date(m.last_fix_time).toLocaleString() : 'Never'}
                                 </td>
+                                <td className="px-4 py-3">
+                                    <button
+                                        onClick={() => reconcileUser(m.user_id, m.user_email)}
+                                        className="rounded-md bg-blue-600 px-3 py-1 text-xs font-bold text-white hover:bg-blue-700"
+                                    >
+                                        Reconcile
+                                    </button>
+                                </td>
                             </tr>
                         ))}
                         {mismatches.length === 0 && (
                             <tr>
-                                <td colSpan={5} className="px-4 py-8 text-center text-green-600">
+                                <td colSpan={6} className="px-4 py-8 text-center text-green-600">
                                     ✓ No balance mismatches detected
                                 </td>
                             </tr>

@@ -1,5 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { API_BASE_URL, parseApiError } from "@/lib/api";
+import { useToast } from "@/components/ui/ToastProvider";
 
 interface QuotaUser {
     id: number;
@@ -28,9 +30,8 @@ interface QuotaData {
     [key: string]: unknown;
 }
 
-const DEFAULT_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
-
 export default function AdminQuotasPage() {
+    const { pushToast } = useToast();
     const [data, setData] = useState<QuotaData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedUser, setSelectedUser] = useState<QuotaUser | null>(null);
@@ -41,7 +42,7 @@ export default function AdminQuotasPage() {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [pageIndex, setPageIndex] = useState(0);
     const pageSize = 15;
-    const baseUrl = DEFAULT_API_BASE_URL;
+    const baseUrl = API_BASE_URL;
 
     const fetchData = useCallback(
         async (signal?: AbortSignal) => {
@@ -121,10 +122,21 @@ export default function AdminQuotasPage() {
                 }),
             });
             if (res.ok) {
-                alert("Override applied successfully");
+                pushToast({
+                    type: "success",
+                    title: "Override applied",
+                    message: "User quota override saved.",
+                });
                 await fetchData();
                 setSelectedUser(null);
             } else {
+                const err = await parseApiError(res);
+                pushToast({
+                    type: "error",
+                    title: "Override failed",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
                 throw new Error("Failed to apply override.");
             }
         } catch (err) {
@@ -232,7 +244,7 @@ export default function AdminQuotasPage() {
                         <thead>
                             <tr className="bg-slate-100 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
                                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">User</th>
-                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">Plan</th>
+                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">Legacy Plan</th>
                                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400 w-64">Daily Usage %</th>
                                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">Daily Usage</th>
                                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">Last Active</th>
@@ -349,7 +361,7 @@ export default function AdminQuotasPage() {
                                 <p className="font-bold text-slate-900 dark:text-white text-lg leading-tight">{selectedUser.full_name}</p>
                                 <p className="text-xs text-slate-500">{selectedUser.email}</p>
                                 <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">
-                                    {selectedUser.full_id} · {selectedUser.plan} Account
+                                    {selectedUser.full_id} · {selectedUser.plan} Legacy Account
                                 </p>
                                 <p className="text-[10px] text-slate-500 mt-1">
                                     Credits: {selectedUser.credits_balance ?? "n/a"} used {selectedUser.credits_used_this_period ?? "n/a"}
@@ -419,9 +431,6 @@ export default function AdminQuotasPage() {
                                 className="w-full bg-admin-primary text-white py-3 rounded-lg font-bold hover:bg-admin-primary/90 transition-all active:scale-95 disabled:opacity-50 shadow-lg shadow-admin-primary/20"
                             >
                                 {isSaving ? "Applying..." : "Apply Override"}
-                            </button>
-                            <button className="w-full bg-slate-900 text-rose-500 border border-rose-500/20 py-3 rounded-lg font-bold hover:bg-rose-500/10 transition-colors">
-                                Reset to Plan Defaults
                             </button>
                         </div>
                     </div>

@@ -7,6 +7,7 @@ import logoDark from "@/app/logo/logo-13.png";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import ThemeToggle from "@/components/ThemeToggle";
+import { fetchWalletSummary, WalletSummary } from "@/lib/wallet";
 
 interface StudentLayoutProps {
     children: React.ReactNode;
@@ -14,14 +15,12 @@ interface StudentLayoutProps {
 
 type StudentUser = {
     full_name: string;
-    subscription_tier: string;
-    avatar_url: string;
+    avatar_url?: string | null;
 };
 
 const DEFAULT_STUDENT_USER: StudentUser = {
-    full_name: "Alex Johnson",
-    subscription_tier: "Pro",
-    avatar_url: "https://lh3.googleusercontent.com/aida-public/AB6AXuD_gpHP7vJM1mkTxszlDYSYslefzDpqT7kS3EUblVETFcyH2Sl2xHETdTN_AcqdawcLn0mOa7LR69Ol1T3hAFSvpJss7LzshfwXBbhjMZqOGSH9S1nVdhEO1aeexaHXJAn_VqN1tFoPVazJP1aq1rARcjsg7F4-pStNL1jl7KEpohReYVX52pfbq3YO6IKCX71lAo42c76k2H4WrKWI5r79xsjqMPNL1zZPzcajFKkIs40bZTGM732P1j_aCdcr67zOQ2bNSaRrATQz"
+    full_name: "Student",
+    avatar_url: ""
 };
 
 const getInitialUser = (): StudentUser => {
@@ -39,7 +38,6 @@ const getInitialUser = (): StudentUser => {
         const parsed = JSON.parse(storedUser);
         return {
             full_name: parsed.full_name || localStorage.getItem("user_name") || DEFAULT_STUDENT_USER.full_name,
-            subscription_tier: parsed.subscription_tier || DEFAULT_STUDENT_USER.subscription_tier,
             avatar_url: parsed.avatar_url || localStorage.getItem("user_avatar") || DEFAULT_STUDENT_USER.avatar_url,
         };
     } catch {
@@ -52,11 +50,27 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     const router = useRouter();
     // Initialize with default to match server
     const [user, setUser] = useState<StudentUser>(DEFAULT_STUDENT_USER);
+    const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
     useEffect(() => {
         // Hydrate from local storage on mount
         const storedUser = getInitialUser();
         // eslint-disable-next-line
         setUser(storedUser);
+    }, []);
+    useEffect(() => {
+        let active = true;
+        const loadWallet = async () => {
+            try {
+                const summary = await fetchWalletSummary();
+                if (active) setWalletSummary(summary);
+            } catch {
+                if (active) setWalletSummary(null);
+            }
+        };
+        void loadWallet();
+        return () => {
+            active = false;
+        };
     }, []);
 
     // Logout Refs & Timer
@@ -118,7 +132,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     const navItems = [
         { label: "Dashboard", icon: "grid_view", href: "/dashboard", id: "dashboard" },
         { label: "New Solve", icon: "add_circle", href: "/solve", id: "new-solve", highlight: true },
-        { label: "Plan & Billing", icon: "credit_card", href: "/billing", id: "billing" },
+        { label: "Wallet & Programs", icon: "credit_card", href: "/billing", id: "billing" },
     ];
 
     const learningItems = [
@@ -184,10 +198,6 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                 {/* Bottom Section: Tools & Profile */}
                 <div className="px-3 pb-6 border-t border-slate-800">
                     <div className="space-y-1 mb-4 pt-4">
-                        <Link href="#" className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-primary hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-all duration-200 group">
-                            <span className="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">help</span>
-                            <span className="text-sm font-medium">Help Center</span>
-                        </Link>
                         <Link href="/profile" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group ${pathname === '/profile' ? 'text-primary dark:text-white bg-primary/10 dark:bg-white/5' : 'text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-primary hover:bg-slate-100 dark:hover:bg-white/5'}`}>
                             <span className="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">settings</span>
                             <span className="text-sm font-medium">Settings</span>
@@ -204,17 +214,27 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                     {/* User Profile Snippet */}
                     <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 flex items-center gap-3 border border-slate-200 dark:border-slate-800/50">
                         <div className="relative">
-                            <div
-                                className="w-10 h-10 rounded-full bg-cover bg-center border-2 border-primary/30"
-                                style={{ backgroundImage: `url('${user?.avatar_url || 'https://lh3.googleusercontent.com/aida-public/AB6AXuD_gpHP7vJM1mkTxszlDYSYslefzDpqT7kS3EUblVETFcyH2Sl2xHETdTN_AcqdawcLn0mOa7LR69Ol1T3hAFSvpJss7LzshfwXBbhjMZqOGSH9S1nVdhEO1aeexaHXJAn_VqN1tFoPVazJP1aq1rARcjsg7F4-pStNL1jl7KEpohReYVX52pfbq3YO6IKCX71lAo42c76k2H4WrKWI5r79xsjqMPNL1zZPzcajFKkIs40bZTGM732P1j_aCdcr67zOQ2bNSaRrATQz'}')` }}
-                            />
+                            <div className="w-10 h-10 rounded-full border-2 border-primary/30 bg-slate-200 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
+                                {user?.avatar_url ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={user.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                                ) : (
+                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                                        {(user?.full_name || "S").charAt(0)}
+                                    </span>
+                                )}
+                            </div>
                             <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-[#111827] rounded-full"></div>
                         </div>
                         <div className="flex flex-col min-w-0">
-                            <span className="text-sm font-semibold text-white truncate">{user?.full_name || "Alex Johnson"}</span>
+                            <span className="text-sm font-semibold text-white truncate">{user?.full_name || "Student"}</span>
                             <div className="flex items-center gap-1.5">
-                                <span className="bg-primary/20 text-primary text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Pro</span>
-                                <span className="text-slate-500 text-[11px] truncate">Active</span>
+                                <span className="bg-primary/20 text-primary text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
+                                    {walletSummary?.effective_tier || "FREE"}
+                                </span>
+                                <span className="text-slate-500 text-[11px] truncate">
+                                    {walletSummary ? `${walletSummary.computed_balance.toFixed(2)} credits` : "Wallet loading..."}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -225,7 +245,15 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
             <main className="flex-1 bg-background-light dark:bg-background-dark overflow-y-auto flex flex-col">
                 <header className="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white/50 dark:bg-background-dark/50 backdrop-blur-md sticky top-0 z-10">
                     <h2 className="text-xl font-bold">
-                        {pathname === '/dashboard' ? 'Student Dashboard' : pathname === '/solve' ? 'New Solve' : pathname === '/profile' ? 'Settings' : 'Dashboard'}
+                        {pathname === '/dashboard'
+                            ? 'Student Dashboard'
+                            : pathname === '/solve'
+                                ? 'New Solve'
+                                : pathname === '/profile'
+                                    ? 'Settings'
+                                    : pathname === '/billing'
+                                        ? 'Wallet & Programs'
+                                        : 'Dashboard'}
                     </h2>
                     <div className="flex items-center gap-4">
                         <div className="flex items-center justify-center w-10 h-10">

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { API_BASE_URL, parseApiError } from "@/lib/api";
+import { useToast } from "@/components/ui/ToastProvider";
 
 type RegistryPromptItem = {
     prompt_id: string;
@@ -14,10 +16,9 @@ type RegistryPromptItem = {
     updated_by?: string | null;
 };
 
-const DEFAULT_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
-
 export default function AdminPromptsPage() {
-    const baseUrl = useMemo(() => DEFAULT_API_BASE_URL, []);
+    const { pushToast } = useToast();
+    const baseUrl = useMemo(() => API_BASE_URL, []);
     const [prompts, setPrompts] = useState<RegistryPromptItem[]>([]);
     const [selectedPromptId, setSelectedPromptId] = useState<string>("");
     const [versions, setVersions] = useState<RegistryPromptItem[]>([]);
@@ -123,9 +124,22 @@ export default function AdminPromptsPage() {
                     updated_by: localStorage.getItem("user_name") || "admin",
                 }),
             });
-            if (!res.ok) throw new Error("Failed to save prompt version.");
+            if (!res.ok) {
+                const err = await parseApiError(res);
+                pushToast({
+                    type: "error",
+                    title: "Save failed",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
+                throw new Error("Failed to save prompt version.");
+            }
             await refreshVersions();
-            alert("Prompt version saved.");
+            pushToast({
+                type: "success",
+                title: "Prompt version saved",
+                message: "New version stored successfully.",
+            });
         } catch (err) {
             console.error(err);
             setErrorMessage("Failed to save prompt version.");
@@ -146,9 +160,22 @@ export default function AdminPromptsPage() {
                     updated_by: localStorage.getItem("user_name") || "admin",
                 }),
             });
-            if (!res.ok) throw new Error("Failed to activate selected version.");
+            if (!res.ok) {
+                const err = await parseApiError(res);
+                pushToast({
+                    type: "error",
+                    title: "Activation failed",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
+                throw new Error("Failed to activate selected version.");
+            }
             await refreshVersions();
-            alert("Selected version is now active.");
+            pushToast({
+                type: "success",
+                title: "Prompt activated",
+                message: "Selected version is now active.",
+            });
         } catch (err) {
             console.error(err);
             setErrorMessage("Failed to activate selected version.");

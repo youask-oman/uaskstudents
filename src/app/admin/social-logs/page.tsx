@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { API_BASE_URL } from "@/lib/api";
 
 interface MonitorEvent {
     direction: "in" | "out";
@@ -29,10 +30,14 @@ export default function SocialLogsPage() {
     const [directionFilter, setDirectionFilter] = useState("");
 
     const fetchData = useCallback(async () => {
+        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
         const params = new URLSearchParams({ limit: "80" });
         if (phoneFilter.trim()) params.set("phone", phoneFilter.trim());
         if (directionFilter) params.set("direction", directionFilter);
-        const res = await fetch(`/api/admin/whatsapp/monitor?${params.toString()}`);
+        const res = await fetch(`${API_BASE_URL}/api/admin/whatsapp/monitor?${params.toString()}`, {
+            headers,
+        });
         const json = await res.json();
         setData(json);
     }, [phoneFilter, directionFilter]);

@@ -1,54 +1,305 @@
 {
-  "version": 1,
+  "version": 3,
   "updated_at": "2026-02-10",
   "nav_items": [
-    { "type": "link", "label": "Overview", "href": "/admin/dashboard", "icon": "dashboard" },
-    { "type": "link", "label": "Users", "href": "/admin/users", "icon": "group" },
-    { "type": "link", "label": "Quotas", "href": "/admin/quotas", "icon": "speed" },
-    { "type": "link", "label": "Prompts", "href": "/admin/prompts", "icon": "edit_note" },
-    { "type": "link", "label": "Prompt Registry", "href": "/admin/prompt-registry", "icon": "terminal" },
-    { "type": "link", "label": "Schema Registry", "href": "/admin/schema-registry", "icon": "data_object" },
-    { "type": "link", "label": "Prompt Bindings", "href": "/admin/prompt-bindings", "icon": "link" },
-    { "type": "link", "label": "Content", "href": "/admin/content", "icon": "collections_bookmark" },
-    { "type": "link", "label": "WhatsApp Bot", "href": "/admin/whatsapp-bot", "icon": "chat" },
-    { "type": "link", "label": "WhatsApp Monitor", "href": "/admin/whatsapp-monitor", "icon": "monitor_heart" },
-    { "type": "link", "label": "Social Logs", "href": "/admin/social-logs", "icon": "forum" },
-    { "type": "link", "label": "Logs", "href": "/admin/logs", "icon": "receipt_long" },
-    { "type": "link", "label": "Solvers", "href": "/admin/solver-attempts", "icon": "article" },
+    {
+      "type": "link",
+      "label": "Overview",
+      "href": "/admin/dashboard",
+      "icon": "dashboard",
+      "page_title": "Analytics Dashboard",
+      "api_checks": [
+        "/api/v1/admin/stats/dashboard",
+        "/api/v1/admin/analytics/overview"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "Users",
+      "href": "/admin/users",
+      "icon": "group",
+      "page_title": "User Directory",
+      "api_checks": [
+        "/api/v1/admin/users",
+        "/api/v1/admin/plans"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "Quotas",
+      "href": "/admin/quotas",
+      "icon": "speed",
+      "page_title": "Usage & Quotas",
+      "api_checks": [
+        "/api/v1/admin/quotas"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "Prompts",
+      "href": "/admin/prompts",
+      "icon": "edit_note",
+      "page_title": "Prompt",
+      "api_checks": [
+        "/api/v1/admin/prompt-registry/prompts"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "Prompt Registry",
+      "href": "/admin/prompt-registry",
+      "icon": "terminal",
+      "page_title": "Prompt Registry",
+      "api_checks": [
+        "/api/v1/admin/prompt-registry/prompts"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "Schema Registry",
+      "href": "/admin/schema-registry",
+      "icon": "data_object",
+      "page_title": "Schema Registry",
+      "api_checks": [
+        "/api/v1/admin/prompt-registry/schemas"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "Prompt Bindings",
+      "href": "/admin/prompt-bindings",
+      "icon": "link",
+      "page_title": "Prompt Bindings",
+      "api_checks": [
+        "/api/v1/admin/prompt-registry/bindings"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "Content",
+      "href": "/admin/content",
+      "icon": "collections_bookmark",
+      "page_title": "Content Library",
+      "api_checks": [
+        "/api/admin/content/concepts"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "WhatsApp Bot",
+      "href": "/admin/whatsapp-bot",
+      "icon": "chat",
+      "page_title": "WhatsApp Bot",
+      "api_checks": [
+        "/api/admin/whatsapp/status"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "WhatsApp Monitor",
+      "href": "/admin/whatsapp-monitor",
+      "icon": "monitor_heart",
+      "page_title": "WhatsApp Monitor",
+      "api_checks": [
+        "/api/admin/whatsapp/monitor"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "Social Logs",
+      "href": "/admin/social-logs",
+      "icon": "forum",
+      "page_title": "Social Media Logs",
+      "api_checks": [
+        "/api/admin/whatsapp/monitor"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "Logs",
+      "href": "/admin/logs",
+      "icon": "receipt_long",
+      "page_title": "Solve Request Logs",
+      "api_checks": [
+        "/api/v1/admin/solve-traces"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "Solvers",
+      "href": "/admin/solver-attempts",
+      "icon": "article",
+      "page_title": "Solver Output Attempts",
+      "api_checks": [
+        "/api/v1/admin/solver-output-attempts"
+      ]
+    },
 
     { "type": "divider" },
 
-    { "type": "link", "label": "Billing Control", "href": "/admin/billing", "icon": "account_balance" },
-    { "type": "link", "label": "Credit Programs", "href": "/admin/billing/programs", "icon": "card_giftcard" },
-    { "type": "link", "label": "Enrollments", "href": "/admin/billing/enrollments", "icon": "person_add" },
-    { "type": "link", "label": "Pricing Config", "href": "/admin/billing/pricing", "icon": "payments" },
-    { "type": "link", "label": "Credit Packs", "href": "/admin/billing/packs", "icon": "inventory_2" },
-    { "type": "link", "label": "Ledger Explorer", "href": "/admin/billing/ledger", "icon": "menu_book" },
-    { "type": "link", "label": "Refund Center", "href": "/admin/billing/refunds", "icon": "currency_exchange" },
-    { "type": "link", "label": "Active Holds", "href": "/admin/billing/holds", "icon": "pause_circle" },
-    { "type": "link", "label": "Billing Health", "href": "/admin/billing/health", "icon": "health_and_safety" },
-    { "type": "link", "label": "Feature Flags", "href": "/admin/billing/flags", "icon": "flag" },
-    { "type": "link", "label": "Invoices", "href": "/admin/billing/invoices", "icon": "receipt" },
+    {
+      "type": "link",
+      "label": "Billing Control",
+      "href": "/admin/billing",
+      "icon": "account_balance",
+      "page_title": "Billing Control Center",
+      "api_checks": [
+        "/api/admin/transactions"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "Credit Programs",
+      "href": "/admin/billing/programs",
+      "icon": "card_giftcard",
+      "page_title": "Credit Programs",
+      "api_checks": [
+        "/api/admin/billing/programs"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "Enrollments",
+      "href": "/admin/billing/enrollments",
+      "icon": "person_add",
+      "page_title": "Program Enrollments",
+      "api_checks": [
+        "/api/admin/billing/programs/enrollments/all"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "Pricing Config",
+      "href": "/admin/billing/pricing",
+      "icon": "payments",
+      "page_title": "LLM Model Pricing",
+      "api_checks": [
+        "/api/admin/billing/pricing"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "Credit Packs",
+      "href": "/admin/billing/packs",
+      "icon": "inventory_2",
+      "page_title": "Credit Packs",
+      "api_checks": [
+        "/api/admin/billing/packs"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "Ledger Explorer",
+      "href": "/admin/billing/ledger",
+      "icon": "menu_book",
+      "page_title": "Ledger Explorer",
+      "api_checks": [
+        "/api/admin/billing/ledger"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "Refund Center",
+      "href": "/admin/billing/refunds",
+      "icon": "currency_exchange",
+      "page_title": "Refund Center",
+      "api_checks": [
+        "/api/admin/billing/refunds"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "Active Holds",
+      "href": "/admin/billing/holds",
+      "icon": "pause_circle",
+      "page_title": "Active Credit Holds",
+      "api_checks": [
+        "/api/admin/billing/holds"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "Billing Health",
+      "href": "/admin/billing/health",
+      "icon": "health_and_safety",
+      "page_title": "Billing Health",
+      "api_checks": [
+        "/api/admin/billing/health"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "Feature Flags",
+      "href": "/admin/billing/flags",
+      "icon": "flag",
+      "page_title": "Billing Feature Flags",
+      "api_checks": [
+        "/api/admin/billing/flags"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "Invoices",
+      "href": "/admin/billing/invoices",
+      "icon": "receipt",
+      "page_title": "Invoice Center",
+      "api_checks": [
+        "/api/admin/billing/invoices"
+      ]
+    },
 
     { "type": "divider" },
 
-    { "type": "link", "label": "Legacy Plans (RO)", "href": "/admin/billing/legacy", "icon": "history" },
-    { "type": "link", "label": "Legacy Subscriptions (RO)", "href": "/admin/legacy/subscriptions", "icon": "card_membership" },
-    { "type": "link", "label": "Legacy Payments", "href": "/adminpayments", "icon": "history" },
+    {
+      "type": "link",
+      "label": "Legacy Plans (RO)",
+      "href": "/admin/legacy/plans",
+      "icon": "history",
+      "page_title": "Legacy Plans",
+      "api_checks": [
+        "/api/v1/admin/plans"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "Legacy Subscriptions (RO)",
+      "href": "/admin/legacy/subscriptions",
+      "icon": "card_membership",
+      "page_title": "Legacy Subscriptions",
+      "api_checks": [
+        "/api/v1/admin/plans"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "Legacy Payments",
+      "href": "/admin/legacy/payments",
+      "icon": "history",
+      "page_title": "Legacy Payments",
+      "api_checks": []
+    },
 
     { "type": "divider" },
 
-    { "type": "link", "label": "Data", "href": "/admin/data", "icon": "table_view" },
-    { "type": "link", "label": "System Config", "href": "/admin/system-config", "icon": "tune" }
-  ],
-  "api_checks": [
-    "/api/admin/billing/flags",
-    "/api/admin/billing/programs",
-    "/api/admin/billing/ledger",
-    "/api/admin/billing/holds",
-    "/api/admin/billing/refunds",
-    "/api/admin/billing/health",
-    "/api/admin/billing/invoices",
-    "/api/admin/billing/pricing"
+    {
+      "type": "link",
+      "label": "Data",
+      "href": "/admin/data",
+      "icon": "table_view",
+      "page_title": "Data Explorer",
+      "api_checks": [
+        "/api/admin/db/tables"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "System Config",
+      "href": "/admin/system-config",
+      "icon": "tune",
+      "page_title": "System Configuration",
+      "api_checks": [
+        "/api/v1/admin/system-config"
+      ]
+    }
   ]
 }

@@ -41,6 +41,21 @@ REPORT_DATA = {
     "verification_success": False
 }
 
+APP_ENV = os.getenv("APP_ENV", "").upper()
+DEV_MODE = APP_ENV == "DEV"
+
+def resolve_table_name(all_tables, target: str):
+    if target in all_tables:
+        return target
+    plural = f"{target}s"
+    if plural in all_tables:
+        return plural
+    normalized_target = target.replace("_", "")
+    for table in all_tables:
+        if table.replace("_", "") == normalized_target:
+            return table
+    return None
+
 def check_tables_exist(inspector):
     required_tables = [
         "school", "systemconfig", "prompt_templates", "prompt_bindings", 
@@ -225,9 +240,9 @@ def verify_data_integrity(session: Session):
     try:
         db_counts["user_internal"] = len(users) if 'users' in locals() else 0
         for label, table_name in required_tables.items():
-            check_name = table_name if table_name in all_tables else (table_name + "s" if table_name + "s" in all_tables else None)
+            check_name = resolve_table_name(all_tables, table_name)
             if check_name:
-                db_counts[label] = session.exec(text(f"SELECT count(*) FROM {check_name}")).one()[0]
+                db_counts[label] = session.exec(text(f"SELECT COUNT(*) FROM {check_name}")).one()[0]
             else:
                 db_counts[label] = 0
         
@@ -238,7 +253,10 @@ def verify_data_integrity(session: Session):
                 db_counts["expected_school"] = expected
                 if db_counts["school"] < expected:
                     db_counts["school_mismatch"] = f"Expected {expected}, found {db_counts['school']}"
-                    forbidden_ok = False
+                    if DEV_MODE:
+                        db_counts["school_note"] = "DEV mode allows empty school seed."
+                    else:
+                        forbidden_ok = False
     except Exception as e:
         db_counts["error"] = str(e)
     

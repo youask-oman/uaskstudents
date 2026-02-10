@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { API_BASE_URL, parseApiError } from "@/lib/api";
+import { useToast } from "@/components/ui/ToastProvider";
 
 interface SolverOutputAttemptListItem {
   id: number;
@@ -29,9 +31,8 @@ interface SolverOutputAttemptDetail extends SolverOutputAttemptListItem {
   raw_solution_text: string;
 }
 
-const DEFAULT_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
-
 export default function AdminSolverAttemptsPage() {
+  const { pushToast } = useToast();
   const [rows, setRows] = useState<SolverOutputAttemptListItem[]>([]);
   const [selected, setSelected] = useState<SolverOutputAttemptDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,7 +58,7 @@ export default function AdminSolverAttemptsPage() {
       if (query.trim()) params.set("request_id", query.trim());
       if (status) params.set("status", status);
       if (format) params.set("output_format", format);
-      const res = await fetch(`${DEFAULT_API_BASE_URL}/api/v1/admin/solver-output-attempts?${params.toString()}`, {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/solver-output-attempts?${params.toString()}`, {
         headers: getHeaders(),
       });
       if (!res.ok) throw new Error("Failed to load solver attempts");
@@ -73,7 +74,7 @@ export default function AdminSolverAttemptsPage() {
   const fetchDetail = async (id: number) => {
     setDetailLoading(true);
     try {
-      const res = await fetch(`${DEFAULT_API_BASE_URL}/api/v1/admin/solver-output-attempts/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/solver-output-attempts/${id}`, {
         headers: getHeaders(),
       });
       if (!res.ok) throw new Error("Failed to load details");
@@ -139,14 +140,20 @@ export default function AdminSolverAttemptsPage() {
           onClick={async () => {
             if (!confirm("Are you sure you want to PERMANENTLY delete ALL solver attempts?")) return;
             const token = localStorage.getItem("token");
-            const res = await fetch(`${DEFAULT_API_BASE_URL}/api/v1/admin/solver-attempts/all`, {
+            const res = await fetch(`${API_BASE_URL}/api/v1/admin/solver-attempts/all`, {
               method: "DELETE",
               headers: { Authorization: `Bearer ${token}` }
             });
             if (res.ok) {
               fetchRows();
             } else {
-              alert("Failed to clear attempts.");
+              const err = await parseApiError(res);
+              pushToast({
+                type: "error",
+                title: "Failed to clear attempts",
+                message: err.message,
+                requestId: err.requestId,
+              });
             }
           }}
         >

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { API_BASE_URL } from "@/lib/api";
 
 type ConnectionStatus = "disconnected" | "connecting" | "connected" | "qr_ready";
 
@@ -22,7 +23,10 @@ export default function WhatsAppBotPage() {
 
     const fetchBotStatus = async () => {
         try {
-            const response = await fetch("/api/admin/whatsapp/status");
+            const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+            const response = await fetch(`${API_BASE_URL}/api/admin/whatsapp/status`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            });
             if (response.ok) {
                 const data = await response.json();
                 setBotState(data);
@@ -35,8 +39,10 @@ export default function WhatsAppBotPage() {
     const initializeBot = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch("/api/admin/whatsapp/initialize", {
+            const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+            const response = await fetch(`${API_BASE_URL}/api/admin/whatsapp/initialize`, {
                 method: "POST",
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
             });
             if (response.ok) {
                 const data = await response.json();
@@ -62,8 +68,10 @@ export default function WhatsAppBotPage() {
     const disconnectBot = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch("/api/admin/whatsapp/disconnect", {
+            const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+            const response = await fetch(`${API_BASE_URL}/api/admin/whatsapp/disconnect`, {
                 method: "POST",
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
             });
             if (response.ok) {
                 setBotState({ status: "disconnected" });
@@ -286,7 +294,7 @@ export default function WhatsAppBotPage() {
                         </li>
                         <li className="flex items-start gap-2">
                             <span className="material-symbols-outlined text-xs mt-0.5">lock</span>
-                            <span>Bot verifies subscription status before responding</span>
+                            <span>Bot verifies credit/program eligibility before responding</span>
                         </li>
                         <li className="flex items-start gap-2">
                             <span className="material-symbols-outlined text-xs mt-0.5">lock</span>

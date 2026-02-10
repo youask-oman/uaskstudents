@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import { API_BASE_URL, parseApiError } from '@/lib/api';
+import { useToast } from '@/components/ui/ToastProvider';
 
 interface LedgerEntry {
     id: number;
@@ -20,12 +22,11 @@ interface LedgerEntry {
 
 export default function LedgerExplorerPage() {
     const { token } = useAuth();
+    const { pushToast } = useToast();
     const [entries, setEntries] = useState<LedgerEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [total, setTotal] = useState(0);
     const [filterUser, setFilterUser] = useState('');
-
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
 
     useEffect(() => {
         fetchLedger();
@@ -35,8 +36,8 @@ export default function LedgerExplorerPage() {
         setLoading(true);
         try {
             const url = userId
-                ? `${API_BASE}/api/admin/billing/ledger?user_id=${userId}&limit=50`
-                : `${API_BASE}/api/admin/billing/ledger?limit=50`;
+                ? `${API_BASE_URL}/api/admin/billing/ledger?user_id=${userId}&limit=50`
+                : `${API_BASE_URL}/api/admin/billing/ledger?limit=50`;
 
             const res = await fetch(url, {
                 headers: { Authorization: `Bearer ${token}` },
@@ -45,9 +46,22 @@ export default function LedgerExplorerPage() {
                 const data = await res.json();
                 setEntries(data.items);
                 setTotal(data.total);
+            } else {
+                const err = await parseApiError(res);
+                pushToast({
+                    type: "error",
+                    title: "Failed to load ledger",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
             }
         } catch (e) {
             console.error('Failed to load ledger');
+            pushToast({
+                type: "error",
+                title: "Failed to load ledger",
+                message: e instanceof Error ? e.message : "Unexpected error",
+            });
         } finally {
             setLoading(false);
         }

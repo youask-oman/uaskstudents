@@ -1,0 +1,307 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e5]:
+        - link "uask.ai uask.ai" [ref=e6] [cursor=pointer]:
+          - /url: /dashboard
+          - img "uask.ai" [ref=e7]
+          - generic [ref=e8]: uask.ai
+        - navigation [ref=e9]:
+          - link "Dashboard" [ref=e10] [cursor=pointer]:
+            - /url: /dashboard
+          - link "New Solve" [ref=e11] [cursor=pointer]:
+            - /url: /solve
+          - link "History" [ref=e12] [cursor=pointer]:
+            - /url: /dashboard?tab=history
+        - generic [ref=e13]:
+          - button "Toggle Dark Mode" [ref=e14] [cursor=pointer]:
+            - generic [ref=e15]: dark_mode
+          - button "notifications" [ref=e16] [cursor=pointer]:
+            - generic [ref=e17]: notifications
+          - button "G Guest" [ref=e19] [cursor=pointer]:
+            - generic [ref=e21]: G
+            - generic [ref=e22]: Guest
+    - main [ref=e23]:
+      - generic [ref=e24]:
+        - heading "New Solve uask AI v1.0" [level=2] [ref=e25]:
+          - text: New Solve
+          - generic [ref=e26]: uask AI v1.0
+        - paragraph [ref=e27]: Select your preferred input method and define the context for the best tutor results.
+      - generic [ref=e28]:
+        - generic [ref=e29]:
+          - generic [ref=e30]:
+            - generic [ref=e31]:
+              - generic [ref=e32]:
+                - heading "Goal" [level=3] [ref=e33]
+                - button "bolt Solve" [ref=e34] [cursor=pointer]:
+                  - generic [ref=e35]: bolt
+                  - generic [ref=e36]: Solve
+              - generic [ref=e37]:
+                - heading "Tier" [level=3] [ref=e39]
+                - radiogroup [ref=e41]:
+                  - radio "bolt Free" [checked] [ref=e42] [cursor=pointer]:
+                    - generic [ref=e43]: bolt
+                    - generic [ref=e44]: Free
+                  - radio "bolt Short" [ref=e45] [cursor=pointer]:
+                    - generic [ref=e46]: bolt
+                    - generic [ref=e47]: Short
+                  - radio "school Standard" [ref=e48] [cursor=pointer]:
+                    - generic [ref=e49]: school
+                    - generic [ref=e50]: Standard
+                  - radio "science Research" [ref=e51] [cursor=pointer]:
+                    - generic [ref=e52]: science
+                    - generic [ref=e53]: Research
+            - generic:
+              - img
+          - generic [ref=e55]:
+            - generic [ref=e56]: area_chart
+            - generic [ref=e57]: Plot Mode
+            - paragraph [ref=e58]: AI will generate plots when helpful
+            - generic [ref=e59]:
+              - button "Off" [ref=e60] [cursor=pointer]
+              - button "Auto" [ref=e61] [cursor=pointer]
+              - button "On" [ref=e62] [cursor=pointer]
+          - generic [ref=e63]:
+            - generic [ref=e64]:
+              - button "Text" [ref=e65]:
+                - img [ref=e66]
+                - generic [ref=e69]: Text
+              - button "Snap & Solve" [ref=e70]:
+                - img [ref=e71]
+                - generic [ref=e74]: Snap & Solve
+              - button "Voice" [ref=e75]:
+                - img [ref=e76]
+                - generic [ref=e81]: Voice
+            - generic [ref=e82]:
+              - generic [ref=e84]:
+                - generic [ref=e85]:
+                  - generic [ref=e87]: help_center
+                  - generic [ref=e88]:
+                    - heading "Clarification Needed" [level=3] [ref=e89]
+                    - paragraph [ref=e90]: Please clarify...
+                - generic [ref=e91]:
+                  - textbox "Provide more detail here..." [ref=e92]
+                  - generic [ref=e93]:
+                    - button "Submitting... send" [disabled] [ref=e94]:
+                      - text: Submitting...
+                      - generic [ref=e95]: send
+                    - button "Cancel" [ref=e96] [cursor=pointer]
+              - generic [ref=e97]:
+                - generic [ref=e98]:
+                  - generic [ref=e99]:
+                    - button "Simplify" [ref=e100] [cursor=pointer]
+                    - button "Solve For" [ref=e101] [cursor=pointer]
+                    - button "Inverse" [ref=e102] [cursor=pointer]
+                    - button "Tangent" [ref=e103] [cursor=pointer]
+                    - button "Line" [ref=e104] [cursor=pointer]
+                  - button "See All expand_more" [ref=e106] [cursor=pointer]:
+                    - generic [ref=e107]: See All
+                    - generic [ref=e108]: expand_more
+                - generic [ref=e110]:
+                  - generic [ref=e113]:
+                    - textbox
+                    - generic [ref=e114]:
+                      - generic [ref=e117]: sqrt(x + 5) = x − 1
+                      - generic [ref=e118]:
+                        - button "Toggle Virtual Keyboard Toggle Virtual Keyboard" [ref=e119] [cursor=pointer]:
+                          - img "Toggle Virtual Keyboard" [ref=e120]
+                          - text: Toggle Virtual Keyboard
+                        - button "Menu Menu" [ref=e122] [cursor=pointer]:
+                          - img "Menu" [ref=e123]
+                          - text: Menu
+                    - generic [ref=e125]:
+                      - status
+                  - generic [ref=e128]:
+                    - generic [ref=e129]:
+                      - text: "Characters: 17"
+                      - generic [ref=e130]: /3000
+                    - generic [ref=e131]:
+                      - text: "Tokens: 5"
+                      - generic [ref=e132]: /4200
+                  - generic [ref=e133]:
+                    - generic [ref=e134]:
+                      - generic [ref=e135]: keyboard
+                      - generic [ref=e136]: Math Mode Active
+                      - button [ref=e137] [cursor=pointer]
+                    - generic [ref=e140]: Using YouAsk AI
+                    - generic [ref=e143]:
+                      - button "backspace Clear" [ref=e144] [cursor=pointer]:
+                        - generic [ref=e145]: backspace
+                        - text: Clear
+                      - button "Solving... 98% auto_awesome" [disabled] [ref=e146]:
+                        - text: Solving... 98%
+                        - generic [ref=e149]: auto_awesome
+                - button "bug_report Debug" [disabled] [ref=e151]:
+                  - generic [ref=e152]: bug_report
+                  - text: Debug
+                - generic [ref=e154]:
+                  - generic [ref=e155]:
+                    - generic [ref=e156]:
+                      - generic [ref=e157]: S
+                      - generic [ref=e158]: Live Math Preview
+                    - generic [ref=e159]: LaTeX Engine v2.4
+                  - generic [ref=e165]:
+                    - generic [ref=e166]:
+                      - generic [ref=e168]:
+                        - generic [ref=e171]: √
+                        - generic [ref=e173]:
+                          - generic [ref=e175]: 𝑥
+                          - generic [ref=e177]: +
+                          - generic [ref=e179]: "5"
+                      - generic [ref=e181]: =
+                      - generic [ref=e182]:
+                        - generic [ref=e184]: 𝑥
+                        - generic [ref=e186]: −
+                        - generic [ref=e188]: "1"
+                    - img "the square root of x plus 5 equals x minus 1, math" [ref=e189]
+        - generic [ref=e190]:
+          - generic [ref=e191]:
+            - heading "Online Students" [level=3] [ref=e193]: Online Students
+            - generic [ref=e197]:
+              - paragraph [ref=e198]: Turn on Public Profile to see and connect with peers.
+              - button "Go to Settings" [ref=e199] [cursor=pointer]
+          - generic [ref=e200]:
+            - heading "lightbulb Good Math Tips" [level=3] [ref=e201]:
+              - generic [ref=e202]: lightbulb
+              - text: Good Math Tips
+            - list [ref=e203]:
+              - listitem [ref=e204]:
+                - generic [ref=e205]: "1"
+                - paragraph [ref=e206]:
+                  - strong [ref=e207]: Use clear notation.
+                  - text: Type standard math symbols or use the helper tools.
+              - listitem [ref=e208]:
+                - generic [ref=e209]: "2"
+                - paragraph [ref=e210]:
+                  - strong [ref=e211]: One problem at a time.
+                  - text: Keep questions focused for the best answer.
+              - listitem [ref=e212]:
+                - generic [ref=e213]: "3"
+                - paragraph [ref=e214]:
+                  - strong [ref=e215]: Check your variables.
+                  - text: define any unusual terms or constants.
+          - generic [ref=e216]:
+            - generic [ref=e217]:
+              - heading "history Recent History" [level=3] [ref=e218]:
+                - generic [ref=e219]: history
+                - text: Recent History
+              - button "View All" [ref=e220] [cursor=pointer]
+            - generic [ref=e222]:
+              - paragraph [ref=e223]: No history found.
+              - paragraph [ref=e224]: Start solving to see items here.
+          - generic [ref=e225]:
+            - heading "school Your School & Tier" [level=3] [ref=e226]:
+              - generic [ref=e227]: school
+              - text: Your School & Tier
+            - paragraph [ref=e228]: Wallet and school info are loading.
+          - generic [ref=e231]:
+            - heading "Need More Credits?" [level=4] [ref=e232]
+            - paragraph [ref=e233]: Top up your wallet to keep solving with your preferred tier.
+            - button "View Wallet & Packs" [ref=e234] [cursor=pointer]
+    - contentinfo [ref=e235]:
+      - paragraph [ref=e236]: © 2026 YouAsk AI LLM Math Solver Labs. All rights reserved.
+    - generic [ref=e238]:
+      - generic: ★
+      - generic: ∫
+      - generic [ref=e239]:
+        - generic [ref=e240]:
+          - generic [ref=e241]: Σ
+          - generic [ref=e242]:
+            - heading "Solving Math Problem..." [level=1] [ref=e243]
+            - paragraph [ref=e244]: Advanced Neural Computation
+        - generic [ref=e245]:
+          - paragraph [ref=e246]: Elapsed Time
+          - generic [ref=e247]:
+            - text: 00:57.4
+            - generic [ref=e248]: s
+      - generic [ref=e249]:
+        - generic [ref=e250]:
+          - generic [ref=e251]: refresh
+          - heading "System Pipeline State" [level=2] [ref=e252]
+        - generic [ref=e253]:
+          - generic [ref=e254]:
+            - generic [ref=e256]: barcode_reader
+            - generic [ref=e257]:
+              - heading "Semantic Extraction" [level=3] [ref=e258]
+              - paragraph [ref=e259]: Parsing math symbols...
+          - generic [ref=e260]:
+            - generic [ref=e262]: psychology
+            - generic [ref=e263]:
+              - heading "Neural Reasoning" [level=3] [ref=e264]
+              - paragraph [ref=e265]: Mapping logical steps...
+          - generic [ref=e266]:
+            - generic [ref=e268]: verified_user
+            - generic [ref=e269]:
+              - heading "Strict Validation" [level=3] [ref=e270]
+              - paragraph [ref=e271]: Checking schema v1.0...
+          - generic [ref=e272]:
+            - generic [ref=e274]: network_check
+            - generic [ref=e275]:
+              - heading "Packet Delivery" [level=3] [ref=e276]
+              - paragraph [ref=e277]: Assembling response...
+      - generic [ref=e278]:
+        - generic [ref=e288]:
+          - generic [ref=e291]: Streaming Active
+          - paragraph [ref=e292]: Packet delivery in real-time
+        - generic [ref=e293]:
+          - paragraph [ref=e294]: Solution generation in progress
+          - generic [ref=e295]:
+            - paragraph [ref=e296]: v4.0.1 Stable • Secure Stream
+            - button "▶ DEBUG / RUNTIME" [ref=e297] [cursor=pointer]
+      - generic [ref=e299]: auto_fix_high
+    - button "Toggle theme" [ref=e300] [cursor=pointer]:
+      - generic [ref=e301]: dark_mode
+  - generic [active]:
+    - generic [ref=e304]:
+      - generic [ref=e305]:
+        - generic [ref=e306]:
+          - navigation [ref=e307]:
+            - button "previous" [disabled] [ref=e308]:
+              - img "previous" [ref=e309]
+            - generic [ref=e311]:
+              - generic [ref=e312]: 1/
+              - text: "1"
+            - button "next" [disabled] [ref=e313]:
+              - img "next" [ref=e314]
+          - img
+        - generic [ref=e316]:
+          - generic [ref=e317]:
+            - img [ref=e318]
+            - generic "Latest available version is detected (16.1.6)." [ref=e320]: Next.js 16.1.6
+            - generic [ref=e321]: Turbopack
+          - img
+      - dialog "Build Error" [ref=e323]:
+        - generic [ref=e326]:
+          - generic [ref=e327]:
+            - generic [ref=e328]:
+              - generic [ref=e330]: Build Error
+              - generic [ref=e331]:
+                - button "Copy Error Info" [disabled] [ref=e332]:
+                  - img [ref=e333]
+                - button "No related documentation found" [disabled] [ref=e335]:
+                  - img [ref=e336]
+                - button "Attach Node.js inspector" [ref=e338] [cursor=pointer]:
+                  - img [ref=e339]
+            - generic [ref=e348]: Reading source code for parsing failed
+          - generic [ref=e350]:
+            - generic [ref=e352]:
+              - img [ref=e354]
+              - generic [ref=e357]: ./src/app/billing/page.tsx
+              - button "Open in editor" [ref=e358] [cursor=pointer]:
+                - img [ref=e360]
+            - generic [ref=e364]: "Reading source code for parsing failed An unexpected error happened while trying to read the source code to parse: failed to convert rope into string Caused by: - invalid utf-8 sequence of 1 bytes from index 4434"
+        - generic [ref=e365]: "1"
+        - generic [ref=e366]: "2"
+    - generic [ref=e371] [cursor=pointer]:
+      - button "Open Next.js Dev Tools" [ref=e372]:
+        - img [ref=e373]
+      - button "Open issues overlay" [ref=e378]:
+        - generic [ref=e379]:
+          - generic [ref=e380]: "0"
+          - generic [ref=e381]: "1"
+        - generic [ref=e382]: Issue
+  - alert [ref=e383]
+```

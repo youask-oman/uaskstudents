@@ -3,6 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import { API_BASE_URL, parseApiError } from '@/lib/api';
+import { useToast } from '@/components/ui/ToastProvider';
+
+const PAGE_TITLE = "Program Enrollments";
 
 interface Enrollment {
     id: number;
@@ -22,6 +26,7 @@ interface Program {
 
 export default function GlobalEnrollmentsPage() {
     const { token } = useAuth();
+    const { pushToast } = useToast();
     const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
     const [programs, setPrograms] = useState<Program[]>([]);
     const [loading, setLoading] = useState(true);
@@ -36,8 +41,6 @@ export default function GlobalEnrollmentsPage() {
         reason: ''
     });
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
-
     useEffect(() => {
         fetchEnrollments();
         fetchPrograms();
@@ -45,16 +48,29 @@ export default function GlobalEnrollmentsPage() {
 
     const fetchEnrollments = async () => {
         try {
-            const res = await fetch(`${API_BASE}/api/admin/billing/programs/enrollments/all?limit=100`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/billing/programs/enrollments/all?limit=100`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {
                 const data = await res.json();
                 setEnrollments(data.items);
                 setTotal(data.total);
+            } else {
+                const err = await parseApiError(res);
+                pushToast({
+                    type: "error",
+                    title: "Failed to load enrollments",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
             }
         } catch (e) {
             console.error('Failed to load enrollments');
+            pushToast({
+                type: "error",
+                title: "Failed to load enrollments",
+                message: e instanceof Error ? e.message : "Unexpected error",
+            });
         } finally {
             setLoading(false);
         }
@@ -62,22 +78,35 @@ export default function GlobalEnrollmentsPage() {
 
     const fetchPrograms = async () => {
         try {
-            const res = await fetch(`${API_BASE}/api/admin/billing/programs?status=active`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/billing/programs?status=active`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {
                 const data = await res.json();
                 setPrograms(data.items);
+            } else {
+                const err = await parseApiError(res);
+                pushToast({
+                    type: "error",
+                    title: "Failed to load programs",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
             }
         } catch (e) {
             console.error('Failed to load programs');
+            pushToast({
+                type: "error",
+                title: "Failed to load programs",
+                message: e instanceof Error ? e.message : "Unexpected error",
+            });
         }
     };
 
     const handleEnroll = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const res = await fetch(`${API_BASE}/api/admin/billing/programs/enrollments`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/billing/programs/enrollments`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -86,7 +115,8 @@ export default function GlobalEnrollmentsPage() {
                 body: JSON.stringify({
                     user_id: parseInt(formData.user_id),
                     program_id: parseInt(formData.program_id),
-                    reason: formData.reason
+                    reason: formData.reason,
+                    idempotency_key: `enroll_${formData.user_id}_${Date.now()}`
                 })
             });
 
@@ -94,13 +124,27 @@ export default function GlobalEnrollmentsPage() {
                 setIsModalOpen(false);
                 setFormData({ user_id: '', program_id: '', reason: '' });
                 fetchEnrollments();
+                pushToast({
+                    type: "success",
+                    title: "Enrollment created",
+                    message: "User enrolled successfully.",
+                });
             } else {
-                const err = await res.json();
-                alert(`Error: ${err.detail}`);
+                const err = await parseApiError(res);
+                pushToast({
+                    type: "error",
+                    title: "Enrollment failed",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
             }
         } catch (error) {
             console.error(error);
-            alert('Failed to enroll user');
+            pushToast({
+                type: "error",
+                title: "Enrollment failed",
+                message: error instanceof Error ? error.message : "Unexpected error",
+            });
         }
     };
 
@@ -109,7 +153,7 @@ export default function GlobalEnrollmentsPage() {
         if (!reason) return;
 
         try {
-            const res = await fetch(`${API_BASE}/api/admin/billing/programs/enrollments/unenroll`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/billing/programs/enrollments/unenroll`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -118,19 +162,34 @@ export default function GlobalEnrollmentsPage() {
                 body: JSON.stringify({
                     user_id: userId,
                     program_id: programId,
-                    reason
+                    reason,
+                    idempotency_key: `unenroll_${userId}_${programId}_${Date.now()}`
                 })
             });
 
             if (res.ok) {
                 fetchEnrollments();
+                pushToast({
+                    type: "success",
+                    title: "Enrollment ended",
+                    message: "User unenrolled successfully.",
+                });
             } else {
-                const err = await res.json();
-                alert(`Error: ${err.detail}`);
+                const err = await parseApiError(res);
+                pushToast({
+                    type: "error",
+                    title: "Failed to unenroll",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
             }
         } catch (error) {
             console.error(error);
-            alert('Failed to unenroll user');
+            pushToast({
+                type: "error",
+                title: "Failed to unenroll",
+                message: error instanceof Error ? error.message : "Unexpected error",
+            });
         }
     };
 
@@ -157,12 +216,12 @@ export default function GlobalEnrollmentsPage() {
         <div className="p-8 max-w-7xl mx-auto space-y-10">
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div className="space-y-2">
-                    <div className="flex items-center gap-3">
-                        <div className="size-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 border border-purple-500/20 shadow-xl">
-                            <span className="material-symbols-outlined text-2xl">groups</span>
+                        <div className="flex items-center gap-3">
+                            <div className="size-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 border border-purple-500/20 shadow-xl">
+                                <span className="material-symbols-outlined text-2xl">groups</span>
+                            </div>
+                            <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight italic">{PAGE_TITLE}</h1>
                         </div>
-                        <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight italic">Global Enrollments</h1>
-                    </div>
                     <p className="text-sm font-medium text-slate-500 max-w-2xl">
                         Monitor users across all active credit programs, tracking enrollment dates and last grant distribution status.
                     </p>

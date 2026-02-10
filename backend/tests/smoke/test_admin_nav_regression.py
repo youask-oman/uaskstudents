@@ -42,7 +42,13 @@ def _get_superadmin_email() -> str:
         return user.email
 
 
-def test_admin_nav_manifest_and_api_checks():
+def _page_file_for_href(href: str) -> Path:
+    root = _manifest_path().parent
+    clean = href.lstrip("/")
+    return root / "src" / "app" / Path(clean) / "page.tsx"
+
+
+def test_admin_nav_manifest_strict():
     os.environ["APP_ENV"] = "DEV"
     os.environ["SEED_DEV_DEFAULT_PASSWORD"] = "DevOnlyChangeMe123!"
     run_seed(app_env="DEV", rotate_passwords=True, dev_fixtures=False)
@@ -54,6 +60,7 @@ def test_admin_nav_manifest_and_api_checks():
 
     hrefs = []
     labels = []
+    api_checks = []
     for item in nav_items:
         assert item.get("type") in ("link", "divider"), f"Invalid nav item type: {item}"
         assert item.get("hidden") is not True, f"Hidden nav item detected: {item}"
@@ -63,10 +70,19 @@ def test_admin_nav_manifest_and_api_checks():
             hrefs.append(item["href"])
             labels.append(item["label"])
 
+            page_title = item.get("page_title")
+            assert page_title, f"Missing page_title for {item['href']}"
+            page_file = _page_file_for_href(item["href"])
+            assert page_file.exists(), f"Missing page file for {item['href']}: {page_file}"
+            content = page_file.read_text(encoding="utf-8")
+            assert page_title in content, f"Page title '{page_title}' not found in {page_file}"
+
+            for api_path in item.get("api_checks", []) or []:
+                api_checks.append(api_path)
+
     assert len(hrefs) == len(set(hrefs)), "Duplicate hrefs detected in manifest."
     assert len(labels) == len(set(labels)), "Duplicate labels detected in manifest."
 
-    api_checks = manifest.get("api_checks", [])
     if api_checks:
         superadmin_email = _get_superadmin_email()
         password = os.environ.get("SEED_DEV_DEFAULT_PASSWORD", "DevOnlyChangeMe123!")

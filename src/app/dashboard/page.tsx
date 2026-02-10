@@ -4,6 +4,15 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import StudentLayout from "@/components/layout/StudentLayout";
 import MathRenderer from "@/components/math/MathRendererSwitch";
+import { useToast } from "@/components/ui/ToastProvider";
+import {
+    fetchWalletLedger,
+    fetchWalletPrograms,
+    fetchWalletSummary,
+    WalletLedgerEntry,
+    WalletProgramEnrollment,
+    WalletSummary,
+} from "@/lib/wallet";
 
 interface ChatSession {
     id: number;
@@ -49,6 +58,7 @@ type ProfileUpdate = {
 };
 
 function DashboardContent() {
+    const { pushToast } = useToast();
     const initialStats: StatCard[] = [
         { label: "Problems Solved", value: "...", icon: "analytics", color: "blue", trend: "..." },
         { label: "Token Usage", value: "...", icon: "offline_bolt", color: "amber", trend: "Monthly" },
@@ -62,6 +72,11 @@ function DashboardContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const tabParam = searchParams.get('tab');
+    const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
+    const [walletPrograms, setWalletPrograms] = useState<WalletProgramEnrollment[]>([]);
+    const [walletLedger, setWalletLedger] = useState<WalletLedgerEntry[]>([]);
+    const [walletLoading, setWalletLoading] = useState(true);
+    const [walletError, setWalletError] = useState<string | null>(null);
 
     useEffect(() => {
         if (tabParam && ['history', 'bookmarked'].includes(tabParam)) {
@@ -138,9 +153,6 @@ function DashboardContent() {
 
                 const tokenUsageRes = await fetch(`/api/v1/user/token-usage?user_id=${userId}`);
                 const tokenUsage = tokenUsageRes.ok ? await tokenUsageRes.json() : null;
-                const monthlyTokensUsed = typeof tokenUsage?.tokens_used === "number"
-                    ? tokenUsage.tokens_used + 6000
-                    : null;
 
                 // Fetch Profile Stats
                 const profileRes = await fetch(`/api/v1/user/profile?user_id=${userId}`);
@@ -151,9 +163,9 @@ function DashboardContent() {
                     const usage = profile.usage ?? { questions_count: 0, scans_count: 0 };
                     const problemsValue = usage.questions_count.toString();
                     const scansValue = usage.scans_count.toString();
-                    const tokenValue = monthlyTokensUsed !== null
-                        ? monthlyTokensUsed.toLocaleString()
-                        : `${(usage.questions_count * 500 / 1000).toFixed(1)}k`;
+                    const tokenValue = typeof tokenUsage?.tokens_used === "number"
+                        ? tokenUsage.tokens_used.toLocaleString()
+                        : "n/a";
                     setStats([
                         {
                             label: "Problems Solved",
@@ -188,6 +200,41 @@ function DashboardContent() {
 
         fetchData();
     }, [router]);
+
+    useEffect(() => {
+        let active = true;
+        const loadWallet = async () => {
+            try {
+                const [summary, ledgerResp, programsResp] = await Promise.all([
+                    fetchWalletSummary(),
+                    fetchWalletLedger(6, 0),
+                    fetchWalletPrograms(10, 0),
+                ]);
+                if (!active) return;
+                setWalletSummary(summary);
+                setWalletLedger(ledgerResp.items || []);
+                setWalletPrograms(programsResp.items || []);
+                setWalletError(null);
+            } catch (err) {
+                if (!active) return;
+                const message = err instanceof Error ? err.message : "Unable to load wallet data";
+                const requestId = err && typeof err === "object" && "requestId" in err ? (err as { requestId?: string }).requestId : undefined;
+                setWalletError(message);
+                pushToast({
+                    type: "error",
+                    title: "Wallet unavailable",
+                    message,
+                    requestId,
+                });
+            } finally {
+                if (active) setWalletLoading(false);
+            }
+        };
+        void loadWallet();
+        return () => {
+            active = false;
+        };
+    }, [pushToast]);
 
     useEffect(() => {
         if (activeTab === "history") {
@@ -273,6 +320,107 @@ function DashboardContent() {
                                 <p className="text-2xl font-bold mt-1 tracking-tight">{stat.value}</p>
                             </div>
                         ))}
+                    </div>
+
+                    {/* Wallet Snapshot */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-sm font-bold">Wallet Snapshot</h3>
+                                    <p className="text-xs text-slate-500">Computed balance and active tier</p>
+                                </div>
+                                <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full bg-primary/10 text-primary">
+                                    {walletSummary?.effective_tier || "FREE"}
+                                </span>
+                            </div>
+                            <div className="text-3xl font-black">
+                                {walletSummary ? walletSummary.computed_balance.toFixed(2) : "--"} credits
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 text-xs text-slate-500">
+                                <div>
+                                    <p className="font-semibold">Pending Holds</p>
+                                    <p>{walletSummary ? walletSummary.pending_hold_credits.toFixed(2) : "--"} credits</p>
+                                </div>
+                                <div>
+                                    <p className="font-semibold">Expiring Soon</p>
+                                    <p>{walletSummary ? walletSummary.expiring_soon_credits.toFixed(2) : "--"} credits</p>
+                                </div>
+                            </div>
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    onClick={() => router.push("/billing")}
+                                    className="flex-1 bg-primary text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+                                >
+                                    Open Wallet
+                                </button>
+                                <button
+                                    onClick={() => router.push("/billing/payment")}
+                                    className="flex-1 bg-slate-100 dark:bg-slate-800 text-xs font-bold px-4 py-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                                >
+                                    Top Up
+                                </button>
+                            </div>
+                            {walletLoading && (
+                                <p className="text-xs text-slate-400">Loading wallet snapshot...</p>
+                            )}
+                            {walletError && (
+                                <p className="text-xs text-rose-500">Wallet data unavailable.</p>
+                            )}
+                        </div>
+
+                        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-bold">Recent Usage</h3>
+                                <span className="text-[10px] text-slate-400 uppercase tracking-widest">Ledger</span>
+                            </div>
+                            {walletLoading ? (
+                                <p className="text-sm text-slate-400">Loading usage...</p>
+                            ) : walletLedger.length === 0 ? (
+                                <p className="text-sm text-slate-500">No recent credit activity.</p>
+                            ) : (
+                                <ul className="space-y-3">
+                                    {walletLedger.slice(0, 5).map((entry) => (
+                                        <li key={entry.id} className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
+                                            <div>
+                                                <p className="font-semibold">{entry.event_type.replace(/_/g, " ")}</p>
+                                                <p className="text-[10px] text-slate-400">
+                                                    {new Date(entry.created_at).toLocaleString()}
+                                                </p>
+                                            </div>
+                                            <span className={`font-bold ${entry.credits_delta >= 0 ? "text-emerald-600" : "text-rose-500"}`}>
+                                                {entry.credits_delta >= 0 ? "+" : ""}{entry.credits_delta.toFixed(2)}
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+
+                        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-bold">Active Programs</h3>
+                                <span className="text-[10px] text-slate-400 uppercase tracking-widest">Enrollments</span>
+                            </div>
+                            {walletLoading ? (
+                                <p className="text-sm text-slate-400">Loading programs...</p>
+                            ) : walletPrograms.length === 0 ? (
+                                <p className="text-sm text-slate-500">No active credit programs.</p>
+                            ) : (
+                                <ul className="space-y-2">
+                                    {walletPrograms.map((program) => (
+                                        <li key={program.id} className="text-xs text-slate-600 dark:text-slate-300">
+                                            <p className="font-semibold">{program.program_name || program.program_slug}</p>
+                                            {program.next_grant_date && (
+                                                <p className="text-[10px] text-slate-400">
+                                                    Next grant: {new Date(program.next_grant_date).toLocaleDateString()}
+                                                </p>
+                                            )}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
                     </div>
 
                     {/* Profile & Interests Section */}
@@ -531,3 +679,4 @@ export default function DashboardPage() {
         </Suspense>
     );
 }
+

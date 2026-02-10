@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import { API_BASE_URL, parseApiError } from '@/lib/api';
+import { useToast } from '@/components/ui/ToastProvider';
 
 interface PricingEntry {
     id: number;
@@ -17,6 +19,7 @@ interface PricingEntry {
 
 export default function ProviderPricingPage() {
     const { token } = useAuth();
+    const { pushToast } = useToast();
     const [pricing, setPricing] = useState<PricingEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [showInactive, setShowInactive] = useState(false);
@@ -33,23 +36,34 @@ export default function ProviderPricingPage() {
         reason: ''
     });
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
-
     useEffect(() => {
         fetchPricing();
     }, [showInactive]);
 
     const fetchPricing = async () => {
         try {
-            const res = await fetch(`${API_BASE}/api/admin/billing/pricing?show_inactive_gpt5=${showInactive}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/billing/pricing?show_inactive_gpt5=${showInactive}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {
                 const data = await res.json();
                 setPricing(data.pricing || []);
+            } else {
+                const err = await parseApiError(res);
+                pushToast({
+                    type: "error",
+                    title: "Failed to load pricing",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
             }
         } catch (e) {
             console.error('Failed to load pricing');
+            pushToast({
+                type: "error",
+                title: "Failed to load pricing",
+                message: e instanceof Error ? e.message : "Unexpected error",
+            });
         } finally {
             setLoading(false);
         }
@@ -94,7 +108,7 @@ export default function ProviderPricingPage() {
                 effective_from: formData.effective_from || null
             };
 
-            const res = await fetch(`${API_BASE}/api/admin/billing/pricing`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/billing/pricing`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -102,20 +116,35 @@ export default function ProviderPricingPage() {
                 },
                 body: JSON.stringify({
                     pricing: payload,
-                    reason: formData.reason
+                    reason: formData.reason,
+                    idempotency_key: `pricing_${payload.provider}_${payload.model}_${Date.now()}`
                 })
             });
 
             if (res.ok) {
                 setIsModalOpen(false);
                 fetchPricing();
+                pushToast({
+                    type: "success",
+                    title: "Pricing saved",
+                    message: `${payload.provider}/${payload.model} updated.`,
+                });
             } else {
-                const err = await res.json();
-                alert(`Error: ${err.detail}`);
+                const err = await parseApiError(res);
+                pushToast({
+                    type: "error",
+                    title: "Failed to save pricing",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
             }
         } catch (error) {
             console.error(error);
-            alert('Failed to save pricing');
+            pushToast({
+                type: "error",
+                title: "Failed to save pricing",
+                message: error instanceof Error ? error.message : "Unexpected error",
+            });
         }
     };
 
@@ -124,23 +153,38 @@ export default function ProviderPricingPage() {
         if (!reason) return;
 
         try {
-            const res = await fetch(`${API_BASE}/api/admin/payments/config/pricing/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/billing/pricing/${id}`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({ reason })
+                body: JSON.stringify({ reason, idempotency_key: `pricing_retire_${id}_${Date.now()}` })
             });
 
             if (res.ok) {
                 fetchPricing();
+                pushToast({
+                    type: "success",
+                    title: "Pricing retired",
+                    message: "The pricing entry was retired.",
+                });
             } else {
-                const err = await res.json();
-                alert(`Error: ${err.detail}`);
+                const err = await parseApiError(res);
+                pushToast({
+                    type: "error",
+                    title: "Failed to retire pricing",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
             }
         } catch (error) {
             console.error(error);
+            pushToast({
+                type: "error",
+                title: "Failed to retire pricing",
+                message: error instanceof Error ? error.message : "Unexpected error",
+            });
         }
     };
 

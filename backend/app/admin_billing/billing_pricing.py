@@ -13,7 +13,9 @@ from sqlmodel import Session, select, desc, and_
 
 from app.database import get_session
 from app.models import ProviderModelPricing, SystemConfig, User
+from app.models.admin_audit_log import AdminAuditLog
 from app.api_admin import get_staff_user, get_admin_user
+from app.services.audit_log_service import audit_log_service
 
 router = APIRouter(prefix="/api/admin/billing/pricing", tags=["admin-billing-pricing"])
 
@@ -31,6 +33,12 @@ class PricingPayload(BaseModel):
 class PricingCreateRequest(BaseModel):
     pricing: PricingPayload
     reason: str
+    idempotency_key: Optional[str] = None
+
+
+class PricingDeactivateRequest(BaseModel):
+    reason: str
+    idempotency_key: Optional[str] = None
 
 
 @router.get("")
@@ -84,6 +92,19 @@ def create_provider_pricing(
 ):
     pricing_data = payload.pricing
     reason = payload.reason
+    idempotency_key = payload.idempotency_key
+
+    if idempotency_key:
+        existing_audit = session.exec(
+            select(AdminAuditLog)
+            .where(AdminAuditLog.entity_type == "PRICING")
+            .where(AdminAuditLog.idempotency_key == idempotency_key)
+            .order_by(AdminAuditLog.created_at.desc())
+        ).first()
+        if existing_audit and existing_audit.entity_id:
+            existing = session.get(ProviderModelPricing, int(existing_audit.entity_id))
+            if existing:
+                return existing
 
     if pricing_data.provider.lower() != "openai":
         raise HTTPException(400, detail="Only OpenAI provider is supported")
@@ -114,7 +135,18 @@ def create_provider_pricing(
     if effective_from < now:
         effective_from = now
 
+    before_snapshot = None
     if current_active:
+        before_snapshot = {
+            "id": current_active.id,
+            "provider": current_active.provider,
+            "model": current_active.model,
+            "price_in_per_1m": current_active.price_in_per_1m,
+            "price_out_per_1m": current_active.price_out_per_1m,
+            "price_cached_in_per_1m": current_active.price_cached_in_per_1m,
+            "status": current_active.status,
+            "effective_from": current_active.effective_from.isoformat(),
+        }
         if current_active.effective_from >= effective_from:
             raise HTTPException(400, detail="New pricing must start after current active pricing start date")
         current_active.effective_to = effective_from
@@ -134,6 +166,92 @@ def create_provider_pricing(
         change_reason=reason,
     )
     session.add(pricing)
+    session.flush()
+
+    audit_log_service.log_action(
+        session=session,
+        admin_user_id=user.id,
+        action="CREATE",
+        entity_type="PRICING",
+        entity_id=str(pricing.id),
+        before_json=before_snapshot,
+        after_json={
+            "id": pricing.id,
+            "provider": pricing.provider,
+            "model": pricing.model,
+            "price_in_per_1m": pricing.price_in_per_1m,
+            "price_out_per_1m": pricing.price_out_per_1m,
+            "price_cached_in_per_1m": pricing.price_cached_in_per_1m,
+            "status": pricing.status,
+            "effective_from": pricing.effective_from.isoformat() if pricing.effective_from else None,
+        },
+        reason=reason,
+        idempotency_key=idempotency_key,
+    )
+
+    session.commit()
+    session.refresh(pricing)
+
+    return pricing
+
+
+@router.delete("/{pricing_id}")
+def retire_provider_pricing(
+    pricing_id: int,
+    payload: PricingDeactivateRequest,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_admin_user),
+):
+    if not payload.reason or not payload.reason.strip():
+        raise HTTPException(400, detail="Reason is required")
+
+    if payload.idempotency_key:
+        existing_audit = session.exec(
+            select(AdminAuditLog)
+            .where(AdminAuditLog.entity_type == "PRICING")
+            .where(AdminAuditLog.idempotency_key == payload.idempotency_key)
+            .order_by(AdminAuditLog.created_at.desc())
+        ).first()
+        if existing_audit and existing_audit.entity_id:
+            existing = session.get(ProviderModelPricing, int(existing_audit.entity_id))
+            if existing:
+                return existing
+
+    pricing = session.get(ProviderModelPricing, pricing_id)
+    if not pricing:
+        raise HTTPException(status_code=404, detail="Pricing entry not found")
+
+    before = {
+        "id": pricing.id,
+        "provider": pricing.provider,
+        "model": pricing.model,
+        "status": pricing.status,
+        "effective_from": pricing.effective_from.isoformat() if pricing.effective_from else None,
+        "effective_to": pricing.effective_to.isoformat() if pricing.effective_to else None,
+    }
+
+    pricing.status = "INACTIVE"
+    pricing.effective_to = pricing.effective_to or datetime.utcnow()
+    pricing.change_reason = payload.reason
+    session.add(pricing)
+    session.flush()
+
+    audit_log_service.log_action(
+        session=session,
+        admin_user_id=user.id,
+        action="DELETE",
+        entity_type="PRICING",
+        entity_id=str(pricing.id),
+        before_json=before,
+        after_json={
+            "id": pricing.id,
+            "status": pricing.status,
+            "effective_to": pricing.effective_to.isoformat() if pricing.effective_to else None,
+        },
+        reason=payload.reason,
+        idempotency_key=payload.idempotency_key,
+    )
+
     session.commit()
     session.refresh(pricing)
 

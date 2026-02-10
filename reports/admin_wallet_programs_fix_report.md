@@ -27,8 +27,9 @@ Date: 2026-02-10
 - `/admin/billing/health` (Billing Health)
 - `/admin/billing/flags` (Feature Flags)
 - `/admin/billing/invoices` (Invoices)
-- `/admin/billing/legacy` (Legacy Plans - Read Only)
+- `/admin/legacy/plans` (Legacy Plans - Read Only)
 - `/admin/legacy/subscriptions` (Legacy Subscriptions - Read Only)
+- `/admin/legacy/payments` (Legacy Payments - Read Only)
 - `/admin/data` (Data)
 - `/admin/system-config` (System Config)
 
@@ -70,10 +71,8 @@ Date: 2026-02-10
 - Smoke test `backend/tests/smoke/test_legacy_plan_mutations.py` enforces non-mutation.
 
 ## Screenshots
-- Pending: please capture and provide file paths for:
-  - User wallet before grant/refund (lots + ledger visible)
-  - User wallet after grant/refund (lots + ledger visible)
-  - Credit programs CRUD page (list + create/edit/deactivate)
+- Playwright run paused per latest request (no manual screenshots requested).
+- Expected output location when Playwright is resumed: `reports/screenshots/`.
 
 ## API Response Snippets
 Grant/Refund network proof (TestClient calls returned 200):
@@ -124,7 +123,7 @@ Required workflow commands executed:
 - `docker compose exec orchestrator pytest tests/seeding/ -q`
   - Output: `4 passed`
 - `docker compose exec orchestrator pytest tests/smoke/ -q`
-  - Output: `12 passed` (0 skipped)
+  - Output: `13 passed` (0 skipped)
 
 Smoke coverage additions:
 - `backend/tests/smoke/test_admin_nav_regression.py` validates `admin_nav_manifest.json` + API checks.
@@ -136,3 +135,8 @@ Smoke coverage additions:
 
 ## Notes
 - Superadmin seeding is handled in DEV via seed logic (no manual DB edits).
+
+## User Dashboard Updates
+- `/billing` is fully wired to wallet summary, lots, ledger, programs, and invoices endpoints (no subscription UI).
+- `/profile` includes a Wallet & Programs tab showing computed + cached balances and active programs.
+- `/settings` now redirects to `/profile` to prevent broken navbar links.
