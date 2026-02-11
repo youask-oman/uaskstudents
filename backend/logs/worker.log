@@ -3043,3 +3043,26 @@ FileNotFoundError: [Errno 2] No such file or directory: 'storage/uploads\\68_202
 2026-02-11 17:54:37,324 [INFO] api: Response: 200 | 1ms
 2026-02-11 17:54:52,548 [INFO] api: Incoming: GET /health
 2026-02-11 17:54:52,550 [INFO] api: Response: 200 | 1ms
+2026-02-11 09:54:59,986 [INFO] app.database: Attempting to connect to database (Attempt 1/10)...
+2026-02-11 09:55:00,076 [INFO] app.database: Ensured promptmodeenum includes OCR_EXTRACT
+2026-02-11 09:55:00,077 [INFO] app.database: Database connection successful and tables created.
+2026-02-11 09:55:00,383 [INFO] root: Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+2026-02-11 09:55:00,427 [INFO] root: Prompt binding integrity OK: active_bindings=9 active_pairs=9
+2026-02-11 09:55:00,429 [INFO] app: Stripe env loaded: STRIPE_SECRET_KEY=SET STRIPE_LIVE_MODE=False
+2026-02-11 09:55:00,429 [INFO] app: Stripe key masked: sk_test***6NRS
+2026-02-11 17:55:07,756 [INFO] api: Incoming: GET /health
+2026-02-11 17:55:07,757 [INFO] api: Response: 200 | 1ms
+2026-02-11 09:55:15,144 [INFO] api: Incoming: GET /api/v1/wallet/summary
+2026-02-11 09:55:15,144 [INFO] api: Incoming: GET /api/v1/user/profile
+2026-02-11 09:55:15,165 [INFO] api: Response: 200 | 18ms
+2026-02-11 09:55:15,171 [INFO] api: Incoming: GET /api/v1/users/online
+2026-02-11 09:55:15,178 [INFO] api: Response: 200 | 6ms
+2026-02-11 09:55:15,185 [INFO] api: Response: 200 | 40ms
+2026-02-11 17:55:22,957 [INFO] api: Incoming: GET /health
+2026-02-11 17:55:22,959 [INFO] api: Response: 200 | 1ms
+2026-02-11 17:55:38,201 [INFO] api: Incoming: GET /health
+2026-02-11 17:55:38,203 [INFO] api: Response: 200 | 2ms
+2026-02-11 17:55:53,433 [INFO] api: Incoming: GET /health
+2026-02-11 17:55:53,435 [INFO] api: Response: 200 | 2ms
+2026-02-11 17:56:08,667 [INFO] api: Incoming: GET /health
+2026-02-11 17:56:08,669 [INFO] api: Response: 200 | 2ms
