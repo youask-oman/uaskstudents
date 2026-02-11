@@ -93,7 +93,7 @@ interface WalletSummary {
     total_lots: number;
 }
 
-interface WalletLot {
+type WalletLot = GenericRecord & {
     id: number;
     lot_type: string;
     credits_total: number;
@@ -102,9 +102,9 @@ interface WalletLot {
     status: string;
     source_label?: string | null;
     source_meta?: Record<string, unknown> | null;
-}
+};
 
-interface WalletLedgerEntry {
+type WalletLedgerEntry = GenericRecord & {
     id: number;
     event_type: string;
     credits_delta: number;
@@ -113,9 +113,9 @@ interface WalletLedgerEntry {
     reference?: string | null;
     request_id?: string | null;
     created_at: string;
-}
+};
 
-interface WalletEnrollment {
+type WalletEnrollment = GenericRecord & {
     id: number;
     program_id: number;
     program_name?: string | null;
@@ -124,9 +124,9 @@ interface WalletEnrollment {
     last_grant_month?: string | null;
     next_grant_date?: string | null;
     next_grant_status?: string | null;
-}
+};
 
-interface WalletHold {
+type WalletHold = GenericRecord & {
     id: number;
     user_id?: number;
     user_email?: string | null;
@@ -138,13 +138,13 @@ interface WalletHold {
     finalized_at?: string | null;
     meta?: Record<string, unknown> | null;
     age_seconds: number;
-}
+};
 
-interface CreditProgram {
+type CreditProgram = GenericRecord & {
     id: number;
     name: string;
     status: string;
-}
+};
 
 const formatDateTime = (value: unknown) => {
     if (!value) return "n/a";

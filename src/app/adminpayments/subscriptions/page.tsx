@@ -25,11 +25,11 @@ type SubscriptionPeriod = {
     grant_lot_id?: number | null;
 };
 
-async function fetchAdmin(path: string) {
+async function fetchAdmin<T = unknown>(path: string): Promise<T> {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) {
         window.location.href = "/login?redirect=" + window.location.pathname;
-        return;
+        throw new Error("Missing token");
     }
 
     // Use relative URL to leverage Next.js proxy (avoids CORS)
@@ -43,11 +43,11 @@ async function fetchAdmin(path: string) {
     if (res.status === 401) {
         localStorage.removeItem("token");
         window.location.href = "/login?redirect=" + window.location.pathname;
-        return;
+        throw new Error("Unauthorized");
     }
 
     if (!res.ok) throw new Error(`API Error: ${res.status}`);
-    return res.json();
+    return (await res.json()) as T;
 }
 
 export default function AdminSubscriptionsPage() {
@@ -72,7 +72,7 @@ export default function AdminSubscriptionsPage() {
             });
             if (statusFilter) params.append("status", statusFilter);
 
-            const data = await fetchAdmin(`/subscriptions?${params.toString()}`);
+            const data = await fetchAdmin<{ data: Subscription[]; total: number }>(`/subscriptions?${params.toString()}`);
             setSubs(data.data);
             setTotal(data.total);
         } catch (err: unknown) {
@@ -86,8 +86,8 @@ export default function AdminSubscriptionsPage() {
         setSelectedSub(subId);
         setPeriodsLoading(true);
         try {
-            const data = await fetchAdmin(`/subscriptions/${subId}/periods`);
-            setPeriods(data as SubscriptionPeriod[]);
+            const data = await fetchAdmin<SubscriptionPeriod[]>(`/subscriptions/${subId}/periods`);
+            setPeriods(data);
         } catch (err: unknown) {
             console.error(err);
         } finally {

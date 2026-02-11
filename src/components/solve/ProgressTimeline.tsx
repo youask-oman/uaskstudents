@@ -2,7 +2,7 @@
 
 import React from "react";
 
-export type StepStatus = "pending" | "active" | "completed" | "failed";
+export type StepStatus = "pending" | "active" | "in-progress" | "completed" | "failed";
 
 export interface TimelineStep {
     key: string;

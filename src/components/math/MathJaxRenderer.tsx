@@ -22,16 +22,28 @@ export default function MathJaxRenderer({
     idKey,
 }: MathJaxRendererProps) {
     const wrapperRef = React.useRef<HTMLSpanElement | HTMLDivElement>(null);
-    useMathJaxTypeset(wrapperRef, [content, mode, className, dynamic, idKey], 200);
-    const Wrapper: React.ElementType = mode === "inline" ? "span" : "div";
+    useMathJaxTypeset(wrapperRef as React.RefObject<HTMLElement>, [content, mode, className, dynamic, idKey], 200);
+    if (mode === "inline") {
+        return (
+            <span ref={wrapperRef as React.Ref<HTMLSpanElement>} className={className}>
+                <MathRendererSwitch
+                    content={content}
+                    mode={mode}
+                    dynamic={dynamic}
+                    idKey={idKey}
+                />
+            </span>
+        );
+    }
+
     return (
-        <Wrapper ref={wrapperRef} className={className}>
+        <div ref={wrapperRef as React.Ref<HTMLDivElement>} className={className}>
             <MathRendererSwitch
                 content={content}
                 mode={mode}
                 dynamic={dynamic}
                 idKey={idKey}
             />
-        </Wrapper>
+        </div>
     );
 }

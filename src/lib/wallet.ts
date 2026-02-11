@@ -63,9 +63,9 @@ export type PaginatedResponse<T> = {
     offset: number;
 };
 
-const getAuthHeaders = () => {
+const getAuthHeaders = (): HeadersInit | undefined => {
     const token = getAuthToken();
-    return token ? { Authorization: `Bearer ${token}` } : {};
+    return token ? { Authorization: `Bearer ${token}` } : undefined;
 };
 
 const toApiError = (err: ApiError) => {
@@ -124,7 +124,14 @@ export async function fetchWalletPrograms(limit = 50, offset = 0): Promise<Pagin
 export type CreditsEstimateResponse = {
     total_credits: number;
     per_question_credits: number;
-    breakdown: Record<string, unknown>;
+    breakdown: {
+        tier_base: number;
+        ocr: number;
+        voice: number;
+        verify?: number;
+        plot?: number;
+        asset_type_addon?: number;
+    };
     pricing_version: string;
     pricing_version_plan?: string;
     pricing_version_token_config?: number;

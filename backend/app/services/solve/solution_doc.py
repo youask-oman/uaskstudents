@@ -830,9 +830,14 @@ def render_solution_doc_markdown(solution_doc: Dict[str, Any]) -> str:
             k = int(step.get("k") or idx)
             title = str(step.get("title") or f"Step {k}").strip()
             body = str(step.get("body_markdown") or "").strip()
+            math_latex = (
+                str(step.get("math_latex") or step.get("mathLatex") or step.get("math") or "").strip()
+            )
             lines.append(f"## Step {k}: {title}")
             if body:
                 lines.append(body)
+            if math_latex:
+                lines.append(f"$$\n{math_latex}\n$$")
             lines.append("")
 
     valid_plots = []

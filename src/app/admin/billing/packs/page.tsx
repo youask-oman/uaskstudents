@@ -62,9 +62,11 @@ export default function CreditPacksPage() {
     const [form, setForm] = useState<PackForm>(emptyForm);
     const [reason, setReason] = useState("");
 
-    const headers = useMemo(() => {
+    const headers = useMemo<Record<string, string>>(() => {
         const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-        return token ? { Authorization: `Bearer ${token}` } : {};
+        const base: Record<string, string> = {};
+        if (token) base.Authorization = `Bearer ${token}`;
+        return base;
     }, []);
 
     const fetchPacks = useCallback(async () => {

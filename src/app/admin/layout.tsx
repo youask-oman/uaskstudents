@@ -88,16 +88,20 @@ export default function AdminLayout({
                                         />
                                     );
                                 }
+                                if (!item.href) {
+                                    return null;
+                                }
+                                const href = item.href;
                                 return (
                                     <Link
-                                        key={`${item.href}-${index}`}
-                                        href={item.href}
-                                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${pathname === item.href
+                                        key={`${href}-${index}`}
+                                        href={href}
+                                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${pathname === href
                                             ? "bg-admin-primary text-white shadow-lg shadow-admin-primary/20"
                                             : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
                                             }`}
                                     >
-                                        <span className={`material-symbols-outlined ${pathname === item.href ? "fill-current" : ""}`}>
+                                        <span className={`material-symbols-outlined ${pathname === href ? "fill-current" : ""}`}>
                                             {item.icon}
                                         </span>
                                         <p className="text-sm font-medium">{item.label}</p>

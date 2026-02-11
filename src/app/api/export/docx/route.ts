@@ -13,10 +13,10 @@ export async function POST(req: Request) {
 
         const doc = await buildDocxFromPayload(safe);
         const buf = await docxToBuffer(doc);
-        const buffer = buf instanceof Uint8Array ? buf : new Uint8Array(buf as ArrayBuffer);
+        const bytes = buf instanceof Uint8Array ? new Uint8Array(buf) : new Uint8Array(buf as ArrayBuffer);
 
         const fileName = `${safe.docTitle}`.replace(/[^\w\d-_ ]+/g, "").slice(0, 80) || "export";
-        return new NextResponse(buffer, {
+        return new NextResponse(bytes, {
             status: 200,
             headers: {
                 "Content-Type":

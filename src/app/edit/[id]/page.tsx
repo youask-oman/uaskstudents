@@ -3,7 +3,7 @@
 import "@mdxeditor/editor/style.css";
 
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import DashboardNavBar from "@/components/DashboardNavBar";
 import MathJaxRenderer from "@/components/math/MathJaxRenderer";
 import { parseSolutionDocFromStructured } from "@/components/math-canvas/normalizer";
@@ -32,6 +32,8 @@ import {
     thematicBreakPlugin,
     imagePlugin,
 } from "@mdxeditor/editor";
+import ReactMarkdown from "react-markdown";
+import remarkMath from "remark-math";
 
 const MAX_CONTENT_BYTES = 50_000;
 
@@ -63,92 +65,52 @@ const InsertBlockMath = ({ onInsert }: { onInsert: (snippet: string) => void }) 
     </button>
 );
 
-const isMathLike = (value: string) => {
-    if (!value) return false;
-    if (/\\(frac|int|sum|sqrt|theta|alpha|beta|gamma)|\\[a-zA-Z]+|\^|_/.test(value)) return true;
-    return /[=+*/^<>]/.test(value);
+const NULL_SECTION_TITLES = new Set([
+    "domain constraints",
+    "verification",
+    "assumptions",
+    "common mistakes",
+    "notes",
+    "checks",
+    "graphs",
+]);
+
+const isNullishLine = (line: string) => {
+    const trimmed = line.trim();
+    if (!trimmed) return true;
+    if (/^(none|n\/a|null|n\\a)\s*$/i.test(trimmed)) return true;
+    if (/^[-*+\\u2022]\s*(none|n\/a|null|n\\a)\s*$/i.test(trimmed)) return true;
+    if (/^\*\*LaTeX:\*\*\s*(\$\$\s*)?(none|n\/a|null|n\\a)(\s*\$\$)?$/i.test(trimmed)) return true;
+    if (/^(latex|laTeX)\s*:\s*(none|n\/a|null|n\\a)\s*$/i.test(trimmed)) return true;
+    return false;
 };
 
-const heuristicallyWrapMath = (text: string): string => {
-    if (!text) return "";
-    if (text.includes("\\(") || text.includes("\\[") || text.includes("$")) return text;
-    if (isMathLike(text)) {
-        return `\\(${text}\\)`;
-    }
-    const solveMatch = text.match(/^(Solve for\s+)([a-zA-Z])([,:]?\s*)(.+)$/i);
-    if (solveMatch) {
-        return `${solveMatch[1]}\\(${solveMatch[2]}\\)${solveMatch[3]}\\(${solveMatch[4].trim()}\\)`;
-    }
-    const evalMatch = text.match(/^(Evaluate|Simplify|Factor|Expand|Solve)([:\s]+)(.+)$/i);
-    if (evalMatch) {
-        return `${evalMatch[1]}${evalMatch[2]}\\(${evalMatch[3].trim()}\\)`;
-    }
-    if (/^[0-9a-zA-Z\s+\-*\/^=().,]+$/.test(text) && /[=<>]=?/.test(text)) {
-        const words = text.split(/\s+/).filter((w) => /[a-zA-Z]{2,}/.test(w));
-        if (words.length <= 1) {
-            return `\\(${text}\\)`;
-        }
-    }
-    return text;
-};
-
-const normalizeCanonicalMarkdown = (markdown: string): string => {
-    const normalizeMathDelimiters = (input: string) => {
-        let output = input;
-        output = output.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (_match, inner) => `\\[${inner.trim()}\\]`);
-        output = output.replace(/\$(\s*[^$\n]+?\s*)\$/g, (_match, inner) => `\\(${inner.trim()}\\)`);
-        return output;
-    };
-
-    const lines = normalizeMathDelimiters(markdown).split(/\r?\n/);
+const cleanPreviewMarkdown = (markdown: string) => {
+    const lines = markdown.split(/\r?\n/);
     const result: string[] = [];
-    let i = 0;
     const isHeading = (line: string) => /^\s*#{1,6}\s+/.test(line);
     const headingLevel = (line: string) => {
         const match = line.match(/^\s*(#{1,6})\s+/);
         return match ? match[1].length : 0;
     };
-    const isNullishLine = (line: string) => {
-        const trimmed = line.trim();
-        if (!trimmed) return true;
-        if (/^(none|n\/a|null|n\\a)\s*$/i.test(trimmed)) return true;
-        if (/^[-*+•]\s*(none|n\/a|null|n\\a)\s*$/i.test(trimmed)) return true;
-        if (/^\*\*LaTeX:\*\*\s*(\$\$\s*)?(none|n\/a|null|n\\a)(\s*\$\$)?$/i.test(trimmed)) return true;
-        if (/^(latex|laTeX)\s*:\s*(none|n\/a|null|n\\a)\s*$/i.test(trimmed)) return true;
-        return false;
-    };
-
-    const NULL_SECTION_TITLES = new Set([
-        "domain constraints",
-        "verification",
-        "assumptions",
-        "common mistakes",
-        "notes",
-        "checks",
-        "graphs",
-    ]);
-
     const isEmptyContent = (sectionLines: string[]) => {
         const trimmed = sectionLines.map((line) => line.trim()).filter((line) => line.length > 0);
         if (trimmed.length === 0) return true;
         return trimmed.every((line) => isNullishLine(line));
     };
 
-    let lastHeading = "";
+    let i = 0;
     while (i < lines.length) {
         const line = lines[i];
         if (!isHeading(line)) {
-            if (lastHeading === "recognized problem" && line.trim()) {
-                const trimmed = line.trim();
-                result.push(heuristicallyWrapMath(trimmed));
-            } else {
+            if (!isNullishLine(line)) {
                 result.push(line);
             }
             i += 1;
             continue;
         }
         const level = headingLevel(line);
-        lastHeading = line.replace(/^#{1,6}\s+/, "").trim().toLowerCase();
+        const title = line.replace(/^#{1,6}\s+/, "").trim().toLowerCase();
         let j = i + 1;
         while (j < lines.length) {
             if (isHeading(lines[j]) && headingLevel(lines[j]) <= level) break;
@@ -156,163 +118,96 @@ const normalizeCanonicalMarkdown = (markdown: string): string => {
         }
         const sectionLines = lines.slice(i + 1, j);
         if (isEmptyContent(sectionLines)) {
-            if (!NULL_SECTION_TITLES.has(lastHeading)) {
+            if (!NULL_SECTION_TITLES.has(title)) {
                 result.push(line);
             }
-        } else {
-            const cleaned = sectionLines.filter((sectionLine) => !isNullishLine(sectionLine));
-            if (cleaned.length > 0) {
-                result.push(line, ...cleaned);
-            }
+            i = j;
+            continue;
         }
+        const cleaned = sectionLines.filter((sectionLine) => !isNullishLine(sectionLine));
+        result.push(line, ...cleaned);
         i = j;
     }
-    const normalizedLines: string[] = [];
-    for (const raw of result) {
-        const line = raw.trim();
-        if (!line) {
-            normalizedLines.push("");
-            continue;
-        }
-        const inlineLatexMatch = line.match(/^(.*?)(?:\*\*LaTeX:\*\*|LaTeX:)\s*(.+)$/i);
-        if (inlineLatexMatch) {
-            const prefix = inlineLatexMatch[1].trim();
-            const value = inlineLatexMatch[2].trim();
-            if (prefix) {
-                normalizedLines.push(prefix);
-            }
-            if (!value || /^(n\/a|none|null|n\\a|\[n\/a\])$/i.test(value)) {
-                continue;
-            }
-            normalizedLines.push(`\\[${value}\\]`);
-            continue;
-        }
-        if (/\\\[\s*\]\\?/.test(raw) || /\\\(\s*\\?\)/.test(raw)) {
-            continue;
-        }
-        if (/^\\\[\s*n\/a\s*\\\]?$/i.test(raw) || /^\\\(\s*n\/a\s*\\\)?$/i.test(raw) || /\bN\/A\b/i.test(raw)) {
-            continue;
-        }
-        normalizedLines.push(raw);
-    }
-    return normalizedLines.join("\n");
+    return result.join("\n");
 };
 
-type PreviewBlock =
-    | { type: "heading"; level: number; text: string }
-    | { type: "list"; items: string[] }
-    | { type: "paragraph"; text: string };
+const autoWrapBareLatexLine = (line: string) => {
+    const trimmed = line.trim();
+    if (!trimmed) return line;
+    if (trimmed.includes("$") || trimmed.includes("\\(") || trimmed.includes("\\[")) return line;
+    const hasLatexCommand = /\\(frac|sqrt|text|int|sum|theta|alpha|beta|gamma|pi|sin|cos|tan|log|ln|cdot|times|leq|geq|neq|pm|rightarrow|left|right)/.test(trimmed);
+    if (!hasLatexCommand) return line;
+    const nonLatexWords = trimmed.replace(/\\[a-zA-Z]+/g, "").match(/[a-zA-Z]{3,}/g);
+    if (nonLatexWords && nonLatexWords.length > 0) return line;
+    return `$${trimmed}$`;
+};
 
-const stripInlineMarkdown = (text: string) => {
-    let output = text;
-    output = output.replace(/\*\*([^*]+)\*\*/g, "$1");
-    output = output.replace(/__([^_]+)__/g, "$1");
-    output = output.replace(/`([^`]+)`/g, "$1");
+const normalizeMarkdownForPreview = (
+    markdown: string,
+    options: { cleanPreview: boolean; autoWrapMath: boolean }
+) => {
+    if (!markdown) return "";
+    let output = markdown;
+    if (options.cleanPreview) {
+        output = cleanPreviewMarkdown(output);
+    }
+    if (options.autoWrapMath) {
+        const lines = output.split(/\r?\n/);
+        let inFence = false;
+        output = lines
+            .map((raw) => {
+                const line = raw;
+                if (/^```/.test(line.trim())) {
+                    inFence = !inFence;
+                    return line;
+                }
+                if (inFence) return line;
+                return autoWrapBareLatexLine(line);
+            })
+            .join("\n");
+    }
+    output = output.replace(/\\\(([\s\S]*?)\\\)/g, (_match, inner) => `$${inner.trim()}$`);
+    output = output.replace(/\\\[([\s\S]*?)\\\]/g, (_match, inner) => `$$\n${inner.trim()}\n$$`);
     return output;
 };
 
-const wrapInlineMathSegments = (text: string) => {
-    if (!text) return text;
-    if (text.includes("\\(") || text.includes("\\[") || text.includes("$")) return text;
-    const patterns = [
-        /\\[a-zA-Z]+(?:\{[^}]*\})*/g,
-        /[a-zA-Z0-9]+\([^)]*\)/g,
-        /[a-zA-Z0-9]+\\?\^[a-zA-Z0-9]+/g,
-        /[a-zA-Z0-9]+_[a-zA-Z0-9]+/g,
-        /[a-zA-Z0-9\\]+=[a-zA-Z0-9+\\\-*/^()]+/g,
-        /\([a-zA-Z0-9+\\\-*/^()]+\)\/\([a-zA-Z0-9+\\\-*/^()]+\)/g,
-    ];
-    let output = text;
-    patterns.forEach((pattern) => {
-        output = output.replace(pattern, (match) => `\\(${match}\\)`);
-    });
-    return output;
-};
-
-const toPreviewBlocks = (markdown: string): PreviewBlock[] => {
-    const blocks: PreviewBlock[] = [];
-    const lines = markdown.split(/\r?\n/);
-    let paragraphBuffer: string[] = [];
-    let listBuffer: string[] = [];
-
-    const flushParagraph = () => {
-        if (paragraphBuffer.length === 0) return;
-        blocks.push({ type: "paragraph", text: paragraphBuffer.join("\n").trim() });
-        paragraphBuffer = [];
+const MarkdownPreview = ({
+    content,
+    cleanPreview,
+    autoWrapMath,
+}: {
+    content: string;
+    cleanPreview: boolean;
+    autoWrapMath: boolean;
+}) => {
+    type MarkdownChildrenProps = { children?: ReactNode };
+    const markdownComponents: Record<string, React.ComponentType<MarkdownChildrenProps>> = {
+        h1: ({ children }) => <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{children}</h1>,
+        h2: ({ children }) => <h2 className="text-xl font-bold text-slate-900 dark:text-white">{children}</h2>,
+        h3: ({ children }) => <h3 className="text-lg font-bold text-slate-900 dark:text-white">{children}</h3>,
+        p: ({ children }) => <p className="text-slate-700 dark:text-slate-200">{children}</p>,
+        li: ({ children }) => <li className="text-slate-700 dark:text-slate-200">{children}</li>,
+        math: ({ children }) => (
+            <div className="my-3">
+                <MathJaxRenderer content={String(children ?? "")} mode="block" />
+            </div>
+        ),
+        inlineMath: ({ children }) => (
+            <MathJaxRenderer content={String(children ?? "")} mode="inline" />
+        ),
     };
-    const flushList = () => {
-        if (listBuffer.length === 0) return;
-        blocks.push({ type: "list", items: [...listBuffer] });
-        listBuffer = [];
-    };
-
-    for (const rawLine of lines) {
-        const line = rawLine.trim();
-        if (!line) {
-            flushParagraph();
-            flushList();
-            continue;
-        }
-        const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
-        if (headingMatch) {
-            flushParagraph();
-            flushList();
-            blocks.push({
-                type: "heading",
-                level: headingMatch[1].length,
-                text: headingMatch[2].trim(),
-            });
-            continue;
-        }
-        const listMatch = line.match(/^[-*+•]\s+(.+)$/);
-        if (listMatch) {
-            flushParagraph();
-            listBuffer.push(listMatch[1].trim());
-            continue;
-        }
-        flushList();
-        paragraphBuffer.push(line);
-    }
-    flushParagraph();
-    flushList();
-    return blocks;
-};
-
-const MarkdownPreview = ({ content }: { content: string }) => {
-    const normalized = normalizeCanonicalMarkdown(content || "");
-    const blocks = toPreviewBlocks(normalized);
+    const normalized = normalizeMarkdownForPreview(content || "", { cleanPreview, autoWrapMath });
     if (!normalized.trim()) {
         return <div className="text-sm text-slate-500">No content yet.</div>;
     }
     return (
         <div className="space-y-4">
-            {blocks.map((block, index) => {
-                if (block.type === "heading") {
-                    const text = stripInlineMarkdown(block.text);
-                    const Tag = `h${Math.min(block.level + 1, 4)}` as keyof JSX.IntrinsicElements;
-                    return (
-                        <Tag key={`h-${index}`} className="font-bold text-slate-900 dark:text-white text-xl">
-                            <MathJaxRenderer content={wrapInlineMathSegments(text)} mode="prose" />
-                        </Tag>
-                    );
-                }
-                if (block.type === "list") {
-                    return (
-                        <ul key={`l-${index}`} className="list-disc ml-6 space-y-2">
-                            {block.items.map((item, idx) => (
-                                <li key={`li-${index}-${idx}`} className="text-slate-700 dark:text-slate-200">
-                                    <MathJaxRenderer content={wrapInlineMathSegments(stripInlineMarkdown(item))} mode="prose" />
-                                </li>
-                            ))}
-                        </ul>
-                    );
-                }
-                return (
-                    <div key={`p-${index}`} className="text-slate-700 dark:text-slate-200">
-                        <MathJaxRenderer content={wrapInlineMathSegments(stripInlineMarkdown(block.text))} mode="prose" />
-                    </div>
-                );
-            })}
+            <ReactMarkdown
+                remarkPlugins={[remarkMath]}
+                components={markdownComponents}
+            >
+                {normalized}
+            </ReactMarkdown>
         </div>
     );
 };
@@ -380,9 +275,10 @@ export default function EditModePage() {
     const [activeTab, setActiveTab] = useState<"notes" | "edit">("edit");
     const [canonicalMarkdown, setCanonicalMarkdown] = useState("");
     const [canonicalHash, setCanonicalHash] = useState("");
-    const [previewState, setPreviewState] = useState<SaveState>("idle");
     const [exportingPdf, setExportingPdf] = useState(false);
     const [exportingDocx, setExportingDocx] = useState(false);
+    const [cleanPreview, setCleanPreview] = useState(true);
+    const [autoWrapMath, setAutoWrapMath] = useState(true);
     const [notes, setNotes] = useState("");
     const [notesVersion, setNotesVersion] = useState(0);
     const [notesState, setNotesState] = useState<SaveState>("idle");
@@ -464,7 +360,6 @@ export default function EditModePage() {
             setNotesVersion(Number(notesData.version || 0));
             setEdited(editData.edited_md || "");
             setEditVersion(Number(editData.version || 0));
-            setPreviewState("idle");
             notesDirtyRef.current = false;
             editDirtyRef.current = false;
             setNotesDirty(false);
@@ -491,10 +386,9 @@ export default function EditModePage() {
     }, [loadData, sessionId]);
 
     const canExport = useMemo(() => Boolean(edited.trim()), [edited]);
-
     const fetchExportSolutionDoc = useCallback(async () => {
         const token = localStorage.getItem("token");
-        if (!token) return null;
+        if (!token) throw new Error("Missing auth token");
         const res = await fetch(`${API_BASE_URL}/api/v1/chat/${sessionId}/solution_doc/preview`, {
             method: "POST",
             headers: {
@@ -511,13 +405,13 @@ export default function EditModePage() {
         return (data.solution_doc || null) as Record<string, unknown> | null;
     }, [edited, sessionId]);
 
+
     const handleExportPdf = useCallback(async () => {
         if (exportingPdf) return;
         setExportingPdf(true);
         try {
-            setPreviewState("saving");
-            const solutionDoc = await fetchExportSolutionDoc();
-            const exportPages = buildExportPages(solutionDoc);
+            const exportSolutionDoc = await fetchExportSolutionDoc();
+            const exportPages = buildExportPages(exportSolutionDoc);
             if (!hasExportableSolution(exportPages)) {
                 throw new Error("No exportable content in review.");
             }
@@ -529,14 +423,12 @@ export default function EditModePage() {
             };
             await exportCanvasToPdf(payload);
             pushToast({ type: "success", title: "Export ready", message: "PDF generated." });
-            setPreviewState("saved");
         } catch (error) {
             pushToast({
                 type: "error",
                 title: "Export failed",
                 message: error instanceof Error ? error.message : "PDF export failed.",
             });
-            setPreviewState("error");
         } finally {
             setExportingPdf(false);
         }
@@ -546,9 +438,8 @@ export default function EditModePage() {
         if (exportingDocx) return;
         setExportingDocx(true);
         try {
-            setPreviewState("saving");
-            const solutionDoc = await fetchExportSolutionDoc();
-            const exportPages = buildExportPages(solutionDoc);
+            const exportSolutionDoc = await fetchExportSolutionDoc();
+            const exportPages = buildExportPages(exportSolutionDoc);
             if (!hasExportableSolution(exportPages)) {
                 throw new Error("No exportable content in review.");
             }
@@ -560,14 +451,12 @@ export default function EditModePage() {
             };
             await exportCanvasToDocx(payload);
             pushToast({ type: "success", title: "Export ready", message: "DOCX generated." });
-            setPreviewState("saved");
         } catch (error) {
             pushToast({
                 type: "error",
                 title: "Export failed",
                 message: error instanceof Error ? error.message : "DOCX export failed.",
             });
-            setPreviewState("error");
         } finally {
             setExportingDocx(false);
         }
@@ -877,14 +766,30 @@ $$`}</pre>
                         </div>
 
                         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
-                            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                                <div>
-                                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">Preview</h3>
-                                    <span className="text-xs text-slate-500">
-                                        {previewState === "saving" ? "Updating..." : previewState === "error" ? "Preview error" : "Ready"}
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                                    <div>
+                                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">Preview</h3>
+                                    <span className="text-xs text-slate-500">Ready</span>
+                                    </div>
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+                                        <input
+                                            type="checkbox"
+                                            className="h-4 w-4"
+                                            checked={cleanPreview}
+                                            onChange={(event) => setCleanPreview(event.target.checked)}
+                                        />
+                                        Clean preview
+                                    </label>
+                                    <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+                                        <input
+                                            type="checkbox"
+                                            className="h-4 w-4"
+                                            checked={autoWrapMath}
+                                            onChange={(event) => setAutoWrapMath(event.target.checked)}
+                                        />
+                                        Auto-wrap math
+                                    </label>
                                     <button
                                         type="button"
                                         onClick={() => void handleExportPdf()}
@@ -903,11 +808,11 @@ $$`}</pre>
                                     </button>
                                 </div>
                             </div>
-                            {activeTab === "edit" ? (
-                                <MarkdownPreview content={edited} />
-                            ) : (
-                                <MarkdownPreview content={notes} />
-                            )}
+                            <MarkdownPreview
+                                content={activeTab === "edit" ? edited : notes}
+                                cleanPreview={cleanPreview}
+                                autoWrapMath={autoWrapMath}
+                            />
                             {activeTab === "edit" && canonicalMarkdown && (
                                 <div className="mt-6 text-xs text-slate-400">
                                     Canonical hash: {canonicalHash || "unknown"}

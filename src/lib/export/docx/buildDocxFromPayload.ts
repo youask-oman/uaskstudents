@@ -83,6 +83,7 @@ async function mathParagraphs(math: string[] | undefined): Promise<Paragraph[]> 
         const h = Math.round(height * scale);
 
         const imageConfig: ConstructorParameters<typeof ImageRun>[0] = {
+            type: "png",
             data: png,
             transformation: { width: w, height: h },
         };

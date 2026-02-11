@@ -1,10 +1,10 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type APIRequestContext } from "@playwright/test";
 
 const STUDENT_EMAIL = process.env.E2E_STUDENT_EMAIL || "admin@uask.ai";
 const STUDENT_PASSWORD = process.env.E2E_STUDENT_PASSWORD || "DevOnlyChangeMe123!";
 const API_BASE_URL = process.env.PLAYWRIGHT_API_BASE_URL || "http://localhost:9000";
 
-async function getToken(request: any): Promise<string> {
+async function getToken(request: APIRequestContext): Promise<string> {
     const resp = await request.post(`${API_BASE_URL}/api/v1/login`, {
         data: { email: STUDENT_EMAIL, password: STUDENT_PASSWORD },
     });

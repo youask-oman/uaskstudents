@@ -81,7 +81,7 @@ export default function AdminQuotasPage() {
                 setIsLoading(false);
             }
         },
-        [baseUrl]
+        [baseUrl, fallbackUrl]
     );
 
     useEffect(() => {

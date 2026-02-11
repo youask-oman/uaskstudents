@@ -11,7 +11,7 @@ export async function POST(req: Request) {
         const pdf = await renderPdfFromPayload(payload);
 
         const fileName = `${payload.docTitle}`.replace(/[^\w\d-_ ]+/g, "").slice(0, 80) || "export";
-        return new NextResponse(pdf, {
+        return new NextResponse(new Uint8Array(pdf), {
             status: 200,
             headers: {
                 "Content-Type": "application/pdf",

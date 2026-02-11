@@ -17,6 +17,8 @@ import { API_BASE_URL, parseApiError } from "@/lib/api";
 
 const PAGE_TITLE = "Wallet & Programs";
 
+export const dynamic = "force-dynamic";
+
 type Invoice = {
     id: number;
     invoice_number: string;

@@ -7,7 +7,7 @@ import type { ExportSolutionPayload } from "../validate";
 // But for now let's try real execution if possible, or mock it.
 // To ensure stability and speed, we mock latexToPng logic.
 jest.mock("../latexToPng", () => ({
-    latexToPng: async (_latex: string) => {
+    latexToPng: async () => {
         // Return a 1x1 png buffer mock
         const mockPng = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFhAJ/wlseKgAAAABJRU5ErkJggg==", "base64");
         return { png: mockPng, width: 10, height: 10 };

@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 import { API_BASE_URL } from "@/lib/api";
 
 // --- API Helper ---
-async function fetchAdmin(path: string, options: RequestInit = {}) {
+async function fetchAdmin<T = unknown>(path: string, options: RequestInit = {}): Promise<{ data: T; requestId: string }> {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) {
         window.location.href = "/login?redirect=" + window.location.pathname;
-        return;
+        throw new Error("Missing token");
     }
     const requestId = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Date.now());
     const baseUrl = API_BASE_URL;
@@ -39,7 +39,7 @@ async function fetchAdmin(path: string, options: RequestInit = {}) {
     if (res.status === 401) {
         localStorage.removeItem("token");
         window.location.href = "/login?redirect=" + window.location.pathname;
-        return;
+        throw new Error("Unauthorized");
     }
 
     if (!res.ok) {
@@ -54,13 +54,22 @@ async function fetchAdmin(path: string, options: RequestInit = {}) {
         throw error;
     }
 
-    const data = await res.json();
+    const data = (await res.json()) as T;
     return { data, requestId: res.headers.get("X-Request-ID") || requestId };
 }
 
 type Tab = "pricing" | "economics" | "stripe" | "invoice";
 
 type PaymentsConfig = Record<string, unknown>;
+type PaymentsConfigShape = PaymentsConfig & {
+    credit_value_usd?: number;
+    minimum_charge_credits?: number;
+    multipliers?: Record<string, number | undefined>;
+    fixed_fees?: { ocr?: number; voice?: number };
+    stripe_mappings?: Record<string, string>;
+    tax_defaults?: { mode?: string; rate?: number };
+    invoice_settings?: { company_name?: string; company_address?: string };
+};
 
 type ProviderPricing = {
     id?: number;
@@ -93,6 +102,12 @@ export default function AdminPaymentsConfigPage() {
     const [success, setSuccess] = useState("");
     const [stripeHealth, setStripeHealth] = useState<StripeHealth | null>(null);
     const [syncingStripe, setSyncingStripe] = useState(false);
+    const configData = (config ?? {}) as PaymentsConfigShape;
+    const multipliers = configData.multipliers ?? {};
+    const fixedFees = configData.fixed_fees ?? {};
+    const stripeMappings = configData.stripe_mappings ?? {};
+    const taxDefaults = configData.tax_defaults ?? {};
+    const invoiceSettings = configData.invoice_settings ?? {};
 
     const [newPricing, setNewPricing] = useState({
         provider: "openai",
@@ -111,13 +126,16 @@ export default function AdminPaymentsConfigPage() {
         setLoading(true);
         try {
             const [cfgData, pricingData, stripeData] = await Promise.all([
-                fetchAdmin("/config"),
-                fetchAdmin("/pricing/provider?all_history=true"),
-                fetchAdmin("/stripe/health"),
+                fetchAdmin<{ config: PaymentsConfig }>("/config"),
+                fetchAdmin<{ pricing?: ProviderPricing[] }>("/pricing/provider?all_history=true"),
+                fetchAdmin<StripeHealth>("/stripe/health"),
             ]);
-            setConfig(cfgData.data.config);
-            setPricing(pricingData.data.pricing || []);
-            setStripeHealth(stripeData.data);
+            if (!cfgData || !pricingData || !stripeData) {
+                return;
+            }
+            setConfig(cfgData.data?.config || null);
+            setPricing(pricingData.data?.pricing || []);
+            setStripeHealth(stripeData.data || null);
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Request failed";
             const requestId = err instanceof Error && "requestId" in err ? (err as { requestId?: string | null }).requestId : null;
@@ -375,8 +393,14 @@ export default function AdminPaymentsConfigPage() {
                                                             </span>
                                                         </td>
                                                         <td className="py-4">
-                                                            <p className="text-sm font-medium">{new Date(p.effective_from).toLocaleDateString()}</p>
-                                                            <p className="text-[10px] text-slate-400">{new Date(p.effective_from).toLocaleTimeString()}</p>
+                                                            {p.effective_from ? (
+                                                                <>
+                                                                    <p className="text-sm font-medium">{new Date(p.effective_from).toLocaleDateString()}</p>
+                                                                    <p className="text-[10px] text-slate-400">{new Date(p.effective_from).toLocaleTimeString()}</p>
+                                                                </>
+                                                            ) : (
+                                                                <p className="text-xs text-slate-400">n/a</p>
+                                                            )}
                                                         </td>
                                                         <td className="py-4 text-right">
                                                             <p className="text-sm font-bold text-slate-700 dark:text-slate-200">${p.price_in_per_1m} / ${p.price_out_per_1m}</p>
@@ -385,8 +409,13 @@ export default function AdminPaymentsConfigPage() {
                                                         <td className="py-4 text-right">
                                                             {isActive && (
                                                                 <button
-                                                                    onClick={() => handleRetirePricing(p.id)}
-                                                                    className="text-red-500 hover:underline text-xs"
+                                                                    onClick={() => {
+                                                                        if (p.id) {
+                                                                            void handleRetirePricing(p.id);
+                                                                        }
+                                                                    }}
+                                                                    disabled={!p.id}
+                                                                    className="text-red-500 hover:underline text-xs disabled:opacity-50"
                                                                 >
                                                                     Retire
                                                                 </button>
@@ -415,8 +444,8 @@ export default function AdminPaymentsConfigPage() {
                                     <input
                                         type="number"
                                         step="0.001"
-                                        value={config.credit_value_usd}
-                                        onChange={(e) => setConfig({ ...config, credit_value_usd: parseFloat(e.target.value) })}
+                                        value={configData.credit_value_usd ?? 0}
+                                        onChange={(e) => setConfig({ ...configData, credit_value_usd: parseFloat(e.target.value) })}
                                         className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-xl font-bold focus:ring-2 focus:ring-primary outline-none"
                                     />
                                     <span className="text-slate-400">USD</span>
@@ -427,8 +456,8 @@ export default function AdminPaymentsConfigPage() {
                                 <label className="block text-xs font-bold text-slate-400 uppercase">Min Charge Credits</label>
                                 <input
                                     type="number"
-                                    value={config.minimum_charge_credits}
-                                    onChange={(e) => setConfig({ ...config, minimum_charge_credits: parseInt(e.target.value) })}
+                                    value={configData.minimum_charge_credits ?? 0}
+                                    onChange={(e) => setConfig({ ...configData, minimum_charge_credits: parseInt(e.target.value) })}
                                     className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-xl font-bold focus:ring-2 focus:ring-primary outline-none"
                                 />
                                 <p className="text-xs text-slate-400 mt-2">Minimum credits deducted per operation regardless of token count.</p>
@@ -446,10 +475,10 @@ export default function AdminPaymentsConfigPage() {
                                         <input
                                             type="number"
                                             step="0.1"
-                                            value={config.multipliers.STANDARD}
+                                            value={multipliers.STANDARD ?? 0}
                                             onChange={(e) => setConfig({
-                                                ...config,
-                                                multipliers: { ...config.multipliers, STANDARD: parseFloat(e.target.value) }
+                                                ...configData,
+                                                multipliers: { ...multipliers, STANDARD: parseFloat(e.target.value) }
                                             })}
                                             className="w-20 bg-white dark:bg-slate-800 p-2 rounded border text-center"
                                         />
@@ -459,10 +488,10 @@ export default function AdminPaymentsConfigPage() {
                                         <input
                                             type="number"
                                             step="0.1"
-                                            value={config.multipliers.RESEARCH}
+                                            value={multipliers.RESEARCH ?? 0}
                                             onChange={(e) => setConfig({
-                                                ...config,
-                                                multipliers: { ...config.multipliers, RESEARCH: parseFloat(e.target.value) }
+                                                ...configData,
+                                                multipliers: { ...multipliers, RESEARCH: parseFloat(e.target.value) }
                                             })}
                                             className="w-20 bg-white dark:bg-slate-800 p-2 rounded border text-center"
                                         />
@@ -480,10 +509,10 @@ export default function AdminPaymentsConfigPage() {
                                         <input
                                             type="number"
                                             step="1"
-                                            value={config.fixed_fees.ocr}
+                                            value={fixedFees.ocr ?? 0}
                                             onChange={(e) => setConfig({
-                                                ...config,
-                                                fixed_fees: { ...config.fixed_fees, ocr: parseInt(e.target.value) }
+                                                ...configData,
+                                                fixed_fees: { ...fixedFees, ocr: parseInt(e.target.value) }
                                             })}
                                             className="w-20 bg-white dark:bg-slate-800 p-2 rounded border text-center"
                                         />
@@ -493,10 +522,10 @@ export default function AdminPaymentsConfigPage() {
                                         <input
                                             type="number"
                                             step="1"
-                                            value={config.fixed_fees.voice}
+                                            value={fixedFees.voice ?? 0}
                                             onChange={(e) => setConfig({
-                                                ...config,
-                                                fixed_fees: { ...config.fixed_fees, voice: parseInt(e.target.value) }
+                                                ...configData,
+                                                fixed_fees: { ...fixedFees, voice: parseInt(e.target.value) }
                                             })}
                                             className="w-20 bg-white dark:bg-slate-800 p-2 rounded border text-center"
                                         />
@@ -506,7 +535,7 @@ export default function AdminPaymentsConfigPage() {
                         </div>
                         <div className="mt-12 flex justify-end">
                             <button
-                                onClick={() => handleUpdateConfig(config)}
+                                onClick={() => handleUpdateConfig(configData)}
                                 className="px-8 py-4 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/25 hover:bg-primary-hover transition-all"
                             >
                                 Save Changes
@@ -533,16 +562,16 @@ export default function AdminPaymentsConfigPage() {
                         <h3 className="text-xl font-bold mb-6">Price ID Mappings</h3>
                         <p className="text-sm text-slate-500 mb-8">Map internal product/plan codes to Stripe Price IDs (e.g. `price_1P...`).</p>
                         <div className="space-y-4">
-                            {Object.keys(config?.stripe_mappings || {}).map(key => (
+                            {Object.keys(stripeMappings || {}).map(key => (
                                 <div key={key} className="flex items-center gap-4 bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
                                     <div className="w-40 font-bold text-xs uppercase tracking-widest text-slate-400">{key}</div>
                                     <input
                                         type="text"
                                         placeholder="price_1P..."
                                         className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-sm outline-none font-mono"
-                                        value={(config?.stripe_mappings || {})[key] || ""}
+                                        value={(stripeMappings || {})[key] || ""}
                                         onChange={(e) => {
-                                            const currentMaps = config?.stripe_mappings || {};
+                                            const currentMaps = stripeMappings || {};
                                             const newMaps = { ...currentMaps, [key]: e.target.value };
                                             setConfig({ ...(config || {}), stripe_mappings: newMaps });
                                         }}
@@ -571,10 +600,10 @@ export default function AdminPaymentsConfigPage() {
                                 <div>
                                     <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Tax Mode</label>
                                     <select
-                                        value={config.tax_defaults.mode}
+                                        value={taxDefaults.mode || ""}
                                         onChange={(e) => setConfig({
-                                            ...config,
-                                            tax_defaults: { ...config.tax_defaults, mode: e.target.value }
+                                            ...configData,
+                                            tax_defaults: { ...taxDefaults, mode: e.target.value }
                                         })}
                                         className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 font-bold outline-none"
                                     >
@@ -588,10 +617,10 @@ export default function AdminPaymentsConfigPage() {
                                     <input
                                         type="number"
                                         step="0.1"
-                                        value={config.tax_defaults.rate}
+                                        value={taxDefaults.rate ?? 0}
                                         onChange={(e) => setConfig({
-                                            ...config,
-                                            tax_defaults: { ...config.tax_defaults, rate: parseFloat(e.target.value) }
+                                            ...configData,
+                                            tax_defaults: { ...taxDefaults, rate: parseFloat(e.target.value) }
                                         })}
                                         className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 font-bold outline-none"
                                     />
@@ -602,10 +631,10 @@ export default function AdminPaymentsConfigPage() {
                                     <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Company Name (for Invoice)</label>
                                     <input
                                         type="text"
-                                        value={config.invoice_settings.company_name}
+                                        value={invoiceSettings.company_name || ""}
                                         onChange={(e) => setConfig({
-                                            ...config,
-                                            invoice_settings: { ...config.invoice_settings, company_name: e.target.value }
+                                            ...configData,
+                                            invoice_settings: { ...invoiceSettings, company_name: e.target.value }
                                         })}
                                         className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 font-medium outline-none"
                                     />
@@ -613,10 +642,10 @@ export default function AdminPaymentsConfigPage() {
                                 <div>
                                     <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Company Address</label>
                                     <textarea
-                                        value={config.invoice_settings.company_address}
+                                        value={invoiceSettings.company_address || ""}
                                         onChange={(e) => setConfig({
-                                            ...config,
-                                            invoice_settings: { ...config.invoice_settings, company_address: e.target.value }
+                                            ...configData,
+                                            invoice_settings: { ...invoiceSettings, company_address: e.target.value }
                                         })}
                                         className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 font-medium outline-none"
                                         rows={3}
@@ -626,7 +655,7 @@ export default function AdminPaymentsConfigPage() {
                         </div>
                         <div className="mt-12 flex justify-end">
                             <button
-                                onClick={() => handleUpdateConfig(config)}
+                                onClick={() => handleUpdateConfig(configData)}
                                 className="px-8 py-4 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/25 hover:bg-primary-hover transition-all"
                             >
                                 Save Tax & Branding

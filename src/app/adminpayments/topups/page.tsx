@@ -27,11 +27,11 @@ type TopUpDetail = {
 
 type ApiErrorState = { message: string; requestId?: string | null };
 
-async function fetchAdmin(path: string) {
+async function fetchAdmin<T = unknown>(path: string): Promise<{ data: T; requestId: string }> {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) {
         window.location.href = "/login?redirect=" + window.location.pathname;
-        return;
+        throw new Error("Missing token");
     }
     const requestId = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Date.now());
 
@@ -46,7 +46,7 @@ async function fetchAdmin(path: string) {
     if (res.status === 401) {
         localStorage.removeItem("token");
         window.location.href = "/login?redirect=" + window.location.pathname;
-        return;
+        throw new Error("Unauthorized");
     }
 
     if (!res.ok) {
@@ -60,7 +60,7 @@ async function fetchAdmin(path: string) {
         err.requestId = responseRequestId;
         throw err;
     }
-    const data = await res.json();
+    const data = (await res.json()) as T;
     return { data, requestId: res.headers.get("X-Request-ID") || requestId };
 }
 
@@ -82,7 +82,7 @@ export default function TopUpsPage() {
         });
         if (search) params.append("search", search);
 
-        fetchAdmin(`/topups?${params.toString()}`)
+        fetchAdmin<{ data: TopUpRow[]; total: number }>(`/topups?${params.toString()}`)
             .then(({ data }) => {
                 setRows(data.data);
                 setTotal(data.total);
@@ -94,8 +94,8 @@ export default function TopUpsPage() {
     const openDetail = async (id: number) => {
         setDetailLoading(true);
         try {
-            const res = await fetchAdmin(`/topups/${id}`);
-            setDetail(res.data as TopUpDetail);
+            const res = await fetchAdmin<TopUpDetail>(`/topups/${id}`);
+            setDetail(res.data);
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Request failed";
             const requestId = err instanceof Error && "requestId" in err ? (err as { requestId?: string | null }).requestId : null;

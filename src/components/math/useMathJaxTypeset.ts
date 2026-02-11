@@ -12,7 +12,7 @@ const getMathJax = (): MathJaxGlobal | null => {
 };
 
 export const useMathJaxTypeset = (
-    containerRef: React.RefObject<HTMLElement>,
+    containerRef: React.RefObject<HTMLElement | null>,
     deps: unknown[],
     throttleMs = 200
 ) => {

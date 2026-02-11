@@ -137,6 +137,9 @@ export default function LedgerExplorerPage() {
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                         {entries.map((entry) => (
+                            (() => {
+                                const creditsCharged = entry.credits_charged ?? 0;
+                                return (
                             <tr key={entry.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                                 <td className="px-8 py-6">
                                     <div className="flex flex-col gap-1">
@@ -150,10 +153,10 @@ export default function LedgerExplorerPage() {
                                     </Link>
                                 </td>
                                 <td className="px-8 py-6">
-                    <span className={`text-sm font-black italic ${entry.credits_charged > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-                        {(entry.credits_charged ?? 0) > 0 ? '-' : '+'}{formatCredits(Math.abs(entry.credits_charged ?? 0))}
-                    </span>
-                </td>
+                                    <span className={`text-sm font-black italic ${creditsCharged > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                        {creditsCharged > 0 ? '-' : '+'}{formatCredits(Math.abs(creditsCharged))}
+                                    </span>
+                                </td>
                 <td className="px-8 py-6">
                     <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
                         <span>{formatCredits(entry.credits_before)}</span>
@@ -170,6 +173,8 @@ export default function LedgerExplorerPage() {
                                     {new Date(entry.created_at).toLocaleString()}
                                 </td>
                             </tr>
+                                );
+                            })()
                         ))}
                     </tbody>
                 </table>

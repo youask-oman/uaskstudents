@@ -98,11 +98,11 @@ type ApiErrorState = {
 };
 
 // --- API Helper ---
-async function fetchAdmin(path: string, options: RequestInit = {}) {
+async function fetchAdmin<T = unknown>(path: string, options: RequestInit = {}): Promise<{ data: T; requestId: string }> {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) {
         window.location.href = "/login?redirect=" + window.location.pathname;
-        return;
+        throw new Error("Missing token");
     }
     const requestId = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Date.now());
 
@@ -119,7 +119,7 @@ async function fetchAdmin(path: string, options: RequestInit = {}) {
     if (res.status === 401) {
         localStorage.removeItem("token");
         window.location.href = "/login?redirect=" + window.location.pathname;
-        return;
+        throw new Error("Unauthorized");
     }
 
     if (!res.ok) {
@@ -135,7 +135,7 @@ async function fetchAdmin(path: string, options: RequestInit = {}) {
         err.requestId = responseRequestId;
         throw err;
     }
-    const data = await res.json();
+    const data = (await res.json()) as T;
     return { data, requestId: res.headers.get("X-Request-ID") || requestId };
 }
 
@@ -200,18 +200,22 @@ export default function AdminPaymentsPage() {
         if (statusFilter) params.append("status", statusFilter);
 
         if (tab === "overview") {
-            fetchAdmin("/overview?range_days=30")
+            fetchAdmin<OverviewData>("/overview?range_days=30")
                 .then(({ data }) => setOverview(data))
                 .catch(err => setError({ message: err.message, requestId: err.requestId }))
                 .finally(() => setLoading(false));
         } else if (tab === "requests") {
             if (search) params.append("user_id", search); // Special case for requests search by ID
-            fetchAdmin(`/requests?${params.toString()}`)
+            fetchAdmin<{ total: number; data: RequestItem[] }>(`/requests?${params.toString()}`)
                 .then(({ data }) => { setRequests(data.data); setTotal(data.total); })
                 .catch(err => setError({ message: err.message, requestId: err.requestId }))
                 .finally(() => setLoading(false));
         } else if (tab === "pricing") {
-            fetchAdmin("/pricing")
+            fetchAdmin<{
+                provider_pricing?: { pricing?: PricingItem[] };
+                topup_packs?: TopUpPack[];
+                stripe_price_map?: StripePriceMapItem[];
+            }>("/pricing")
                 .then(({ data }) => {
                     const pricing = data?.provider_pricing?.pricing || [];
                     setPricing(Array.isArray(pricing) ? pricing : []);
@@ -221,19 +225,19 @@ export default function AdminPaymentsPage() {
                 .catch(err => setError({ message: err.message, requestId: err.requestId }))
                 .finally(() => setLoading(false));
         } else if (tab === "invoices") {
-            fetchAdmin(`/invoices?${params.toString()}`)
+            fetchAdmin<{ total: number; data: InvoiceItem[] }>(`/invoices?${params.toString()}`)
                 .then(({ data }) => { setInvoices(data.data); setTotal(data.total); })
                 .catch(err => setError({ message: err.message, requestId: err.requestId }))
                 .finally(() => setLoading(false));
         } else if (tab === "stripe_events") {
             if (statusFilter) params.delete("status"); // stripe events use status param differently
             if (statusFilter) params.append("status", statusFilter);
-            fetchAdmin(`/stripe/events?${params.toString()}`)
+            fetchAdmin<{ total: number; data: StripeEventItem[] }>(`/stripe/events?${params.toString()}`)
                 .then(({ data }) => { setStripeEvents(data.data); setTotal(data.total); })
                 .catch(err => setError({ message: err.message, requestId: err.requestId }))
                 .finally(() => setLoading(false));
         } else if (tab === "reconciliation") {
-            fetchAdmin("/reconciliation")
+            fetchAdmin<ReconciliationReport>("/reconciliation")
                 .then(({ data }) => setReconciliation(data))
                 .catch(err => setError({ message: err.message, requestId: err.requestId }))
                 .finally(() => setLoading(false));

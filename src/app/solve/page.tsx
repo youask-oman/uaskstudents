@@ -79,10 +79,12 @@ interface StreamingTelemetry {
 }
 
 interface StreamingRuntimeMeta {
+    attempt_id?: string;
     request_id?: string;
     provider?: string;
     model?: string;
     tier_requested?: string;
+    tier_effective?: string;
     effective_tier?: string;
     mode_family?: string;
     mode?: string;
@@ -874,8 +876,8 @@ export default function DashboardPage() {
         if (!hasEnoughCredits) {
             pushToast({
                 title: "Insufficient credits",
-                description: creditBlockReason || "Please top up your wallet before solving.",
-                variant: "error",
+                message: creditBlockReason || "Please top up your wallet before solving.",
+                type: "error",
             });
             return;
         }

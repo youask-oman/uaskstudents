@@ -19,9 +19,21 @@ type TopUpProduct = {
 export default function BillingSuccessPage() {
     const { pushToast } = useToast();
     const [wallet, setWallet] = useState<WalletSummary | null>(null);
-    const [lastBalance, setLastBalance] = useState<number | null>(null);
-    const [purchasedCredits, setPurchasedCredits] = useState<number | null>(null);
-    const [productCode, setProductCode] = useState<string | null>(null);
+    const [purchasedCredits, setPurchasedCredits] = useState<number | null>(() => {
+        if (typeof window === "undefined") return null;
+        const storedCredits = localStorage.getItem("topup_last_product_credits");
+        return storedCredits ? Number(storedCredits) : null;
+    });
+    const productCode = useMemo(() => {
+        if (typeof window === "undefined") return null;
+        const params = new URLSearchParams(window.location.search);
+        return params.get("product");
+    }, []);
+    const lastBalance = useMemo(() => {
+        if (typeof window === "undefined") return null;
+        const storedBalance = localStorage.getItem("topup_last_balance");
+        return storedBalance ? Number(storedBalance) : null;
+    }, []);
 
     useEffect(() => {
         const loadWallet = async () => {
@@ -33,17 +45,6 @@ export default function BillingSuccessPage() {
             }
         };
         void loadWallet();
-    }, []);
-
-    useEffect(() => {
-        if (typeof window === "undefined") return;
-        const params = new URLSearchParams(window.location.search);
-        const product = params.get("product");
-        if (product) setProductCode(product);
-        const storedBalance = localStorage.getItem("topup_last_balance");
-        const storedCredits = localStorage.getItem("topup_last_product_credits");
-        setLastBalance(storedBalance ? Number(storedBalance) : null);
-        setPurchasedCredits(storedCredits ? Number(storedCredits) : null);
     }, []);
 
     useEffect(() => {
