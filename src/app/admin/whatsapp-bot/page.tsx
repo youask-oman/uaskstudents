@@ -51,7 +51,7 @@ export default function WhatsAppBotPage() {
                 const errorData = await response.json();
                 setBotState((prev) => ({
                     ...prev,
-                    error: errorData.message || "Failed to initialize bot",
+                    error: errorData.error || errorData.message || "Failed to initialize bot",
                 }));
             }
         } catch (error) {

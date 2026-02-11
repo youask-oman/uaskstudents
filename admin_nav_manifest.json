@@ -126,6 +126,16 @@
     },
     {
       "type": "link",
+      "label": "Jobs & Workers",
+      "href": "/admin/jobs",
+      "icon": "schedule",
+      "page_title": "Jobs & Workers",
+      "api_checks": [
+        "/api/admin/jobs/status"
+      ]
+    },
+    {
+      "type": "link",
       "label": "Logs",
       "href": "/admin/logs",
       "icon": "receipt_long",
@@ -195,6 +205,16 @@
       "page_title": "Credit Packs",
       "api_checks": [
         "/api/admin/billing/packs"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "Promo Codes",
+      "href": "/admin/promo-codes",
+      "icon": "sell",
+      "page_title": "Promo Codes",
+      "api_checks": [
+        "/api/admin/promo-codes"
       ]
     },
     {

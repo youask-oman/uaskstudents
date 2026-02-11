@@ -7,16 +7,19 @@ from pydantic import BaseModel
 from jose import JWTError, jwt
 
 from app.database import get_session
-from app.models import User, SystemConfigVersion, BillingLedger
+from app.models import User, SystemConfigVersion, BillingLedger, PromoCode
 from app.services.admin_config_service import admin_config_service
 from app.services.pricing_service import pricing_service
 from app.auth import SECRET_KEY, ALGORITHM
 from app.services.whatsapp import whatsapp_service
 from app.services.whatsapp.whatsapp_state import get_whatsapp_events, get_redis
+from app.worker import celery_app
 from fastapi.responses import StreamingResponse
 import asyncio
 import io
 from datetime import datetime
+import os
+from pathlib import Path
 
 admin_router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -40,6 +43,24 @@ class CalculatorResponse(BaseModel):
     estimate: Dict[str, Any]
     actual: Dict[str, Any]
     delta_credits: float
+
+class PromoCodeCreateRequest(BaseModel):
+    code: str
+    discount_percent: int
+    valid_until: Optional[datetime] = None
+    max_uses: Optional[int] = None
+    is_active: Optional[bool] = True
+
+class PromoCodeUpdateRequest(BaseModel):
+    discount_percent: Optional[int] = None
+    valid_until: Optional[datetime] = None
+    max_uses: Optional[int] = None
+    is_active: Optional[bool] = None
+
+class RunJobRequest(BaseModel):
+    task: str
+    args: Optional[List[Any]] = None
+    kwargs: Optional[Dict[str, Any]] = None
 
 # --- Auth Dependencies (Self-Contained) ---
 def get_current_user(
@@ -469,3 +490,245 @@ def admin_get_db_table_alias(
         return [dict(row) for row in rows]
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to read table {table_name}: {exc}")
+
+
+# ------------------------------------------------------------------
+# Promo Codes (Admin)
+# ------------------------------------------------------------------
+
+@admin_router.get("/promo-codes")
+def admin_list_promo_codes(
+    limit: int = Query(200, ge=1, le=1000),
+    session: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    promos = session.exec(
+        select(PromoCode)
+        .order_by(desc(PromoCode.created_at))
+        .limit(limit)
+    ).all()
+    return [
+        {
+            "id": promo.id,
+            "code": promo.code,
+            "discount_percent": promo.discount_percent,
+            "valid_from": promo.valid_from.isoformat() if promo.valid_from else None,
+            "valid_until": promo.valid_until.isoformat() if promo.valid_until else None,
+            "is_active": promo.is_active,
+            "max_uses": promo.max_uses,
+            "current_uses": promo.current_uses,
+            "created_at": promo.created_at.isoformat() if promo.created_at else None,
+        }
+        for promo in promos
+    ]
+
+
+@admin_router.post("/promo-codes")
+def admin_create_promo_code(
+    request: PromoCodeCreateRequest,
+    session: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    code_upper = request.code.strip().upper()
+    if not code_upper:
+        raise HTTPException(status_code=400, detail="Promo code required")
+    if request.discount_percent < 0 or request.discount_percent > 100:
+        raise HTTPException(status_code=400, detail="discount_percent must be 0-100")
+
+    existing = session.exec(select(PromoCode).where(PromoCode.code == code_upper)).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Promo code already exists")
+
+    promo = PromoCode(
+        code=code_upper,
+        discount_percent=request.discount_percent,
+        valid_until=request.valid_until,
+        max_uses=request.max_uses,
+        is_active=True if request.is_active is None else request.is_active,
+    )
+    session.add(promo)
+    session.commit()
+    session.refresh(promo)
+    return {"status": "created", "code": promo.code, "id": promo.id}
+
+
+@admin_router.put("/promo-codes/{promo_id}")
+def admin_update_promo_code(
+    promo_id: int,
+    request: PromoCodeUpdateRequest,
+    session: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    promo = session.get(PromoCode, promo_id)
+    if not promo:
+        raise HTTPException(status_code=404, detail="Promo code not found")
+
+    fields_set = request.model_fields_set
+
+    if "discount_percent" in fields_set:
+        if request.discount_percent is None:
+            raise HTTPException(status_code=400, detail="discount_percent required")
+        if request.discount_percent < 0 or request.discount_percent > 100:
+            raise HTTPException(status_code=400, detail="discount_percent must be 0-100")
+        promo.discount_percent = request.discount_percent
+
+    if "valid_until" in fields_set:
+        promo.valid_until = request.valid_until
+
+    if "max_uses" in fields_set:
+        promo.max_uses = request.max_uses
+
+    if "is_active" in fields_set:
+        promo.is_active = request.is_active if request.is_active is not None else promo.is_active
+
+    session.add(promo)
+    session.commit()
+    session.refresh(promo)
+    return {"status": "updated", "id": promo.id}
+
+
+# ------------------------------------------------------------------
+# Jobs & Workers (Admin)
+# ------------------------------------------------------------------
+
+_ALLOWED_ADMIN_TASKS = {
+    "ocr_hold_release_job",
+    "subscription_grant_job",
+    "subscription_expiry_job",
+}
+
+
+@admin_router.get("/jobs/status")
+def admin_jobs_status(
+    admin: User = Depends(get_admin_user),
+):
+    server_time = datetime.utcnow().isoformat()
+    queue_lengths: Dict[str, Optional[int]] = {}
+    try:
+        redis = get_redis()
+        for queue in ["celery", "whatsapp"]:
+            try:
+                queue_lengths[queue] = redis.llen(queue)
+            except Exception:
+                queue_lengths[queue] = None
+    except Exception:
+        queue_lengths = {"celery": None, "whatsapp": None}
+
+    workers = []
+    inspect_error = None
+    try:
+        inspector = celery_app.control.inspect(timeout=1.0)
+        ping = inspector.ping() or {}
+        active = inspector.active() or {}
+        scheduled = inspector.scheduled() or {}
+        reserved = inspector.reserved() or {}
+        stats = inspector.stats() or {}
+        worker_names = sorted(set(list(ping.keys()) + list(active.keys()) + list(scheduled.keys()) + list(reserved.keys())))
+        for name in worker_names:
+            workers.append({
+                "name": name,
+                "ping": name in ping,
+                "active": len(active.get(name, []) or []),
+                "scheduled": len(scheduled.get(name, []) or []),
+                "reserved": len(reserved.get(name, []) or []),
+                "stats": stats.get(name) or {},
+            })
+    except Exception as exc:
+        inspect_error = str(exc)
+
+    beat_schedule = []
+    try:
+        for name, entry in (celery_app.conf.beat_schedule or {}).items():
+            beat_schedule.append({
+                "name": name,
+                "task": entry.get("task"),
+                "schedule": str(entry.get("schedule")),
+                "args": entry.get("args", []),
+                "kwargs": entry.get("kwargs", {}),
+            })
+    except Exception as exc:
+        beat_schedule = []
+        inspect_error = inspect_error or str(exc)
+
+    return {
+        "server_time": server_time,
+        "queues": queue_lengths,
+        "workers": workers,
+        "beat_schedule": beat_schedule,
+        "inspect_error": inspect_error,
+    }
+
+
+@admin_router.post("/jobs/run")
+def admin_run_job(
+    request: RunJobRequest,
+    admin: User = Depends(get_admin_user),
+):
+    task = (request.task or "").strip()
+    if task not in _ALLOWED_ADMIN_TASKS:
+        raise HTTPException(status_code=400, detail="Task not allowed")
+    try:
+        result = celery_app.send_task(task, args=request.args or [], kwargs=request.kwargs or {})
+        return {"status": "queued", "task": task, "task_id": result.id}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to enqueue task: {exc}")
+
+
+@admin_router.get("/jobs/logs")
+def admin_jobs_logs(
+    log_type: str = Query("worker", pattern="^(worker|celery|whatsapp)$"),
+    lines: int = Query(300, ge=50, le=5000),
+    admin: User = Depends(get_admin_user),
+):
+    base_dir = Path(__file__).resolve().parents[1]
+    logs_dir = base_dir / "logs"
+    env_map = {
+        "worker": os.environ.get("WORKER_LOG_PATH"),
+        "celery": os.environ.get("CELERY_LOG_PATH"),
+        "whatsapp": os.environ.get("WHATSAPP_LOG_PATH"),
+    }
+    candidate_paths = []
+    if env_map.get(log_type):
+        candidate_paths.append(Path(env_map[log_type]))
+
+    if log_type == "worker":
+        candidate_paths += [
+            logs_dir / "worker.log",
+            logs_dir / "celery.log",
+        ]
+    elif log_type == "celery":
+        candidate_paths += [
+            logs_dir / "celery.log",
+            logs_dir / "worker.log",
+        ]
+    else:
+        candidate_paths += [
+            logs_dir / "whatsapp.log",
+            logs_dir / "whatsapp_bot.log",
+        ]
+
+    log_path = None
+    for path in candidate_paths:
+        try:
+            if path and path.exists() and path.is_file():
+                log_path = path
+                break
+        except Exception:
+            continue
+
+    if not log_path:
+        return {
+            "path": None,
+            "lines": [],
+            "note": "No log file found. Set WORKER_LOG_PATH/CELERY_LOG_PATH/WHATSAPP_LOG_PATH.",
+        }
+
+    try:
+        with log_path.open("r", encoding="utf-8", errors="ignore") as handle:
+            content = handle.read().splitlines()
+        return {
+            "path": str(log_path),
+            "lines": content[-lines:],
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to read log file: {exc}")

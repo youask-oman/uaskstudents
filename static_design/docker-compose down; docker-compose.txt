@@ -106,3 +106,10 @@ PS E:\uaskstudents> docker run --rm -it `
 
 4242 4242 4242 4242
 
+delete all pyc files 
+
+Get-ChildItem -Recurse -Force -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force
+Get-ChildItem -Recurse -Force -File -Filter "*.pyc" | Remove-Item -Force
+
+
+

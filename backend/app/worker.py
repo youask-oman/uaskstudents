@@ -2,6 +2,7 @@ import os
 import time
 import logging
 import traceback
+from pathlib import Path
 from celery import Celery
 from kombu import Queue
 from sqlmodel import Session, create_engine
@@ -16,6 +17,27 @@ from app.services.ocr.post_process_service import post_process_service
 from app.services.voice.voice_service import voice_service
 
 logger = logging.getLogger(__name__)
+
+# Optional file logging for worker visibility in admin UI.
+_log_path = os.environ.get("WORKER_LOG_PATH") or os.environ.get("CELERY_LOG_PATH")
+if not _log_path:
+    try:
+        base_dir = Path(__file__).resolve().parents[1]
+        _log_path = str(base_dir / "logs" / "worker.log")
+    except Exception:
+        _log_path = None
+
+if _log_path:
+    try:
+        Path(_log_path).parent.mkdir(parents=True, exist_ok=True)
+        file_handler = logging.FileHandler(_log_path)
+        file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+        root_logger = logging.getLogger()
+        if not any(isinstance(h, logging.FileHandler) for h in root_logger.handlers):
+            root_logger.addHandler(file_handler)
+            root_logger.setLevel(logging.INFO)
+    except Exception as exc:
+        logger.warning(f"Worker file logging disabled: {exc}")
 
 def redact_pii(text: str) -> str:
     """Simple regex to mask emails and potential PII in logs"""

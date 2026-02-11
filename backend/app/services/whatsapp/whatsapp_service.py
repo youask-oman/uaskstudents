@@ -8,6 +8,7 @@ import json
 import asyncio
 import subprocess
 import base64
+import shutil
 from typing import Optional, Dict, Any
 from datetime import datetime
 import tempfile
@@ -490,6 +491,20 @@ connectToWhatsApp();
         if all(has_pkg(pkg) for pkg in required):
             return None
 
+        node_path = shutil.which("node")
+        npm_path = shutil.which("npm")
+        if not node_path or not npm_path:
+            missing = []
+            if not node_path:
+                missing.append("node")
+            if not npm_path:
+                missing.append("npm")
+            return (
+                "Failed to install Node.js deps: "
+                f"{', '.join(missing)} not found in PATH. "
+                "Install Node.js (includes npm) or provide preinstalled deps under WHATSAPP_NODE_DIR."
+            )
+
         try:
             if not os.path.isdir(script_dir):
                 os.makedirs(script_dir, exist_ok=True)
@@ -585,9 +600,10 @@ connectToWhatsApp();
             env = os.environ.copy()
             if "NODE_PATH" not in env:
                 try:
-                    npm_root = subprocess.check_output(["npm", "root", "-g"], text=True).strip()
-                    if npm_root:
-                        env["NODE_PATH"] = npm_root
+                    if shutil.which("npm"):
+                        npm_root = subprocess.check_output(["npm", "root", "-g"], text=True).strip()
+                        if npm_root:
+                            env["NODE_PATH"] = npm_root
                 except Exception:
                     pass
             
