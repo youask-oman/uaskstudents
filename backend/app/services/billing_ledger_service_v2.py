@@ -25,6 +25,7 @@ from app.models import (
     User, CreditLot, CreditLotConsumption, BillingLedger,
     CreditHold, UsageLedger
 )
+from app.services.subscription_service import subscription_service
 from app.services.billing_logger import (
     log_hold_created, log_hold_released, log_settled,
     log_billing_error
@@ -171,10 +172,15 @@ class BillingLedgerServiceV2:
                 request_id=request_id,
             )
         
-        # 4. Create hold record
+        # 4. Ensure subscription exists (legacy FK requirement)
+        subscription = subscription_service.get_or_create_subscription(session, user)
+        if not subscription:
+            raise ValueError("Subscription not available for hold creation")
+
+        # 5. Create hold record
         hold = CreditHold(
             user_id=user_id,
-            subscription_id=0,  # Legacy field, not used in V2
+            subscription_id=subscription.id,
             request_id=request_id,
             reserved_credits=float(estimated_credits),  # Will be Decimal after model update
             status="held",
@@ -209,6 +215,7 @@ class BillingLedgerServiceV2:
         provider_cost_usd: Decimal = Decimal("0"),
         attempt_id: Optional[str] = None,
         is_billable: bool = True,
+        action_type: str = "solve",
     ) -> SettleResult:
         """
         Settle a hold by consuming the actual credits used.
@@ -278,7 +285,7 @@ class BillingLedgerServiceV2:
         # 7. Create ledger entry
         ledger = BillingLedger(
             user_id=user_id,
-            action_type="solve",
+            action_type=action_type,
             request_id=request_id,
             idempotency_key=f"settle_{request_id}",
             status=status,

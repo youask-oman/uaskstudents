@@ -31,6 +31,7 @@ export default function ActiveHoldsPage() {
     const [stats, setStats] = useState<Stats | null>(null);
     const [loading, setLoading] = useState(true);
     const [isSuper, setIsSuper] = useState(false);
+    const [releasingOcr, setReleasingOcr] = useState(false);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -126,6 +127,58 @@ export default function ActiveHoldsPage() {
         }
     };
 
+    const handleReleaseOcrHolds = async () => {
+        if (!isSuper) return;
+        const reason = prompt("Reason for releasing OCR holds?");
+        if (!reason) return;
+        const userIdRaw = prompt("Optional: release holds for a specific user_id (leave blank for all).", "");
+        const userId = userIdRaw ? Number(userIdRaw) : undefined;
+        if (userIdRaw && Number.isNaN(userId)) {
+            pushToast({ type: "error", title: "Invalid user_id", message: "Please enter a numeric user_id." });
+            return;
+        }
+        setReleasingOcr(true);
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/admin/billing/holds/release-ocr`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    reason,
+                    user_id: userId || undefined,
+                    idempotency_key: `ocr_hold_release_${Date.now()}`,
+                }),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                pushToast({
+                    type: "success",
+                    title: "OCR holds released",
+                    message: `Released ${data.released} holds.`,
+                });
+                fetchData();
+            } else {
+                const err = await parseApiError(res);
+                pushToast({
+                    type: "error",
+                    title: "Failed to release OCR holds",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
+            }
+        } catch (e) {
+            pushToast({
+                type: "error",
+                title: "Failed to release OCR holds",
+                message: e instanceof Error ? e.message : "Unexpected error",
+            });
+        } finally {
+            setReleasingOcr(false);
+        }
+    };
+
     if (loading && holds.length === 0) {
         return (
             <div className="p-8 flex items-center justify-center min-h-screen">
@@ -158,6 +211,16 @@ export default function ActiveHoldsPage() {
                     <span className="material-symbols-outlined text-[20px]">refresh</span>
                     Refresh
                 </button>
+                {isSuper && (
+                    <button
+                        onClick={handleReleaseOcrHolds}
+                        disabled={releasingOcr}
+                        className="flex items-center gap-2 px-6 py-3 bg-rose-50 dark:bg-rose-900/40 text-rose-700 dark:text-rose-200 text-sm font-bold rounded-2xl transition-all border border-rose-200 dark:border-rose-800 shadow-lg disabled:opacity-50"
+                    >
+                        <span className="material-symbols-outlined text-[20px]">delete_sweep</span>
+                        {releasingOcr ? "Releasing..." : "Release OCR Holds"}
+                    </button>
+                )}
             </header>
 
             {stats && (

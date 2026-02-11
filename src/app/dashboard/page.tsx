@@ -633,10 +633,10 @@ function DashboardContent() {
                                     )}
 
                                     {activeTab === 'bookmarked' && (
-                                        history.filter(h => h.is_saved).length === 0 ? (
+                                        history.filter(h => h.is_saved && h.title !== "Debug Seeded Session").length === 0 ? (
                                             <div className="p-12 text-center text-slate-500 italic">No saved solutions yet.</div>
                                         ) : (
-                                            history.filter(h => h.is_saved).map((session) => (
+                                            history.filter(h => h.is_saved && h.title !== "Debug Seeded Session").map((session) => (
                                                 <div
                                                     key={session.id}
                                                     onClick={() => router.push(`/chat/${session.id}`)}

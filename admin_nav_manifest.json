@@ -76,6 +76,16 @@
     },
     {
       "type": "link",
+      "label": "OCR Configuration",
+      "href": "/admin/ocr-configuration",
+      "icon": "document_scanner",
+      "page_title": "OCR Configuration",
+      "api_checks": [
+        "/api/admin/ocr-configuration"
+      ]
+    },
+    {
+      "type": "link",
       "label": "Content",
       "href": "/admin/content",
       "icon": "collections_bookmark",

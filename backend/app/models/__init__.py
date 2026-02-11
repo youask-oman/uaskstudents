@@ -393,6 +393,18 @@ class OCRJob(SQLModel, table=True):
     attempts: int = Field(default=0)
     error_code: Optional[str] = None
     error_message: Optional[str] = None
+
+    # Snap & Solve OCR extraction extensions
+    extracted_text: Optional[str] = Field(default=None, sa_column=Column(Text))
+    structured_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    quality_score: Optional[float] = None
+    image_fingerprint: Optional[str] = Field(default=None, index=True)
+    dedupe_key: Optional[str] = Field(default=None, index=True)
+    prompt_template_id: Optional[str] = Field(default=None, index=True)
+    json_schema_id: Optional[str] = Field(default=None, index=True)
+    hold_request_id: Optional[str] = Field(default=None, index=True)
+    hold_amount: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(20, 10)))
+    accepted_solve_attempt_id: Optional[str] = Field(default=None, index=True)
     
     created_at: datetime = Field(default_factory=datetime.utcnow)
     started_at: Optional[datetime] = None
@@ -401,6 +413,11 @@ class OCRJob(SQLModel, table=True):
     user: User = Relationship()
     crop: "Crop" = Relationship(back_populates="jobs")
     artifacts: List["OCRArtifact"] = Relationship(back_populates="job")
+
+    __table_args__ = (
+        Index("ix_ocrjob_user_dedupe", "user_id", "dedupe_key"),
+        Index("ix_ocrjob_user_created", "user_id", "created_at"),
+    )
 
 class OCRArtifact(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

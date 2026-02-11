@@ -28,6 +28,11 @@ class PromptRegistryService:
     All prompt IDs loaded from environment variables or database.
     NO hardcoded prompt IDs allowed.
     """
+
+    OCR_EXTRACT_OPENAI_PROMPT_ID = "openai_ocr_system_prompt_v1"
+    OCR_EXTRACT_OPENAI_PROMPT_FALLBACK_ID = "openai_ocr_system_prompt_v1.txt"
+    OCR_EXTRACT_OPENAI_SCHEMA_ID = "openai_image_extract_v1_schema_json"
+    OCR_EXTRACT_OPENAI_SCHEMA_FALLBACK_ID = "openai_image_extract_v1.schema.json"
     
     def _content_checksum(self, content: str) -> str:
         return hashlib.sha256((content or "").strip().encode("utf-8")).hexdigest()
@@ -295,6 +300,63 @@ class PromptRegistryService:
             .where(PromptBinding.is_active == True)
             .order_by(PromptBinding.updated_at.desc())
         ).first()
+
+    def ensure_ocr_extract_prompts(self, session: Session, updated_by: Optional[str] = "seed:test") -> Tuple[PromptTemplateEntry, JsonSchemaEntry]:
+        """
+        Ensure OCR prompt + schema exist for tests/dev.
+        Uses seed_data files when available.
+        """
+        prompt_entry = self.get_active_prompt(session, self.OCR_EXTRACT_OPENAI_PROMPT_ID)
+        if not prompt_entry:
+            prompt_entry = self.get_active_prompt(session, self.OCR_EXTRACT_OPENAI_PROMPT_FALLBACK_ID)
+
+        schema_entry = self.get_active_schema(session, self.OCR_EXTRACT_OPENAI_SCHEMA_FALLBACK_ID)
+        if not schema_entry:
+            schema_entry = self.get_active_schema(session, self.OCR_EXTRACT_OPENAI_SCHEMA_ID)
+
+        if not prompt_entry:
+            prompt_content = "You are an OCR + math-structure extraction engine for a math tutoring app."
+            prompt_entry = self._ensure_prompt_exists(
+                session=session,
+                prompt_id=self.OCR_EXTRACT_OPENAI_PROMPT_FALLBACK_ID,
+                content=prompt_content,
+                tier=None,
+                mode=PromptModeEnum.OCR_EXTRACT,
+                role=PromptRoleEnum.DEVELOPER.value,
+                updated_by=updated_by,
+            )
+
+        if not schema_entry:
+            schema_content = self._load_seed_schema(self.OCR_EXTRACT_OPENAI_SCHEMA_FALLBACK_ID) or {
+                "title": "image_extract_v1",
+                "type": "object",
+                "properties": {"questions": {"type": "array"}},
+                "required": ["questions"],
+            }
+            schema_entry = self._ensure_schema_exists(
+                session=session,
+                schema_id=self.OCR_EXTRACT_OPENAI_SCHEMA_FALLBACK_ID,
+                content=schema_content,
+                updated_by=updated_by,
+            )
+
+        return prompt_entry, schema_entry
+
+    def _load_seed_schema(self, schema_id: str) -> Optional[Dict[str, Any]]:
+        try:
+            seed_path = Path(__file__).resolve().parents[2] / "seed_data" / "json_schemas.json"
+            if not seed_path.exists():
+                return None
+            data = json.loads(seed_path.read_text(encoding="utf-8"))
+            for row in data:
+                if row.get("schema_id") == schema_id:
+                    content = row.get("content")
+                    if isinstance(content, str):
+                        return json.loads(content)
+                    return content
+        except Exception:
+            return None
+        return None
 
     def build_system_prompt(self, global_system: str, developer: str) -> str:
         if not developer:

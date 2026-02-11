@@ -1,6 +1,0 @@
-Request ID: db9f8247-8941-4d47-a36b-e9a88048a1e9
-Length: 341
-Chunk Types: {'delta': 1, 'usage': 1}
-----------------------------------------
-RAW CONTENT (Head 4000 + Tail 16000):
-{"topic":"Linear equation","confidence_score":0.98,"steps":[{"index":1,"title":"Isolate the term with x","explanation":"Subtract 7 from both sides to get 2x = 12.","math_latex":"2x=12"},{"index":2,"title":"Solve for x","explanation":"Divide both sides by 2 to find x = 6.","math_latex":"\\frac{2x}{2}=\\frac{12}{2}"}],"final_answer":"x = 6"}

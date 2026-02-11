@@ -43,11 +43,14 @@ type PdfExtractResponse = {
     };
 };
 
-type ImageExtractResponse = {
-    ok: boolean;
-    questions?: ExtractedQuestion[];
-    notes?: string[];
-    error?: string | null;
+type OcrExtractResponse = {
+    ocr_attempt_id: string;
+    status: string;
+    extracted_text?: string | null;
+    structured_json?: Record<string, unknown> | null;
+    quality_score?: number | null;
+    cache_hit?: boolean;
+    billing?: { hold_applied?: boolean; hold_amount?: number };
 };
 
 type SolvedQuestion = {
@@ -99,6 +102,9 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
     const [imageExtractNote, setImageExtractNote] = React.useState<string | null>(null);
     const [imageCrop, setImageCrop] = React.useState<PdfCropSelection | null>(null);
     const [imageRender, setImageRender] = React.useState<{ width: number; height: number } | null>(null);
+    const [ocrAttemptId, setOcrAttemptId] = React.useState<string | null>(null);
+    const [ocrEngineUsed, setOcrEngineUsed] = React.useState<string | null>(null);
+    const [ocrReviewed, setOcrReviewed] = React.useState(false);
     const fileInputRef = React.useRef<HTMLInputElement | null>(null);
     const cameraInputRef = React.useRef<HTMLInputElement | null>(null);
     const sketchRef = React.useRef<SketchCanvasHandle | null>(null);
@@ -176,10 +182,34 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
             .join("\n\n"),
         [imageExtractedQuestions, normalizeLatexForReview]
     );
+
+    React.useEffect(() => {
+        if (!ocrAttemptId) return;
+        if (!questionText.trim()) return;
+        setImageExtractedQuestions([
+            {
+                id: ocrAttemptId,
+                text: questionText,
+                latex: questionText,
+            },
+        ]);
+    }, [ocrAttemptId, questionText]);
+    React.useEffect(() => {
+        if (!ocrAttemptId) return;
+        setOcrReviewed(false);
+    }, [ocrAttemptId, questionText]);
+    React.useEffect(() => {
+        if (imageCrop) setOcrReviewed(false);
+    }, [imageCrop]);
     const isSubmitEnabled = React.useMemo(() => {
         if (isPdfMode) return false;
         return Boolean(uploadedFile || sketchHasContent || questionText.trim().length > 0);
     }, [uploadedFile, sketchHasContent, questionText, isPdfMode]);
+    const requiresOcrReview = React.useMemo(
+        () => Boolean(ocrAttemptId || imageExtractedQuestions.length > 0),
+        [ocrAttemptId, imageExtractedQuestions.length]
+    );
+    const resolveEnabled = isSubmitEnabled && (!requiresOcrReview || ocrReviewed);
 
     const resolveSolveTier = React.useCallback((): "free" | "standard" | "research" | "short" => {
         const propTier = (tier || "").toLowerCase();
@@ -226,6 +256,8 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
         setImageExtractNote(null);
         setImageCrop(null);
         setImageRender(null);
+        setOcrAttemptId(null);
+        setOcrEngineUsed(null);
     }, [clearPdfCache]);
 
     const setUploadFile = React.useCallback(
@@ -241,6 +273,8 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
             setImageExtractNote(null);
             setImageCrop(null);
             setImageRender(null);
+            setOcrAttemptId(null);
+            setOcrEngineUsed(null);
 
             if (previewUrl && previewUrl.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
             if (!file) {
@@ -262,93 +296,54 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
     const extractImageQuestions = React.useCallback(
         async (file: File) => {
             if (!file.type.startsWith("image/")) return;
+            setOcrReviewed(false);
             setImageExtracting(true);
             setImageExtractedQuestions([]);
             setImageExtractNote(null);
+            setOcrAttemptId(null);
+            setOcrEngineUsed(null);
             try {
                 const form = new FormData();
                 form.append("file", file);
-                form.append("source", "image");
                 const isCropMode = Boolean(imageCrop && imageRender);
-                form.append("user_selection", isCropMode ? "crop" : "whole_page");
-                form.append("ocr_engine_choice", imageExtractEngine);
+                const engineChoice = imageExtractEngine === "auto" ? "pix2text" : imageExtractEngine;
+                form.append("engine", engineChoice);
                 if (isCropMode && imageCrop && imageRender) {
-                    form.append("crop_x", String(imageCrop.x));
-                    form.append("crop_y", String(imageCrop.y));
-                    form.append("crop_w", String(imageCrop.width));
-                    form.append("crop_h", String(imageCrop.height));
-                    form.append("preview_w", String(imageRender.width));
-                    form.append("preview_h", String(imageRender.height));
+                    form.append("crop_x", String(imageCrop.x / imageRender.width));
+                    form.append("crop_y", String(imageCrop.y / imageRender.height));
+                    form.append("crop_w", String(imageCrop.width / imageRender.width));
+                    form.append("crop_h", String(imageCrop.height / imageRender.height));
                 }
                 const userId = getUserId();
-                const res = await fetch(`/api/v1/extract_questions?user_id=${encodeURIComponent(userId)}`, {
+                const res = await fetch(`/api/v1/ocr/extract?user_id=${encodeURIComponent(userId)}`, {
                     method: "POST",
                     body: form,
                 });
-                const payload = (await res.json().catch(() => ({}))) as ImageExtractResponse;
+                const payload = (await res.json().catch(() => ({}))) as OcrExtractResponse;
                 if (!res.ok) throw new Error(extractErrorMessage(payload, "Unable to extract questions from image."));
-                let questions = Array.isArray(payload.questions) ? payload.questions : [];
-                let notes = Array.isArray(payload.notes) ? payload.notes : [];
-
-                if (imageExtractEngine === "pix2text") {
-                    const mergedText = questions.map((q) => q.text || "").join("\n");
-                    const mergedTextNoWs = mergedText.replace(/\s+/g, " ").trim();
-                    const hasMathOperator = /[=+\-*/^]|\\(?:sqrt|frac|div|times|cdot)|[()]/.test(mergedTextNoWs);
-                    const looksLikeHeadingNoise = /(^|\n)\s*#{1,6}\s*[A-Za-z0-9]/.test(mergedText);
-                    const looksLikeRootNoise = /\b\d*Nx\b/i.test(mergedTextNoWs) || /\bN[xya-z]\b/i.test(mergedTextNoWs);
-                    const shortTokenSoup =
-                        mergedTextNoWs.length > 0 &&
-                        mergedTextNoWs.length <= 32 &&
-                        !hasMathOperator &&
-                        /[0-9]/.test(mergedTextNoWs) &&
-                        /[A-Za-z]/.test(mergedTextNoWs);
-                    const looksGarbled =
-                        questions.length === 0 ||
-                        looksLikeHeadingNoise ||
-                        looksLikeRootNoise ||
-                        shortTokenSoup ||
-                        ((mergedText.match(/\{\}/g) || []).length >= 8) ||
-                        /(?:^|\s)(?:oot|root)\s*\d+\s*\\?of\s*\{/i.test(mergedText) ||
-                        (mergedText.match(/\\boldsymbol\{/g) || []).length >= 3 ||
-                        mergedText.includes("\\of{") ||
-                        ((mergedText.match(/\\/g) || []).length > 30 &&
-                            mergedText.replace(/[A-Za-z]/g, "").length > mergedText.replace(/[^A-Za-z]/g, "").length);
-                    if (looksGarbled) {
-                        const retryForm = new FormData();
-                        retryForm.append("file", file);
-                        retryForm.append("source", "image");
-                        retryForm.append("user_selection", isCropMode ? "crop" : "whole_page");
-                        retryForm.append("ocr_engine_choice", "openai");
-                        if (isCropMode && imageCrop && imageRender) {
-                            retryForm.append("crop_x", String(imageCrop.x));
-                            retryForm.append("crop_y", String(imageCrop.y));
-                            retryForm.append("crop_w", String(imageCrop.width));
-                            retryForm.append("crop_h", String(imageCrop.height));
-                            retryForm.append("preview_w", String(imageRender.width));
-                            retryForm.append("preview_h", String(imageRender.height));
-                        }
-                        const retryRes = await fetch(`/api/v1/extract_questions?user_id=${encodeURIComponent(userId)}`, {
-                            method: "POST",
-                            body: retryForm,
-                        });
-                        const retryPayload = (await retryRes.json().catch(() => ({}))) as ImageExtractResponse;
-                        if (retryRes.ok) {
-                            questions = Array.isArray(retryPayload.questions) ? retryPayload.questions : questions;
-                            notes = Array.isArray(retryPayload.notes) ? retryPayload.notes : notes;
-                            notes = ["Pix2Text looked noisy, switched to OpenAI OCR.", ...notes];
-                        }
-                    }
+                const extractedText = normalizeExtractText(payload.extracted_text || "");
+                const synthesizedQuestion: ExtractedQuestion = {
+                    id: payload.ocr_attempt_id || "ocr",
+                    text: extractedText || "No text extracted.",
+                    latex: extractedText || null,
+                };
+                setImageExtractedQuestions(extractedText ? [synthesizedQuestion] : []);
+                setQuestionText(extractedText);
+                setOcrAttemptId(payload.ocr_attempt_id || null);
+                setOcrEngineUsed(engineChoice);
+                // billing hold info is surfaced via note for now
+                if (imageExtractEngine === "auto") {
+                    setImageExtractNote("Auto uses Pix2Text. Switch to OpenAI if quality is low.");
+                } else if (payload.billing?.hold_applied) {
+                    setImageExtractNote(`OCR hold applied: ${payload.billing.hold_amount ?? 0} credits`);
                 }
-
-                setImageExtractedQuestions(questions);
-                if (notes.length > 0) setImageExtractNote(notes[0] || null);
             } catch (e) {
                 setError(e instanceof Error ? e.message : "Unable to extract questions from image.");
             } finally {
                 setImageExtracting(false);
             }
         },
-        [extractErrorMessage, getUserId, imageCrop, imageExtractEngine, imageRender]
+        [extractErrorMessage, getUserId, imageCrop, imageExtractEngine, imageRender, normalizeExtractText]
     );
 
     React.useEffect(() => {
@@ -457,6 +452,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
     const handleIncomingFile = React.useCallback(
         async (file: File | null) => {
             if (!file) return;
+            setOcrReviewed(false);
             setUploadFile(file);
             if (file.type === "application/pdf") {
                 try {
@@ -588,6 +584,9 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
         setImageExtractNote(null);
         setImageCrop(null);
         setImageRender(null);
+        setOcrAttemptId(null);
+        setOcrEngineUsed(null);
+        setOcrReviewed(false);
     };
 
     const handleSubmit = async () => {
@@ -598,9 +597,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                 .filter(Boolean)
                 .join("\n\n");
             const requestText = questionText.trim();
-            const resolveText = extractedText && requestText
-                ? `${extractedText}\n\nSpecial request: ${requestText}`
-                : (extractedText || requestText);
+            const resolveText = requestText || extractedText;
             if (!resolveText) {
                 setError("Please extract a question first or add a special request.");
                 return;
@@ -609,9 +606,12 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
             setError(null);
             try {
                 await onResolveText(resolveText, {
-                    ocr_used: true,
+                    ocr_used: Boolean(ocrAttemptId),
                     ocr_source: uploadedFile?.type === "application/pdf" ? "pdf" : "image",
-                    ocr_engine: "openai",
+                    ocr_engine: ocrEngineUsed || imageExtractEngine,
+                    source_type: ocrAttemptId ? "ocr" : undefined,
+                    source_id: ocrAttemptId || undefined,
+                    question_text: resolveText,
                 });
             } catch (err) {
                 setError(err instanceof Error ? err.message : "Unexpected error");
@@ -802,7 +802,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                                         }}
                                         className="rounded-lg border border-slate-600 bg-slate-900 px-2 py-1 text-xs text-slate-100"
                                     >
-                                        <option value="auto">Auto (Pix2Text -&gt; OpenAI)</option>
+                                        <option value="auto">Auto (Pix2Text default)</option>
                                         <option value="pix2text">Pix2Text (local)</option>
                                         <option value="openai">OpenAI (gpt-5-mini)</option>
                                     </select>
@@ -937,9 +937,20 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                 </div>
             )}
 
+            {requiresOcrReview && (
+                <label className="flex items-center gap-2 text-sm text-slate-600">
+                    <input
+                        type="checkbox"
+                        checked={ocrReviewed}
+                        onChange={(e) => setOcrReviewed(e.target.checked)}
+                    />
+                    I confirm the extract is correct and reviewed
+                </label>
+            )}
+
             <div className="flex items-center justify-end gap-3">
                 <button type="button" onClick={handleClear} data-testid="snap-clear-btn" className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200">Clear</button>
-                <button type="button" onClick={handleSubmit} disabled={!isSubmitEnabled || isSubmitting} data-testid="snap-submit-btn" className="rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white disabled:opacity-50">{isSubmitting ? "Resolving..." : "Resolve"}</button>
+                <button type="button" onClick={handleSubmit} disabled={!resolveEnabled || isSubmitting} data-testid="snap-submit-btn" className="rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white disabled:opacity-50">{isSubmitting ? "Resolving..." : "Resolve"}</button>
             </div>
 
             {result && (

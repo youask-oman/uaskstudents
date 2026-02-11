@@ -939,13 +939,20 @@ export default function DashboardPage() {
                     console.warn("[SOLVER_STREAM] Runtime meta prefetch failed:", metaErr);
                 });
 
+            const overridePayload = (featureOverrides || {}) as Record<string, unknown>;
+            const {
+                source_type,
+                source_id,
+                question_text,
+                ...featureOverrideFeatures
+            } = overridePayload;
             const features = {
                 ocr_used: activeTab === 'snap',
                 voice_used: activeTab === 'voice',
                 plot_requested: graphMode !== 'off',
                 ...(activeTab === 'snap' ? ocrMetadata : {}),
                 ...(activeTab === 'voice' ? voiceFeatures : {}),
-                ...featureOverrides,
+                ...featureOverrideFeatures,
             };
 
             let response: Response | null = null;
@@ -960,6 +967,9 @@ export default function DashboardPage() {
                             confirmed_text: textToSolve,
                             requested_mode: requestedMode,
                             tier: mapTierToApi(selectedSolveTier),
+                            source_type,
+                            source_id,
+                            question_text,
                             trusted_context: {
                                 learning_mode: selectedGoal,
                                 grade_level: userProfile?.grade_level || undefined,

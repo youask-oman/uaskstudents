@@ -48,6 +48,8 @@ from app.services.rag import rag_service
 from app.services.ocr.upload_service import upload_service
 from app.services.ocr.crop_service import crop_service
 from app.services.ocr.ocr_router_service import ocr_router_service
+from app.services.ocr.ocr_config_service import ocr_config_service
+from app.services.ocr.ocr_runtime_config_service import get_active_ocr_config
 from app.services.ocr.audit_log_service import audit_log_service
 from app.services.ocr.ocr_service import ocr_service
 from app.services.ocr.vision_routing import (
@@ -118,8 +120,7 @@ api_router.include_router(credits_router, tags=["credits"])
 api_router.include_router(plot_router, prefix="/v1", tags=["plotting"])
 from app.services.solve.solve_events import emit_attempt_event
 
-OCR_OPENAI_SYSTEM_PROMPT_ID = os.environ.get("OCR_OPENAI_SYSTEM_PROMPT_ID", "")
-OCR_OPENAI_SCHEMA_ID = os.environ.get("OCR_OPENAI_SCHEMA_ID", "")
+# OCR prompt/schema are DB-driven via ocr_config_service
 
 
 @api_router.get("/health/llm")
@@ -669,6 +670,9 @@ class SolveRequest(BaseModel):
     confirmed_markdown: Optional[str] = None
     confirmed_text: Optional[str] = None
     confirmed_latex_blocks: Optional[List[Dict[str, Any]]] = None
+    question_text: Optional[str] = None
+    source_type: Optional[str] = None
+    source_id: Optional[str] = None
     
     # Entity-driven fields
     artifact_id: Optional[int] = None
@@ -1313,6 +1317,16 @@ class OCRConfirmRequest(BaseModel):
     confirmed_markdown: str
     confirmed_text: str
     confirmed_latex_blocks: Optional[List[dict]] = None
+
+
+class OcrExtractResponse(BaseModel):
+    ocr_attempt_id: str
+    status: str
+    extracted_text: Optional[str] = None
+    structured_json: Optional[Dict[str, Any]] = None
+    quality_score: Optional[float] = None
+    cache_hit: bool = False
+    billing: Dict[str, Any]
 
 
 class OcrV5Response(BaseModel):
@@ -2156,15 +2170,15 @@ async def _call_extract_questions(
     crop_meta: Optional[Dict[str, Any]] = None,
     debug: bool = False
 ) -> Dict[str, Any]:
-    def _load_openai_ocr_assets() -> Tuple[str, Dict[str, Any]]:
-        system_entry = prompt_registry_service.get_active_prompt(session, OCR_OPENAI_SYSTEM_PROMPT_ID)
-        schema_entry = prompt_registry_service.get_active_schema(session, OCR_OPENAI_SCHEMA_ID)
-        if not system_entry or not schema_entry:
-            raise PromptRegistryError(
-                "Missing OpenAI OCR prompt/schema in registry. "
-                f"Expected prompt_id={OCR_OPENAI_SYSTEM_PROMPT_ID} schema_id={OCR_OPENAI_SCHEMA_ID}"
-            )
-        return system_entry.content, schema_entry.content
+    runtime_cfg = get_active_ocr_config(session)
+
+    def _load_openai_ocr_assets() -> Tuple[PromptTemplateEntry, JsonSchemaEntry]:
+        prompt_entry, schema_entry = ocr_config_service.get_openai_ocr_assets(
+            session,
+            prompt_key=runtime_cfg.openai_system_prompt_key,
+            schema_key=runtime_cfg.openai_schema_key,
+        )
+        return prompt_entry, schema_entry
 
     def _normalize_openai_ocr_payload(raw_payload: Dict[str, Any], model: str) -> Dict[str, Any]:
         warnings = raw_payload.get("warnings") if isinstance(raw_payload.get("warnings"), list) else []
@@ -2323,11 +2337,15 @@ async def _call_extract_questions(
             if len(vision_input.images) > 4:
                 raise RuntimeError("unsupported_too_many_images")
 
-            model = get_openai_ocr_model()
+            model = runtime_cfg.resolved_openai_model()
             client = AsyncOpenAI(api_key=api_key)
             b64 = base64.b64encode(vision_input.images[0]).decode("utf-8")
-            system_prompt, openai_schema = _load_openai_ocr_assets()
+            prompt_entry, schema_entry = _load_openai_ocr_assets()
+            system_prompt = prompt_entry.content
+            openai_schema = schema_entry.content
             validator = Draft202012Validator(openai_schema)
+            schema_name = schema_entry.schema_id
+            safe_schema_name = re.sub(r"[^a-zA-Z0-9_-]", "_", schema_name or "ocr_schema")
             user_prompt = "Extract math content from this input image. Return JSON only."
 
             async def _responses_call(max_tokens: int, repair: bool = False):
@@ -2346,7 +2364,7 @@ async def _call_extract_questions(
                     text={
                         "format": {
                             "type": "json_schema",
-                            "name": OCR_OPENAI_SCHEMA_ID,
+                            "name": safe_schema_name,
                             "schema": openai_schema,
                             "strict": True,
                         }
@@ -2413,7 +2431,19 @@ async def _call_extract_questions(
         "pix2txt": Pix2TextProvider(),
         "openai": OpenAIVisionProvider(),
     }
-    routing_cfg = VisionRoutingConfig.from_env()
+    enabled_providers: List[str] = []
+    if runtime_cfg.local_engine_enabled:
+        enabled_providers.append("pix2txt")
+    if runtime_cfg.openai_engine_enabled and os.getenv("OPENAI_API_KEY"):
+        enabled_providers.append("openai")
+    if not enabled_providers:
+        raise RuntimeError("No OCR providers enabled")
+    default_mode = "AUTO" if len(enabled_providers) > 1 else enabled_providers[0].upper()
+    routing_cfg = VisionRoutingConfig(
+        enabled_providers=enabled_providers,
+        default_provider_mode=default_mode,
+        fallback_order=enabled_providers,
+    )
     plan = build_provider_plan(engine_choice, routing_cfg)
     if not plan:
         raise RuntimeError("No OCR providers enabled")
@@ -2590,6 +2620,32 @@ def _should_cache_extract_result(result: Dict[str, Any]) -> bool:
         return False
     questions = result.get("questions") or []
     return len(questions) > 0
+
+
+def _compute_ocr_quality_score(text: str) -> float:
+    """
+    Lightweight heuristic score in [0,1] for OCR extraction quality.
+    """
+    s = (text or "").strip()
+    if not s:
+        return 0.0
+    score = 0.5
+    # Positive signals
+    if re.search(r"\d", s):
+        score += 0.1
+    if re.search(r"[=+\-*/^]", s):
+        score += 0.15
+    if re.search(r"(\\frac|\\sqrt|\\int|\\sum)", s):
+        score += 0.15
+    if re.search(r"[xyza-zA-Z]\s*=", s):
+        score += 0.1
+    # Negative signals
+    if len(s) < 15:
+        score -= 0.2
+    if re.search(r"(upload|camera|paste|selected|extract)", s, flags=re.IGNORECASE):
+        score -= 0.2
+    # Clamp
+    return max(0.0, min(1.0, score))
 
 
 async def _call_ocr_v5(image_bytes: bytes, max_output_tokens: int) -> Dict[str, Any]:
@@ -3032,6 +3088,236 @@ async def extract_questions(
         ocr_model_used=result.get("ocr_model_used"),
         ocr_fallback_attempts=result.get("ocr_fallback_attempts"),
     )
+
+
+@api_router.post("/ocr/extract", response_model=OcrExtractResponse)
+@limiter.limit("10/minute")
+async def ocr_extract(
+    request: Request,
+    file: UploadFile = File(...),
+    engine: str = Form("pix2text"),
+    crop_x: Optional[float] = Form(None),
+    crop_y: Optional[float] = Form(None),
+    crop_w: Optional[float] = Form(None),
+    crop_h: Optional[float] = Form(None),
+    rotation: Optional[int] = Form(0),
+    margin_pct: Optional[int] = Form(0),
+    user_id: int = Query(...),
+    session: Session = Depends(get_session),
+):
+    from decimal import Decimal
+    from app.services.billing_ledger_service_v2 import billing_ledger_service_v2
+    from app.services.billing_exceptions import InsufficientCreditsError, HoldAlreadyFinalizedError, HoldNotFoundError
+    from app.services.ocr.ocr_runtime_config_service import get_active_ocr_config
+
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not file:
+        raise HTTPException(status_code=400, detail="File is required")
+
+    runtime_cfg = get_active_ocr_config(session)
+
+    engine_choice = (engine or "pix2text").lower().strip()
+    if engine_choice not in {"pix2text", "openai"}:
+        raise HTTPException(status_code=400, detail="Invalid engine. Use pix2text or openai.")
+    if engine_choice == "pix2text" and not runtime_cfg.local_engine_enabled:
+        raise HTTPException(status_code=422, detail="Pix2Text OCR engine is disabled")
+    if engine_choice == "openai" and not runtime_cfg.openai_engine_enabled:
+        raise HTTPException(status_code=422, detail="OpenAI OCR engine is disabled")
+
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(status_code=400, detail="Empty file")
+    file.file.seek(0)
+
+    image_kind = _detect_image_kind(raw)
+    content_type = file.content_type or ""
+    if not content_type.startswith("image/") and image_kind not in ("jpeg", "png", "webp"):
+        raise HTTPException(status_code=415, detail="Only image uploads are accepted")
+    if image_kind not in ("jpeg", "png", "webp"):
+        raise HTTPException(status_code=415, detail="Unsupported image type")
+
+    image_fingerprint = hashlib.sha256(raw).hexdigest()
+
+    # Compute crop signature up front (affects dedupe + idempotency)
+    crop_rect = {"x": 0.0, "y": 0.0, "w": 1.0, "h": 1.0}
+    if crop_x is not None and crop_y is not None and crop_w is not None and crop_h is not None:
+        crop_rect = {"x": float(crop_x), "y": float(crop_y), "w": float(crop_w), "h": float(crop_h)}
+    crop_signature = f"{crop_rect['x']:.5f}:{crop_rect['y']:.5f}:{crop_rect['w']:.5f}:{crop_rect['h']:.5f}:rot{int(rotation or 0)}:m{int(margin_pct or 0)}"
+
+    # Dynamic rate limit per user (config-driven)
+    if runtime_cfg.rate_limit_extract_per_min > 0:
+        window_start = datetime.utcnow() - timedelta(minutes=1)
+        recent_count = session.exec(
+            select(func.count())
+            .select_from(OCRJob)
+            .where(OCRJob.user_id == user_id)
+            .where(OCRJob.created_at >= window_start)
+        ).one()
+        if isinstance(recent_count, tuple):
+            recent_count = recent_count[0]
+        if int(recent_count or 0) >= runtime_cfg.rate_limit_extract_per_min:
+            raise HTTPException(status_code=429, detail="OCR extract rate limit reached")
+
+    prompt_entry = None
+    schema_entry = None
+    if engine_choice == "openai":
+        prompt_entry, schema_entry = ocr_config_service.get_openai_ocr_assets(session)
+
+    prompt_version = str(getattr(prompt_entry, "version", "local"))
+    schema_version = str(getattr(schema_entry, "version", "local"))
+    dedupe_key = f"{user_id}:{engine_choice}:{image_fingerprint}:{crop_signature}:{prompt_version}:{schema_version}"
+
+    # Config-driven dedupe window
+    cutoff = datetime.utcnow() - timedelta(hours=max(runtime_cfg.dedupe_window_hours, 1))
+    cached = session.exec(
+        select(OcrExtractionCache)
+        .where(OcrExtractionCache.cache_key == dedupe_key)
+        .where(OcrExtractionCache.user_id == user_id)
+        .where(OcrExtractionCache.created_at >= cutoff)
+    ).first()
+    if cached:
+        payload = cached.result_json or {}
+        extracted_text = str(payload.get("extracted_text") or "").strip()
+        if extracted_text:
+            cached.hit_count += 1
+            cached.last_hit_at = datetime.utcnow()
+            session.add(cached)
+            session.commit()
+            return OcrExtractResponse(
+                ocr_attempt_id=str((cached.meta or {}).get("ocr_job_id") or ""),
+                status="cached",
+                extracted_text=payload.get("extracted_text"),
+                structured_json=payload.get("structured_json"),
+                quality_score=payload.get("quality_score"),
+                cache_hit=True,
+                billing={"hold_applied": False, "hold_amount": 0},
+            )
+        # cached result was empty; drop it to allow re-extract
+        session.delete(cached)
+        session.commit()
+
+    # Persist upload + crop (full image by default)
+    upload = await upload_service.save_upload(user_id=user_id, file=file, session=session)
+    crop = await crop_service.create_crop(
+        upload=upload,
+        crop_rect=crop_rect,
+        rotation=int(rotation or 0),
+        margin_pct=int(margin_pct or 0),
+        session=session,
+    )
+
+    # Create OCR attempt record
+    job_id = str(uuid.uuid4())
+    ocr_job = OCRJob(
+        id=job_id,
+        user_id=user_id,
+        crop_id=crop.id,
+        requested_engine=engine_choice,
+        status="processing",
+        image_fingerprint=image_fingerprint,
+        dedupe_key=dedupe_key,
+        prompt_template_id=getattr(prompt_entry, "prompt_id", None),
+        json_schema_id=getattr(schema_entry, "schema_id", None),
+        created_at=datetime.utcnow(),
+    )
+    session.add(ocr_job)
+    session.commit()
+
+    # Apply hold
+    hold_amount = Decimal(str(runtime_cfg.local_ocr_credit)) if engine_choice == "pix2text" else Decimal(str(runtime_cfg.openai_ocr_credit))
+    hold_request_id = f"ocr:{user_id}:{engine_choice}:{image_fingerprint}:{crop_signature}:{getattr(prompt_entry, 'prompt_id', 'local')}:{getattr(schema_entry, 'schema_id', 'local')}"
+    try:
+        hold_result = billing_ledger_service_v2.create_hold(
+            session=session,
+            user_id=user_id,
+            request_id=hold_request_id,
+            estimated_credits=hold_amount,
+            attempt_id=job_id,
+            idempotency_key=hold_request_id,
+        )
+        ocr_job.hold_request_id = hold_request_id
+        ocr_job.hold_amount = hold_amount
+        session.add(ocr_job)
+        session.commit()
+    except InsufficientCreditsError as e:
+        ocr_job.status = "failed"
+        ocr_job.error_code = "INSUFFICIENT_CREDITS"
+        ocr_job.error_message = f"Required: {e.required}, Available: {e.available}"
+        session.add(ocr_job)
+        session.commit()
+        raise HTTPException(status_code=402, detail="Insufficient credits") from e
+
+    # Run OCR
+    try:
+        with open(crop.cropped_storage_url, "rb") as f:
+            crop_bytes = f.read()
+        max_extract_tokens = get_token_policy(session).ocr_image_extract_max
+        extract_data = await _call_extract_questions(
+            session=session,
+            image_bytes=crop_bytes,
+            max_output_tokens=max_extract_tokens,
+            engine_choice="openai" if engine_choice == "openai" else "pix2txt",
+            crop_meta={
+                "request_id": hold_request_id,
+                "page_number": 0,
+                "source": "image",
+                "crop_norm": crop_rect,
+            },
+            debug=False,
+        )
+        payload = extract_data.get("payload") or {}
+        extracted_text = "\n".join((q.get("text") or "") for q in (payload.get("questions") or [])).strip()
+        quality_score = _compute_ocr_quality_score(extracted_text)
+        if not extracted_text:
+            raise RuntimeError("empty_extraction")
+
+        ocr_job.status = "completed"
+        ocr_job.extracted_text = extracted_text
+        ocr_job.structured_json = payload
+        ocr_job.quality_score = quality_score
+        ocr_job.finished_at = datetime.utcnow()
+        session.add(ocr_job)
+
+        cache_entry = OcrExtractionCache(
+            cache_key=dedupe_key,
+            user_id=user_id,
+            result_json={
+                "extracted_text": extracted_text,
+                "structured_json": payload,
+                "quality_score": quality_score,
+            },
+            meta={"ocr_job_id": job_id, "engine": engine_choice},
+            hit_count=1,
+            created_at=datetime.utcnow(),
+            last_hit_at=datetime.utcnow(),
+        )
+        session.add(cache_entry)
+        session.commit()
+        return OcrExtractResponse(
+            ocr_attempt_id=job_id,
+            status="completed",
+            extracted_text=extracted_text,
+            structured_json=payload,
+            quality_score=quality_score,
+            cache_hit=False,
+            billing={"hold_applied": True, "hold_amount": float(hold_amount)},
+        )
+    except Exception as exc:
+        logging.exception("ocr_extract failed")
+        ocr_job.status = "failed"
+        ocr_job.error_code = "OCR_FAILED"
+        ocr_job.error_message = str(exc)
+        ocr_job.finished_at = datetime.utcnow()
+        session.add(ocr_job)
+        # Release hold if OCR fails
+        try:
+            billing_ledger_service_v2.release_hold(session, request_id=hold_request_id, attempt_id=job_id)
+        except (HoldAlreadyFinalizedError, HoldNotFoundError):
+            pass
+        session.commit()
+        raise HTTPException(status_code=502, detail=f"OCR engine error: {str(exc)}") from exc
 
 
 @api_router.post("/solve_questions_batch", response_model=SolveBatchResponse)
@@ -5193,6 +5479,8 @@ async def solve_v3_stream_endpoint(
     request_id = (body.idempotency_key or "").strip() or str(uuid.uuid4())
     attempt_id = str(uuid.uuid4())
     attempt = None
+    should_refund = False
+    cost = 0
     app_env = os.environ.get("APP_ENV", "").upper()
     debug_allowed = app_env in {"DEV", "TEST"} or os.environ.get("BILLING_FAKE_SOLVER_ENABLED", "").lower() == "true"
     if (body.debug_simulated_tokens or body.debug_force_error) and not debug_allowed:
@@ -5290,6 +5578,12 @@ async def solve_v3_stream_endpoint(
         .where(User.id == user_id)
         .options(selectinload(User.subscription).selectinload(Subscription.plan))
     ).first()
+    user_grade_level = user_obj.grade_level if user_obj else None
+    user_profile_country = user_obj.profile_country if user_obj else None
+    user_profile_province = user_obj.profile_province_state if user_obj else None
+    user_plan_slug = None
+    if user_obj and user_obj.subscription and user_obj.subscription.plan:
+        user_plan_slug = user_obj.subscription.plan.slug
     effective_tier_slug = get_user_effective_tier_slug(user_obj)
     tier_policy = _clamp_requested_tier(body.tier, effective_tier_slug)
     requested_tier = tier_policy["tier_requested"]
@@ -5299,6 +5593,37 @@ async def solve_v3_stream_endpoint(
     stream_provider = "openai"
     stream_model = get_configured_openai_model()
     effective_billing_tier = effective_tier.lower()
+
+    # OCR acceptance: capture OCR hold at solve-start when source_type=ocr
+    if (body.source_type or "").lower() == "ocr" and body.source_id:
+        from app.services.billing_ledger_service_v2 import billing_ledger_service_v2
+        from app.services.billing_exceptions import HoldAlreadyFinalizedError, HoldNotFoundError
+        from decimal import Decimal
+
+        ocr_job = session.get(OCRJob, body.source_id)
+        if not ocr_job:
+            raise HTTPException(status_code=404, detail="OCR attempt not found")
+        if ocr_job.user_id != user_id:
+            raise HTTPException(status_code=403, detail="OCR attempt does not belong to user")
+        if ocr_job.status != "completed":
+            raise HTTPException(status_code=400, detail="OCR attempt not completed")
+        if ocr_job.accepted_solve_attempt_id is None:
+            ocr_job.accepted_solve_attempt_id = attempt_id
+            session.add(ocr_job)
+            session.commit()
+        if ocr_job.hold_request_id:
+            try:
+                billing_ledger_service_v2.settle_hold(
+                    session=session,
+                    request_id=ocr_job.hold_request_id,
+                    actual_credits=Decimal(str(ocr_job.hold_amount or 0)),
+                    tier="OCR",
+                    attempt_id=attempt_id,
+                    action_type="ocr_extract",
+                )
+                session.commit()
+            except (HoldAlreadyFinalizedError, HoldNotFoundError):
+                pass
 
     plan_pricing_version = None
     try:
@@ -5315,10 +5640,10 @@ async def solve_v3_stream_endpoint(
     action_req = {
         "tier": effective_billing_tier,
         "mode": body.requested_mode,
-        "has_ocr": body.features_used.get("ocr_used", False) if body.features_used else False,
+        "has_ocr": bool((body.source_type or "").lower() == "ocr") or (body.features_used.get("ocr_used", False) if body.features_used else False),
         "has_voice": body.features_used.get("voice_used", False) if body.features_used else False,
         "reference_id": request_id,
-        "source_type": None,
+        "source_type": body.source_type,
     }
 
     from app.services.billing_feature_flags import is_billing_v2_enabled
@@ -5349,7 +5674,12 @@ async def solve_v3_stream_endpoint(
         elif action_req["has_ocr"]:
             source_type = "snap_image"
 
-        billing_v2_cost = float(subscription_service.calculate_cost(plan, effective_billing_tier, source_type))
+        if (body.source_type or "").lower() == "ocr":
+            ocr_cfg = get_active_ocr_config(session)
+            tier_cost = float(subscription_service.calculate_cost(plan, effective_billing_tier, "text"))
+            billing_v2_cost = max(tier_cost, float(ocr_cfg.solve_credit))
+        else:
+            billing_v2_cost = float(subscription_service.calculate_cost(plan, effective_billing_tier, source_type))
         try:
             hold_result = billing_ledger_service_v2.create_hold(
                 session=session,
@@ -5407,6 +5737,7 @@ async def solve_v3_stream_endpoint(
                 except Exception:
                     pass
         raw_problem_text = (
+            body.question_text or
             body.confirmed_text or
             body.confirmed_markdown or
             body.text_query or
@@ -5445,11 +5776,7 @@ async def solve_v3_stream_endpoint(
 
         # Resolve profile for correct prompt/schema/tokens
         from app.llm_profiles.profile_resolver import ProfileResolver
-        plan_key = None
-        if user_obj and user_obj.subscription and user_obj.subscription.plan:
-            plan_key = user_obj.subscription.plan.slug
-        else:
-            plan_key = effective_tier_slug
+        plan_key = user_plan_slug or effective_tier_slug
         try:
             profile = ProfileResolver.resolve_profile(
                 session,
@@ -5508,10 +5835,7 @@ async def solve_v3_stream_endpoint(
         except Exception as e:
             print(f"[SOLVER_V3_STREAM] Update attempt meta failed: {e}")
 
-        if user_obj and user_obj.subscription and user_obj.subscription.plan:
-            plan_key = user_obj.subscription.plan.slug
-        else:
-            plan_key = profile.tier
+        plan_key = user_plan_slug or profile.tier
 
         # --- TOKEN POLICY FIX (STREAMING) ---
         profile_max_output = profile.max_output_tokens or 900
@@ -5559,7 +5883,7 @@ async def solve_v3_stream_endpoint(
                 "mode": requested_mode,
                 "learning_mode": learning_mode,
                 "subject": body.subject,
-                "grade_level": user_obj.grade_level if user_obj else None,
+                "grade_level": user_grade_level,
                 "model": os.environ.get("OPENAI_MODEL_DEFAULT"),
                 "provider": stream_provider,
                 "route": "solve_v3_stream",
@@ -5649,7 +5973,7 @@ async def solve_v3_stream_endpoint(
                     "mode": requested_mode,
                     "learning_mode": learning_mode,
                     "subject": body.subject,
-                    "grade_level": user_obj.grade_level if user_obj else None,
+                    "grade_level": user_grade_level,
                     "model": os.environ.get("OPENAI_MODEL_DEFAULT"),
                     "provider": stream_provider,
                     "route": "solve_v3_stream",
@@ -5790,7 +6114,7 @@ async def solve_v3_stream_endpoint(
                 "mode": requested_mode,
                 "learning_mode": learning_mode,
                 "subject": body.subject,
-                "grade_level": user_obj.grade_level if user_obj else None,
+                "grade_level": user_grade_level,
                 "model": os.environ.get("OPENAI_MODEL_DEFAULT"),
                 "provider": stream_provider,
                 "route": "solve_v3_stream",
@@ -5819,11 +6143,11 @@ async def solve_v3_stream_endpoint(
         if body.difficulty: context += f", Difficulty: {body.difficulty}"
         if body.mode: context += f", Mode: {body.mode}"
         
-        context_user = user_obj or session.get(User, user_id)
-        if context_user:
-            country = context_user.profile_country or 'Canada'
-            province = context_user.profile_province_state or 'ON'
-            context += f"\n\n[STUDENT CONTEXT]\nCountry: {country}\nProvince: {province}\nGrade: {context_user.grade_level or 'Unknown'}"
+        if user_profile_country or user_profile_province or user_grade_level:
+            country = user_profile_country or 'Canada'
+            province = user_profile_province or 'ON'
+            grade = user_grade_level or 'Unknown'
+            context += f"\n\n[STUDENT CONTEXT]\nCountry: {country}\nProvince: {province}\nGrade: {grade}"
 
         # Part E1: Create placeholder assistant message row
         new_chat = ChatSession(
@@ -6221,7 +6545,7 @@ async def solve_v3_stream_endpoint(
                     "mode": requested_mode,
                     "learning_mode": learning_mode,
                     "subject": body.subject,
-                    "grade_level": user_obj.grade_level if user_obj else None,
+                    "grade_level": user_grade_level,
                     "model": openai_telemetry.get("model") or stream_model,
                     "provider": openai_telemetry.get("provider") or stream_provider,
                     "route": "solve_v3_stream",
@@ -6427,7 +6751,7 @@ async def solve_v3_stream_endpoint(
                 # Populate Metadata Columns
                 classification = final_data.get("classification", {})
                 placeholder_msg.subject = classification.get("subject") or classification.get("topic") or body.subject
-                placeholder_msg.grade_level = classification.get("grade_level") or (user_obj.grade_level if user_obj else None)
+                placeholder_msg.grade_level = classification.get("grade_level") or user_grade_level
                 placeholder_msg.difficulty = classification.get("difficulty")
                 
                 # Token Tracking
@@ -6567,7 +6891,7 @@ async def solve_v3_stream_endpoint(
                 "mode": requested_mode,
                 "learning_mode": learning_mode,
                 "subject": body.subject,
-                "grade_level": user_obj.grade_level if user_obj else None,
+                "grade_level": user_grade_level,
                 "model": openai_telemetry.get("model") or stream_model,
                 "provider": openai_telemetry.get("provider") or stream_provider,
                 "route": "solve_v3_stream",
@@ -6653,7 +6977,7 @@ async def solve_v3_stream_endpoint(
                     "mode": requested_mode,
                     "learning_mode": learning_mode,
                     "subject": body.subject,
-                    "grade_level": user_obj.grade_level if user_obj else None,
+                    "grade_level": user_grade_level,
                     "model": openai_telemetry.get("model") or stream_model,
                     "provider": openai_telemetry.get("provider") or stream_provider,
                     "route": "solve_v3_stream",
@@ -7159,6 +7483,7 @@ async def create_promo_code(request: PromoCreateRequest, session: Session = Depe
 async def get_history(
     user_id: int, 
     saved_only: bool = True,
+    include_debug: bool = False,
     session: Session = Depends(get_session)
 ):
     # Filter based on saved_only flag
@@ -7167,6 +7492,8 @@ async def get_history(
             ChatSession.user_id == user_id,
             ChatSession.is_saved == True
         ).order_by(ChatSession.created_at.desc())
+        if not include_debug:
+            stmt = stmt.where(ChatSession.title != "Debug Seeded Session")
     else:
         # Return ALL sessions for this user
         stmt = select(ChatSession).where(
@@ -7685,7 +8012,7 @@ async def debug_seed_chat_session(
         user_id=user.id,
         title="Debug Seeded Session",
         subject="Math",
-        is_saved=True,
+        is_saved=False,
     )
     session.add(new_chat)
     session.commit()

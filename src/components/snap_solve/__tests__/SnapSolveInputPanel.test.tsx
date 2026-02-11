@@ -29,11 +29,11 @@ describe("SnapSolveInputPanel", () => {
         global.fetch = jest.fn().mockResolvedValue({
             ok: true,
             json: async () => ({
-                ok: true,
-                is_math_page: true,
-                notes: [],
-                questions: [],
+                ocr_attempt_id: "ocr-1",
+                status: "completed",
+                extracted_text: "x^2 = 9",
                 cache_hit: false,
+                billing: { hold_applied: true, hold_amount: 2 },
             }),
         }) as unknown as typeof fetch;
         Object.defineProperty(URL, "createObjectURL", {
@@ -82,11 +82,11 @@ describe("SnapSolveInputPanel", () => {
             .mockResolvedValue({
                 ok: true,
                 json: async () => ({
-                    ok: true,
-                    is_math_page: true,
-                    notes: [],
+                    ocr_attempt_id: "ocr-1",
+                    status: "completed",
+                    extracted_text: "\\\\text{Solve } x^2 = 9",
                     cache_hit: false,
-                    questions: [{ id: "q1", text: "\\\\text{Solve } x^2 = 9", confidence: 0.9, is_valid_math: true }],
+                    billing: { hold_applied: true, hold_amount: 2 },
                 }),
             });
         global.fetch = fetchMock as unknown as typeof fetch;
@@ -110,7 +110,7 @@ describe("SnapSolveInputPanel", () => {
         });
 
         expect(fetchMock).toHaveBeenCalledWith(
-            expect.stringContaining("/api/v1/extract_questions?user_id="),
+            expect.stringContaining("/api/v1/ocr/extract?user_id="),
             expect.objectContaining({ method: "POST" })
         );
     });
@@ -119,11 +119,11 @@ describe("SnapSolveInputPanel", () => {
         const fetchMock = jest.fn().mockResolvedValue({
             ok: true,
             json: async () => ({
-                ok: true,
-                is_math_page: true,
-                notes: ["Refined with OpenAI OCR"],
+                ocr_attempt_id: "ocr-2",
+                status: "completed",
+                extracted_text: "x^2=9",
                 cache_hit: false,
-                questions: [{ id: "q1", text: "x^2=9", confidence: 0.9, is_valid_math: true }],
+                billing: { hold_applied: true, hold_amount: 3 },
             }),
         });
         global.fetch = fetchMock as unknown as typeof fetch;
@@ -141,30 +141,20 @@ describe("SnapSolveInputPanel", () => {
 
         const requestInit = fetchMock.mock.calls[0][1] as RequestInit;
         const form = requestInit.body as FormData;
-        expect(form.get("ocr_engine_choice")).toBe("openai");
+        expect(form.get("engine")).toBe("openai");
     });
 
-    test("auto-retries with OpenAI OCR when Pix2Text output looks garbled", async () => {
-        const fetchMock = jest
-            .fn()
-            .mockResolvedValueOnce({
-                ok: true,
-                json: async () => ({
-                    ok: true,
-                    is_math_page: true,
-                    notes: ["Extracted using Pix2Text (Local)"],
-                    questions: [{ id: "q1", text: "## 2x 2Nx", confidence: 0.8, is_valid_math: true }],
-                }),
-            })
-            .mockResolvedValueOnce({
-                ok: true,
-                json: async () => ({
-                    ok: true,
-                    is_math_page: true,
-                    notes: ["Extracted with OpenAI OCR vision OCR."],
-                    questions: [{ id: "q1", text: "x=2\\sqrt{x-1}", confidence: 0.93, is_valid_math: true }],
-                }),
-            });
+    test("auto engine maps to pix2text for billing-safe extract", async () => {
+        const fetchMock = jest.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({
+                ocr_attempt_id: "ocr-3",
+                status: "completed",
+                extracted_text: "x=2",
+                cache_hit: false,
+                billing: { hold_applied: true, hold_amount: 2 },
+            }),
+        });
         global.fetch = fetchMock as unknown as typeof fetch;
         render(<SnapSolveInputPanel />);
 
@@ -173,19 +163,15 @@ describe("SnapSolveInputPanel", () => {
                 target: { files: [new File(["img"], "equation.png", { type: "image/png" })] },
             });
         });
-        fireEvent.change(screen.getByRole("combobox"), { target: { value: "pix2text" } });
+        fireEvent.change(screen.getByRole("combobox"), { target: { value: "auto" } });
 
         await act(async () => {
             fireEvent.click(screen.getByRole("button", { name: "Extract" }));
         });
 
-        await waitFor(() => {
-            expect(fetchMock).toHaveBeenCalledTimes(2);
-            expect(screen.getByTestId("snap-image-extract-plain")).toHaveTextContent(/x=2\\sqrt\{x-1\}/);
-        });
-
-        const retryForm = (fetchMock.mock.calls[1][1] as RequestInit).body as FormData;
-        expect(retryForm.get("ocr_engine_choice")).toBe("openai");
+        const requestInit = fetchMock.mock.calls[0][1] as RequestInit;
+        const form = requestInit.body as FormData;
+        expect(form.get("engine")).toBe("pix2text");
     });
 
     test("paste handler supports clipboard files image payloads", async () => {

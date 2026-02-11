@@ -291,6 +291,7 @@ from app.api_wallet import router as wallet_router
 from app.api_admin_payments_config import router as admin_payments_config_router
 from app.api_admin_health import router as admin_health_router
 from app.api_admin_content import router as admin_content_router
+from app.api_admin_ocr_config import router as admin_ocr_config_router
 
 # Billing Admin APIs
 from app.admin_billing.billing_flags import (
@@ -332,6 +333,7 @@ app.include_router(admin_payments_router)
 app.include_router(admin_payments_config_router)
 app.include_router(admin_health_router)
 app.include_router(admin_content_router)
+app.include_router(admin_ocr_config_router)
 
 # Billing Admin Routers
 app.include_router(billing_flags_router)

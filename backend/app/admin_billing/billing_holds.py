@@ -15,6 +15,8 @@ from app.models import User, CreditHold
 from app.admin_billing.deps import get_admin_user, get_superadmin_user
 from app.services.audit_log_service import audit_log_service
 from app.admin_billing.billing_wallet import _build_wallet_summary
+from app.services.billing_ledger_service_v2 import billing_ledger_service_v2
+from app.services.billing_exceptions import HoldAlreadyFinalizedError, HoldNotFoundError
 
 router = APIRouter(prefix="/api/admin/billing/holds", tags=["admin-billing-holds"])
 
@@ -38,6 +40,13 @@ class HoldResponse(BaseModel):
 
 class ReleaseHoldRequest(BaseModel):
     reason: str
+    idempotency_key: Optional[str] = None
+
+
+class ReleaseOcrHoldsRequest(BaseModel):
+    reason: str
+    user_id: Optional[int] = None
+    min_age_seconds: Optional[int] = None
     idempotency_key: Optional[str] = None
 
 
@@ -151,6 +160,61 @@ async def force_release_hold(
         "hold_id": hold_id,
         "new_status": hold.status,
         "wallet_summary": summary.dict() if summary else None,
+    }
+
+
+@router.post("/release-ocr")
+async def release_ocr_holds(
+    body: ReleaseOcrHoldsRequest,
+    request: Request,
+    admin: User = Depends(get_superadmin_user),
+    session: Session = Depends(get_session),
+):
+    """Release all OCR holds (request_id starts with 'ocr:')."""
+    query = select(CreditHold).where(CreditHold.status == "held").where(CreditHold.request_id.like("ocr:%"))
+    if body.user_id:
+        query = query.where(CreditHold.user_id == body.user_id)
+    holds = session.exec(query.order_by(CreditHold.created_at.desc())).all()
+    now = datetime.utcnow()
+
+    released = 0
+    skipped = 0
+    for hold in holds:
+        if body.min_age_seconds:
+            age = int((now - hold.created_at).total_seconds())
+            if age < body.min_age_seconds:
+                skipped += 1
+                continue
+        try:
+            billing_ledger_service_v2.release_hold(
+                session=session,
+                request_id=hold.request_id,
+                attempt_id=str(hold.id),
+            )
+            released += 1
+        except (HoldAlreadyFinalizedError, HoldNotFoundError):
+            skipped += 1
+
+    audit_log_service.log_action(
+        session=session,
+        admin_user_id=admin.id,
+        action="EXECUTE",
+        entity_type="OCR_HOLD_RELEASE",
+        entity_id=str(body.user_id) if body.user_id else "all",
+        before_json={"holds_found": len(holds)},
+        after_json={"released": released, "skipped": skipped},
+        reason=body.reason,
+        idempotency_key=body.idempotency_key,
+        request=request,
+    )
+
+    session.commit()
+
+    return {
+        "success": True,
+        "released": released,
+        "skipped": skipped,
+        "total_found": len(holds),
     }
 
 

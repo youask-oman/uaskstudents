@@ -71,6 +71,7 @@ celery_app.conf.update(
 # Register additional task modules
 import app.tasks.whatsapp_tasks  # noqa: E402,F401
 import app.tasks.subscription_tasks # noqa: E402,F401
+import app.tasks.ocr_tasks  # noqa: E402,F401
 
 celery_app.conf.beat_schedule = {
     "daily_subscription_grant": {
@@ -80,6 +81,10 @@ celery_app.conf.beat_schedule = {
     "hourly_subscription_expiry": {
         "task": "subscription_expiry_job",
         "schedule": 3600.0, # Hourly
+    },
+    "ocr_hold_release_job": {
+        "task": "ocr_hold_release_job",
+        "schedule": 300.0, # Every 5 minutes
     },
 }
 
