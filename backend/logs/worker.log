@@ -3066,3 +3066,11 @@ FileNotFoundError: [Errno 2] No such file or directory: 'storage/uploads\\68_202
 2026-02-11 17:55:53,435 [INFO] api: Response: 200 | 2ms
 2026-02-11 17:56:08,667 [INFO] api: Incoming: GET /health
 2026-02-11 17:56:08,669 [INFO] api: Response: 200 | 2ms
+2026-02-11 09:56:15,138 [INFO] api: Incoming: GET /api/v1/wallet/summary
+2026-02-11 09:56:15,138 [INFO] api: Incoming: GET /api/v1/user/profile
+2026-02-11 09:56:15,146 [INFO] api: Response: 200 | 7ms
+2026-02-11 09:56:15,153 [INFO] api: Response: 200 | 15ms
+2026-02-11 09:56:15,154 [INFO] api: Incoming: GET /api/v1/users/online
+2026-02-11 09:56:15,157 [INFO] api: Response: 200 | 3ms
+2026-02-11 17:56:23,911 [INFO] api: Incoming: GET /health
+2026-02-11 17:56:23,912 [INFO] api: Response: 200 | 1ms
