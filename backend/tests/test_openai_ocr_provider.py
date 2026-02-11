@@ -104,9 +104,14 @@ def test_openai_provider_uses_registry_prompt_and_schema(monkeypatch):
     assert out["payload"]["ok"] is True
     call = fake_client.calls[0]
     assert call["model"] == "gpt-5-mini"
-    assert call["text"]["format"]["name"] == prompt_registry_service.OCR_EXTRACT_OPENAI_SCHEMA_ID
+    assert call["text"]["format"]["name"] in {
+        prompt_registry_service.OCR_EXTRACT_OPENAI_SCHEMA_ID,
+        "openai_image_extract_v1",
+        "image_extract_v1",
+    }
     assert call["text"]["format"]["schema"]["title"] == "image_extract_v1"
     assert "OCR + math-structure extraction engine" in call["input"][0]["content"][0]["text"]
+    assert "reasoning" not in call
 
 
 def test_openai_provider_retries_invalid_json_once(monkeypatch):
@@ -132,3 +137,27 @@ def test_openai_provider_retries_invalid_json_once(monkeypatch):
     )
     assert out["payload"]["ok"] is True
     assert len(fake_client.calls) >= 2
+
+
+def test_openai_provider_includes_request_id_instruction(monkeypatch):
+    session = _make_session()
+    prompt_registry_service.ensure_ocr_extract_prompts(session, updated_by="test")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("VISION_OCR_ENABLED_PROVIDERS", "openai")
+
+    fake_client = _FakeOpenAIClient([_make_response(json.dumps(_valid_openai_ocr_doc()))])
+    monkeypatch.setattr(api_module, "AsyncOpenAI", lambda api_key: fake_client)
+
+    out = asyncio.run(
+        api_module._call_extract_questions(
+            session=session,
+            image_bytes=b"test-bytes",
+            max_output_tokens=800,
+            engine_choice="openai",
+            crop_meta={"request_id": "req-xyz-123", "page_number": 0, "source": "image"},
+        )
+    )
+    assert out["payload"]["ok"] is True
+    call = fake_client.calls[0]
+    user_msg = call["input"][1]["content"][0]["text"]
+    assert 'Set "request_id" to "req-xyz-123"' in user_msg

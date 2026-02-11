@@ -115,6 +115,156 @@ describe("SnapSolveInputPanel", () => {
         );
     });
 
+    test("uses structured OCR questions and keeps them as separate numbered items", async () => {
+        const fetchMock = jest.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({
+                ocr_attempt_id: "ocr-structured-1",
+                status: "completed",
+                extracted_text: "fallback text",
+                structured_json: {
+                    questions: [
+                        { id: "q1", text: "\\sqrt{3x+4}=2", latex: "\\sqrt{3x+4}=2" },
+                        { id: "q2", text: "x=2\\sqrt{x-1}", latex: "x=2\\sqrt{x-1}" },
+                    ],
+                },
+                cache_hit: false,
+                billing: { hold_applied: true, hold_amount: 2 },
+            }),
+        });
+        global.fetch = fetchMock as unknown as typeof fetch;
+        render(<SnapSolveInputPanel />);
+
+        await act(async () => {
+            fireEvent.change(screen.getByTestId("snap-upload-input"), {
+                target: { files: [new File(["img"], "multi.png", { type: "image/png" })] },
+            });
+        });
+
+        await act(async () => {
+            fireEvent.click(screen.getByRole("button", { name: "Extract" }));
+        });
+
+        await waitFor(() => {
+            expect(screen.getByTestId("snap-image-extract-plain")).toHaveTextContent("1. \\sqrt{3x+4}=2");
+            expect(screen.getByTestId("snap-image-extract-plain")).toHaveTextContent("2. x=2\\sqrt{x-1}");
+        });
+
+        const questionInput = screen.getByTestId("snap-question-input") as HTMLTextAreaElement;
+        expect(questionInput.value).toContain("1) \\sqrt{3x+4}=2");
+        expect(questionInput.value).toContain("2) x=2\\sqrt{x-1}");
+    });
+
+    test("image mode can solve selected extracted questions individually", async () => {
+        const fetchMock = jest.fn().mockImplementation(async (input: RequestInfo | URL) => {
+            const url = typeof input === "string" ? input : String(input);
+            if (url.includes("/api/v1/ocr/extract")) {
+                return {
+                    ok: true,
+                    json: async () => ({
+                        ocr_attempt_id: "ocr-structured-2",
+                        status: "completed",
+                        extracted_text: "fallback text",
+                        structured_json: {
+                            questions: [
+                                { id: "q1", text: "x+1=2", latex: "x+1=2" },
+                                { id: "q2", text: "x^2=9", latex: "x^2=9" },
+                            ],
+                        },
+                        cache_hit: false,
+                        billing: { hold_applied: true, hold_amount: 2 },
+                    }),
+                };
+            }
+            if (url.includes("/api/v1/math/solve_from_image_or_sketch")) {
+                return {
+                    ok: true,
+                    json: async () => ({
+                        answer_markdown: "solved",
+                        answer_latex: null,
+                        meta: { mode: "upload", mime: "image/png", latency_ms: 10 },
+                    }),
+                };
+            }
+            return {
+                ok: true,
+                json: async () => ({}),
+            };
+        });
+        global.fetch = fetchMock as unknown as typeof fetch;
+        render(<SnapSolveInputPanel />);
+
+        await act(async () => {
+            fireEvent.change(screen.getByTestId("snap-upload-input"), {
+                target: { files: [new File(["img"], "multi-solve.png", { type: "image/png" })] },
+            });
+        });
+        await act(async () => {
+            fireEvent.click(screen.getByRole("button", { name: "Extract" }));
+        });
+
+        await waitFor(() => {
+            expect(screen.getByText("Extracted Questions")).toBeInTheDocument();
+            expect(screen.getByText("Solve selected questions individually")).toBeInTheDocument();
+        });
+
+        await act(async () => {
+            fireEvent.click(screen.getByText("Solve selected questions individually"));
+        });
+
+        await waitFor(() => {
+            expect(screen.getByText("Solved Results")).toBeInTheDocument();
+        });
+
+        const solveCalls = fetchMock.mock.calls.filter(
+            (call) => typeof call[0] === "string" && call[0].includes("/api/v1/math/solve_from_image_or_sketch")
+        );
+        expect(solveCalls).toHaveLength(2);
+    });
+
+    test("select all and clear selection controls toggle extracted question selection", async () => {
+        const fetchMock = jest.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({
+                ocr_attempt_id: "ocr-select-controls",
+                status: "completed",
+                extracted_text: "fallback text",
+                structured_json: {
+                    questions: [
+                        { id: "q1", text: "x+1=2", latex: "x+1=2" },
+                        { id: "q2", text: "x^2=9", latex: "x^2=9" },
+                    ],
+                },
+                cache_hit: false,
+                billing: { hold_applied: true, hold_amount: 2 },
+            }),
+        });
+        global.fetch = fetchMock as unknown as typeof fetch;
+        render(<SnapSolveInputPanel />);
+
+        await act(async () => {
+            fireEvent.change(screen.getByTestId("snap-upload-input"), {
+                target: { files: [new File(["img"], "select-controls.png", { type: "image/png" })] },
+            });
+        });
+        await act(async () => {
+            fireEvent.click(screen.getByRole("button", { name: "Extract" }));
+        });
+
+        const solveBtn = await screen.findByText("Solve selected questions individually");
+        expect(solveBtn).not.toBeDisabled();
+
+        await act(async () => {
+            fireEvent.click(screen.getByTestId("snap-clear-selection-btn"));
+        });
+        expect(solveBtn).toBeDisabled();
+
+        await act(async () => {
+            fireEvent.click(screen.getByTestId("snap-select-all-btn"));
+        });
+        expect(solveBtn).not.toBeDisabled();
+    });
+
     test("supports selecting OpenAI OCR extraction engine", async () => {
         const fetchMock = jest.fn().mockResolvedValue({
             ok: true,
@@ -139,7 +289,11 @@ describe("SnapSolveInputPanel", () => {
             fireEvent.click(screen.getByRole("button", { name: "Extract" }));
         });
 
-        const requestInit = fetchMock.mock.calls[0][1] as RequestInit;
+        const extractCall = fetchMock.mock.calls.find(
+            (call) => typeof call[0] === "string" && call[0].includes("/api/v1/ocr/extract")
+        );
+        expect(extractCall).toBeTruthy();
+        const requestInit = (extractCall?.[1] || {}) as RequestInit;
         const form = requestInit.body as FormData;
         expect(form.get("engine")).toBe("openai");
     });
@@ -169,9 +323,50 @@ describe("SnapSolveInputPanel", () => {
             fireEvent.click(screen.getByRole("button", { name: "Extract" }));
         });
 
-        const requestInit = fetchMock.mock.calls[0][1] as RequestInit;
+        const extractCall = fetchMock.mock.calls.find(
+            (call) => typeof call[0] === "string" && call[0].includes("/api/v1/ocr/extract")
+        );
+        expect(extractCall).toBeTruthy();
+        const requestInit = (extractCall?.[1] || {}) as RequestInit;
         const form = requestInit.body as FormData;
         expect(form.get("engine")).toBe("pix2text");
+    });
+
+    test("hides OpenAI engine option when runtime config disables it", async () => {
+        const fetchMock = jest
+            .fn()
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({
+                    local_engine_enabled: true,
+                    openai_engine_enabled: false,
+                    default_engine: "pix2text",
+                }),
+            })
+            .mockResolvedValue({
+                ok: true,
+                json: async () => ({
+                    ocr_attempt_id: "ocr-4",
+                    status: "completed",
+                    extracted_text: "x=3",
+                    cache_hit: false,
+                    billing: { hold_applied: true, hold_amount: 2 },
+                }),
+            });
+        global.fetch = fetchMock as unknown as typeof fetch;
+
+        render(<SnapSolveInputPanel />);
+        await waitFor(() => {
+            expect(fetchMock).toHaveBeenCalledWith("/api/v1/ocr/engines");
+        });
+
+        await act(async () => {
+            fireEvent.change(screen.getByTestId("snap-upload-input"), {
+                target: { files: [new File(["img"], "equation.png", { type: "image/png" })] },
+            });
+        });
+
+        expect(screen.queryByRole("option", { name: "OpenAI (gpt-5-mini)" })).not.toBeInTheDocument();
     });
 
     test("paste handler supports clipboard files image payloads", async () => {

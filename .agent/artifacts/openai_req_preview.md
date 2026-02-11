@@ -1,7 +1,7 @@
 # OpenAI API Payload Preview
 **Generated for:** `Solve request`
 **Problem:** `Find the value(s) of x that satisfy the linear equation 3(x - 2) = 15`
-**Model:** `gpt-5-mini` (or `gpt-4o-mini`)
+**Model:** `gpt-5-mini` (or `gpt-5-mini`)
 **Mode:** `Strict JSON Schema`
 
 ---

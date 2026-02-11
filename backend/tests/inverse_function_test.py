@@ -85,7 +85,7 @@ async def test_tier(tier: str, client: AsyncOpenAI, all_results: dict):
             sanitized_schema = sanitize(inner_schema)
             
             request_payload = {
-                "model": "gpt-4o-mini",
+                "model": "gpt-5-mini",
                 "messages": messages,
                 "temperature": 0.1,
                 "response_format": {

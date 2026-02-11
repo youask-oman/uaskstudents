@@ -38,8 +38,19 @@ class UploadService:
             # Stale row can exist if file was removed on disk; refresh it by re-saving.
             if existing.storage_url and os.path.exists(existing.storage_url):
                 return existing
-            session.delete(existing)
+            ext_existing = os.path.splitext(file.filename)[1] or ".png"
+            timestamp_existing = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+            refreshed_filename = f"{user_id}_{timestamp_existing}_{file_hash[:8]}{ext_existing}"
+            refreshed_path = os.path.join(self.storage_dir, refreshed_filename)
+            async with aiofiles.open(refreshed_path, "wb") as f:
+                await f.write(content)
+            # Keep same Upload row to avoid FK issues with existing Crop children.
+            existing.storage_url = refreshed_path
+            existing.content_type = file.content_type or existing.content_type or "image/png"
+            session.add(existing)
             session.commit()
+            session.refresh(existing)
+            return existing
 
         # Generate unique filename
         ext = os.path.splitext(file.filename)[1] or ".png"

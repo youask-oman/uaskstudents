@@ -1376,6 +1376,12 @@ class OcrExtractResponse(BaseModel):
     billing: Dict[str, Any]
 
 
+class OcrEngineAvailabilityResponse(BaseModel):
+    local_engine_enabled: bool
+    openai_engine_enabled: bool
+    default_engine: str
+
+
 class OcrV5Response(BaseModel):
     ok: bool = True
     extracted_text: str
@@ -1669,6 +1675,17 @@ async def get_my_subscription(
 async def get_token_policy_endpoint(session: Session = Depends(get_session)):
     policy = get_token_policy(session)
     return TokenPolicyResponse(ok=True, policy=serialize_token_policy(policy), source="system_config")
+
+
+@api_router.get("/ocr/engines", response_model=OcrEngineAvailabilityResponse)
+async def get_ocr_engines_endpoint(session: Session = Depends(get_session)):
+    runtime_cfg = get_active_ocr_config(session)
+    default_engine = "pix2text" if runtime_cfg.local_engine_enabled else ("openai" if runtime_cfg.openai_engine_enabled else "pix2text")
+    return OcrEngineAvailabilityResponse(
+        local_engine_enabled=bool(runtime_cfg.local_engine_enabled),
+        openai_engine_enabled=bool(runtime_cfg.openai_engine_enabled),
+        default_engine=default_engine,
+    )
 
 
 
@@ -2306,6 +2323,50 @@ async def _call_extract_questions(
                     "confidence": conf,
                 }
             )
+        if not normalized_questions:
+            # Some OCR schema-valid outputs place extracted text under pages[].segments
+            # while keeping questions[] empty. Build a best-effort synthetic question.
+            segment_lines: List[str] = []
+            pages = raw_payload.get("pages") if isinstance(raw_payload.get("pages"), list) else []
+            for page in pages:
+                if not isinstance(page, dict):
+                    continue
+                segments = page.get("segments") if isinstance(page.get("segments"), list) else []
+                for segment in segments:
+                    if not isinstance(segment, dict):
+                        continue
+                    kind = str(segment.get("kind") or "").strip().lower()
+                    if kind and kind not in {"question_text", "equation", "instruction", "title", "other"}:
+                        continue
+                    candidate = segment.get("latex") if isinstance(segment.get("latex"), str) and segment.get("latex").strip() else segment.get("text")
+                    if not isinstance(candidate, str):
+                        continue
+                    text = candidate.strip()
+                    if not text:
+                        continue
+                    segment_lines.append(text)
+            deduped_lines: List[str] = []
+            seen: set[str] = set()
+            for line in segment_lines:
+                key = re.sub(r"\s+", " ", line).strip()
+                if not key or key in seen:
+                    continue
+                seen.add(key)
+                deduped_lines.append(line)
+            if deduped_lines:
+                merged = "\n".join(deduped_lines[:12]).strip()
+                if merged:
+                    normalized_questions.append(
+                        {
+                            "id": f"p{page_num}-q1",
+                            "page": page_num,
+                            "text": merged,
+                            "latex": merged if ("\\" in merged or "$" in merged) else None,
+                            "type": "other",
+                            "confidence": None,
+                        }
+                    )
+                    warnings = [*warnings, "questions[] empty; synthesized from page segments"]
         notes = [str(w) for w in warnings if isinstance(w, str)]
         if not normalized_questions and not notes:
             notes = ["No math questions detected."]
@@ -2316,6 +2377,17 @@ async def _call_extract_questions(
             "notes": notes,
             "questions": normalized_questions,
         }
+
+    def _coerce_openai_schema_payload(raw_payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Backfill required array fields that models often omit when empty."""
+        if not isinstance(raw_payload, dict):
+            return raw_payload
+        questions = raw_payload.get("questions")
+        if isinstance(questions, list):
+            for item in questions:
+                if isinstance(item, dict) and not isinstance(item.get("subparts"), list):
+                    item["subparts"] = []
+        return raw_payload
 
     def _looks_like_garbled_pix2text(markdown: str) -> bool:
         text = (markdown or "").strip()
@@ -2436,11 +2508,31 @@ async def _call_extract_questions(
             b64 = base64.b64encode(vision_input.images[0]).decode("utf-8")
             prompt_entry, schema_entry = _load_openai_ocr_assets()
             system_prompt = prompt_entry.content
-            openai_schema = schema_entry.content
+            schema_wrapper = schema_entry.content if isinstance(schema_entry.content, dict) else {}
+            openai_schema = _schema_object_for_validation(schema_wrapper)
+            if not isinstance(openai_schema, dict) or not openai_schema:
+                raise RuntimeError(
+                    f"invalid_openai_ocr_schema:{getattr(schema_entry, 'schema_id', 'unknown')}"
+                )
             validator = Draft202012Validator(openai_schema)
-            schema_name = schema_entry.schema_id
+            schema_name = (
+                str(schema_wrapper.get("name")).strip()
+                if isinstance(schema_wrapper.get("name"), str) and str(schema_wrapper.get("name")).strip()
+                else str(getattr(schema_entry, "schema_id", "ocr_schema"))
+            )
+            schema_strict = (
+                schema_wrapper.get("strict")
+                if isinstance(schema_wrapper.get("strict"), bool)
+                else True
+            )
             safe_schema_name = re.sub(r"[^a-zA-Z0-9_-]", "_", schema_name or "ocr_schema")
+            request_id = str(getattr(vision_input, "request_id", "") or "").strip()
             user_prompt = "Extract math content from this input image. Return JSON only."
+            if request_id:
+                user_prompt = (
+                    f'Extract math content from this input image. '
+                    f'Set "request_id" to "{request_id}" in your JSON output. Return JSON only.'
+                )
 
             async def _responses_call(max_tokens: int, repair: bool = False):
                 prompt_text = user_prompt
@@ -2460,10 +2552,9 @@ async def _call_extract_questions(
                             "type": "json_schema",
                             "name": safe_schema_name,
                             "schema": openai_schema,
-                            "strict": True,
+                            "strict": schema_strict,
                         }
                     },
-                    reasoning={"effort": "low"},
                     max_output_tokens=max_tokens,
                     timeout=float(os.environ.get("OPENAI_OCR_TIMEOUT_SECONDS", "60")),
                 )
@@ -2482,14 +2573,31 @@ async def _call_extract_questions(
                 response = await _responses_call(int(options.max_output_tokens * 2), repair=True)
                 content = _extract_openai_text(response)
                 parsed = _parse_json_response(content)
+            parsed = _coerce_openai_schema_payload(parsed)
             errors = list(validator.iter_errors(parsed))
             if errors:
                 response = await _responses_call(int(options.max_output_tokens * 2), repair=True)
                 content = _extract_openai_text(response)
                 parsed = _parse_json_response(content)
+                parsed = _coerce_openai_schema_payload(parsed)
                 errors = list(validator.iter_errors(parsed))
                 if errors:
-                    raise RuntimeError("schema_validation_failed")
+                    details = "; ".join(
+                        f"{'.'.join(str(part) for part in err.path) or '<root>'}: {err.message}"
+                        for err in errors[:5]
+                    )
+                    logging.warning(
+                        "OpenAI OCR schema mismatch after repair; continuing with normalized payload. schema_id=%s details=%s",
+                        getattr(schema_entry, "schema_id", None),
+                        details,
+                    )
+                    if isinstance(parsed, dict):
+                        parsed["needs_human_review"] = True
+                        warnings_list = parsed.get("warnings")
+                        if not isinstance(warnings_list, list):
+                            warnings_list = []
+                        warnings_list.append("Schema mismatch after repair: " + details[:2000])
+                        parsed["warnings"] = warnings_list
 
             usage = getattr(response, "usage", None)
             payload = _validate_extract_payload(_normalize_openai_ocr_payload(parsed, model), page_hint=page_num)
@@ -3351,7 +3459,12 @@ async def ocr_extract(
 
     # Run OCR
     try:
-        with open(crop.cropped_storage_url, "rb") as f:
+        crop_path = crop_service.resolve_crop_path(crop.cropped_storage_url)
+        if not crop_path:
+            raise FileNotFoundError(
+                f"Crop file not found for crop_id={crop.id}: {crop.cropped_storage_url}"
+            )
+        with open(crop_path, "rb") as f:
             crop_bytes = f.read()
         max_extract_tokens = get_token_policy(session).ocr_image_extract_max
         extract_data = await _call_extract_questions(
@@ -3371,7 +3484,28 @@ async def ocr_extract(
         extracted_text = "\n".join((q.get("text") or "") for q in (payload.get("questions") or [])).strip()
         quality_score = _compute_ocr_quality_score(extracted_text)
         if not extracted_text:
-            raise RuntimeError("empty_extraction")
+            # Not an engine failure: OCR completed but produced no usable question text.
+            # Return gracefully so UI can show "No questions detected" instead of 502.
+            ocr_job.status = "completed"
+            ocr_job.extracted_text = ""
+            ocr_job.structured_json = payload
+            ocr_job.quality_score = 0.0
+            ocr_job.finished_at = datetime.utcnow()
+            session.add(ocr_job)
+            try:
+                billing_ledger_service_v2.release_hold(session, request_id=hold_request_id, attempt_id=job_id)
+            except (HoldAlreadyFinalizedError, HoldNotFoundError):
+                pass
+            session.commit()
+            return OcrExtractResponse(
+                ocr_attempt_id=job_id,
+                status="no_content",
+                extracted_text="",
+                structured_json=payload,
+                quality_score=0.0,
+                cache_hit=False,
+                billing={"hold_applied": False, "hold_amount": 0},
+            )
 
         ocr_job.status = "completed"
         ocr_job.extracted_text = extracted_text

@@ -60,6 +60,11 @@ type SolvedQuestion = {
 };
 
 type ImageExtractEngine = "auto" | "pix2text" | "openai";
+type OcrEngineAvailability = {
+    local_engine_enabled: boolean;
+    openai_engine_enabled: boolean;
+    default_engine: "pix2text" | "openai";
+};
 
 const ACCEPTED_UPLOAD = "image/png,image/jpeg,image/webp,application/pdf";
 const PDF_ENABLED = process.env.NEXT_PUBLIC_SNAP_SOLVE_PDF_ENABLED !== "false";
@@ -105,6 +110,11 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
     const [ocrAttemptId, setOcrAttemptId] = React.useState<string | null>(null);
     const [ocrEngineUsed, setOcrEngineUsed] = React.useState<string | null>(null);
     const [ocrReviewed, setOcrReviewed] = React.useState(false);
+    const [ocrEngineAvailability, setOcrEngineAvailability] = React.useState<OcrEngineAvailability>({
+        local_engine_enabled: true,
+        openai_engine_enabled: true,
+        default_engine: "pix2text",
+    });
     const fileInputRef = React.useRef<HTMLInputElement | null>(null);
     const cameraInputRef = React.useRef<HTMLInputElement | null>(null);
     const sketchRef = React.useRef<SketchCanvasHandle | null>(null);
@@ -167,9 +177,59 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
             setImageExtractEngine(saved);
         }
     }, []);
+    React.useEffect(() => {
+        let alive = true;
+        const loadOcrEngines = async () => {
+            try {
+                const res = await fetch("/api/v1/ocr/engines");
+                if (!res.ok) return;
+                const data = (await res.json()) as Partial<OcrEngineAvailability>;
+                if (!alive) return;
+                if (typeof data.local_engine_enabled !== "boolean" || typeof data.openai_engine_enabled !== "boolean") return;
+                setOcrEngineAvailability({
+                    local_engine_enabled: data.local_engine_enabled,
+                    openai_engine_enabled: data.openai_engine_enabled,
+                    default_engine: data.default_engine === "openai" ? "openai" : "pix2text",
+                });
+            } catch {
+                // Keep defaults if endpoint is unavailable.
+            }
+        };
+        void loadOcrEngines();
+        return () => {
+            alive = false;
+        };
+    }, []);
+    React.useEffect(() => {
+        const allows = (engine: ImageExtractEngine) => {
+            if (engine === "auto") return ocrEngineAvailability.local_engine_enabled || ocrEngineAvailability.openai_engine_enabled;
+            if (engine === "pix2text") return ocrEngineAvailability.local_engine_enabled;
+            if (engine === "openai") return ocrEngineAvailability.openai_engine_enabled;
+            return false;
+        };
+        if (allows(imageExtractEngine)) return;
+        const fallback: ImageExtractEngine = ocrEngineAvailability.local_engine_enabled
+            ? "auto"
+            : (ocrEngineAvailability.openai_engine_enabled ? "openai" : "auto");
+        setImageExtractEngine(fallback);
+        if (typeof window !== "undefined") {
+            localStorage.setItem("snapsolve_ocr_engine", fallback);
+        }
+    }, [imageExtractEngine, ocrEngineAvailability]);
     const imageExtractedText = React.useMemo(
         () => imageExtractedQuestions.map((q, index) => `${index + 1}. ${normalizeExtractText(q.text || "")}`).filter(Boolean).join("\n\n"),
         [imageExtractedQuestions, normalizeExtractText]
+    );
+    const formatQuestionsForPrompt = React.useCallback(
+        (questions: ExtractedQuestion[]): string =>
+            questions
+                .map((q, index) => {
+                    const text = normalizeExtractText(q.text || "");
+                    return text ? `${index + 1}) ${text}` : "";
+                })
+                .filter(Boolean)
+                .join("\n\n"),
+        [normalizeExtractText]
     );
     const imageLatexReviewText = React.useMemo(
         () => imageExtractedQuestions
@@ -186,6 +246,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
     React.useEffect(() => {
         if (!ocrAttemptId) return;
         if (!questionText.trim()) return;
+        if (imageExtractedQuestions.length > 0) return;
         setImageExtractedQuestions([
             {
                 id: ocrAttemptId,
@@ -193,7 +254,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                 latex: questionText,
             },
         ]);
-    }, [ocrAttemptId, questionText]);
+    }, [ocrAttemptId, questionText, imageExtractedQuestions.length]);
     React.useEffect(() => {
         if (!ocrAttemptId) return;
         setOcrReviewed(false);
@@ -306,7 +367,10 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                 const form = new FormData();
                 form.append("file", file);
                 const isCropMode = Boolean(imageCrop && imageRender);
-                const engineChoice = imageExtractEngine === "auto" ? "pix2text" : imageExtractEngine;
+                const engineChoice =
+                    imageExtractEngine === "auto"
+                        ? (ocrEngineAvailability.local_engine_enabled ? "pix2text" : (ocrEngineAvailability.openai_engine_enabled ? "openai" : "pix2text"))
+                        : imageExtractEngine;
                 form.append("engine", engineChoice);
                 if (isCropMode && imageCrop && imageRender) {
                     form.append("crop_x", String(imageCrop.x / imageRender.width));
@@ -322,18 +386,47 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                 const payload = (await res.json().catch(() => ({}))) as OcrExtractResponse;
                 if (!res.ok) throw new Error(extractErrorMessage(payload, "Unable to extract questions from image."));
                 const extractedText = normalizeExtractText(payload.extracted_text || "");
-                const synthesizedQuestion: ExtractedQuestion = {
-                    id: payload.ocr_attempt_id || "ocr",
-                    text: extractedText || "No text extracted.",
-                    latex: extractedText || null,
-                };
-                setImageExtractedQuestions(extractedText ? [synthesizedQuestion] : []);
-                setQuestionText(extractedText);
+                const structured = payload.structured_json || {};
+                const structuredQuestions = Array.isArray((structured as { questions?: unknown[] }).questions)
+                    ? ((structured as { questions: unknown[] }).questions)
+                    : [];
+                const parsedQuestions: ExtractedQuestion[] = structuredQuestions
+                    .map((entry, index) => {
+                        if (!entry || typeof entry !== "object") return null;
+                        const q = entry as Record<string, unknown>;
+                        const text = normalizeExtractText(String(q.text || q.question_text || "").trim());
+                        if (!text) return null;
+                        const latexRaw = q.latex || q.question_latex;
+                        return {
+                            id: String(q.id || q.question_id || `${payload.ocr_attempt_id || "ocr"}-${index + 1}`),
+                            text,
+                            latex: typeof latexRaw === "string" ? normalizeExtractText(latexRaw) : null,
+                            confidence: typeof q.confidence === "number" ? q.confidence : undefined,
+                            page: typeof q.page === "number" ? q.page : (typeof q.page_index === "number" ? q.page_index : undefined),
+                        } satisfies ExtractedQuestion;
+                    })
+                    .filter((q): q is ExtractedQuestion => Boolean(q));
+
+                const nextQuestions = parsedQuestions.length
+                    ? parsedQuestions
+                    : (extractedText
+                        ? [{
+                            id: payload.ocr_attempt_id || "ocr",
+                            text: extractedText,
+                            latex: extractedText,
+                        } as ExtractedQuestion]
+                        : []);
+                setImageExtractedQuestions(nextQuestions);
+                setExtractedQuestions(nextQuestions);
+                setSelectedQuestionIds(new Set(nextQuestions.map((q) => q.id)));
+                setSolvedQuestions([]);
+                setQuestionText(nextQuestions.length ? formatQuestionsForPrompt(nextQuestions) : extractedText);
                 setOcrAttemptId(payload.ocr_attempt_id || null);
                 setOcrEngineUsed(engineChoice);
                 // billing hold info is surfaced via note for now
                 if (imageExtractEngine === "auto") {
-                    setImageExtractNote("Auto uses Pix2Text. Switch to OpenAI if quality is low.");
+                    const autoEngine = ocrEngineAvailability.local_engine_enabled ? "Pix2Text" : "OpenAI";
+                    setImageExtractNote(`Auto uses ${autoEngine}.`);
                 } else if (payload.billing?.hold_applied) {
                     setImageExtractNote(`OCR hold applied: ${payload.billing.hold_amount ?? 0} credits`);
                 }
@@ -343,7 +436,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                 setImageExtracting(false);
             }
         },
-        [extractErrorMessage, getUserId, imageCrop, imageExtractEngine, imageRender, normalizeExtractText]
+        [extractErrorMessage, formatQuestionsForPrompt, getUserId, imageCrop, imageExtractEngine, imageRender, normalizeExtractText, ocrEngineAvailability]
     );
 
     React.useEffect(() => {
@@ -593,7 +686,10 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
         if (!isSubmitEnabled || isSubmitting || isPdfMode) return;
         if (onResolveText) {
             const extractedText = imageExtractedQuestions
-                .map((q) => normalizeExtractText(q.text || ""))
+                .map((q, index) => {
+                    const text = normalizeExtractText(q.text || "");
+                    return text ? `${index + 1}) ${text}` : "";
+                })
                 .filter(Boolean)
                 .join("\n\n");
             const requestText = questionText.trim();
@@ -802,9 +898,13 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                                         }}
                                         className="rounded-lg border border-slate-600 bg-slate-900 px-2 py-1 text-xs text-slate-100"
                                     >
-                                        <option value="auto">Auto (Pix2Text default)</option>
-                                        <option value="pix2text">Pix2Text (local)</option>
-                                        <option value="openai">OpenAI (gpt-5-mini)</option>
+                                        {(ocrEngineAvailability.local_engine_enabled || ocrEngineAvailability.openai_engine_enabled) && (
+                                            <option value="auto">
+                                                Auto ({ocrEngineAvailability.local_engine_enabled ? "Pix2Text default" : "OpenAI default"})
+                                            </option>
+                                        )}
+                                        {ocrEngineAvailability.local_engine_enabled && <option value="pix2text">Pix2Text (local)</option>}
+                                        {ocrEngineAvailability.openai_engine_enabled && <option value="openai">OpenAI (gpt-5-mini)</option>}
                                     </select>
                                     <button
                                         type="button"
@@ -908,7 +1008,27 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
 
             {extractedQuestions.length > 0 && (
                 <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-                    <div className="mb-3 text-sm font-bold">Extracted Questions</div>
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                        <div className="text-sm font-bold">Extracted Questions</div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                data-testid="snap-select-all-btn"
+                                onClick={() => setSelectedQuestionIds(new Set(extractedQuestions.map((q) => q.id)))}
+                                className="rounded border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200"
+                            >
+                                Select all
+                            </button>
+                            <button
+                                type="button"
+                                data-testid="snap-clear-selection-btn"
+                                onClick={() => setSelectedQuestionIds(new Set())}
+                                className="rounded border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200"
+                            >
+                                Clear selection
+                            </button>
+                        </div>
+                    </div>
                     <div className="space-y-2">
                         {extractedQuestions.map((q) => (
                             <label key={q.id} className="flex items-start gap-2 rounded border border-slate-200 p-2 text-sm dark:border-slate-700">
@@ -932,7 +1052,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                         ))}
                     </div>
                     <button type="button" onClick={() => void solveSelectedQuestions()} disabled={solvingSelected || selectedQuestionIds.size === 0} className="mt-3 rounded-lg bg-primary px-4 py-2 text-xs font-bold text-white disabled:opacity-50">
-                        {solvingSelected ? "Solving..." : "Solve selected"}
+                        {solvingSelected ? "Solving..." : "Solve selected questions individually"}
                     </button>
                 </div>
             )}

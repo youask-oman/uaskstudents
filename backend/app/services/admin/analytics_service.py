@@ -52,7 +52,7 @@ def _percentile(values: List[float], pct: float) -> float:
 
 MODEL_PRICING_PER_MILLION = {
     "gpt-4o": {"input": 5.0, "output": 15.0},
-    "gpt-4o-mini": {"input": 0.15, "output": 0.60}
+    "gpt-5-mini": {"input": 0.15, "output": 0.60}
 }
 
 

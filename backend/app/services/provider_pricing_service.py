@@ -101,7 +101,7 @@ class ProviderPricingService:
         defaults = [
             # OpenAI
             ("openai", "gpt-4o", 5.0, 15.0),
-            ("openai", "gpt-4o-mini", 0.15, 0.60),
+            ("openai", "gpt-5-mini", 0.15, 0.60),
             ("openai", "o1-mini", 3.0, 12.0), # Approximate
             ("openai", "o1-preview", 15.0, 60.0), # Approximate
             ("gemini", "gemini-flash", 0.35, 1.05), # Aprox

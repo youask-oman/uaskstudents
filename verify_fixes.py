@@ -8,7 +8,7 @@ sys.path.append(os.path.join(os.getcwd(), "backend"))
 
 # Load critical env vars manually
 os.environ["OPENAI_API_KEY"] = "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"
-os.environ["OPENAI_MODEL_DEFAULT"] = "gpt-4o-mini" 
+os.environ["OPENAI_MODEL_DEFAULT"] = "gpt-5-mini" 
 
 if "DATABASE_URL" not in os.environ:
     pass

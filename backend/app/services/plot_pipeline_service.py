@@ -232,7 +232,7 @@ class PlotPipelineService:
                 user_id=None,
                 tier=tier,
                 binding_id=bundle.prompt_binding_id,
-                model="gpt-4o-mini",
+                model="gpt-5-mini",
                 endpoint="chat_completions",
                 max_output_tokens=bundle.max_output_tokens or 800,
                 schema_wrapper=schema_wrapper,
@@ -242,7 +242,7 @@ class PlotPipelineService:
             )
 
             response = await self.openai_client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-5-mini",
                 messages=messages,
                 temperature=bundle.temperature if bundle.temperature is not None else 0.1,
                 top_p=bundle.top_p if bundle.top_p is not None else 1.0,
@@ -379,7 +379,7 @@ class PlotPipelineService:
                 user_id=None, 
                 tier=tier,
                 binding_id=bundle.prompt_binding_id,
-                model="gpt-4o-mini",
+                model="gpt-5-mini",
                 endpoint="chat_completions",
                 max_output_tokens=bundle.max_output_tokens or 1400,
                 schema_wrapper=schema_wrapper,
@@ -389,7 +389,7 @@ class PlotPipelineService:
             )
 
             response = await self.openai_client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-5-mini",
                 messages=messages,
                 temperature=bundle.temperature if bundle.temperature is not None else 0.1,
                 top_p=bundle.top_p if bundle.top_p is not None else 1.0,

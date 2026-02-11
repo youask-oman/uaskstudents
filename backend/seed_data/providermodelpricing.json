@@ -37,7 +37,7 @@
     "effective_from": "2026-02-10T20:42:37.242548+00:00",
     "effective_to": null,
     "id": 42,
-    "model": "gpt-4o-mini",
+    "model": "gpt-5-mini",
     "price_cached_in_per_1m": 0.0,
     "price_in_per_1m": 0.15,
     "price_out_per_1m": 0.6,

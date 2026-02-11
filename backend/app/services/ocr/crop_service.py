@@ -56,6 +56,21 @@ class CropService:
         from sqlmodel import select
         existing = session.exec(select(Crop).where(Crop.crop_image_hash == crop_hash)).first()
         if existing:
+            existing_path = self.resolve_crop_path(existing.cropped_storage_url)
+            if existing_path:
+                return existing
+            # Stale deduped crop row: rebuild file and refresh same row in-place.
+            filename = f"crop_{crop_hash[:16]}.png"
+            file_path = os.path.join(self.storage_dir, filename)
+            cropped_img.save(file_path, "PNG")
+            existing.upload_id = upload.id
+            existing.crop_rect = crop_rect
+            existing.rotation = rotation
+            existing.margin_pct = margin_pct
+            existing.cropped_storage_url = file_path
+            session.add(existing)
+            session.commit()
+            session.refresh(existing)
             return existing
 
         # Save cropped image
@@ -80,6 +95,14 @@ class CropService:
 
     @staticmethod
     def _resolve_upload_path(storage_url: str | None) -> str | None:
+        return CropService._resolve_storage_path(storage_url)
+
+    @staticmethod
+    def resolve_crop_path(storage_url: str | None) -> str | None:
+        return CropService._resolve_storage_path(storage_url)
+
+    @staticmethod
+    def _resolve_storage_path(storage_url: str | None) -> str | None:
         if not storage_url:
             return None
         candidate = os.path.normpath(storage_url)

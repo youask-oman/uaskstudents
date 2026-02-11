@@ -66,7 +66,7 @@ python backend/scripts/migrate_add_pricing_status.py
 
 **Actions**:
 1. Retired all non-OpenAI pricing (gemini)
-2. Retired all non-GPT-5 OpenAI pricing (gpt-4o, gpt-4o-mini, o1-mini, o1-preview)
+2. Retired all non-GPT-5 OpenAI pricing (gpt-4o, gpt-5-mini, o1-mini, o1-preview)
 3. Seeded gpt-5-mini as ACTIVE
 4. Seeded gpt-5 and gpt-5-nano as INACTIVE
 5. Created `ALLOW_ADVANCED_MODELS=false` system config
@@ -311,7 +311,7 @@ GET /api/admin/payments/pricing?provider=anthropic
 ```sql
 UPDATE providermodelpricing 
 SET status = 'ACTIVE', effective_to = NULL 
-WHERE provider = 'openai' AND model = 'gpt-4o-mini';
+WHERE provider = 'openai' AND model = 'gpt-5-mini';
 ```
 
 2. **Deactivate GPT-5 pricing**:

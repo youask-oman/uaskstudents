@@ -1,5 +1,5 @@
 === PHASE 0: PRE-FLIGHT CHECKS ===
-VLM_MODEL_OCR=gpt-4o-mini
+VLM_MODEL_OCR=gpt-5-mini
 OPENAI_API_KEY=EXISTS
 Health Status Code (/health): 200
 Using DATABASE_URL: postgresql://uask_user:uask_password@localhost:5432/uask_db

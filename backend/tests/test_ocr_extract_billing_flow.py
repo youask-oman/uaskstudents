@@ -123,3 +123,33 @@ def test_ocr_extract_failure_releases_hold(client, session, monkeypatch):
     hold = session.exec(select(CreditHold).order_by(CreditHold.created_at.desc())).first()
     assert hold is not None
     assert hold.status in {"released", "released_void", "failed"}
+
+
+def test_ocr_extract_empty_payload_returns_no_content_and_releases_hold(client, session, monkeypatch):
+    user = _seed_user_with_credits(session)
+
+    async def fake_extract(*args, **kwargs):
+        return {
+            "payload": {
+                "ok": True,
+                "questions": [],
+                "notes": ["No math questions detected."],
+            },
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cached_tokens": 0,
+        }
+
+    monkeypatch.setattr(api_module, "_call_extract_questions", fake_extract)
+
+    files = {"file": ("test.png", PNG_BYTES, "image/png")}
+    resp = client.post(f"/ocr/extract?user_id={user.id}", files=files, data={"engine": "pix2text"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "no_content"
+    assert (data.get("extracted_text") or "") == ""
+    assert data["billing"]["hold_applied"] is False
+
+    hold = session.exec(select(CreditHold).order_by(CreditHold.created_at.desc())).first()
+    assert hold is not None
+    assert hold.status in {"released", "released_void", "failed"}

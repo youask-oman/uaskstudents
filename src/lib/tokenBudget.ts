@@ -39,7 +39,7 @@ export interface TokenBudgetPolicy {
  */
 export const MODEL_CONTEXT_LIMITS: Record<string, number> = {
     'gpt-4o': 128000,
-    'gpt-4o-mini': 128000,
+    'gpt-5-mini': 128000,
     'gpt-4-turbo': 128000,
     'gpt-4': 8192,
     'gpt-3.5-turbo': 16385,
@@ -47,7 +47,7 @@ export const MODEL_CONTEXT_LIMITS: Record<string, number> = {
 };
 
 /** Current model being used (can be overridden by env) */
-export const CURRENT_MODEL = process.env.NEXT_PUBLIC_OPENAI_MODEL || 'gpt-4o-mini';
+export const CURRENT_MODEL = process.env.NEXT_PUBLIC_OPENAI_MODEL || 'gpt-5-mini';
 
 /** Get context limit for current model */
 export function getModelContextLimit(): number {
