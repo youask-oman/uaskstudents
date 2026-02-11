@@ -8,6 +8,8 @@ import { MathJaxContext } from "better-react-mathjax";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ToastProvider } from "@/components/ui/ToastProvider";
+import AnalyticsCookieBanner from "@/components/AnalyticsCookieBanner";
+import TermsAcceptanceGate from "@/components/TermsAcceptanceGate";
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: '--font-space-grotesk' });
 const lexend = Lexend({ subsets: ["latin"], variable: '--font-lexend' });
@@ -65,6 +67,8 @@ export default function RootLayout({
               <MathJaxContext config={mathJaxConfig}>
                 {children}
               </MathJaxContext>
+              <TermsAcceptanceGate />
+              <AnalyticsCookieBanner />
             </ToastProvider>
           </AuthProvider>
         </ThemeProvider>

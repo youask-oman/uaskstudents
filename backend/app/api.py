@@ -40,7 +40,8 @@ from app.models import (
     PromptTierEnum, PromptModeEnum, PromptRoleEnum,
     SolveSession, FollowupChatTurn, LlmUsageLedger,
     CreditLot, CreditProgramEnrollment,
-    ChatEditNoteV2, ChatEditCopyV2
+    ChatEditNoteV2, ChatEditCopyV2,
+    LegalDocument, LegalAcceptance
 )
 from app.utils.token_utils import count_tokens, count_messages_tokens
 from app.services.plot_sampling import process_visuals
@@ -93,6 +94,7 @@ from app.services.response_mapper import normalize_raw_llm_response
 from app.services.solver import solver_service
 from app.services.intent import should_require_visual
 from app.services.solve.solution_doc import parse_solution_doc, render_solution_doc_markdown
+from app.services.legal_service import get_terms_requirement_status
 
 
 
@@ -324,6 +326,49 @@ def _resolve_freeform_max_attempts(
         default_attempts = 1
     configured_cap = int(os.environ.get("FREEFORM_MAX_ATTEMPTS", str(default_attempts)))
     return max(1, min(3, min(default_attempts, configured_cap)))
+
+
+def _latest_published_legal_doc(session: Session, key: str) -> Optional[LegalDocument]:
+    return session.exec(
+        select(LegalDocument)
+        .where(LegalDocument.key == key, LegalDocument.status == "published")
+        .order_by(LegalDocument.published_at.desc(), LegalDocument.id.desc())
+    ).first()
+
+
+def _record_legal_acceptance_if_missing(
+    session: Session,
+    *,
+    user_id: int,
+    document_key: str,
+    document_version: str,
+    method: str,
+    ip: Optional[str],
+    user_agent: Optional[str],
+    locale: Optional[str],
+) -> None:
+    if not document_version:
+        return
+    existing = session.exec(
+        select(LegalAcceptance).where(
+            LegalAcceptance.user_id == user_id,
+            LegalAcceptance.document_key == document_key,
+            LegalAcceptance.document_version == document_version,
+        )
+    ).first()
+    if existing:
+        return
+    session.add(
+        LegalAcceptance(
+            user_id=user_id,
+            document_key=document_key,
+            document_version=document_version,
+            method=method,
+            ip=ip,
+            user_agent=user_agent,
+            locale=locale,
+        )
+    )
 
 
 def _build_schema_valid_stream_error_payload(
@@ -1022,6 +1067,8 @@ class SignupRequest(BaseModel):
     password: str
     full_name: str
     academic_level: Optional[str] = None
+    terms_accepted: bool = False
+    privacy_acknowledged: bool = False
 
 class ProfileUpdateRequest(BaseModel):
     full_name: Optional[str] = None
@@ -1394,7 +1441,11 @@ class UserProfileResponse(BaseModel):
     usage: UserUsageStats
 
 @api_router.post("/signup")
-async def signup(form_data: SignupRequest, session: Session = Depends(get_session)):
+async def signup(
+    request: Request,
+    form_data: SignupRequest,
+    session: Session = Depends(get_session),
+):
     # P2: Password Complexity Check
     if len(form_data.password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters long.")
@@ -1405,6 +1456,12 @@ async def signup(form_data: SignupRequest, session: Session = Depends(get_sessio
         raise HTTPException(
             status_code=400,
             detail="User with this email already exists"
+        )
+
+    if not form_data.terms_accepted or not form_data.privacy_acknowledged:
+        raise HTTPException(
+            status_code=400,
+            detail="You must accept the Terms of Service and acknowledge the Privacy Policy to create an account.",
         )
 
     # Create new user
@@ -1443,10 +1500,44 @@ async def signup(form_data: SignupRequest, session: Session = Depends(get_sessio
     session.commit()
     session.refresh(new_user)
 
+    # Record legal acceptance snapshot at signup for latest published versions.
+    ip_addr = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+    locale = request.headers.get("accept-language")
+    latest_terms = _latest_published_legal_doc(session, "terms_of_service")
+    latest_privacy = _latest_published_legal_doc(session, "privacy_policy")
+    if latest_terms:
+        _record_legal_acceptance_if_missing(
+            session,
+            user_id=new_user.id,
+            document_key="terms_of_service",
+            document_version=latest_terms.version,
+            method="signup",
+            ip=ip_addr,
+            user_agent=user_agent,
+            locale=locale,
+        )
+    if latest_privacy:
+        _record_legal_acceptance_if_missing(
+            session,
+            user_id=new_user.id,
+            document_key="privacy_policy",
+            document_version=latest_privacy.version,
+            method="signup",
+            ip=ip_addr,
+            user_agent=user_agent,
+            locale=locale,
+        )
+    session.commit()
+
     return {"status": "ok", "message": "User created successfully. Please check your email for verification.", "user_id": new_user.id}
 
 @api_router.post("/login", response_model=Token)
-async def login_for_access_token(form_data: LoginRequest, session: Session = Depends(get_session)):
+async def login_for_access_token(
+    request: Request,
+    form_data: LoginRequest,
+    session: Session = Depends(get_session),
+):
     user = session.exec(select(User).where(User.email == form_data.email)).first()
     if not user or not verify_password(form_data.password, user.password_hash):
         raise HTTPException(
@@ -1467,6 +1558,7 @@ async def login_for_access_token(form_data: LoginRequest, session: Session = Dep
     session.refresh(user)
 
     access_token = create_access_token(data={"sub": user.email})
+    requires_terms_acceptance, required_terms_version = get_terms_requirement_status(session, user_id=user.id)
 
     return Token(
         access_token=access_token,
@@ -1475,7 +1567,9 @@ async def login_for_access_token(form_data: LoginRequest, session: Session = Dep
         full_name=user.full_name,
         role=user.role,
         avatar_url=user.avatar_url,
-        session_token=session_token # Return to client
+        session_token=session_token, # Return to client
+        terms_acceptance_required=requires_terms_acceptance,
+        required_terms_version=required_terms_version,
     )
 
 
@@ -3200,13 +3294,19 @@ async def ocr_extract(
 
     # Persist upload + crop (full image by default)
     upload = await upload_service.save_upload(user_id=user_id, file=file, session=session)
-    crop = await crop_service.create_crop(
-        upload=upload,
-        crop_rect=crop_rect,
-        rotation=int(rotation or 0),
-        margin_pct=int(margin_pct or 0),
-        session=session,
-    )
+    try:
+        crop = await crop_service.create_crop(
+            upload=upload,
+            crop_rect=crop_rect,
+            rotation=int(rotation or 0),
+            margin_pct=int(margin_pct or 0),
+            session=session,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=410,
+            detail="Uploaded source file is no longer available. Please upload the image again.",
+        ) from exc
 
     # Create OCR attempt record
     job_id = str(uuid.uuid4())
@@ -7158,6 +7258,17 @@ async def subscribe_user(request: SubscribeRequest, session: Session = Depends(g
     user = session.get(User, request.user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    requires_terms_acceptance, required_terms_version = get_terms_requirement_status(session, user_id=user.id)
+    if requires_terms_acceptance:
+        raise HTTPException(
+            status_code=428,
+            detail={
+                "code": "terms_acceptance_required",
+                "message": "You must accept the latest Terms of Service before completing checkout.",
+                "document_key": "terms_of_service",
+                "document_version": required_terms_version,
+            },
+        )
     
     # Simulate Payment Processing
     transaction_id = f"tx_{datetime.utcnow().timestamp()}_{user.id}"
@@ -10429,9 +10540,22 @@ async def create_subscription_stripe_checkout(
 ):
     """Initiate Stripe checkout session for a subscription plan."""
     try:
+        requires_terms_acceptance, required_terms_version = get_terms_requirement_status(session, user_id=user_id)
+        if requires_terms_acceptance:
+            raise HTTPException(
+                status_code=428,
+                detail={
+                    "code": "terms_acceptance_required",
+                    "message": "You must accept the latest Terms of Service before completing checkout.",
+                    "document_key": "terms_of_service",
+                    "document_version": required_terms_version,
+                },
+            )
         return subscription_service.create_stripe_checkout_session(
             session, user_id, plan_slug, success_url, cancel_url
         )
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

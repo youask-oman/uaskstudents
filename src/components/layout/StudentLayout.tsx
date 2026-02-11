@@ -210,6 +210,10 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                             <span className="text-sm font-medium">Logout</span>
                         </button>
                     </div>
+                    <div className="px-2 pb-3 flex gap-3 text-[11px] text-slate-500">
+                        <Link href="/legal/privacy" className="hover:text-primary">Privacy Policy</Link>
+                        <Link href="/legal/terms" className="hover:text-primary">Terms and Conditions</Link>
+                    </div>
 
                     {/* User Profile Snippet */}
                     <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 flex items-center gap-3 border border-slate-200 dark:border-slate-800/50">

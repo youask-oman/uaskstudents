@@ -15,8 +15,11 @@ class CropService:
         """
         crop_rect: {x, y, w, h} normalized 0..1
         """
-        # Load original image
-        img = Image.open(upload.storage_url)
+        # Load original image; tolerate stale/moved relative paths.
+        source_path = self._resolve_upload_path(upload.storage_url)
+        if not source_path:
+            raise FileNotFoundError(f"Upload file not found for upload_id={upload.id}: {upload.storage_url}")
+        img = Image.open(source_path)
         width, height = img.size
 
         # Apply rotation to original image if needed
@@ -74,5 +77,18 @@ class CropService:
         session.refresh(new_crop)
         
         return new_crop
+
+    @staticmethod
+    def _resolve_upload_path(storage_url: str | None) -> str | None:
+        if not storage_url:
+            return None
+        candidate = os.path.normpath(storage_url)
+        if os.path.exists(candidate):
+            return candidate
+        # Fallback if app cwd differs (e.g., backend/ vs repo root).
+        backend_relative = os.path.normpath(os.path.join("backend", storage_url))
+        if os.path.exists(backend_relative):
+            return backend_relative
+        return None
 
 crop_service = CropService()

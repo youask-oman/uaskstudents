@@ -35,7 +35,11 @@ class UploadService:
         from sqlmodel import select
         existing = session.exec(select(Upload).where(Upload.file_hash == file_hash, Upload.user_id == user_id)).first()
         if existing:
-            return existing
+            # Stale row can exist if file was removed on disk; refresh it by re-saving.
+            if existing.storage_url and os.path.exists(existing.storage_url):
+                return existing
+            session.delete(existing)
+            session.commit()
 
         # Generate unique filename
         ext = os.path.splitext(file.filename)[1] or ".png"

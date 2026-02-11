@@ -6,7 +6,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { parseApiError } from "@/lib/api";
 import { fetchWalletPrograms, fetchWalletSummary, WalletProgramEnrollment, WalletSummary } from "@/lib/wallet";
 
-type TabId = 'profile' | 'location' | 'preferences' | 'billing' | 'security';
+type TabId = 'profile' | 'location' | 'preferences' | 'billing' | 'security' | 'legal';
 
 interface ProfileData {
     id: number;
@@ -88,6 +88,16 @@ export default function ProfilePage() {
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [updatingPassword, setUpdatingPassword] = useState(false);
+    const [legalStatus, setLegalStatus] = useState<{
+        latest_published?: {
+            terms_of_service?: { version: string; effective_at?: string | null } | null;
+            privacy_policy?: { version: string; effective_at?: string | null } | null;
+        };
+        latest_accepted?: {
+            terms_of_service?: { version: string; accepted_at?: string | null; method?: string } | null;
+            privacy_policy?: { version: string; accepted_at?: string | null; method?: string } | null;
+        };
+    } | null>(null);
 
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
@@ -128,6 +138,17 @@ export default function ProfilePage() {
             .then(res => res.json())
             .then(data => setGrades(data.grades || []))
             .catch(console.error);
+    }, [apiBaseUrl]);
+
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+        fetch(`${apiBaseUrl}/api/legal/status`, {
+            headers: { Authorization: `Bearer ${token}` },
+        })
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => setLegalStatus(data))
+            .catch(() => setLegalStatus(null));
     }, [apiBaseUrl]);
 
     useEffect(() => {
@@ -500,6 +521,7 @@ export default function ProfilePage() {
         { id: 'preferences', label: 'Preferences', icon: 'settings' },
         { id: 'billing', label: 'Wallet & Programs', icon: 'credit_card' },
         { id: 'security', label: 'Security', icon: 'shield' },
+        { id: 'legal', label: 'Legal', icon: 'gavel' },
     ];
 
     return (
@@ -1148,6 +1170,31 @@ export default function ProfilePage() {
                                     >
                                         {updatingPassword ? "Updating..." : "Update Password"}
                                     </button>
+                                </div>
+                            </div>
+                        </section>
+                    )}
+
+                    {activeTab === 'legal' && (
+                        <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-300">
+                            <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+                                <h2 className="text-xl font-bold">Legal Acceptances</h2>
+                                <p className="text-slate-500 text-sm">Review accepted Terms and Privacy versions for your account.</p>
+                            </div>
+                            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+                                    <h3 className="font-bold mb-2">Terms of Service</h3>
+                                    <p className="text-xs text-slate-500">Published version: {legalStatus?.latest_published?.terms_of_service?.version || "N/A"}</p>
+                                    <p className="text-xs text-slate-500">Accepted version: {legalStatus?.latest_accepted?.terms_of_service?.version || "Not accepted"}</p>
+                                    <p className="text-xs text-slate-500">Accepted at: {legalStatus?.latest_accepted?.terms_of_service?.accepted_at ? new Date(legalStatus.latest_accepted.terms_of_service.accepted_at).toLocaleString() : "N/A"}</p>
+                                    <a href="/legal/terms" className="inline-block mt-3 text-primary text-sm font-bold hover:underline">View Terms and Conditions</a>
+                                </div>
+                                <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+                                    <h3 className="font-bold mb-2">Privacy Policy</h3>
+                                    <p className="text-xs text-slate-500">Published version: {legalStatus?.latest_published?.privacy_policy?.version || "N/A"}</p>
+                                    <p className="text-xs text-slate-500">Accepted version: {legalStatus?.latest_accepted?.privacy_policy?.version || "Not accepted"}</p>
+                                    <p className="text-xs text-slate-500">Accepted at: {legalStatus?.latest_accepted?.privacy_policy?.accepted_at ? new Date(legalStatus.latest_accepted.privacy_policy.accepted_at).toLocaleString() : "N/A"}</p>
+                                    <a href="/legal/privacy" className="inline-block mt-3 text-primary text-sm font-bold hover:underline">View Privacy Policy</a>
                                 </div>
                             </div>
                         </section>

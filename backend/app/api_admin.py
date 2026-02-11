@@ -5,23 +5,28 @@ from sqlmodel import Session, select, desc, SQLModel
 from sqlalchemy import text as sql_text
 from pydantic import BaseModel
 from jose import JWTError, jwt
+import hashlib
 
 from app.database import get_session
-from app.models import User, SystemConfigVersion, BillingLedger, PromoCode
+from app.models import User, SystemConfigVersion, BillingLedger, PromoCode, LegalDocument, LegalAcceptance
 from app.services.admin_config_service import admin_config_service
 from app.services.pricing_service import pricing_service
 from app.auth import SECRET_KEY, ALGORITHM
 from app.services.whatsapp import whatsapp_service
 from app.services.whatsapp.whatsapp_state import get_whatsapp_events, get_redis
 from app.worker import celery_app
+from app.services.privacy_policy_generator import build_privacy_policy_markdown
+from app.services.legal_document_renderer import markdown_to_basic_html
+from app.services.legal_service import get_legal_status_payload, get_latest_published_document
 from fastapi.responses import StreamingResponse
 import asyncio
 import io
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 from pathlib import Path
 
 admin_router = APIRouter(prefix="/api/admin", tags=["admin"])
+legal_router = APIRouter(prefix="/api/legal", tags=["legal"])
 
 # --- Models ---
 class ConfigUpdate(BaseModel):
@@ -61,6 +66,28 @@ class RunJobRequest(BaseModel):
     task: str
     args: Optional[List[Any]] = None
     kwargs: Optional[Dict[str, Any]] = None
+
+
+class LegalDocumentUpsertRequest(BaseModel):
+    id: Optional[int] = None
+    key: str = "privacy_policy"
+    version: Optional[str] = None
+    content_md: Optional[str] = None
+    content_html: Optional[str] = None
+    effective_at: Optional[datetime] = None
+    status: Optional[str] = "draft"
+    generate_from_inventory: bool = False
+
+
+class LegalDocumentPublishRequest(BaseModel):
+    effective_at: Optional[datetime] = None
+
+
+class LegalAcceptRequest(BaseModel):
+    document_key: str
+    document_version: str
+    method: str = "in_app_modal"  # signup|login|checkout|in_app_modal
+    locale: Optional[str] = None
 
 # --- Auth Dependencies (Self-Contained) ---
 def get_current_user(
@@ -124,6 +151,20 @@ def _resolve_admin_from_request(request: Request, session: Session) -> User:
     if user.role not in ["admin", "devops", "superadmin"]:
         raise HTTPException(status_code=403, detail="Admin privileges required")
     return user
+
+
+def _compute_checksum(content_md: str) -> str:
+    return hashlib.sha256((content_md or "").encode("utf-8")).hexdigest()
+
+
+def _generate_version_key(session: Session, key: str) -> str:
+    base = datetime.utcnow().strftime("%Y%m%d")
+    existing = session.exec(
+        select(LegalDocument).where(LegalDocument.key == key, LegalDocument.version.like(f"{base}%"))
+    ).all()
+    if not existing:
+        return base
+    return f"{base}_{len(existing) + 1}"
 
 # --- Endpoints ---
 # IMPORTANT: Specific routes must come BEFORE parameterized routes
@@ -585,6 +626,293 @@ def admin_update_promo_code(
     session.commit()
     session.refresh(promo)
     return {"status": "updated", "id": promo.id}
+
+
+@legal_router.get("/privacy")
+def get_public_privacy_policy(
+    version: Optional[str] = Query(default=None),
+    session: Session = Depends(get_session),
+):
+    query = select(LegalDocument).where(
+        LegalDocument.key == "privacy_policy",
+        LegalDocument.status == "published",
+    )
+    if version:
+        query = query.where(LegalDocument.version == version)
+    query = query.order_by(desc(LegalDocument.published_at), desc(LegalDocument.id))
+
+    doc = session.exec(query).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Published privacy policy not found")
+
+    return {
+        "id": doc.id,
+        "key": doc.key,
+        "version": doc.version,
+        "status": doc.status,
+        "content_md": doc.content_md,
+        "content_html": doc.content_html,
+        "effective_at": doc.effective_at,
+        "published_at": doc.published_at,
+        "checksum_sha256": doc.checksum_sha256,
+    }
+
+
+@legal_router.get("/privacy/v/{version}")
+def get_public_privacy_policy_by_path(
+    version: str,
+    session: Session = Depends(get_session),
+):
+    return get_public_privacy_policy(version=version, session=session)
+
+
+@legal_router.get("/terms")
+def get_public_terms_of_service(
+    version: Optional[str] = Query(default=None),
+    session: Session = Depends(get_session),
+):
+    query = select(LegalDocument).where(
+        LegalDocument.key == "terms_of_service",
+        LegalDocument.status == "published",
+    )
+    if version:
+        query = query.where(LegalDocument.version == version)
+    query = query.order_by(desc(LegalDocument.published_at), desc(LegalDocument.id))
+    doc = session.exec(query).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Published terms of service not found")
+    return {
+        "id": doc.id,
+        "key": doc.key,
+        "version": doc.version,
+        "status": doc.status,
+        "content_md": doc.content_md,
+        "content_html": doc.content_html,
+        "effective_at": doc.effective_at,
+        "published_at": doc.published_at,
+        "checksum_sha256": doc.checksum_sha256,
+    }
+
+
+@legal_router.get("/terms/v/{version}")
+def get_public_terms_of_service_by_path(
+    version: str,
+    session: Session = Depends(get_session),
+):
+    return get_public_terms_of_service(version=version, session=session)
+
+
+@legal_router.get("/status")
+def get_legal_status(
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    return get_legal_status_payload(session, user_id=user.id)
+
+
+@legal_router.post("/accept")
+def accept_legal_document(
+    payload: LegalAcceptRequest,
+    request: Request,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    key = (payload.document_key or "").strip()
+    version = (payload.document_version or "").strip()
+    method = (payload.method or "in_app_modal").strip()
+    if key not in {"terms_of_service", "privacy_policy"}:
+        raise HTTPException(status_code=400, detail="Unsupported legal document key")
+    if method not in {"signup", "login", "checkout", "in_app_modal"}:
+        raise HTTPException(status_code=400, detail="Unsupported acceptance method")
+    if not version:
+        raise HTTPException(status_code=400, detail="document_version is required")
+
+    doc = session.exec(
+        select(LegalDocument).where(
+            LegalDocument.key == key,
+            LegalDocument.version == version,
+            LegalDocument.status == "published",
+        )
+    ).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Published legal document version not found")
+
+    existing = session.exec(
+        select(LegalAcceptance).where(
+            LegalAcceptance.user_id == user.id,
+            LegalAcceptance.document_key == key,
+            LegalAcceptance.document_version == version,
+        )
+    ).first()
+    if existing:
+        return {
+            "status": "already_accepted",
+            "document_key": key,
+            "document_version": version,
+            "accepted_at": existing.accepted_at,
+        }
+
+    ip_addr = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+    locale = payload.locale or request.headers.get("accept-language")
+    rec = LegalAcceptance(
+        user_id=user.id,
+        document_key=key,
+        document_version=version,
+        ip=ip_addr,
+        user_agent=user_agent,
+        locale=locale,
+        method=method,
+    )
+    session.add(rec)
+    session.commit()
+    session.refresh(rec)
+    return {
+        "status": "accepted",
+        "id": rec.id,
+        "document_key": key,
+        "document_version": version,
+        "accepted_at": rec.accepted_at,
+    }
+
+
+@admin_router.get("/legal-documents")
+def admin_list_legal_documents(
+    key: str = Query(default="privacy_policy"),
+    session: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    docs = session.exec(
+        select(LegalDocument)
+        .where(LegalDocument.key == key)
+        .order_by(desc(LegalDocument.created_at), desc(LegalDocument.id))
+    ).all()
+    return [
+        {
+            "id": d.id,
+            "key": d.key,
+            "version": d.version,
+            "status": d.status,
+            "effective_at": d.effective_at,
+            "published_at": d.published_at,
+            "created_by": d.created_by,
+            "updated_by": d.updated_by,
+            "checksum_sha256": d.checksum_sha256,
+            "created_at": d.created_at,
+            "updated_at": d.updated_at,
+        }
+        for d in docs
+    ]
+
+
+@admin_router.get("/legal-documents/{document_id}")
+def admin_get_legal_document(
+    document_id: int,
+    session: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    doc = session.get(LegalDocument, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Legal document not found")
+    return {
+        "id": doc.id,
+        "key": doc.key,
+        "version": doc.version,
+        "status": doc.status,
+        "content_md": doc.content_md,
+        "content_html": doc.content_html,
+        "effective_at": doc.effective_at,
+        "published_at": doc.published_at,
+        "created_by": doc.created_by,
+        "updated_by": doc.updated_by,
+        "checksum_sha256": doc.checksum_sha256,
+        "created_at": doc.created_at,
+        "updated_at": doc.updated_at,
+    }
+
+
+@admin_router.post("/legal-documents")
+@admin_router.put("/legal-documents")
+def admin_upsert_legal_document(
+    payload: LegalDocumentUpsertRequest,
+    session: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    key = (payload.key or "privacy_policy").strip() or "privacy_policy"
+    content_md = payload.content_md or ""
+    if payload.generate_from_inventory or not content_md:
+        if key == "privacy_policy":
+            content_md = build_privacy_policy_markdown()
+        elif key == "terms_of_service":
+            terms_path = Path(__file__).resolve().parents[2] / "terms_of_service.md"
+            if terms_path.exists():
+                content_md = terms_path.read_text(encoding="utf-8")
+    content_html = payload.content_html or markdown_to_basic_html(content_md)
+    checksum = _compute_checksum(content_md)
+
+    existing = session.get(LegalDocument, payload.id) if payload.id else None
+    if existing and existing.status == "published":
+        # Immutable published versions: editing creates a new draft.
+        existing = None
+
+    if existing:
+        existing.content_md = content_md
+        existing.content_html = content_html
+        existing.checksum_sha256 = checksum
+        existing.updated_by = admin.id
+        if payload.effective_at:
+            existing.effective_at = payload.effective_at
+        session.add(existing)
+        session.commit()
+        session.refresh(existing)
+        return {"status": "updated", "id": existing.id, "version": existing.version}
+
+    version = payload.version or _generate_version_key(session, key)
+    doc = LegalDocument(
+        key=key,
+        version=version,
+        status="draft",
+        content_md=content_md,
+        content_html=content_html,
+        effective_at=payload.effective_at,
+        created_by=admin.id,
+        updated_by=admin.id,
+        checksum_sha256=checksum,
+    )
+    session.add(doc)
+    session.commit()
+    session.refresh(doc)
+    return {"status": "created", "id": doc.id, "version": doc.version}
+
+
+@admin_router.post("/legal-documents/{document_id}/publish")
+def admin_publish_legal_document(
+    document_id: int,
+    payload: Optional[LegalDocumentPublishRequest] = None,
+    session: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    doc = session.get(LegalDocument, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Legal document not found")
+    if doc.status == "published":
+        return {"status": "already_published", "id": doc.id, "version": doc.version}
+
+    now = datetime.now(timezone.utc)
+    doc.status = "published"
+    doc.published_at = now
+    doc.effective_at = (payload.effective_at if payload and payload.effective_at else now)
+    doc.updated_by = admin.id
+    session.add(doc)
+    session.commit()
+    session.refresh(doc)
+    return {
+        "status": "published",
+        "id": doc.id,
+        "version": doc.version,
+        "effective_at": doc.effective_at,
+        "published_at": doc.published_at,
+    }
 
 
 # ------------------------------------------------------------------

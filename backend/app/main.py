@@ -19,6 +19,9 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi import HTTPException
 from app.config import get_settings
+from jose import JWTError, jwt
+from app.auth import SECRET_KEY, ALGORITHM
+from app.services.legal_service import get_terms_requirement_status
 
 app = FastAPI(title="UAsk.ai Orchestrator")
 app.state.limiter = limiter
@@ -152,6 +155,66 @@ async def log_requests(request: Request, call_next):
         # but since we re-raise, FastAPI will call the handlers.
         raise e
 
+
+@app.middleware("http")
+async def enforce_terms_acceptance(request: Request, call_next):
+    path = request.url.path or ""
+    if not path.startswith("/api/"):
+        return await call_next(request)
+
+    # Allow auth + public/legal endpoints and health checks through.
+    allow_prefixes = (
+        "/api/v1/login",
+        "/api/v1/signup",
+        "/api/legal/",
+        "/health",
+        "/ready",
+    )
+    if any(path.startswith(prefix) for prefix in allow_prefixes):
+        return await call_next(request)
+
+    auth = request.headers.get("Authorization") or ""
+    if not auth.startswith("Bearer "):
+        return await call_next(request)
+
+    token = auth.replace("Bearer ", "").strip()
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email = payload.get("sub")
+        if not email:
+            return await call_next(request)
+    except JWTError:
+        return await call_next(request)
+
+    from app.database import engine
+    from app.models import User
+
+    try:
+        with Session(engine) as session:
+            user = session.exec(select(User).where(User.email == email)).first()
+            if not user:
+                return await call_next(request)
+            required, required_version = get_terms_requirement_status(session, user_id=user.id)
+            if required:
+                return JSONResponse(
+                    status_code=428,
+                    content={
+                        "error": {
+                            "code": "terms_acceptance_required",
+                            "message": "You must accept the latest Terms of Service before continuing.",
+                            "details": {
+                                "document_key": "terms_of_service",
+                                "document_version": required_version,
+                            },
+                        }
+                    },
+                )
+    except Exception:
+        # Fail open to avoid breaking production traffic on policy-check errors.
+        return await call_next(request)
+
+    return await call_next(request)
+
 @app.on_event("startup")
 def on_startup():
     # Configure Structured Logging
@@ -282,7 +345,7 @@ async def llm_health_check():
     }
 
 from app.api import api_router
-from app.api_admin import admin_router
+from app.api_admin import admin_router, legal_router
 from app.api_admin_payments import router as admin_payments_router
 from app.api_topups import router as topup_router
 from app.api_stripe import router as stripe_router
@@ -329,6 +392,7 @@ async def log_stripe_env():
 app.include_router(billing_router, prefix="/api/v1")
 app.include_router(wallet_router, prefix="/api/v1")
 app.include_router(admin_router)
+app.include_router(legal_router)
 app.include_router(admin_payments_router)
 app.include_router(admin_payments_config_router)
 app.include_router(admin_health_router)

@@ -9,6 +9,8 @@ from enum import Enum
 from app.models.credit_program_models import *
 from app.models.admin_audit_log import AdminAuditLog
 from app.models.seed_registry import SeedRegistry
+from app.models.legal_document import LegalDocument
+from app.models.legal_acceptance import LegalAcceptance
 
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

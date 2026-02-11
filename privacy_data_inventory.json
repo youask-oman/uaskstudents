@@ -1,0 +1,122 @@
+{
+  "meta": {
+    "service_name": "uask.ai",
+    "legal_entity_name": "[LEGAL_ENTITY_NAME]",
+    "business_address": "[BUSINESS_ADDRESS]",
+    "privacy_contact_email": "[PRIVACY_CONTACT_EMAIL]",
+    "effective_date": "2026-02-11",
+    "last_updated_date": "2026-02-11",
+    "child_age_threshold": "13",
+    "payment_processor_name": "Stripe",
+    "analytics_provider_name": "internal analytics",
+    "retention_content": "Retained while your account is active, and deletable by request unless needed for abuse prevention or legal compliance.",
+    "retention_logs": "Security and diagnostic logs are typically retained for up to 90 days, unless a longer period is needed for incident investigation.",
+    "uploads_storage": "Object storage (S3-compatible) with access controls; region/residency depends on deployment configuration.",
+    "model_training_on_user_content": "Not used to train our own general-purpose models unless explicitly disclosed and consented where required."
+  },
+  "sections": {
+    "how_we_use": [
+      "Provide and operate the Service (solve requests, OCR extraction, credit accounting).",
+      "Maintain security, prevent fraud/abuse, and enforce usage limits.",
+      "Improve performance, reliability, and user experience.",
+      "Provide customer support and communicate service updates.",
+      "Process payments, subscriptions, refunds, and invoicing (if applicable).",
+      "Comply with legal obligations and protect rights/safety."
+    ],
+    "security_controls": [
+      "Encryption in transit (TLS)",
+      "Access controls and least-privilege permissions",
+      "Monitoring, logging, and abuse detection",
+      "Secure credential handling (hashed passwords)"
+    ],
+    "rights": [
+      "Access, correct, or delete your personal information",
+      "Object to or restrict certain processing",
+      "Withdraw consent (where processing is based on consent)",
+      "Data portability (where applicable)",
+      "Opt out of targeted advertising/sharing (where applicable)"
+    ]
+  },
+  "data_categories": [
+    {
+      "data_category": "Account and profile information",
+      "fields_examples": [
+        "email",
+        "full_name/display_name",
+        "password hash",
+        "auth/session tokens",
+        "preferences",
+        "academic level and profile location"
+      ],
+      "purpose": "Authentication, account management, personalization, and service delivery.",
+      "lawful_basis": "Contract; legitimate interests",
+      "retention": "For as long as the account is active; some records may persist for legal/security obligations.",
+      "storage_location": "Postgres",
+      "processors": [
+        "hosting provider"
+      ]
+    },
+    {
+      "data_category": "User-submitted content",
+      "fields_examples": [
+        "chat prompts/questions",
+        "uploaded images and PDFs",
+        "OCR outputs",
+        "solution renderings",
+        "feedback/ratings"
+      ],
+      "purpose": "Provide solving, OCR extraction, and learning features requested by the user.",
+      "lawful_basis": "Contract; legitimate interests",
+      "retention": "Retained while account is active or until user deletion request, subject to legal/security exceptions.",
+      "storage_location": "Postgres + object storage",
+      "processors": [
+        "object storage provider",
+        "AI service providers/processors"
+      ]
+    },
+    {
+      "data_category": "Usage, device, and diagnostic information",
+      "fields_examples": [
+        "IP address",
+        "device/browser metadata",
+        "timestamps",
+        "feature usage events",
+        "error and performance logs"
+      ],
+      "purpose": "Security, abuse prevention, reliability, analytics, and debugging.",
+      "lawful_basis": "Legitimate interests; legal obligations",
+      "retention": "Typically up to 90 days for logs, longer where required for security incidents or legal obligations.",
+      "storage_location": "Postgres + logging systems",
+      "processors": [
+        "hosting provider",
+        "analytics/logging providers"
+      ]
+    },
+    {
+      "data_category": "Payment and subscription records",
+      "fields_examples": [
+        "plan",
+        "amount",
+        "currency",
+        "status",
+        "invoice IDs",
+        "processor customer/subscription IDs"
+      ],
+      "purpose": "Billing operations, accounting, fraud checks, and support.",
+      "lawful_basis": "Contract; legal obligations",
+      "retention": "Retained per tax and accounting requirements.",
+      "storage_location": "Postgres + payment processor systems",
+      "processors": [
+        "Stripe"
+      ]
+    }
+  ],
+  "todo_checklist": [
+    "[LEGAL_ENTITY_NAME]",
+    "[BUSINESS_ADDRESS]",
+    "[PRIVACY_CONTACT_EMAIL]",
+    "Confirm analytics provider name (if external).",
+    "Confirm uploads region/residency by deployment.",
+    "Confirm model training policy for user content."
+  ]
+}

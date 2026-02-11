@@ -96,6 +96,26 @@
     },
     {
       "type": "link",
+      "label": "Legal",
+      "href": "/admin/legal/privacy-policy",
+      "icon": "gavel",
+      "page_title": "Legal Documents",
+      "api_checks": [
+        "/api/admin/legal-documents"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "Terms",
+      "href": "/admin/legal/terms-of-service",
+      "icon": "balance",
+      "page_title": "Terms of Service",
+      "api_checks": [
+        "/api/admin/legal-documents?key=terms_of_service"
+      ]
+    },
+    {
+      "type": "link",
       "label": "WhatsApp Bot",
       "href": "/admin/whatsapp-bot",
       "icon": "chat",

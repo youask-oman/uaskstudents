@@ -10,8 +10,8 @@ export default function Footer() {
                     <h2 className="text-[#111318] dark:text-white text-lg font-bold font-display">uask.ai</h2>
                 </div>
                 <div className="flex gap-8 text-sm text-[#616f89] dark:text-gray-400">
-                    <a className="hover:text-primary transition-colors" href="#">Terms</a>
-                    <a className="hover:text-primary transition-colors" href="#">Privacy</a>
+                    <a className="hover:text-primary transition-colors" href="/legal/terms">Terms and Conditions</a>
+                    <a className="hover:text-primary transition-colors" href="/legal/privacy">Privacy Policy</a>
                     <a className="hover:text-primary transition-colors" href="#">Contact</a>
                     <a className="hover:text-primary transition-colors" href="#">Twitter</a>
                 </div>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 export const API_BASE_URL =
     process.env.NEXT_PUBLIC_API_BASE_URL ||
@@ -33,7 +33,10 @@ const friendlyMessage = (code?: string, rawMessage?: string) => {
         return "You're doing that too fast. Please wait a moment and try again.";
     }
     if (code === "TIER_NOT_ALLOWED" || normalized.includes("tier not included")) {
-        return "Your plan doesn’t include this tier. Please choose a different tier or upgrade.";
+        return "Your plan does not include this tier. Please choose a different tier or upgrade.";
+    }
+    if (code === "terms_acceptance_required" || normalized.includes("terms of service")) {
+        return "You need to accept the latest Terms of Service before continuing.";
     }
     return message;
 };
@@ -75,3 +78,4 @@ export async function parseApiError(res: Response): Promise<ApiError> {
         status: res.status,
     };
 }
+

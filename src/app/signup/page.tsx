@@ -22,6 +22,7 @@ export default function SignupPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState(false);
+    const [legalAccepted, setLegalAccepted] = useState(false);
     const [isDark, setIsDark] = useState(false);
     const router = useRouter();
 
@@ -46,7 +47,9 @@ export default function SignupPage() {
                     full_name: fullName,
                     email,
                     password,
-                    academic_level: academicLevel
+                    academic_level: academicLevel,
+                    terms_accepted: legalAccepted,
+                    privacy_acknowledged: legalAccepted
                 }),
             });
 
@@ -221,10 +224,16 @@ export default function SignupPage() {
                                     {/* Terms */}
                                     <label className="flex items-start gap-3 cursor-pointer pt-2">
                                         <div className="mt-1">
-                                            <input className="w-5 h-5 rounded border-gray-300 dark:border-gray-700 text-primary focus:ring-primary/30" type="checkbox" required />
+                                            <input
+                                                className="w-5 h-5 rounded border-gray-300 dark:border-gray-700 text-primary focus:ring-primary/30"
+                                                type="checkbox"
+                                                checked={legalAccepted}
+                                                onChange={(e) => setLegalAccepted(e.target.checked)}
+                                                required
+                                            />
                                         </div>
                                         <span className="text-sm text-gray-600 dark:text-gray-400 leading-tight">
-                                            I agree to the <a className="text-primary font-bold hover:underline" href="#">Terms of Service</a> and <a className="text-primary font-bold hover:underline" href="#">Privacy Policy</a>
+                                            By creating an account, you agree to the <a className="text-primary font-bold hover:underline" href="/legal/terms">Terms of Service</a> and acknowledge the <a className="text-primary font-bold hover:underline" href="/legal/privacy">Privacy Policy</a>.
                                         </span>
                                     </label>
 
