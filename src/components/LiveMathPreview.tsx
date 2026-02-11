@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import MathRenderer from "./math/MathRendererSwitch";
+import MathRenderer from "./math/MathJaxRenderer";
 
 interface LiveMathPreviewProps {
     /** The LaTeX or math content to render */

@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import StudentLayout from "@/components/layout/StudentLayout";
-import MathRenderer from "@/components/math/MathRendererSwitch";
+import MathRenderer from "@/components/math/MathJaxRenderer";
 import { useToast } from "@/components/ui/ToastProvider";
 import {
     fetchWalletLedger,

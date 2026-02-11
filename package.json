@@ -27,6 +27,7 @@
     "@tiptap/starter-kit": "^3.19.0",
     "@types/file-saver": "^2.0.7",
     "@types/react-plotly.js": "^2.6.4",
+    "@mdxeditor/editor": "^2.7.0",
     "baileys": "^7.0.0-rc.9",
     "better-react-mathjax": "^2.4.0-beta-1",
     "clsx": "^2.1.1",

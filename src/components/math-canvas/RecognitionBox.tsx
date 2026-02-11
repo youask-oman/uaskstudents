@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import MathRenderer from "@/components/math/MathRendererSwitch";
+import MathRenderer from "@/components/math/MathJaxRenderer";
 import styles from "./MathCanvas.module.css";
 
 interface RecognitionBoxProps {

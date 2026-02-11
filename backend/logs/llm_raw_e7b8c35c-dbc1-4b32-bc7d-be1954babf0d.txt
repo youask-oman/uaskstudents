@@ -1,0 +1,6 @@
+Request ID: e7b8c35c-dbc1-4b32-bc7d-be1954babf0d
+Length: 530
+Chunk Types: {'delta': 1, 'usage': 1}
+----------------------------------------
+RAW CONTENT (Head 4000 + Tail 16000):
+{"topic":"Tangent line","confidence_score":0.95,"steps":[{"index":1,"title":"Differentiate using quotient rule","explanation":"Use quotient rule: (u'v-uv')/v^2 with u=x^2+1, v=x-1 to get f'(x).","math_latex":"\\frac{(2x)(x-1)-(x^2+1)(1)}{(x-1)^2}=\\frac{x^2-2x-1}{(x-1)^2}"},{"index":2,"title":"Evaluate slope and form tangent","explanation":"At x=2, f(2)=5 and f'(2)=-1, so tangent line: y-5=-1(x-2) which simplifies to y=-x+7.","math_latex":"f(2)=5,\\ f'(2)=-1,\\ y=-x+7"}],"final_answer":"Slope = -1; tangent line: y = -x + 7"}

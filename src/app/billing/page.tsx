@@ -35,6 +35,44 @@ export default function BillingPage() {
     const [programs, setPrograms] = useState<WalletProgramEnrollment[]>([]);
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [loading, setLoading] = useState(true);
+    const [openingInvoiceId, setOpeningInvoiceId] = useState<number | null>(null);
+
+    const handleOpenInvoice = async (invoiceId: number) => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            window.location.href = "/login?redirect=/billing";
+            return;
+        }
+        setOpeningInvoiceId(invoiceId);
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/v1/billing/invoices/${invoiceId}/html`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) {
+                const err = await parseApiError(res);
+                pushToast({
+                    type: "error",
+                    title: "Invoice unavailable",
+                    message: err.message,
+                    requestId: err.requestId,
+                });
+                return;
+            }
+            const html = await res.text();
+            const blob = new Blob([html], { type: "text/html" });
+            const url = URL.createObjectURL(blob);
+            window.open(url, "_blank", "noopener,noreferrer");
+            setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        } catch (error) {
+            pushToast({
+                type: "error",
+                title: "Invoice unavailable",
+                message: error instanceof Error ? error.message : "Unexpected error",
+            });
+        } finally {
+            setOpeningInvoiceId(null);
+        }
+    };
 
     useEffect(() => {
         const loadData = async () => {
@@ -264,13 +302,14 @@ export default function BillingPage() {
                                                 {inv.currency === "USD" ? "$" : ""}{inv.total_amount.toFixed(2)}
                                             </td>
                                             <td className="px-6 py-4 text-right flex items-center justify-end gap-3">
-                                                <a
-                                                    href={`/api/v1/billing/invoices/${inv.id}/html`}
-                                                    target="_blank"
-                                                    className="text-primary hover:text-primary-hover font-medium text-xs transition-colors"
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleOpenInvoice(inv.id)}
+                                                    className="text-primary hover:text-primary-hover font-medium text-xs transition-colors disabled:opacity-60"
+                                                    disabled={openingInvoiceId === inv.id}
                                                 >
-                                                    View
-                                                </a>
+                                                    {openingInvoiceId === inv.id ? "Opening..." : "View"}
+                                                </button>
                                                 <span className={`inline-flex px-2 py-1 rounded text-xs font-bold uppercase ${inv.status === "PAID"
                                                     ? "bg-green-100 text-green-700"
                                                     : "bg-slate-100 text-slate-600"

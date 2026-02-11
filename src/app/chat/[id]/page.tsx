@@ -479,6 +479,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
           <LeftNotebookSidebar
             notebookTitle={notebookTitle}
             notebookSubtitle={notebookSubtitle}
+            sessionId={String(session.id)}
             tokenUsage={tokenUsage}
             outlineItems={outlineItems}
             classification={classification}

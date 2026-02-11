@@ -390,7 +390,7 @@ const parseChartPayloadFromPlotly = (value: unknown): ChartPayload[] => {
   return charts;
 };
 
-const parseSolutionDocFromStructured = (value: unknown): MathSolutionPayload | null => {
+export const parseSolutionDocFromStructured = (value: unknown): MathSolutionPayload | null => {
   const structured = asRecord(value);
   const doc = asRecord(structured?.solution_doc);
   if (!doc) return null;

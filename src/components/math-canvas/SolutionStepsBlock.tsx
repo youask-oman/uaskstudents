@@ -2,7 +2,7 @@
 
 import React from "react";
 import type { Editor } from "@tiptap/core";
-import MathRenderer from "@/components/math/MathRendererSwitch";
+import MathRenderer from "@/components/math/MathJaxRenderer";
 import RichTextElementEditor from "./RichTextElementEditor";
 import type { RichTextCommitPayload } from "./RichTextElementEditor";
 import { StepRow, VerificationCheck, FinalAnswer } from "./types";

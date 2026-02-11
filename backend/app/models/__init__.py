@@ -130,6 +130,68 @@ class ChatMessage(SQLModel, table=True):
 
     session: ChatSession = Relationship(back_populates="messages")
 
+
+class ChatNote(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    chat_id: int = Field(foreign_key="chatsession.id", index=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    notes_md: str = Field(default="", sa_column=Column(Text))
+    version: int = Field(default=1, index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("chat_id", "user_id", name="uq_chat_note_chat_user"),
+        Index("ix_chat_note_chat_user", "chat_id", "user_id"),
+    )
+
+
+class ChatEditCopy(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    chat_id: int = Field(foreign_key="chatsession.id", index=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    edited_md: str = Field(default="", sa_column=Column(Text))
+    canonical_md_hash: str = Field(default="", index=True)
+    version: int = Field(default=1, index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("chat_id", "user_id", name="uq_chat_edit_copy_chat_user"),
+        Index("ix_chat_edit_copy_chat_user", "chat_id", "user_id"),
+    )
+
+
+class ChatEditNoteV2(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    chat_id: int = Field(foreign_key="chatsession.id", index=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    notes_md: str = Field(default="", sa_column=Column(Text))
+    version: int = Field(default=1, index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("chat_id", "user_id", name="uq_chat_edit_note_v2_chat_user"),
+        Index("ix_chat_edit_note_v2_chat_user", "chat_id", "user_id"),
+    )
+
+
+class ChatEditCopyV2(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    chat_id: int = Field(foreign_key="chatsession.id", index=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    edited_md: str = Field(default="", sa_column=Column(Text))
+    canonical_md_hash: str = Field(default="", index=True)
+    version: int = Field(default=1, index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("chat_id", "user_id", name="uq_chat_edit_copy_v2_chat_user"),
+        Index("ix_chat_edit_copy_v2_chat_user", "chat_id", "user_id"),
+    )
+
 class UsageLog(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id", index=True)

@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import MathRenderer from '../math/MathRendererSwitch';
+import MathRenderer from '../math/MathJaxRenderer';
 import VisualRenderer from './VisualRenderer';
 
 // Define Visual type locally since it's not exported

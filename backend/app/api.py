@@ -39,7 +39,8 @@ from app.models import (
     PromptTemplateEntry, JsonSchemaEntry, PromptBinding,
     PromptTierEnum, PromptModeEnum, PromptRoleEnum,
     SolveSession, FollowupChatTurn, LlmUsageLedger,
-    CreditLot, CreditProgramEnrollment
+    CreditLot, CreditProgramEnrollment,
+    ChatEditNoteV2, ChatEditCopyV2
 )
 from app.utils.token_utils import count_tokens, count_messages_tokens
 from app.services.plot_sampling import process_visuals
@@ -89,6 +90,7 @@ from app.utils.perf_timer import perf_emit, perf_enabled
 from app.services.response_mapper import normalize_raw_llm_response
 from app.services.solver import solver_service
 from app.services.intent import should_require_visual
+from app.services.solve.solution_doc import parse_solution_doc, render_solution_doc_markdown
 
 
 
@@ -7259,6 +7261,55 @@ class ChatSessionResponse(BaseModel):
     messages: List[ChatMessageSchema]
 
 
+class CanonicalMarkdownResponse(BaseModel):
+    id: int
+    canonical_md: str
+    canonical_md_hash: str
+
+
+class SolutionDocResponse(BaseModel):
+    id: int
+    solution_doc: dict
+
+
+class SolutionDocPreviewRequest(BaseModel):
+    markdown: str
+
+
+class NotesResponse(BaseModel):
+    notes_md: str
+    version: int
+    updated_at: str
+
+
+class NotesUpdateRequest(BaseModel):
+    notes_md: str
+    expected_version: int
+
+
+class EditCopyResponse(BaseModel):
+    edited_md: str
+    version: int
+    canonical_md_hash: str
+    updated_at: str
+
+
+class EditCopyUpdateRequest(BaseModel):
+    edited_md: str
+    expected_version: int
+
+
+class EditCopyResetResponse(BaseModel):
+    edited_md: str
+    version: int
+    canonical_md_hash: str
+    updated_at: str
+
+
+class DebugSeedChatResponse(BaseModel):
+    session_id: int
+
+
 class PaperVersionSaveRequest(BaseModel):
     title: Optional[str] = None
     pages: List[Dict[str, Any]]
@@ -7312,6 +7363,350 @@ async def get_session_details(session_id: int, session: Session = Depends(get_se
     )
 
 
+@api_router.get("/chat/{session_id}/canonical_markdown", response_model=CanonicalMarkdownResponse)
+async def get_canonical_markdown(
+    session_id: int,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    chat_session = session.get(ChatSession, session_id)
+    if not chat_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if chat_session.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not authorized for this chat")
+
+    canonical_md, canonical_md_hash = _derive_canonical_markdown(chat_session)
+    return CanonicalMarkdownResponse(
+        id=chat_session.id,
+        canonical_md=canonical_md,
+        canonical_md_hash=canonical_md_hash,
+    )
+
+
+@api_router.get("/chat/{session_id}/solution_doc", response_model=SolutionDocResponse)
+async def get_solution_doc(
+    session_id: int,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    chat_session = session.get(ChatSession, session_id)
+    if not chat_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if chat_session.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not authorized for this chat")
+
+    assistant_messages = [msg for msg in chat_session.messages if msg.role == "assistant"]
+    target = _pick_primary_solve_message(assistant_messages)
+    if not target:
+        raise HTTPException(status_code=404, detail="No canonical solution found for this chat")
+
+    problem_text = _extract_problem_text(
+        target.structured_data if isinstance(target.structured_data, dict) else {},
+        chat_session.messages,
+    )
+    if isinstance(target.structured_data, dict):
+        raw_json = json.dumps(target.structured_data, ensure_ascii=False)
+        solution_doc = parse_solution_doc(raw_json, problem_text=problem_text)
+        return SolutionDocResponse(id=chat_session.id, solution_doc=solution_doc)
+
+    if isinstance(target.content, str) and target.content.strip():
+        solution_doc = parse_solution_doc(target.content.strip(), problem_text=problem_text)
+        return SolutionDocResponse(id=chat_session.id, solution_doc=solution_doc)
+
+    raise HTTPException(status_code=404, detail="No canonical solution found for this chat")
+
+
+@api_router.post("/chat/{session_id}/solution_doc/preview", response_model=SolutionDocResponse)
+async def preview_solution_doc(
+    session_id: int,
+    body: SolutionDocPreviewRequest,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    chat_session = session.get(ChatSession, session_id)
+    if not chat_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if chat_session.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not authorized for this chat")
+
+    assistant_messages = [msg for msg in chat_session.messages if msg.role == "assistant"]
+    target = _pick_primary_solve_message(assistant_messages)
+    problem_text = (
+        _extract_problem_text(
+            target.structured_data if isinstance(target.structured_data, dict) else {},
+            chat_session.messages,
+        )
+        if target
+        else ""
+    )
+    solution_doc = parse_solution_doc(body.markdown or "", problem_text=problem_text)
+    return SolutionDocResponse(id=chat_session.id, solution_doc=solution_doc)
+
+
+@api_router.get("/chat/{session_id}/notes", response_model=NotesResponse)
+async def get_chat_notes(
+    session_id: int,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    chat_session = session.get(ChatSession, session_id)
+    if not chat_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if chat_session.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not authorized for this chat")
+
+    note = session.exec(
+        select(ChatEditNoteV2).where(ChatEditNoteV2.chat_id == session_id, ChatEditNoteV2.user_id == user.id)
+    ).first()
+    if not note:
+        return NotesResponse(notes_md="", version=0, updated_at=datetime.utcnow().isoformat() + "Z")
+
+    return NotesResponse(
+        notes_md=note.notes_md,
+        version=note.version,
+        updated_at=note.updated_at.isoformat() + "Z",
+    )
+
+
+@api_router.put("/chat/{session_id}/notes", response_model=NotesResponse)
+@limiter.limit("30/minute")
+async def put_chat_notes(
+    session_id: int,
+    body: NotesUpdateRequest,
+    request: Request,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    chat_session = session.get(ChatSession, session_id)
+    if not chat_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if chat_session.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not authorized for this chat")
+
+    if len(body.notes_md.encode("utf-8")) > 50_000:
+        raise HTTPException(status_code=413, detail="Notes too large (50KB max)")
+    if _JSX_LIKE_RE.search(body.notes_md or ""):
+        raise HTTPException(status_code=400, detail="JSX/HTML is not allowed in notes")
+
+    note = session.exec(
+        select(ChatEditNoteV2).where(ChatEditNoteV2.chat_id == session_id, ChatEditNoteV2.user_id == user.id)
+    ).first()
+    if not note:
+        if body.expected_version not in (0, 1):
+            raise HTTPException(status_code=409, detail="Version conflict")
+        note = ChatEditNoteV2(
+            chat_id=session_id,
+            user_id=user.id,
+            notes_md=body.notes_md,
+            version=1,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        session.add(note)
+        session.commit()
+        session.refresh(note)
+    else:
+        if body.expected_version != note.version:
+            raise HTTPException(status_code=409, detail="Version conflict")
+        note.notes_md = body.notes_md
+        note.version += 1
+        note.updated_at = datetime.utcnow()
+        session.add(note)
+        session.commit()
+        session.refresh(note)
+
+    return NotesResponse(
+        notes_md=note.notes_md,
+        version=note.version,
+        updated_at=note.updated_at.isoformat() + "Z",
+    )
+
+
+@api_router.get("/chat/{session_id}/edit_copy", response_model=EditCopyResponse)
+async def get_chat_edit_copy(
+    session_id: int,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    chat_session = session.get(ChatSession, session_id)
+    if not chat_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if chat_session.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not authorized for this chat")
+
+    canonical_md, canonical_md_hash = _derive_canonical_markdown(chat_session)
+    row = session.exec(
+        select(ChatEditCopyV2).where(ChatEditCopyV2.chat_id == session_id, ChatEditCopyV2.user_id == user.id)
+    ).first()
+    if not row:
+        row = ChatEditCopyV2(
+            chat_id=session_id,
+            user_id=user.id,
+            edited_md=canonical_md,
+            canonical_md_hash=canonical_md_hash,
+            version=1,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        session.add(row)
+        session.commit()
+        session.refresh(row)
+    elif not (row.edited_md or "").strip():
+        row.edited_md = canonical_md
+        row.canonical_md_hash = canonical_md_hash
+        row.version += 1
+        row.updated_at = datetime.utcnow()
+        session.add(row)
+        session.commit()
+        session.refresh(row)
+    return EditCopyResponse(
+        edited_md=row.edited_md,
+        version=row.version,
+        canonical_md_hash=row.canonical_md_hash,
+        updated_at=row.updated_at.isoformat() + "Z",
+    )
+
+
+@api_router.put("/chat/{session_id}/edit_copy", response_model=EditCopyResponse)
+@limiter.limit("30/minute")
+async def put_chat_edit_copy(
+    session_id: int,
+    body: EditCopyUpdateRequest,
+    request: Request,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    chat_session = session.get(ChatSession, session_id)
+    if not chat_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if chat_session.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not authorized for this chat")
+
+    if len(body.edited_md.encode("utf-8")) > 50_000:
+        raise HTTPException(status_code=413, detail="Edited copy too large (50KB max)")
+    if _JSX_LIKE_RE.search(body.edited_md or ""):
+        raise HTTPException(status_code=400, detail="JSX/HTML is not allowed in edited copy")
+
+    row = session.exec(
+        select(ChatEditCopyV2).where(ChatEditCopyV2.chat_id == session_id, ChatEditCopyV2.user_id == user.id)
+    ).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Edit copy not initialized")
+    if body.expected_version != row.version:
+        raise HTTPException(status_code=409, detail="Version conflict")
+
+    row.edited_md = body.edited_md
+    row.version += 1
+    row.updated_at = datetime.utcnow()
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return EditCopyResponse(
+        edited_md=row.edited_md,
+        version=row.version,
+        canonical_md_hash=row.canonical_md_hash,
+        updated_at=row.updated_at.isoformat() + "Z",
+    )
+
+
+@api_router.post("/chat/{session_id}/edit_copy/reset", response_model=EditCopyResetResponse)
+async def reset_chat_edit_copy(
+    session_id: int,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    chat_session = session.get(ChatSession, session_id)
+    if not chat_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if chat_session.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not authorized for this chat")
+
+    canonical_md, canonical_md_hash = _derive_canonical_markdown(chat_session)
+    row = session.exec(
+        select(ChatEditCopyV2).where(ChatEditCopyV2.chat_id == session_id, ChatEditCopyV2.user_id == user.id)
+    ).first()
+    if not row:
+        row = ChatEditCopyV2(
+            chat_id=session_id,
+            user_id=user.id,
+            edited_md=canonical_md,
+            canonical_md_hash=canonical_md_hash,
+            version=1,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+    else:
+        row.edited_md = canonical_md
+        row.canonical_md_hash = canonical_md_hash
+        row.version += 1
+        row.updated_at = datetime.utcnow()
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return EditCopyResetResponse(
+        edited_md=row.edited_md,
+        version=row.version,
+        canonical_md_hash=row.canonical_md_hash,
+        updated_at=row.updated_at.isoformat() + "Z",
+    )
+
+
+@api_router.post("/debug/chat_seed", response_model=DebugSeedChatResponse)
+async def debug_seed_chat_session(
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    app_env = os.environ.get("APP_ENV", "").upper()
+    if app_env == "PROD":
+        raise HTTPException(status_code=403, detail="Debug endpoint disabled in PROD")
+
+    sample_solution = {
+        "topic": "Algebra",
+        "steps": [
+            {"k": 1, "title": "Isolate x", "body_markdown": "Subtract 7 from both sides: $2x = 12$."},
+            {"k": 2, "title": "Solve", "body_markdown": "Divide by 2 to get $x = 6$."},
+        ],
+        "final_answer": {"text": "x = 6", "latex": "x = 6"},
+        "domain_constraints": ["All real numbers"],
+        "verification": ["Check: $2(6) + 7 = 19$"],
+    }
+    content_lines = [
+        "**Problem:** Solve for x: 2x + 7 = 19",
+        "",
+        "**Solution Steps:**",
+        "1) Subtract 7 from both sides to get $2x = 12$.",
+        "2) Divide by 2 to get $x = 6$.",
+        "",
+        "**Final Answer:**",
+        "$$x = 6$$",
+    ]
+
+    new_chat = ChatSession(
+        user_id=user.id,
+        title="Debug Seeded Session",
+        subject="Math",
+        is_saved=True,
+    )
+    session.add(new_chat)
+    session.commit()
+    session.refresh(new_chat)
+
+    session.add(ChatMessage(session_id=new_chat.id, role="user", content="Solve for x: 2x + 7 = 19"))
+    session.add(
+        ChatMessage(
+            session_id=new_chat.id,
+            role="assistant",
+            content="\n".join(content_lines),
+            structured_data=sample_solution,
+            model_used="debug",
+            tokens_used=0,
+            telemetry={"channel": "canvas_primary"},
+        )
+    )
+    session.commit()
+    return DebugSeedChatResponse(session_id=new_chat.id)
+
+
 def _pick_primary_solve_message(messages: List[ChatMessage]) -> Optional[ChatMessage]:
     for msg in messages:
         if msg.role != "assistant":
@@ -7328,6 +7723,53 @@ def _pick_primary_solve_message(messages: List[ChatMessage]) -> Optional[ChatMes
         if msg.role == "assistant":
             return msg
     return None
+
+
+def _extract_problem_text(structured: dict, messages: List[ChatMessage]) -> str:
+    if isinstance(structured.get("problem"), dict):
+        problem = structured.get("problem") or {}
+        for key in ("original_text", "recognized_text", "text", "statement"):
+            value = problem.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+    if isinstance(structured.get("question"), dict):
+        question = structured.get("question") or {}
+        for key in ("text", "original_text", "statement"):
+            value = question.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+    for msg in messages:
+        if msg.role == "user" and msg.content:
+            return msg.content.strip()
+    return ""
+
+
+def _derive_canonical_markdown(chat_session: ChatSession) -> Tuple[str, str]:
+    assistant_messages = [msg for msg in chat_session.messages if msg.role == "assistant"]
+    target = _pick_primary_solve_message(assistant_messages)
+    if not target:
+        raise HTTPException(status_code=404, detail="No canonical solution found for this chat")
+
+    # Prefer structured_data (canonical JSON) when available.
+    if isinstance(target.structured_data, dict):
+        structured = target.structured_data
+        problem_text = _extract_problem_text(structured, chat_session.messages)
+        raw_json = json.dumps(structured, ensure_ascii=False)
+        solution_doc = parse_solution_doc(raw_json, problem_text=problem_text)
+        canonical_md = render_solution_doc_markdown(solution_doc)
+        canonical_md_hash = hashlib.sha256(canonical_md.encode("utf-8")).hexdigest()
+        return canonical_md, canonical_md_hash
+
+    # Fallback for legacy chats with no structured_data.
+    if isinstance(target.content, str) and target.content.strip():
+        canonical_md = target.content.strip()
+        canonical_md_hash = hashlib.sha256(canonical_md.encode("utf-8")).hexdigest()
+        return canonical_md, canonical_md_hash
+
+    raise HTTPException(status_code=404, detail="No canonical solution found for this chat")
+
+
+_JSX_LIKE_RE = re.compile(r"<[A-Za-z][^>]*>")
 
 
 @api_router.post("/sessions/{session_id}/paper-versions", response_model=PaperVersionSaveResponse)

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import MathRenderer from '../math/MathRendererSwitch';
+import MathRenderer from '../math/MathJaxRenderer';
 
 interface Message {
     id: string;

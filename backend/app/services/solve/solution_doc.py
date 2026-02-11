@@ -816,20 +816,16 @@ def render_solution_doc_markdown(solution_doc: Dict[str, Any]) -> str:
     if _FINAL_ANSWER_PLACEHOLDER_RE.match(final_latex or ""):
         final_latex = ""
 
-    lines: List[str] = [
-        "# Recognized Problem",
-        recognized,
-        "",
-        "# Domain Constraints",
-    ]
+    lines: List[str] = ["# Recognized Problem", recognized, ""]
+
     if domain_constraints:
+        lines.append("# Domain Constraints")
         for item in domain_constraints:
             lines.append(f"- {item}")
-    else:
-        lines.append("- None")
+        lines.append("")
 
-    lines.extend(["", "# Steps"])
     if steps:
+        lines.append("# Steps")
         for idx, step in enumerate(steps, start=1):
             k = int(step.get("k") or idx)
             title = str(step.get("title") or f"Step {k}").strip()
@@ -838,41 +834,31 @@ def render_solution_doc_markdown(solution_doc: Dict[str, Any]) -> str:
             if body:
                 lines.append(body)
             lines.append("")
-    else:
-        lines.append("- None")
-        lines.append("")
 
-    lines.append("# Graphs")
     valid_plots = []
     for plot in plots:
         payload = plot.get("plotly")
         if isinstance(payload, dict) and _is_valid_plotly_payload(payload):
             valid_plots.append(payload)
     if valid_plots:
+        lines.append("# Graphs")
         for payload in valid_plots:
             lines.append("```plotly")
             lines.append(json.dumps(payload, ensure_ascii=False, indent=2))
             lines.append("```")
             lines.append("")
-    else:
-        lines.append("- None")
-        lines.append("")
 
-    lines.append("# Verification")
     if verification:
+        lines.append("# Verification")
         for item in verification:
             lines.append(f"- {item}")
-    else:
-        lines.append("- None")
+        lines.append("")
 
-    lines.extend(
-        [
-            "",
-            "# Final Answer",
-            f"**Text:** {final_text or 'N/A'}",
-            f"**LaTeX:** $${final_latex or 'N/A'}$$",
-        ]
-    )
+    lines.append("# Final Answer")
+    if final_text:
+        lines.append(f"**Text:** {final_text}")
+    if final_latex:
+        lines.append(f"**LaTeX:** $${final_latex}$$")
     return "\n".join(lines).strip() + "\n"
 
 

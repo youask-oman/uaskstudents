@@ -1,12 +1,13 @@
 "use client";
 
 import React from "react";
-import MathRenderer from "@/components/math/MathRendererSwitch";
+import MathRenderer from "@/components/math/MathJaxRenderer";
 import styles from "./MathCanvas.module.css";
 
 interface LeftNotebookSidebarProps {
   notebookTitle: string;
   notebookSubtitle: string;
+  sessionId?: string;
   outlineItems?: Array<{
     id: string;
     label: string;
@@ -34,6 +35,7 @@ const navItems = [
 export default function LeftNotebookSidebar({
   notebookTitle,
   notebookSubtitle,
+  sessionId,
   outlineItems = [],
   classification,
   tokenUsage = { input_tokens: 0, output_tokens: 0, total_tokens: 0 },
@@ -101,6 +103,17 @@ export default function LeftNotebookSidebar({
             <span>{item.label}</span>
           </button>
         ))}
+        {sessionId && (
+          <a
+            href={`/edit/${sessionId}`}
+            className={styles.navItem}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+              edit
+            </span>
+            <span>Edit & Notes</span>
+          </a>
+        )}
       </nav>
 
       {outlineItems.length > 0 ? (

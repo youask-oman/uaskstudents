@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import MathRenderer from "@/components/math/MathRendererSwitch";
+import MathRenderer from "@/components/math/MathJaxRenderer";
 
 type CaseItem = {
     id: string;

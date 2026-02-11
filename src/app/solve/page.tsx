@@ -4,7 +4,7 @@ import DashboardNavBar from "@/components/DashboardNavBar";
 import { useState, useEffect, useRef, useMemo } from "react";
 import type { TimelineStep } from "@/components/solve/ProgressTimeline";
 import { useRouter } from "next/navigation";
-import MathRenderer from "@/components/math/MathRendererSwitch";
+import MathRenderer from "@/components/math/MathJaxRenderer";
 import MathRendererMJX from "@/components/MathRendererMJX";
 import MathInput, { MathInputRef } from "@/components/MathInput";
 import { MODES, ModeId, Suggestion } from "@/lib/modes";

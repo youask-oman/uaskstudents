@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import type { Editor } from "@tiptap/core";
-import MathRenderer from "@/components/math/MathRendererSwitch";
+import MathRenderer from "@/components/math/MathJaxRenderer";
 import VisualRenderer from "@/components/workspace/VisualRenderer";
 import RecognitionBox from "./RecognitionBox";
 import RichTextElementEditor, { type RichTextCommitPayload } from "./RichTextElementEditor";

@@ -4,7 +4,7 @@ import SolutionStepsBlock from "@/components/math-canvas/SolutionStepsBlock";
 
 const mockEditorRender = jest.fn();
 
-jest.mock("@/components/math/MathRendererSwitch", () => ({
+jest.mock("@/components/math/MathJaxRenderer", () => ({
   __esModule: true,
   default: ({ content }: { content: string }) => <span data-testid="mock-math">{content}</span>,
 }));
