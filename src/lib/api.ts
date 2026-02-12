@@ -3,7 +3,7 @@
 export const API_BASE_URL =
     process.env.NEXT_PUBLIC_API_BASE_URL ||
     process.env.NEXT_PUBLIC_API_URL ||
-    "http://localhost:9000";
+    "";
 
 export const getAuthToken = () =>
     typeof window !== "undefined" ? localStorage.getItem("token") : null;

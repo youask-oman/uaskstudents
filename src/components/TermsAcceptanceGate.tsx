@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { API_BASE_URL } from "@/lib/api";
 
@@ -18,10 +18,7 @@ export default function TermsAcceptanceGate() {
   const [loading, setLoading] = useState(false);
   const [accepting, setAccepting] = useState(false);
 
-  const token = useMemo(
-    () => (typeof window !== "undefined" ? localStorage.getItem("token") : null),
-    [pathname]
-  );
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   const shouldSkip = pathname?.startsWith("/legal/") || pathname === "/login" || pathname === "/signup";
 

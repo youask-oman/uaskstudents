@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { fetchWalletSummary, WalletSummary } from "@/lib/wallet";
 import { useTheme } from "@/hooks/useTheme";
@@ -38,17 +38,13 @@ export default function DashboardNavBar() {
 
     const router = useRouter();
     const pathname = usePathname();
-    const [currentTab, setCurrentTab] = useState<string | null>(null);
+    const searchParams = useSearchParams();
+    const currentTab = searchParams.get("tab");
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setMounted(true);
-        const syncTabFromUrl = () => {
-            if (typeof window === "undefined") return;
-            const params = new URLSearchParams(window.location.search);
-            setCurrentTab(params.get("tab"));
-        };
         const refreshUserInfo = () => {
             if (typeof window === "undefined") return;
             const storedUser = getStoredUser();
@@ -86,12 +82,10 @@ export default function DashboardNavBar() {
         };
 
         refreshUserInfo();
-        syncTabFromUrl();
         void refreshWallet();
         document.addEventListener("mousedown", handleClickOutside);
         window.addEventListener("storage", handleStorage);
         window.addEventListener("focus", refreshWallet);
-        window.addEventListener("popstate", syncTabFromUrl);
         const refreshInterval = window.setInterval(() => {
             void refreshWallet();
         }, 20000);
@@ -100,16 +94,9 @@ export default function DashboardNavBar() {
             document.removeEventListener("mousedown", handleClickOutside);
             window.removeEventListener("storage", handleStorage);
             window.removeEventListener("focus", refreshWallet);
-            window.removeEventListener("popstate", syncTabFromUrl);
             window.clearInterval(refreshInterval);
         };
     }, []);
-
-    useEffect(() => {
-        if (typeof window === "undefined") return;
-        const params = new URLSearchParams(window.location.search);
-        setCurrentTab(params.get("tab"));
-    }, [pathname]);
 
     const handleSignOut = () => {
         localStorage.clear();

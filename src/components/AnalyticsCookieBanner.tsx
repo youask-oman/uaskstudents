@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 const STORAGE_KEY = "analytics_cookie_consent";
 
@@ -9,15 +9,14 @@ export default function AnalyticsCookieBanner() {
     () => (process.env.NEXT_PUBLIC_ENABLE_ANALYTICS_COOKIES || "").toLowerCase() === "true",
     []
   );
-  const [visible, setVisible] = useState(false);
-  const [value, setValue] = useState<"granted" | "denied" | null>(null);
-
-  useEffect(() => {
-    if (!enabled) return;
-    const current = localStorage.getItem(STORAGE_KEY) as "granted" | "denied" | null;
-    if (!current) setVisible(true);
-    setValue(current);
-  }, [enabled]);
+  const [value, setValue] = useState<"granted" | "denied" | null>(() => {
+    if (!enabled || typeof window === "undefined") return null;
+    return localStorage.getItem(STORAGE_KEY) as "granted" | "denied" | null;
+  });
+  const [visible, setVisible] = useState<boolean>(() => {
+    if (!enabled || typeof window === "undefined") return false;
+    return !localStorage.getItem(STORAGE_KEY);
+  });
 
   if (!enabled || !visible) return null;
 

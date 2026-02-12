@@ -308,6 +308,24 @@ def _extract_verification_problem_text(problem_text: str) -> str:
 
 
 def _select_verification_problem_text(problem_text: str, math_obj: Any) -> str:
+    full_text = str(problem_text or "")
+    full_lower = full_text.lower()
+    analysis_markers = (
+        "simplify",
+        "domain restriction",
+        "hole",
+        "critical point",
+        "critical points",
+        "classify",
+        "newton",
+        "intersection",
+        "intersections",
+        "system",
+        "equilibrium",
+    )
+    if any(marker in full_lower for marker in analysis_markers):
+        return full_text.replace("^", "**")
+
     extracted = _extract_verification_problem_text(problem_text)
     if extracted and "=" in extracted and len(extracted) <= 180:
         return extracted.replace("^", "**")
@@ -935,10 +953,26 @@ def _is_verification_applicable(mode: str, problem_text: str) -> bool:
     if mode_upper in {"PROOF", "OTHER"}:
         return False
     text = (problem_text or "").lower()
-    if "=" not in text:
-        return False
     if any(keyword in text for keyword in ("prove", "show that", "integral", "integrate", "inequality")):
         return False
+    if "=" in text:
+        return True
+    analysis_keywords = (
+        "simplify",
+        "domain",
+        "hole",
+        "critical point",
+        "critical points",
+        "classify",
+        "newton",
+        "root",
+        "roots",
+        "intersection",
+        "intersections",
+        "equilibrium",
+    )
+    if any(keyword in text for keyword in analysis_keywords):
+        return True
     return True
 
 

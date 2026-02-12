@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import SystemConfigPanel from "@/components/admin/SystemConfigPanel";
+import { API_BASE_URL } from "@/lib/api";
 
 type FilterState = {
     mode: string;
@@ -158,7 +159,7 @@ export default function AdminDashboardPage() {
     const [filters, setFilters] = useState<FilterState>(defaultFilters);
     const [isLoading, setIsLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:9000";
+    const baseUrl = API_BASE_URL;
     const router = useRouter();
     const settingsPanelRef = useRef<HTMLDivElement | null>(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);

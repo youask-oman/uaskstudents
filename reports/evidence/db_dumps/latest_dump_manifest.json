@@ -1,0 +1,23 @@
+{
+  "generated_at_utc": "2026-02-12T17:03:41.908387Z",
+  "database": "uask_db",
+  "user": "uask_user",
+  "container": "uask_postgres",
+  "artifacts": [
+    {
+      "file": "reports/evidence/db_dumps/uask_db_20260212_090338.dump",
+      "size_bytes": 13110623,
+      "sha256": "597e0407b9498b5365f58ef238265828fffc3e476764ce922ea60c8d80f2613c"
+    },
+    {
+      "file": "reports/evidence/db_dumps/uask_db_20260212_090338.sql",
+      "size_bytes": 44922346,
+      "sha256": "38f72578e6bc06e9e43e3408763312aeb60a987171558a298dda5f27f24935bf"
+    }
+  ],
+  "verification": {
+    "custom_dump_pg_restore_list": true,
+    "sql_header_and_key_tables_present": true,
+    "non_empty_files": true
+  }
+}

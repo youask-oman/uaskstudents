@@ -160,7 +160,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, tier = "FREE", req
     const [figureCrops, setFigureCrops] = React.useState<Record<string, string>>({});
     const [cropResetToken, setCropResetToken] = React.useState(0);
     const [viewportSize, setViewportSize] = React.useState<{ width: number; height: number } | null>(null);
-    const [ocrMetadata, setOcrMetadata] = React.useState({
+    const [, setOcrMetadata] = React.useState({
         ocr_confidence: 0,
         ocr_warnings: [] as string[],
         ocr_source: "image",

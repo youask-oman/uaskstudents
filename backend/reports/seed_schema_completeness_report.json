@@ -106,13 +106,13 @@
   },
   "db_row_counts": {
     "user_internal": 5,
-    "systemconfig": 30,
-    "prompt_templates": 10,
+    "systemconfig": 45,
+    "prompt_templates": 21,
     "prompt_bindings": 9,
-    "json_schemas": 8,
+    "json_schemas": 12,
     "providermodelpricing": 8,
     "credit_program_definition": 6,
-    "plan": 5,
+    "plan": 6,
     "school": 117960,
     "expected_school": 117960
   },
@@ -121,21 +121,21 @@
     "invoice": 0,
     "invoice_line_item": 0,
     "refund": 0,
-    "subscription": 0,
+    "subscription": 3,
     "subscriptionperiod": 0,
-    "chatsession": 0,
-    "chatmessage": 0,
-    "solveroutputattempt": 0,
-    "billingledger": 0
+    "chatsession": 124,
+    "chatmessage": 248,
+    "solveroutputattempt": 264,
+    "billingledger": 13
   },
   "internal_users_check": [
-    "admin@uask.ai",
     "loai@uask.ai",
     "michael.b@uask.ai",
     "sam.wilson@uask.ai",
-    "student@uask.ai"
+    "student@uask.ai",
+    "admin@uask.ai"
   ],
-  "verification_success": true,
+  "verification_success": false,
   "expected_internal_users": 5,
   "integrity_issues": "PASS"
 }

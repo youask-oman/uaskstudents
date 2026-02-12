@@ -7520,26 +7520,52 @@ async def solve_v3_stream_endpoint(
                 "output_schema_version": binding_meta.get("output_schema_version"),
             })
 
+            response_kind = str((final_data or {}).get("response_kind") or "").strip().lower()
+            clarification_obj = (final_data or {}).get("clarification") if isinstance((final_data or {}).get("clarification"), dict) else {}
+            solution_obj = (final_data or {}).get("solution") if isinstance((final_data or {}).get("solution"), dict) else {}
+            solution_status = str(solution_obj.get("status") or (final_data or {}).get("status") or "").strip().lower()
+            is_clarification_response = (
+                response_kind == "clarification"
+                or bool(clarification_obj.get("needs_clarification"))
+                or solution_status in {"needs_clarification", "ambiguous"}
+            )
+
             if use_billing_v2 and debit_cost > 0:
-                from decimal import Decimal
                 from app.services.billing_ledger_service_v2 import billing_ledger_service_v2
-                cost_usd = _calc_cost(
-                    openai_telemetry.get("total_tokens"),
-                    openai_telemetry.get("model"),
-                    openai_telemetry.get("input_tokens"),
-                    openai_telemetry.get("output_tokens"),
-                )
-                billing_ledger_service_v2.settle_hold(
-                    session=session,
-                    request_id=request_id,
-                    actual_credits=Decimal(str(debit_cost)),
-                    tier=effective_billing_tier.upper(),
-                    provider_cost_usd=Decimal(str(cost_usd or 0.0)),
-                    attempt_id=attempt_id,
-                    is_billable=True,
+                if is_clarification_response:
+                    billing_ledger_service_v2.release_hold(session, request_id=request_id, attempt_id=attempt_id)
+                    session.commit()
+                    deduct_committed = False
+                else:
+                    from decimal import Decimal
+
+                    cost_usd = _calc_cost(
+                        openai_telemetry.get("total_tokens"),
+                        openai_telemetry.get("model"),
+                        openai_telemetry.get("input_tokens"),
+                        openai_telemetry.get("output_tokens"),
+                    )
+                    billing_ledger_service_v2.settle_hold(
+                        session=session,
+                        request_id=request_id,
+                        actual_credits=Decimal(str(debit_cost)),
+                        tier=effective_billing_tier.upper(),
+                        provider_cost_usd=Decimal(str(cost_usd or 0.0)),
+                        attempt_id=attempt_id,
+                        is_billable=True,
+                    )
+                    session.commit()
+                    deduct_committed = True
+            elif (not use_billing_v2) and deduct_committed and debit_cost > 0 and is_clarification_response:
+                subscription_service.refund_credits(
+                    session,
+                    sub_id,
+                    debit_cost,
+                    "Clarification response is non-billable",
+                    request_id,
                 )
                 session.commit()
-                deduct_committed = True
+                deduct_committed = False
             record_request_event(session, {
                 "request_id": request_id,
                 "user_id": user_id,

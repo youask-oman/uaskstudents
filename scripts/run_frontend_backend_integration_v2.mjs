@@ -260,12 +260,12 @@ async function crawlAdminRoutes(page) {
     let mainStatus = null;
     let ok = true;
     try {
-      const resp = await page.goto(`${BASE_URL}${route}`, { waitUntil: "networkidle", timeout: 45000 });
+      const resp = await page.goto(`${BASE_URL}${route}`, { waitUntil: "domcontentloaded", timeout: 45000 });
       mainStatus = resp?.status() ?? null;
       if (!(mainStatus === 200 || (mainStatus >= 300 && mainStatus < 400))) {
         ok = false;
       }
-    } catch (err) {
+    } catch {
       ok = false;
       mainStatus = -1;
     }

@@ -56,25 +56,25 @@ CASES: List[LiveCase] = [
         index=3,
         tier="standard",
         min_steps=6,
-        prompt="Compute the area of the region enclosed by $$y=x^2$$ and $$y=2x+3$$. Include a plot shading the region.",
+        prompt="Let f(x) = (x^2 - 4)/(x - 2). Simplify the function, state the domain restriction, identify the hole coordinate, and include a plot.",
     ),
     LiveCase(
         index=4,
         tier="standard",
         min_steps=6,
-        prompt="Solve the initial value problem $$\\frac{dy}{dx}=y(1-y), \\quad y(0)=\\frac{1}{2}$$. Show at least 6 steps and include a plot of $$y(x)$$ on $$[-6,6]$$.",
+        prompt="Given f(x)=x^3-3x+1, find all critical points, classify each as local max/min using derivative tests, and include a plot.",
     ),
     LiveCase(
         index=5,
         tier="research",
         min_steps=10,
-        prompt="Consider the system\n$$\\dot{x}=x(1-x)-\\alpha xy, \\quad \\dot{y}=\\beta y(1-y)-\\gamma xy$$\nwith parameters $$\\alpha=1.2,\\ \\beta=0.9,\\ \\gamma=1.1.$$  \n(a) Find all equilibrium points in the real plane.  \n(b) Compute the Jacobian at each equilibrium and classify stability using eigenvalues.  \n(c) Include a phase portrait plot showing trajectories and equilibrium points for $$x,y\\in[0,2].$$",
+        prompt="Let f(x)=x^5-5x+1. Determine the number of real roots using critical points, approximate all real roots to 4 decimals with Newton-style iterations, and include a plot showing roots and critical points.",
     ),
     LiveCase(
         index=6,
         tier="research",
         min_steps=10,
-        prompt="Let $$f(x)=x^5-5x+1$$.  \n(a) Use calculus to determine the number of real roots of $$f(x)=0$$ by analyzing critical points and sign changes.  \n(b) Approximate all real roots to 4 decimal places using Newton’s method starting from suitable initial guesses.  \n(c) Include a plot of $$f(x)$$ on $$[-3,3]$$ showing roots and critical points.",
+        prompt="Find intersections of the system x^2+y^2=4 and y=e^x-1, report intersection points to 4 decimals, and include a plot of both curves with intersections marked.",
     ),
 ]
 

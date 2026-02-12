@@ -1,9 +1,0 @@
-{
-  "question_text": "Solve the equation $$x^2 - 5x + 6 = 0$$ and include a plot of $$y=x^2-5x+6$$ showing the x-intercepts.",
-  "requested_mode": "detailed",
-  "mode": "SOLVE",
-  "tier": "standard",
-  "graph_mode": "on",
-  "preferred_response_language": "English",
-  "domain_mode": "reals"
-}

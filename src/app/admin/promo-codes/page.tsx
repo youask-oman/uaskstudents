@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { API_BASE_URL, parseApiError } from "@/lib/api";
 import { useToast } from "@/components/ui/ToastProvider";
 
@@ -35,7 +35,7 @@ export default function PromoCodesPage() {
         is_active: true,
     });
 
-    const fetchCodes = async () => {
+    const fetchCodes = useCallback(async () => {
         try {
             const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
             const res = await fetch(`${API_BASE_URL}/api/admin/promo-codes`, {
@@ -54,11 +54,11 @@ export default function PromoCodesPage() {
                 message: e instanceof Error ? e.message : "Unexpected error",
             });
         }
-    };
+    }, [pushToast]);
 
     useEffect(() => {
         fetchCodes();
-    }, []);
+    }, [fetchCodes]);
 
     const startEdit = (code: PromoCode) => {
         setEditingId(code.id);
