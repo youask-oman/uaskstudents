@@ -1,0 +1,534 @@
+{
+  "schema_version": "v2",
+  "tier": "STANDARD",
+  "mode": "PLOT",
+  "response_kind": "solution",
+  "_raw_llm_output": "{\"schema_version\":\"v2\",\"tier\":\"STANDARD\",\"mode\":\"PLOT\",\"response_kind\":\"solution\",\"_raw_llm_output\":\"Repaired solution: roots x=2 and x=-2. Plot requested.\",\"assumptions\":[\"domain: real numbers\",\"no additional constraints\"],\"refusal\":{\"is_refusal\":false,\"reason\":null,\"safe_alternative\":null},\"problem\":{\"original_text\":\"Solve x^2 - 4 = 0 and include a plot of y=x^2-4.\",\"normalized_text\":\"Solve $x^2-4=0$ and include a plot of $y=x^2-4$.\",\"language\":{\"user_language\":\"english\",\"response_language\":\"english\",\"preferred_response_language\":\"english\"},\"detected_tasks\":[\"solve\",\"plot\",\"equation\",\"graph\"]},\"classification\":{\"grade_band\":\"grades_9_10\",\"domain\":\"algebra\",\"topic\":\"quadratic equation\",\"difficulty\":\"easy\"},\"clarification\":{\"needs_clarification\":false,\"questions\":[],\"note\":null},\"steps\":[{\"index\":1,\"title\":\"Bring to standard quadratic form\",\"explanation\":\"Write the equation as a quadratic: $x^2-4=0$ is already in standard form.\",\"math_latex\":[\"x^2-4=0\"],\"rules_used\":[\"standard_form\"],\"plots_used\":[\"none\"],\"checks\":[\"expression is quadratic\"],\"notes\":null},{\"index\":2,\"title\":\"Factor the quadratic\",\"explanation\":\"Factor $x^2-4$ as a difference of squares: $x^2-4=(x-2)(x+2)$.\",\"math_latex\":[\"x^2-4=(x-2)(x+2)\"],\"rules_used\":[\"difference_of_squares\"],\"plots_used\":[\"none\"],\"checks\":[\"factoring correct\"],\"notes\":null},{\"index\":3,\"title\":\"Solve for roots\",\"explanation\":\"Set each factor to zero and solve: $x-2=0\\\\Rightarrow x=2$, $x+2=0\\\\Rightarrow x=-2$.\",\"math_latex\":[\"x-2=0\\\\Rightarrow x=2\",\"x+2=0\\\\Rightarrow x=-2\"],\"rules_used\":[\"zero_product_property\"],\"plots_used\":[\"none\"],\"checks\":[\"substitute roots into original equation yields $0$\"],\"notes\":null},{\"index\":4,\"title\":\"Validate domain\",\"explanation\":\"Domain is real numbers; both roots $x=2$ and $x=-2$ are real and valid.\",\"math_latex\":[\"x\\\\in\\\\mathbb{R}\"],\"rules_used\":[\"domain_check\"],\"plots_used\":[\"none\"],\"checks\":[\"radicands and denominators not an issue\"],\"notes\":null},{\"index\":5,\"title\":\"Plot specification\",\"explanation\":\"Provide a plot recipe for $y=x^2-4$ over a symmetric domain showing the roots.\",\"math_latex\":[\"y=x^2-4\"],\"rules_used\":[\"plot_recipe\"],\"plots_used\":[\"function_2d\"],\"checks\":[\"plot includes key points at roots\"],\"notes\":null}],\"final_answer\":{\"answer_text\":\"The solutions are $x=2$ and $x=-2$.\",\"answer_latex\":\"x=2,\\\\; x=-2\",\"units\":null,\"values\":[{\"label\":\"root1\",\"value\":\"2\",\"value_latex\":\"2\"},{\"label\":\"root2\",\"value\":\"-2\",\"value_latex\":\"-2\"}]},\"verification\":{\"verified\":false,\"verification_method\":\"none\",\"unverified_reason\":\"Repaired candidates pending backend verification.\",\"assumptions_used\":[\"domain: real numbers\"],\"candidate_solutions\":[{\"value_text\":\"x=2\",\"value_latex\":\"2\"},{\"value_text\":\"x=-2\",\"value_latex\":\"-2\"}],\"dropped_candidates\":[],\"final_solutions\":[],\"verification_meta\":{\"symbolic_parse\":true,\"duration_ms\":null,\"candidates_checked\":null,\"timed_out\":false,\"route\":\"openai\"}},\"visuals\":{\"should_visualize\":true,\"decision_reason\":\"User requested a plot and graph_mode is on; simple quadratic over real domain.\",\"plots\":[{\"kind\":\"function_2d\",\"title\":\"Plot of $y=x^2-4$\",\"subtitle\":null,\"x_label\":\"x\",\"y_label\":\"y\",\"z_label\":null,\"domain\":{\"x_min\":-5,\"x_max\":5,\"y_min\":null,\"y_max\":null},\"series\":[{\"name\":\"y=x^2-4\",\"mode\":\"lines\",\"x\":[\"-5\",\"-4.9\",\"-4.8\",\"-4.7\",\"-4.6\",\"-4.5\",\"-4.4\",\"-4.3\",\"-4.2\",\"-4.1\",\"-4\",\"-3.9\",\"-3.8\",\"-3.7\",\"-3.6\",\"-3.5\",\"-3.4\",\"-3.3\",\"-3.2\",\"-3.1\",\"-3\",\"-2.9\",\"-2.8\",\"-2.7\",\"-2.6\",\"-2.5\",\"-2.4\",\"-2.3\",\"-2.2\",\"-2.1\",\"-2\",\"-1.9\",\"-1.8\",\"-1.7\",\"-1.6\",\"-1.5\",\"-1.4\",\"-1.3\",\"-1.2\",\"-1.1\",\"-1\",\"-0.9\",\"-0.8\",\"-0.7\",\"-0.6\",\"-0.5\",\"-0.4\",\"-0.3\",\"-0.2\",\"-0.1\",\"0\",\"0.1\",\"0.2\",\"0.3\",\"0.4\",\"0.5\",\"0.6\",\"0.7\",\"0.8\",\"0.9\",\"1\",\"1.1\",\"1.2\",\"1.3\",\"1.4\",\"1.5\",\"1.6\",\"1.7\",\"1.8\",\"1.9\",\"2\",\"2.1\",\"2.2\",\"2.3\",\"2.4\",\"2.5\",\"2.6\",\"2.7\",\"2.8\",\"2.9\",\"3\",\"3.1\",\"3.2\",\"3.3\",\"3.4\",\"3.5\",\"3.6\",\"3.7\",\"3.8\",\"3.9\",\"4\",\"4.1\",\"4.2\",\"4.3\",\"4.4\",\"4.5\",\"4.6\",\"4.7\",\"4.8\",\"4.9\",\"5\"],\"y\":[\"21\",\"20.01\",\"19.04\",\"18.09\",\"17.16\",\"16.25\",\"15.36\",\"14.49\",\"13.64\",\"12.81\",\"12\",\"9.21\",\"8.44\",\"7.69\",\"6.96\",\"6.25\",\"5.56\",\"4.89\",\"4.24\",\"3.61\",\"3\",\"2.41\",\"1.84\",\"1.29\",\"0.76\",\"0.25\",\"-0.24\",\"-0.71\",\"-1.16\",\"-1.59\",\"0\",\"0.61\",\"1.24\",\"1.89\",\"2.56\",\"3.25\",\"3.96\",\"4.69\",\"5.44\",\"6.21\",\"7\",\"7.81\",\"8.64\",\"9.49\",\"10.36\",\"11.25\",\"12.16\",\"13.09\",\"14.04\",\"15.01\",\"16\",\"17.01\",\"18.04\",\"19.09\",\"20.16\",\"21.25\",\"22.36\",\"23.49\",\"24.64\",\"25.81\",\"27\",\"28.21\",\"29.44\",\"30.69\",\"31.96\",\"33.25\",\"34.56\",\"35.89\",\"37.24\",\"38.61\",\"40\",\"40.81\",\"41.64\",\"42.49\",\"43.36\",\"44.25\",\"45.16\",\"46.09\",\"47.04\",\"48.01\",\"49\",\"50.01\",\"51.04\",\"52.09\",\"53.16\",\"54.25\",\"55.36\",\"56.49\",\"57.64\",\"58.81\",\"60\",\"61.21\",\"62.44\",\"63.69\",\"64.96\",\"66.25\",\"67.56\",\"68.89\",\"70.24\",\"71.61\",\"73\",\"75\",\"77\",\"79\",\"81\"]}],\"key_points\":[{\"label\":\"root\",\"x\":2,\"y\":0},{\"label\":\"root\",\"x\":-2,\"y\":0},{\"label\":\"vertex\",\"x\":0,\"y\":-4}],\"render_hint\":{\"preferred\":\"matplotlib\",\"notes\":null},\"recipe\":{\"generator\":\"function_2d\",\"expr\":\"y = x**2 - 4\",\"system\":null,\"symbols\":[\"x\",\"y\"],\"data_ref\":null,\"params\":{ \"zeta\":null,\"beta\":null,\"omega\":null,\"gamma\":null},\"initial_conditions\":{ \"x0\":null,\"v0\":null},\"sampling\":{\"t_min\":-5,\"t_max\":5,\"dt\":0.1,\"samples\":null,\"discard\":null,\"samples_per_period\":null,\"transient_periods\":null,\"keep_periods\":null},\"sweep\":{ \"param\":null,\"min\":null,\"max\":null,\"steps\":null}},\"rendered\":{\"image_ref\":null,\"mime\":null,\"width_px\":null,\"height_px\":null,\"caption\":null}}],\"alternative_visual\":{\"kind\":\"none\",\"description\":\"Default plot provided\",\"data\":\"/recipe\"}},\"quality\":{\"confidence\":0.9,\"common_mistakes\":[\"Forgetting to check extraneous solutions (none here)\",\"Incorrect factoring of difference of squares\",\"Sign errors when solving factors\",\"Plot sampling too coarse\",\"Mismatched units (not applicable)\"]},\"runtime_meta\":{\"request_id\":null,\"attempt_id\":null,\"provider\":null,\"model\":null,\"input_tokens\":null,\"output_tokens\":null,\"total_tokens\":null,\"latency_ms_total\":null,\"latency_ms_openai\":null,\"finish_reason\":null,\"truncated\":null,\"cache_hit\":null,\"timing_ms\":{\"parse\":null,\"canonicalize\":null,\"openai\":null,\"verify\":null,\"total\":null}}}",
+  "assumptions": [],
+  "refusal": {
+    "is_refusal": false,
+    "reason": null,
+    "safe_alternative": null
+  },
+  "problem": {
+    "original_text": "Solve x^2 - 4 = 0 and include a plot of y=x^2-4.",
+    "normalized_text": "Solve $x^2-4=0$ and include a plot of $y=x^2-4$.",
+    "language": {
+      "user_language": "english",
+      "response_language": "english",
+      "preferred_response_language": "english"
+    },
+    "detected_tasks": [
+      "solve",
+      "plot",
+      "equation",
+      "graph"
+    ]
+  },
+  "classification": {
+    "grade_band": "grades_9_10",
+    "domain": "algebra",
+    "topic": "quadratic equation",
+    "difficulty": "easy"
+  },
+  "clarification": {
+    "needs_clarification": false,
+    "questions": [],
+    "note": null
+  },
+  "steps": [
+    {
+      "index": 1,
+      "title": "Bring to standard quadratic form",
+      "explanation": "Write the equation as a quadratic: $x^2-4=0$ is already in standard form.",
+      "math_latex": [
+        "x^2-4=0"
+      ],
+      "rules_used": [
+        "standard_form"
+      ],
+      "plots_used": [
+        "none"
+      ],
+      "checks": [
+        "expression is quadratic"
+      ],
+      "notes": null
+    },
+    {
+      "index": 2,
+      "title": "Factor the quadratic",
+      "explanation": "Factor $x^2-4$ as a difference of squares: $x^2-4=(x-2)(x+2)$.",
+      "math_latex": [
+        "x^2-4=(x-2)(x+2)"
+      ],
+      "rules_used": [
+        "difference_of_squares"
+      ],
+      "plots_used": [
+        "none"
+      ],
+      "checks": [
+        "factoring correct"
+      ],
+      "notes": null
+    },
+    {
+      "index": 3,
+      "title": "Solve for roots",
+      "explanation": "Set each factor to zero and solve: $x-2=0\\Rightarrow x=2$, $x+2=0\\Rightarrow x=-2$.",
+      "math_latex": [
+        "x-2=0\\Rightarrow x=2",
+        "x+2=0\\Rightarrow x=-2"
+      ],
+      "rules_used": [
+        "zero_product_property"
+      ],
+      "plots_used": [
+        "none"
+      ],
+      "checks": [
+        "substitute roots into original equation yields $0$"
+      ],
+      "notes": null
+    },
+    {
+      "index": 4,
+      "title": "Validate domain",
+      "explanation": "Domain is real numbers; both roots $x=2$ and $x=-2$ are real and valid.",
+      "math_latex": [
+        "x\\in\\mathbb{R}"
+      ],
+      "rules_used": [
+        "domain_check"
+      ],
+      "plots_used": [
+        "none"
+      ],
+      "checks": [
+        "radicands and denominators not an issue"
+      ],
+      "notes": null
+    },
+    {
+      "index": 5,
+      "title": "Plot specification",
+      "explanation": "Provide a plot recipe for $y=x^2-4$ over a symmetric domain showing the roots.",
+      "math_latex": [
+        "y=x^2-4"
+      ],
+      "rules_used": [
+        "plot_recipe"
+      ],
+      "plots_used": [
+        "function_2d"
+      ],
+      "checks": [
+        "plot includes key points at roots"
+      ],
+      "notes": null
+    },
+    {
+      "index": 6,
+      "title": "Step 6",
+      "explanation": "Continue the verified derivation from the previous step.",
+      "math_latex": [],
+      "rules_used": [],
+      "plots_used": [],
+      "checks": [],
+      "notes": null
+    }
+  ],
+  "final_answer": {
+    "answer_text": "Unverified explanation: The solutions are $x=2$ and $x=-2$.",
+    "answer_latex": "x=2,\\; x=-2",
+    "units": null,
+    "values": [
+      {
+        "label": "root1",
+        "value": "2",
+        "value_latex": "2"
+      },
+      {
+        "label": "root2",
+        "value": "-2",
+        "value_latex": "-2"
+      }
+    ]
+  },
+  "verification": {
+    "verified": false,
+    "verification_method": "none",
+    "unverified_reason": "unable_to_verify_symbolically",
+    "assumptions_used": [],
+    "candidate_solutions": [
+      {
+        "value_text": "x=2",
+        "value_latex": "2"
+      },
+      {
+        "value_text": "x=-2",
+        "value_latex": "-2"
+      }
+    ],
+    "dropped_candidates": [],
+    "final_solutions": [],
+    "verification_meta": {
+      "symbolic_parse": false,
+      "duration_ms": 1,
+      "candidates_checked": 0,
+      "timed_out": false,
+      "route": "openai"
+    }
+  },
+  "visuals": {
+    "should_visualize": true,
+    "decision_reason": "Forced ON by user graph_mode=on",
+    "plots": [
+      {
+        "kind": "function_2d",
+        "title": "Plot of $y=x^2-4$",
+        "subtitle": null,
+        "x_label": "x",
+        "y_label": "y",
+        "z_label": null,
+        "domain": {
+          "x_min": -5,
+          "x_max": 5,
+          "y_min": null,
+          "y_max": null
+        },
+        "series": [
+          {
+            "name": "y=x^2-4",
+            "mode": "lines",
+            "x": [
+              "-5",
+              "-4.9",
+              "-4.8",
+              "-4.7",
+              "-4.6",
+              "-4.5",
+              "-4.4",
+              "-4.3",
+              "-4.2",
+              "-4.1",
+              "-4",
+              "-3.9",
+              "-3.8",
+              "-3.7",
+              "-3.6",
+              "-3.5",
+              "-3.4",
+              "-3.3",
+              "-3.2",
+              "-3.1",
+              "-3",
+              "-2.9",
+              "-2.8",
+              "-2.7",
+              "-2.6",
+              "-2.5",
+              "-2.4",
+              "-2.3",
+              "-2.2",
+              "-2.1",
+              "-2",
+              "-1.9",
+              "-1.8",
+              "-1.7",
+              "-1.6",
+              "-1.5",
+              "-1.4",
+              "-1.3",
+              "-1.2",
+              "-1.1",
+              "-1",
+              "-0.9",
+              "-0.8",
+              "-0.7",
+              "-0.6",
+              "-0.5",
+              "-0.4",
+              "-0.3",
+              "-0.2",
+              "-0.1",
+              "0",
+              "0.1",
+              "0.2",
+              "0.3",
+              "0.4",
+              "0.5",
+              "0.6",
+              "0.7",
+              "0.8",
+              "0.9",
+              "1",
+              "1.1",
+              "1.2",
+              "1.3",
+              "1.4",
+              "1.5",
+              "1.6",
+              "1.7",
+              "1.8",
+              "1.9",
+              "2",
+              "2.1",
+              "2.2",
+              "2.3",
+              "2.4",
+              "2.5",
+              "2.6",
+              "2.7",
+              "2.8",
+              "2.9",
+              "3",
+              "3.1",
+              "3.2",
+              "3.3",
+              "3.4",
+              "3.5",
+              "3.6",
+              "3.7",
+              "3.8",
+              "3.9",
+              "4",
+              "4.1",
+              "4.2",
+              "4.3",
+              "4.4",
+              "4.5",
+              "4.6",
+              "4.7",
+              "4.8",
+              "4.9",
+              "5"
+            ],
+            "y": [
+              "21",
+              "20.01",
+              "19.04",
+              "18.09",
+              "17.16",
+              "16.25",
+              "15.36",
+              "14.49",
+              "13.64",
+              "12.81",
+              "12",
+              "9.21",
+              "8.44",
+              "7.69",
+              "6.96",
+              "6.25",
+              "5.56",
+              "4.89",
+              "4.24",
+              "3.61",
+              "3",
+              "2.41",
+              "1.84",
+              "1.29",
+              "0.76",
+              "0.25",
+              "-0.24",
+              "-0.71",
+              "-1.16",
+              "-1.59",
+              "0",
+              "0.61",
+              "1.24",
+              "1.89",
+              "2.56",
+              "3.25",
+              "3.96",
+              "4.69",
+              "5.44",
+              "6.21",
+              "7",
+              "7.81",
+              "8.64",
+              "9.49",
+              "10.36",
+              "11.25",
+              "12.16",
+              "13.09",
+              "14.04",
+              "15.01",
+              "16",
+              "17.01",
+              "18.04",
+              "19.09",
+              "20.16",
+              "21.25",
+              "22.36",
+              "23.49",
+              "24.64",
+              "25.81",
+              "27",
+              "28.21",
+              "29.44",
+              "30.69",
+              "31.96",
+              "33.25",
+              "34.56",
+              "35.89",
+              "37.24",
+              "38.61",
+              "40",
+              "40.81",
+              "41.64",
+              "42.49",
+              "43.36",
+              "44.25",
+              "45.16",
+              "46.09",
+              "47.04",
+              "48.01",
+              "49",
+              "50.01",
+              "51.04",
+              "52.09",
+              "53.16",
+              "54.25",
+              "55.36",
+              "56.49",
+              "57.64",
+              "58.81",
+              "60",
+              "61.21",
+              "62.44",
+              "63.69",
+              "64.96",
+              "66.25",
+              "67.56",
+              "68.89",
+              "70.24",
+              "71.61",
+              "73",
+              "75",
+              "77",
+              "79",
+              "81"
+            ]
+          }
+        ],
+        "key_points": [
+          {
+            "label": "root",
+            "x": 2,
+            "y": 0
+          },
+          {
+            "label": "root",
+            "x": -2,
+            "y": 0
+          },
+          {
+            "label": "vertex",
+            "x": 0,
+            "y": -4
+          }
+        ],
+        "render_hint": {
+          "preferred": "matplotlib",
+          "notes": null
+        },
+        "recipe": {
+          "generator": "function_2d",
+          "expr": "y = x**2 - 4",
+          "system": null,
+          "symbols": [
+            "x",
+            "y"
+          ],
+          "data_ref": null,
+          "params": {
+            "zeta": null,
+            "beta": null,
+            "omega": null,
+            "gamma": null
+          },
+          "initial_conditions": {
+            "x0": null,
+            "v0": null
+          },
+          "sampling": {
+            "t_min": -5,
+            "t_max": 5,
+            "dt": 0.1,
+            "samples": null,
+            "discard": null,
+            "samples_per_period": null,
+            "transient_periods": null,
+            "keep_periods": null
+          },
+          "sweep": {
+            "param": null,
+            "min": null,
+            "max": null,
+            "steps": null
+          }
+        },
+        "rendered": {
+          "image_ref": null,
+          "mime": null,
+          "width_px": null,
+          "height_px": null,
+          "caption": null
+        }
+      }
+    ],
+    "alternative_visual": {
+      "kind": "none",
+      "description": "Default plot provided",
+      "data": "/recipe"
+    }
+  },
+  "quality": {
+    "confidence": 0.9,
+    "common_mistakes": [
+      "Forgetting to check extraneous solutions (none here)",
+      "Incorrect factoring of difference of squares",
+      "Sign errors when solving factors",
+      "Plot sampling too coarse",
+      "Mismatched units (not applicable)"
+    ]
+  },
+  "runtime_meta": {
+    "request_id": "backend-live-proof-1770881918",
+    "attempt_id": "3159610e-3dad-4e6c-b9e4-6a9d307dc73b",
+    "provider": "openai",
+    "model": "gpt-5-mini",
+    "input_tokens": 12630,
+    "output_tokens": 4418,
+    "total_tokens": 17048,
+    "latency_ms_total": 36158,
+    "latency_ms_openai": 18711,
+    "finish_reason": "unknown",
+    "truncated": false,
+    "cache_hit": false,
+    "timing_ms": {
+      "parse": 0,
+      "canonicalize": 1,
+      "openai": 18711,
+      "verify": 2,
+      "total": 36158
+    }
+  },
+  "request_id": "backend-live-proof-1770881918",
+  "attempt_id": "3159610e-3dad-4e6c-b9e4-6a9d307dc73b",
+  "verified": false,
+  "verification_method": "none",
+  "assumptions_used": [],
+  "dropped_candidates": [],
+  "final_solutions": [],
+  "timing_ms": {
+    "parse": 0,
+    "canonicalize": 1,
+    "openai": 18711,
+    "verify": 2,
+    "total": 36158
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "confirmed_text": "sqrt(x+5)=x-1",
+  "requested_mode": "detailed",
+  "tier": "standard",
+  "trusted_context": {
+    "learning_mode": "solve"
+  },
+  "features_used": {
+    "ocr_used": false,
+    "voice_used": false,
+    "plot_requested": true
+  },
+  "graph_mode": "auto",
+  "attach_to_step_id": null,
+  "force_validity": false,
+  "idempotency_key": "c6176397-97d4-426f-a7c3-1cb34e625f93"
+}

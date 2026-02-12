@@ -1,0 +1,12 @@
+{
+  "text_query": "Consider the system\n$$\\dot{x}=x(1-x)-\\alpha xy, \\quad \\dot{y}=\\beta y(1-y)-\\gamma xy$$\nwith parameters $$\\alpha=1.2,\\ \\beta=0.9,\\ \\gamma=1.1.$$  \n(a) Find all equilibrium points in the real plane.  \n(b) Compute the Jacobian at each equilibrium and classify stability using eigenvalues.  \n(c) Include a phase portrait plot showing trajectories and equilibrium points for $$x,y\\in[0,2].$$",
+  "requested_mode": "detailed",
+  "graph_mode": "on",
+  "tier": "research",
+  "mode": "SOLVE",
+  "trusted_context": {
+    "domain_mode": "reals",
+    "preferred_response_language": "English"
+  },
+  "idempotency_key": "live-case-5-1770892182"
+}

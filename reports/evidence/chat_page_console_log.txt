@@ -1,0 +1,18 @@
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[info] [math] render engine: mathjax
+[log] Applying custom keyboard layout: {name: custom, layers: Array(10)}
+[log] Layout applied successfully
+[warning] No version information available for component [tex]/ams
+[warning] MathJax: Invalid option "automatic" (no default value).
+[warning] MathJax: Invalid option "linebreaks" (no default value).
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[warning] No version information available for component [tex]/ams
+[warning] MathJax: Invalid option "automatic" (no default value).
+[warning] MathJax: Invalid option "linebreaks" (no default value).
+[info] [math] render engine: mathjax
+[log] Applying custom keyboard layout: {name: custom, layers: Array(10)}
+[log] Layout applied successfully

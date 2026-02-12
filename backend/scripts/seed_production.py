@@ -110,6 +110,28 @@ def _seed_systemconfig(session: Session, app_env: str) -> Tuple[int, Dict[str, i
 def _seed_json_schemas(session: Session, app_env: str) -> Tuple[int, Dict[str, int]]:
     path = SEED_DATA_DIR / "json_schemas.json"
     payload = _load_json(path) if path.exists() else []
+    v2_bundle_path = SEED_DATA_DIR / "solve_superset_v2_bundle.json"
+    if v2_bundle_path.exists():
+        try:
+            bundle = _load_json(v2_bundle_path)
+            for row in (bundle.get("json_schemas") or []):
+                if not isinstance(row, dict) or not row.get("schema_id"):
+                    continue
+                match = next(
+                    (
+                        item
+                        for item in payload
+                        if item.get("schema_id") == row.get("schema_id")
+                        and int(item.get("version") or 0) == int(row.get("version") or 0)
+                    ),
+                    None,
+                )
+                if match:
+                    match.update(row)
+                else:
+                    payload.append(row)
+        except Exception:
+            pass
     checksum = _sha256_payload(payload)
     if _reg_same(session, "json_schemas", checksum):
         return len(session.exec(select(JsonSchemaEntry)).all()), _res(s=len(payload))
@@ -161,6 +183,28 @@ def _seed_prompt_templates(session: Session, app_env: str) -> Tuple[int, Dict[st
                 item.setdefault("version", 1)
                 item.setdefault("is_active", True)
                 payload.append(item)
+    v2_bundle_path = SEED_DATA_DIR / "solve_superset_v2_bundle.json"
+    if v2_bundle_path.exists():
+        try:
+            bundle = _load_json(v2_bundle_path)
+            for row in (bundle.get("prompt_templates") or []):
+                if not isinstance(row, dict) or not row.get("prompt_id"):
+                    continue
+                match = next(
+                    (
+                        item
+                        for item in payload
+                        if item.get("prompt_id") == row.get("prompt_id")
+                        and int(item.get("version") or 0) == int(row.get("version") or 0)
+                    ),
+                    None,
+                )
+                if match:
+                    match.update(row)
+                else:
+                    payload.append(row)
+        except Exception:
+            pass
     checksum = _sha256_payload(payload)
     if _reg_same(session, "prompt_templates", checksum):
         return len(session.exec(select(PromptTemplateEntry)).all()), _res(s=len(payload))

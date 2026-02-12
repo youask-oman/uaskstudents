@@ -1,0 +1,12 @@
+{
+  "text_query": "Compute the area of the region enclosed by $$y=x^2$$ and $$y=2x+3$$. Include a plot shading the region.",
+  "requested_mode": "detailed",
+  "graph_mode": "on",
+  "tier": "standard",
+  "mode": "SOLVE",
+  "trusted_context": {
+    "domain_mode": "reals",
+    "preferred_response_language": "English"
+  },
+  "idempotency_key": "live-case-3-1770892157"
+}

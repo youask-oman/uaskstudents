@@ -1,0 +1,1538 @@
+{
+  "json_schemas": [
+    {
+      "content": {
+        "name": "solve_superset_v2",
+        "schema": {
+          "$defs": {
+            "clarification_question": {
+              "additionalProperties": false,
+              "properties": {
+                "choices": {
+                  "items": {
+                    "maxLength": 2000,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 8,
+                  "minItems": 0,
+                  "type": "array"
+                },
+                "id": {
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "question": {
+                  "maxLength": 20000,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "question",
+                "choices"
+              ],
+              "type": "object"
+            },
+            "classification": {
+              "additionalProperties": false,
+              "properties": {
+                "difficulty": {
+                  "enum": [
+                    "easy",
+                    "medium",
+                    "hard"
+                  ],
+                  "type": "string"
+                },
+                "domain": {
+                  "enum": [
+                    "arithmetic",
+                    "pre_algebra",
+                    "algebra",
+                    "geometry",
+                    "trigonometry",
+                    "precalculus",
+                    "calculus",
+                    "linear_algebra",
+                    "analysis",
+                    "number_theory",
+                    "discrete_math",
+                    "discrete",
+                    "probability",
+                    "statistics",
+                    "optimization",
+                    "differential_equations",
+                    "dynamical_systems",
+                    "numerical_analysis",
+                    "abstract_algebra",
+                    "numerical_methods",
+                    "complex_analysis",
+                    "topology",
+                    "applied_math",
+                    "other"
+                  ],
+                  "type": "string"
+                },
+                "grade_band": {
+                  "enum": [
+                    "grades_6_8",
+                    "grades_9_10",
+                    "grades_11_12",
+                    "college_intro",
+                    "undergraduate_lower",
+                    "undergraduate_upper",
+                    "graduate"
+                  ],
+                  "type": "string"
+                },
+                "topic": {
+                  "default": "",
+                  "maxLength": 20000,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "grade_band",
+                "domain",
+                "topic",
+                "difficulty"
+              ],
+              "type": "object"
+            },
+            "dropped_candidate": {
+              "additionalProperties": false,
+              "properties": {
+                "candidate": {
+                  "$ref": "#/$defs/solution_item"
+                },
+                "reason": {
+                  "maxLength": 20000,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "candidate",
+                "reason"
+              ],
+              "type": "object"
+            },
+            "key_point": {
+              "additionalProperties": false,
+              "properties": {
+                "label": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "x": {
+                  "type": [
+                    "number",
+                    "string",
+                    "null"
+                  ]
+                },
+                "y": {
+                  "type": [
+                    "number",
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "label",
+                "x",
+                "y"
+              ],
+              "type": "object"
+            },
+            "numOrNull": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "plot": {
+              "additionalProperties": false,
+              "properties": {
+                "domain": {
+                  "additionalProperties": false,
+                  "default": null,
+                  "properties": {
+                    "x_max": {
+                      "$ref": "#/$defs/numOrNull"
+                    },
+                    "x_min": {
+                      "$ref": "#/$defs/numOrNull"
+                    },
+                    "y_max": {
+                      "$ref": "#/$defs/numOrNull"
+                    },
+                    "y_min": {
+                      "$ref": "#/$defs/numOrNull"
+                    }
+                  },
+                  "required": [
+                    "x_min",
+                    "x_max",
+                    "y_min",
+                    "y_max"
+                  ],
+                  "type": [
+                    "object",
+                    "null"
+                  ]
+                },
+                "key_points": {
+                  "default": [],
+                  "items": {
+                    "$ref": "#/$defs/key_point"
+                  },
+                  "maxItems": 30,
+                  "minItems": 0,
+                  "type": "array"
+                },
+                "kind": {
+                  "enum": [
+                    "function_2d",
+                    "implicit_2d",
+                    "parametric_2d",
+                    "scatter_2d",
+                    "time_series",
+                    "phase_portrait",
+                    "vector_field",
+                    "poincare",
+                    "bifurcation",
+                    "histogram",
+                    "surface_3d",
+                    "contour",
+                    "image",
+                    "custom"
+                  ],
+                  "type": "string"
+                },
+                "recipe": {
+                  "additionalProperties": false,
+                  "default": null,
+                  "description": "Instructions-only. Backend generates plots with matplotlib/numpy/sympy.",
+                  "properties": {
+                    "data_ref": {
+                      "default": null,
+                      "maxLength": 2000,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "expr": {
+                      "default": null,
+                      "maxLength": 200000,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "generator": {
+                      "enum": [
+                        "function_2d",
+                        "implicit_2d",
+                        "parametric_2d",
+                        "ode_system",
+                        "data_ref",
+                        "custom"
+                      ],
+                      "type": "string"
+                    },
+                    "initial_conditions": {
+                      "additionalProperties": false,
+                      "default": null,
+                      "properties": {
+                        "v0": {
+                          "$ref": "#/$defs/numOrNull"
+                        },
+                        "x0": {
+                          "$ref": "#/$defs/numOrNull"
+                        }
+                      },
+                      "required": [
+                        "x0",
+                        "v0"
+                      ],
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
+                    "params": {
+                      "additionalProperties": false,
+                      "default": null,
+                      "properties": {
+                        "beta": {
+                          "$ref": "#/$defs/numOrNull"
+                        },
+                        "gamma": {
+                          "$ref": "#/$defs/numOrNull"
+                        },
+                        "omega": {
+                          "$ref": "#/$defs/numOrNull"
+                        },
+                        "zeta": {
+                          "$ref": "#/$defs/numOrNull"
+                        }
+                      },
+                      "required": [
+                        "zeta",
+                        "beta",
+                        "omega",
+                        "gamma"
+                      ],
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
+                    "sampling": {
+                      "additionalProperties": false,
+                      "default": null,
+                      "properties": {
+                        "discard": {
+                          "default": null,
+                          "minimum": 0,
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "dt": {
+                          "$ref": "#/$defs/numOrNull"
+                        },
+                        "keep_periods": {
+                          "default": null,
+                          "minimum": 1,
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "samples": {
+                          "default": null,
+                          "minimum": 1,
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "samples_per_period": {
+                          "default": null,
+                          "minimum": 10,
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "t_max": {
+                          "$ref": "#/$defs/numOrNull"
+                        },
+                        "t_min": {
+                          "$ref": "#/$defs/numOrNull"
+                        },
+                        "transient_periods": {
+                          "default": null,
+                          "minimum": 0,
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "t_min",
+                        "t_max",
+                        "dt",
+                        "samples",
+                        "discard",
+                        "samples_per_period",
+                        "transient_periods",
+                        "keep_periods"
+                      ],
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
+                    "sweep": {
+                      "additionalProperties": false,
+                      "default": null,
+                      "properties": {
+                        "max": {
+                          "$ref": "#/$defs/numOrNull"
+                        },
+                        "min": {
+                          "$ref": "#/$defs/numOrNull"
+                        },
+                        "param": {
+                          "default": null,
+                          "maxLength": 2000,
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "steps": {
+                          "default": null,
+                          "minimum": 2,
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "param",
+                        "min",
+                        "max",
+                        "steps"
+                      ],
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
+                    "symbols": {
+                      "default": [],
+                      "items": {
+                        "maxLength": 50,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "maxItems": 10,
+                      "minItems": 0,
+                      "type": "array"
+                    },
+                    "system": {
+                      "default": null,
+                      "maxLength": 2000,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "generator",
+                    "expr",
+                    "symbols",
+                    "system",
+                    "params",
+                    "initial_conditions",
+                    "sampling",
+                    "sweep",
+                    "data_ref"
+                  ],
+                  "type": [
+                    "object",
+                    "null"
+                  ]
+                },
+                "render_hint": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "notes": {
+                      "maxLength": 4000,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "preferred": {
+                      "enum": [
+                        "matplotlib",
+                        "plotly",
+                        "none"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "preferred",
+                    "notes"
+                  ],
+                  "type": "object"
+                },
+                "rendered": {
+                  "additionalProperties": false,
+                  "default": null,
+                  "description": "Filled by backend after rendering.",
+                  "properties": {
+                    "caption": {
+                      "maxLength": 20000,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "height_px": {
+                      "minimum": 1,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "image_ref": {
+                      "maxLength": 2000,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "mime": {
+                      "maxLength": 100,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "width_px": {
+                      "minimum": 1,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "image_ref",
+                    "mime",
+                    "width_px",
+                    "height_px",
+                    "caption"
+                  ],
+                  "type": [
+                    "object",
+                    "null"
+                  ]
+                },
+                "series": {
+                  "default": [],
+                  "items": {
+                    "$ref": "#/$defs/plot_series"
+                  },
+                  "maxItems": 6,
+                  "minItems": 0,
+                  "type": "array"
+                },
+                "subtitle": {
+                  "maxLength": 20000,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "title": {
+                  "maxLength": 20000,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "x_label": {
+                  "maxLength": 2000,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "y_label": {
+                  "maxLength": 2000,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "z_label": {
+                  "maxLength": 2000,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "title",
+                "subtitle",
+                "x_label",
+                "y_label",
+                "z_label",
+                "domain",
+                "series",
+                "key_points",
+                "render_hint",
+                "recipe",
+                "rendered"
+              ],
+              "type": "object"
+            },
+            "plot_series": {
+              "additionalProperties": false,
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "lines",
+                    "markers",
+                    "lines+markers",
+                    "bars"
+                  ],
+                  "type": "string"
+                },
+                "name": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "x": {
+                  "default": [],
+                  "items": {
+                    "type": [
+                      "number",
+                      "string"
+                    ]
+                  },
+                  "maxItems": 200,
+                  "minItems": 0,
+                  "type": "array"
+                },
+                "y": {
+                  "default": [],
+                  "items": {
+                    "type": [
+                      "number",
+                      "string"
+                    ]
+                  },
+                  "maxItems": 200,
+                  "minItems": 0,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "name",
+                "x",
+                "y",
+                "mode"
+              ],
+              "type": "object"
+            },
+            "problem": {
+              "additionalProperties": false,
+              "properties": {
+                "detected_tasks": {
+                  "items": {
+                    "enum": [
+                      "solve",
+                      "simplify",
+                      "factor",
+                      "expand",
+                      "evaluate",
+                      "equation",
+                      "inequality",
+                      "system",
+                      "word_problem",
+                      "geometry",
+                      "trigonometry",
+                      "calculus",
+                      "probability",
+                      "statistics",
+                      "linear_algebra",
+                      "discrete_math",
+                      "proof",
+                      "graph",
+                      "plot",
+                      "check_work",
+                      "other"
+                    ],
+                    "type": "string"
+                  },
+                  "maxItems": 8,
+                  "minItems": 1,
+                  "type": "array"
+                },
+                "language": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "preferred_response_language": {
+                      "maxLength": 32,
+                      "minLength": 2,
+                      "type": "string"
+                    },
+                    "response_language": {
+                      "maxLength": 32,
+                      "minLength": 2,
+                      "type": "string"
+                    },
+                    "user_language": {
+                      "maxLength": 32,
+                      "minLength": 2,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "user_language",
+                    "response_language",
+                    "preferred_response_language"
+                  ],
+                  "type": "object"
+                },
+                "normalized_text": {
+                  "maxLength": 200000,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "original_text": {
+                  "maxLength": 200000,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "original_text",
+                "normalized_text",
+                "language",
+                "detected_tasks"
+              ],
+              "type": "object"
+            },
+            "quality": {
+              "additionalProperties": false,
+              "properties": {
+                "common_mistakes": {
+                  "default": [],
+                  "items": {
+                    "maxLength": 800,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 8,
+                  "minItems": 0,
+                  "type": "array"
+                },
+                "confidence": {
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "confidence",
+                "common_mistakes"
+              ],
+              "type": "object"
+            },
+            "refusal": {
+              "additionalProperties": false,
+              "properties": {
+                "is_refusal": {
+                  "type": "boolean"
+                },
+                "reason": {
+                  "maxLength": 20000,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "safe_alternative": {
+                  "maxLength": 20000,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "is_refusal",
+                "reason",
+                "safe_alternative"
+              ],
+              "type": "object"
+            },
+            "runtime_meta": {
+              "additionalProperties": false,
+              "default": null,
+              "properties": {
+                "attempt_id": {
+                  "maxLength": 200,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "cache_hit": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "finish_reason": {
+                  "maxLength": 100,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "input_tokens": {
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "latency_ms_openai": {
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "latency_ms_total": {
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "model": {
+                  "maxLength": 200,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "output_tokens": {
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "provider": {
+                  "maxLength": 100,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "request_id": {
+                  "maxLength": 200,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "timing_ms": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "canonicalize": {
+                      "minimum": 0,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "openai": {
+                      "minimum": 0,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "parse": {
+                      "minimum": 0,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "verify": {
+                      "minimum": 0,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "parse",
+                    "canonicalize",
+                    "openai",
+                    "verify",
+                    "total"
+                  ],
+                  "type": "object"
+                },
+                "total_tokens": {
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "truncated": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "request_id",
+                "attempt_id",
+                "provider",
+                "model",
+                "input_tokens",
+                "output_tokens",
+                "total_tokens",
+                "latency_ms_total",
+                "latency_ms_openai",
+                "finish_reason",
+                "truncated",
+                "cache_hit",
+                "timing_ms"
+              ],
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "solution_item": {
+              "additionalProperties": false,
+              "properties": {
+                "value_latex": {
+                  "maxLength": 200000,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "value_text": {
+                  "maxLength": 20000,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value_text",
+                "value_latex"
+              ],
+              "type": "object"
+            },
+            "step": {
+              "additionalProperties": false,
+              "properties": {
+                "checks": {
+                  "default": [],
+                  "items": {
+                    "maxLength": 800,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 8,
+                  "minItems": 0,
+                  "type": "array"
+                },
+                "explanation": {
+                  "maxLength": 20000,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "index": {
+                  "maximum": 300,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "math_latex": {
+                  "default": [],
+                  "items": {
+                    "maxLength": 200000,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 40,
+                  "minItems": 0,
+                  "type": "array"
+                },
+                "notes": {
+                  "default": null,
+                  "maxLength": 20000,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "plots_used": {
+                  "default": [],
+                  "items": {
+                    "enum": [
+                      "none",
+                      "function_2d",
+                      "implicit_2d",
+                      "parametric_2d",
+                      "scatter_2d",
+                      "time_series",
+                      "phase_portrait",
+                      "vector_field",
+                      "poincare",
+                      "bifurcation",
+                      "histogram",
+                      "surface_3d",
+                      "contour",
+                      "custom"
+                    ],
+                    "type": "string"
+                  },
+                  "maxItems": 6,
+                  "minItems": 0,
+                  "type": "array"
+                },
+                "rules_used": {
+                  "default": [],
+                  "items": {
+                    "maxLength": 500,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 12,
+                  "minItems": 0,
+                  "type": "array"
+                },
+                "title": {
+                  "maxLength": 200,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "index",
+                "title",
+                "explanation",
+                "math_latex",
+                "rules_used",
+                "plots_used",
+                "checks",
+                "notes"
+              ],
+              "type": "object"
+            },
+            "value_item": {
+              "additionalProperties": false,
+              "properties": {
+                "label": {
+                  "maxLength": 200,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "value": {
+                  "type": [
+                    "string",
+                    "number",
+                    "integer",
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "value_latex": {
+                  "maxLength": 200000,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "label",
+                "value",
+                "value_latex"
+              ],
+              "type": "object"
+            },
+            "visuals": {
+              "additionalProperties": false,
+              "properties": {
+                "alternative_visual": {
+                  "additionalProperties": false,
+                  "default": null,
+                  "properties": {
+                    "data": {
+                      "maxLength": 200000,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "description": {
+                      "maxLength": 20000,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "kind": {
+                      "enum": [
+                        "none",
+                        "table",
+                        "ascii",
+                        "explanation"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "description",
+                    "data"
+                  ],
+                  "type": [
+                    "object",
+                    "null"
+                  ]
+                },
+                "decision_reason": {
+                  "maxLength": 20000,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "plots": {
+                  "default": [],
+                  "items": {
+                    "$ref": "#/$defs/plot"
+                  },
+                  "maxItems": 10,
+                  "minItems": 0,
+                  "type": "array"
+                },
+                "should_visualize": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "should_visualize",
+                "decision_reason",
+                "plots",
+                "alternative_visual"
+              ],
+              "type": "object"
+            }
+          },
+          "$id": "https://youask.ai/schemas/solve_superset_v2.schema.json",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "_raw_llm_output": {
+              "maxLength": 500000,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "assumptions": {
+              "default": [],
+              "items": {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              "maxItems": 20,
+              "minItems": 0,
+              "type": "array"
+            },
+            "clarification": {
+              "additionalProperties": false,
+              "default": null,
+              "properties": {
+                "needs_clarification": {
+                  "type": "boolean"
+                },
+                "note": {
+                  "maxLength": 20000,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "questions": {
+                  "items": {
+                    "$ref": "#/$defs/clarification_question"
+                  },
+                  "maxItems": 2,
+                  "minItems": 0,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "needs_clarification",
+                "questions",
+                "note"
+              ],
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "classification": {
+              "$ref": "#/$defs/classification"
+            },
+            "final_answer": {
+              "additionalProperties": false,
+              "default": null,
+              "properties": {
+                "answer_latex": {
+                  "maxLength": 200000,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "answer_text": {
+                  "maxLength": 200000,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "units": {
+                  "maxLength": 2000,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "values": {
+                  "default": [],
+                  "items": {
+                    "$ref": "#/$defs/value_item"
+                  },
+                  "maxItems": 80,
+                  "minItems": 0,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "answer_text",
+                "answer_latex",
+                "values",
+                "units"
+              ],
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "mode": {
+              "enum": [
+                "SOLVE",
+                "SIMPLIFY",
+                "FACTOR",
+                "EXPAND",
+                "EVALUATE",
+                "DERIVATIVE",
+                "INTEGRAL",
+                "LIMIT",
+                "PLOT",
+                "PROOF",
+                "CHECK_WORK",
+                "OTHER"
+              ],
+              "type": "string"
+            },
+            "problem": {
+              "$ref": "#/$defs/problem"
+            },
+            "quality": {
+              "$ref": "#/$defs/quality"
+            },
+            "refusal": {
+              "$ref": "#/$defs/refusal"
+            },
+            "response_kind": {
+              "enum": [
+                "solution",
+                "clarification",
+                "refusal"
+              ],
+              "type": "string"
+            },
+            "runtime_meta": {
+              "$ref": "#/$defs/runtime_meta"
+            },
+            "schema_version": {
+              "enum": [
+                "v2"
+              ],
+              "type": "string"
+            },
+            "steps": {
+              "items": {
+                "$ref": "#/$defs/step"
+              },
+              "maxItems": 40,
+              "minItems": 0,
+              "type": "array"
+            },
+            "tier": {
+              "enum": [
+                "FREE",
+                "FINAL",
+                "STANDARD",
+                "RESEARCH"
+              ],
+              "type": "string"
+            },
+            "verification": {
+              "additionalProperties": false,
+              "properties": {
+                "assumptions_used": {
+                  "default": [],
+                  "items": {
+                    "maxLength": 4000,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 30,
+                  "minItems": 0,
+                  "type": "array"
+                },
+                "candidate_solutions": {
+                  "default": [],
+                  "items": {
+                    "$ref": "#/$defs/solution_item"
+                  },
+                  "maxItems": 50,
+                  "minItems": 0,
+                  "type": "array"
+                },
+                "dropped_candidates": {
+                  "default": [],
+                  "items": {
+                    "$ref": "#/$defs/dropped_candidate"
+                  },
+                  "maxItems": 50,
+                  "minItems": 0,
+                  "type": "array"
+                },
+                "final_solutions": {
+                  "default": [],
+                  "items": {
+                    "$ref": "#/$defs/solution_item"
+                  },
+                  "maxItems": 50,
+                  "minItems": 0,
+                  "type": "array"
+                },
+                "unverified_reason": {
+                  "maxLength": 20000,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "verification_meta": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "candidates_checked": {
+                      "minimum": 0,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "duration_ms": {
+                      "minimum": 0,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "route": {
+                      "enum": [
+                        "rule_engine",
+                        "openai",
+                        "cache",
+                        "other"
+                      ],
+                      "type": "string"
+                    },
+                    "symbolic_parse": {
+                      "type": "boolean"
+                    },
+                    "timed_out": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "symbolic_parse",
+                    "duration_ms",
+                    "candidates_checked",
+                    "timed_out",
+                    "route"
+                  ],
+                  "type": "object"
+                },
+                "verification_method": {
+                  "enum": [
+                    "symbolic",
+                    "numeric",
+                    "mixed",
+                    "none"
+                  ],
+                  "type": "string"
+                },
+                "verified": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "verified",
+                "verification_method",
+                "unverified_reason",
+                "assumptions_used",
+                "candidate_solutions",
+                "dropped_candidates",
+                "final_solutions",
+                "verification_meta"
+              ],
+              "type": "object"
+            },
+            "visuals": {
+              "$ref": "#/$defs/visuals"
+            }
+          },
+          "required": [
+            "schema_version",
+            "tier",
+            "mode",
+            "response_kind",
+            "refusal",
+            "problem",
+            "classification",
+            "clarification",
+            "assumptions",
+            "steps",
+            "final_answer",
+            "verification",
+            "visuals",
+            "quality",
+            "runtime_meta",
+            "_raw_llm_output"
+          ],
+          "title": "YouAsk Solver Output Schema (Superset v2) (Tiered + Verification Gate + Plots)",
+          "type": "object"
+        },
+        "strict": true,
+        "type": "json_schema"
+      },
+      "created_at": "2026-02-12T06:20:12.977625+00:00",
+      "id": "44c023b6-a646-45cc-90cc-2474f329198d",
+      "is_active": true,
+      "schema_id": "solve_superset_v2.schema.json",
+      "updated_at": "2026-02-12T06:20:12.977625+00:00",
+      "updated_by": "System Admin",
+      "version": 1
+    }
+  ],
+  "prompt_templates": [
+    {
+      "content": "You are YouAsk Math Engine. Follow developer instructions exactly and prioritize schema compliance.\n\nNON-NEGOTIABLE LATEX STANDARD\n- Inline math must use $...$ only.\n- Display math must use $$...$$ only.\n- Never use \\( \\), \\[ \\], or mixed delimiters.\n- LaTeX must be syntactically complete (e.g., \\sqrt{...}, \\frac{...}{...}).\n- Do not include markdown unless OUTPUT_MODE explicitly allows it.\n\nOUTPUT MODE (DEVELOPER CONTROLS)\n- The developer message will specify OUTPUT_MODE and (when applicable) a JSON schema.\n- If OUTPUT_MODE=JSON_SCHEMA:\n  - Return ONE JSON object only.\n  - No markdown, no code fences, no commentary, no extra text.\n  - Do not add any keys not defined by the provided schema.\n- If OUTPUT_MODE=MARKDOWN_REPORT:\n  - Return a markdown report using ONLY the developer-specified headings/format.\n  - Only include plots if the developer explicitly approves a fenced plot block format.\n\nSCHEMA COMPLIANCE (HIGHEST PRIORITY WHEN JSON_SCHEMA)\n- Output must conform exactly to the provided JSON schema.\n- Always include every REQUIRED top-level key and REQUIRED nested key.\n- Use null only when the schema explicitly allows null.\n- Do not omit required fields.\n- Do not change casing of const/enum fields; match the schema exactly.\n- Do not invent additional fields or alternative structures.\n\nLANGUAGE (PREFERRED RESPONSE LANGUAGE)\n- The developer will provide preferred_response_language (or equivalent).\n- All natural-language strings MUST be in the preferred response language.\n- If not provided, default to English.\n- Do not mix languages.\n- LaTeX math is allowed in any language response.\n\nRESPONSE KIND RULE (SOLUTION vs CLARIFICATION vs REFUSAL)\n- Your output must set the schema\u2019s response kind appropriately:\n  - \"solution\" when you can provide a coherent candidate solution path.\n  - \"clarification\" when the user input is ambiguous or multi-question and a single solution response is unsafe.\n  - \"refusal\" only when required by policy or when the request is non-math / disallowed.\n- If response_kind=\"clarification\":\n  - Provide up to 2 clarification questions.\n  - Do not provide a final answer.\n  - Steps may be empty.\n- If response_kind=\"refusal\":\n  - Provide a short reason and a safe alternative if possible.\n  - Do not provide a final answer.\n\nMULTI-QUESTION INPUT (IMPORTANT)\n- The system is single-question per solve response.\n- If the user asks multiple distinct questions in one message:\n  - Set response_kind=\"clarification\"\n  - Ask the user to choose which question to solve first OR confirm they want a batch.\n  - Do NOT attempt to solve all questions in one response.\n\nMATH INTEGRITY (NO FABRICATION)\n- Do not fabricate results, steps, identities, or \u201cverified\u201d claims.\n- Respect domain constraints (e.g., denominators not zero, log arguments positive in reals, even roots require nonnegative radicands in reals).\n- If you provide candidate solutions, ensure they are consistent with your own derived steps.\n\nVERIFICATION GATE AWARENESS (CRITICAL)\n- Verification is performed by a backend verification gate (e.g., SymPy). You must NOT claim a solution is verified.\n- In the schema fields related to verification:\n  - Provide candidate solutions and any assumptions you used.\n  - Do NOT set verified=true unless the developer explicitly instructs you that verification has already been completed and the verified results are provided to you.\n  - If you are not given verified results, set verified=false and set verification_method to \"none\" (or the closest allowed value) and explain that verification is pending/handled by backend (shortly).\n  - Do not invent dropped_candidates or final_solutions unless the developer provides them as verified.\n\nANTI-EMPTY RULE (CRITICAL)\n- Never return a \u201csuccess/ok\u201d style response with empty meaningful content.\n- If you cannot fully solve:\n  - Switch to response_kind=\"clarification\" (preferred) or use the schema-approved non-success status/fields.\n  - Provide a short, specific reason.\n  - Provide partial correct structure when safe (assumptions, constraints, partial steps).\n- Never output placeholder-only content like \"N/A\", \"-\", \"None\", or empty arrays unless the schema explicitly allows it AND you also provide a reason.\n\nSTEPS QUALITY (WHEN PROVIDING A SOLUTION)\n- Steps must be coherent, ordered, and pedagogically clear.\n- Each step must include an explanation and relevant LaTeX.\n- Do not exceed any step limits imposed by developer/tier configuration.\n- If a plot is requested/needed, reference it in steps where it helps understanding (but do not pretend it was rendered).\n\nVISUALIZATION CONTRACT (WHEN GRAPH MODE IS ON/AUTO)\n- The developer will specify graph_mode (OFF/AUTO/ON) or an equivalent control.\n- If graph_mode is ON or AUTO and a plot is relevant:\n  - Set should_visualize=true\n  - Provide a plot specification consistent with the schema (data series, domain, key points, and/or a backend-render recipe).\n- If a plot is not relevant or cannot be safely specified:\n  - Set should_visualize=false and provide a clear decision_reason.\n\nRUNTIME META FIELDS\n- If the schema includes runtime_meta fields that you cannot know (tokens, latency, request_id):\n  - Fill them with null where allowed.\n  - Do not guess.\n\nFINAL CHECK BEFORE OUTPUT (JSON_SCHEMA)\n- Ensure the JSON is valid, complete, and strictly conforms to schema.\n- Ensure enum values match exactly.\n- Ensure language fields are consistent with preferred_response_language.\n- Ensure no extra keys exist.\n",
+      "created_at": "2026-02-12T06:43:15.142504+00:00",
+      "id": "ccf26539-066f-413a-bdf3-33e08ec1924b",
+      "is_active": true,
+      "mode": "SOLVE",
+      "prompt_id": "global_system_prompt_v2.txt",
+      "role": "SYSTEM",
+      "tier": null,
+      "updated_at": "2026-02-12T06:43:15.142504+00:00",
+      "updated_by": "System Admin",
+      "version": 1
+    },
+    {
+      "content": "OUTPUT_MODE=JSON_SCHEMA\nSCHEMA_NAME=solve_superset_v2\nSCHEMA_VERSION=v2\n\nYou must return exactly ONE JSON object that conforms to the provided JSON schema.\nNo markdown. No code fences. No extra keys. No extra commentary.\n\n========================\nREQUEST CONTEXT (INPUTS)\n========================\nrequest_id: {{REQUEST_ID}}\nattempt_id: {{ATTEMPT_ID}}\n\ntier: {{TIER}}            # FREE | FINAL | STANDARD | RESEARCH\nmode: {{MODE}}            # SOLVE | SIMPLIFY | FACTOR | ... (as defined by schema)\ngraph_mode: {{GRAPH_MODE}} # OFF | AUTO | ON\ndomain_mode: {{DOMAIN_MODE}} # reals | complex (default: reals)\n\npreferred_response_language: {{PREFERRED_RESPONSE_LANGUAGE}}\nuser_question_original: {{USER_QUESTION}}\nuser_question_normalized: {{NORMALIZED_QUESTION}}\n\noptional_context:\n- ui_goal: {{UI_GOAL}}               # e.g., \"solve\", \"explain\", \"check_work\"\n- user_grade_hint: {{USER_GRADE_HINT}} # optional\n- user_selected_style: {{UI_STYLE}}    # e.g., \"concise\", \"detailed\"\n- known_assumptions_from_backend: {{KNOWN_ASSUMPTIONS}}  # may be empty\n- known_plot_preference: {{PLOT_PREF}} # may be empty\n\n========================\nABSOLUTE RULES\n========================\n1) RESPONSE KIND\n- Decide response_kind:\n  - \"solution\" if input is a single, solvable task with enough information.\n  - \"clarification\" if ambiguous OR if multiple distinct questions are present.\n  - \"refusal\" only if disallowed request or non-math request.\n- This system is SINGLE-QUESTION per response.\n  If multiple questions appear, set response_kind=\"clarification\" and ask the user to choose one (max 2 questions).\n\n2) VERIFICATION GATE AWARENESS (CRITICAL)\n- You are NOT the verifier. Backend (SymPy gate) verifies.\n- You may provide candidate solutions and assumptions.\n- You must NOT claim verified correctness.\n- In verification fields:\n  - Set verified=false\n  - Set verification_method=\"none\"\n  - Set unverified_reason to a short sentence like:\n    \"Pending backend verification (symbolic substitution/domain checks).\"\n- Populate candidate_solutions with your best candidates.\n- Do NOT fabricate dropped_candidates or final_solutions (leave empty arrays).\n  Backend will fill dropped/final after verification.\n\n3) LANGUAGE\n- All natural-language strings must be in preferred_response_language.\n- Do not mix languages.\n- Math is in LaTeX only.\n\n4) STRICT LATEX\n- Inline: $...$ only\n- Display: $$...$$ only\n- No \\( \\), \\[ \\]\n- LaTeX must be complete and syntactically correct.\n\n5) ANTI-EMPTY\n- Do not return empty \u201csuccess-like\u201d responses.\n- If unclear: use response_kind=\"clarification\" with up to 2 questions.\n- If refusing: refusal.is_refusal=true with reason + safe alternative.\n\n========================\nTIER RULES (ENFORCE IN OUTPUT)\n========================\nApply these output shaping constraints:\n\nFREE:\n- steps target: 3\u20136\n- explanations short, minimal fluff\n- include plot only if graph_mode=ON or (AUTO and plot is clearly helpful)\n\nFINAL:\n- steps target: 1\u20133\n- very concise, direct result + minimal justification\n- plot only if graph_mode=ON\n\nSTANDARD:\n- steps target: 6\u201312\n- student-friendly explanations, clear structure\n- if graph_mode is AUTO/ON and plot is relevant, include plot spec\n\nRESEARCH:\n- steps target: 10\u201320\n- deeper reasoning, include checks/edge cases/assumptions\n- plots encouraged when helpful (AUTO/ON), include meaningful annotations/key points\n\nIf you cannot satisfy step target safely, prefer clarification over inventing steps.\n\n========================\nVISUALIZATION POLICY\n========================\n- If graph_mode=OFF:\n  - visuals.should_visualize=false\n  - visuals.decision_reason=\"Graph mode is OFF.\"\n  - visuals.plots=[]\n- If graph_mode=ON:\n  - if plot is relevant: visuals.should_visualize=true and include at least one plot spec\n  - else: visuals.should_visualize=false with a clear reason\n- If graph_mode=AUTO:\n  - choose should_visualize=true when a plot materially helps understanding (intersections, extrema, domains, behavior, solution verification, or any multi-step graphical reasoning).\n\nPlot requirements (when included):\n- Provide a plot entry with:\n  - kind (function_2d / implicit_2d / parametric_2d / time_series / contour / surface_3d / etc.)\n  - title/subtitle, axis labels if applicable\n  - domain bounds if you can infer them\n  - series: <= 6 series, each with <= 200 points\n  - key_points: include intersections/extrema/roots when relevant\n  - render_hint.preferred = \"matplotlib\" (unless developer says otherwise)\n- If you cannot safely emit numeric series, provide a recipe that backend can render (expr + symbols + sampling).\n\n========================\nHOW TO FILL REQUIRED SCHEMA SECTIONS\n========================\nrefusal:\n- Always present.\n- If response_kind != \"refusal\": set is_refusal=false and reason/safe_alternative=null.\n\nproblem:\n- original_text: user_question_original\n- normalized_text: user_question_normalized\n- language.user_language: infer from input\n- language.response_language: preferred_response_language\n- language.preferred_response_language: preferred_response_language\n- detected_tasks: choose the best 1\u20134 tags.\n\nclassification:\n- Choose grade_band/domain/topic/difficulty conservatively.\n- Do not overclaim difficulty.\n\nclarification:\n- Always present (nullable allowed by schema).\n- If response_kind=\"clarification\": needs_clarification=true and provide up to 2 questions.\n- Else: needs_clarification=false, questions=[], note=null.\n\nassumptions:\n- Include domain constraints you used (and any known_assumptions_from_backend).\n- Keep <= 20 items.\n\nsteps:\n- For response_kind=\"solution\": create steps per tier target, coherent and correct.\n- For response_kind=\"clarification\" or \"refusal\": steps may be empty [].\n\nfinal_answer:\n- If response_kind=\"solution\": provide final answer object with answer_text and values (if applicable).\n- If response_kind!=\"solution\": final_answer=null.\n\nverification:\n- Always present.\n- Set:\n  - verified=false\n  - verification_method=\"none\"\n  - unverified_reason as noted above\n  - assumptions_used: copy assumptions you relied on\n  - candidate_solutions: fill with your candidates\n  - dropped_candidates: []\n  - final_solutions: []\n  - verification_meta: symbolic_parse should reflect whether the math is parseable; duration_ms=null; candidates_checked=null; timed_out=false; route=\"openai\"\n\nquality:\n- confidence 0..1 (conservative)\n- common_mistakes: list up to 5 likely student mistakes\n\nruntime_meta:\n- You do NOT know tokens/latency. Fill null where allowed.\n- request_id and attempt_id can be echoed if allowed by schema; otherwise null.\n\n_raw_llm_output:\n- Set to null (backend may fill if needed).\n\n========================\nFINAL OUTPUT CHECK\n========================\nBefore outputting:\n- Confirm JSON is valid.\n- Confirm no extra keys exist.\n- Confirm all required keys exist.\n- Confirm enum casing matches exactly.\n- Confirm response_kind matches the content (no final_answer for clarification/refusal).",
+      "created_at": "2026-02-12T06:26:47.532085+00:00",
+      "id": "19df6fa2-b390-4397-8009-0eb807107578",
+      "is_active": true,
+      "mode": "SOLVE",
+      "prompt_id": "solve_orchestrator_developer_v1.txt",
+      "role": "DEVELOPER",
+      "tier": null,
+      "updated_at": "2026-02-12T06:26:47.532085+00:00",
+      "updated_by": "System Admin",
+      "version": 1
+    },
+    {
+      "content": "# solve_output_contract_v2.txt\n# PURPOSE: Hard contract for model output. This is the \u201cdon\u2019t get creative\u201d layer.\n# This file is included as DEVELOPER content alongside the orchestrator developer prompt.\n# It is schema-first and pipeline-aware (backend verification gate will overwrite verification fields).\n\nOUTPUT_MODE=JSON_SCHEMA\nSCHEMA_NAME=solve_superset_v2\nSCHEMA_VERSION=v2\n\nReturn exactly ONE JSON object that conforms to the provided schema.\nNo markdown. No code fences. No extra text. No extra keys.\n\n========================\nCORE CONTRACT\n========================\nYou must always output ALL required top-level keys:\nschema_version, tier, mode, response_kind, refusal, problem, classification,\nclarification, assumptions, steps, final_answer, verification, visuals,\nquality, runtime_meta, _raw_llm_output\n\n- Use null only when the schema allows null.\n- Do not omit required fields even if empty is allowed.\n- Never guess runtime_meta tokens/latency. Use null where allowed.\n\n========================\nRESPONSE KIND CONTRACT\n========================\nSet response_kind exactly to one of: \"solution\" | \"clarification\" | \"refusal\"\n\nA) If response_kind=\"solution\":\n- refusal.is_refusal must be false\n- clarification.needs_clarification must be false\n- steps must contain a coherent solution path (count controlled by tier rules in orchestrator)\n- final_answer must be an object (not null)\n- visuals must reflect graph_mode policy (from orchestrator inputs)\n\nB) If response_kind=\"clarification\":\n- refusal.is_refusal must be false\n- clarification.needs_clarification must be true\n- clarification.questions length must be 1\u20132 (max 2)\n- steps must be [] (empty) or minimal safe partial steps (only if explicitly allowed by orchestrator)\n- final_answer must be null\n- verification.verified must be false, verification_method=\"none\", provide unverified_reason\n\nC) If response_kind=\"refusal\":\n- refusal.is_refusal must be true\n- refusal.reason must be set (short, specific)\n- refusal.safe_alternative should be provided when possible\n- steps must be []\n- final_answer must be null\n- verification.verified must be false, verification_method=\"none\", unverified_reason set\n\n========================\nPROBLEM + LANGUAGE CONTRACT\n========================\nproblem.language must always be present and consistent:\n- user_language: inferred from user input\n- response_language: must equal preferred_response_language (given by orchestrator)\n- preferred_response_language: must equal preferred_response_language (given by orchestrator)\n\nAll natural-language strings in the entire JSON must be in preferred_response_language.\nMath expressions are LaTeX only.\n\n========================\nLATEX CONTRACT\n========================\n- Inline math: $...$ only\n- Display math: $$...$$ only\n- Never use \\( \\) or \\[ \\]\n- Ensure LaTeX is complete and valid.\n\n========================\nSTEPS CONTRACT\n========================\nEach step must include:\n- index (1..)\n- title (short)\n- explanation (clear)\n- math_latex (array, can be empty but should usually include key expressions)\n- rules_used (optional list of rule names)\n- plots_used (if the step relies on a plot; else [\"none\"] or [])\n- checks (short checks or validations)\n- notes (optional)\n\nRules:\n- Steps must be logically ordered and consistent with the final answer.\n- Do not include contradictory steps.\n- Do not exceed tier max step counts provided by orchestrator.\n\n========================\nFINAL ANSWER CONTRACT\n========================\nWhen response_kind=\"solution\":\nfinal_answer must include:\n- answer_text: final result in words (brief, clear)\n- answer_latex: optional but recommended if math-heavy\n- values: include structured values when applicable (roots, extrema, parameters, intervals)\n- units: if relevant\n\nCandidate solutions should be included in:\nverification.candidate_solutions (as solution_item entries)\n(These are candidates, not verified.)\n\n========================\nVERIFICATION CONTRACT (BACKEND OVERWRITES)\n========================\nIMPORTANT: Backend verification gate (SymPy) will overwrite these fields.\nYour job is to supply:\n- candidate_solutions: best candidates you believe are correct\n- assumptions_used: domain assumptions you relied on\n- verified must be false (unless orchestrator explicitly provides verified results)\n- verification_method must be \"none\" (unless orchestrator explicitly provides verified method)\n- dropped_candidates must be []\n- final_solutions must be []\n\nSet unverified_reason to a short statement like:\n\"Pending backend verification (symbolic substitution/domain checks).\"\n\nverification_meta:\n- symbolic_parse: true if the math is reasonably parseable; else false\n- duration_ms: null\n- candidates_checked: null\n- timed_out: false\n- route: \"openai\"\n\nNever claim verified correctness in any natural-language text.\n\n========================\nVISUALIZATION CONTRACT\n========================\nvisuals must always be present:\n- should_visualize: boolean\n- decision_reason: short explanation in preferred_response_language\n- plots: array (0..10)\n- alternative_visual: optional\n\nIf should_visualize=true:\n- Provide at least 1 plot object in plots.\n- Each plot must include:\n  - kind, title, labels, domain (if known), series, key_points, render_hint, recipe, rendered\n- Use render_hint.preferred=\"matplotlib\" unless instructed otherwise.\n\nPlot data rules:\n- Keep each series <= 200 points.\n- Max 6 series per plot.\n- Include key_points for intersections/roots/extrema when relevant.\n\nIf you cannot safely output numeric series:\n- Provide recipe with generator + expr + symbols + sampling so backend can render.\n\nrendered must be null (backend fills it).\n\n========================\nQUALITY CONTRACT\n========================\nquality.confidence must be 0..1 (conservative).\nquality.common_mistakes: up to 5 likely mistakes.\n\n========================\nRUNTIME META CONTRACT\n========================\nruntime_meta is required by schema:\n- request_id and attempt_id: echo if provided by orchestrator and schema allows; else null\n- provider/model/tokens/latency/finish_reason: set null (do not guess)\n- cache_hit: null\n- timing_ms: fill nulls (do not guess)\n\n========================\nANTI-EMPTY / SAFETY\n========================\n- Never output placeholder-only content.\n- If insufficient info: respond_kind=\"clarification\" with 1\u20132 questions.\n- If multi-question input: respond_kind=\"clarification\" and ask user to choose one.\n- If you cannot comply with schema: still return the closest valid JSON with refusal/clarification rather than malformed output.\n\nFINAL CHECK BEFORE OUTPUT\n- Valid JSON\n- No extra keys\n- All required keys present\n- Enum casing matches schema\n- Language consistency enforced\n- verification fields set to \u201cpending backend verification\u201d unless explicitly instructed otherwise",
+      "created_at": "2026-02-12T06:28:14.021715+00:00",
+      "id": "b151d5aa-8224-4478-8670-2079444576cd",
+      "is_active": true,
+      "mode": "SOLVE",
+      "prompt_id": "solve_output_contract_v2.txt",
+      "role": "DEVELOPER",
+      "tier": null,
+      "updated_at": "2026-02-12T06:28:14.021715+00:00",
+      "updated_by": "System Admin",
+      "version": 1
+    },
+    {
+      "content": "# solve_explain_narrator_v2.txt\n# PURPOSE: Post-verification narration pass.\n# Input: a full draft JSON object that already conforms to solve_superset_v2 and already contains\n# backend-filled verification fields (verified/assumptions/final_solutions/dropped_candidates/etc.).\n# Output: ONE JSON object (same schema) with improved teaching narration, WITHOUT changing protected math/data.\n\nOUTPUT_MODE=JSON_SCHEMA\nSCHEMA_NAME=solve_superset_v2\nSCHEMA_VERSION=v2\n\nReturn exactly ONE JSON object that conforms to the provided schema.\nNo markdown. No code fences. No extra keys. No extra text.\n\n========================\nROLE\n========================\nYou are the Explain Narrator. Your job is to improve clarity, pedagogy, and readability of the solution\nWITHOUT changing the underlying math/data that has already been computed and/or verified by the backend.\n\nThis is a narration/wording pass, not a re-solve pass.\n\n========================\nINPUTS PROVIDED BY DEVELOPER (DO NOT ECHO VERBATIM)\n========================\n- preferred_response_language: {{PREFERRED_RESPONSE_LANGUAGE}}\n- tier: {{TIER}}  (FREE | FINAL | STANDARD | RESEARCH)\n- mode: {{MODE}}\n- graph_mode: {{GRAPH_MODE}}\n- verified_json_draft: {{VERIFIED_JSON_DRAFT}}  (This is the JSON you must return again, with narration improved.)\n- protected_paths: {{PROTECTED_PATHS}} (List of JSON paths that MUST remain byte-for-byte identical.)\n- allowed_paths: {{ALLOWED_PATHS}} (If provided, you may only change these paths.)\n\nIf allowed_paths is provided, you MUST only modify those. If allowed_paths is not provided, follow the defaults below.\n\n========================\nLANGUAGE\n========================\n- All natural-language strings must be in preferred_response_language.\n- Do not mix languages.\n- LaTeX math is allowed. Keep LaTeX syntactically correct.\n\n========================\nNON-NEGOTIABLE LATEX STANDARD\n========================\n- Inline math must use $...$ only.\n- Display math must use $$...$$ only.\n- Never use \\( \\), \\[ \\], or mixed delimiters.\n- Ensure all LaTeX is complete and valid.\n\n========================\nABSOLUTE PROTECTION RULES (DO NOT CHANGE)\n========================\nYou must NOT change any of the following content (even if you think it\u2019s wrong). Treat as authoritative:\n- schema_version, tier, mode, response_kind\n- problem.original_text, problem.normalized_text, problem.detected_tasks\n- classification (all fields)\n- refusal (all fields)\n- clarification (all fields except you may lightly improve clarification.note wording ONLY if response_kind=\"clarification\")\n- assumptions array (you may rephrase only if explicitly allowed by allowed_paths; otherwise keep unchanged)\n- verification object fields:\n  - verified\n  - verification_method\n  - unverified_reason\n  - assumptions_used\n  - candidate_solutions\n  - dropped_candidates\n  - final_solutions\n  - verification_meta_",
+      "created_at": "2026-02-12T06:30:07.817447+00:00",
+      "id": "3799a8d5-77f8-4415-a23e-a541a4352030",
+      "is_active": true,
+      "mode": "SOLVE",
+      "prompt_id": "solve_explain_narrator_v2.txt",
+      "role": "DEVELOPER",
+      "tier": null,
+      "updated_at": "2026-02-12T06:30:07.817447+00:00",
+      "updated_by": "System Admin",
+      "version": 1
+    },
+    {
+      "content": "# solve_plot_spec_v2.txt\n# PURPOSE: Generate a minimal, renderable plot spec (Plotly JSON) for the UI.\n# IMPORTANT: This prompt is used ONLY for plot specification. It must not solve the math problem.\n# The solve pipeline + SymPy verification gate provide the math; you only visualize the provided data safely.\n\nMODE: PLOT_SPEC\nYou are YouAsk Plot Spec Generator. Follow developer instructions exactly.\n\nOUTPUT MODE: JSON_SCHEMA (STRICT)\n- Return ONLY valid JSON that matches the provided Plot Spec schema (v2).\n- No markdown, no code fences, no commentary, no extra text.\n- Do not add keys not defined by the schema.\n\nCORE PRINCIPLES\n1) SAFETY + MINIMALISM\n- Generate the smallest plot that correctly communicates the concept.\n- Do NOT output JavaScript code.\n- Do NOT reference external URLs.\n- Do NOT embed images unless schema explicitly supports it.\n\n2) VERIFICATION-AWARE (CRITICAL)\n- You are not the verifier.\n- If you receive verified results/points from backend, visualize them exactly.\n- If inputs are unverified or ambiguous, still produce a plot if requested, but include a warning/notes field ONLY if the schema supports it. Otherwise keep the plot minimal and neutral.\n\n3) DETERMINISM\n- Same inputs must produce the same plot spec (stable ordering, stable ids, stable trace order).\n\nINPUTS (PROVIDED BY DEVELOPER)\nYou will receive some or all of the following:\n- request_id / attempt_id / question_id\n- attach_to_step_id (optional)\n- preferred_response_language\n- graph_mode: OFF | AUTO | ON\n- plot_intent: e.g. \"function_2d\", \"implicit_2d\", \"parametric_2d\", \"scatter_2d\", \"time_series\",\n  \"phase_portrait\", \"vector_field\", \"histogram\", \"area_between_curves\", \"optimization_rectangle\", etc.\n- domain/ranges: x_min, x_max, y_min, y_max (optional)\n- One of:\n  (A) sampled series points already computed by backend (preferred), OR\n  (B) expressions + symbols + ranges (fallback), OR\n  (C) key points only (fallback)\n- optional key_points (intersections, roots, extrema)\n- optional shading/region info (e.g., area between curves)\n- optional constraints (domain restrictions) from verification gate\n\nATTACHMENT RULE\n- If attach_to_step_id is provided by developer, set it.\n- Otherwise set attach_to_step_id = null.\n\nPLOT ID RULE\n- Use a stable id:\n  - Prefer \"plot_<question_id>_1\" if question_id exists\n  - Else \"plot_<attempt_id>_1\" if attempt_id exists\n  - Else \"plot_<request_id>_1\"\n  - Else \"plot_1\"\n\nTRACE LIMITS (KEEP IT SMALL)\n- Default: 1\u20132 traces.\n- Allow up to 4 traces only when required (e.g., two curves + shaded region + key points).\n- Prefer \"scatter\" traces with:\n  - mode=\"lines\" for curves\n  - mode=\"markers\" for key points\n  - mode=\"lines+markers\" only when necessary\n\nPOINT GENERATION (IMPORTANT)\nPlotly requires numeric arrays.\n\nPreferred path:\n- If sampled points are provided, use them directly.\n\nFallback sampling path (ONLY if you are given a clear expression AND numeric range):\n- Generate your own sample points with strict limits:\n  - Max 80 x-points per curve (never more).\n  - x must be strictly increasing.\n  - y must be finite numbers (no NaN, no Infinity).\n- Discontinuities:\n  - If you detect a discontinuity, break the line by inserting null into y, OR split into 2 traces if schema supports it.\n- If you cannot safely sample (ambiguous expression, unknown range, missing symbol values):\n  - Output a minimal plot with axes and title only (and a warning/notes field only if schema supports it).\n  - Do NOT fabricate points.\n\nVISUAL SEMANTICS (SUPPORTED PATTERNS)\nA) Function plot y=f(x)\n- One line trace for the function.\n- Add markers for roots/intersections if provided.\n\nB) Two curves + region/area\n- Two line traces (curve1, curve2).\n- One fill trace for region if possible:\n  - Use \"fill\":\"toself\" or \"fill\":\"tonexty\" if schema allows and you have ordered boundary points.\n- If you cannot safely construct region polygon:\n  - Do NOT shade. Plot curves + key points only.\n\nC) Optimization rectangle / geometry overlay\n- Curve trace(s) + a \"scatter\" trace forming rectangle boundary (closed polyline).\n- Keep it minimal (no fancy shapes unless schema supports).\n\nD) ODE/time series\n- One line trace, x=time, y=state.\n- Domain defaults to a safe window if provided; otherwise keep minimal.\n\nE) Phase portrait / vector field\n- If vector field arrays provided: use quiver-like approximation only if schema supports it.\n- Otherwise plot trajectory points only.\n\nLAYOUT RULES\n- Minimal layout:\n  - title must exist (short)\n  - xaxis title and yaxis title should be set when known\n  - margins minimal\n- No heavy styling. No custom fonts. No background images.\n- Keep JSON small.\n\nCONFIG RULES\n- Use config:\n  {\"responsive\": true, \"displayModeBar\": false}\n- Do not enable arbitrary editing tools unless developer requests.\n\nLANGUAGE\n- Titles, labels, and any textual annotations must be in preferred_response_language.\n- Do not mix languages.\n\nVALIDATION BEFORE OUTPUT\n- Ensure JSON is valid and matches schema exactly.\n- Ensure trace arrays are numeric-only (or null for breaks).\n- Ensure x is strictly increasing for line series (unless it is a parametric/path trace).\n- Ensure the plot is renderable even if minimal.\n\nFAIL-SAFE\n- If graph_mode=OFF: output a minimal plot object with should_visualize=false (if schema supports that),\n  otherwise output a valid empty plot container only if schema allows.\n- Never return invalid JSON.",
+      "created_at": "2026-02-12T06:32:24.546526+00:00",
+      "id": "562d0c08-d8fd-42cc-84f5-f72b6d82fdff",
+      "is_active": true,
+      "mode": "PLOT_SPEC",
+      "prompt_id": "solve_plot_spec_v2.txt",
+      "role": "DEVELOPER",
+      "tier": null,
+      "updated_at": "2026-02-12T06:32:24.546526+00:00",
+      "updated_by": "System Admin",
+      "version": 1
+    },
+    {
+      "content": "# solve_repair_verification_v2.txt\n# PURPOSE: Single repair attempt when backend verification gate fails.\n# The model must ONLY fix candidate solutions / math consistency, not rewrite the whole response.\n# Output must remain solve_superset_v2 schema-compliant.\n# This is invoked only after a verification failure report is provided by backend.\n\nOUTPUT_MODE=JSON_SCHEMA\nSCHEMA_NAME=solve_superset_v2\nSCHEMA_VERSION=v2\n\nReturn exactly ONE JSON object that conforms to the provided schema.\nNo markdown. No code fences. No extra keys. No extra text.\n\n========================\nROLE\n========================\nYou are the Verification Repair Agent.\nBackend verification (SymPy gate) has found that one or more candidate solutions are invalid,\nor that the solution narrative conflicts with the original problem.\n\nYour job:\n- Correct the candidate solutions and any math content needed to make the response consistent.\n- Keep the response structure stable.\n- Do NOT claim \"verified\". Backend will re-verify after your repair.\n\nYou get exactly ONE repair attempt. Be conservative and correct.\n\n========================\nINPUTS PROVIDED BY DEVELOPER\n========================\npreferred_response_language: {{PREFERRED_RESPONSE_LANGUAGE}}\ntier: {{TIER}}              # FREE | FINAL | STANDARD | RESEARCH\nmode: {{MODE}}\ndomain_mode: {{DOMAIN_MODE}}  # reals | complex\ngraph_mode: {{GRAPH_MODE}}\n\noriginal_problem_text: {{ORIGINAL_PROBLEM_TEXT}}\nnormalized_problem_text: {{NORMALIZED_PROBLEM_TEXT}}\n\nprior_model_json: {{PRIOR_MODEL_JSON}}   # The previous solve_superset_v2 JSON you produced\nverification_failure_report: {{FAILURE_REPORT}}\n# FAILURE_REPORT includes:\n# - why verification failed (substitution mismatch, domain violation, parse error, timeout, etc.)\n# - which candidates failed\n# - counterexamples / failing substitutions (if available)\n# - required domain restrictions (if available)\n# - any backend-parsed assumptions\n\nYou MUST base your repair on the failure report and the original problem.\n\n========================\nNON-NEGOTIABLE RULES\n========================\n1) STRICT SCHEMA COMPLIANCE\n- Return a single JSON object matching solve_superset_v2.\n- Do not add keys. Do not remove required keys.\n\n2) VERIFICATION OWNERSHIP\n- Set verification.verified=false.\n- Set verification.verification_method=\"none\".\n- Set verification.unverified_reason to a short statement:\n  \"Repaired candidates pending backend verification.\"\n- Populate verification.candidate_solutions with your repaired candidates.\n- Set verification.dropped_candidates=[] and verification.final_solutions=[].\n  Backend will fill them after re-check.\n\n3) REPAIR SCOPE (DO NOT OVERWRITE EVERYTHING)\n- Keep these fields identical to prior_model_json unless absolutely necessary for consistency:\n  - schema_version, tier, mode, response_kind\n  - problem (original_text, normalized_text, language, detected_tasks)\n  - classification\n  - runtime_meta (do not guess)\n  - visuals fields unless they depend on corrected math (see Plot rule below)\n\n- You may modify ONLY when needed:\n  - assumptions (if failure report indicates missing/incorrect domain constraints)\n  - steps (to remove/adjust incorrect math statements)\n  - final_answer (to match repaired candidates)\n  - verification.candidate_solutions\n  - quality.common_mistakes/confidence (optional)\n\n4) DO NOT INVENT DOMAIN\n- Use domain_mode input:\n  - If domain_mode=\"reals\": enforce real domain restrictions (log>0, radicand>=0, denominators!=0, etc.)\n  - If domain_mode=\"complex\": do not impose real-only restrictions unless explicitly required\n- Only add assumptions that are mathematically necessary and consistent.\n\n5) MULTI-QUESTION\n- If the original input contains multiple questions, you must set response_kind=\"clarification\"\n  and ask the user to choose one. Do not attempt repair for multi-question in one output.\n\n6) LATEX\n- Inline: $...$ only\n- Display: $$...$$ only\n- No \\( \\), \\[ \\]\n- LaTeX must be syntactically correct.\n\n7) LANGUAGE\n- All natural-language strings must be in preferred_response_language.\n- Do not mix languages.\n\n========================\nREPAIR PROCEDURE (FOLLOW IN ORDER)\n========================\nStep 1: Diagnose from FAILURE_REPORT\n- Identify which candidate(s) fail and why:\n  - substitution mismatch\n  - extraneous introduced by squaring/multiplying by expression that can be zero\n  - domain invalid (e.g., x=2 where denominator is 0)\n  - incorrect branch selection (absolute value, trig principal values, etc.)\n\nStep 2: Repair candidate_solutions\n- Remove invalid candidates.\n- Add missing candidates only if strongly justified and consistent with the prior derivation.\n- Prefer fewer candidates over speculative ones.\n\nStep 3: Align final_answer with repaired candidates\n- final_answer.answer_text must match repaired candidate set.\n- final_answer.values must match candidate_solutions (when applicable).\n\nStep 4: Repair steps minimally\n- Only adjust steps that contain incorrect math.\n- Keep step indices stable when possible.\n- If a step is wrong due to an extraneous solution:\n  - Add a step \u201cCheck candidates in original equation\u201d and reject invalid ones\n  - Keep it concise (tier controls length)\n\nStep 5: Plot handling (minimal change)\n- If visuals are present and depend on corrected solutions (e.g., intersection points):\n  - Update key_points labels/values in plot spec ONLY if the schema allows and ONLY those fields.\n  - Do not regenerate full series unless necessary.\n- If visuals are independent (generic function plot), keep unchanged.\n\nStep 6: Update verification section\n- verified=false, verification_method=\"none\"\n- unverified_reason=\"Repaired candidates pending backend verification.\"\n- assumptions_used should reflect assumptions you relied on\n- candidate_solutions set to repaired\n- dropped_candidates=[] and final_solutions=[]\n\n========================\nFAIL-SAFE\n========================\nIf you cannot confidently repair (e.g., failure report indicates deep inconsistency):\n- Switch response_kind=\"clarification\"\n- Ask up to 2 clarification questions that would resolve the ambiguity\n- final_answer must be null\n- steps may be empty\n- verification remains pending/none\n\n========================\nFINAL OUTPUT CHECK\n========================\nBefore outputting:\n- JSON validates against schema\n- No extra keys\n- response_kind matches content\n- final_answer matches candidate_solutions\n- verification fields set correctly for \u201crepair pending verification\u201d\n- Language and LaTeX rules satisfied\n",
+      "created_at": "2026-02-12T06:35:12.851929+00:00",
+      "id": "108765dd-7aac-42e3-8414-6104c33825b0",
+      "is_active": true,
+      "mode": "VERIFY",
+      "prompt_id": "solve_repair_verification_v2.txt",
+      "role": "DEVELOPER",
+      "tier": null,
+      "updated_at": "2026-02-12T06:35:12.851929+00:00",
+      "updated_by": "System Admin",
+      "version": 1
+    },
+    {
+      "content": "You are a clarification generator. If the user input appears to contain multiple questions, set response_kind=clarification, clarification.needs_clarification=true, and ask at most two concise questions to select exactly one problem to solve first. Keep final_answer=null, steps=[].",
+      "created_at": "2026-02-12T07:00:30.722302+00:00",
+      "id": "748a8bba-95a5-4588-971f-44686d80d3c7",
+      "is_active": true,
+      "mode": "SOLVE",
+      "prompt_id": "solve_clarification_question_v2.txt",
+      "role": "DEVELOPER",
+      "tier": null,
+      "updated_at": "2026-02-12T07:00:30.722302+00:00",
+      "updated_by": "alembic:20260212_solve_superset_v2",
+      "version": 1
+    }
+  ]
+}

@@ -1240,6 +1240,38 @@ class SystemConfigEntry(BaseModel):
 class SystemConfigUpdateRequest(BaseModel):
     entries: List[SystemConfigEntry]
 
+
+class SolveV2ConfigResponse(BaseModel):
+    system_prompt_id: str
+    orchestrator_prompt_id: str
+    narrator_prompt_id: str
+    plot_spec_prompt_id: str
+    repair_prompt_id: str
+    clarify_prompt_id: str
+    schema_id: str
+    llm_min_schema_id: str
+    clarify_schema_id: str
+    repair_schema_id: str
+    tier_policy_json: str
+    narrator_enabled: bool
+    output_contract_id: Optional[str] = None
+
+
+class SolveV2ConfigUpdateRequest(BaseModel):
+    system_prompt_id: str
+    orchestrator_prompt_id: str
+    narrator_prompt_id: str
+    plot_spec_prompt_id: str
+    repair_prompt_id: str
+    clarify_prompt_id: str
+    schema_id: str
+    llm_min_schema_id: str
+    clarify_schema_id: str
+    repair_schema_id: str
+    tier_policy_json: str
+    narrator_enabled: bool = False
+    output_contract_id: Optional[str] = None
+
 class AdminUserUpdateRequest(BaseModel):
     full_name: Optional[str] = None
     email: Optional[str] = None
@@ -4897,90 +4929,86 @@ async def get_plan_links_removed(plan_id: int):
 
 @api_router.get("/solve_v3_runtime_meta")
 async def solve_v3_runtime_meta(
-    user_id: int = Query(...),
-    tier: Optional[str] = Query(None),
-    mode_family: str = Query("SOLVE"),
-    requested_mode: str = Query("minimal"),
+    attempt_id: Optional[str] = Query(None),
+    request_id: Optional[str] = Query(None),
+    user_id: Optional[int] = Query(None),
     session: Session = Depends(get_session),
 ):
-    from app.llm_profiles.profile_resolver import ProfileResolver, ProfileResolutionError
-    from app.services.llm.manager import get_configured_openai_model
-
-    user = session.get(User, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    request_id = str(uuid.uuid4())
-    provider = "openai"
-    model = get_configured_openai_model()
-    entitled_tier_slug = _solve_tier_ceiling_slug()
-    tier_policy = _clamp_requested_tier(tier, entitled_tier_slug)
-    tier_requested = tier_policy["tier_requested"]
-    tier_effective = tier_policy["tier_effective"]
-    tier_effective_internal = tier_policy["tier_effective_internal"]
-    mode_label = (mode_family or "SOLVE").strip().upper()
-    # Free-form mode disabled - always use json_schema
-    output_format = "json_schema"
-
-    try:
-        profile = ProfileResolver.resolve_profile(
-            session=session,
-            user=user,
-            requested_mode=requested_mode,
-            learning_mode="solve",
-          force_tier=tier_effective_internal,
-            mode_family=mode_label,
-            provider=provider,
-        )
-    except ProfileResolutionError as profile_err:
+    query = select(SolverOutputAttempt)
+    if attempt_id:
+        query = query.where(SolverOutputAttempt.attempt_id == attempt_id.strip())
+    elif request_id:
+        query = query.where(SolverOutputAttempt.request_id == request_id.strip())
+    elif user_id is not None:
+        query = query.where(SolverOutputAttempt.user_id == user_id)
+    else:
         raise HTTPException(
-            status_code=503,
+            status_code=404,
             detail={
-                "code": "DEPENDENCY_UNAVAILABLE",
-                "status": "dependency_unavailable",
-                "reason": str(profile_err),
-                "message": str(profile_err),
-                "retryable": True,
-                "request_id": request_id,
-                "tier": tier_effective,
-                "mode": mode_label,
-                "provider": provider,
-                "details": getattr(profile_err, "details", {}),
+                "code": "NOT_FOUND",
+                "status": "not_found",
+                "reason": "Provide attempt_id or request_id (or user_id for latest attempt lookup).",
+                "retryable": False,
             },
         )
 
-    binding_meta = getattr(profile, "prompt_binding_meta", {}) or {}
-    binding_features = binding_meta.get("features") if isinstance(binding_meta.get("features"), dict) else {}
+    attempt = session.exec(query.order_by(SolverOutputAttempt.created_at.desc())).first()
+    if not attempt:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "NOT_FOUND",
+                "status": "not_found",
+                "reason": "No attempt runtime evidence found.",
+                "attempt_id": attempt_id,
+                "request_id": request_id,
+                "user_id": user_id,
+                "retryable": False,
+            },
+        )
+
+    validation = attempt.validation_json if isinstance(attempt.validation_json, dict) else {}
+    runtime_meta = validation.get("runtime_meta") if isinstance(validation.get("runtime_meta"), dict) else {}
+    verification = validation.get("verification") if isinstance(validation.get("verification"), dict) else {}
+    prompt_meta = attempt.prompt_meta if isinstance(attempt.prompt_meta, dict) else {}
+    timing_ms = (
+        runtime_meta.get("timing_ms")
+        if isinstance(runtime_meta.get("timing_ms"), dict)
+        else (prompt_meta.get("timing_ms") if isinstance(prompt_meta.get("timing_ms"), dict) else {})
+    )
+
     return {
-        "request_id": request_id,
-        "provider": provider,
-        "model": model,
-        "tier_requested": tier_requested,
-        "tier_effective": tier_effective,
-        "mode": mode_label,
-        "output_format": output_format,
-        "prompt_binding_id": binding_meta.get("binding_id"),
-        "global_system_prompt_id": binding_meta.get("global_system_prompt_id"),
-        "developer_prompt_id": binding_meta.get("developer_prompt_id"),
-        "output_schema_id": binding_meta.get("output_schema_id"),
-        "prompt_versions": {
-            "system": binding_meta.get("global_system_prompt_version"),
-            "developer": binding_meta.get("developer_prompt_version"),
-            "schema": binding_meta.get("output_schema_version"),
+        "status": "ok",
+        "attempt_id": attempt.attempt_id,
+        "request_id": attempt.request_id,
+        "user_id": attempt.user_id,
+        "provider": attempt.provider or runtime_meta.get("provider"),
+        "model": attempt.model or runtime_meta.get("model"),
+        "input_tokens": int(attempt.input_tokens or 0),
+        "output_tokens": int(attempt.output_tokens or 0),
+        "total_tokens": int(attempt.total_tokens or 0),
+        "latency_ms_total": int(attempt.latency_ms or runtime_meta.get("latency_ms_total") or 0),
+        "latency_ms_openai": int(runtime_meta.get("latency_ms_openai") or timing_ms.get("openai") or 0),
+        "finish_reason": runtime_meta.get("finish_reason"),
+        "truncated": runtime_meta.get("truncated"),
+        "cache_hit": runtime_meta.get("cache_hit"),
+        "timing_ms": {
+            "parse": int(timing_ms.get("parse") or 0),
+            "canonicalize": int(timing_ms.get("canonicalize") or 0),
+            "openai": int(timing_ms.get("openai") or 0),
+            "verify": int(timing_ms.get("verify") or 0),
+            "total": int(timing_ms.get("total") or 0),
         },
-        "token_config": {
-            "max_output_tokens": binding_meta.get("max_output_tokens"),
-            "max_input_tokens": binding_meta.get("max_input_tokens"),
-            "temperature": binding_meta.get("temperature"),
-            "top_p": binding_meta.get("top_p"),
-            "timeout_ms": binding_meta.get("timeout_ms"),
-            "trim_strategy": binding_meta.get("trim_strategy"),
+        "verification": {
+            "verified": bool(verification.get("verified")),
+            "verification_method": verification.get("verification_method"),
+            "unverified_reason": verification.get("unverified_reason"),
+            "verification_meta": verification.get("verification_meta") if isinstance(verification.get("verification_meta"), dict) else {},
         },
-        "features": {
-            "allow_research": bool(binding_features.get("allow_research", False)),
-            "allow_verify": bool(binding_features.get("allow_verify", True)),
-            "allow_plot": bool(binding_features.get("allow_plot", True)),
-        },
+        "attempt_status": attempt.status,
+        "failure_code": attempt.failure_code,
+        "created_at": attempt.created_at,
+        "updated_at": attempt.updated_at,
     }
 
 
@@ -5008,6 +5036,7 @@ async def solve_v3_endpoint(
     from app.services.billing_service import billing_service
     from app.services.subscription_service import subscription_service
     from app.services.solver_v3 import get_solver_v3
+    from app.services.runtime_audit import emit_runtime_audit
     import base64
 
     app_env = os.environ.get("APP_ENV", "").upper()
@@ -5015,8 +5044,10 @@ async def solve_v3_endpoint(
     if (body.debug_simulated_tokens or body.debug_force_error) and not debug_allowed:
         raise HTTPException(status_code=400, detail="debug_simulated_tokens not allowed in this environment")
     
+    start_total = time.perf_counter()
     # Generate unique Request ID (idempotent when idempotency_key is provided)
     request_id = (body.idempotency_key or "").strip() or str(uuid.uuid4())
+    attempt_id = str(uuid.uuid4())
     requested_mode = body.requested_mode or "minimal"
     learning_mode = (body.trusted_context or {}).get("learning_mode", "solve")
     features_used = body.features_used or {}
@@ -5030,10 +5061,21 @@ async def solve_v3_endpoint(
     token_policy_key = "DEFAULT"
     ocr_confidence = None
     graph_mode = getattr(body, 'graph_mode', 'auto')
+    stage_timing_ms: Dict[str, int] = {
+        "parse": 0,
+        "canonicalize": 0,
+        "openai": 0,
+        "verify": 0,
+        "total": 0,
+    }
+    solve_route = "openai"
+    symbolic_parse = False
+    solver_instance = None
 
     
     # Extract problem text
     problem_text = (
+        body.question_text or
         body.confirmed_text or
         body.confirmed_markdown or
         body.text_query or
@@ -5042,8 +5084,52 @@ async def solve_v3_endpoint(
     
     if not problem_text:
         raise HTTPException(status_code=400, detail="No input provided")
+    if len(problem_text) > 20000:
+        raise HTTPException(status_code=400, detail="Input too long (max 20000 chars).")
+    if graph_mode not in {"off", "auto", "on"}:
+        raise HTTPException(status_code=400, detail="graph_mode must be one of off|auto|on")
+    if requested_mode not in {"minimal", "detailed"}:
+        raise HTTPException(status_code=400, detail="requested_mode must be one of minimal|detailed")
 
     validate_math_query(problem_text)
+    use_superset_v2 = os.getenv("SOLVE_V3_USE_SUPERSET_V2", "true").strip().lower() in {"1", "true", "yes", "on"}
+    if use_superset_v2:
+        try:
+            from app.services.solver_v3 import get_solver_v3 as _get_solver_probe
+            solver_probe = _get_solver_probe()
+            use_superset_v2 = hasattr(solver_probe, "_call_llm_with_schema")
+        except Exception:
+            use_superset_v2 = False
+    if use_superset_v2:
+        from app.services.solve.superset_v2_pipeline import (
+            SolveV2PipelineError,
+            run_solve_v3_superset_v2,
+        )
+        try:
+            return await run_solve_v3_superset_v2(
+                session=session,
+                user_id=user_id,
+                problem_text=problem_text,
+                requested_tier=body.tier,
+                requested_mode=requested_mode,
+                graph_mode=graph_mode,
+                trusted_context=body.trusted_context,
+                idempotency_key=body.idempotency_key,
+            )
+        except SolveV2PipelineError as pipeline_error:
+            raise HTTPException(
+                status_code=pipeline_error.status_code,
+                detail={
+                    "code": pipeline_error.code,
+                    "status": "failed_controlled",
+                    "reason": pipeline_error.message,
+                    "retryable": pipeline_error.retryable,
+                    "request_id": request_id,
+                    "attempt_id": attempt_id,
+                    "details": pipeline_error.details,
+                },
+            )
+
     modality = _resolve_modality_flags(body, features_used, bool(body.image_url or body.artifact_id), bool(body.has_voice))
     if modality == "voice":
         _enforce_input_token_limit(problem_text, token_policy.voice_input_max, modality)
@@ -5063,14 +5149,37 @@ async def solve_v3_endpoint(
     
     if settings.CANONICAL_CACHE_ENABLED:
         try:
+            t_parse = time.perf_counter()
             intent = canonicalization_service.get_intent(problem_text)
+            stage_timing_ms["parse"] = int((time.perf_counter() - t_parse) * 1000)
+            emit_runtime_audit(
+                component="solve_v3_stage_parse",
+                started_at=t_parse,
+                request_id=request_id,
+                route=solve_route,
+                result="ok",
+                extra={"attempt_id": attempt_id},
+            )
+            t_canonical = time.perf_counter()
             math_obj, assumptions = canonicalization_service.normalize_math_object(problem_text, intent)
+            symbolic_parse = not bool(assumptions.get("parse_error"))
             canonical_key = canonicalization_service.compute_canonical_key(intent, math_obj, assumptions)
+            stage_timing_ms["canonicalize"] = int((time.perf_counter() - t_canonical) * 1000)
+            emit_runtime_audit(
+                component="solve_v3_stage_canonicalize",
+                started_at=t_canonical,
+                request_id=request_id,
+                route=solve_route,
+                sympy_used=True,
+                result="ok",
+                extra={"attempt_id": attempt_id, "symbolic_parse": symbolic_parse},
+            )
             
             result = cache_service.get_cached_solution(session, canonical_key)
             if result:
                 print(f"[CACHE] Hit: {canonical_key}")
                 was_cached = True
+                solve_route = "cache"
         except Exception as e:
             print(f"[CACHE] Error: {e}")
     
@@ -5241,22 +5350,104 @@ async def solve_v3_endpoint(
             was_cached = True
             question_cache_hit = True
             print(f"[QUESTION_CACHE] HIT - skipping OpenAI call")
+    except HTTPException as e:
+        stage_timing_ms["total"] = int((time.perf_counter() - start_total) * 1000)
+        try:
+            attempt_row.status = "failed_controlled"
+            attempt_row.failure_code = "HTTPException"
+            attempt_row.error_message = str(e.detail)
+            attempt_row.prompt_meta = {
+                **(attempt_row.prompt_meta or {}),
+                "route": solve_route,
+                "stage_timing_ms": stage_timing_ms,
+            }
+            session.add(attempt_row)
+            session.commit()
+        except Exception:
+            session.rollback()
+        raise
+
     except Exception as e:
         print(f"[QUESTION_CACHE] Fingerprint error: {e}")
+
+    # Stage A3: create attempt record before any OpenAI call
+    attempt_row = SolverOutputAttempt(
+        request_id=request_id,
+        attempt_id=attempt_id,
+        user_id=user_id,
+        status="processing",
+        input_text_raw=problem_text,
+        input_text_normalized=problem_text,
+        prompt_meta={
+            "graph_mode": graph_mode,
+            "requested_mode": requested_mode,
+            "tier_requested": body.tier,
+            "tier_effective": effective_tier,
+            "route": solve_route,
+            "assumptions_detected": assumptions,
+            "symbolic_parse": symbolic_parse,
+        },
+        model=configured_model,
+        provider=solve_provider,
+    )
+    try:
+        session.add(attempt_row)
+        session.commit()
+    except Exception:
+        session.rollback()
+        # controlled failure: do not continue without attempt record
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "DEPENDENCY_UNAVAILABLE",
+                "status": "dependency_unavailable",
+                "reason": "Could not create attempt record",
+                "retryable": True,
+                "request_id": request_id,
+            },
+        )
     
     try:
-        # Call Solver V3 (Logic: Only if not cached)
+        # Call Solver V3 (Logic: cache -> rule_engine -> openai)
         if not result:
+            from app.services.solve.verification_gate import verify_solve_result
+            rule_engine_enabled = os.getenv("SOLVE_RULE_ENGINE_ENABLED", "true").lower() == "true"
+            if rule_engine_enabled and symbolic_parse and intent == "solve_equation":
+                rule_meta = verify_solve_result(problem_text, {"final_answer": {"answer_text": ""}}, request_id=request_id)
+                if rule_meta.get("verified"):
+                    solve_route = "rule_engine"
+                    final_solutions = rule_meta.get("final_solutions") or []
+                    answer_text = "x = " + ", ".join(final_solutions) if final_solutions else "No real solution"
+                    result = {
+                        "schema_version": "v1.0",
+                        "problem": {"original_text": problem_text, "normalized_text": problem_text, "detected_tasks": ["solve_equation"]},
+                        "classification": {"grade_band": "unknown", "domain": "algebra", "topic": "equation", "difficulty": "unknown"},
+                        "refusal": {"is_refusal": False, "reason": None, "safe_alternative": None},
+                        "assumptions": rule_meta.get("assumptions") or [],
+                        "steps": [
+                            {
+                                "index": 1,
+                                "title": "Symbolic solve",
+                                "explanation": "Solved using deterministic rule engine and symbolic verification.",
+                                "math_latex": answer_text,
+                                "rules_used": ["sympy_solve", "symbolic_substitution_check"],
+                                "checkpoint": {"question": "Do solutions satisfy original equation?", "answer": "Yes"},
+                            }
+                        ],
+                        "final_answer": {"answer_text": answer_text, "answer_latex": answer_text, "values": []},
+                        "visuals": {"should_visualize": False, "decision_reason": "Rule engine response", "plots": []},
+                        "quality": {"confidence": 0.98, "common_mistakes": []},
+                        "telemetry": {"provider": "local_rule_engine", "model": "sympy", "latency_ms_total": 0, "validated": True},
+                    }
+
+        if not result:
+            solve_route = "openai"
             # --- ENTITLEMENT CHECK & DEBIT ---
-            # --- BILLING: STAGE 1 (ESTIMATE & HOLD) ---
             action_type = "solve_tutor" if requested_mode == "detailed" else "solve_quick"
             if bool(body.has_voice or features_used.get("voice_used")):
                  action_type = "voice_solve"
 
-            # Estimate Tokens (Heuristics)
-            # Input: ~ len(text)/4
-            # Output: minimal=1000, detailed=4000 (roughly)
-            # This is just for holding credits; reconciliation fixes it.
+            # Estimate Tokens (Heuristics; retained for hold behavior)
             est_input = len(problem_text) // 3 + 100
             est_output = 4000 if requested_mode == "detailed" else 1500
             
@@ -5278,8 +5469,9 @@ async def solve_v3_endpoint(
             deduct_committed = True
             
             try:
-                solver = get_solver_v3()
-                result = await solver.solve(
+                solver_instance = get_solver_v3()
+                t_openai = time.perf_counter()
+                result = await solver_instance.solve(
                     problem_text=problem_text,
                     context=context,
                     trace=trace,
@@ -5292,10 +5484,31 @@ async def solve_v3_endpoint(
                     image_url=body.image_url,
                     max_output_tokens=effective_max_tokens,
                     user_tier=effective_tier,
+                    attempt_id=attempt_id,
                     debug_simulated_tokens=body.debug_simulated_tokens,
                     debug_force_error=bool(body.debug_force_error),
                 )
-                
+                stage_timing_ms["openai"] = int((time.perf_counter() - t_openai) * 1000)
+                if not isinstance(result, dict) or "final_answer" not in result:
+                    raise HTTPException(
+                        status_code=422,
+                        detail={
+                            "code": "llm_invalid_output",
+                            "status": "failed_controlled",
+                            "reason": "LLM output missing required fields",
+                            "retryable": True,
+                            "request_id": request_id,
+                            "attempt_id": attempt_id,
+                        },
+                    )
+                emit_runtime_audit(
+                    component="solve_v3_stage_openai",
+                    started_at=t_openai,
+                    request_id=request_id,
+                    route=solve_route,
+                    result="ok",
+                    extra={"attempt_id": attempt_id},
+                )
 
             except Exception as e:
                 raise e
@@ -5306,7 +5519,18 @@ async def solve_v3_endpoint(
         from app.services.plot_integration import maybe_generate_plot, apply_graph_mode_override, format_plot_for_response
         from app.services.solve.verification_gate import verify_solve_result
 
+        t_verify = time.perf_counter()
         verification_meta = verify_solve_result(problem_text, result or {}, request_id=request_id)
+        stage_timing_ms["verify"] = int((time.perf_counter() - t_verify) * 1000)
+        emit_runtime_audit(
+            component="solve_v3_stage_verify",
+            started_at=t_verify,
+            request_id=request_id,
+            route=solve_route,
+            sympy_used=True,
+            result="ok",
+            extra={"attempt_id": attempt_id, "verified": bool(verification_meta.get("verified"))},
+        )
         assumptions_list = result.get("assumptions")
         if not isinstance(assumptions_list, list):
             assumptions_list = []
@@ -5319,7 +5543,58 @@ async def solve_v3_endpoint(
         result["dropped_candidates"] = verification_meta.get("dropped_candidates") or []
         result["final_solutions"] = verification_meta.get("final_solutions") or []
         result["llm_answer_text"] = verification_meta.get("llm_answer_text") or ""
+        result["unverified_reason"] = verification_meta.get("unverified_reason")
         result["verification_meta"] = verification_meta
+        if (
+            solve_route == "openai"
+            and solver_instance is not None
+            and not result["verified"]
+            and result.get("unverified_reason") == "verification_failed"
+        ):
+            repair_reasons = ", ".join(
+                f"{item.get('candidate')}:{item.get('reason')}" for item in (result.get("dropped_candidates") or [])
+            )
+            repair_context = (
+                context
+                + "\n[VERIFICATION REPAIR REQUIRED]\n"
+                + "Previous candidate solutions failed symbolic verification.\n"
+                + f"Failure reasons: {repair_reasons}\n"
+                + "Return corrected candidate solutions that satisfy the original equation and domain assumptions."
+            )
+            t_repair = time.perf_counter()
+            repaired_result = await solver_instance.solve(
+                problem_text=problem_text,
+                context=repair_context,
+                trace=trace,
+                request_id=request_id,
+                user_id=user_id,
+                db_session=session,
+                requested_mode=requested_mode,
+                trusted_context=body.trusted_context,
+                learning_mode=learning_mode,
+                image_url=body.image_url,
+                max_output_tokens=effective_max_tokens,
+                user_tier=effective_tier,
+                attempt_id=attempt_id,
+                debug_simulated_tokens=body.debug_simulated_tokens,
+                debug_force_error=bool(body.debug_force_error),
+            )
+            stage_timing_ms["openai"] += int((time.perf_counter() - t_repair) * 1000)
+            repair_verification_meta = verify_solve_result(problem_text, repaired_result or {}, request_id=request_id)
+            if repair_verification_meta.get("verified"):
+                result = repaired_result
+                result["assumptions"] = repair_verification_meta.get("assumptions") or []
+                result["verified"] = True
+                result["verification_method"] = repair_verification_meta.get("verification_method") or "symbolic"
+                result["dropped_candidates"] = repair_verification_meta.get("dropped_candidates") or []
+                result["final_solutions"] = repair_verification_meta.get("final_solutions") or []
+                result["llm_answer_text"] = repair_verification_meta.get("llm_answer_text") or ""
+                result["unverified_reason"] = None
+                result["verification_meta"] = repair_verification_meta
+                result["verification_meta"]["repair_attempted"] = True
+            else:
+                result["verification_meta"]["repair_attempted"] = True
+
         if not result["verified"]:
             if isinstance(result.get("final_answer"), dict):
                 answer_text = str(result["final_answer"].get("answer_text") or "").strip()
@@ -5375,6 +5650,21 @@ async def solve_v3_endpoint(
         # Check if it's an error response
         if result.get("error", False):
             logger.info(f"[API_V3] Solver V3 returned error: {result.get('error_type')}")
+            stage_timing_ms["total"] = int((time.perf_counter() - start_total) * 1000)
+            try:
+                attempt_row.status = "failed_controlled"
+                attempt_row.error_message = result.get("message")
+                attempt_row.failure_code = result.get("error_type") or "solver_error"
+                attempt_row.prompt_meta = {
+                    **(attempt_row.prompt_meta or {}),
+                    "route": solve_route,
+                    "stage_timing_ms": stage_timing_ms,
+                }
+                attempt_row.validation_json = result
+                session.add(attempt_row)
+                session.commit()
+            except Exception:
+                session.rollback()
 
             
             # Record error in a chat session for visibility
@@ -5430,13 +5720,17 @@ async def solve_v3_endpoint(
             )
             
             return {
+                "request_id": request_id,
+                "attempt_id": attempt_id,
                 "session_id": new_chat.id,
                 "error": True,
                 "error_type": result.get("error_type"),
                 "message": result.get("message"),
                 "validation_errors": result.get("validation_errors", []),
+                "timing_ms": stage_timing_ms,
                 "solve_meta": {
                     "request_id": request_id,
+                    "attempt_id": attempt_id,
                     "provider": (result.get("telemetry") or {}).get("provider") or solve_provider,
                     "model": (result.get("telemetry") or {}).get("model") or configured_model,
                     "tier_requested": requested_tier,
@@ -5554,11 +5848,15 @@ async def solve_v3_endpoint(
         result["plot_url"] = plot_url
         result["tokens_used"] = tokens_actual
         result["request_id"] = request_id
+        result["attempt_id"] = attempt_id
+        result["route"] = solve_route
+        result["symbolic_parse"] = symbolic_parse
 
         telemetry = result.get("telemetry") or result.get("_telemetry") or {}
         binding_meta = (telemetry.get("prompt_binding") or (getattr(resolved_profile, "prompt_binding_meta", {}) or {}))
         result["solve_meta"] = {
             "request_id": request_id,
+            "attempt_id": attempt_id,
             "provider": telemetry.get("provider") or solve_provider,
             "model": telemetry.get("model") or configured_model,
             "tier_requested": requested_tier,
@@ -5623,7 +5921,7 @@ async def solve_v3_endpoint(
             "grade_level": user.grade_level if user else None,
             "model": telemetry.get("model") or result.get("_model") or configured_model,
             "provider": telemetry.get("provider") or solve_provider,
-            "route": "solve_v3",
+            "route": solve_route,
             "tokens_in": telemetry.get("input_tokens"),
             "tokens_out": telemetry.get("output_tokens"),
             "tokens_total": telemetry.get("total_tokens") or tokens_actual,
@@ -5662,12 +5960,47 @@ async def solve_v3_endpoint(
             repaired=telemetry_final.get("repair_attempted", False)
         )
 
+        stage_timing_ms["total"] = int((time.perf_counter() - start_total) * 1000)
+        result["timing_ms"] = stage_timing_ms
+        try:
+            attempt_row.status = "success"
+            attempt_row.validation_json = result
+            attempt_row.extracted_answer = str((result.get("final_answer") or {}).get("answer_text") or "")
+            attempt_row.input_tokens = int((telemetry.get("input_tokens") or 0))
+            attempt_row.output_tokens = int((telemetry.get("output_tokens") or 0))
+            attempt_row.total_tokens = int((telemetry.get("total_tokens") or tokens_actual or 0))
+            attempt_row.latency_ms = int((telemetry.get("latency_ms_total") or stage_timing_ms["total"] or 0))
+            attempt_row.prompt_meta = {
+                **(attempt_row.prompt_meta or {}),
+                "route": solve_route,
+                "stage_timing_ms": stage_timing_ms,
+                "verified": bool(result.get("verified")),
+            }
+            session.add(attempt_row)
+            session.commit()
+        except Exception:
+            session.rollback()
+
         return result
 
     except Exception as e:
         print(f"[API_V3_ERROR] Solver V3 failed: {type(e).__name__}: {e}")
         import traceback
         print(traceback.format_exc())
+        stage_timing_ms["total"] = int((time.perf_counter() - start_total) * 1000)
+        try:
+            attempt_row.status = "failed_controlled"
+            attempt_row.failure_code = type(e).__name__
+            attempt_row.error_message = str(e)
+            attempt_row.prompt_meta = {
+                **(attempt_row.prompt_meta or {}),
+                "route": solve_route,
+                "stage_timing_ms": stage_timing_ms,
+            }
+            session.add(attempt_row)
+            session.commit()
+        except Exception:
+            session.rollback()
         try:
             profile_key = None
             if resolved_profile:
@@ -5719,7 +6052,7 @@ async def solve_v3_endpoint(
                 "grade_level": user.grade_level if user else None,
                 "model": configured_model,
                 "provider": solve_provider,
-                "route": "solve_v3",
+                "route": solve_route,
                 "tokens_in": None,
                 "tokens_out": None,
                 "tokens_total": None,
@@ -5743,8 +6076,16 @@ async def solve_v3_endpoint(
         except Exception:
             pass
         raise HTTPException(
-            status_code=500,
-            detail=f"Solver V3 failed: {str(e)}"
+            status_code=503,
+            detail={
+                "code": "DEPENDENCY_UNAVAILABLE",
+                "status": "dependency_unavailable",
+                "reason": str(e),
+                "retryable": True,
+                "request_id": request_id,
+                "attempt_id": attempt_id,
+                "timing_ms": stage_timing_ms,
+            },
         )
     
 @api_router.get("/solve_v3_stream")
@@ -6908,6 +7249,7 @@ async def solve_v3_stream_endpoint(
             final_data["dropped_candidates"] = verification_meta.get("dropped_candidates") or []
             final_data["final_solutions"] = verification_meta.get("final_solutions") or []
             final_data["llm_answer_text"] = verification_meta.get("llm_answer_text") or ""
+            final_data["unverified_reason"] = verification_meta.get("unverified_reason")
             final_data["verification_meta"] = verification_meta
             if not final_data["verified"] and isinstance(final_data.get("final_answer"), dict):
                 ans = str(final_data["final_answer"].get("answer_text") or "").strip()
@@ -9843,6 +10185,66 @@ async def admin_update_system_config(req: SystemConfigUpdateRequest, session: Se
     session.commit()
     return {"ok": True, "updated": updated}
 
+
+@api_router.get("/admin/solve-v2-config", response_model=SolveV2ConfigResponse)
+async def admin_get_solve_v2_config(session: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
+    def _get(key: str, default: str) -> str:
+        row = session.get(SystemConfig, key)
+        if not row or row.value is None:
+            return default
+        return str(row.value)
+
+    return SolveV2ConfigResponse(
+        system_prompt_id=_get("SOLVE_SYSTEM_PROMPT_ID", "global_system_prompt_v2_compact.txt"),
+        orchestrator_prompt_id=_get("SOLVE_ORCHESTRATOR_DEV_PROMPT_ID", "solve_orchestrator_developer_v2_compact.txt"),
+        output_contract_id=_get("SOLVE_OUTPUT_CONTRACT_ID", "solve_output_contract_v2_compact.txt"),
+        narrator_prompt_id=_get("SOLVE_NARRATOR_PROMPT_ID", "solve_explain_narrator_v2_compact.txt"),
+        plot_spec_prompt_id=_get("SOLVE_PLOT_SPEC_PROMPT_ID", "solve_plot_spec_v2_compact.txt"),
+        repair_prompt_id=_get("SOLVE_REPAIR_PROMPT_ID", "solve_repair_verification_patch_v1.txt"),
+        clarify_prompt_id=_get("SOLVE_CLARIFY_PROMPT_ID", "solve_clarification_patch_v1.txt"),
+        schema_id=_get("SOLVE_SCHEMA_ID", "solve_superset_v2.schema.json"),
+        llm_min_schema_id=_get("SOLVE_LLM_MIN_SCHEMA_ID", "solve_llm_min_v2.schema.json"),
+        clarify_schema_id=_get("SOLVE_CLARIFY_SCHEMA_ID", "solve_clarification_patch_v1.schema.json"),
+        repair_schema_id=_get("SOLVE_REPAIR_SCHEMA_ID", "solve_repair_patch_v1.schema.json"),
+        tier_policy_json=_get("SOLVE_TIER_POLICY_JSON", "{}"),
+        narrator_enabled=_get("SOLVE_NARRATOR_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"},
+    )
+
+
+@api_router.post("/admin/solve-v2-config")
+async def admin_update_solve_v2_config(
+    req: SolveV2ConfigUpdateRequest,
+    session: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    entries = [
+        ("SOLVE_SYSTEM_PROMPT_ID", req.system_prompt_id, "Active solve system prompt ID"),
+        ("SOLVE_ORCHESTRATOR_DEV_PROMPT_ID", req.orchestrator_prompt_id, "Active solve orchestrator developer prompt ID"),
+        ("SOLVE_OUTPUT_CONTRACT_ID", req.output_contract_id or "solve_output_contract_v2_compact.txt", "Legacy output contract prompt ID (unused by solve_v3)"),
+        ("SOLVE_NARRATOR_PROMPT_ID", req.narrator_prompt_id, "Active solve narrator prompt ID"),
+        ("SOLVE_PLOT_SPEC_PROMPT_ID", req.plot_spec_prompt_id, "Active solve plot spec prompt ID"),
+        ("SOLVE_REPAIR_PROMPT_ID", req.repair_prompt_id, "Active solve verification-repair prompt ID"),
+        ("SOLVE_CLARIFY_PROMPT_ID", req.clarify_prompt_id, "Active solve clarification prompt ID"),
+        ("SOLVE_SCHEMA_ID", req.schema_id, "Active solve schema ID"),
+        ("SOLVE_LLM_MIN_SCHEMA_ID", req.llm_min_schema_id, "Active solve main LLM-min schema ID"),
+        ("SOLVE_CLARIFY_SCHEMA_ID", req.clarify_schema_id, "Active solve clarification patch schema ID"),
+        ("SOLVE_REPAIR_SCHEMA_ID", req.repair_schema_id, "Active solve repair patch schema ID"),
+        ("SOLVE_TIER_POLICY_JSON", req.tier_policy_json, "Tier policy JSON (min/max steps, max tokens, narrator)"),
+        ("SOLVE_NARRATOR_ENABLED", "true" if req.narrator_enabled else "false", "Enable post-verification narrator pass"),
+    ]
+    updated = 0
+    for key, value, description in entries:
+        row = session.get(SystemConfig, key)
+        if row:
+            row.value = value
+            row.description = description
+        else:
+            row = SystemConfig(key=key, value=value, description=description)
+            session.add(row)
+        updated += 1
+    session.commit()
+    return {"ok": True, "updated": updated}
+
 @api_router.get("/admin/users/{user_id}/full", response_model=AdminUserDetailResponse)
 async def admin_get_user_full_data(user_id: int, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     from app.models import ChatSession, OCRJob, AdminNote
@@ -11818,7 +12220,15 @@ async def get_attempt_status(
             "input_tokens": attempt.input_tokens,
             "output_tokens": attempt.output_tokens,
             "total_tokens": attempt.total_tokens,
+            "latency_ms_total": attempt.latency_ms,
         },
+        "runtime_meta": (attempt.validation_json or {}).get("runtime_meta") if isinstance(attempt.validation_json, dict) else {},
+        "timing_ms": (
+            ((attempt.validation_json or {}).get("runtime_meta") or {}).get("timing_ms")
+            if isinstance(((attempt.validation_json or {}).get("runtime_meta")), dict)
+            else ((attempt.prompt_meta or {}).get("timing_ms") if isinstance((attempt.prompt_meta or {}).get("timing_ms"), dict) else {})
+        ),
+        "verification": (attempt.validation_json or {}).get("verification") if isinstance(attempt.validation_json, dict) else {},
         "billing": {
             "ledger_id": ledger.id if ledger else None,
             "ledger_status": ledger.status if ledger else None,

@@ -1,0 +1,86 @@
+{
+  "schema": {
+    "required": "solve_superset_v2.schema.json",
+    "found": true,
+    "version": 1,
+    "is_active": true
+  },
+  "prompts": [
+    {
+      "prompt_id": "global_system_prompt_v2.txt",
+      "found": true,
+      "version": 1,
+      "is_active": true
+    },
+    {
+      "prompt_id": "solve_orchestrator_developer_v1.txt",
+      "found": true,
+      "version": 1,
+      "is_active": true
+    },
+    {
+      "prompt_id": "solve_output_contract_v2.txt",
+      "found": true,
+      "version": 1,
+      "is_active": true
+    },
+    {
+      "prompt_id": "solve_explain_narrator_v2.txt",
+      "found": true,
+      "version": 1,
+      "is_active": true
+    },
+    {
+      "prompt_id": "solve_plot_spec_v2.txt",
+      "found": true,
+      "version": 1,
+      "is_active": true
+    },
+    {
+      "prompt_id": "solve_repair_verification_v2.txt",
+      "found": true,
+      "version": 1,
+      "is_active": true
+    },
+    {
+      "prompt_id": "solve_clarification_question_v2.txt",
+      "found": true,
+      "version": 1,
+      "is_active": true
+    }
+  ],
+  "active_config": [
+    {
+      "key": "SOLVE_SYSTEM_PROMPT_ID",
+      "value": "global_system_prompt_v2.txt"
+    },
+    {
+      "key": "SOLVE_ORCHESTRATOR_DEV_PROMPT_ID",
+      "value": "solve_orchestrator_developer_v1.txt"
+    },
+    {
+      "key": "SOLVE_OUTPUT_CONTRACT_ID",
+      "value": "solve_output_contract_v2.txt"
+    },
+    {
+      "key": "SOLVE_NARRATOR_PROMPT_ID",
+      "value": "solve_explain_narrator_v2.txt"
+    },
+    {
+      "key": "SOLVE_PLOT_SPEC_PROMPT_ID",
+      "value": "solve_plot_spec_v2.txt"
+    },
+    {
+      "key": "SOLVE_REPAIR_PROMPT_ID",
+      "value": "solve_repair_verification_v2.txt"
+    },
+    {
+      "key": "SOLVE_CLARIFY_PROMPT_ID",
+      "value": "solve_clarification_question_v2.txt"
+    },
+    {
+      "key": "SOLVE_SCHEMA_ID",
+      "value": "solve_superset_v2.schema.json"
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "base_url": "http://localhost:9000",
+  "user_id": 160,
+  "cases": [
+    {
+      "case": 1,
+      "attempt_id": "5771813b-0540-4955-b89a-f2a0a386234e",
+      "request_id": "live-case-1-1770892136",
+      "steps": 6,
+      "verified": true,
+      "verification_method": "symbolic",
+      "provider": "openai",
+      "model": "gpt-5-mini",
+      "input_tokens": 1767,
+      "output_tokens": 541,
+      "latency_ms_openai": 5746
+    },
+    {
+      "case": 2,
+      "attempt_id": "a8fc0bb8-5d1b-498b-aef3-6a5262262029",
+      "request_id": "live-case-2-1770892143",
+      "steps": 6,
+      "verified": true,
+      "verification_method": "symbolic",
+      "provider": "openai",
+      "model": "gpt-5-mini",
+      "input_tokens": 1760,
+      "output_tokens": 1147,
+      "latency_ms_openai": 12266
+    },
+    {
+      "case": 3,
+      "attempt_id": "7e0b9525-fb51-4cb7-962f-27e20b391506",
+      "request_id": "live-case-3-1770892157",
+      "steps": 6,
+      "verified": false,
+      "verification_method": "symbolic",
+      "provider": "openai",
+      "model": "gpt-5-mini",
+      "input_tokens": 1758,
+      "output_tokens": 857,
+      "latency_ms_openai": 9893
+    },
+    {
+      "case": 4,
+      "attempt_id": "dfe67f2c-86ea-433a-8251-4f01833cd519",
+      "request_id": "live-case-4-1770892168",
+      "steps": 6,
+      "verified": false,
+      "verification_method": "none",
+      "provider": "openai",
+      "model": "gpt-5-mini",
+      "input_tokens": 1790,
+      "output_tokens": 1174,
+      "latency_ms_openai": 12265
+    },
+    {
+      "case": 5,
+      "attempt_id": "4e2834c2-6ee3-4d9f-aeb2-8ebf010f3caf",
+      "request_id": "live-case-5-1770892182",
+      "steps": 10,
+      "verified": false,
+      "verification_method": "symbolic",
+      "provider": "openai",
+      "model": "gpt-5-mini",
+      "input_tokens": 1857,
+      "output_tokens": 2531,
+      "latency_ms_openai": 25136
+    },
+    {
+      "case": 6,
+      "attempt_id": "2a364bd7-5890-47c5-b642-353e40d30975",
+      "request_id": "live-case-6-1770892209",
+      "steps": 10,
+      "verified": false,
+      "verification_method": "none",
+      "provider": "openai",
+      "model": "gpt-5-mini",
+      "input_tokens": 1828,
+      "output_tokens": 1808,
+      "latency_ms_openai": 19492
+    }
+  ],
+  "ok": true
+}

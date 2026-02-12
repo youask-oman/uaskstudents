@@ -1,0 +1,14 @@
+{
+  "ok": false,
+  "error": {
+    "code": "PROFILE_RESOLUTION_FAILED",
+    "message": "No active binding for tier=STANDARD mode=SOLVE",
+    "request_id": "c6176397-97d4-426f-a7c3-1cb34e625f93",
+    "tier": "standard",
+    "mode": "SOLVE",
+    "provider": "openai",
+    "details": {
+      "original_error": "No active binding for tier=STANDARD mode=SOLVE"
+    }
+  }
+}

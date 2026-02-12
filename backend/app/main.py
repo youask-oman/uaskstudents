@@ -242,7 +242,8 @@ def on_startup():
 
     formatter = JsonFormatter() if json_logging else None
 
-    root_logger.setLevel(logging.INFO)
+    log_level_name = (os.environ.get("LOG_LEVEL") or "INFO").strip().upper()
+    root_logger.setLevel(getattr(logging, log_level_name, logging.INFO))
     if not root_logger.handlers:
         handler = logging.StreamHandler()
         if formatter:

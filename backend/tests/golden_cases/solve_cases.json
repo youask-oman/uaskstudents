@@ -1,0 +1,17 @@
+[
+  {"name":"rational_restriction","question":"(x+1)/(x-2)=3","llm_answer":"x in {0,2,7/2}","expected_verified":true,"expected_unverified_reason":null,"expected_solutions":["7/2"],"forbidden_solutions":["2"],"expected_assumptions":["x - 2 != 0"]},
+  {"name":"extraneous_sqrt","question":"sqrt(x)=x-2","llm_answer":"x in {2,4}","expected_verified":true,"expected_unverified_reason":null,"expected_solutions":["4"],"forbidden_solutions":["2"],"expected_assumptions":["x - 2 >= 0"]},
+  {"name":"log_domain","question":"log(x)=0","llm_answer":"x in {-1,1}","expected_verified":true,"expected_unverified_reason":null,"expected_solutions":["1"],"forbidden_solutions":["-1"],"expected_assumptions":["x > 0"]},
+  {"name":"absolute_value","question":"abs(x-3)=5","llm_answer":"x in {-2,8}","expected_verified":true,"expected_unverified_reason":null,"expected_solutions":["-2","8"],"forbidden_solutions":[],"expected_assumptions":[]},
+  {"name":"linear","question":"2*x+6=0","llm_answer":"x=-3","expected_verified":true,"expected_unverified_reason":null,"expected_solutions":["-3"],"forbidden_solutions":[],"expected_assumptions":[]},
+  {"name":"quadratic","question":"x^2-5*x+6=0","llm_answer":"x in {2,3}","expected_verified":true,"expected_unverified_reason":null,"expected_solutions":["2","3"],"forbidden_solutions":[],"expected_assumptions":[]},
+  {"name":"cubic","question":"x^3-x=0","llm_answer":"x in {-1,0,1}","expected_verified":true,"expected_unverified_reason":null,"expected_solutions":["-1","0","1"],"forbidden_solutions":[],"expected_assumptions":[]},
+  {"name":"reciprocal","question":"1/x=2","llm_answer":"x in {0,1/2}","expected_verified":true,"expected_unverified_reason":null,"expected_solutions":["1/2"],"forbidden_solutions":["0"],"expected_assumptions":["x != 0"]},
+  {"name":"exp_equation","question":"exp(x)=1","llm_answer":"x=0","expected_verified":true,"expected_unverified_reason":null,"expected_solutions":["0"],"forbidden_solutions":[],"expected_assumptions":[]},
+  {"name":"sin_equation","question":"sin(x)=0","llm_answer":"x=0","expected_verified":true,"expected_unverified_reason":null,"expected_solutions":["0"],"forbidden_solutions":[],"expected_assumptions":[]},
+  {"name":"domain_denominator_square","question":"1/(x^2-4)=0","llm_answer":"x in {2,-2,0}","expected_verified":false,"expected_unverified_reason":"verification_failed","expected_solutions":[],"forbidden_solutions":["2","-2","0"],"expected_assumptions":["x**2 - 4 != 0"]},
+  {"name":"inequality_not_applicable","question":"x^2>1","llm_answer":"x>1 or x<-1","expected_verified":false,"expected_unverified_reason":"not_applicable","expected_solutions":[],"forbidden_solutions":[],"expected_assumptions":[]},
+  {"name":"integral_not_applicable","question":"integrate x^2 dx","llm_answer":"x^3/3 + C","expected_verified":false,"expected_unverified_reason":"not_applicable","expected_solutions":[],"forbidden_solutions":[],"expected_assumptions":[]},
+  {"name":"system_not_applicable","question":"x+y=2 and x-y=0","llm_answer":"x=1,y=1","expected_verified":false,"expected_unverified_reason":"unable_to_verify_symbolically","expected_solutions":[],"forbidden_solutions":[],"expected_assumptions":[]},
+  {"name":"plot_case_equation","question":"x^2-4=0","llm_answer":"x in {-2,2}","expected_verified":true,"expected_unverified_reason":null,"expected_solutions":["-2","2"],"forbidden_solutions":[],"expected_assumptions":[]}
+]

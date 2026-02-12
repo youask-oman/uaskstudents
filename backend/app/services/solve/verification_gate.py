@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 import re
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from sympy import Eq, S, Symbol, preorder_traversal, solve, sqrt
 from sympy.parsing.sympy_parser import (
@@ -52,6 +52,8 @@ def _parse_equation(problem_text: str) -> Tuple[Optional[Any], Optional[Any]]:
         return None, None
 
     lhs_raw, rhs_raw = line.split("=", 1)
+    lhs_raw = re.sub(r"^\s*(solve|find|determine|compute|evaluate|simplify)\b[:\s]*", "", lhs_raw, flags=re.IGNORECASE)
+    lhs_raw = re.sub(r"\bfor\s+[a-zA-Z]\b\s*$", "", lhs_raw, flags=re.IGNORECASE)
     try:
         lhs = _safe_parse_expr(_latexish_to_sympy_expr(lhs_raw))
         rhs = _safe_parse_expr(_latexish_to_sympy_expr(rhs_raw))
@@ -121,6 +123,43 @@ def _extract_candidate_numbers(text: str) -> List[S]:
     return unique
 
 
+def _normalize_candidate_values(values: Iterable[Any]) -> List[S]:
+    out: List[S] = []
+    for value in values:
+        if isinstance(value, dict):
+            raw = value.get("value_text") or value.get("candidate") or value.get("value")
+        else:
+            raw = value
+        raw_text = str(raw or "").strip()
+        if not raw_text:
+            continue
+        if "=" in raw_text:
+            raw_text = raw_text.split("=", 1)[1].strip()
+        raw_text = raw_text.strip("{}[]() ")
+        if not raw_text:
+            continue
+        try:
+            out.append(S(raw_text))
+        except Exception:
+            continue
+    unique: List[S] = []
+    for value in out:
+        if value not in unique:
+            unique.append(value)
+    return unique
+
+
+def _filter_scalar_candidates(values: Iterable[S]) -> List[S]:
+    out: List[S] = []
+    for value in values:
+        try:
+            if bool(getattr(value, "is_number", False)):
+                out.append(value)
+        except Exception:
+            continue
+    return out
+
+
 def _verify_candidate(lhs: Any, rhs: Any, candidate: S, enforce_rhs_nonnegative: bool) -> bool:
     x = Symbol("x")
     try:
@@ -149,21 +188,55 @@ def _extract_llm_answer_text(result: Dict[str, Any]) -> str:
     return str(final_answer or "").strip()
 
 
-def verify_solve_result(problem_text: str, result: Dict[str, Any], request_id: Optional[str] = None) -> Dict[str, Any]:
+def verify_solve_result(
+    problem_text: str,
+    result: Dict[str, Any],
+    request_id: Optional[str] = None,
+    *,
+    candidate_values: Optional[Iterable[Any]] = None,
+    route: str = "other",
+) -> Dict[str, Any]:
     started_at = time.perf_counter()
     llm_answer_text = _extract_llm_answer_text(result)
     output: Dict[str, Any] = {
         "verified": False,
         "verification_method": "none",
+        "unverified_reason": "not_applicable",
         "assumptions": [],
         "dropped_candidates": [],
         "final_solutions": [],
         "llm_answer_text": llm_answer_text,
         "symbolic_parse": False,
+        "verification_meta": {
+            "duration_ms": 0,
+            "candidates_checked": 0,
+            "symbolic_parse": False,
+            "timed_out": False,
+            "route": route,
+        },
     }
 
     lhs, rhs = _parse_equation(problem_text)
+    if "=" not in (problem_text or ""):
+        output["unverified_reason"] = "not_applicable"
+        output["verification_meta"] = {
+            "duration_ms": int((time.perf_counter() - started_at) * 1000),
+            "candidates_checked": 0,
+            "symbolic_parse": False,
+            "timed_out": False,
+            "route": route,
+        }
+        return output
+
     if lhs is None or rhs is None:
+        output["unverified_reason"] = "unable_to_verify_symbolically"
+        output["verification_meta"] = {
+            "duration_ms": int((time.perf_counter() - started_at) * 1000),
+            "candidates_checked": 0,
+            "symbolic_parse": False,
+            "timed_out": False,
+            "route": route,
+        }
         emit_runtime_audit(
             component="sympy_verification_gate",
             started_at=started_at,
@@ -176,17 +249,25 @@ def verify_solve_result(problem_text: str, result: Dict[str, Any], request_id: O
         return output
 
     output["symbolic_parse"] = True
+    output["verification_meta"]["symbolic_parse"] = True
     enforce_rhs_nonnegative = _contains_sqrt_like(lhs)
     constraints = _extract_domain_constraints(lhs, rhs, enforce_rhs_nonnegative)
     output["assumptions"] = constraints
 
-    candidates = _extract_candidate_numbers(llm_answer_text)
+    candidates: List[S] = []
+    if candidate_values is not None:
+        candidates = _filter_scalar_candidates(_normalize_candidate_values(candidate_values))
+    if not candidates:
+        verification_block = result.get("verification") if isinstance(result.get("verification"), dict) else {}
+        candidates = _filter_scalar_candidates(_normalize_candidate_values(verification_block.get("candidate_solutions") or []))
     if not candidates:
         try:
             solved = solve(Eq(lhs, rhs), Symbol("x"))
             candidates = [value for value in solved if getattr(value, "is_real", False)]
         except Exception:
             candidates = []
+    if not candidates:
+        candidates = _extract_candidate_numbers(llm_answer_text)
 
     verified: List[S] = []
     dropped: List[Dict[str, str]] = []
@@ -201,6 +282,14 @@ def verify_solve_result(problem_text: str, result: Dict[str, Any], request_id: O
     output["final_solutions"] = [str(v) for v in sorted(verified, key=lambda value: float(value))]
     output["verification_method"] = "symbolic"
     output["verified"] = len(verified) > 0
+    output["unverified_reason"] = None if output["verified"] else "verification_failed"
+    output["verification_meta"] = {
+        "duration_ms": int((time.perf_counter() - started_at) * 1000),
+        "candidates_checked": len(candidates),
+        "symbolic_parse": True,
+        "timed_out": False,
+        "route": route,
+    }
 
     emit_runtime_audit(
         component="sympy_verification_gate",

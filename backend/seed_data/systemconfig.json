@@ -178,5 +178,71 @@
     "key": "tokens.voice.input_overhead",
     "updated_at": "2026-02-12T01:44:28.873595+00:00",
     "value": "180"
+  },
+  {
+    "description": "Use superset v2 solve pipeline for /solve_v3",
+    "key": "SOLVE_V3_USE_SUPERSET_V2",
+    "updated_at": "2026-02-12T08:00:00.000000+00:00",
+    "value": "true"
+  },
+  {
+    "description": "Active solve system prompt ID",
+    "key": "SOLVE_SYSTEM_PROMPT_ID",
+    "updated_at": "2026-02-12T08:00:00.000000+00:00",
+    "value": "global_system_prompt_v2.txt"
+  },
+  {
+    "description": "Active solve orchestrator developer prompt ID",
+    "key": "SOLVE_ORCHESTRATOR_DEV_PROMPT_ID",
+    "updated_at": "2026-02-12T08:00:00.000000+00:00",
+    "value": "solve_orchestrator_developer_v1.txt"
+  },
+  {
+    "description": "Active solve output contract prompt ID",
+    "key": "SOLVE_OUTPUT_CONTRACT_ID",
+    "updated_at": "2026-02-12T08:00:00.000000+00:00",
+    "value": "solve_output_contract_v2.txt"
+  },
+  {
+    "description": "Active solve narrator prompt ID",
+    "key": "SOLVE_NARRATOR_PROMPT_ID",
+    "updated_at": "2026-02-12T08:00:00.000000+00:00",
+    "value": "solve_explain_narrator_v2.txt"
+  },
+  {
+    "description": "Active solve plot spec prompt ID",
+    "key": "SOLVE_PLOT_SPEC_PROMPT_ID",
+    "updated_at": "2026-02-12T08:00:00.000000+00:00",
+    "value": "solve_plot_spec_v2.txt"
+  },
+  {
+    "description": "Active solve verification repair prompt ID",
+    "key": "SOLVE_REPAIR_PROMPT_ID",
+    "updated_at": "2026-02-12T08:00:00.000000+00:00",
+    "value": "solve_repair_verification_v2.txt"
+  },
+  {
+    "description": "Active solve clarification prompt ID",
+    "key": "SOLVE_CLARIFY_PROMPT_ID",
+    "updated_at": "2026-02-12T08:00:00.000000+00:00",
+    "value": "solve_clarification_question_v2.txt"
+  },
+  {
+    "description": "Active solve response schema ID",
+    "key": "SOLVE_SCHEMA_ID",
+    "updated_at": "2026-02-12T08:00:00.000000+00:00",
+    "value": "solve_superset_v2.schema.json"
+  },
+  {
+    "description": "Solve tier policy JSON",
+    "key": "SOLVE_TIER_POLICY_JSON",
+    "updated_at": "2026-02-12T08:00:00.000000+00:00",
+    "value": "{\"FREE\":{\"min_steps\":0,\"max_steps\":4,\"max_tokens\":2000,\"narrator\":false},\"FINAL\":{\"min_steps\":0,\"max_steps\":2,\"max_tokens\":2500,\"narrator\":false},\"STANDARD\":{\"min_steps\":6,\"max_steps\":12,\"max_tokens\":5000,\"narrator\":true},\"RESEARCH\":{\"min_steps\":6,\"max_steps\":20,\"max_tokens\":8000,\"narrator\":true}}"
+  },
+  {
+    "description": "Enable solve narrator pass",
+    "key": "SOLVE_NARRATOR_ENABLED",
+    "updated_at": "2026-02-12T08:00:00.000000+00:00",
+    "value": "false"
   }
 ]
