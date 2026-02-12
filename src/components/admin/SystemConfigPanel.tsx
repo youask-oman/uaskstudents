@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -46,7 +46,7 @@ type TokenPolicySnapshot = {
     };
 };
 
-const DEFAULT_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:9000";
+const DEFAULT_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:9000";
 
 export default function SystemConfigPanel({
     baseUrl = DEFAULT_BASE_URL,
@@ -189,7 +189,7 @@ export default function SystemConfigPanel({
                     {tokenPolicyHighlights.map((item) => (
                         <div key={item.label} className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-white/5 p-4">
                             <p className="text-[10px] uppercase tracking-[0.3em] text-slate-400">{item.label}</p>
-                            <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{item.value ?? "—"}</p>
+                            <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{item.value ?? "â€”"}</p>
                         </div>
                     ))}
                 </div>
@@ -221,3 +221,4 @@ export default function SystemConfigPanel({
         </section>
     );
 }
+

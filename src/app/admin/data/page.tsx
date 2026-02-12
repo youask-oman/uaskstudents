@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { API_BASE_URL } from "@/lib/api";
@@ -14,7 +14,7 @@ export default function AdminDataPage() {
     const [offset, setOffset] = useState(0);
     const [order, setOrder] = useState<"asc" | "desc">("desc");
 
-    const fallbackUrl = process.env.NEXT_PUBLIC_API_FALLBACK_URL || API_BASE_URL || "http://127.0.0.1:9000";
+    const fallbackUrl = process.env.NEXT_PUBLIC_API_FALLBACK_URL || API_BASE_URL || "http://localhost:9000";
     const getHeaders = (): HeadersInit => {
         const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
         const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -181,3 +181,4 @@ export default function AdminDataPage() {
         </div>
     );
 }
+

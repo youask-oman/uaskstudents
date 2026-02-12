@@ -2,6 +2,18 @@ from dotenv import load_dotenv
 # Ensure .env is loaded before importing modules that read settings.
 load_dotenv()
 
+import sys
+
+# Windows consoles often default to cp1252 and crash on symbols like "≠".
+# Force UTF-8 early so all stream-based logging can emit safely.
+for _stream_name in ("stdout", "stderr"):
+    _stream = getattr(sys, _stream_name, None)
+    if _stream is not None and hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
 from fastapi import FastAPI, Request
 from app.database import create_db_and_tables, get_session
 from sqlmodel import Session, select
@@ -9,12 +21,14 @@ import logging
 import json
 import time
 import uuid
+import asyncio
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.api import limiter
 from pathlib import Path
 from app.services.llm import get_llm_manager
 from app.services.llm.manager import get_configured_openai_model
+from app.services.math_render_service import get_math_render_service
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi import HTTPException
@@ -308,7 +322,28 @@ def on_startup():
             logging.error(f"Failed to audit prompt bindings: {e}")
             session.rollback()
 
-    _ = get_llm_manager()
+    if os.environ.get("DISABLE_OPENAI", "").lower() not in {"1", "true", "yes"}:
+        _ = get_llm_manager()
+    else:
+        logging.info("DISABLE_OPENAI is enabled; skipping LLM manager initialization")
+
+    try:
+        # Start backend-only MathJax worker pool.
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(get_math_render_service().startup())
+        except RuntimeError:
+            asyncio.run(get_math_render_service().startup())
+    except Exception as e:
+        logging.error("Failed to start math render service: %s", e)
+
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    try:
+        await get_math_render_service().shutdown()
+    except Exception as e:
+        logging.warning("Math render shutdown warning: %s", e)
 
 
 # Monitoring Endpoints

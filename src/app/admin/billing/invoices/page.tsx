@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,7 +24,7 @@ export default function InvoicesPage() {
     const [loading, setLoading] = useState(true);
     const [total, setTotal] = useState(0);
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:9000';
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:9000';
 
     const fetchInvoices = useCallback(async () => {
         setLoading(true);
@@ -144,3 +144,4 @@ export default function InvoicesPage() {
         </div>
     );
 }
+

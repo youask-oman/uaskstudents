@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,7 +32,7 @@ export default function BillingFlagsPage() {
     const [reason, setReason] = useState('');
     const [error, setError] = useState('');
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:9000';
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:9000';
 
     const fetchFlags = useCallback(async () => {
         try {
@@ -103,7 +103,7 @@ export default function BillingFlagsPage() {
     };
 
     const killSwitch = async () => {
-        if (!confirm('⚠️ KILL SWITCH: This will disable ALL Billing V2 features immediately. Continue?')) {
+        if (!confirm('âš ï¸ KILL SWITCH: This will disable ALL Billing V2 features immediately. Continue?')) {
             return;
         }
         await updateFlags({
@@ -124,7 +124,7 @@ export default function BillingFlagsPage() {
 
     return (
         <div className="p-8 max-w-4xl">
-            <h1 className="text-2xl font-bold mb-6">🚀 Billing Feature Flags</h1>
+            <h1 className="text-2xl font-bold mb-6">ðŸš€ Billing Feature Flags</h1>
 
             {error && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -134,7 +134,7 @@ export default function BillingFlagsPage() {
 
             {/* Kill Switch */}
             <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4 mb-6">
-                <h2 className="text-lg font-bold text-red-700 mb-2">🛑 Emergency Kill Switch</h2>
+                <h2 className="text-lg font-bold text-red-700 mb-2">ðŸ›‘ Emergency Kill Switch</h2>
                 <p className="text-sm text-gray-600 mb-3">
                     Immediately disable all Billing V2 features. Use only in emergencies.
                 </p>
@@ -270,7 +270,7 @@ export default function BillingFlagsPage() {
             </div>
 
             {/* Audit Log */}
-            <h2 className="text-xl font-bold mb-4">📋 Change History</h2>
+            <h2 className="text-xl font-bold mb-4">ðŸ“‹ Change History</h2>
             <div className="bg-white border rounded-lg overflow-hidden">
                 <table className="w-full text-sm">
                     <thead className="bg-gray-50">
@@ -292,7 +292,7 @@ export default function BillingFlagsPage() {
                                 <td className="px-4 py-2 font-mono text-xs">{entry.flag_name}</td>
                                 <td className="px-4 py-2">
                                     <span className="text-red-500">{entry.old_value}</span>
-                                    {' → '}
+                                    {' â†’ '}
                                     <span className="text-green-500">{entry.new_value}</span>
                                 </td>
                                 <td className="px-4 py-2 text-gray-600">{entry.reason}</td>
@@ -311,3 +311,4 @@ export default function BillingFlagsPage() {
         </div>
     );
 }
+

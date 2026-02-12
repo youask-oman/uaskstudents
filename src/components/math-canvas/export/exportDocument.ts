@@ -460,7 +460,38 @@ export const buildExportHtml = (payload: SolutionExportPayload): string => {
 </html>`;
 };
 
+const notifyExportError = (message: string) => {
+  if (typeof window !== "undefined" && typeof window.alert === "function") {
+    window.alert(message);
+  }
+};
+
+const openPdfInPopupOrIframe = (payload: SolutionExportPayload) => {
+  const html = buildExportHtml(payload);
+  const popup = typeof window !== "undefined" ? window.open("", "_blank", "noopener,noreferrer") : null;
+  if (popup && popup.document) {
+    popup.document.open();
+    popup.document.write(html);
+    popup.document.close();
+    return;
+  }
+  if (typeof document !== "undefined") {
+    const frame = document.createElement("iframe");
+    frame.setAttribute("aria-hidden", "true");
+    frame.style.position = "fixed";
+    frame.style.width = "0";
+    frame.style.height = "0";
+    frame.style.border = "0";
+    frame.srcdoc = html;
+    document.body.appendChild(frame);
+  }
+};
+
 export const exportCanvasToPdf = async (payload: SolutionExportPayload): Promise<void> => {
+  if (typeof fetch !== "function") {
+    openPdfInPopupOrIframe(payload);
+    return;
+  }
   try {
     const exportPayload = mapToExportPayload(payload);
     const res = await fetch("/api/export/pdf", {
@@ -487,8 +518,8 @@ export const exportCanvasToPdf = async (payload: SolutionExportPayload): Promise
     }, 100);
   } catch (error) {
     console.error("PDF Export Error:", error);
-    alert("PDF export failed. Check console for details.");
-    throw error;
+    openPdfInPopupOrIframe(payload);
+    notifyExportError("PDF export failed. Opened browser print fallback.");
   }
 };
 
@@ -590,6 +621,12 @@ const mapToExportPayload = (payload: SolutionExportPayload): ExportSolutionPaylo
 };
 
 export const exportCanvasToDocx = async (payload: SolutionExportPayload): Promise<void> => {
+  if (typeof fetch !== "function") {
+    const err = new Error("DOCX export is unavailable in this environment (fetch missing).");
+    console.error("DOCX Export Error:", err);
+    notifyExportError("DOCX export unavailable in this environment.");
+    throw err;
+  }
   try {
     const exportPayload = mapToExportPayload(payload);
     const res = await fetch("/api/export/docx", {
@@ -616,7 +653,7 @@ export const exportCanvasToDocx = async (payload: SolutionExportPayload): Promis
     }, 100);
   } catch (error) {
     console.error("DOCX Export Error:", error);
-    alert("DOCX export failed. Check console for details.");
+    notifyExportError("DOCX export failed. Check console for details.");
     throw error;
   }
 };

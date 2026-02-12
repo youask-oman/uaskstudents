@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -72,7 +72,7 @@ type BindingMultipliers = {
     };
 };
 
-const DEFAULT_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:9000";
+const DEFAULT_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:9000";
 
 const tierToPricingKey = (tier: string): "free" | "short" | "standard" | "research" => {
     const normalized = String(tier || "").toUpperCase();
@@ -859,3 +859,4 @@ export default function AdminPromptBindingsPage() {
     );
 
 }
+

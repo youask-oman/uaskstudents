@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useCallback, useEffect, useState } from "react";
 import { API_BASE_URL, parseApiError } from "@/lib/api";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -43,7 +43,7 @@ export default function AdminQuotasPage() {
     const [pageIndex, setPageIndex] = useState(0);
     const pageSize = 15;
     const baseUrl = API_BASE_URL;
-    const fallbackUrl = process.env.NEXT_PUBLIC_API_FALLBACK_URL || API_BASE_URL || "http://127.0.0.1:9000";
+    const fallbackUrl = process.env.NEXT_PUBLIC_API_FALLBACK_URL || API_BASE_URL || "http://localhost:9000";
 
     const fetchData = useCallback(
         async (signal?: AbortSignal) => {
@@ -375,7 +375,7 @@ export default function AdminQuotasPage() {
                                 <p className="font-bold text-slate-900 dark:text-white text-lg leading-tight">{selectedUser.full_name}</p>
                                 <p className="text-xs text-slate-500">{selectedUser.email}</p>
                                 <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">
-                                    {selectedUser.full_id} · {selectedUser.plan} Legacy Account
+                                    {selectedUser.full_id} Â· {selectedUser.plan} Legacy Account
                                 </p>
                                 <p className="text-[10px] text-slate-500 mt-1">
                                     Credits: {selectedUser.credits_balance ?? "n/a"} used {selectedUser.credits_used_this_period ?? "n/a"}
@@ -453,3 +453,4 @@ export default function AdminQuotasPage() {
         </div>
     );
 }
+

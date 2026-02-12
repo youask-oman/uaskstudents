@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import DashboardNavBar from "@/components/DashboardNavBar";
 import { API_BASE_URL, parseApiError } from "@/lib/api";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -137,7 +137,9 @@ export default function BillingSuccessPage() {
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-200">
-            <DashboardNavBar />
+            <Suspense fallback={<div className="h-16 w-full" />}>
+                <DashboardNavBar />
+            </Suspense>
             <main className="max-w-3xl mx-auto px-4 py-16">
                 <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-10 text-center">
                     <div className="flex justify-center mb-6">

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { fetchWalletSummary, WalletSummary } from "@/lib/wallet";
 import { useTheme } from "@/hooks/useTheme";
@@ -38,8 +38,8 @@ export default function DashboardNavBar() {
 
     const router = useRouter();
     const pathname = usePathname();
-    const searchParams = useSearchParams();
-    const currentTab = searchParams.get("tab");
+    const currentTab =
+        typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("tab") : null;
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {

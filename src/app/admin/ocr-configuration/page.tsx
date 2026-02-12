@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -51,7 +51,7 @@ type ConfigHistory = {
 
 export default function AdminOcrConfigurationPage() {
     const { token } = useAuth();
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:9000';
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:9000';
 
     const [config, setConfig] = useState<OcrConfig | null>(null);
     const [meta, setMeta] = useState<ConfigMeta | null>(null);
@@ -193,7 +193,7 @@ export default function AdminOcrConfigurationPage() {
                     <div>
                         <h2 className="text-lg font-semibold">Active Configuration</h2>
                         <p className="text-sm text-slate-500">
-                            Version {meta?.version ?? '-'} {meta?.updated_at ? `· Updated ${new Date(meta.updated_at).toLocaleString()}` : ''}
+                            Version {meta?.version ?? '-'} {meta?.updated_at ? `Â· Updated ${new Date(meta.updated_at).toLocaleString()}` : ''}
                         </p>
                     </div>
                     <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">ACTIVE</span>
@@ -393,3 +393,4 @@ export default function AdminOcrConfigurationPage() {
         </div>
     );
 }
+

@@ -1,0 +1,18 @@
+[
+  {
+    "label": "LLM Usage",
+    "route": "/admin/observability/llm-usage",
+    "main_status": 200,
+    "ok": true,
+    "bad_api_calls": [],
+    "api_call_count": 3
+  },
+  {
+    "label": "Canonical Cache",
+    "route": "/admin/cache/canonical",
+    "main_status": 200,
+    "ok": true,
+    "bad_api_calls": [],
+    "api_call_count": 5
+  }
+]

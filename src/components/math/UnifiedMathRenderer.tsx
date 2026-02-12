@@ -1,14 +1,11 @@
 "use client";
 
 import React from "react";
-import { MathJax } from "better-react-mathjax";
 import { normalizeProseMath, autoFixMath } from "./mathNormalize";
 import { sanitizeLatex } from "../MathUtils";
 import { segmentMath } from "./mathSegment";
 import {
     markMalformedLatex,
-    markTypesetFailure,
-    recordTypesetDuration,
 } from "./mathTelemetry";
 
 export type UnifiedMathMode = "prose" | "block" | "inline";
@@ -19,26 +16,6 @@ export interface UnifiedMathRendererProps {
     className?: string;
     dynamic?: boolean;
     idKey?: string;
-}
-
-class MathErrorBoundary extends React.Component<
-    { fallback: React.ReactNode; onError: (error: unknown) => void; children: React.ReactNode },
-    { hasError: boolean }
-> {
-    state = { hasError: false };
-
-    static getDerivedStateFromError() {
-        return { hasError: true };
-    }
-
-    componentDidCatch(error: unknown) {
-        this.props.onError(error);
-    }
-
-    render() {
-        if (this.state.hasError) return this.props.fallback;
-        return this.props.children;
-    }
 }
 
 const FALLBACK_STYLE: React.CSSProperties = {
@@ -54,6 +31,77 @@ const renderFallback = (value: string) => (
         {value}
     </span>
 );
+
+interface RenderResult {
+    ok: boolean;
+    key?: string;
+}
+
+const buildMathKey = (value: string, inline: boolean) => `${inline ? "i" : "b"}::${value}`;
+
+const useMathSvgBatch = (jobs: Array<{ key: string; latex: string; inline: boolean }>, enabled: boolean) => {
+    const [renderMap, setRenderMap] = React.useState<Record<string, RenderResult>>({});
+    const [loading, setLoading] = React.useState(false);
+
+    React.useEffect(() => {
+        if (!enabled || jobs.length === 0) {
+            setRenderMap({});
+            return;
+        }
+        const pending = jobs.filter((job) => !renderMap[job.key]);
+        if (pending.length === 0) return;
+
+        let cancelled = false;
+        const controller = new AbortController();
+        const run = async () => {
+            setLoading(true);
+            try {
+                const response = await fetch("/api/v1/math/render", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        items: pending.map((job) => ({
+                            latex: job.latex,
+                            display_mode: !job.inline,
+                            macros: {},
+                            scale: 1.0,
+                        })),
+                        options: { font: "tex", sanitize: true, return_metrics: true },
+                    }),
+                    signal: controller.signal,
+                });
+                const payload = await response.json();
+                if (cancelled || !Array.isArray(payload?.results)) return;
+                setRenderMap((prev) => {
+                    const next = { ...prev };
+                    for (let i = 0; i < pending.length; i += 1) {
+                        const row = payload.results[i];
+                        next[pending[i].key] = { ok: Boolean(row?.ok), key: row?.key };
+                    }
+                    return next;
+                });
+            } catch {
+                if (cancelled) return;
+                setRenderMap((prev) => {
+                    const next = { ...prev };
+                    for (const job of pending) next[job.key] = { ok: false };
+                    return next;
+                });
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        };
+        void run();
+
+        return () => {
+            cancelled = true;
+            controller.abort();
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [enabled, jobs.map((j) => j.key).join("|")]);
+
+    return { renderMap, loading };
+};
 
 const stripOuterDelimiters = (content: unknown) => {
     if (typeof content !== "string") return String(content || "");
@@ -152,12 +200,13 @@ const MathSegment = ({
     value,
     inline,
     dynamic,
+    result,
 }: {
     value: string;
     inline: boolean;
     dynamic?: boolean;
+    result?: RenderResult;
 }) => {
-    const startRef = React.useRef<number | null>(null);
     if (!value || (typeof value === "string" && !value.trim())) {
         return <span />;
     }
@@ -179,28 +228,29 @@ const MathSegment = ({
     }
 
     const Wrapper: React.ElementType = inline ? "span" : "div";
+    if (dynamic) {
+        return <Wrapper suppressHydrationWarning>{renderFallback(cleanValue)}</Wrapper>;
+    }
+
+    if (!result?.ok || !result?.key) {
+        return <Wrapper suppressHydrationWarning>{renderFallback(cleanValue)}</Wrapper>;
+    }
+
+    const src = `/api/v1/math/svg/${encodeURIComponent(result.key)}.svg`;
 
     return (
         <Wrapper suppressHydrationWarning>
-            <MathErrorBoundary fallback={renderFallback(cleanValue)} onError={markTypesetFailure}>
-                <MathJax
-                    inline={inline}
-                    dynamic={dynamic}
-                    hideUntilTypeset="first"
-                    renderMode="post"
-                    onInitTypeset={() => {
-                        startRef.current = performance.now();
-                    }}
-                    onTypeset={() => {
-                        if (startRef.current !== null) {
-                            recordTypesetDuration(performance.now() - startRef.current);
-                            startRef.current = null;
-                        }
-                    }}
-                >
-                    {inline ? `\\(${cleanValue}\\)` : `\\[${cleanValue}\\]`}
-                </MathJax>
-            </MathErrorBoundary>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+                src={src}
+                alt={cleanValue}
+                style={{
+                    display: inline ? "inline-block" : "block",
+                    verticalAlign: "middle",
+                    maxWidth: "100%",
+                    height: "auto",
+                }}
+            />
         </Wrapper>
     );
 };
@@ -224,6 +274,20 @@ export default function UnifiedMathRenderer({
     const normalized = React.useMemo(() => normalizeProseMath(raw), [raw]);
     const { stable, tail } = useStreamingContent(normalized, dynamic);
     const segments = React.useMemo(() => segmentMath(stable), [stable]);
+    const jobs = React.useMemo(() => {
+        const collected: Array<{ key: string; latex: string; inline: boolean }> = [];
+        const seen = new Set<string>();
+        for (const segment of segments) {
+            if (segment.type === "text") continue;
+            const inline = segment.type === "inline_math";
+            const key = buildMathKey(segment.value, inline);
+            if (seen.has(key)) continue;
+            seen.add(key);
+            collected.push({ key, latex: segment.value, inline });
+        }
+        return collected;
+    }, [segments]);
+    const { renderMap, loading } = useMathSvgBatch(jobs, isMounted && !dynamic);
     const keyPrefix = idKey || "math";
 
     if (!raw) return null;
@@ -235,14 +299,25 @@ export default function UnifiedMathRenderer({
         );
     }
 
+    if (dynamic) {
+        const Wrapper: React.ElementType = mode === "inline" ? "span" : "div";
+        const streamValue = mode === "prose" ? normalized : stripped;
+        return (
+            <Wrapper className={className} style={{ whiteSpace: mode === "prose" ? "pre-wrap" : undefined }}>
+                {streamValue}
+            </Wrapper>
+        );
+    }
+
     if (mode === "inline" || mode === "block") {
-        const value = dynamic ? debounced : stripped;
+        const value = debounced || stripped;
         const inline = mode === "inline";
         const Wrapper: React.ElementType = inline ? "span" : "div";
+        const singleKey = buildMathKey(value, inline);
 
         return (
             <Wrapper className={className}>
-                <MathSegment value={value} inline={inline} dynamic={dynamic} />
+                <MathSegment value={value} inline={inline} dynamic={dynamic} result={renderMap[singleKey]} />
             </Wrapper>
         );
     }
@@ -256,24 +331,29 @@ export default function UnifiedMathRenderer({
                     );
                 }
                 if (segment.type === "inline_math") {
+                    const mathKey = buildMathKey(segment.value, true);
                     return (
                         <MathSegment
                             key={`${keyPrefix}-i-${index}`}
                             value={segment.value}
                             inline={true}
                             dynamic={dynamic}
+                            result={renderMap[mathKey]}
                         />
                     );
                 }
+                const mathKey = buildMathKey(segment.value, false);
                 return (
                     <MathSegment
                         key={`${keyPrefix}-b-${index}`}
                         value={segment.value}
                         inline={false}
                         dynamic={dynamic}
+                        result={renderMap[mathKey]}
                     />
                 );
             })}
+            {loading ? <span className="math-streaming-tail" /> : null}
             {tail ? <span className="math-streaming-tail">{tail}</span> : null}
         </div>
     );

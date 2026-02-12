@@ -30,6 +30,10 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 RUN npm config set cache /tmp/.npm && \
     npm install -g @whiskeysockets/baileys@^6.0.0 @hapi/boom@^10.0.0 qrcode@^1.5.0 pino@^9.0.0
 
+# Pre-install MathJax v4 renderer worker dependencies
+COPY tools/mathjax_renderer_v4/package*.json /tmp/mathjax_renderer_v4/
+RUN cd /tmp/mathjax_renderer_v4 && npm ci --omit=dev
+
 # Install base Python deps added binary version for psycopg2 to avoid build issues
 RUN pip install --only-binary=:all: psycopg2-binary==2.9.11 
 COPY requirements.base.txt .
@@ -47,6 +51,9 @@ RUN useradd -m -u 1000 appuser
 
 # Copy source code last (better cache)
 COPY --chown=appuser:appuser . .
+
+# Install local Node deps for MathJax worker in final image.
+RUN cd /app/tools/mathjax_renderer_v4 && npm ci --omit=dev
 
 USER appuser
 

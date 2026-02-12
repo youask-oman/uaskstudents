@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import DashboardNavBar from "@/components/DashboardNavBar";
 import { API_BASE_URL, parseApiError } from "@/lib/api";
 import { fetchWalletSummary } from "@/lib/wallet";
@@ -118,7 +118,9 @@ export default function BillingPaymentPage() {
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-200">
-            <DashboardNavBar />
+            <Suspense fallback={<div className="h-16 w-full" />}>
+                <DashboardNavBar />
+            </Suspense>
 
             <main className="max-w-4xl mx-auto px-4 py-12 space-y-10">
                 <div>

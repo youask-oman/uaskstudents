@@ -172,6 +172,9 @@ export default function AdminDashboardPage() {
         { label: "Prompt Registry", href: "/admin/prompt-registry" },
         { label: "Prompt Bindings", href: "/admin/prompt-bindings" },
         { label: "Logs", href: "/admin/logs" },
+        { label: "LLM Usage", href: "/admin/observability/llm-usage" },
+        { label: "Canonical Cache", href: "/admin/cache/canonical" },
+        { label: "Question Identity", href: "/admin/cache/question-identity" },
         { label: "Content", href: "/admin/content" },
         { label: "Data", href: "/admin/data" },
     ];

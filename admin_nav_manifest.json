@@ -166,6 +166,37 @@
     },
     {
       "type": "link",
+      "label": "LLM Usage",
+      "href": "/admin/observability/llm-usage",
+      "icon": "monitoring",
+      "page_title": "LLM Usage Ledger",
+      "api_checks": [
+        "/api/v1/admin/observability/llm-usage"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "Canonical Cache",
+      "href": "/admin/cache/canonical",
+      "icon": "database",
+      "page_title": "Canonical Cache",
+      "api_checks": [
+        "/api/v1/admin/cache/canonical/problems",
+        "/api/v1/admin/cache/canonical/solutions"
+      ]
+    },
+    {
+      "type": "link",
+      "label": "Question Identity",
+      "href": "/admin/cache/question-identity",
+      "icon": "fingerprint",
+      "page_title": "Question Identity Cache",
+      "api_checks": [
+        "/api/v1/admin/cache/question-identity"
+      ]
+    },
+    {
+      "type": "link",
       "label": "Solvers",
       "href": "/admin/solver-attempts",
       "icon": "article",

@@ -1,0 +1,68 @@
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=9 active_pairs=9
+DISABLE_OPENAI is enabled; skipping LLM manager initialization
+Stripe env loaded: STRIPE_SECRET_KEY=SET STRIPE_LIVE_MODE=False
+Stripe key masked: sk_test***6NRS
+Incoming: POST /api/v1/math/render
+Response: 200 | 237ms
+Using proactor: IocpProactor
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=9 active_pairs=9
+DISABLE_OPENAI is enabled; skipping LLM manager initialization
+Stripe env loaded: STRIPE_SECRET_KEY=SET STRIPE_LIVE_MODE=False
+Stripe key masked: sk_test***6NRS
+Incoming: POST /api/v1/math/render
+Response: 200 | 232ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 0ms
+Using proactor: IocpProactor
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=9 active_pairs=9
+DISABLE_OPENAI is enabled; skipping LLM manager initialization
+Stripe env loaded: STRIPE_SECRET_KEY=SET STRIPE_LIVE_MODE=False
+Stripe key masked: sk_test***6NRS
+Incoming: POST /api/v1/math/render
+Response: 200 | 222ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=9 active_pairs=9
+DISABLE_OPENAI is enabled; skipping LLM manager initialization
+Stripe env loaded: STRIPE_SECRET_KEY=SET STRIPE_LIVE_MODE=False
+Stripe key masked: sk_test***6NRS
+Incoming: POST /api/v1/math/render
+Response: 200 | 227ms
+Using proactor: IocpProactor
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=9 active_pairs=9
+DISABLE_OPENAI is enabled; skipping LLM manager initialization
+Stripe env loaded: STRIPE_SECRET_KEY=SET STRIPE_LIVE_MODE=False
+Stripe key masked: sk_test***6NRS
+Incoming: POST /api/v1/math/render
+Response: 200 | 224ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 1ms
+Using proactor: IocpProactor
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=9 active_pairs=9
+DISABLE_OPENAI is enabled; skipping LLM manager initialization
+Stripe env loaded: STRIPE_SECRET_KEY=SET STRIPE_LIVE_MODE=False
+Stripe key masked: sk_test***6NRS
+Incoming: POST /api/v1/math/render
+Response: 200 | 229ms

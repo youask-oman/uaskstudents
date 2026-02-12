@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -11,7 +11,7 @@ interface SchemaEntry {
     content?: Record<string, unknown>;
 }
 
-const DEFAULT_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:9000";
+const DEFAULT_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:9000";
 
 export default function AdminSchemaRegistryPage() {
     const baseUrl = useMemo(() => DEFAULT_API_BASE_URL, []);
@@ -337,3 +337,4 @@ export default function AdminSchemaRegistryPage() {
         </div>
     );
 }
+

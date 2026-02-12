@@ -396,7 +396,7 @@ export default function UserDetailPage() {
         if (!id) return;
         try {
             const headers = getAuthHeaders();
-            const baseUrls = [baseUrl, "http://localhost:9000", "http://127.0.0.1:9000"];
+            const baseUrls = [baseUrl, "http://localhost:9000"];
             let lastError: string | null = null;
             for (const candidateBase of baseUrls) {
                 try {

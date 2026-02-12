@@ -1,0 +1,15 @@
+{
+  "name": "uask-mathjax-renderer-v4",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Backend-only LaTeX to SVG renderer using MathJax v4 components",
+  "main": "renderer.mjs",
+  "scripts": {
+    "start": "node renderer.mjs"
+  },
+  "dependencies": {
+    "@mathjax/src": "^4.1.0",
+    "sanitize-html": "^2.17.0"
+  }
+}

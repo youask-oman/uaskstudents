@@ -4,7 +4,6 @@ import type { Metadata } from "next";
 import { Space_Grotesk, Lexend } from "next/font/google"; // For Student & Admin
 
 import "./globals.css";
-import { MathJaxContext } from "better-react-mathjax";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ToastProvider } from "@/components/ui/ToastProvider";
@@ -13,32 +12,6 @@ import TermsAcceptanceGate from "@/components/TermsAcceptanceGate";
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: '--font-space-grotesk' });
 const lexend = Lexend({ subsets: ["latin"], variable: '--font-lexend' });
-
-const mathJaxConfig = {
-  loader: { load: ["input/tex", "output/chtml", "[tex]/ams"] },
-  tex: {
-    packages: { "[+]": ["ams"] },
-    inlineMath: [["\\(", "\\)"]],
-    displayMath: [["\\[", "\\]"]],
-    processEscapes: true,
-    processEnvironments: true,
-  },
-  chtml: {
-    scale: 1.1,
-    matchFontHeight: true,
-    // Enable automatic line breaking - safer fallback for long expressions
-    linebreaks: {
-      automatic: true,
-      width: "container",
-    },
-  },
-  options: {
-    // Allow line breaks for very long math
-    linebreaks: {
-      automatic: true,
-    },
-  },
-};
 
 export const metadata: Metadata = {
   title: "uask.ai | Master Math & Physics with AI",
@@ -64,9 +37,7 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             <ToastProvider>
-              <MathJaxContext config={mathJaxConfig}>
-                {children}
-              </MathJaxContext>
+              {children}
               <TermsAcceptanceGate />
               <AnalyticsCookieBanner />
             </ToastProvider>

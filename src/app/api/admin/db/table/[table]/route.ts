@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const FALLBACK_BACKEND_URL = process.env.NEXT_PUBLIC_API_FALLBACK_URL || "http://127.0.0.1:9000";
+const FALLBACK_BACKEND_URL = process.env.NEXT_PUBLIC_API_FALLBACK_URL || "http://localhost:9000";
 
 export async function GET(request: NextRequest, context: { params: Promise<{ table: string }> }) {
     const headers: Record<string, string> = {};

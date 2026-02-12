@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,7 +21,7 @@ export default function EnrollmentsPage() {
     const [search, setSearch] = useState('');
     const [total, setTotal] = useState(0);
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:9000';
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:9000';
 
     const fetchEnrollments = useCallback(async () => {
         try {
@@ -71,7 +71,7 @@ export default function EnrollmentsPage() {
 
     return (
         <div className="p-8 max-w-6xl">
-            <h1 className="text-2xl font-bold mb-6">👥 Program Enrollments</h1>
+            <h1 className="text-2xl font-bold mb-6">ðŸ‘¥ Program Enrollments</h1>
 
             <div className="mb-4">
                 <input
@@ -134,3 +134,4 @@ export default function EnrollmentsPage() {
         </div>
     );
 }
+

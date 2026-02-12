@@ -2,7 +2,6 @@
 
 import React from "react";
 import MathRendererSwitch from "./MathRendererSwitch";
-import { useMathJaxTypeset } from "./useMathJaxTypeset";
 
 export type MathJaxRenderMode = "prose" | "block" | "inline";
 
@@ -21,11 +20,9 @@ export default function MathJaxRenderer({
     dynamic,
     idKey,
 }: MathJaxRendererProps) {
-    const wrapperRef = React.useRef<HTMLSpanElement | HTMLDivElement>(null);
-    useMathJaxTypeset(wrapperRef as React.RefObject<HTMLElement>, [content, mode, className, dynamic, idKey], 200);
     if (mode === "inline") {
         return (
-            <span ref={wrapperRef as React.Ref<HTMLSpanElement>} className={className}>
+            <span className={className}>
                 <MathRendererSwitch
                     content={content}
                     mode={mode}
@@ -37,7 +34,7 @@ export default function MathJaxRenderer({
     }
 
     return (
-        <div ref={wrapperRef as React.Ref<HTMLDivElement>} className={className}>
+        <div className={className}>
             <MathRendererSwitch
                 content={content}
                 mode={mode}

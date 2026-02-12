@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState, useEffect, useCallback } from "react";
 
@@ -55,7 +55,7 @@ export default function AdminUsersPage() {
     const [activeRowMenu, setActiveRowMenu] = useState<number | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [availablePlans, setAvailablePlans] = useState<{ id: number; name: string; slug: string }[]>([]);
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:9000";
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:9000";
     const getAuthHeaders = (includeJson = false) => {
         const token = localStorage.getItem("token");
         const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
@@ -447,7 +447,7 @@ export default function AdminUsersPage() {
             </div>
 
             <footer className="mt-auto py-6 text-center border-t border-slate-200 dark:border-slate-800">
-                <p className="text-[11px] text-slate-600 font-medium uppercase tracking-widest">uask.ai Administrative Engine • Directory v4.2.0 • Build 2024.11.05</p>
+                <p className="text-[11px] text-slate-600 font-medium uppercase tracking-widest">uask.ai Administrative Engine â€¢ Directory v4.2.0 â€¢ Build 2024.11.05</p>
             </footer>
 
             {showInviteModal && (
@@ -514,3 +514,4 @@ export default function AdminUsersPage() {
         </div>
     );
 }
+

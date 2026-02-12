@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,7 +26,7 @@ export default function LegacySubscriptionsPage() {
     const [saveError, setSaveError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:9000';
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:9000';
 
     const fetchPlans = useCallback(async () => {
         try {
@@ -255,3 +255,4 @@ export default function LegacySubscriptionsPage() {
         </div>
     );
 }
+

@@ -38,6 +38,18 @@ exports[`math-canvas export layout builds clean export HTML without action contr
     .plot-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
     .plot-svg { width: 100%; height: auto; max-height: 260px; background: #fff; }
     .plot-axis-labels { display: flex; justify-content: space-between; font-size: 12px; color: #42526a; margin-top: 6px; }
+    .problem-statement-card { background: #f0fdf4; border-left: 4px solid #16a34a; padding: 16px; margin-bottom: 20px; border-radius: 4px; }
+    .problem-statement-header { font-size: 11px; font-weight: 900; color: #166534; text-transform: uppercase; margin-bottom: 8px; }
+    .assumptions-box { margin-top: 12px; }
+    .assumptions-title { font-size: 10px; font-weight: 800; color: #166534; text-transform: uppercase; margin-bottom: 4px; }
+    .assumptions-list { margin: 0; padding-left: 18px; font-size: 12px; color: #374151; }
+    .mistakes-card { background: #fffbeb; border: 1px solid #fde68a; padding: 16px; margin: 20px 0; border-radius: 8px; }
+    .mistakes-header { color: #92400e; font-weight: 700; font-size: 14px; margin-bottom: 8px; }
+    .mistakes-list { margin: 0; padding-left: 20px; font-size: 13px; color: #78350f; }
+    .final-answer-details { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; margin-top: 16px; padding-top: 16px; border-top: 1px solid #e5e7eb; }
+    .detail-item { font-size: 14px; }
+    .detail-label { font-weight: 700; color: #6b7280; text-transform: uppercase; font-size: 10px; margin-right: 4px; }
+    .detail-value { font-weight: 600; color: #111827; }
     .paper-page-break { page-break-before: always; }
     math { font-size: 1.05em; color: #101828; }
     .step-math math, .verification-math math { display: inline-block; }
@@ -72,7 +84,14 @@ exports[`math-canvas export layout builds clean export HTML without action contr
           </section>
         
           <section class="section steps-section">
+            <div class="problem-statement-card">
+               <div class="problem-statement-header">Problem Analysis</div>
+               
+               
+            </div>
+
             <h3>Step-by-step Solution</h3>
+            
             
   <article class="step-card">
     <h4>Step 1 - Use Identity</h4>
@@ -86,8 +105,19 @@ exports[`math-canvas export layout builds clean export HTML without action contr
     <div class="step-math"><span class="katex"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msup><mrow><mi>sin</mi><mo>⁡</mo></mrow><mn>2</mn></msup><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo><mo>+</mo><msup><mrow><mi>cos</mi><mo>⁡</mo></mrow><mn>2</mn></msup><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\\sin^2(x)+\\cos^2(x)=1</annotation></semantics></math></span></div>
   </article>
 
+            
+            
+
             <div class="verification"><h4>Verification</h4><div class="verification-item"><strong>check_1:</strong> Holds for all real x.</div></div>
-            <section class="section final-answer"><h3>Final Answer</h3><div class="final-answer-content"><span class="katex"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msup><mrow><mi>sin</mi><mo>⁡</mo></mrow><mn>2</mn></msup><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo><mo>+</mo><msup><mrow><mi>cos</mi><mo>⁡</mo></mrow><mn>2</mn></msup><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\\sin^2(x)+\\cos^2(x)=1</annotation></semantics></math></span></div></section>
+            
+            <section class="section final-answer">
+              <h3>Final Result</h3>
+              <div class="final-answer-content">
+                <span class="katex"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msup><mrow><mi>sin</mi><mo>⁡</mo></mrow><mn>2</mn></msup><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo><mo>+</mo><msup><mrow><mi>cos</mi><mo>⁡</mo></mrow><mn>2</mn></msup><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\\sin^2(x)+\\cos^2(x)=1</annotation></semantics></math></span>
+              </div>
+              
+            </section>
+            
           </section>
         
       

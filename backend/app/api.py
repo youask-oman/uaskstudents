@@ -36,7 +36,7 @@ from app.models import (
     VoiceSession, VoiceAudio, VoiceJob, VoiceArtifact, VoiceConfirmation,
     AdminNote, SystemConfig, UserQuotaOverride, SystemErrorEntry,
     School, Plan, Subscription, UsageLedger,
-    RequestEvent, DeviceSignupLog, OcrCache,
+    RequestEvent, DeviceSignupLog, OcrCache, QuestionIdentityCache,
     OcrExtractionCache, CreditHold, SolverOutputAttempt,
     PromptTemplateEntry, JsonSchemaEntry, PromptBinding,
     PromptTierEnum, PromptModeEnum, PromptRoleEnum,
@@ -97,6 +97,7 @@ from app.services.solver import solver_service
 from app.services.intent import should_require_visual
 from app.services.solve.solution_doc import parse_solution_doc, render_solution_doc_markdown
 from app.services.legal_service import get_terms_requirement_status
+from app.services.audit_log_service import audit_log_service
 
 
 
@@ -112,6 +113,7 @@ from app.bg_routers.local_router import router as local_router
 from app.bg_routers.snap_solve_pdf import router as snap_solve_pdf_router
 from app.bg_routers.credits_router import router as credits_router
 from app.bg_routers.plot_router import router as plot_router
+from app.bg_routers.math_render_router import router as math_render_router
 
 limiter = Limiter(key_func=get_remote_address)
 api_router = APIRouter()
@@ -126,6 +128,7 @@ api_router.include_router(credits_router, tags=["credits"])
 api_router.include_router(plot_router, prefix="/v1", tags=["plotting"])
 # Backward-compatible canonical path: /api/v1/plot/*
 api_router.include_router(plot_router, tags=["plotting"])
+api_router.include_router(math_render_router, tags=["math_render"])
 from app.services.solve.solve_events import emit_attempt_event
 
 # OCR prompt/schema are DB-driven via ocr_config_service
@@ -9801,7 +9804,7 @@ async def admin_get_dashboard_stats(db: Session = Depends(get_session), admin: U
     system_errors = [SystemErrorItem(
         id=str(e.id),
         timestamp=e.created_at.isoformat(),
-        level=e.level,
+        level=getattr(e, "severity", "ERROR"),
         message=e.message,
         component=e.component
     ) for e in errors]
@@ -9915,6 +9918,75 @@ class SolverOutputAttemptDetail(SolverOutputAttemptListItem):
     raw_solution_text: str
 
 
+class AdminLlmUsageLedgerItem(BaseModel):
+    id: int
+    solve_session_id: int
+    followup_turn_id: Optional[int] = None
+    user_id: Optional[int] = None
+    provider: str
+    model: str
+    request_id: Optional[str] = None
+    system_prompt_tokens: int
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
+    latency_ms: Optional[int] = None
+    created_at: str
+
+
+class AdminLlmUsageLedgerListResponse(BaseModel):
+    total: int
+    items: List[AdminLlmUsageLedgerItem]
+
+
+class AdminLlmUsageCreateRequest(BaseModel):
+    solve_session_id: int
+    followup_turn_id: Optional[int] = None
+    provider: str
+    model: str
+    request_id: Optional[str] = None
+    system_prompt_tokens: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    total_tokens: Optional[int] = None
+    latency_ms: Optional[int] = None
+    reason: str
+
+
+class AdminLlmUsageUpdateRequest(BaseModel):
+    provider: Optional[str] = None
+    model: Optional[str] = None
+    request_id: Optional[str] = None
+    system_prompt_tokens: Optional[int] = None
+    input_tokens: Optional[int] = None
+    output_tokens: Optional[int] = None
+    total_tokens: Optional[int] = None
+    latency_ms: Optional[int] = None
+    reason: str
+
+
+class AdminLlmUsageDeleteRequest(BaseModel):
+    reason: str
+
+
+def _serialize_llm_usage_row(row: LlmUsageLedger, user_id: Optional[int] = None) -> AdminLlmUsageLedgerItem:
+    return AdminLlmUsageLedgerItem(
+        id=int(row.id or 0),
+        solve_session_id=row.solve_session_id,
+        followup_turn_id=row.followup_turn_id,
+        user_id=user_id,
+        provider=row.provider,
+        model=row.model,
+        request_id=row.request_id,
+        system_prompt_tokens=row.system_prompt_tokens,
+        input_tokens=row.input_tokens,
+        output_tokens=row.output_tokens,
+        total_tokens=row.total_tokens,
+        latency_ms=row.latency_ms,
+        created_at=row.created_at.isoformat() if row.created_at else "",
+    )
+
+
 def _serialize_solver_output_attempt(
     row: SolverOutputAttempt,
     include_full_output: bool = False,
@@ -10006,6 +10078,872 @@ async def admin_get_solve_traces(
         except Exception:
             continue
     return entries
+
+
+@api_router.get("/admin/observability/llm-usage", response_model=AdminLlmUsageLedgerListResponse)
+async def admin_list_llm_usage_ledger(
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    user_id: Optional[int] = Query(None),
+    provider: Optional[str] = Query(None),
+    model: Optional[str] = Query(None),
+    request_id: Optional[str] = Query(None),
+    solve_session_id: Optional[int] = Query(None),
+    db: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    query = select(LlmUsageLedger)
+    if provider:
+        query = query.where(LlmUsageLedger.provider == provider.strip())
+    if model:
+        query = query.where(LlmUsageLedger.model == model.strip())
+    if request_id:
+        query = query.where(LlmUsageLedger.request_id.contains(request_id.strip()))
+    if solve_session_id is not None:
+        query = query.where(LlmUsageLedger.solve_session_id == solve_session_id)
+    if user_id is not None:
+        session_ids = db.exec(select(SolveSession.id).where(SolveSession.user_id == user_id)).all()
+        if not session_ids:
+            return AdminLlmUsageLedgerListResponse(total=0, items=[])
+        query = query.where(LlmUsageLedger.solve_session_id.in_(session_ids))
+
+    rows = db.exec(query.order_by(LlmUsageLedger.created_at.desc()).offset(offset).limit(limit)).all()
+    total = len(db.exec(query).all())
+
+    session_id_set = {r.solve_session_id for r in rows}
+    session_map: Dict[int, SolveSession] = {}
+    if session_id_set:
+        sessions = db.exec(select(SolveSession).where(SolveSession.id.in_(session_id_set))).all()
+        session_map = {int(s.id): s for s in sessions if s.id is not None}
+
+    items = []
+    for row in rows:
+        session_rec = session_map.get(row.solve_session_id)
+        items.append(_serialize_llm_usage_row(row, user_id=session_rec.user_id if session_rec else None))
+
+    return AdminLlmUsageLedgerListResponse(total=total, items=items)
+
+
+@api_router.get("/admin/observability/llm-usage/{entry_id}", response_model=AdminLlmUsageLedgerItem)
+async def admin_get_llm_usage_ledger_entry(
+    entry_id: int,
+    db: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    row = db.get(LlmUsageLedger, entry_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="LLM usage entry not found")
+    session_rec = db.get(SolveSession, row.solve_session_id)
+    return _serialize_llm_usage_row(row, user_id=session_rec.user_id if session_rec else None)
+
+
+@api_router.post("/admin/observability/llm-usage", response_model=AdminLlmUsageLedgerItem)
+async def admin_create_llm_usage_ledger_entry(
+    body: AdminLlmUsageCreateRequest,
+    request: Request,
+    db: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    if not body.reason.strip():
+        raise HTTPException(status_code=400, detail="reason is required")
+    solve_session = db.get(SolveSession, body.solve_session_id)
+    if not solve_session:
+        raise HTTPException(status_code=404, detail="Solve session not found")
+    if body.followup_turn_id is not None:
+        turn = db.get(FollowupChatTurn, body.followup_turn_id)
+        if not turn:
+            raise HTTPException(status_code=404, detail="Follow-up turn not found")
+        if turn.solve_session_id != body.solve_session_id:
+            raise HTTPException(status_code=400, detail="followup_turn_id does not belong to solve_session_id")
+
+    computed_total = body.total_tokens if body.total_tokens is not None else (
+        max(0, body.system_prompt_tokens) + max(0, body.input_tokens) + max(0, body.output_tokens)
+    )
+    row = LlmUsageLedger(
+        solve_session_id=body.solve_session_id,
+        followup_turn_id=body.followup_turn_id,
+        provider=body.provider.strip(),
+        model=body.model.strip(),
+        request_id=body.request_id.strip() if body.request_id else None,
+        system_prompt_tokens=max(0, body.system_prompt_tokens),
+        input_tokens=max(0, body.input_tokens),
+        output_tokens=max(0, body.output_tokens),
+        total_tokens=max(0, computed_total),
+        latency_ms=body.latency_ms,
+    )
+    db.add(row)
+    db.flush()
+    audit_log_service.log_action(
+        session=db,
+        admin_user_id=admin.id or 0,
+        action="CREATE",
+        entity_type="LLM_USAGE_LEDGER",
+        entity_id=str(row.id),
+        before_json=None,
+        after_json=_serialize_llm_usage_row(row, user_id=solve_session.user_id).model_dump(),
+        reason=body.reason.strip(),
+        request=request,
+    )
+    db.commit()
+    db.refresh(row)
+    return _serialize_llm_usage_row(row, user_id=solve_session.user_id)
+
+
+@api_router.patch("/admin/observability/llm-usage/{entry_id}", response_model=AdminLlmUsageLedgerItem)
+async def admin_update_llm_usage_ledger_entry(
+    entry_id: int,
+    body: AdminLlmUsageUpdateRequest,
+    request: Request,
+    db: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    if not body.reason.strip():
+        raise HTTPException(status_code=400, detail="reason is required")
+    row = db.get(LlmUsageLedger, entry_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="LLM usage entry not found")
+    session_rec = db.get(SolveSession, row.solve_session_id)
+    before = _serialize_llm_usage_row(row, user_id=session_rec.user_id if session_rec else None).model_dump()
+
+    if body.provider is not None:
+        row.provider = body.provider.strip()
+    if body.model is not None:
+        row.model = body.model.strip()
+    if body.request_id is not None:
+        row.request_id = body.request_id.strip() or None
+    if body.system_prompt_tokens is not None:
+        row.system_prompt_tokens = max(0, body.system_prompt_tokens)
+    if body.input_tokens is not None:
+        row.input_tokens = max(0, body.input_tokens)
+    if body.output_tokens is not None:
+        row.output_tokens = max(0, body.output_tokens)
+    if body.total_tokens is not None:
+        row.total_tokens = max(0, body.total_tokens)
+    else:
+        row.total_tokens = max(0, row.system_prompt_tokens + row.input_tokens + row.output_tokens)
+    if body.latency_ms is not None:
+        row.latency_ms = body.latency_ms
+
+    db.add(row)
+    db.flush()
+    after = _serialize_llm_usage_row(row, user_id=session_rec.user_id if session_rec else None).model_dump()
+    audit_log_service.log_action(
+        session=db,
+        admin_user_id=admin.id or 0,
+        action="UPDATE",
+        entity_type="LLM_USAGE_LEDGER",
+        entity_id=str(row.id),
+        before_json=before,
+        after_json=after,
+        reason=body.reason.strip(),
+        request=request,
+    )
+    db.commit()
+    db.refresh(row)
+    return _serialize_llm_usage_row(row, user_id=session_rec.user_id if session_rec else None)
+
+
+@api_router.delete("/admin/observability/llm-usage/{entry_id}")
+async def admin_delete_llm_usage_ledger_entry(
+    entry_id: int,
+    body: AdminLlmUsageDeleteRequest,
+    request: Request,
+    db: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    if not body.reason.strip():
+        raise HTTPException(status_code=400, detail="reason is required")
+    row = db.get(LlmUsageLedger, entry_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="LLM usage entry not found")
+    session_rec = db.get(SolveSession, row.solve_session_id)
+    before = _serialize_llm_usage_row(row, user_id=session_rec.user_id if session_rec else None).model_dump()
+    audit_log_service.log_action(
+        session=db,
+        admin_user_id=admin.id or 0,
+        action="DELETE",
+        entity_type="LLM_USAGE_LEDGER",
+        entity_id=str(row.id),
+        before_json=before,
+        after_json=None,
+        reason=body.reason.strip(),
+        request=request,
+    )
+    db.delete(row)
+    db.commit()
+    return {"status": "ok", "deleted_id": entry_id}
+
+
+class AdminCanonicalProblemItem(BaseModel):
+    id: int
+    normalized_problem_hash: str
+    normalized_text: str
+    intent: str
+    canonical_math_object: str
+    assumptions_hash: Optional[str] = None
+    prompt_version: Optional[str] = None
+    solver_version: Optional[str] = None
+    schema_version: Optional[str] = None
+    normalized_latex_blocks: Optional[List[dict]] = None
+    subject: Optional[str] = None
+    language: str
+    created_at: str
+    last_seen_at: str
+    seen_count: int
+
+
+class AdminCanonicalProblemListResponse(BaseModel):
+    total: int
+    items: List[AdminCanonicalProblemItem]
+
+
+class AdminCanonicalProblemCreateRequest(BaseModel):
+    normalized_problem_hash: str
+    normalized_text: str
+    intent: str = "unknown"
+    canonical_math_object: str = ""
+    assumptions_hash: Optional[str] = None
+    prompt_version: Optional[str] = None
+    solver_version: Optional[str] = None
+    schema_version: Optional[str] = None
+    normalized_latex_blocks: Optional[List[dict]] = None
+    subject: Optional[str] = None
+    language: str = "en"
+    seen_count: int = 1
+    reason: str
+
+
+class AdminCanonicalProblemUpdateRequest(BaseModel):
+    normalized_text: Optional[str] = None
+    intent: Optional[str] = None
+    canonical_math_object: Optional[str] = None
+    assumptions_hash: Optional[str] = None
+    prompt_version: Optional[str] = None
+    solver_version: Optional[str] = None
+    schema_version: Optional[str] = None
+    normalized_latex_blocks: Optional[List[dict]] = None
+    subject: Optional[str] = None
+    language: Optional[str] = None
+    seen_count: Optional[int] = None
+    reason: str
+
+
+class AdminCanonicalProblemDeleteRequest(BaseModel):
+    reason: str
+
+
+class AdminCanonicalSolutionItem(BaseModel):
+    id: int
+    problem_id: int
+    solution_json: dict
+    verification_status: str
+    verification_report: Optional[dict] = None
+    prompt_version: Optional[str] = None
+    model_id: Optional[str] = None
+    created_at: str
+    last_served_at: str
+    served_count: int
+
+
+class AdminCanonicalSolutionListResponse(BaseModel):
+    total: int
+    items: List[AdminCanonicalSolutionItem]
+
+
+class AdminCanonicalSolutionCreateRequest(BaseModel):
+    problem_id: int
+    solution_json: dict
+    verification_status: str = "pending"
+    verification_report: Optional[dict] = None
+    prompt_version: Optional[str] = None
+    model_id: Optional[str] = None
+    served_count: int = 1
+    reason: str
+
+
+class AdminCanonicalSolutionUpdateRequest(BaseModel):
+    problem_id: Optional[int] = None
+    solution_json: Optional[dict] = None
+    verification_status: Optional[str] = None
+    verification_report: Optional[dict] = None
+    prompt_version: Optional[str] = None
+    model_id: Optional[str] = None
+    served_count: Optional[int] = None
+    reason: str
+
+
+class AdminCanonicalSolutionDeleteRequest(BaseModel):
+    reason: str
+
+
+def _serialize_canonical_problem_row(row: CanonicalProblem) -> AdminCanonicalProblemItem:
+    return AdminCanonicalProblemItem(
+        id=int(row.id or 0),
+        normalized_problem_hash=row.normalized_problem_hash,
+        normalized_text=row.normalized_text,
+        intent=row.intent,
+        canonical_math_object=row.canonical_math_object,
+        assumptions_hash=row.assumptions_hash,
+        prompt_version=row.prompt_version,
+        solver_version=row.solver_version,
+        schema_version=row.schema_version,
+        normalized_latex_blocks=row.normalized_latex_blocks,
+        subject=row.subject,
+        language=row.language,
+        created_at=row.created_at.isoformat() if row.created_at else "",
+        last_seen_at=row.last_seen_at.isoformat() if row.last_seen_at else "",
+        seen_count=row.seen_count,
+    )
+
+
+def _serialize_canonical_solution_row(row: CanonicalSolution) -> AdminCanonicalSolutionItem:
+    return AdminCanonicalSolutionItem(
+        id=int(row.id or 0),
+        problem_id=row.problem_id,
+        solution_json=row.solution_json,
+        verification_status=row.verification_status,
+        verification_report=row.verification_report,
+        prompt_version=row.prompt_version,
+        model_id=row.model_id,
+        created_at=row.created_at.isoformat() if row.created_at else "",
+        last_served_at=row.last_served_at.isoformat() if row.last_served_at else "",
+        served_count=row.served_count,
+    )
+
+
+@api_router.get("/admin/cache/canonical/problems", response_model=AdminCanonicalProblemListResponse)
+async def admin_list_canonical_problems(
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    q: Optional[str] = Query(None),
+    intent: Optional[str] = Query(None),
+    subject: Optional[str] = Query(None),
+    db: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    query = select(CanonicalProblem)
+    if q:
+        needle = f"%{q.strip()}%"
+        query = query.where(
+            or_(
+                CanonicalProblem.normalized_problem_hash.ilike(needle),
+                CanonicalProblem.normalized_text.ilike(needle),
+                CanonicalProblem.canonical_math_object.ilike(needle),
+            )
+        )
+    if intent:
+        query = query.where(CanonicalProblem.intent == intent.strip())
+    if subject:
+        query = query.where(CanonicalProblem.subject == subject.strip())
+
+    rows = db.exec(query.order_by(CanonicalProblem.last_seen_at.desc()).offset(offset).limit(limit)).all()
+    total = len(db.exec(query).all())
+    return AdminCanonicalProblemListResponse(total=total, items=[_serialize_canonical_problem_row(r) for r in rows])
+
+
+@api_router.post("/admin/cache/canonical/problems", response_model=AdminCanonicalProblemItem)
+async def admin_create_canonical_problem(
+    body: AdminCanonicalProblemCreateRequest,
+    request: Request,
+    db: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    if not body.reason.strip():
+        raise HTTPException(status_code=400, detail="reason is required")
+    existing = db.exec(
+        select(CanonicalProblem).where(CanonicalProblem.normalized_problem_hash == body.normalized_problem_hash.strip())
+    ).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="normalized_problem_hash already exists")
+    row = CanonicalProblem(
+        normalized_problem_hash=body.normalized_problem_hash.strip(),
+        normalized_text=body.normalized_text,
+        intent=body.intent,
+        canonical_math_object=body.canonical_math_object,
+        assumptions_hash=body.assumptions_hash,
+        prompt_version=body.prompt_version,
+        solver_version=body.solver_version,
+        schema_version=body.schema_version,
+        normalized_latex_blocks=body.normalized_latex_blocks,
+        subject=body.subject,
+        language=body.language,
+        seen_count=max(0, body.seen_count),
+    )
+    db.add(row)
+    db.flush()
+    audit_log_service.log_action(
+        session=db,
+        admin_user_id=admin.id or 0,
+        action="CREATE",
+        entity_type="CANONICAL_PROBLEM",
+        entity_id=str(row.id),
+        before_json=None,
+        after_json=_serialize_canonical_problem_row(row).model_dump(),
+        reason=body.reason.strip(),
+        request=request,
+    )
+    db.commit()
+    db.refresh(row)
+    return _serialize_canonical_problem_row(row)
+
+
+@api_router.patch("/admin/cache/canonical/problems/{problem_id}", response_model=AdminCanonicalProblemItem)
+async def admin_update_canonical_problem(
+    problem_id: int,
+    body: AdminCanonicalProblemUpdateRequest,
+    request: Request,
+    db: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    if not body.reason.strip():
+        raise HTTPException(status_code=400, detail="reason is required")
+    row = db.get(CanonicalProblem, problem_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Canonical problem not found")
+    before = _serialize_canonical_problem_row(row).model_dump()
+
+    if body.normalized_text is not None:
+        row.normalized_text = body.normalized_text
+    if body.intent is not None:
+        row.intent = body.intent
+    if body.canonical_math_object is not None:
+        row.canonical_math_object = body.canonical_math_object
+    if body.assumptions_hash is not None:
+        row.assumptions_hash = body.assumptions_hash
+    if body.prompt_version is not None:
+        row.prompt_version = body.prompt_version
+    if body.solver_version is not None:
+        row.solver_version = body.solver_version
+    if body.schema_version is not None:
+        row.schema_version = body.schema_version
+    if body.normalized_latex_blocks is not None:
+        row.normalized_latex_blocks = body.normalized_latex_blocks
+    if body.subject is not None:
+        row.subject = body.subject
+    if body.language is not None:
+        row.language = body.language
+    if body.seen_count is not None:
+        row.seen_count = max(0, body.seen_count)
+
+    db.add(row)
+    db.flush()
+    after = _serialize_canonical_problem_row(row).model_dump()
+    audit_log_service.log_action(
+        session=db,
+        admin_user_id=admin.id or 0,
+        action="UPDATE",
+        entity_type="CANONICAL_PROBLEM",
+        entity_id=str(row.id),
+        before_json=before,
+        after_json=after,
+        reason=body.reason.strip(),
+        request=request,
+    )
+    db.commit()
+    db.refresh(row)
+    return _serialize_canonical_problem_row(row)
+
+
+@api_router.delete("/admin/cache/canonical/problems/{problem_id}")
+async def admin_delete_canonical_problem(
+    problem_id: int,
+    body: AdminCanonicalProblemDeleteRequest,
+    request: Request,
+    db: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    if not body.reason.strip():
+        raise HTTPException(status_code=400, detail="reason is required")
+    row = db.get(CanonicalProblem, problem_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Canonical problem not found")
+
+    linked_solutions = db.exec(select(CanonicalSolution).where(CanonicalSolution.problem_id == problem_id)).all()
+    before = _serialize_canonical_problem_row(row).model_dump()
+    audit_log_service.log_action(
+        session=db,
+        admin_user_id=admin.id or 0,
+        action="DELETE",
+        entity_type="CANONICAL_PROBLEM",
+        entity_id=str(row.id),
+        before_json=before,
+        after_json=None,
+        reason=body.reason.strip(),
+        request=request,
+    )
+    for solution in linked_solutions:
+        db.delete(solution)
+    db.delete(row)
+    db.commit()
+    return {"status": "ok", "deleted_problem_id": problem_id, "deleted_solutions": len(linked_solutions)}
+
+
+@api_router.get("/admin/cache/canonical/solutions", response_model=AdminCanonicalSolutionListResponse)
+async def admin_list_canonical_solutions(
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    problem_id: Optional[int] = Query(None),
+    verification_status: Optional[str] = Query(None),
+    q: Optional[str] = Query(None),
+    db: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    query = select(CanonicalSolution)
+    if problem_id is not None:
+        query = query.where(CanonicalSolution.problem_id == problem_id)
+    if verification_status:
+        query = query.where(CanonicalSolution.verification_status == verification_status.strip())
+    if q:
+        needle = f"%{q.strip()}%"
+        query = query.where(
+            or_(
+                CanonicalSolution.model_id.ilike(needle),
+                CanonicalSolution.prompt_version.ilike(needle),
+            )
+        )
+
+    rows = db.exec(query.order_by(CanonicalSolution.last_served_at.desc()).offset(offset).limit(limit)).all()
+    total = len(db.exec(query).all())
+    return AdminCanonicalSolutionListResponse(total=total, items=[_serialize_canonical_solution_row(r) for r in rows])
+
+
+@api_router.post("/admin/cache/canonical/solutions", response_model=AdminCanonicalSolutionItem)
+async def admin_create_canonical_solution(
+    body: AdminCanonicalSolutionCreateRequest,
+    request: Request,
+    db: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    if not body.reason.strip():
+        raise HTTPException(status_code=400, detail="reason is required")
+    if not db.get(CanonicalProblem, body.problem_id):
+        raise HTTPException(status_code=404, detail="Canonical problem not found")
+    row = CanonicalSolution(
+        problem_id=body.problem_id,
+        solution_json=body.solution_json,
+        verification_status=body.verification_status,
+        verification_report=body.verification_report,
+        prompt_version=body.prompt_version,
+        model_id=body.model_id,
+        served_count=max(0, body.served_count),
+    )
+    db.add(row)
+    db.flush()
+    audit_log_service.log_action(
+        session=db,
+        admin_user_id=admin.id or 0,
+        action="CREATE",
+        entity_type="CANONICAL_SOLUTION",
+        entity_id=str(row.id),
+        before_json=None,
+        after_json=_serialize_canonical_solution_row(row).model_dump(),
+        reason=body.reason.strip(),
+        request=request,
+    )
+    db.commit()
+    db.refresh(row)
+    return _serialize_canonical_solution_row(row)
+
+
+@api_router.patch("/admin/cache/canonical/solutions/{solution_id}", response_model=AdminCanonicalSolutionItem)
+async def admin_update_canonical_solution(
+    solution_id: int,
+    body: AdminCanonicalSolutionUpdateRequest,
+    request: Request,
+    db: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    if not body.reason.strip():
+        raise HTTPException(status_code=400, detail="reason is required")
+    row = db.get(CanonicalSolution, solution_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Canonical solution not found")
+    before = _serialize_canonical_solution_row(row).model_dump()
+
+    if body.problem_id is not None:
+        if not db.get(CanonicalProblem, body.problem_id):
+            raise HTTPException(status_code=404, detail="Canonical problem not found")
+        row.problem_id = body.problem_id
+    if body.solution_json is not None:
+        row.solution_json = body.solution_json
+    if body.verification_status is not None:
+        row.verification_status = body.verification_status
+    if body.verification_report is not None:
+        row.verification_report = body.verification_report
+    if body.prompt_version is not None:
+        row.prompt_version = body.prompt_version
+    if body.model_id is not None:
+        row.model_id = body.model_id
+    if body.served_count is not None:
+        row.served_count = max(0, body.served_count)
+
+    db.add(row)
+    db.flush()
+    after = _serialize_canonical_solution_row(row).model_dump()
+    audit_log_service.log_action(
+        session=db,
+        admin_user_id=admin.id or 0,
+        action="UPDATE",
+        entity_type="CANONICAL_SOLUTION",
+        entity_id=str(row.id),
+        before_json=before,
+        after_json=after,
+        reason=body.reason.strip(),
+        request=request,
+    )
+    db.commit()
+    db.refresh(row)
+    return _serialize_canonical_solution_row(row)
+
+
+@api_router.delete("/admin/cache/canonical/solutions/{solution_id}")
+async def admin_delete_canonical_solution(
+    solution_id: int,
+    body: AdminCanonicalSolutionDeleteRequest,
+    request: Request,
+    db: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    if not body.reason.strip():
+        raise HTTPException(status_code=400, detail="reason is required")
+    row = db.get(CanonicalSolution, solution_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Canonical solution not found")
+    before = _serialize_canonical_solution_row(row).model_dump()
+    audit_log_service.log_action(
+        session=db,
+        admin_user_id=admin.id or 0,
+        action="DELETE",
+        entity_type="CANONICAL_SOLUTION",
+        entity_id=str(row.id),
+        before_json=before,
+        after_json=None,
+        reason=body.reason.strip(),
+        request=request,
+    )
+    db.delete(row)
+    db.commit()
+    return {"status": "ok", "deleted_solution_id": solution_id}
+
+
+class AdminQuestionIdentityItem(BaseModel):
+    id: int
+    question_key: str
+    normalized_stem: str
+    normalized_options: Optional[str] = None
+    question_type: str
+    solution_json: dict
+    original_variants: List[str]
+    hit_count: int
+    created_at: str
+    last_seen_at: str
+
+
+class AdminQuestionIdentityListResponse(BaseModel):
+    total: int
+    items: List[AdminQuestionIdentityItem]
+
+
+class AdminQuestionIdentityCreateRequest(BaseModel):
+    question_key: str
+    normalized_stem: str
+    normalized_options: Optional[str] = None
+    question_type: str = "unknown"
+    solution_json: dict
+    original_variants: List[str] = []
+    hit_count: int = 0
+    reason: str
+
+
+class AdminQuestionIdentityUpdateRequest(BaseModel):
+    question_key: Optional[str] = None
+    normalized_stem: Optional[str] = None
+    normalized_options: Optional[str] = None
+    question_type: Optional[str] = None
+    solution_json: Optional[dict] = None
+    original_variants: Optional[List[str]] = None
+    hit_count: Optional[int] = None
+    reason: str
+
+
+class AdminQuestionIdentityDeleteRequest(BaseModel):
+    reason: str
+
+
+def _serialize_question_identity_row(row: QuestionIdentityCache) -> AdminQuestionIdentityItem:
+    return AdminQuestionIdentityItem(
+        id=int(row.id or 0),
+        question_key=row.question_key,
+        normalized_stem=row.normalized_stem,
+        normalized_options=row.normalized_options,
+        question_type=row.question_type,
+        solution_json=row.solution_json,
+        original_variants=row.original_variants or [],
+        hit_count=row.hit_count,
+        created_at=row.created_at.isoformat() if row.created_at else "",
+        last_seen_at=row.last_seen_at.isoformat() if row.last_seen_at else "",
+    )
+
+
+@api_router.get("/admin/cache/question-identity", response_model=AdminQuestionIdentityListResponse)
+async def admin_list_question_identity_cache(
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    q: Optional[str] = Query(None),
+    question_type: Optional[str] = Query(None),
+    db: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    query = select(QuestionIdentityCache)
+    if q:
+        needle = f"%{q.strip()}%"
+        query = query.where(
+            or_(
+                QuestionIdentityCache.question_key.ilike(needle),
+                QuestionIdentityCache.normalized_stem.ilike(needle),
+            )
+        )
+    if question_type:
+        query = query.where(QuestionIdentityCache.question_type == question_type.strip())
+
+    rows = db.exec(query.order_by(QuestionIdentityCache.last_seen_at.desc()).offset(offset).limit(limit)).all()
+    total = len(db.exec(query).all())
+    return AdminQuestionIdentityListResponse(total=total, items=[_serialize_question_identity_row(r) for r in rows])
+
+
+@api_router.get("/admin/cache/question-identity/{entry_id}", response_model=AdminQuestionIdentityItem)
+async def admin_get_question_identity_cache_entry(
+    entry_id: int,
+    db: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    row = db.get(QuestionIdentityCache, entry_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Question identity cache entry not found")
+    return _serialize_question_identity_row(row)
+
+
+@api_router.post("/admin/cache/question-identity", response_model=AdminQuestionIdentityItem)
+async def admin_create_question_identity_cache_entry(
+    body: AdminQuestionIdentityCreateRequest,
+    request: Request,
+    db: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    if not body.reason.strip():
+        raise HTTPException(status_code=400, detail="reason is required")
+    existing = db.exec(select(QuestionIdentityCache).where(QuestionIdentityCache.question_key == body.question_key.strip())).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="question_key already exists")
+    row = QuestionIdentityCache(
+        question_key=body.question_key.strip(),
+        normalized_stem=body.normalized_stem,
+        normalized_options=body.normalized_options,
+        question_type=body.question_type,
+        solution_json=body.solution_json,
+        original_variants=body.original_variants or [],
+        hit_count=max(0, body.hit_count),
+    )
+    db.add(row)
+    db.flush()
+    audit_log_service.log_action(
+        session=db,
+        admin_user_id=admin.id or 0,
+        action="CREATE",
+        entity_type="QUESTION_IDENTITY_CACHE",
+        entity_id=str(row.id),
+        before_json=None,
+        after_json=_serialize_question_identity_row(row).model_dump(),
+        reason=body.reason.strip(),
+        request=request,
+    )
+    db.commit()
+    db.refresh(row)
+    return _serialize_question_identity_row(row)
+
+
+@api_router.patch("/admin/cache/question-identity/{entry_id}", response_model=AdminQuestionIdentityItem)
+async def admin_update_question_identity_cache_entry(
+    entry_id: int,
+    body: AdminQuestionIdentityUpdateRequest,
+    request: Request,
+    db: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    if not body.reason.strip():
+        raise HTTPException(status_code=400, detail="reason is required")
+    row = db.get(QuestionIdentityCache, entry_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Question identity cache entry not found")
+    before = _serialize_question_identity_row(row).model_dump()
+
+    if body.question_key is not None:
+        next_key = body.question_key.strip()
+        if next_key and next_key != row.question_key:
+            dup = db.exec(select(QuestionIdentityCache).where(QuestionIdentityCache.question_key == next_key)).first()
+            if dup:
+                raise HTTPException(status_code=409, detail="question_key already exists")
+            row.question_key = next_key
+    if body.normalized_stem is not None:
+        row.normalized_stem = body.normalized_stem
+    if body.normalized_options is not None:
+        row.normalized_options = body.normalized_options
+    if body.question_type is not None:
+        row.question_type = body.question_type
+    if body.solution_json is not None:
+        row.solution_json = body.solution_json
+    if body.original_variants is not None:
+        row.original_variants = body.original_variants
+    if body.hit_count is not None:
+        row.hit_count = max(0, body.hit_count)
+
+    db.add(row)
+    db.flush()
+    after = _serialize_question_identity_row(row).model_dump()
+    audit_log_service.log_action(
+        session=db,
+        admin_user_id=admin.id or 0,
+        action="UPDATE",
+        entity_type="QUESTION_IDENTITY_CACHE",
+        entity_id=str(row.id),
+        before_json=before,
+        after_json=after,
+        reason=body.reason.strip(),
+        request=request,
+    )
+    db.commit()
+    db.refresh(row)
+    return _serialize_question_identity_row(row)
+
+
+@api_router.delete("/admin/cache/question-identity/{entry_id}")
+async def admin_delete_question_identity_cache_entry(
+    entry_id: int,
+    body: AdminQuestionIdentityDeleteRequest,
+    request: Request,
+    db: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    if not body.reason.strip():
+        raise HTTPException(status_code=400, detail="reason is required")
+    row = db.get(QuestionIdentityCache, entry_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Question identity cache entry not found")
+    before = _serialize_question_identity_row(row).model_dump()
+    audit_log_service.log_action(
+        session=db,
+        admin_user_id=admin.id or 0,
+        action="DELETE",
+        entity_type="QUESTION_IDENTITY_CACHE",
+        entity_id=str(row.id),
+        before_json=before,
+        after_json=None,
+        reason=body.reason.strip(),
+        request=request,
+    )
+    db.delete(row)
+    db.commit()
+    return {"status": "ok", "deleted_id": entry_id}
 
 
 @api_router.get("/admin/db/tables", response_model=List[str])
