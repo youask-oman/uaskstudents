@@ -14,6 +14,8 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 from app.database import engine
 from app.models import (
     User,
+    CreditTransfer,
+    Notification,
     PromptTemplateEntry,
     PromptBinding,
     JsonSchemaEntry,
@@ -159,6 +161,8 @@ def check_seed_files():
         "prompt_templates.json",
         "prompt_bindings.json",
         "json_schemas.json",
+        "credit_transfers.json",
+        "notifications.json",
         "schools.json",
         "seed_manifest.json"
     ]
@@ -245,7 +249,9 @@ def verify_data_integrity(session: Session):
         "providermodelpricing": "providermodelpricing",
         "credit_program_definition": "credit_program_definition",
         "plan": "plan",
-        "school": "school"
+        "school": "school",
+        "credit_transfers": "credit_transfers",
+        "notifications": "notifications",
     }
     try:
         db_counts["user_internal"] = len(users) if 'users' in locals() else 0

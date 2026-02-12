@@ -1,9 +1,0 @@
-<svg style="vertical-align:-1.577ex" xmlns="http://www.w3.org/2000/svg" width="2.192ex" height="4.106ex" role="img" focusable="false"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g><g><g transform="translate(220,676)"><path d="M498 144C498 153 493 158 482 15
-
----
-
-<svg style="vertical-align:-0.331ex" xmlns="http://www.w3.org/2000/svg" width="8.486ex" height="2.851ex" role="img" focusable="false"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g><g><g transform="translate(0,203.7)"><path d="M1013 807C1018 817 1020 823 102
-
----
-
-<svg style="vertical-align:-2.75ex" xmlns="http://www.w3.org/2000/svg" width="4.823ex" height="6.285ex" role="img" focusable="false"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g><g><g><path d="M1265-450L1389-124L1355-124C1336-174 1304-216 1258-250C1145-334

@@ -13,10 +13,13 @@
     ],
     "missing": [],
     "all_tables": [
+      "math_svg_cache",
       "payment",
       "chatnote",
+      "credit_transfers",
       "ocrcache",
       "ocrextractioncache",
+      "notifications",
       "user",
       "voicesession",
       "schoolimportrun",
@@ -101,12 +104,14 @@
     "prompt_templates.json": "Present",
     "prompt_bindings.json": "Present",
     "json_schemas.json": "Present",
+    "credit_transfers.json": "Present",
+    "notifications.json": "Present",
     "schools.json": "Present",
     "seed_manifest.json": "Present"
   },
   "db_row_counts": {
     "user_internal": 5,
-    "systemconfig": 45,
+    "systemconfig": 54,
     "prompt_templates": 21,
     "prompt_bindings": 9,
     "json_schemas": 12,
@@ -114,6 +119,8 @@
     "credit_program_definition": 6,
     "plan": 6,
     "school": 117960,
+    "credit_transfers": 12,
+    "notifications": 0,
     "expected_school": 117960
   },
   "forbidden_tables_status": {
@@ -123,10 +130,10 @@
     "refund": 0,
     "subscription": 3,
     "subscriptionperiod": 0,
-    "chatsession": 124,
-    "chatmessage": 248,
-    "solveroutputattempt": 264,
-    "billingledger": 13
+    "chatsession": 125,
+    "chatmessage": 250,
+    "solveroutputattempt": 265,
+    "billingledger": 38
   },
   "internal_users_check": [
     "loai@uask.ai",

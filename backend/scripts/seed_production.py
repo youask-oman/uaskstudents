@@ -14,8 +14,10 @@ from sqlalchemy import text
 from app.database import engine
 from app.auth import get_password_hash
 from app.models import (
+    CreditTransfer,
     CreditLot,
     JsonSchemaEntry,
+    Notification,
     Payment,
     Plan,
     PromptBinding,
@@ -736,6 +738,98 @@ def _seed_internal_users(session: Session, app_env: str, allow_user_seeding: boo
     return count, _res(c, u, s)
 
 
+def _seed_credit_transfers(session: Session, app_env: str) -> Tuple[int, Dict[str, int]]:
+    path = SEED_DATA_DIR / "credit_transfers.json"
+    payload = _load_json(path) if path.exists() else []
+    checksum = _sha256_payload(payload)
+    if _reg_same(session, "credit_transfers", checksum):
+        return len(session.exec(select(CreditTransfer)).all()), _res(s=len(payload))
+
+    c = u = s = 0
+    for row in payload:
+        cur = session.get(CreditTransfer, row["id"])
+        values = {
+            "sender_user_id": int(row["sender_user_id"]),
+            "recipient_email": str(row["recipient_email"]).strip().lower(),
+            "recipient_user_id": row.get("recipient_user_id"),
+            "amount": Decimal(str(row["amount"])),
+            "status": row.get("status", "PENDING"),
+            "idempotency_key": row["idempotency_key"],
+            "created_at": datetime.fromisoformat(row["created_at"]),
+            "updated_at": datetime.fromisoformat(row["updated_at"]),
+            "expires_at": datetime.fromisoformat(row["expires_at"]),
+            "claimed_at": datetime.fromisoformat(row["claimed_at"]) if row.get("claimed_at") else None,
+            "failure_reason": row.get("failure_reason"),
+            "sender_ip_hash": row.get("sender_ip_hash"),
+            "escrow_lot_id": row.get("escrow_lot_id"),
+            "sender_ledger_id": row.get("sender_ledger_id"),
+            "recipient_ledger_id": row.get("recipient_ledger_id"),
+            "refund_ledger_id": row.get("refund_ledger_id"),
+        }
+        if cur:
+            changed = False
+            for k, v in values.items():
+                if getattr(cur, k) != v:
+                    setattr(cur, k, v)
+                    changed = True
+            if changed:
+                session.add(cur)
+                u += 1
+            else:
+                s += 1
+        else:
+            session.add(CreditTransfer(id=row["id"], **values))
+            c += 1
+    session.commit()
+    count = len(session.exec(select(CreditTransfer)).all())
+    _reg_set(session, "credit_transfers", checksum, app_env, count)
+    return count, _res(c, u, s)
+
+
+def _seed_notifications(session: Session, app_env: str) -> Tuple[int, Dict[str, int]]:
+    path = SEED_DATA_DIR / "notifications.json"
+    payload = _load_json(path) if path.exists() else []
+    checksum = _sha256_payload(payload)
+    if _reg_same(session, "notifications", checksum):
+        return len(session.exec(select(Notification)).all()), _res(s=len(payload))
+
+    c = u = s = 0
+    for row in payload:
+        cur = session.get(Notification, int(row["id"]))
+        values = {
+            "user_id": int(row["user_id"]),
+            "type": row["type"],
+            "title": row["title"],
+            "body": row["body"],
+            "payload_json": row.get("payload_json"),
+            "severity": row.get("severity", "info"),
+            "is_read": bool(row.get("is_read", False)),
+            "created_at": datetime.fromisoformat(row["created_at"]),
+            "read_at": datetime.fromisoformat(row["read_at"]) if row.get("read_at") else None,
+            "action_type": row.get("action_type"),
+            "action_payload": row.get("action_payload"),
+            "dedupe_key": row.get("dedupe_key"),
+        }
+        if cur:
+            changed = False
+            for k, v in values.items():
+                if getattr(cur, k) != v:
+                    setattr(cur, k, v)
+                    changed = True
+            if changed:
+                session.add(cur)
+                u += 1
+            else:
+                s += 1
+        else:
+            session.add(Notification(id=int(row["id"]), **values))
+            c += 1
+    session.commit()
+    count = len(session.exec(select(Notification)).all())
+    _reg_set(session, "notifications", checksum, app_env, count)
+    return count, _res(c, u, s)
+
+
 def _assert_no_payment_transactions(session: Session) -> None:
     row_count = len(session.exec(select(Payment)).all())
     if row_count > 0:
@@ -776,6 +870,10 @@ def run_seed(app_env: str, rotate_passwords: bool, dev_fixtures: bool, allow_use
         summary["school"] = {"row_count": count, **ops}
         count, ops = _seed_internal_users(session, app_env, allow_user_seeding, dev_fixtures)
         summary["user"] = {"row_count": count, **ops}
+        count, ops = _seed_credit_transfers(session, app_env)
+        summary["credit_transfers"] = {"row_count": count, **ops}
+        count, ops = _seed_notifications(session, app_env)
+        summary["notifications"] = {"row_count": count, **ops}
         _assert_no_payment_transactions(session)
         summary["payment"] = {"row_count": 0, **_res()}
     return summary
@@ -802,6 +900,8 @@ def main() -> None:
         "topup_product",
         "school",
         "user",
+        "credit_transfers",
+        "notifications",
         "payment",
     ]:
         row = summary.get(k, {})

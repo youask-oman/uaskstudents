@@ -1197,6 +1197,56 @@ class BillingLedger(SQLModel, table=True):
     ok: bool = Field(default=True)
     error_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
 
+
+class CreditTransfer(SQLModel, table=True):
+    __tablename__ = "credit_transfers"
+    __table_args__ = (
+        UniqueConstraint("sender_user_id", "idempotency_key", name="uq_credit_transfer_sender_idem"),
+        Index("ix_credit_transfer_recipient_status", "recipient_email", "status"),
+        Index("ix_credit_transfer_sender_created", "sender_user_id", "created_at"),
+    )
+
+    id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
+    sender_user_id: int = Field(foreign_key="user.id", index=True)
+    recipient_email: str = Field(index=True)
+    recipient_user_id: Optional[int] = Field(default=None, foreign_key="user.id", index=True)
+    amount: Decimal = Field(sa_column=Column(Numeric(20, 10), nullable=False))
+    status: str = Field(default="PENDING", index=True)  # PENDING, COMPLETED, EXPIRED, REFUNDED, CANCELED
+    idempotency_key: str = Field(index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    expires_at: datetime = Field(index=True)
+    claimed_at: Optional[datetime] = None
+    failure_reason: Optional[str] = None
+    sender_ip_hash: Optional[str] = Field(default=None, index=True)
+    escrow_lot_id: Optional[int] = Field(default=None, foreign_key="creditlot.id", index=True)
+    sender_ledger_id: Optional[int] = Field(default=None, foreign_key="billingledger.id", index=True)
+    recipient_ledger_id: Optional[int] = Field(default=None, foreign_key="billingledger.id", index=True)
+    refund_ledger_id: Optional[int] = Field(default=None, foreign_key="billingledger.id", index=True)
+
+
+class Notification(SQLModel, table=True):
+    __tablename__ = "notifications"
+    __table_args__ = (
+        Index("ix_notifications_user_created", "user_id", "created_at"),
+        Index("ix_notifications_user_unread", "user_id", "is_read"),
+        UniqueConstraint("user_id", "dedupe_key", name="uq_notifications_user_dedupe"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    type: str = Field(index=True)
+    title: str
+    body: str
+    payload_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    severity: str = Field(default="info", index=True)  # info, success, warning, error
+    is_read: bool = Field(default=False, index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    read_at: Optional[datetime] = None
+    action_type: Optional[str] = Field(default=None, index=True)
+    action_payload: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    dedupe_key: Optional[str] = Field(default=None, index=True)
+
 class StripeEvent(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     stripe_event_id: str = Field(unique=True, index=True)

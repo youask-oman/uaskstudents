@@ -32,6 +32,7 @@ import {
 // Tier-aware solve imports
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import CostPreview from "@/components/solve/CostPreview";
+import TransferAndNotificationsPanel from "@/components/solve/TransferAndNotificationsPanel";
 import { fetchCreditsEstimate, CreditsEstimateResponse, SolveTier, WalletProgramEnrollment, WalletSummary, fetchWalletPrograms, fetchWalletSummary } from "@/lib/wallet";
 import { TokenPolicy, fetchTokenPolicy } from "@/lib/tokenPolicy";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -2525,6 +2526,16 @@ export default function DashboardPage() {
                                 </button>
                             </div>
                         </div>
+
+                        <TransferAndNotificationsPanel
+                            onInfo={(message) =>
+                                pushToast({
+                                    type: "info",
+                                    title: "Credits",
+                                    message,
+                                })
+                            }
+                        />
                     </div>
                 </div>
             </main>

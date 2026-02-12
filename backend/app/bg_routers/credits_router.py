@@ -1,15 +1,19 @@
-from typing import Dict, Any, Literal, Optional
-from fastapi import APIRouter, Depends, HTTPException, Header
+from typing import Dict, Any, Literal, Optional, List
+from fastapi import APIRouter, Depends, HTTPException, Header, Request
 from pydantic import BaseModel, Field
-from sqlmodel import Session
+from sqlmodel import Session, select
 from jose import jwt, JWTError, ExpiredSignatureError
 from datetime import datetime, timezone
 import logging
+from decimal import Decimal
 
 from app.database import get_session
-from app.models import User, Subscription
+from app.models import User, Subscription, CreditTransfer
 from app.services.prompt_binding_pricing import normalize_tier_key, resolve_binding_pricing
 from app.auth import SECRET_KEY, ALGORITHM
+from app.services.credit_transfer_config import load_credit_transfer_config
+from app.services.credit_transfer_service import credit_transfer_service, CreditTransferError
+from app.services.notification_service import notification_service
 # from app.auth import get_current_user # Not available in auth.py, defining locally
 
 router = APIRouter()
@@ -53,7 +57,6 @@ def get_current_user_optional(
                 return None
         
         # Query user
-        from sqlmodel import select
         statement = select(User).where(User.email == email)
         user = session.exec(statement).first()
         
@@ -66,9 +69,6 @@ def get_current_user_optional(
         
     except ExpiredSignatureError:
         logger.warning("JWT token has expired")
-        return None
-    except JWTClaimsError as e:
-        logger.warning(f"JWT claims error: {e}")
         return None
     except JWTError as e:
         logger.warning(f"JWT validation error: {e}")
@@ -105,7 +105,6 @@ def get_current_user_from_token(token: str, session: Session) -> Optional[User]:
                 return None
         
         # Query user
-        from sqlmodel import select
         statement = select(User).where(User.email == email)
         user = session.exec(statement).first()
         
@@ -113,9 +112,6 @@ def get_current_user_from_token(token: str, session: Session) -> Optional[User]:
         
     except ExpiredSignatureError:
         logger.warning("JWT token has expired")
-        return None
-    except JWTClaimsError as e:
-        logger.warning(f"JWT claims error: {e}")
         return None
     except JWTError as e:
         logger.warning(f"JWT validation error: {e}")
@@ -133,6 +129,14 @@ def get_optional_user(
         return None
     token = authorization.replace("Bearer ", "").strip()
     return get_current_user_from_token(token, session)
+
+
+def get_current_user_required(
+    user: Optional[User] = Depends(get_optional_user),
+) -> User:
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return user
 
 
 # --- Request/Response Models ---
@@ -175,6 +179,36 @@ class CreditsEstimateResponse(BaseModel):
     pricing_version: str
     pricing_version_plan: str
     pricing_version_token_config: Optional[int] = None
+
+
+class TransferRequest(BaseModel):
+    recipient_email: str
+    amount: Decimal = Field(gt=0)
+    idempotency_key: str
+
+
+class TransferResponse(BaseModel):
+    transfer_id: str
+    status: str
+    amount: float
+    recipient_email: str
+    recipient_user_id: Optional[int] = None
+
+
+class ClaimPendingResponse(BaseModel):
+    claimed_count: int
+    transfer_ids: List[str]
+
+
+class CreditsBalanceResponse(BaseModel):
+    spendable_balance: float
+    pending_outgoing_total: float
+    can_transfer: bool
+    min_transfer: float
+    max_transfer: float
+    daily_remaining: float
+    reason_if_disabled: Optional[str] = None
+    credit_transfer_enabled: bool = False
 
 
 # --- Logic ---
@@ -304,3 +338,106 @@ async def estimate_credits(
         pricing_version_plan=str(multipliers.version),
         pricing_version_token_config=token_config_version
     )
+
+
+@router.get("/credits/balance", response_model=CreditsBalanceResponse)
+async def credits_balance(
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user_required),
+):
+    cfg = load_credit_transfer_config(session)
+    view = credit_transfer_service.get_balance_view(session, user, cfg)
+    return CreditsBalanceResponse(
+        spendable_balance=float(view.spendable_balance),
+        pending_outgoing_total=float(view.pending_outgoing_total),
+        can_transfer=view.can_transfer,
+        min_transfer=float(view.min_transfer),
+        max_transfer=float(view.max_transfer),
+        daily_remaining=float(view.daily_remaining),
+        reason_if_disabled=view.reason_if_disabled,
+        credit_transfer_enabled=view.credit_transfer_enabled,
+    )
+
+
+@router.post("/credits/transfer", response_model=TransferResponse)
+async def transfer_credits(
+    body: TransferRequest,
+    request: Request,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user_required),
+):
+    cfg = load_credit_transfer_config(session)
+    try:
+        transfer = credit_transfer_service.create_transfer(
+            session,
+            sender=user,
+            recipient_email_raw=body.recipient_email,
+            amount=body.amount,
+            idempotency_key=body.idempotency_key,
+            cfg=cfg,
+            sender_ip=request.client.host if request.client else None,
+        )
+
+        if cfg.notifications_enabled:
+            notification_service.create_notification(
+                session,
+                user_id=user.id,
+                type="CREDIT_TRANSFER_SENT",
+                title="Credit transfer submitted",
+                body=f"Transferred {float(transfer.amount):.2f} credits to {transfer.recipient_email}.",
+                severity="success",
+                payload_json={"transfer_id": transfer.id, "status": transfer.status},
+                dedupe_key=f"transfer_sent:{transfer.id}",
+            )
+            if transfer.recipient_user_id:
+                notification_service.create_notification(
+                    session,
+                    user_id=transfer.recipient_user_id,
+                    type="CREDIT_TRANSFER_RECEIVED",
+                    title="Credits received",
+                    body=f"You received {float(transfer.amount):.2f} credits from {user.email}.",
+                    severity="success",
+                    payload_json={"transfer_id": transfer.id, "sender_user_id": user.id},
+                    dedupe_key=f"transfer_received:{transfer.id}",
+                )
+        session.commit()
+    except CreditTransferError as exc:
+        session.rollback()
+        raise HTTPException(status_code=exc.status_code, detail={"code": exc.code, "message": exc.message})
+    except Exception:
+        session.rollback()
+        raise
+
+    return TransferResponse(
+        transfer_id=transfer.id,
+        status=transfer.status,
+        amount=float(transfer.amount),
+        recipient_email=transfer.recipient_email,
+        recipient_user_id=transfer.recipient_user_id,
+    )
+
+
+@router.post("/credits/claim_pending", response_model=ClaimPendingResponse)
+async def claim_pending_credits(
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user_required),
+):
+    cfg = load_credit_transfer_config(session)
+    if not cfg.enabled:
+        raise HTTPException(status_code=503, detail={"code": "feature_disabled", "message": "Credit transfer is disabled"})
+
+    claimed = credit_transfer_service.claim_pending_for_user(session, user)
+    if cfg.notifications_enabled and claimed:
+        for transfer in claimed:
+            notification_service.create_notification(
+                session,
+                user_id=user.id,
+                type="CREDIT_TRANSFER_CLAIMED",
+                title="Pending credits claimed",
+                body=f"You claimed {float(transfer.amount):.2f} credits.",
+                severity="success",
+                payload_json={"transfer_id": transfer.id},
+                dedupe_key=f"transfer_claimed:{transfer.id}",
+            )
+    session.commit()
+    return ClaimPendingResponse(claimed_count=len(claimed), transfer_ids=[t.id for t in claimed])

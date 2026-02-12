@@ -1,7 +1,7 @@
 {
   "files": {
     "credit_programs_or_plans.json": {
-      "row_count": 12,
+      "row_count": 1,
       "sha256": "3bfef87e893c33a5359e7ffaa1cd5efbe0cc89141fe3d709fc8c2ee5264ab7be"
     },
     "internal_users.json": {
@@ -35,9 +35,17 @@
     "systemconfig.json": {
       "row_count": 45,
       "sha256": "eb065f5a8e5ac4a97eff1be102ebdd15ac144342fcc363943fbf0dea0ddc2d72"
+    },
+    "credit_transfers.json": {
+      "row_count": 12,
+      "sha256": "ebcb4c10d1aec509ccea26d2982f51174b84bddac6434411e39c7eb4875aa5d3"
+    },
+    "notifications.json": {
+      "row_count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
     }
   },
-  "generated_at": "2026-02-12T16:57:22.604573+00:00",
+  "generated_at": "2026-02-12T19:14:07.988235+00:00",
   "schema_table_map": {
     "link_tables": [],
     "prompt_binding_reference_model": "key-based strings",

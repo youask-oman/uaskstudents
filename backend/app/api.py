@@ -98,6 +98,7 @@ from app.services.intent import should_require_visual
 from app.services.solve.solution_doc import parse_solution_doc, render_solution_doc_markdown
 from app.services.legal_service import get_terms_requirement_status
 from app.services.audit_log_service import audit_log_service
+from app.services.credit_transfer_config import load_credit_transfer_config
 
 
 
@@ -114,6 +115,7 @@ from app.bg_routers.snap_solve_pdf import router as snap_solve_pdf_router
 from app.bg_routers.credits_router import router as credits_router
 from app.bg_routers.plot_router import router as plot_router
 from app.bg_routers.math_render_router import router as math_render_router
+from app.bg_routers.notifications_router import router as notifications_router
 
 limiter = Limiter(key_func=get_remote_address)
 api_router = APIRouter()
@@ -125,6 +127,7 @@ api_router.include_router(voice_router, tags=["voice"])
 api_router.include_router(local_router, tags=["local_math"])
 api_router.include_router(snap_solve_pdf_router, tags=["snap_solve_pdf"])
 api_router.include_router(credits_router, tags=["credits"])
+api_router.include_router(notifications_router, tags=["notifications"])
 api_router.include_router(plot_router, prefix="/v1", tags=["plotting"])
 # Backward-compatible canonical path: /api/v1/plot/*
 api_router.include_router(plot_router, tags=["plotting"])
@@ -1274,6 +1277,30 @@ class SolveV2ConfigUpdateRequest(BaseModel):
     tier_policy_json: str
     narrator_enabled: bool = False
     output_contract_id: Optional[str] = None
+
+
+class CreditTransferAdminConfigResponse(BaseModel):
+    credit_transfer_enabled: bool
+    notifications_enabled: bool
+    min_transfer: float
+    max_transfer: float
+    daily_cap: float
+    pending_expiry_days: int
+    per_minute_limit: int
+    thank_per_minute_limit: int
+    account_age_minutes_min: int
+
+
+class CreditTransferAdminConfigUpdateRequest(BaseModel):
+    credit_transfer_enabled: bool
+    notifications_enabled: bool
+    min_transfer: float
+    max_transfer: float
+    daily_cap: float
+    pending_expiry_days: int
+    per_minute_limit: int
+    thank_per_minute_limit: int
+    account_age_minutes_min: int
 
 class AdminUserUpdateRequest(BaseModel):
     full_name: Optional[str] = None
@@ -11148,6 +11175,64 @@ async def admin_update_system_config(req: SystemConfigUpdateRequest, session: Se
         updated += 1
     session.commit()
     return {"ok": True, "updated": updated}
+
+
+@api_router.get("/admin/config/credit_transfer", response_model=CreditTransferAdminConfigResponse)
+async def admin_get_credit_transfer_config(
+    session: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    cfg = load_credit_transfer_config(session)
+    return CreditTransferAdminConfigResponse(
+        credit_transfer_enabled=cfg.enabled,
+        notifications_enabled=cfg.notifications_enabled,
+        min_transfer=float(cfg.min_transfer),
+        max_transfer=float(cfg.max_transfer),
+        daily_cap=float(cfg.daily_cap),
+        pending_expiry_days=cfg.pending_expiry_days,
+        per_minute_limit=cfg.per_minute_limit,
+        thank_per_minute_limit=cfg.thank_per_minute_limit,
+        account_age_minutes_min=cfg.account_age_minutes_min,
+    )
+
+
+@api_router.put("/admin/config/credit_transfer", response_model=CreditTransferAdminConfigResponse)
+async def admin_update_credit_transfer_config(
+    req: CreditTransferAdminConfigUpdateRequest,
+    session: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    entries = [
+        ("CREDIT_TRANSFER_ENABLED", "true" if req.credit_transfer_enabled else "false", "Enable credit transfer flow"),
+        ("NOTIFICATIONS_ENABLED", "true" if req.notifications_enabled else "false", "Enable in-app notifications"),
+        ("CREDIT_TRANSFER_MIN", str(req.min_transfer), "Minimum credit transfer amount"),
+        ("CREDIT_TRANSFER_MAX", str(req.max_transfer), "Maximum credit transfer amount"),
+        ("CREDIT_TRANSFER_DAILY_CAP", str(req.daily_cap), "Daily sender credit transfer cap"),
+        ("CREDIT_TRANSFER_PENDING_EXPIRY_DAYS", str(req.pending_expiry_days), "Days before pending transfers expire/refund"),
+        ("CREDIT_TRANSFER_PER_MIN_LIMIT", str(req.per_minute_limit), "Sender transfer rate limit per minute"),
+        ("NOTIFICATIONS_THANK_PER_MIN_LIMIT", str(req.thank_per_minute_limit), "Notification thank action limit per minute"),
+        ("CREDIT_TRANSFER_ACCOUNT_AGE_MINUTES", str(req.account_age_minutes_min), "Minimum account age (minutes) to allow transfer"),
+    ]
+    for key, value, description in entries:
+        row = session.get(SystemConfig, key)
+        if row:
+            row.value = value
+            row.description = description
+        else:
+            session.add(SystemConfig(key=key, value=value, description=description))
+    session.commit()
+    cfg = load_credit_transfer_config(session)
+    return CreditTransferAdminConfigResponse(
+        credit_transfer_enabled=cfg.enabled,
+        notifications_enabled=cfg.notifications_enabled,
+        min_transfer=float(cfg.min_transfer),
+        max_transfer=float(cfg.max_transfer),
+        daily_cap=float(cfg.daily_cap),
+        pending_expiry_days=cfg.pending_expiry_days,
+        per_minute_limit=cfg.per_minute_limit,
+        thank_per_minute_limit=cfg.thank_per_minute_limit,
+        account_age_minutes_min=cfg.account_age_minutes_min,
+    )
 
 
 @api_router.get("/admin/solve-v2-config", response_model=SolveV2ConfigResponse)
