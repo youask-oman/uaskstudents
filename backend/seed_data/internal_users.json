@@ -5,7 +5,7 @@
     "bio": null,
     "country": null,
     "created_at": "2026-02-12T01:45:21.801139+00:00",
-    "credits_balance": "0E-10",
+    "credits_balance": "797.0000000000",
     "email": "admin@uask.ai",
     "full_name": "System Admin",
     "grade_level": null,
@@ -14,30 +14,30 @@
     "is_internal": true,
     "is_public": false,
     "is_verified": true,
-    "last_active_at": "2026-02-12T01:45:21.801283+00:00",
-    "last_ip": null,
+    "last_active_at": "2026-02-12T02:59:46.518337+00:00",
+    "last_ip": "127.0.0.1",
     "last_token_reset": "2026-02-12T01:45:21.801225+00:00",
     "learning_interests": null,
-    "password_hash": "$pbkdf2-sha256$29000$qVUKQei9d45xbk0phVCq9Q$9/8t9e8AV8Y3px04mDOyEtYVOOaEbw4NzjBkJNsGU.s",
+    "password_hash": "$pbkdf2-sha256$29000$FQJgLEWIkRLi/P9/D4Hwng$f6oyz7MEStAFb.ixfn/fHAVIZS/3g.A29N41HjPNutY",
     "preferred_language": "English",
     "profile_country": null,
     "profile_province_state": null,
     "quota_questions_total": 100,
     "quota_scans_total": 50,
-    "role": "superadmin",
+    "role": "admin",
     "school_id": null,
-    "session_token": null,
+    "session_token": "94f6fdb2-bb3e-4d8e-abef-a3ae99f7ddb5",
     "solving_mode": "Full Solution",
     "subscription_expiry": null,
     "subscription_status": "active",
-    "subscription_tier": "standard",
+    "subscription_tier": "short",
     "theme": "light",
     "timezone": "GMT (UTC +0:00)",
-    "tokens_used_this_month": 0,
+    "tokens_used_this_month": 87510,
     "verification_token": null,
     "whatsapp_enabled": true,
     "whatsapp_number": null,
-    "whatsapp_secret": null
+    "whatsapp_secret": "GGEVGVTA"
   },
   {
     "academic_level": null,
@@ -58,13 +58,13 @@
     "last_ip": null,
     "last_token_reset": "2026-02-12T01:45:21.804237+00:00",
     "learning_interests": null,
-    "password_hash": "$pbkdf2-sha256$29000$qVUKQei9d45xbk0phVCq9Q$9/8t9e8AV8Y3px04mDOyEtYVOOaEbw4NzjBkJNsGU.s",
+    "password_hash": "$pbkdf2-sha256$29000$FQJgLEWIkRLi/P9/D4Hwng$f6oyz7MEStAFb.ixfn/fHAVIZS/3g.A29N41HjPNutY",
     "preferred_language": "English",
     "profile_country": null,
     "profile_province_state": null,
     "quota_questions_total": 100,
     "quota_scans_total": 50,
-    "role": "admin",
+    "role": "supervisor",
     "school_id": null,
     "session_token": null,
     "solving_mode": "Full Solution",
@@ -77,7 +77,7 @@
     "verification_token": null,
     "whatsapp_enabled": true,
     "whatsapp_number": null,
-    "whatsapp_secret": null
+    "whatsapp_secret": "IZGUKU94"
   },
   {
     "academic_level": null,
@@ -98,7 +98,7 @@
     "last_ip": null,
     "last_token_reset": "2026-02-12T01:45:21.805422+00:00",
     "learning_interests": null,
-    "password_hash": "$pbkdf2-sha256$29000$qVUKQei9d45xbk0phVCq9Q$9/8t9e8AV8Y3px04mDOyEtYVOOaEbw4NzjBkJNsGU.s",
+    "password_hash": "$pbkdf2-sha256$29000$FQJgLEWIkRLi/P9/D4Hwng$f6oyz7MEStAFb.ixfn/fHAVIZS/3g.A29N41HjPNutY",
     "preferred_language": "English",
     "profile_country": null,
     "profile_province_state": null,
@@ -117,7 +117,7 @@
     "verification_token": null,
     "whatsapp_enabled": true,
     "whatsapp_number": null,
-    "whatsapp_secret": null
+    "whatsapp_secret": "35IRISL4"
   },
   {
     "academic_level": null,
@@ -138,7 +138,7 @@
     "last_ip": null,
     "last_token_reset": "2026-02-12T01:45:21.807251+00:00",
     "learning_interests": null,
-    "password_hash": "$pbkdf2-sha256$29000$qVUKQei9d45xbk0phVCq9Q$9/8t9e8AV8Y3px04mDOyEtYVOOaEbw4NzjBkJNsGU.s",
+    "password_hash": "$pbkdf2-sha256$29000$FQJgLEWIkRLi/P9/D4Hwng$f6oyz7MEStAFb.ixfn/fHAVIZS/3g.A29N41HjPNutY",
     "preferred_language": "English",
     "profile_country": null,
     "profile_province_state": null,
@@ -157,7 +157,7 @@
     "verification_token": null,
     "whatsapp_enabled": true,
     "whatsapp_number": null,
-    "whatsapp_secret": null
+    "whatsapp_secret": "6L09O5S7"
   },
   {
     "academic_level": null,
@@ -178,7 +178,7 @@
     "last_ip": null,
     "last_token_reset": "2026-02-12T01:45:21.808974+00:00",
     "learning_interests": null,
-    "password_hash": "$pbkdf2-sha256$29000$qVUKQei9d45xbk0phVCq9Q$9/8t9e8AV8Y3px04mDOyEtYVOOaEbw4NzjBkJNsGU.s",
+    "password_hash": "$pbkdf2-sha256$29000$FQJgLEWIkRLi/P9/D4Hwng$f6oyz7MEStAFb.ixfn/fHAVIZS/3g.A29N41HjPNutY",
     "preferred_language": "English",
     "profile_country": null,
     "profile_province_state": null,
@@ -197,6 +197,6 @@
     "verification_token": null,
     "whatsapp_enabled": true,
     "whatsapp_number": null,
-    "whatsapp_secret": null
+    "whatsapp_secret": "ZOZZ17MP"
   }
 ]
