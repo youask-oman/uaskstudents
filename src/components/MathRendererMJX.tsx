@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { MathJax } from "better-react-mathjax";
+import { MathJax, MathJaxContext } from "better-react-mathjax";
 import { convertLatexFencesToMath, normalizePlainSqrt, escapeUnmatchedRightDelimiters } from "./MathUtils";
 
 export interface MathRendererMJXProps {
@@ -11,6 +11,17 @@ export interface MathRendererMJXProps {
   dynamic?: boolean;
   hideUntilTypeset?: "first" | "every";
 }
+
+const MATHJAX_CONTEXT_CONFIG = {
+  loader: { load: ["input/tex", "output/svg"] },
+  tex: {
+    inlineMath: [["\\(", "\\)"], ["$", "$"]],
+    displayMath: [["\\[", "\\]"], ["$$", "$$"]],
+    processEscapes: true,
+    packages: { "[+]": ["base", "ams", "newcommand", "noundefined"] },
+  },
+  svg: { fontCache: "local" },
+};
 
 const isEscaped = (text: string, index: number) => {
   let backslashes = 0;
@@ -441,9 +452,11 @@ export default function MathRendererMJX({
       className={`math-renderer-mjx markdown-math ${className} ${inline ? "inline-block" : "block"}`}
       style={{ whiteSpace: inline ? "normal" : "pre-wrap" }}
     >
-      <MathJax dynamic={dynamic} hideUntilTypeset={hideUntilTypeset} renderMode="post">
-        {prepared}
-      </MathJax>
+      <MathJaxContext version={3} config={MATHJAX_CONTEXT_CONFIG}>
+        <MathJax dynamic={dynamic} hideUntilTypeset={hideUntilTypeset} renderMode="post">
+          {prepared}
+        </MathJax>
+      </MathJaxContext>
     </Wrapper>
   );
 }

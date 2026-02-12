@@ -3,6 +3,7 @@ import sanitizeHtml from "sanitize-html";
 const ALLOWED_TAGS = [
   "svg",
   "g",
+  "use",
   "path",
   "line",
   "rect",
@@ -54,6 +55,7 @@ const ALLOWED_ATTRIBUTES = {
     "width",
     "height",
     "viewBox",
+    "viewbox",
     "preserveAspectRatio",
     "xmlns",
     "xmlns:xlink",
@@ -79,7 +81,7 @@ export function sanitizeSvg(svg) {
     allowedAttributes: ALLOWED_ATTRIBUTES,
     allowedSchemes: [],
     allowProtocolRelative: false,
-    parser: { lowerCaseTags: false },
+    parser: { lowerCaseTags: false, lowerCaseAttributeNames: false },
     exclusiveFilter(frame) {
       const tag = (frame.tag || "").toLowerCase();
       return tag === "script" || tag === "foreignobject";
@@ -87,4 +89,3 @@ export function sanitizeSvg(svg) {
   });
   return sanitized;
 }
-

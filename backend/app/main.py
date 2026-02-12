@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import sys
+import io
 
 # Windows consoles often default to cp1252 and crash on symbols like "≠".
 # Force UTF-8 early so all stream-based logging can emit safely.
@@ -13,6 +14,43 @@ for _stream_name in ("stdout", "stderr"):
             _stream.reconfigure(encoding="utf-8", errors="replace")
         except Exception:
             pass
+
+
+def _make_utf8_stream(stream):
+    if stream is None:
+        return stream
+    if hasattr(stream, "reconfigure"):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+            return stream
+        except Exception:
+            pass
+    if hasattr(stream, "buffer"):
+        try:
+            return io.TextIOWrapper(
+                stream.buffer,
+                encoding="utf-8",
+                errors="replace",
+                write_through=True,
+            )
+        except Exception:
+            return stream
+    return stream
+
+
+def _harden_logging_stream_encodings() -> None:
+    for logger_name in ("", "uvicorn", "uvicorn.error", "uvicorn.access", "openai", "openai._base_client"):
+        logger_obj = logging.getLogger(logger_name) if logger_name else logging.getLogger()
+        for handler in logger_obj.handlers:
+            stream = getattr(handler, "stream", None)
+            if stream is None:
+                continue
+            patched = _make_utf8_stream(stream)
+            if patched is not None and patched is not stream:
+                try:
+                    handler.setStream(patched)
+                except Exception:
+                    pass
 
 from fastapi import FastAPI, Request
 from app.database import create_db_and_tables, get_session
@@ -40,6 +78,7 @@ from app.services.legal_service import get_terms_requirement_status
 app = FastAPI(title="UAsk.ai Orchestrator")
 app.state.limiter = limiter
 logger = logging.getLogger("app")
+_harden_logging_stream_encodings()
 
 # Global Exception Handlers
 @app.exception_handler(HTTPException)
@@ -231,6 +270,7 @@ async def enforce_terms_acceptance(request: Request, call_next):
 
 @app.on_event("startup")
 def on_startup():
+    _harden_logging_stream_encodings()
     # Configure Structured Logging
     root_logger = logging.getLogger()
     json_logging = os.environ.get("USE_JSON_LOGGING") == "true"
@@ -259,7 +299,7 @@ def on_startup():
     log_level_name = (os.environ.get("LOG_LEVEL") or "INFO").strip().upper()
     root_logger.setLevel(getattr(logging, log_level_name, logging.INFO))
     if not root_logger.handlers:
-        handler = logging.StreamHandler()
+        handler = logging.StreamHandler(_make_utf8_stream(sys.stderr))
         if formatter:
             handler.setFormatter(formatter)
         root_logger.addHandler(handler)

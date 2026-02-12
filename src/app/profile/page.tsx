@@ -5,6 +5,7 @@ import StudentLayout from "@/components/layout/StudentLayout";
 import { useToast } from "@/components/ui/ToastProvider";
 import { parseApiError } from "@/lib/api";
 import { fetchWalletPrograms, fetchWalletSummary, WalletProgramEnrollment, WalletSummary } from "@/lib/wallet";
+import TransferAndNotificationsPanel from "@/components/solve/TransferAndNotificationsPanel";
 
 type TabId = 'profile' | 'location' | 'preferences' | 'billing' | 'security' | 'legal';
 
@@ -1178,6 +1179,20 @@ export default function ProfilePage() {
                                     <a href="/billing" className="mt-6 text-primary text-sm font-bold hover:underline text-left">Open wallet & history</a>
                                 </div>
                             </div>
+                            <div className="px-6 pb-6 border-t border-slate-100 dark:border-slate-800">
+                                <div className="pt-6">
+                                    <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-3">Credit Transfer & Notifications</h4>
+                                    <TransferAndNotificationsPanel
+                                        onInfo={(message) =>
+                                            pushToast({
+                                                type: "info",
+                                                title: "Credits",
+                                                message,
+                                            })
+                                        }
+                                    />
+                                </div>
+                            </div>
                         </section>
                     )}
 
@@ -1259,14 +1274,6 @@ export default function ProfilePage() {
                     )}
                 </div>
 
-                {/* Footer Actions */}
-                <div className="flex items-center justify-between mt-12 pt-8 border-t border-slate-200 dark:border-slate-800">
-                    <p className="text-sm text-slate-500 italic">Changes are saved automatically to your profile.</p>
-                    <div className="flex gap-4">
-                        <button className="px-6 py-3 text-sm font-bold border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Discard</button>
-                        <button className="px-10 py-3 bg-primary text-white text-sm font-bold rounded-xl hover:shadow-xl hover:bg-blue-700 transition-all">Finish</button>
-                    </div>
-                </div>
             </div>
         </StudentLayout>
     );

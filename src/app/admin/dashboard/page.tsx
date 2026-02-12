@@ -573,7 +573,7 @@ export default function AdminDashboardPage() {
                         <div className="mt-4 text-xs text-slate-400 space-y-2">
                             {errors.length === 0 && <div>No errors in the selected window.</div>}
                             {errors.slice(0, 6).map((item, index) => (
-                                <div key={item.request_id || index} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-1">
+                                <div key={`${item.request_id ?? "error"}-${item.error_type ?? "type"}-${index}`} className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-1">
                                     <span>{item.error_type}</span>
                                     <span className="text-slate-500">{item.endpoint || "unknown"}</span>
                                 </div>
@@ -649,10 +649,10 @@ export default function AdminDashboardPage() {
                     <div className="p-6">
                         <div className="relative h-[240px] w-full flex flex-col justify-end bg-slate-800/10 rounded-lg p-2">
                             <div className="flex items-end justify-between h-48 px-4 gap-2">
-                                {routingSeries.map((s) => {
+                                {routingSeries.map((s, index) => {
                                     const h = (Number(s.volume ?? 0) / maxVolume) * 100;
                                     return (
-                                        <div key={s.day} className="flex-1 flex flex-col items-center gap-2 group">
+                                        <div key={`${s.day ?? "day"}-${index}`} className="flex-1 flex flex-col items-center gap-2 group">
                                             <div
                                                 className="w-full bg-accent-cyan/20 border-t-2 border-accent-cyan rounded-t-sm transition-all group-hover:bg-accent-cyan/40"
                                                 style={{ height: `${h}%` }}
@@ -685,7 +685,7 @@ export default function AdminDashboardPage() {
                                 )}
                                 {solveTraces.map((entry, index) => (
                                     <button
-                                        key={entry.request_id || index}
+                                        key={`${entry.request_id ?? "trace"}-${entry.user_id ?? "user"}-${index}`}
                                         onClick={() => setSelectedTrace(entry)}
                                         className="w-full text-left px-6 py-3 hover:bg-slate-800/50 transition-colors"
                                     >

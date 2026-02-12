@@ -13,7 +13,7 @@ interface RecognitionBoxProps {
 export default function RecognitionBox({ latex, exportMode = false, badgeLabel = "AI recognized" }: RecognitionBoxProps) {
   return (
     <div className={styles.recognitionBox}>
-      <MathRenderer content={latex} mode="prose" />
+      <MathRenderer content={latex} mode="block" />
       {!exportMode ? (
         <div className={styles.recognizedBadge} data-no-export="true">
           <span className="material-symbols-outlined" style={{ fontSize: 14 }}>

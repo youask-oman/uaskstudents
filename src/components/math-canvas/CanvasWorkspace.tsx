@@ -61,12 +61,14 @@ export default function CanvasWorkspace({
   const [exportingPdf, setExportingPdf] = useState(false);
   const [activeTextEditor, setActiveTextEditor] = useState<Editor | null>(null);
   const [activeTextEditorId, setActiveTextEditorId] = useState<string | null>(null);
+  const [richTextPaletteColor, setRichTextPaletteColor] = useState("#1e293b");
   const versionOptions = savedVersions;
   const canUndo = state.past.length > 0;
   const canRedo = state.future.length > 0;
   const canPaste = Boolean(state.clipboard && state.clipboard.elements.length > 0);
   const hasSelection = state.selection.elementIds.length > 0;
   const canExport = useMemo(() => hasExportableSolution(state.pages), [state.pages]);
+  const richTextPaletteMode = Boolean(activeTextEditor && activeTextEditor.isEditable);
 
   const [selectedVersionKey, setSelectedVersionKey] = useState<string>(() => savedVersions[0]?.key ?? "");
 
@@ -451,6 +453,21 @@ export default function CanvasWorkspace({
     }
   }, []);
 
+  useEffect(() => {
+    if (!activeTextEditor) return;
+    const attrs = activeTextEditor.getAttributes("textStyle") as { color?: string };
+    const next = typeof attrs?.color === "string" && attrs.color.trim() ? attrs.color.trim() : "#1e293b";
+    setRichTextPaletteColor(next);
+  }, [activeTextEditor, activeTextEditorId]);
+
+  const applyRichTextColor = useCallback((color: string) => {
+    if (!activeTextEditor || !activeTextEditor.isEditable) return;
+    const next = color.trim();
+    if (!next) return;
+    const ok = activeTextEditor.chain().focus().setColor(next).run();
+    if (ok) setRichTextPaletteColor(next);
+  }, [activeTextEditor]);
+
   return (
     <section className={styles.centerColumn}>
       {viewMode === "edit" ? (
@@ -527,6 +544,36 @@ export default function CanvasWorkspace({
           >
             <span className="material-symbols-outlined">close</span>
           </button>
+          {richTextPaletteMode ? (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "20px" }}>
+              <div className={styles.colorGridRow}>
+                <span className={styles.colorGridLabel}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>format_color_text</span>
+                  Text Color
+                </span>
+                <div className={styles.colorGrid}>
+                  {["#111827", "#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#6366f1", "#a855f7", "#ec4899", "#64748b"].map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      className={`${styles.colorSwatch} ${richTextPaletteColor === c ? styles.colorSwatchActive : ""}`}
+                      style={{ backgroundColor: c }}
+                      onClick={() => applyRichTextColor(c)}
+                      title={c}
+                    />
+                  ))}
+                  <input
+                    type="color"
+                    className={styles.customColorInput}
+                    value={richTextPaletteColor}
+                    onChange={(e) => applyRichTextColor(e.target.value)}
+                    title="Custom color"
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+          <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "20px" }}>
             <div className={styles.colorGridRow}>
               <span className={styles.colorGridLabel}>
@@ -642,7 +689,10 @@ export default function CanvasWorkspace({
               />
             </label>
           </div>
+          </>
+          )}
 
+          {!richTextPaletteMode ? (
           <div style={{ borderTop: "1px solid var(--divider-color)", paddingTop: "16px", display: "flex", justifyContent: "flex-end" }}>
             <button
               type="button"
@@ -659,6 +709,7 @@ export default function CanvasWorkspace({
               Apply to Selection
             </button>
           </div>
+          ) : null}
         </div>
       ) : null}
 

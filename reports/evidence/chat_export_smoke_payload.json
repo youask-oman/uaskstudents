@@ -1,0 +1,30 @@
+{
+  "docTitle": "Chat Export Smoke",
+  "createdAtISO": "2026-02-12T20:00:00.000Z",
+  "pages": [
+    {
+      "pageTitle": "Page 1",
+      "blocks": [
+        {
+          "type": "problem",
+          "title": "Problem",
+          "body": "Simplify (x^2-1)/(x-1)",
+          "math": ["\\text{Simplify } \\frac{x^2-1}{x-1}"]
+        },
+        {
+          "type": "step",
+          "k": 1,
+          "title": "Factor and cancel",
+          "body": "Factor numerator; valid when x != 1",
+          "math": ["\\frac{(x-1)(x+1)}{x-1}=x+1\\quad(x\\neq1)"]
+        },
+        {
+          "type": "final",
+          "label": "Final Result",
+          "body": "x+1 (for x != 1)",
+          "math": ["x+1\\quad(x\\neq1)"]
+        }
+      ]
+    }
+  ]
+}

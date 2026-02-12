@@ -1546,7 +1546,7 @@ export default function DashboardPage() {
                                 </div>
 
                                 {/* Tier Selector Section */}
-                                <div className="flex flex-col gap-2 flex-grow max-w-[450px]">
+                                <div className="flex flex-col gap-2 flex-grow w-full max-w-[620px]">
                                     <div className="flex justify-between items-end mb-1">
                                         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">Tier</h3>
                                         {readyWallet && estimate && (
@@ -2314,6 +2314,16 @@ export default function DashboardPage() {
 
                     {/* Sidebar */}
                     <div className="lg:col-span-4 space-y-6">
+                        <TransferAndNotificationsPanel
+                            onInfo={(message) =>
+                                pushToast({
+                                    type: "info",
+                                    title: "Credits",
+                                    message,
+                                })
+                            }
+                        />
+
                         {/* Online Users Widget */}
                         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
                             <div className="flex items-center justify-between mb-4">
@@ -2527,15 +2537,6 @@ export default function DashboardPage() {
                             </div>
                         </div>
 
-                        <TransferAndNotificationsPanel
-                            onInfo={(message) =>
-                                pushToast({
-                                    type: "info",
-                                    title: "Credits",
-                                    message,
-                                })
-                            }
-                        />
                     </div>
                 </div>
             </main>

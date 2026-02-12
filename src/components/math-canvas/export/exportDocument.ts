@@ -25,9 +25,27 @@ const escapeHtml = (value: string): string =>
     .replace(/'/g, "&#39;");
 
 const normalizeWhitespace = (value: string): string => value.replace(/\s+/g, " ").trim();
+const decodeHtmlEntities = (value: string): string => {
+  const source = String(value || "");
+  if (!source) return "";
+  if (typeof window !== "undefined" && typeof window.DOMParser !== "undefined") {
+    const parser = new window.DOMParser();
+    const parsed = parser.parseFromString(`<!doctype html><body>${source}`, "text/html");
+    return parsed.body.textContent || source;
+  }
+  return source
+    .replace(/&#x([0-9a-f]+);/gi, (_m, hex: string) => String.fromCodePoint(Number.parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_m, dec: string) => String.fromCodePoint(Number.parseInt(dec, 10)))
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, "\"")
+    .replace(/&#39;/gi, "'");
+};
 
 const stripMathDelimiters = (value: string): string => {
-  const trimmed = value.trim();
+  const trimmed = decodeHtmlEntities(value).trim();
   if (trimmed.startsWith("\\(") && trimmed.endsWith("\\)")) return trimmed.slice(2, -2).trim();
   if (trimmed.startsWith("\\[") && trimmed.endsWith("\\]")) return trimmed.slice(2, -2).trim();
   return trimmed;
@@ -121,8 +139,15 @@ const plainFromLatex = (value: string): string =>
 
 const plainText = (value: string): string =>
   normalizeWhitespace(
-    value
+    decodeHtmlEntities(value)
       .replace(MATH_DELIMITER_RE, (full) => plainFromLatex(full))
+      .replace(/\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g, "($1)/($2)")
+      .replace(/\\sqrt\s*\{([^{}]+)\}/g, "sqrt($1)")
+      .replace(/\\text\{([^}]+)\}/g, "$1")
+      .replace(/\\neq/g, " != ")
+      .replace(/\\leq/g, " <= ")
+      .replace(/\\geq/g, " >= ")
+      .replace(/[{}]/g, " ")
       .replace(/\\boxed\{([^}]+)\}/g, "$1")
       .replace(/\*\*/g, ""),
   );
@@ -130,10 +155,10 @@ const plainText = (value: string): string =>
 const plainTextFromHtml = (value?: string): string => {
   if (!value) return "";
   if (typeof window === "undefined" || typeof window.DOMParser === "undefined") {
-    return plainText(value.replace(/<[^>]+>/g, " "));
+    return plainText(decodeHtmlEntities(value).replace(/<[^>]+>/g, " "));
   }
   const parser = new window.DOMParser();
-  const parsed = parser.parseFromString(`<body>${value}</body>`, "text/html");
+  const parsed = parser.parseFromString(`<body>${decodeHtmlEntities(value)}</body>`, "text/html");
   return plainText(parsed.body.textContent || "");
 };
 
@@ -532,11 +557,12 @@ const mapToExportPayload = (payload: SolutionExportPayload): ExportSolutionPaylo
       pageTitle: page.title || `Page ${idx + 1}`,
       blocks: (page.blocks || []).flatMap((block) => {
         if (block.type === "recognition") {
+          const normalizedProblemLatex = decodeHtmlEntities(block.latex || "");
           return [{
             type: "problem",
             title: "Problem",
-            body: plainText(block.latex),
-            math: [block.latex],
+            body: plainText(normalizedProblemLatex),
+            math: [normalizedProblemLatex],
           }];
         }
         if (block.type === "steps") {
@@ -547,8 +573,8 @@ const mapToExportPayload = (payload: SolutionExportPayload): ExportSolutionPaylo
             type: "problem",
             title: "Problem Analysis",
             body: block.originalProblem ? `Goal: ${plainText(block.originalProblem)}` : "",
-            assumptions: block.assumptions || [],
-            originalText: block.originalProblem
+            assumptions: (block.assumptions || []).map((item) => plainText(item)),
+            originalText: block.originalProblem ? plainText(block.originalProblem) : undefined
           });
 
           if (block.domainConstraints?.length) {
@@ -561,12 +587,13 @@ const mapToExportPayload = (payload: SolutionExportPayload): ExportSolutionPaylo
 
           block.steps.forEach((step, stepIdx) => {
             const body = plainTextFromHtml(step.explanationRichHtml) || plainText(step.bodyMarkdown || step.explanation || "");
+            const normalizedStepMath = step.mathLatex ? decodeHtmlEntities(step.mathLatex) : undefined;
             out.push({
               type: "step",
               k: step.k || stepIdx + 1,
-              title: step.title || "",
+              title: plainText(step.title || ""),
               body: body,
-              math: step.mathLatex ? [step.mathLatex] : undefined
+              math: normalizedStepMath ? [normalizedStepMath] : undefined
             });
           });
 
@@ -584,16 +611,20 @@ const mapToExportPayload = (payload: SolutionExportPayload): ExportSolutionPaylo
           }
 
           const resMath = block.finalAnswer?.answer_latex || block.result;
+          const finalText = plainText(block.finalAnswer?.answer_text || "");
+          const normalizedFinalMath = resMath ? decodeHtmlEntities(resMath) : undefined;
           if (resMath || block.finalAnswer?.answer_text) {
             out.push({
               type: "final",
               label: "Final Result",
-              body: block.autocorrectApplied ? "(Verified)" : (block.finalAnswer?.answer_text || ""),
-              math: resMath ? [resMath] : undefined,
-              units: block.finalAnswer?.units,
+              body: block.autocorrectApplied
+                ? `${finalText ? `${finalText} ` : ""}(Verified)`.trim()
+                : finalText,
+              math: normalizedFinalMath ? [normalizedFinalMath] : undefined,
+              units: block.finalAnswer?.units ? plainText(block.finalAnswer.units) : undefined,
               values: block.finalAnswer?.values?.map(v => ({
-                label: v.label,
-                value: v.value_latex || v.value?.toString() || ""
+                label: plainText(v.label),
+                value: plainText(v.value_latex || v.value?.toString() || "")
               }))
             });
           }

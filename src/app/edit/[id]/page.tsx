@@ -135,8 +135,12 @@ const autoWrapBareLatexLine = (line: string) => {
     const trimmed = line.trim();
     if (!trimmed) return line;
     if (trimmed.includes("$") || trimmed.includes("\\(") || trimmed.includes("\\[")) return line;
-    const hasLatexCommand = /\\(frac|sqrt|text|int|sum|theta|alpha|beta|gamma|pi|sin|cos|tan|log|ln|cdot|times|leq|geq|neq|pm|rightarrow|left|right)/.test(trimmed);
+    const hasLatexCommand = /\\(frac|sqrt|text|int|sum|theta|alpha|beta|gamma|pi|sin|cos|tan|log|ln|cdot|times|leq|geq|neq|pm|rightarrow|left|right|quad|qquad|infty)/.test(trimmed);
     if (!hasLatexCommand) return line;
+    const startsWithTextCommand = /^\\text\{[\s\S]*\}/.test(trimmed);
+    if (startsWithTextCommand) {
+        return `$${trimmed}$`;
+    }
     const nonLatexWords = trimmed.replace(/\\[a-zA-Z]+/g, "").match(/[a-zA-Z]{3,}/g);
     if (nonLatexWords && nonLatexWords.length > 0) return line;
     return `$${trimmed}$`;
@@ -162,7 +166,22 @@ const normalizeMarkdownForPreview = (
                     return line;
                 }
                 if (inFence) return line;
-                return autoWrapBareLatexLine(line);
+                let normalizedLine = autoWrapBareLatexLine(line);
+                // Normalize common Unicode math operators to LaTeX so prose math can typeset them.
+                normalizedLine = normalizedLine
+                    .replace(/≠/g, "\\neq ")
+                    .replace(/≤/g, "\\leq ")
+                    .replace(/≥/g, "\\geq ");
+                // Final answer lines often come as plain text. Wrap RHS when it looks math-like.
+                const finalTextMatch = normalizedLine.match(/^(\s*Text:\s*)(.+)$/i);
+                if (finalTextMatch) {
+                    const rhs = finalTextMatch[2].trim();
+                    const hasMathish = /[\\^_=+\-*/()]/.test(rhs) || /\\(?:neq|leq|geq)\b/.test(rhs);
+                    if (hasMathish && !rhs.includes("$") && !rhs.includes("\\(") && !rhs.includes("\\[")) {
+                        normalizedLine = `${finalTextMatch[1]}$${rhs}$`;
+                    }
+                }
+                return normalizedLine;
             })
             .join("\n");
     }
@@ -181,12 +200,42 @@ const MarkdownPreview = ({
     autoWrapMath: boolean;
 }) => {
     type MarkdownChildrenProps = { children?: ReactNode };
+    const flattenText = (node: ReactNode): string => {
+        if (node === null || node === undefined || typeof node === "boolean") return "";
+        if (typeof node === "string" || typeof node === "number") return String(node);
+        if (Array.isArray(node)) return node.map((child) => flattenText(child)).join("");
+        if (typeof node === "object" && "props" in (node as { props?: unknown })) {
+            const childProps = (node as { props?: { children?: ReactNode } }).props;
+            return flattenText(childProps?.children);
+        }
+        return "";
+    };
+
+    const renderMathAwareText = (children?: ReactNode, className?: string, listItem = false) => {
+        const text = flattenText(children).trim();
+        if (!text) {
+            return listItem ? <li className={className}>{children}</li> : <div className={className}>{children}</div>;
+        }
+        if (listItem) {
+            return (
+                <li className={className}>
+                    <MathJaxRenderer content={text} mode="prose" />
+                </li>
+            );
+        }
+        return (
+            <div className={className}>
+                <MathJaxRenderer content={text} mode="prose" />
+            </div>
+        );
+    };
+
     const markdownComponents: Record<string, React.ComponentType<MarkdownChildrenProps>> = {
         h1: ({ children }) => <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{children}</h1>,
         h2: ({ children }) => <h2 className="text-xl font-bold text-slate-900 dark:text-white">{children}</h2>,
         h3: ({ children }) => <h3 className="text-lg font-bold text-slate-900 dark:text-white">{children}</h3>,
-        p: ({ children }) => <p className="text-slate-700 dark:text-slate-200">{children}</p>,
-        li: ({ children }) => <li className="text-slate-700 dark:text-slate-200">{children}</li>,
+        p: ({ children }) => renderMathAwareText(children, "text-slate-700 dark:text-slate-200", false),
+        li: ({ children }) => renderMathAwareText(children, "text-slate-700 dark:text-slate-200", true),
         math: ({ children }) => (
             <div className="my-3">
                 <MathJaxRenderer content={String(children ?? "")} mode="block" />

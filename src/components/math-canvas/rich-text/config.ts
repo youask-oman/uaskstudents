@@ -1,4 +1,5 @@
 import Bold from "@tiptap/extension-bold";
+import Color from "@tiptap/extension-color";
 import BulletList from "@tiptap/extension-bullet-list";
 import type { Editor } from "@tiptap/core";
 import Heading from "@tiptap/extension-heading";
@@ -6,6 +7,7 @@ import Italic from "@tiptap/extension-italic";
 import Link from "@tiptap/extension-link";
 import ListItem from "@tiptap/extension-list-item";
 import OrderedList from "@tiptap/extension-ordered-list";
+import { TextStyle } from "@tiptap/extension-text-style";
 import { Table } from "@tiptap/extension-table";
 import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
@@ -74,6 +76,8 @@ export const buildRichTextExtensions = () => [
   StyledHeading.configure({ levels: [1, 2, 3, 4, 5, 6] }),
   Bold,
   Italic,
+  TextStyle,
+  Color.configure({ types: ["textStyle"] }),
   BulletList,
   OrderedList,
   ListItem,

@@ -32,9 +32,25 @@ const renderFallback = (value: string) => (
     </span>
 );
 
+const normalizeInjectedSvg = (svg: string) => {
+    if (!svg) return svg;
+    // Remove aggressive baseline shifts that can clip standalone SVG in constrained containers.
+    return svg
+        .replace(/<\?xml[\s\S]*?\?>/gi, "")
+        .replace(/\sstyle="([^"]*)"/i, (_m, styleValue: string) => {
+            const kept = String(styleValue || "")
+                .split(";")
+                .map((part) => part.trim())
+                .filter((part) => part.length > 0 && !part.toLowerCase().startsWith("vertical-align"))
+                .join(";");
+            return kept ? ` style="${kept}"` : "";
+        });
+};
+
 interface RenderResult {
     ok: boolean;
     key?: string;
+    svg?: string;
 }
 
 const buildMathKey = (value: string, inline: boolean) => `${inline ? "i" : "b"}::${value}`;
@@ -76,7 +92,11 @@ const useMathSvgBatch = (jobs: Array<{ key: string; latex: string; inline: boole
                     const next = { ...prev };
                     for (let i = 0; i < pending.length; i += 1) {
                         const row = payload.results[i];
-                        next[pending[i].key] = { ok: Boolean(row?.ok), key: row?.key };
+                        next[pending[i].key] = {
+                            ok: Boolean(row?.ok),
+                            key: row?.key,
+                            svg: typeof row?.svg === "string" ? row.svg : undefined,
+                        };
                     }
                     return next;
                 });
@@ -232,25 +252,33 @@ const MathSegment = ({
         return <Wrapper suppressHydrationWarning>{renderFallback(cleanValue)}</Wrapper>;
     }
 
-    if (!result?.ok || !result?.key) {
+    if (!result?.ok) {
         return <Wrapper suppressHydrationWarning>{renderFallback(cleanValue)}</Wrapper>;
     }
 
-    const src = `/api/v1/math/svg/${encodeURIComponent(result.key)}.svg`;
+    if (!result.svg || !result.svg.trim()) {
+        return <Wrapper suppressHydrationWarning>{renderFallback(cleanValue)}</Wrapper>;
+    }
 
+    const safeSvg = normalizeInjectedSvg(result.svg);
+    if (!safeSvg.trim()) {
+        return <Wrapper suppressHydrationWarning>{renderFallback(cleanValue)}</Wrapper>;
+    }
     return (
-        <Wrapper suppressHydrationWarning>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-                src={src}
-                alt={cleanValue}
-                style={{
-                    display: inline ? "inline-block" : "block",
-                    verticalAlign: "middle",
-                    maxWidth: "100%",
-                    height: "auto",
-                }}
-            />
+        <Wrapper
+            suppressHydrationWarning
+            role="img"
+            aria-label={cleanValue}
+            style={{
+                display: inline ? "inline-block" : "block",
+                verticalAlign: "middle",
+                maxWidth: "100%",
+                height: "auto",
+                overflow: "visible",
+            }}
+            dangerouslySetInnerHTML={{ __html: safeSvg }}
+        >
+            {/* Rendered via sanitized inline SVG */}
         </Wrapper>
     );
 };
@@ -285,8 +313,21 @@ export default function UnifiedMathRenderer({
             seen.add(key);
             collected.push({ key, latex: segment.value, inline });
         }
+        // For direct inline/block mode, always enqueue exact payload key.
+        // This prevents fallback when segmenter captures only a subset of bare LaTeX.
+        if (mode === "inline" || mode === "block") {
+            const inline = mode === "inline";
+            const exactValue = (debounced || stripped || "").trim();
+            if (exactValue) {
+                const directKey = buildMathKey(exactValue, inline);
+                if (!seen.has(directKey)) {
+                    seen.add(directKey);
+                    collected.push({ key: directKey, latex: exactValue, inline });
+                }
+            }
+        }
         return collected;
-    }, [segments]);
+    }, [segments, mode, debounced, stripped]);
     const { renderMap, loading } = useMathSvgBatch(jobs, isMounted && !dynamic);
     const keyPrefix = idKey || "math";
 
