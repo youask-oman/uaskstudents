@@ -6,6 +6,14 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import SketchCanvas, { SketchCanvasHandle } from "./SketchCanvas";
 import PdfCropViewer, { PdfCropSelection } from "./pdf/PdfCropViewer";
+import { useToastOptional } from "@/components/ui/ToastProvider";
+import {
+    buildSolveBatchPayload,
+    getSolveBatchCap,
+    mapSolveBatchErrorMessage,
+    resolveSolveBatchMode,
+    resolveSolveBatchTier,
+} from "@/lib/solve-batch";
 
 type SnapSubTab = "upload" | "sketch";
 
@@ -77,6 +85,7 @@ type SnapSolveInputPanelProps = {
 };
 
 export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode }: SnapSolveInputPanelProps) {
+    const toast = useToastOptional();
     const [activeSubTab, setActiveSubTab] = React.useState<SnapSubTab>("upload");
     const [questionText, setQuestionText] = React.useState("");
     const [uploadedFile, setUploadedFile] = React.useState<File | null>(null);
@@ -321,21 +330,27 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
         setOcrEngineUsed(null);
     }, [clearPdfCache]);
 
+    const clearExtractedState = React.useCallback(() => {
+        setQuestionText("");
+        setError(null);
+        setResult(null);
+        setExtractedQuestions([]);
+        setSelectedQuestionIds(new Set());
+        setSolvedQuestions([]);
+        setImageExtracting(false);
+        setImageExtractedQuestions([]);
+        setImageExtractNote(null);
+        setOcrAttemptId(null);
+        setOcrEngineUsed(null);
+        setOcrReviewed(false);
+    }, []);
+
     const setUploadFile = React.useCallback(
         (file: File | null) => {
             setUploadedFile(file);
-            setError(null);
-            setResult(null);
-            setExtractedQuestions([]);
-            setSelectedQuestionIds(new Set());
-            setSolvedQuestions([]);
-            setImageExtracting(false);
-            setImageExtractedQuestions([]);
-            setImageExtractNote(null);
+            clearExtractedState();
             setImageCrop(null);
             setImageRender(null);
-            setOcrAttemptId(null);
-            setOcrEngineUsed(null);
 
             if (previewUrl && previewUrl.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
             if (!file) {
@@ -351,7 +366,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
             if (file.type.startsWith("image/")) setPreviewUrl(URL.createObjectURL(file));
             else setPreviewUrl(null);
         },
-        [previewUrl, clearPdfState]
+        [previewUrl, clearPdfState, clearExtractedState]
     );
 
     const extractImageQuestions = React.useCallback(
@@ -390,8 +405,8 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                 const structuredQuestions = Array.isArray((structured as { questions?: unknown[] }).questions)
                     ? ((structured as { questions: unknown[] }).questions)
                     : [];
-                const parsedQuestions: ExtractedQuestion[] = structuredQuestions
-                    .map((entry, index) => {
+                const parsedQuestions = structuredQuestions
+                    .map((entry, index): ExtractedQuestion | null => {
                         if (!entry || typeof entry !== "object") return null;
                         const q = entry as Record<string, unknown>;
                         const text = normalizeExtractText(String(q.text || q.question_text || "").trim());
@@ -400,12 +415,12 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                         return {
                             id: String(q.id || q.question_id || `${payload.ocr_attempt_id || "ocr"}-${index + 1}`),
                             text,
-                            latex: typeof latexRaw === "string" ? normalizeExtractText(latexRaw) : null,
+                            latex: typeof latexRaw === "string" ? normalizeExtractText(latexRaw) : undefined,
                             confidence: typeof q.confidence === "number" ? q.confidence : undefined,
                             page: typeof q.page === "number" ? q.page : (typeof q.page_index === "number" ? q.page_index : undefined),
-                        } satisfies ExtractedQuestion;
+                        };
                     })
-                    .filter((q): q is ExtractedQuestion => Boolean(q));
+                    .filter((q): q is ExtractedQuestion => q !== null);
 
                 const nextQuestions = parsedQuestions.length
                     ? parsedQuestions
@@ -666,20 +681,12 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
 
     const handleClear = () => {
         setUploadFile(null);
-        setQuestionText("");
-        setError(null);
-        setResult(null);
+        clearExtractedState();
         setSketchHasContent(false);
         sketchRef.current?.clear();
         clearPdfState();
-        setImageExtracting(false);
-        setImageExtractedQuestions([]);
-        setImageExtractNote(null);
         setImageCrop(null);
         setImageRender(null);
-        setOcrAttemptId(null);
-        setOcrEngineUsed(null);
-        setOcrReviewed(false);
     };
 
     const handleSubmit = async () => {
@@ -792,29 +799,83 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
             setError("Select at least one extracted question.");
             return;
         }
+        const effectiveTier = resolveSolveTier();
+        const effectiveMode = resolveSolveMode(effectiveTier);
+        const batchMode = resolveSolveBatchMode(effectiveTier, effectiveMode);
+        const cap = getSolveBatchCap(batchMode);
+        if (selected.length > cap) {
+            const message = mapSolveBatchErrorMessage("TOO_MANY_QUESTIONS", cap);
+            setError(message);
+            toast?.pushToast({ type: "error", title: "Selection too large", message });
+            return;
+        }
+
         setSolvingSelected(true);
         setError(null);
-        const out: SolvedQuestion[] = [];
-        for (const q of selected) {
-            try {
-                const userId = (typeof window !== "undefined" && window.localStorage.getItem("user_id")) || "1";
-                const effectiveTier = resolveSolveTier();
-                const effectiveMode = resolveSolveMode(effectiveTier);
-                const formData = new FormData();
-                formData.append("mode", "upload");
-                formData.append("question_text", q.text);
-                formData.append("tier", effectiveTier);
-                formData.append("requested_mode", effectiveMode);
-                const response = await fetch(`/api/v1/math/solve_from_image_or_sketch?user_id=${encodeURIComponent(userId)}`, { method: "POST", body: formData });
-                const payload = await response.json();
-                if (!response.ok) throw new Error(extractErrorMessage(payload, "Solve failed."));
-                out.push({ questionId: q.id, result: payload as SolveResponse });
-            } catch (e) {
-                out.push({ questionId: q.id, error: e instanceof Error ? e.message : "Solve failed." });
+        try {
+            const userId = (typeof window !== "undefined" && window.localStorage.getItem("user_id")) || "1";
+            const body = buildSolveBatchPayload({
+                selectedQuestions: selected.map((q) => ({ question_id: q.id, text: q.text })),
+                mode: batchMode,
+                tier: resolveSolveBatchTier(effectiveTier),
+            });
+
+            const response = await fetch(`/api/v1/math/solve_text_batch?user_id=${encodeURIComponent(userId)}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                const detail = payload?.detail && typeof payload.detail === "object" ? payload.detail : payload;
+                const code = typeof detail?.code === "string" ? detail.code : undefined;
+                const maxAllowed = typeof detail?.max_allowed === "number" ? detail.max_allowed : cap;
+                const message = mapSolveBatchErrorMessage(code, maxAllowed);
+                setError(message);
+                toast?.pushToast({ type: "error", title: "Solve failed", message });
+                return;
             }
+
+            const solutions = Array.isArray(payload?.solutions) ? payload.solutions : [];
+            const byId = new Map<string, Record<string, unknown>>();
+            for (const solution of solutions) {
+                if (!solution || typeof solution !== "object") continue;
+                const questionId = String((solution as { question_id?: string }).question_id || "").trim();
+                if (!questionId) continue;
+                byId.set(questionId, solution as Record<string, unknown>);
+            }
+
+            const out: SolvedQuestion[] = selected.map((q) => {
+                const solved = byId.get(q.id);
+                if (!solved) {
+                    return { questionId: q.id, error: "No solution returned for this question." };
+                }
+                const finalAnswer = (solved.final_answer && typeof solved.final_answer === "object")
+                    ? (solved.final_answer as { answer_text?: string; answer_latex?: string | null })
+                    : {};
+                return {
+                    questionId: q.id,
+                    result: {
+                        answer_markdown: String(finalAnswer.answer_text || "No answer returned."),
+                        answer_latex: finalAnswer.answer_latex || null,
+                        meta: {
+                            mode: "upload",
+                            mime: "text/plain",
+                            latency_ms: Number(payload?.telemetry?.latency_ms || 0),
+                            request_id: typeof payload?.request_id === "string" ? payload.request_id : undefined,
+                        },
+                    },
+                };
+            });
+
+            setSolvedQuestions(out);
+        } catch (e) {
+            const message = e instanceof Error ? e.message : "Solve failed.";
+            setError(message);
+            toast?.pushToast({ type: "error", title: "Solve failed", message });
+        } finally {
+            setSolvingSelected(false);
         }
-        setSolvedQuestions(out);
-        setSolvingSelected(false);
     };
 
     return (
@@ -847,7 +908,16 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
             {activeSubTab === "upload" ? (
                 <div onDrop={handleDrop} onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }} onDragLeave={() => setIsDragging(false)} className={`rounded-2xl border-2 border-dashed p-6 transition-colors ${isDragging ? "border-primary bg-primary/10" : "border-slate-700 bg-slate-900 text-slate-100"}`}>
                     <div className="mb-4 flex items-center gap-2 text-xs">
-                        <button type="button" onClick={() => fileInputRef.current?.click()} className="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold">Upload file</button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                clearExtractedState();
+                                fileInputRef.current?.click();
+                            }}
+                            className="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold"
+                        >
+                            Upload file
+                        </button>
                         <button type="button" onClick={openCamera} className="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold">Camera</button>
                         <button type="button" onClick={() => void handleClipboardButtonPaste()} className="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold">Paste from Clipboard</button>
                     </div>
@@ -866,6 +936,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                                             type="button"
                                             className="rounded border border-slate-600 px-2 py-1"
                                             onClick={() => {
+                                                clearExtractedState();
                                                 setImageCrop(null);
                                                 if (imageRender) setImageRender({ ...imageRender });
                                             }}

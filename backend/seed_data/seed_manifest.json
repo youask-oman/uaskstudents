@@ -2,19 +2,19 @@
   "files": {
     "credit_programs_or_plans.json": {
       "row_count": 11,
-      "sha256": "0381bbe9b21d592dd6d3e3772e0dfae7dadc5ebf6f0b83f79cc9c538a2cecd2c"
+      "sha256": "ed4e486eb1e9ac04f32860fd22d46f8ec5ea648cbbfde5424b3f3dd948377be3"
     },
     "internal_users.json": {
-      "row_count": 10,
-      "sha256": "80a32aa23c98f0ca730ef888e7fbc614fbe973a1b889ab12e98c2d19b3628a81"
+      "row_count": 5,
+      "sha256": "b6e4b09fdf2ca528c0d974829de6d7f678e346940a74fc08000b54c11e791ad8"
     },
     "json_schemas.json": {
       "row_count": 8,
-      "sha256": "308de3808a3c114d2c0469e55fb85f630f4eb33b84e96bb0af10f96f0e62b656"
+      "sha256": "902b0d7bb51bdc24eff2d4dc0076607f2b7a4b10866791db5f632aa9b59df689"
     },
     "prompt_bindings.json": {
       "row_count": 9,
-      "sha256": "f8034921de9090046122d375affae18b0febd63e822e5dd3ddb0889493933f4e"
+      "sha256": "12e3e53bc7c265406bbdf245eeb792a514bacb06246a3f27f8732c0f0d08b465"
     },
     "prompt_schema_links.json": {
       "row_count": 0,
@@ -22,22 +22,22 @@
     },
     "prompt_templates.json": {
       "row_count": 10,
-      "sha256": "9d4c1b01909d6d3f95effc033d8946744c05a69dcbf8e873b677d6960b7f5673"
+      "sha256": "9c3ba8faebde912bb994c5f28714552001fcd7aa89a5f8b287607063dfe91948"
     },
     "providermodelpricing.json": {
-      "row_count": 9,
-      "sha256": "72fae4d72cebe8928230b53db370e68781e8d73abd59fcede524bcd72c1a0ab2"
+      "row_count": 8,
+      "sha256": "e39903b4d4f422669efa460ffe3b8393d8e6ee8596513fd3dfd7189a3e4b48d2"
     },
     "schools.json": {
-      "row_count": 0,
-      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      "row_count": 117960,
+      "sha256": "b7a848a40ea1c6a363d9f8843f673b7a053eaa4ca1647b9d5c0785e31538121c"
     },
     "systemconfig.json": {
       "row_count": 30,
-      "sha256": "527edceb6b4ce5e45ca339c19841cb1cc574bf393916a63b4397437987282d97"
+      "sha256": "4abfd66f9069f4ae6dea79c73019f6876fb8ea1ab0fb8fdb9e202bc5958d70de"
     }
   },
-  "generated_at": "2026-02-10T20:42:41.625395+00:00",
+  "generated_at": "2026-02-12T01:46:15.525923+00:00",
   "schema_table_map": {
     "link_tables": [],
     "prompt_binding_reference_model": "key-based strings",

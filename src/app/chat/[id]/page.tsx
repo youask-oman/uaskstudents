@@ -8,14 +8,16 @@ import LeftNotebookSidebar from "@/components/math-canvas/LeftNotebookSidebar";
 import CanvasWorkspace from "@/components/math-canvas/CanvasWorkspace";
 import RightTutorChat from "@/components/math-canvas/RightTutorChat";
 import {
+  extractBatchSolutionsFromSessionMessages,
   extractPrimarySolution,
   flattenTextItems,
   normalizeSessionMessages,
   parseStepTitles,
 } from "@/components/math-canvas/normalizer";
-import { CanvasPageData, SavedPaperVersion, SessionMessage } from "@/components/math-canvas/types";
+import { CanvasPageData, SavedPaperVersion, SessionMessage, StepRow } from "@/components/math-canvas/types";
 import { buildInitialDocumentState, createPageId, documentReducer } from "@/components/math-canvas/documentModel";
 import { DEMO_SOLUTION } from "@/lib/mock-response";
+import { DEMO_BATCH_MESSAGES } from "@/lib/mock-batch-session";
 
 interface ChatSessionPayload {
   id: number | string;
@@ -46,6 +48,8 @@ const isSolvePrimaryAssistantMessage = (message: SessionMessage): boolean => {
   if (!structured) return false;
   if (structured.hide_from_tutor === true) return true;
   if (structured.solve_meta) return true;
+  if (structured.mode === "batch_text_solve") return true;
+  if (Array.isArray(structured.solutions) && structured.solutions.length > 0) return true;
 
   const outputFormat = typeof structured.output_format === "string" ? structured.output_format.toLowerCase() : "";
   if (outputFormat === "freeform" || outputFormat === "json_schema") return true;
@@ -243,6 +247,62 @@ const buildInitialPages = (
   return [firstPage];
 };
 
+const buildBatchInitialPages = (
+  batchSolutions: ReturnType<typeof extractBatchSolutionsFromSessionMessages>,
+): CanvasPageData[] => {
+  const page = createPage();
+  page.title = batchSolutions.length > 0 ? `Batch Solve (${batchSolutions.length})` : "Batch Solve";
+  const blocks = page.blocks || [];
+
+  batchSolutions.forEach((entry, index) => {
+    const questionLabel = `Question ${entry.questionId}`;
+    const recognized = entry.questionText || entry.solution.recognizedLatex || questionLabel;
+
+    blocks.push({
+      id: `batch-recognition-${entry.questionId}-${index + 1}`,
+      type: "recognition",
+      latex: recognized,
+      badge: questionLabel,
+    });
+
+    blocks.push({
+      id: `batch-steps-${entry.questionId}-${index + 1}`,
+      type: "steps",
+      steps: Array.isArray(entry.solution.steps) ? entry.solution.steps : ([] as StepRow[]),
+      result: entry.solution.result,
+      finalAnswer: entry.solution.finalAnswer,
+      verificationChecks: entry.solution.verificationChecks,
+      domainConstraints: entry.solution.domainConstraints,
+      assumptions: entry.solution.assumptions,
+      originalProblem: entry.solution.originalProblem,
+      normalizedProblem: entry.solution.normalizedProblem,
+      commonMistakes: entry.solution.commonMistakes,
+      autocorrectApplied: entry.solution.autocorrectApplied,
+      plots: entry.solution.plots,
+      confidence: entry.solution.confidence,
+    });
+
+    if (index < batchSolutions.length - 1) {
+      blocks.push({
+        id: `batch-separator-${entry.questionId}-${index + 1}`,
+        type: "text",
+        text: "__BATCH_SEPARATOR__",
+      });
+    }
+  });
+
+  if (blocks.length === 0) {
+    blocks.push({
+      id: "batch-empty-block",
+      type: "text",
+      text: "No parsed batch solutions found.",
+    });
+  }
+
+  page.blocks = blocks;
+  return [page];
+};
+
 export default function ChatPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const searchParams = useSearchParams();
@@ -284,6 +344,17 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         setLoading(false);
         return;
       }
+      if (id === "demo-batch") {
+        setSession({
+          id: "demo-batch",
+          title: "Batch Solve Demo",
+          subject: "Math",
+          created_at: new Date().toISOString(),
+          messages: DEMO_BATCH_MESSAGES,
+        });
+        setLoading(false);
+        return;
+      }
 
       try {
         const response = await fetch(`/api/v1/sessions/${id}`);
@@ -305,6 +376,10 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     () => normalizeSessionMessages(session?.messages || []),
     [session?.messages]
   );
+  const batchSolutions = useMemo(
+    () => extractBatchSolutionsFromSessionMessages(session?.messages || []),
+    [session?.messages]
+  );
 
   const tutorMessages = useMemo(() => {
     const all = session?.messages || [];
@@ -321,10 +396,10 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     [tutorMessages]
   );
 
-  const primarySolution = useMemo(
-    () => extractPrimarySolution(normalizedMessages),
-    [normalizedMessages]
-  );
+  const primarySolution = useMemo(() => {
+    if (batchSolutions.length > 0) return batchSolutions[0].solution;
+    return extractPrimarySolution(normalizedMessages);
+  }, [batchSolutions, normalizedMessages]);
 
   /* Compute best-attempt original problem statement */
   const originalProblemStatement = useMemo(() => {
@@ -347,21 +422,25 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
 
     blocks.forEach((block) => {
       if (block.type === "recognition") {
-        items.push({ id: block.id, label: "Recognized Problem", tag: "RECOGNITION" });
+        const qMatch = block.id.match(/batch-recognition-([^-]+)-\d+$/);
+        const qLabel = qMatch?.[1] ? `Question ${qMatch[1]}` : "Recognized Problem";
+        items.push({ id: block.id, label: qLabel, tag: "RECOGNITION" });
       }
       if (block.type === "steps") {
+        const qMatch = block.id.match(/batch-steps-([^-]+)-\d+$/);
+        const qPrefix = qMatch?.[1] ? `${qMatch[1]} - ` : "";
         block.steps.forEach((step, index) => {
           const title = (step.title || "").trim();
           const generic = /^step\s+\d+$/i.test(title);
           items.push({
             id: `${block.id}-step-${index + 1}`,
-            label: generic || !title ? `Step ${index + 1}` : title,
+            label: generic || !title ? `${qPrefix}Step ${index + 1}` : `${qPrefix}${title}`,
             tag: "STEP",
           });
         });
-        items.push({ id: `${block.id}-final-answer`, label: "Final Answer", tag: "FINAL" });
+        items.push({ id: `${block.id}-final-answer`, label: `${qPrefix}Final Answer`, tag: "FINAL" });
         if (Array.isArray(block.verificationChecks) && block.verificationChecks.length > 0) {
-          items.push({ id: `${block.id}-verification`, label: "Verification", tag: "VERIFY" });
+          items.push({ id: `${block.id}-verification`, label: `${qPrefix}Verification`, tag: "VERIFY" });
         }
       }
       if (block.type === "text") {
@@ -389,10 +468,13 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     return items;
   }, [documentState.pages, primarySolution]);
 
-  const stepTitles = useMemo(
-    () => parseStepTitles(primarySolution?.steps || []),
-    [primarySolution?.steps]
-  );
+  const stepTitles = useMemo(() => {
+    if (batchSolutions.length > 0) {
+      const all = batchSolutions.flatMap((entry) => parseStepTitles(entry.solution.steps || []));
+      return Array.from(new Set(all)).slice(0, 12);
+    }
+    return parseStepTitles(primarySolution?.steps || []);
+  }, [batchSolutions, primarySolution?.steps]);
 
   const classification = useMemo(() => {
     const sourceMessages = session?.messages || [];
@@ -424,12 +506,14 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     const latestSavedPages = savedPaperVersions[0]?.pages;
     const initialPages = latestSavedPages && latestSavedPages.length > 0
       ? latestSavedPages
-      : buildInitialPages(normalizedMessages, session.title || "");
+      : batchSolutions.length > 0
+        ? buildBatchInitialPages(batchSolutions)
+        : buildInitialPages(normalizedMessages, session.title || "");
     dispatch({
       type: "RESET",
       state: buildInitialDocumentState(initialPages, "none"),
     });
-  }, [normalizedMessages, savedPaperVersions, session]);
+  }, [batchSolutions, normalizedMessages, savedPaperVersions, session]);
 
   const tokenUsage = useMemo(() => {
     let input = 0;

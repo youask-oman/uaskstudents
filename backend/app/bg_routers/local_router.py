@@ -12,10 +12,11 @@ from PIL import Image
 import logging
 
 from app.database import get_session
-from app.models import Crop, User
+from app.models import Crop, User, ChatSession, ChatMessage
 from app.services.ocr.ocr_service import ocr_service
 from app.services.ocr.crop_service import STORAGE_DIR
 from app.services.solver_v3 import get_solver_v3
+from app.services.solve_text_pipeline import solve_text_questions, SolveTextPipelineError
 from app.services.tier_utils import get_user_effective_tier_slug
 from app.services.math.error_localizer import (
     OCRPayload, Budget, find_first_error_from_ocr
@@ -28,7 +29,7 @@ MAX_UPLOAD_BYTES = int(os.getenv("SNAP_SOLVE_MAX_UPLOAD_BYTES", str(10 * 1024 * 
 MAX_IMAGE_DIM = int(os.getenv("SNAP_SOLVE_MAX_IMAGE_DIM", "2000"))
 ALLOWED_IMAGE_MIME = {"image/png", "image/jpeg", "image/webp"}
 ALLOWED_UPLOAD_MIME = ALLOWED_IMAGE_MIME | {"application/pdf"}
-_TIER_ORDER = {"free": 0, "standard": 1, "research": 2}
+_TIER_ORDER = {"free": 0, "short": 1, "standard": 2, "research": 3}
 
 class BBox(BaseModel):
     x: confloat(ge=0.0, le=1.0)
@@ -50,7 +51,7 @@ class FindErrorLocalResponse(BaseModel):
     ocr: Optional[Dict[str, Any]] = None
     analysis: Optional[Dict[str, Any]] = None
     local_steps: Optional[List[str]] = None
-    error: Optional[Dict[str, str]] = None
+    error: Optional[Dict[str, Any]] = None
     timings_ms: Dict[str, int]
 
 
@@ -60,11 +61,37 @@ class SolveFromImageOrSketchResponse(BaseModel):
     meta: Dict[str, Any]
 
 
+class SolveTextQuestionItem(BaseModel):
+    question_id: str
+    text: str
+
+
+class SolveTextBatchRequest(BaseModel):
+    requested_mode: str
+    tier: str
+    questions: List[SolveTextQuestionItem]
+
+
+class SolveTextBatchResponse(BaseModel):
+    ok: bool
+    request_id: str
+    attempt_id: str
+    requested_mode: str
+    schema_name: str
+    response_language: str
+    question_count: int
+    solutions: List[Dict[str, Any]]
+    telemetry: Dict[str, Any]
+    session_id: Optional[int] = None
+
+
 def _normalize_tier_slug(value: Optional[str]) -> str:
     raw = (value or "").strip().lower()
     if raw in {"research", "enterprise"}:
         return "research"
-    if raw in {"standard", "student_standard", "pro", "premium", "family", "family_standard"}:
+    if raw in {"family", "family_standard", "short"}:
+        return "short"
+    if raw in {"standard", "student_standard", "pro", "premium"}:
         return "standard"
     return "free"
 
@@ -81,7 +108,7 @@ def _resolve_requested_mode(requested_mode: Optional[str], effective_tier: str) 
     mode = (requested_mode or "").strip().lower()
     if mode in {"minimal", "detailed"}:
         return mode
-    return "minimal" if _normalize_tier_slug(effective_tier) == "free" else "detailed"
+    return "minimal" if _normalize_tier_slug(effective_tier) in {"free", "short"} else "detailed"
 
 
 def _resolve_fastapi_default(value: Any) -> Any:
@@ -145,6 +172,15 @@ def ocr_region_with_pix2text(pil_region):
     conf = ocr_out.get("confidence", 0.0)
     
     return raw, text, conf
+
+
+def _dependency_unavailable_error(message: str) -> Dict[str, Any]:
+    return {
+        "code": "DEPENDENCY_UNAVAILABLE",
+        "status": "dependency_unavailable",
+        "reason": message,
+        "retryable": True,
+    }
 
 
 def _validate_mime(mode: str, mime_type: str) -> None:
@@ -234,6 +270,126 @@ def _render_answer_markdown(result: Dict[str, Any]) -> Dict[str, Optional[str]]:
     return {"markdown": markdown, "latex": answer_latex}
 
 
+def _map_legacy_mode_to_text_pipeline_mode(effective_tier_slug: str, effective_requested_mode: str) -> str:
+    tier = _normalize_tier_slug(effective_tier_slug)
+    mode = (effective_requested_mode or "").strip().lower()
+    if tier == "research":
+        return "research_detailed"
+    if tier == "short":
+        return "final_only"
+    if tier == "standard":
+        return "standard_detailed" if mode == "detailed" else "free_minimal"
+    return "free_minimal"
+
+
+def _render_solution_item_markdown(solution_item: Dict[str, Any]) -> Dict[str, Optional[str]]:
+    if not isinstance(solution_item, dict):
+        return {"markdown": "No answer returned.", "latex": None}
+
+    final_answer = solution_item.get("final_answer") if isinstance(solution_item.get("final_answer"), dict) else {}
+    answer_text = str(final_answer.get("answer_text") or "").strip()
+    answer_latex = final_answer.get("answer_latex")
+
+    lines: List[str] = []
+    if answer_text:
+        lines.append("### Final Answer")
+        lines.append(answer_text)
+
+    steps = solution_item.get("steps") if isinstance(solution_item.get("steps"), list) else []
+    if steps:
+        lines.append("")
+        lines.append("### Steps")
+        for idx, step in enumerate(steps, start=1):
+            if isinstance(step, dict):
+                title = str(step.get("title") or f"Step {idx}")
+                explanation = str(step.get("explanation") or "").strip()
+                if explanation:
+                    lines.append(f"{idx}. **{title}**: {explanation}")
+                else:
+                    lines.append(f"{idx}. **{title}**")
+            elif isinstance(step, str) and step.strip():
+                lines.append(f"{idx}. {step.strip()}")
+
+    markdown = "\n".join(lines).strip() or (answer_text or "No answer returned.")
+    return {"markdown": markdown, "latex": answer_latex if isinstance(answer_latex, str) else None}
+
+
+@router.post("/math/solve_text_batch", response_model=SolveTextBatchResponse)
+async def solve_text_batch(
+    body: SolveTextBatchRequest,
+    user_id: int = Param(...),
+    session: Session = Depends(get_session),
+):
+    try:
+        result = await solve_text_questions(
+            session=session,
+            user_id=user_id,
+            requested_mode=body.requested_mode,
+            tier=body.tier,
+            questions=[q.model_dump() for q in body.questions],
+        )
+        # Persist a chat session so frontend can route to /chat/{session_id}
+        user_prompt_lines = ["Solve the selected questions:"]
+        for q in body.questions:
+            user_prompt_lines.append(f"- ({q.question_id}) {q.text}")
+        user_prompt = "\n".join(user_prompt_lines)
+
+        assistant_sections: List[str] = []
+        for idx, solution in enumerate(result["solutions"], start=1):
+            item = _render_solution_item_markdown(solution if isinstance(solution, dict) else {})
+            question_id = str((solution or {}).get("question_id") or f"q{idx}")
+            assistant_sections.append(f"## {question_id}\n{item.get('markdown') or 'No answer returned.'}")
+        assistant_markdown = "\n\n".join(assistant_sections).strip() or "No answer returned."
+
+        new_chat = ChatSession(
+            user_id=user_id,
+            title=f"Batch solve ({result['question_count']})",
+            subject="Math",
+            is_saved=False,
+            learning_mode="solve",
+            requested_mode="minimal" if body.requested_mode in {"free_minimal", "final_only"} else "detailed",
+            solve_tier=(body.tier or "FREE").lower(),
+        )
+        session.add(new_chat)
+        session.commit()
+        session.refresh(new_chat)
+
+        session.add(ChatMessage(session_id=new_chat.id, role="user", content=user_prompt))
+        session.add(
+            ChatMessage(
+                session_id=new_chat.id,
+                role="assistant",
+                content=assistant_markdown,
+                structured_data={
+                    "mode": "batch_text_solve",
+                    "requested_mode": result["requested_mode"],
+                    "response_language": result["response_language"],
+                    "question_count": result["question_count"],
+                    "solutions": result["solutions"],
+                },
+                telemetry=result.get("telemetry") or {},
+                model_used=str((result.get("telemetry") or {}).get("model") or ""),
+            )
+        )
+        session.commit()
+
+        return SolveTextBatchResponse(
+            ok=True,
+            request_id=result["request_id"],
+            attempt_id=result["attempt_id"],
+            requested_mode=result["requested_mode"],
+            schema_name=result["schema_name"],
+            response_language=result["response_language"],
+            question_count=result["question_count"],
+            solutions=result["solutions"],
+            telemetry=result.get("telemetry") or {},
+            session_id=new_chat.id,
+        )
+    except SolveTextPipelineError as exc:
+        detail = {"code": exc.code, "message": exc.message, **(exc.details or {})}
+        raise HTTPException(status_code=exc.http_status, detail=detail) from exc
+
+
 @router.post("/find_error_local", response_model=FindErrorLocalResponse)
 def find_error_local(req: FindErrorLocalRequest, session: Session = Depends(get_session)):
     request_id = str(uuid.uuid4())
@@ -292,7 +448,16 @@ def find_error_local(req: FindErrorLocalRequest, session: Session = Depends(get_
             )
 
         t_ocr0 = time.perf_counter()
-        raw_text, norm_text, ocr_conf = ocr_region_with_pix2text(region)
+        try:
+            raw_text, norm_text, ocr_conf = ocr_region_with_pix2text(region)
+        except Exception as exc:
+            return FindErrorLocalResponse(
+                ok=False,
+                request_id=request_id,
+                selection_bbox=req.selection_bbox,
+                error=_dependency_unavailable_error(f"OCR service unavailable: {type(exc).__name__}"),
+                timings_ms={"crop": crop_ms, "total": int((time.perf_counter()-t0)*1000)},
+            )
         ocr_ms = int((time.perf_counter()-t_ocr0)*1000)
 
         # Cap raw text to avoid flooding logs/clients
@@ -433,18 +598,35 @@ async def solve_from_image_or_sketch(
     if image_text:
         combined_prompt = f"{question_text}\n\nExtracted content:\n{image_text}".strip()
 
-    solver = get_solver_v3()
-    solve_result = await solver.solve(
-        problem_text=combined_prompt,
-        context="",
-        request_id=request_id,
-        user_tier=effective_tier_slug,
-        user_id=resolved_user_id,
-        requested_mode=effective_requested_mode,
-        db_session=session,
-        trusted_context={"client_context": client_context} if client_context else None,
-    )
-    rendered = _render_answer_markdown(solve_result if isinstance(solve_result, dict) else {})
+    rendered: Dict[str, Optional[str]] = {"markdown": "No answer returned.", "latex": None}
+    pipeline_mode = _map_legacy_mode_to_text_pipeline_mode(effective_tier_slug, effective_requested_mode)
+    try:
+        if not resolved_user_id:
+            raise SolveTextPipelineError("USER_NOT_FOUND", "User is required for text solve", 400)
+
+        batch_result = await solve_text_questions(
+            session=session,
+            user_id=resolved_user_id,
+            requested_mode=pipeline_mode,
+            tier=effective_tier_slug.upper(),
+            questions=[{"question_id": request_id, "text": combined_prompt}],
+        )
+        first_solution = (batch_result.get("solutions") or [{}])[0]
+        rendered = _render_solution_item_markdown(first_solution if isinstance(first_solution, dict) else {})
+    except Exception:
+        # Safe fallback: preserve old single-question path.
+        solver = get_solver_v3()
+        solve_result = await solver.solve(
+            problem_text=combined_prompt,
+            context="",
+            request_id=request_id,
+            user_tier=effective_tier_slug,
+            user_id=resolved_user_id,
+            requested_mode=effective_requested_mode,
+            db_session=session,
+            trusted_context={"client_context": client_context} if client_context else None,
+        )
+        rendered = _render_answer_markdown(solve_result if isinstance(solve_result, dict) else {})
     latency_ms = int((time.perf_counter() - start) * 1000)
 
     return SolveFromImageOrSketchResponse(

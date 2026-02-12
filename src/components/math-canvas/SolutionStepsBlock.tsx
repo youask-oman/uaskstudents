@@ -25,7 +25,15 @@ interface SolutionStepsBlockProps {
   editable?: boolean;
   exportMode?: boolean;
   onActiveTextEditorChange?: (editor: Editor | null, elementId: string | null) => void;
-  onChange?: (next: { steps: StepRow[]; result?: string; verificationChecks?: VerificationCheck[] }) => void;
+  onChange?: (next: {
+    steps: StepRow[];
+    result?: string;
+    verificationChecks?: VerificationCheck[];
+    finalAnswer?: FinalAnswer;
+    assumptions?: string[];
+    originalProblem?: string;
+    normalizedProblem?: string;
+  }) => void;
 }
 
 const SAFE_PROTOCOL_RE = /^(https?:|mailto:)/i;
@@ -161,14 +169,30 @@ export default function SolutionStepsBlock({
   const saveStep = () => {
     if (editingStepIndex === null || !onChange) return;
     const nextSteps = steps.map((step, index) => (index === editingStepIndex ? { ...stepDraft } : step));
-    onChange({ steps: nextSteps, result, verificationChecks });
+    onChange({
+      steps: nextSteps,
+      result,
+      verificationChecks,
+      finalAnswer,
+      assumptions,
+      originalProblem,
+      normalizedProblem,
+    });
     setEditingStepIndex(null);
   };
 
   const deleteStep = (index: number) => {
     if (!onChange) return;
     const nextSteps = steps.filter((_, stepIndex) => stepIndex !== index);
-    onChange({ steps: nextSteps, result, verificationChecks });
+    onChange({
+      steps: nextSteps,
+      result,
+      verificationChecks,
+      finalAnswer,
+      assumptions,
+      originalProblem,
+      normalizedProblem,
+    });
     setEditingStepIndex(null);
   };
 
@@ -215,7 +239,24 @@ export default function SolutionStepsBlock({
                 />
               </div>
               <div className={styles.blockActions}>
-                <button type="button" className={styles.blockActionButton} onClick={() => setEditingProblem(false)}>Save</button>
+                <button
+                  type="button"
+                  className={styles.blockActionButton}
+                  onClick={() => {
+                    onChange?.({
+                      steps,
+                      result,
+                      verificationChecks,
+                      finalAnswer,
+                      assumptions,
+                      originalProblem: problemDraft.original,
+                      normalizedProblem: problemDraft.normalized,
+                    });
+                    setEditingProblem(false);
+                  }}
+                >
+                  Save
+                </button>
                 <button type="button" className={styles.blockActionButton} onClick={() => { setProblemDraft({ original: originalProblem || "", normalized: normalizedProblem || "" }); setEditingProblem(false); }}>Cancel</button>
               </div>
             </div>
@@ -265,7 +306,25 @@ export default function SolutionStepsBlock({
               ))}
               <button type="button" className={styles.blockActionButton} onClick={() => setAssumptionsDraft([...assumptionsDraft, ""])}>+ Add</button>
               <div className={styles.blockActions} style={{ marginTop: 8 }}>
-                <button type="button" className={styles.blockActionButton} onClick={() => setEditingAssumptions(false)}>Save</button>
+                <button
+                  type="button"
+                  className={styles.blockActionButton}
+                  onClick={() => {
+                    const cleaned = assumptionsDraft.map((item) => item.trim()).filter(Boolean);
+                    onChange?.({
+                      steps,
+                      result,
+                      verificationChecks,
+                      finalAnswer,
+                      assumptions: cleaned,
+                      originalProblem,
+                      normalizedProblem,
+                    });
+                    setEditingAssumptions(false);
+                  }}
+                >
+                  Save
+                </button>
                 <button type="button" className={styles.blockActionButton} onClick={() => { setAssumptionsDraft(assumptions || []); setEditingAssumptions(false); }}>Cancel</button>
               </div>
             </div>
@@ -307,13 +366,13 @@ export default function SolutionStepsBlock({
               </span>
             ) : null}
             {editingStepIndex === index ? (
-              <div className={styles.inlineEditWrap}>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase" }}>Step Title</div>
-                  <div className={styles.inlineEditRichText} style={{ height: 60, minHeight: 60 }}>
-                    <RichTextElementEditor
-                      key={`${sectionId}-step-title-editor-${index}`}
-                      elementId={`${sectionId}-step-title-${index}`}
+                <div className={styles.inlineEditWrap}>
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase" }}>Step Title</div>
+                    <div data-testid={`step-title-editor-wrap-${sectionId}-${index}`} className={styles.inlineEditRichText} style={{ height: 60, minHeight: 60 }}>
+                      <RichTextElementEditor
+                        key={`${sectionId}-step-title-editor-${index}`}
+                        elementId={`${sectionId}-step-title-${index}`}
                       initialText={stepDraft.title || ""}
                       initialHtml={stepDraft.titleRichHtml}
                       initialJson={stepDraft.titleRichJson}
@@ -322,13 +381,13 @@ export default function SolutionStepsBlock({
                       onRequestClose={handleStepEditorRequestClose}
                     />
                   </div>
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase" }}>Explanation / Body</div>
-                  <div className={styles.inlineEditRichText} style={{ height: 140 }}>
-                    <RichTextElementEditor
-                      key={`${sectionId}-step-explanation-editor-${index}`}
-                      elementId={`${sectionId}-step-explanation-${index}`}
+                  </div>
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase" }}>Explanation / Body</div>
+                    <div data-testid={`step-explanation-editor-wrap-${sectionId}-${index}`} className={styles.inlineEditRichText} style={{ height: 140 }}>
+                      <RichTextElementEditor
+                        key={`${sectionId}-step-explanation-editor-${index}`}
+                        elementId={`${sectionId}-step-explanation-${index}`}
                       initialText={stepDraft.explanation || ""}
                       initialHtml={stepDraft.explanationRichHtml}
                       initialJson={stepDraft.explanationRichJson}
@@ -337,13 +396,13 @@ export default function SolutionStepsBlock({
                       onRequestClose={handleStepEditorRequestClose}
                     />
                   </div>
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase" }}>Main Math / LaTeX</div>
-                  <div className={styles.inlineEditRichText} style={{ height: 100, minHeight: 80 }}>
-                    <RichTextElementEditor
-                      key={`${sectionId}-step-math-editor-${index}`}
-                      elementId={`${sectionId}-step-math-${index}`}
+                  </div>
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase" }}>Main Math / LaTeX</div>
+                    <div data-testid={`step-math-editor-wrap-${sectionId}-${index}`} className={styles.inlineEditRichText} style={{ height: 100, minHeight: 80 }}>
+                      <RichTextElementEditor
+                        key={`${sectionId}-step-math-editor-${index}`}
+                        elementId={`${sectionId}-step-math-${index}`}
                       initialText={stepDraft.mathLatex || ""}
                       initialHtml={stepDraft.mathRichHtml}
                       initialJson={stepDraft.mathRichJson}
@@ -354,7 +413,7 @@ export default function SolutionStepsBlock({
                   </div>
                 </div>
                 <div className={styles.blockActions}>
-                  <button type="button" className={styles.blockActionButton} onClick={saveStep}>Save</button>
+                  <button data-testid={`step-save-${sectionId}-${index}`} type="button" className={styles.blockActionButton} onClick={saveStep}>Save</button>
                   <button type="button" className={styles.blockActionButton} onClick={() => setEditingStepIndex(null)}>Cancel</button>
                 </div>
               </div>
@@ -388,8 +447,8 @@ export default function SolutionStepsBlock({
                 ) : null}
                 {editable && !exportMode && (
                   <div className={styles.blockActions} style={{ marginTop: 8 }}>
-                    <button type="button" className={styles.blockActionButton} onClick={() => startEditStep(index)}>Edit</button>
-                    <button type="button" className={styles.blockActionButton} onClick={() => deleteStep(index)}>Delete</button>
+                    <button data-testid={`step-edit-${sectionId}-${index}`} type="button" className={styles.blockActionButton} onClick={() => startEditStep(index)}>Edit</button>
+                    <button data-testid={`step-delete-${sectionId}-${index}`} type="button" className={styles.blockActionButton} onClick={() => deleteStep(index)}>Delete</button>
                   </div>
                 )}
               </>
@@ -447,10 +506,24 @@ export default function SolutionStepsBlock({
             </div>
             <div className={styles.blockActions}>
               <button
+                data-testid={`final-save-${sectionId}`}
                 type="button"
                 className={styles.blockActionButton}
                 onClick={() => {
-                  onChange?.({ steps, result: resultDraft, verificationChecks });
+                  onChange?.({
+                    steps,
+                    result: resultDraft,
+                    verificationChecks,
+                    finalAnswer: {
+                      answer_text: finalAnswer?.answer_text || "",
+                      answer_latex: resultDraft,
+                      values: finalAnswer?.values || [],
+                      units: finalAnswer?.units,
+                    },
+                    assumptions,
+                    originalProblem,
+                    normalizedProblem,
+                  });
                   setEditingResult(false);
                 }}
               >
@@ -563,7 +636,7 @@ export default function SolutionStepsBlock({
 
             {editable && !exportMode && (
               <div style={{ marginTop: 16 }}>
-                <button type="button" className={styles.blockActionButton} onClick={() => setEditingResult(true)}>
+                <button data-testid={`final-edit-${sectionId}`} type="button" className={styles.blockActionButton} onClick={() => setEditingResult(true)}>
                   Edit
                 </button>
               </div>

@@ -1105,18 +1105,21 @@
 }
 
 .recognitionBox {
+  position: relative;
   border: 1px solid #c7def8;
   border-radius: 14px;
-  padding: 18px;
+  padding: 38px 18px 18px;
   text-align: center;
   background: linear-gradient(180deg, #f7fbff 0%, var(--latex-bg) 100%);
 }
 
 .recognizedBadge {
+  position: absolute;
+  top: 10px;
+  left: 12px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  margin-top: 10px;
   border: 1px solid #c9dff7;
   color: var(--primary-color);
   background: #ffffff;
@@ -1124,6 +1127,28 @@
   font-size: 11px;
   font-weight: 600;
   padding: 4px 10px;
+}
+
+.paperTextBlock {
+  border: 1px solid #dbe6f3;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #f8fbff;
+  color: var(--text-main);
+  font-size: 13px;
+}
+
+.batchQuestionDivider {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #7a8fa8;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 8px 0 2px;
+  user-select: none;
 }
 
 .stepsBlock {

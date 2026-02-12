@@ -12,7 +12,6 @@ from enum import Enum
 from app.schemas.na_math_solver_v3 import (
     PlotTypeEnum,
     PlotPlanV3,
-    PlotV3,
     AxesV3,
     RecommendedWindowV3,
     PlotObjectV3,

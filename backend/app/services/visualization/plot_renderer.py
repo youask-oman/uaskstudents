@@ -7,6 +7,7 @@ Supports multiple plot types: function, system, number_line, inequality, scatter
 
 import io
 import base64
+import time
 import matplotlib
 matplotlib.use('Agg')  # Non-interactive backend
 import matplotlib.pyplot as plt
@@ -15,6 +16,7 @@ from typing import Optional, Dict, Any, List, Tuple
 from dataclasses import dataclass
 
 from app.schemas.na_math_solver_v3 import PlotPlanV3, PlotTypeEnum
+from app.services.runtime_audit import emit_runtime_audit
 
 
 @dataclass
@@ -57,6 +59,7 @@ class PlotRenderer:
         Returns:
             List of series objects: [{"label": str, "points": [{"x": float, "y": float}, ...]}]
         """
+        started_at = time.perf_counter()
         series = []
         
         # Only support function generation for now
@@ -77,6 +80,13 @@ class PlotRenderer:
                 except Exception as e:
                     print(f"[PlotRenderer] Failed to generate data for {obj.expression}: {e}")
                     
+        emit_runtime_audit(
+            component="numpy_plot_renderer_generate_data",
+            started_at=started_at,
+            numpy_used=True,
+            sympy_used=False,
+            extra={"series_count": len(series)},
+        )
         return series
 
     

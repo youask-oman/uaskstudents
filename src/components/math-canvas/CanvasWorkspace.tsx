@@ -239,7 +239,7 @@ export default function CanvasWorkspace({
   }, [dispatch, state.activePageId]);
 
   const handleSaveVersion = useCallback(async () => {
-    if (!sessionId || sessionId === "demo-1") {
+    if (!sessionId || sessionId.startsWith("demo")) {
       setSaveMessage("Version saving is unavailable in demo mode.");
       return;
     }

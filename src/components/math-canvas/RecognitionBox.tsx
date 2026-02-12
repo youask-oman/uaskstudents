@@ -7,9 +7,10 @@ import styles from "./MathCanvas.module.css";
 interface RecognitionBoxProps {
   latex: string;
   exportMode?: boolean;
+  badgeLabel?: string;
 }
 
-export default function RecognitionBox({ latex, exportMode = false }: RecognitionBoxProps) {
+export default function RecognitionBox({ latex, exportMode = false, badgeLabel = "AI recognized" }: RecognitionBoxProps) {
   return (
     <div className={styles.recognitionBox}>
       <MathRenderer content={latex} mode="prose" />
@@ -18,7 +19,7 @@ export default function RecognitionBox({ latex, exportMode = false }: Recognitio
           <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
             auto_fix_high
           </span>
-          AI recognized
+          {badgeLabel}
         </div>
       ) : null}
     </div>

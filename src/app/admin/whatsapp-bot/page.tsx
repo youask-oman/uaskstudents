@@ -23,16 +23,22 @@ export default function WhatsAppBotPage() {
 
     const fetchBotStatus = async () => {
         try {
-            const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-            const response = await fetch(`${API_BASE_URL}/api/admin/whatsapp/status`, {
-                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-            });
+            const response = await fetch(`${API_BASE_URL}/api/v1/whatsapp/status`);
             if (response.ok) {
                 const data = await response.json();
-                setBotState(data);
+                setBotState((prev) => ({ ...prev, ...data, error: undefined }));
+            } else {
+                setBotState((prev) => ({
+                    ...prev,
+                    error: `Failed to fetch bot status (${response.status})`,
+                }));
             }
         } catch (error) {
             console.error("Failed to fetch bot status:", error);
+            setBotState((prev) => ({
+                ...prev,
+                error: "Failed to fetch bot status",
+            }));
         }
     };
 
@@ -85,9 +91,14 @@ export default function WhatsAppBotPage() {
 
     useEffect(() => {
         fetchBotStatus();
-        const interval = setInterval(fetchBotStatus, 5000);
-        return () => clearInterval(interval);
-    }, []);
+        let interval: ReturnType<typeof setInterval> | undefined;
+        if (botState.status === "connecting" || botState.status === "qr_ready") {
+            interval = setInterval(fetchBotStatus, 30000);
+        }
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [botState.status]);
 
     const getStatusBadge = () => {
         const statusConfig = {

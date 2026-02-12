@@ -24,6 +24,8 @@ interface BindingEntry {
     trim_strategy?: string | null;
     max_steps?: number | null;
     retry_cap_tokens?: number | null;
+    features?: Record<string, unknown> | null;
+    multipliers?: Record<string, unknown> | null;
     is_active: boolean;
     updated_at: string;
     updated_by?: string | null;
@@ -44,7 +46,53 @@ interface SchemaEntry {
     is_active: boolean;
 }
 
-const DEFAULT_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+type BindingFeatures = {
+    allow_research?: unknown;
+    allow_verify?: unknown;
+    allow_plot?: unknown;
+    daily_credit_cap?: unknown;
+    ocr_monthly_cap?: unknown;
+    voice_monthly_cap?: unknown;
+    generated_images_monthly_cap?: unknown;
+    make_it_right_monthly_cap?: unknown;
+};
+
+type SolveTierCosts = {
+    text?: unknown;
+    snap_image?: unknown;
+    snap_pdf?: unknown;
+    voice?: unknown;
+};
+
+type BindingMultipliers = {
+    credits?: {
+        solve?: Record<string, SolveTierCosts | undefined>;
+        verify?: Record<string, unknown>;
+        plot_trigger?: unknown;
+    };
+};
+
+const DEFAULT_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:9000";
+
+const tierToPricingKey = (tier: string): "free" | "short" | "standard" | "research" => {
+    const normalized = String(tier || "").toUpperCase();
+    if (normalized === "FREE") return "free";
+    if (normalized === "SHORT") return "short";
+    if (normalized === "RESEARCH") return "research";
+    return "standard";
+};
+
+const parseNum = (value: string, fallback = 0): number => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+};
+
+const parseOptionalInt = (value: string): number | null => (value === "" ? null : parseInt(value, 10));
+const parseOptionalFloat = (value: string): number | null => (value === "" ? null : parseFloat(value));
+const asFeatures = (value: Record<string, unknown> | null | undefined): BindingFeatures =>
+    (value as BindingFeatures | undefined) || {};
+const asMultipliers = (value: Record<string, unknown> | null | undefined): BindingMultipliers =>
+    (value as BindingMultipliers | undefined) || {};
 
 export default function AdminPromptBindingsPage() {
     const baseUrl = useMemo(() => DEFAULT_API_BASE_URL, []);
@@ -72,6 +120,20 @@ export default function AdminPromptBindingsPage() {
         trim_strategy: "trim_context_first",
         max_steps: "",
         retry_cap_tokens: "",
+        allow_research: false,
+        allow_verify: true,
+        allow_plot: true,
+        daily_credit_cap: "",
+        ocr_monthly_cap: "",
+        voice_monthly_cap: "",
+        generated_images_monthly_cap: "",
+        make_it_right_monthly_cap: "",
+        solve_text_cost: "",
+        solve_snap_image_cost: "",
+        solve_snap_pdf_cost: "",
+        solve_voice_cost: "",
+        verify_cost: "",
+        plot_trigger_cost: "",
     });
     const [error, setError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
@@ -162,6 +224,38 @@ export default function AdminPromptBindingsPage() {
             trim_strategy: activeBinding?.trim_strategy || "trim_context_first",
             max_steps: activeBinding?.max_steps?.toString() || "",
             retry_cap_tokens: activeBinding?.retry_cap_tokens?.toString() || "",
+            allow_research: Boolean(asFeatures(activeBinding?.features).allow_research ?? false),
+            allow_verify: Boolean(asFeatures(activeBinding?.features).allow_verify ?? true),
+            allow_plot: Boolean(asFeatures(activeBinding?.features).allow_plot ?? true),
+            daily_credit_cap: String(asFeatures(activeBinding?.features).daily_credit_cap ?? ""),
+            ocr_monthly_cap: String(asFeatures(activeBinding?.features).ocr_monthly_cap ?? ""),
+            voice_monthly_cap: String(asFeatures(activeBinding?.features).voice_monthly_cap ?? ""),
+            generated_images_monthly_cap: String(asFeatures(activeBinding?.features).generated_images_monthly_cap ?? ""),
+            make_it_right_monthly_cap: String(asFeatures(activeBinding?.features).make_it_right_monthly_cap ?? ""),
+            solve_text_cost: String(
+                (
+                    asMultipliers(activeBinding?.multipliers).credits?.solve?.[tierToPricingKey(nextTier)]?.text ?? ""
+                ),
+            ),
+            solve_snap_image_cost: String(
+                (
+                    asMultipliers(activeBinding?.multipliers).credits?.solve?.[tierToPricingKey(nextTier)]?.snap_image ?? ""
+                ),
+            ),
+            solve_snap_pdf_cost: String(
+                (
+                    asMultipliers(activeBinding?.multipliers).credits?.solve?.[tierToPricingKey(nextTier)]?.snap_pdf ?? ""
+                ),
+            ),
+            solve_voice_cost: String(
+                (
+                    asMultipliers(activeBinding?.multipliers).credits?.solve?.[tierToPricingKey(nextTier)]?.voice ?? ""
+                ),
+            ),
+            verify_cost: String(
+                (asMultipliers(activeBinding?.multipliers).credits?.verify?.[tierToPricingKey(nextTier)] ?? ""),
+            ),
+            plot_trigger_cost: String((asMultipliers(activeBinding?.multipliers).credits?.plot_trigger ?? "")),
         };
     };
 
@@ -217,20 +311,47 @@ export default function AdminPromptBindingsPage() {
                 headers: headers(true),
                 body: JSON.stringify({
                     ...form,
-                    max_output_tokens: form.max_output_tokens === "" ? null : parseInt(form.max_output_tokens),
-                    max_input_tokens: form.max_input_tokens === "" ? null : parseInt(form.max_input_tokens),
-                    system_schema_budget_tokens: form.system_schema_budget_tokens === "" ? null : parseInt(form.system_schema_budget_tokens),
-                    context_budget_tokens: form.context_budget_tokens === "" ? null : parseInt(form.context_budget_tokens),
-                    json_retry_max_output_tokens: form.json_retry_max_output_tokens === "" ? null : parseInt(form.json_retry_max_output_tokens),
-                    json_retry_max_attempts: form.json_retry_max_attempts === "" ? null : parseInt(form.json_retry_max_attempts),
-                    timeout_ms: form.timeout_ms === "" ? null : parseInt(form.timeout_ms),
-                    temperature: form.temperature === "" ? null : parseFloat(form.temperature),
-                    top_p: form.top_p === "" ? null : parseFloat(form.top_p),
-                    plot_points_cap: form.plot_points_cap === "" ? null : parseInt(form.plot_points_cap),
-                    plot_traces_cap: form.plot_traces_cap === "" ? null : parseInt(form.plot_traces_cap),
-                    plot_annotations_cap: form.plot_annotations_cap === "" ? null : parseInt(form.plot_annotations_cap),
-                    max_steps: form.max_steps === "" ? null : parseInt(form.max_steps),
-                    retry_cap_tokens: form.retry_cap_tokens === "" ? null : parseInt(form.retry_cap_tokens),
+                    max_output_tokens: parseOptionalInt(form.max_output_tokens),
+                    max_input_tokens: parseOptionalInt(form.max_input_tokens),
+                    system_schema_budget_tokens: parseOptionalInt(form.system_schema_budget_tokens),
+                    context_budget_tokens: parseOptionalInt(form.context_budget_tokens),
+                    json_retry_max_output_tokens: parseOptionalInt(form.json_retry_max_output_tokens),
+                    json_retry_max_attempts: parseOptionalInt(form.json_retry_max_attempts),
+                    timeout_ms: parseOptionalInt(form.timeout_ms),
+                    temperature: parseOptionalFloat(form.temperature),
+                    top_p: parseOptionalFloat(form.top_p),
+                    plot_points_cap: parseOptionalInt(form.plot_points_cap),
+                    plot_traces_cap: parseOptionalInt(form.plot_traces_cap),
+                    plot_annotations_cap: parseOptionalInt(form.plot_annotations_cap),
+                    max_steps: parseOptionalInt(form.max_steps),
+                    retry_cap_tokens: parseOptionalInt(form.retry_cap_tokens),
+                    features: {
+                        allow_research: form.allow_research,
+                        allow_verify: form.allow_verify,
+                        allow_plot: form.allow_plot,
+                        daily_credit_cap: parseNum(form.daily_credit_cap, 0),
+                        ocr_monthly_cap: parseNum(form.ocr_monthly_cap, 0),
+                        voice_monthly_cap: parseNum(form.voice_monthly_cap, 0),
+                        generated_images_monthly_cap: parseNum(form.generated_images_monthly_cap, 0),
+                        make_it_right_monthly_cap: parseNum(form.make_it_right_monthly_cap, 0),
+                    },
+                    multipliers: {
+                        version: 1,
+                        credits: {
+                            solve: {
+                                [tierToPricingKey(form.tier)]: {
+                                    text: parseNum(form.solve_text_cost, 0),
+                                    snap_image: parseNum(form.solve_snap_image_cost, 0),
+                                    snap_pdf: parseNum(form.solve_snap_pdf_cost, 0),
+                                    voice: parseNum(form.solve_voice_cost, 0),
+                                },
+                            },
+                            verify: {
+                                [tierToPricingKey(form.tier)]: parseNum(form.verify_cost, 0),
+                            },
+                            plot_trigger: parseNum(form.plot_trigger_cost, 0),
+                        },
+                    },
                     updated_by: localStorage.getItem("user_name") || "admin",
                 }),
             });
@@ -289,6 +410,38 @@ export default function AdminPromptBindingsPage() {
             trim_strategy: binding.trim_strategy || "trim_context_first",
             max_steps: binding.max_steps?.toString() || "",
             retry_cap_tokens: binding.retry_cap_tokens?.toString() || "",
+            allow_research: Boolean(asFeatures(binding?.features).allow_research ?? false),
+            allow_verify: Boolean(asFeatures(binding?.features).allow_verify ?? true),
+            allow_plot: Boolean(asFeatures(binding?.features).allow_plot ?? true),
+            daily_credit_cap: String(asFeatures(binding?.features).daily_credit_cap ?? ""),
+            ocr_monthly_cap: String(asFeatures(binding?.features).ocr_monthly_cap ?? ""),
+            voice_monthly_cap: String(asFeatures(binding?.features).voice_monthly_cap ?? ""),
+            generated_images_monthly_cap: String(asFeatures(binding?.features).generated_images_monthly_cap ?? ""),
+            make_it_right_monthly_cap: String(asFeatures(binding?.features).make_it_right_monthly_cap ?? ""),
+            solve_text_cost: String(
+                (
+                    asMultipliers(binding?.multipliers).credits?.solve?.[tierToPricingKey(binding.tier)]?.text ?? ""
+                ),
+            ),
+            solve_snap_image_cost: String(
+                (
+                    asMultipliers(binding?.multipliers).credits?.solve?.[tierToPricingKey(binding.tier)]?.snap_image ?? ""
+                ),
+            ),
+            solve_snap_pdf_cost: String(
+                (
+                    asMultipliers(binding?.multipliers).credits?.solve?.[tierToPricingKey(binding.tier)]?.snap_pdf ?? ""
+                ),
+            ),
+            solve_voice_cost: String(
+                (
+                    asMultipliers(binding?.multipliers).credits?.solve?.[tierToPricingKey(binding.tier)]?.voice ?? ""
+                ),
+            ),
+            verify_cost: String(
+                (asMultipliers(binding?.multipliers).credits?.verify?.[tierToPricingKey(binding.tier)] ?? ""),
+            ),
+            plot_trigger_cost: String((asMultipliers(binding?.multipliers).credits?.plot_trigger ?? "")),
         });
         window.scrollTo({ top: 0, behavior: "smooth" });
     };
@@ -532,6 +685,84 @@ export default function AdminPromptBindingsPage() {
                                 <div className="space-y-1">
                                     <label className="text-[11px] font-medium text-slate-400">Annotations Cap</label>
                                     <input type="number" placeholder="5" className="w-full rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2.5 py-1.5 text-sm" value={form.plot_annotations_cap} onChange={(e) => setForm({ ...form, plot_annotations_cap: e.target.value })} />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50">
+                            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Credit Pricing</h2>
+                        </div>
+                        <div className="p-5 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-slate-500">Solve Text Cost</label>
+                                    <input type="number" step="1" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.solve_text_cost} onChange={(e) => setForm({ ...form, solve_text_cost: e.target.value })} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-slate-500">Solve Snap Image Cost</label>
+                                    <input type="number" step="1" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.solve_snap_image_cost} onChange={(e) => setForm({ ...form, solve_snap_image_cost: e.target.value })} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-slate-500">Solve Snap PDF Cost</label>
+                                    <input type="number" step="1" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.solve_snap_pdf_cost} onChange={(e) => setForm({ ...form, solve_snap_pdf_cost: e.target.value })} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-slate-500">Solve Voice Cost</label>
+                                    <input type="number" step="1" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.solve_voice_cost} onChange={(e) => setForm({ ...form, solve_voice_cost: e.target.value })} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-slate-500">Verify Add-on Cost</label>
+                                    <input type="number" step="1" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.verify_cost} onChange={(e) => setForm({ ...form, verify_cost: e.target.value })} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-slate-500">Plot Trigger Add-on Cost</label>
+                                    <input type="number" step="1" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.plot_trigger_cost} onChange={(e) => setForm({ ...form, plot_trigger_cost: e.target.value })} />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50">
+                            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Feature Gates & Caps</h2>
+                        </div>
+                        <div className="p-5 space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <label className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                    <input type="checkbox" checked={form.allow_research} onChange={(e) => setForm({ ...form, allow_research: e.target.checked })} />
+                                    Allow Research
+                                </label>
+                                <label className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                    <input type="checkbox" checked={form.allow_verify} onChange={(e) => setForm({ ...form, allow_verify: e.target.checked })} />
+                                    Allow Verify
+                                </label>
+                                <label className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                    <input type="checkbox" checked={form.allow_plot} onChange={(e) => setForm({ ...form, allow_plot: e.target.checked })} />
+                                    Allow Plot
+                                </label>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-slate-500">Daily Credit Cap</label>
+                                    <input type="number" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.daily_credit_cap} onChange={(e) => setForm({ ...form, daily_credit_cap: e.target.value })} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-slate-500">OCR Monthly Cap</label>
+                                    <input type="number" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.ocr_monthly_cap} onChange={(e) => setForm({ ...form, ocr_monthly_cap: e.target.value })} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-slate-500">Voice Monthly Cap</label>
+                                    <input type="number" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.voice_monthly_cap} onChange={(e) => setForm({ ...form, voice_monthly_cap: e.target.value })} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-slate-500">Generated Images Monthly Cap</label>
+                                    <input type="number" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.generated_images_monthly_cap} onChange={(e) => setForm({ ...form, generated_images_monthly_cap: e.target.value })} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-slate-500">Make It Right Monthly Cap</label>
+                                    <input type="number" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.make_it_right_monthly_cap} onChange={(e) => setForm({ ...form, make_it_right_monthly_cap: e.target.value })} />
                                 </div>
                             </div>
                         </div>

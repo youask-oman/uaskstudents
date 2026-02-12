@@ -121,6 +121,8 @@ class ProfileResolver:
                 "plot_points_cap": binding.plot_points_cap,
                 "plot_traces_cap": binding.plot_traces_cap,
                 "plot_annotations_cap": binding.plot_annotations_cap,
+                "features": binding.features if isinstance(binding.features, dict) else {},
+                "multipliers": binding.multipliers if isinstance(binding.multipliers, dict) else {},
             }
             
             # api.py expects .mode to be available on the instance.

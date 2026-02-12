@@ -3,13 +3,15 @@ import re
 import hashlib
 import unicodedata
 import json
+import time
 from typing import Tuple, Dict, Any, Optional
-from sympy import parse_expr, srepr, simplify, Eq, Symbol
+from sympy import parse_expr, srepr, simplify, Eq
 from sympy.parsing.sympy_parser import (
     parse_expr, standard_transformations, implicit_multiplication_application,
     convert_xor
 )
 from app.config import get_settings
+from app.services.runtime_audit import emit_runtime_audit
 
 class CanonicalizationService:
     def __init__(self):
@@ -38,6 +40,9 @@ class CanonicalizationService:
         return "solve_equation" # Most common math query default
 
     def normalize_math_object(self, text: str, intent: str) -> Tuple[str, Dict[str, Any]]:
+        started_at = time.perf_counter()
+        audit_result = "ok"
+        audit_error_class = None
         # 1. Unicode normalize
         text = unicodedata.normalize('NFKC', text)
         text = text.replace('−', '-').replace('×', '*').replace('÷', '/')
@@ -50,43 +55,56 @@ class CanonicalizationService:
             return "", {"error": "empty_input"}
 
         try:
-            # 3. Handle "=" manually (SymPy parse_expr dislikes "=")
-            if "=" in clean_text:
-                parts = clean_text.split("=")
-                if len(parts) == 2:
-                    lhs_str, rhs_str = parts[0], parts[1]
-                    lhs = parse_expr(lhs_str, transformations=self.transformations)
-                    rhs = parse_expr(rhs_str, transformations=self.transformations)
-                    expr = Eq(lhs, rhs)
-                else:
-                    # Multiple =, take first? or parser error
-                    expr = parse_expr(clean_text.replace("=", "=="), transformations=self.transformations)
-            else:
-                expr = parse_expr(clean_text, transformations=self.transformations)
-
             assumptions = {}
 
-            # 4. Handle Equation vs Expression Logic
-            if intent == "solve_equation":
-                if not isinstance(expr, Eq) and not isinstance(expr, bool): # bool can happen if 1==1
-                    # default expr=0
-                    expr = Eq(expr, 0)
+            relation = self._parse_relation(clean_text)
+            if relation is not None:
+                canonical_obj = self.canonicalize_relation(relation)
+            else:
+                expr = parse_expr(clean_text, transformations=self.transformations)
+                if intent == "solve_equation":
                     assumptions["implicit_eq_zero"] = True
-            
-            # 5. Canonical String
-            # Using srepr() ensures structural uniqueness (x+y vs y+x might differ?)
-            # Actually srepr doesn't sort Commutative ops by default in all versions.
-            # But SymPy expressions usually auto-sort args of Add/Mul.
-            # So srepr(x+y) should be same as srepr(y+x).
-            
-            canonical_obj = srepr(expr)
+                    canonical_obj = self.canonicalize_relation(Eq(expr, 0, evaluate=False))
+                else:
+                    canonical_obj = self.canonicalize_expression(expr)
             return canonical_obj, assumptions
             
         except Exception as e:
+            audit_result = "error"
+            audit_error_class = type(e).__name__
             # Fallback: Use robust text normalization for word problems
             # This gives consistent hashes even with OCR variations
             fallback = self._normalize_text_for_hashing(text)
             return fallback, {"parse_error": str(e), "normalized_text": True}
+        finally:
+            emit_runtime_audit(
+                component="sympy_canonicalization",
+                started_at=started_at,
+                sympy_used=True,
+                result=audit_result,
+                error_class=audit_error_class,
+            )
+            
+    def _parse_relation(self, clean_text: str) -> Optional[Eq]:
+        if clean_text.count("=") != 1:
+            return None
+        lhs_str, rhs_str = clean_text.split("=", 1)
+        lhs = parse_expr(lhs_str, transformations=self.transformations)
+        rhs = parse_expr(rhs_str, transformations=self.transformations)
+        return Eq(lhs, rhs, evaluate=False)
+
+    def canonicalize_expression(self, expr: Any) -> str:
+        simplified = simplify(expr)
+        if isinstance(simplified, bool):
+            simplified = expr
+        return srepr(simplified)
+
+    def canonicalize_relation(self, relation: Eq) -> str:
+        # Keep a relation shape for cache keys; normalize to diff == 0.
+        normalized = simplify(relation.lhs - relation.rhs)
+        if isinstance(normalized, bool):
+            normalized = relation.lhs - relation.rhs
+        return srepr(Eq(normalized, 0, evaluate=False))
 
     def _clean_text_for_parsing(self, text: str) -> str:
         # Remove common english command words mostly

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import math
 import re
+import time
 from typing import Any, Dict, List, Optional, Tuple
 
 from sympy import Eq, S, Symbol, preorder_traversal, solve, sqrt
@@ -12,6 +13,7 @@ from sympy.parsing.sympy_parser import (
     parse_expr,
     standard_transformations,
 )
+from app.services.runtime_audit import emit_runtime_audit
 
 
 _SECTION_HEADER_RE = re.compile(
@@ -753,6 +755,7 @@ def _parse_line_solution(raw_text: str, problem_text: str) -> Dict[str, Any]:
 
 
 def parse_solution_doc(text: str, problem_text: str = "") -> Dict[str, Any]:
+    started_at = time.perf_counter()
     raw_text = text or ""
     normalized, normalization_report = latex_normalize_with_report(raw_text)
 
@@ -798,6 +801,15 @@ def parse_solution_doc(text: str, problem_text: str = "") -> Dict[str, Any]:
     selected["raw_fallback"] = raw_text
     if not selected.get("parse_status"):
         selected["parse_status"] = "failed"
+    emit_runtime_audit(
+        component="sympy_solution_doc_parse",
+        started_at=started_at,
+        sympy_used=True,
+        extra={
+            "parse_status": selected.get("parse_status"),
+            "steps_count": len(selected.get("steps") or []),
+        },
+    )
     return selected
 
 
@@ -969,6 +981,7 @@ def _extract_candidate_numbers(text: str) -> List[S]:
 
 
 def _verify_candidate(lhs: Any, rhs: Any, candidate: S, enforce_rhs_nonnegative: bool) -> bool:
+    started_at = time.perf_counter()
     x = Symbol("x")
     try:
         lhs_v = lhs.subs(x, candidate).evalf()
@@ -976,13 +989,38 @@ def _verify_candidate(lhs: Any, rhs: Any, candidate: S, enforce_rhs_nonnegative:
         lhs_f = float(lhs_v)
         rhs_f = float(rhs_v)
     except Exception:
+        emit_runtime_audit(
+            component="sympy_solution_doc_verify_candidate",
+            started_at=started_at,
+            sympy_used=True,
+            extra={"candidate": str(candidate), "accepted": False},
+        )
         return False
 
     if not math.isfinite(lhs_f) or not math.isfinite(rhs_f):
+        emit_runtime_audit(
+            component="sympy_solution_doc_verify_candidate",
+            started_at=started_at,
+            sympy_used=True,
+            extra={"candidate": str(candidate), "accepted": False},
+        )
         return False
     if enforce_rhs_nonnegative and rhs_f < -1e-9:
+        emit_runtime_audit(
+            component="sympy_solution_doc_verify_candidate",
+            started_at=started_at,
+            sympy_used=True,
+            extra={"candidate": str(candidate), "accepted": False},
+        )
         return False
-    return abs(lhs_f - rhs_f) <= 1e-7
+    accepted = abs(lhs_f - rhs_f) <= 1e-7
+    emit_runtime_audit(
+        component="sympy_solution_doc_verify_candidate",
+        started_at=started_at,
+        sympy_used=True,
+        extra={"candidate": str(candidate), "accepted": accepted},
+    )
+    return accepted
 
 
 def _final_answer_from_values(values: List[S]) -> Dict[str, str]:
@@ -1001,16 +1039,20 @@ def _constraint_key(value: str) -> str:
 
 
 def apply_algebra_autocorrect(solution_doc: Dict[str, Any]) -> Dict[str, Any]:
+    started_at = time.perf_counter()
     doc = dict(solution_doc or {})
     recognized = doc.get("recognized_problem") or {}
     problem_text = str(recognized.get("latex") or recognized.get("text") or "")
     if re.search(r"\b(inverse|function|domain|range)\b", problem_text, flags=re.IGNORECASE):
+        emit_runtime_audit(component="sympy_solution_doc_autocorrect", started_at=started_at, sympy_used=True)
         return doc
 
     lhs, rhs = _parse_equation(problem_text)
     if lhs is None or rhs is None:
+        emit_runtime_audit(component="sympy_solution_doc_autocorrect", started_at=started_at, sympy_used=True)
         return doc
     if "x" not in str(lhs) and "x" not in str(rhs):
+        emit_runtime_audit(component="sympy_solution_doc_autocorrect", started_at=started_at, sympy_used=True)
         return doc
 
     enforce_rhs_nonnegative = _contains_sqrt_like(lhs)
@@ -1046,6 +1088,12 @@ def apply_algebra_autocorrect(solution_doc: Dict[str, Any]) -> Dict[str, Any]:
                 verified.append(candidate)
 
     if not verified:
+        emit_runtime_audit(
+            component="sympy_solution_doc_autocorrect",
+            started_at=started_at,
+            sympy_used=True,
+            extra={"verified_candidates": 0},
+        )
         return doc
 
     corrected = _final_answer_from_values(verified)
@@ -1062,6 +1110,12 @@ def apply_algebra_autocorrect(solution_doc: Dict[str, Any]) -> Dict[str, Any]:
         }
     else:
         doc["autocorrect"] = {"applied": False}
+    emit_runtime_audit(
+        component="sympy_solution_doc_autocorrect",
+        started_at=started_at,
+        sympy_used=True,
+        extra={"verified_candidates": len(verified), "autocorrect_applied": bool(doc.get("autocorrect", {}).get("applied"))},
+    )
     return doc
 
 

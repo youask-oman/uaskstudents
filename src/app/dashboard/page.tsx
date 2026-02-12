@@ -9,9 +9,11 @@ import {
     fetchWalletLedger,
     fetchWalletPrograms,
     fetchWalletSummary,
+    updateWalletTier,
     WalletLedgerEntry,
     WalletProgramEnrollment,
     WalletSummary,
+    WalletTier,
 } from "@/lib/wallet";
 
 interface ChatSession {
@@ -77,6 +79,8 @@ function DashboardContent() {
     const [walletLedger, setWalletLedger] = useState<WalletLedgerEntry[]>([]);
     const [walletLoading, setWalletLoading] = useState(true);
     const [walletError, setWalletError] = useState<string | null>(null);
+    const [solveAsTier, setSolveAsTier] = useState<WalletTier>("STANDARD");
+    const [tierSaving, setTierSaving] = useState(false);
 
     useEffect(() => {
         if (tabParam && ['history', 'bookmarked'].includes(tabParam)) {
@@ -214,6 +218,8 @@ function DashboardContent() {
                 setWalletSummary(summary);
                 setWalletLedger(ledgerResp.items || []);
                 setWalletPrograms(programsResp.items || []);
+                const nextTier = (summary.effective_tier || "STANDARD") as WalletTier;
+                setSolveAsTier(nextTier);
                 setWalletError(null);
             } catch (err) {
                 if (!active) return;
@@ -235,6 +241,35 @@ function DashboardContent() {
             active = false;
         };
     }, [pushToast]);
+
+    const handleSolveAsChange = async (nextTier: WalletTier) => {
+        setSolveAsTier(nextTier);
+        setTierSaving(true);
+        try {
+            await updateWalletTier(nextTier);
+            const refreshed = await fetchWalletSummary();
+            setWalletSummary(refreshed);
+            const effective = (refreshed.effective_tier || nextTier) as WalletTier;
+            setSolveAsTier(effective);
+            localStorage.setItem("uask.solveTier", effective);
+            pushToast({
+                type: "success",
+                title: "Solve tier updated",
+                message: `Default Solve as is now ${effective}.`,
+            });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Unable to update solve tier";
+            const requestId = err && typeof err === "object" && "requestId" in err ? (err as { requestId?: string }).requestId : undefined;
+            pushToast({
+                type: "error",
+                title: "Tier update failed",
+                message,
+                requestId,
+            });
+        } finally {
+            setTierSaving(false);
+        }
+    };
 
     useEffect(() => {
         if (activeTab === "history") {
@@ -336,6 +371,25 @@ function DashboardContent() {
                             </div>
                             <div className="text-3xl font-black">
                                 {walletSummary ? walletSummary.computed_balance.toFixed(2) : "--"} credits
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                                    Solve as
+                                </label>
+                                <select
+                                    value={solveAsTier}
+                                    onChange={(e) => handleSolveAsChange(e.target.value as WalletTier)}
+                                    disabled={tierSaving || walletLoading}
+                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm font-semibold"
+                                >
+                                    <option value="FREE">Final Answer</option>
+                                    <option value="SHORT">Short</option>
+                                    <option value="STANDARD">Standard</option>
+                                    <option value="RESEARCH">Research</option>
+                                </select>
+                                <p className="text-[11px] text-slate-500">
+                                    This sets your default Solve tier across pages.
+                                </p>
                             </div>
                             <div className="grid grid-cols-2 gap-3 text-xs text-slate-500">
                                 <div>

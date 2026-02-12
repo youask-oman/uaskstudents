@@ -586,8 +586,6 @@ def _seed_internal_users(session: Session, app_env: str, allow_user_seeding: boo
                 payload.insert(0, superadmin_row)
 
             superadmin_row["role"] = "superadmin"
-            superadmin_row.pop("password_hash", None)
-            superadmin_row["password_env"] = "SEED_DEV_DEFAULT_PASSWORD"
             for row in payload:
                 if row is not superadmin_row and row.get("role") == "superadmin":
                     row["role"] = "admin"
@@ -596,7 +594,6 @@ def _seed_internal_users(session: Session, app_env: str, allow_user_seeding: boo
                 if row.get("role") == "superadmin":
                     row["role"] = "admin"
     default_password = os.environ.get("SEED_DEV_DEFAULT_PASSWORD", "DevOnlyChangeMe123!")
-    dev_password_hash = get_password_hash(default_password) if app_env == "DEV" else None
     checksum_payload = []
     for row in payload:
         password_env = row.get("password_env")
@@ -609,6 +606,7 @@ def _seed_internal_users(session: Session, app_env: str, allow_user_seeding: boo
                 "email": row.get("email"),
                 "full_name": row.get("full_name"),
                 "role": row.get("role"),
+                "subscription_tier": row.get("subscription_tier", "standard"),
                 "password_env": password_env,
                 "password_fingerprint": password_fingerprint,
             }
@@ -624,11 +622,7 @@ def _seed_internal_users(session: Session, app_env: str, allow_user_seeding: boo
         password_env = row.get("password_env")
         force_password_update = False
 
-        if app_env == "DEV":
-            # In DEV, force all internal users to the same known password.
-            password_hash = dev_password_hash
-            force_password_update = True
-        elif password_env and not password_hash:
+        if password_env and not password_hash:
             plain = os.environ.get(password_env, default_password)
             password_hash = get_password_hash(plain)
             force_password_update = True
@@ -640,6 +634,7 @@ def _seed_internal_users(session: Session, app_env: str, allow_user_seeding: boo
                 ("role", row.get("role", "employee")),
                 ("is_internal", True),
                 ("is_verified", bool(row.get("is_verified", True))),
+                ("subscription_tier", row.get("subscription_tier", "standard")),
             ]:
                 if getattr(cur, key) != val:
                     setattr(cur, key, val)
@@ -664,7 +659,7 @@ def _seed_internal_users(session: Session, app_env: str, allow_user_seeding: boo
                     is_internal=True,
                     is_verified=bool(row.get("is_verified", True)),
                     password_hash=password_hash,
-                    subscription_tier=row.get("subscription_tier", "enterprise"),
+                    subscription_tier=row.get("subscription_tier", "standard"),
                 )
             )
             c += 1

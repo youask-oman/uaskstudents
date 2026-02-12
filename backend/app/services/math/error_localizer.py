@@ -18,6 +18,7 @@ from sympy.parsing.sympy_parser import (
     implicit_multiplication_application,
     convert_xor
 )
+from app.services.runtime_audit import emit_runtime_audit
 
 # Optional SciPy (for root finding, optimization etc.)
 try:
@@ -509,20 +510,36 @@ def find_first_error_from_ocr(
     max_lines: int = 6,
     budget: Optional[Budget] = None
 ) -> FindErrorResult:
+    started_at = time.perf_counter()
+
+    def _audit(result: FindErrorResult) -> FindErrorResult:
+        emit_runtime_audit(
+            component="sympy_error_localizer_entry",
+            started_at=started_at,
+            sympy_used=True,
+            numpy_used=True,
+            extra={
+                "lines": len(result.per_line or []),
+                "first_wrong_line_index": result.first_wrong_line_index,
+                "detected_format": result.detected_format,
+            },
+        )
+        return result
+
     budget = budget or Budget()
     deadline = budget.deadline()
 
     text = normalize_ocr_text(ocr.text)
     lines = split_into_lines(text, max_lines=max_lines)
     if not lines:
-        return FindErrorResult(
+        return _audit(FindErrorResult(
             first_wrong_line_index=None,
             what_is_wrong="No readable math detected in the selected region.",
             minimal_fix="Re-circle a larger/clearer region or type the equation.",
             confidence=0.2,
             detected_format="unknown",
             per_line=[]
-        )
+        ))
 
     per_line: List[LineCheckResult] = []
     detected_format = "multi_line" if len(lines) > 1 else "unknown"
@@ -542,14 +559,14 @@ def find_first_error_from_ocr(
         if deriv_res is not None:
             per_line.append(deriv_res)
             if deriv_res.ok is False:
-                return FindErrorResult(
+                return _audit(FindErrorResult(
                     first_wrong_line_index=idx,
                     what_is_wrong=deriv_res.reason,
                     minimal_fix=deriv_res.minimal_fix,
                     confidence=min(1.0, max(deriv_res.confidence, ocr.confidence)),
                     detected_format="equation",
                     per_line=per_line
-                )
+                ))
             continue
 
         # Specialized integral checker
@@ -557,14 +574,14 @@ def find_first_error_from_ocr(
         if int_res is not None:
              per_line.append(int_res)
              if int_res.ok is False:
-                return FindErrorResult(
+                return _audit(FindErrorResult(
                     first_wrong_line_index=idx,
                     what_is_wrong=int_res.reason,
                     minimal_fix=int_res.minimal_fix,
                     confidence=min(1.0, max(int_res.confidence, ocr.confidence)),
                     detected_format="equation",
                     per_line=per_line
-                )
+                ))
              continue
 
         # Specialized limit checker
@@ -572,14 +589,14 @@ def find_first_error_from_ocr(
         if lim_res is not None:
              per_line.append(lim_res)
              if lim_res.ok is False:
-                return FindErrorResult(
+                return _audit(FindErrorResult(
                     first_wrong_line_index=idx,
                     what_is_wrong=lim_res.reason,
                     minimal_fix=lim_res.minimal_fix,
                     confidence=min(1.0, max(lim_res.confidence, ocr.confidence)),
                     detected_format="equation",
                     per_line=per_line
-                )
+                ))
              continue
 
         try:
@@ -592,14 +609,14 @@ def find_first_error_from_ocr(
 
                 if res.ok is False:
                     # High-quality minimal fix for purely numeric equation if available
-                    return FindErrorResult(
+                    return _audit(FindErrorResult(
                         first_wrong_line_index=idx,
                         what_is_wrong=res.reason,
                         minimal_fix=res.minimal_fix,
                         confidence=min(1.0, max(res.confidence, ocr.confidence)),
                         detected_format=detected_format,
                         per_line=per_line
-                    )
+                    ))
 
             else:
                 # expression only (not an equation) -> inconclusive for "find error" unless transcript asks eval
@@ -623,11 +640,11 @@ def find_first_error_from_ocr(
 
     # If we got here, nothing was clearly wrong
     best_conf = max([r.confidence for r in per_line], default=0.4)
-    return FindErrorResult(
+    return _audit(FindErrorResult(
         first_wrong_line_index=None,
         what_is_wrong="No definite error found in the selected region.",
         minimal_fix="If you expected an error, expand the selection to include the full step (including '=').",
         confidence=min(0.9, max(best_conf, ocr.confidence)),
         detected_format=detected_format,
         per_line=per_line
-    )
+    ))

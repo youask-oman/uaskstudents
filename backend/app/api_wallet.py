@@ -8,7 +8,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional, List, Dict
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session, select, func
 
@@ -20,6 +20,7 @@ from app.models import (
 )
 from app.models.credit_program_models import CreditProgramEnrollment, CreditProgramDefinition
 from app.services.credit_program_service import credit_program_service
+from app.services.tier_utils import runtime_tier_from_plan_slug, normalize_tier_slug
 from app.api_billing import get_current_user
 from app.admin_billing.billing_wallet import _build_wallet_summary, _month_start, _next_month_start
 
@@ -38,6 +39,15 @@ class WalletSummaryResponse(BaseModel):
     entitlements: Dict[str, object]
     effective_tier: str
     active_programs: List[str]
+
+
+class WalletTierUpdateRequest(BaseModel):
+    tier: str
+
+
+class WalletTierUpdateResponse(BaseModel):
+    subscription_tier: str
+    effective_tier: str
 
 
 class WalletLotResponse(BaseModel):
@@ -87,7 +97,9 @@ class PaginatedResponse(BaseModel):
     offset: int
 
 
-def _effective_tier(entitlements: Dict[str, object], active_programs: List[str]) -> str:
+def _effective_tier(entitlements: Dict[str, object], active_programs: List[str], subscription_tier: Optional[str]) -> str:
+    if subscription_tier:
+        return runtime_tier_from_plan_slug(subscription_tier)
     if entitlements.get("allow_research_tier"):
         return "RESEARCH"
     if active_programs:
@@ -151,7 +163,7 @@ def get_wallet_summary(
         }
 
     active_programs = [programs[p].slug for p in program_ids if p in programs]
-    tier = _effective_tier(entitlements, active_programs)
+    tier = _effective_tier(entitlements, active_programs, getattr(user, "subscription_tier", None))
 
     return WalletSummaryResponse(
         user_id=user.id,
@@ -165,6 +177,35 @@ def get_wallet_summary(
         entitlements=entitlements,
         effective_tier=tier,
         active_programs=active_programs,
+    )
+
+
+@router.patch("/tier", response_model=WalletTierUpdateResponse)
+def update_wallet_tier(
+    body: WalletTierUpdateRequest,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    raw = (body.tier or "").strip().lower()
+    accepted = {"free", "short", "standard", "research", "three_step"}
+    if raw not in accepted:
+        raise HTTPException(status_code=422, detail="Invalid tier. Allowed: free|short|standard|research")
+
+    tier_slug = "free" if raw == "three_step" else raw
+    normalized = normalize_tier_slug(tier_slug)
+    if normalized == "family_standard":
+        persisted = "short"
+    else:
+        persisted = normalized
+
+    user.subscription_tier = persisted
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    return WalletTierUpdateResponse(
+        subscription_tier=user.subscription_tier,
+        effective_tier=runtime_tier_from_plan_slug(user.subscription_tier),
     )
 
 

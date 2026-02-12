@@ -19,6 +19,8 @@ import logging
 import asyncio
 import io
 import aiofiles
+import secrets
+import string
 from datetime import datetime, timedelta
 from jsonschema import Draft202012Validator, ValidationError
 from PIL import Image, ImageEnhance, ImageFilter, ImageStat
@@ -114,15 +116,45 @@ from app.bg_routers.plot_router import router as plot_router
 limiter = Limiter(key_func=get_remote_address)
 api_router = APIRouter()
 logger = logging.getLogger(__name__)
+WHATSAPP_SECRET_LENGTH = 8
+WHATSAPP_SECRET_ALPHABET = string.ascii_uppercase + string.digits
 
 api_router.include_router(voice_router, tags=["voice"])
 api_router.include_router(local_router, tags=["local_math"])
 api_router.include_router(snap_solve_pdf_router, tags=["snap_solve_pdf"])
 api_router.include_router(credits_router, tags=["credits"])
 api_router.include_router(plot_router, prefix="/v1", tags=["plotting"])
+# Backward-compatible canonical path: /api/v1/plot/*
+api_router.include_router(plot_router, tags=["plotting"])
 from app.services.solve.solve_events import emit_attempt_event
 
 # OCR prompt/schema are DB-driven via ocr_config_service
+
+
+def _generate_whatsapp_secret(used: Optional[set[str]] = None) -> str:
+    used = used or set()
+    for _ in range(16):
+        candidate = "".join(
+            secrets.choice(WHATSAPP_SECRET_ALPHABET) for _ in range(WHATSAPP_SECRET_LENGTH)
+        )
+        if candidate not in used:
+            return candidate
+    raise RuntimeError("Failed to generate unique WhatsApp secret")
+
+
+def _regenerate_whatsapp_secrets_for_all_users(session: Session) -> int:
+    users = session.exec(select(User)).all()
+    if not users:
+        return 0
+    used: set[str] = set()
+    updated = 0
+    for user in users:
+        user.whatsapp_secret = _generate_whatsapp_secret(used=used)
+        used.add(user.whatsapp_secret)
+        session.add(user)
+        updated += 1
+    session.commit()
+    return updated
 
 
 @api_router.get("/health/llm")
@@ -158,6 +190,14 @@ def _resolve_runtime_tier_slug(user: Optional[User]) -> str:
     return get_user_effective_tier_slug(user)
 
 
+def _solve_tier_ceiling_slug() -> str:
+    """
+    Solve tier availability is credit-driven on the client.
+    Do not cap requested solve tier by persisted subscription_tier.
+    """
+    return "research"
+
+
 _TIER_ORDER = {"FREE": 0, "SHORT": 1, "STANDARD": 2, "RESEARCH": 3}
 
 
@@ -165,12 +205,12 @@ def _normalize_tier_for_prompt_binding(value: Optional[str]) -> str:
     raw = (value or "").strip().lower()
     if raw in {"three_step", "free"}:
         return "FREE"
-    if raw in {"research", "enterprise", "family", "family_standard"}:
+    if raw in {"research", "enterprise"}:
         return "RESEARCH"
+    if raw in {"family", "family_standard", "short"}:
+        return "SHORT"
     if raw in {"standard", "student_standard", "pro", "premium"}:
         return "STANDARD"
-    if raw == "short":
-        return "SHORT"
     return "FREE"
 
 
@@ -1087,6 +1127,7 @@ class PreferenceUpdateRequest(BaseModel):
     theme: Optional[str] = None
     preferred_language: Optional[str] = None
     solving_mode: Optional[str] = None
+    whatsapp_enabled: Optional[bool] = None
 
 class ChangePasswordRequest(BaseModel):
     current_password: str
@@ -1471,9 +1512,7 @@ async def signup(
         )
 
     # Create new user
-    import secrets
-    import string
-    whatsapp_secret = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
+    whatsapp_secret = _generate_whatsapp_secret()
     
     new_user = User(
         email=form_data.email,
@@ -3740,7 +3779,7 @@ async def solve_questions_batch(
                 "status": "error",
                 "error_type": item_result.error or "solve_failed",
                 "schema_valid": None,
-                "verification_pass": None,
+                "verification_pass": bool(final_data.get("verified")),
                 "is_stream": False,
                 "is_cached": False,
                 "credit_deducted": False,
@@ -4683,10 +4722,9 @@ async def solve_problem(
     telemetry_data = solution_data.get("_telemetry") or solution_data.get("telemetry") or {}
     try:
         plan_version = None
-        if user and user.subscription and user.subscription.plan:
-            from app.schemas.pricing import PlanMultipliers
-            mults = PlanMultipliers(**(user.subscription.plan.multipliers or {}))
-            plan_version = str(mults.version)
+        from app.services.prompt_binding_pricing import resolve_binding_pricing
+        _, mults, _ = resolve_binding_pricing(session, new_chat.solve_tier)
+        plan_version = str(mults.version)
         from app.services.pricing_service import pricing_service
         token_version = pricing_service.get_pricing_config(session).config_version_id
         telemetry_data["pricing_version_plan"] = plan_version
@@ -4875,7 +4913,7 @@ async def solve_v3_runtime_meta(
     request_id = str(uuid.uuid4())
     provider = "openai"
     model = get_configured_openai_model()
-    entitled_tier_slug = _resolve_runtime_tier_slug(user)
+    entitled_tier_slug = _solve_tier_ceiling_slug()
     tier_policy = _clamp_requested_tier(tier, entitled_tier_slug)
     tier_requested = tier_policy["tier_requested"]
     tier_effective = tier_policy["tier_effective"]
@@ -4896,10 +4934,13 @@ async def solve_v3_runtime_meta(
         )
     except ProfileResolutionError as profile_err:
         raise HTTPException(
-            status_code=500,
+            status_code=503,
             detail={
-                "code": getattr(profile_err, "code", "PROFILE_RESOLUTION_FAILED"),
+                "code": "DEPENDENCY_UNAVAILABLE",
+                "status": "dependency_unavailable",
+                "reason": str(profile_err),
                 "message": str(profile_err),
+                "retryable": True,
                 "request_id": request_id,
                 "tier": tier_effective,
                 "mode": mode_label,
@@ -4909,6 +4950,7 @@ async def solve_v3_runtime_meta(
         )
 
     binding_meta = getattr(profile, "prompt_binding_meta", {}) or {}
+    binding_features = binding_meta.get("features") if isinstance(binding_meta.get("features"), dict) else {}
     return {
         "request_id": request_id,
         "provider": provider,
@@ -4933,6 +4975,11 @@ async def solve_v3_runtime_meta(
             "top_p": binding_meta.get("top_p"),
             "timeout_ms": binding_meta.get("timeout_ms"),
             "trim_strategy": binding_meta.get("trim_strategy"),
+        },
+        "features": {
+            "allow_research": bool(binding_features.get("allow_research", False)),
+            "allow_verify": bool(binding_features.get("allow_verify", True)),
+            "allow_plot": bool(binding_features.get("allow_plot", True)),
         },
     }
 
@@ -5040,7 +5087,7 @@ async def solve_v3_endpoint(
     from app.llm_profiles.profile_resolver import ProfileResolver
     from app.llm_profiles.profile_resolver import ProfileResolutionError
     from app.services.llm.manager import get_configured_openai_model
-    entitled_tier_slug = _resolve_runtime_tier_slug(user)
+    entitled_tier_slug = _solve_tier_ceiling_slug()
     tier_policy = _clamp_requested_tier(body.tier, entitled_tier_slug)
     requested_tier = tier_policy["tier_requested"]
     effective_tier = tier_policy["tier_effective"]
@@ -5059,10 +5106,13 @@ async def solve_v3_endpoint(
         )
     except ProfileResolutionError as profile_err:
         raise HTTPException(
-            status_code=500,
+            status_code=503,
             detail={
-                "code": getattr(profile_err, "code", "PROFILE_RESOLUTION_FAILED"),
+                "code": "DEPENDENCY_UNAVAILABLE",
+                "status": "dependency_unavailable",
+                "reason": str(profile_err),
                 "message": str(profile_err),
+                "retryable": True,
                 "request_id": request_id,
                 "tier": effective_tier,
                 "mode": "SOLVE",
@@ -5254,6 +5304,27 @@ async def solve_v3_endpoint(
         # --- PLOTTING PIPELINE INTEGRATION ---
         # Normalize and ensure essentials
         from app.services.plot_integration import maybe_generate_plot, apply_graph_mode_override, format_plot_for_response
+        from app.services.solve.verification_gate import verify_solve_result
+
+        verification_meta = verify_solve_result(problem_text, result or {}, request_id=request_id)
+        assumptions_list = result.get("assumptions")
+        if not isinstance(assumptions_list, list):
+            assumptions_list = []
+        for assumption in verification_meta.get("assumptions", []):
+            if assumption not in assumptions_list:
+                assumptions_list.append(assumption)
+        result["assumptions"] = assumptions_list
+        result["verified"] = bool(verification_meta.get("verified"))
+        result["verification_method"] = verification_meta.get("verification_method") or "none"
+        result["dropped_candidates"] = verification_meta.get("dropped_candidates") or []
+        result["final_solutions"] = verification_meta.get("final_solutions") or []
+        result["llm_answer_text"] = verification_meta.get("llm_answer_text") or ""
+        result["verification_meta"] = verification_meta
+        if not result["verified"]:
+            if isinstance(result.get("final_answer"), dict):
+                answer_text = str(result["final_answer"].get("answer_text") or "").strip()
+                if answer_text:
+                    result["final_answer"]["answer_text"] = f"Unverified explanation: {answer_text}"
         
         # We only run plotting if result is successful and not an error
         if result and not result.get("error"):
@@ -5566,7 +5637,7 @@ async def solve_v3_endpoint(
             "status": "ok",
             "error_type": None,
             "schema_valid": telemetry.get("validated"),
-            "verification_pass": False,
+            "verification_pass": bool(result.get("verified")),
             "is_stream": False,
             "is_cached": bool(was_cached or question_cache_hit),
             "credit_deducted": deduct_committed,
@@ -5657,7 +5728,7 @@ async def solve_v3_endpoint(
                 "status": "error",
                 "error_type": type(e).__name__,
                 "schema_valid": None,
-                "verification_pass": False,
+            "verification_pass": False,
                 "is_stream": False,
                 "is_cached": bool(was_cached or question_cache_hit),
                 "credit_deducted": deduct_committed,
@@ -5810,15 +5881,12 @@ async def solve_v3_stream_endpoint(
     user_obj = session.exec(
         select(User)
         .where(User.id == user_id)
-        .options(selectinload(User.subscription).selectinload(Subscription.plan))
+        .options(selectinload(User.subscription))
     ).first()
     user_grade_level = user_obj.grade_level if user_obj else None
     user_profile_country = user_obj.profile_country if user_obj else None
     user_profile_province = user_obj.profile_province_state if user_obj else None
-    user_plan_slug = None
-    if user_obj and user_obj.subscription and user_obj.subscription.plan:
-        user_plan_slug = user_obj.subscription.plan.slug
-    effective_tier_slug = get_user_effective_tier_slug(user_obj)
+    effective_tier_slug = _solve_tier_ceiling_slug()
     tier_policy = _clamp_requested_tier(body.tier, effective_tier_slug)
     requested_tier = tier_policy["tier_requested"]
     effective_tier = tier_policy["tier_effective"]
@@ -5861,10 +5929,9 @@ async def solve_v3_stream_endpoint(
 
     plan_pricing_version = None
     try:
-        if user_obj and user_obj.subscription and user_obj.subscription.plan:
-            from app.schemas.pricing import PlanMultipliers
-            mults = PlanMultipliers(**(user_obj.subscription.plan.multipliers or {}))
-            plan_pricing_version = str(mults.version)
+        from app.services.prompt_binding_pricing import resolve_binding_pricing
+        _, binding_mults, _ = resolve_binding_pricing(session, effective_billing_tier)
+        plan_pricing_version = str(binding_mults.version)
     except Exception:
         plan_pricing_version = None
 
@@ -5889,18 +5956,6 @@ async def solve_v3_stream_endpoint(
         from decimal import Decimal
         from app.services.billing_ledger_service_v2 import billing_ledger_service_v2
         from app.services.billing_exceptions import InsufficientCreditsError
-        from app.models import Plan
-
-        # Derive pricing from plan multipliers (flat tier costs)
-        plan = None
-        if user_obj and user_obj.subscription and user_obj.subscription.plan:
-            plan = user_obj.subscription.plan
-        if not plan:
-            sub_obj = subscription_service.get_or_create_subscription(session, user_obj or session.get(User, user_id))
-            plan = session.get(Plan, sub_obj.plan_id) if sub_obj else None
-        if not plan:
-            subscription_service.ensure_plans_exist(session)
-            plan = session.exec(select(Plan).where(Plan.slug == "free")).first()
 
         source_type = "text"
         if action_req["has_voice"]:
@@ -5910,10 +5965,10 @@ async def solve_v3_stream_endpoint(
 
         if (body.source_type or "").lower() == "ocr":
             ocr_cfg = get_active_ocr_config(session)
-            tier_cost = float(subscription_service.calculate_cost(plan, effective_billing_tier, "text"))
+            tier_cost = float(subscription_service.calculate_cost_for_tier(session, effective_billing_tier, "text"))
             billing_v2_cost = max(tier_cost, float(ocr_cfg.solve_credit))
         else:
-            billing_v2_cost = float(subscription_service.calculate_cost(plan, effective_billing_tier, source_type))
+            billing_v2_cost = float(subscription_service.calculate_cost_for_tier(session, effective_billing_tier, source_type))
         try:
             hold_result = billing_ledger_service_v2.create_hold(
                 session=session,
@@ -6010,7 +6065,7 @@ async def solve_v3_stream_endpoint(
 
         # Resolve profile for correct prompt/schema/tokens
         from app.llm_profiles.profile_resolver import ProfileResolver
-        plan_key = user_plan_slug or effective_tier_slug
+        plan_key = effective_tier_slug
         try:
             profile = ProfileResolver.resolve_profile(
                 session,
@@ -6069,7 +6124,7 @@ async def solve_v3_stream_endpoint(
         except Exception as e:
             print(f"[SOLVER_V3_STREAM] Update attempt meta failed: {e}")
 
-        plan_key = user_plan_slug or profile.tier
+        plan_key = effective_tier_slug or profile.tier
 
         # --- TOKEN POLICY FIX (STREAMING) ---
         profile_max_output = profile.max_output_tokens or 900
@@ -6839,11 +6894,35 @@ async def solve_v3_stream_endpoint(
                 steps_count = len(final_data.get("steps") or [])
             print(f"[SOLVER_V3_STREAM] Validated response. Steps: {steps_count}")
 
+            from app.services.solve.verification_gate import verify_solve_result
+            verification_meta = verify_solve_result(problem_text, final_data or {}, request_id=request_id)
+            assumptions_list = final_data.get("assumptions")
+            if not isinstance(assumptions_list, list):
+                assumptions_list = []
+            for assumption in verification_meta.get("assumptions", []):
+                if assumption not in assumptions_list:
+                    assumptions_list.append(assumption)
+            final_data["assumptions"] = assumptions_list
+            final_data["verified"] = bool(verification_meta.get("verified"))
+            final_data["verification_method"] = verification_meta.get("verification_method") or "none"
+            final_data["dropped_candidates"] = verification_meta.get("dropped_candidates") or []
+            final_data["final_solutions"] = verification_meta.get("final_solutions") or []
+            final_data["llm_answer_text"] = verification_meta.get("llm_answer_text") or ""
+            final_data["verification_meta"] = verification_meta
+            if not final_data["verified"] and isinstance(final_data.get("final_answer"), dict):
+                ans = str(final_data["final_answer"].get("answer_text") or "").strip()
+                if ans:
+                    final_data["final_answer"]["answer_text"] = f"Unverified explanation: {ans}"
+
             # --- PLOTTING PIPELINE INTEGRATION ---
             from app.services.plot_integration import maybe_generate_plot, apply_graph_mode_override, format_plot_for_response
             
             # CRITICAL: Read graph_mode directly from body to avoid closure issues
             effective_graph_mode = getattr(body, 'graph_mode', None) or 'auto'
+            binding_features = binding_meta.get("features") if isinstance(binding_meta.get("features"), dict) else {}
+            allow_plot = bool(binding_features.get("allow_plot", True))
+            if not allow_plot:
+                effective_graph_mode = "off"
             print(f"[SOLVER_V3_STREAM] effective_graph_mode from body: {effective_graph_mode}")
             
             plot_data = await maybe_generate_plot(
@@ -8695,6 +8774,11 @@ async def get_user_profile(user_id: int = Query(...), db: Session = Depends(get_
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    if not user.whatsapp_secret:
+        user.whatsapp_secret = _generate_whatsapp_secret()
+        db.add(user)
+        db.commit()
+        db.refresh(user)
     
     # Calculate usage (Conceptual/Simplified for now)
     # Questions count: count solve_request in UsageLog in last 30 days
@@ -8779,6 +8863,8 @@ async def update_user_preferences(request: PreferenceUpdateRequest, user_id: int
         user.preferred_language = request.preferred_language
     if request.solving_mode is not None:
         user.solving_mode = request.solving_mode
+    if request.whatsapp_enabled is not None:
+        user.whatsapp_enabled = request.whatsapp_enabled
         
     db.add(user)
     db.commit()
@@ -9990,6 +10076,8 @@ class RegistryBindingItem(BaseModel):
     trim_strategy: Optional[str] = None
     max_steps: Optional[int] = None
     retry_cap_tokens: Optional[int] = None
+    features: Dict[str, Any] = Field(default_factory=dict)
+    multipliers: Dict[str, Any] = Field(default_factory=dict)
     is_active: bool
     updated_at: str
     updated_by: Optional[str]
@@ -10062,6 +10150,8 @@ class BindingActivateRequest(BaseModel):
     trim_strategy: Optional[str] = None
     max_steps: Optional[int] = None
     retry_cap_tokens: Optional[int] = None
+    features: Dict[str, Any] = Field(default_factory=dict)
+    multipliers: Dict[str, Any] = Field(default_factory=dict)
     updated_by: Optional[str] = None
 
 class PromptRegistryTestRequest(BaseModel):
@@ -10331,6 +10421,8 @@ async def admin_list_prompt_registry_bindings(db: Session = Depends(get_session)
             trim_strategy=row.trim_strategy.value if row.trim_strategy else None,
             max_steps=row.max_steps,
             retry_cap_tokens=row.retry_cap_tokens,
+            features=row.features or {},
+            multipliers=row.multipliers or {},
             is_active=row.is_active,
             updated_at=row.updated_at.isoformat(),
             updated_by=row.updated_by,
@@ -10373,6 +10465,8 @@ async def admin_activate_prompt_registry_binding(req: BindingActivateRequest, db
         trim_strategy=req.trim_strategy,
         max_steps=req.max_steps,
         retry_cap_tokens=req.retry_cap_tokens,
+        features=req.features,
+        multipliers=req.multipliers,
     )
     return RegistryBindingItem(
         id=entry.id,
@@ -10396,6 +10490,8 @@ async def admin_activate_prompt_registry_binding(req: BindingActivateRequest, db
         trim_strategy=entry.trim_strategy.value if entry.trim_strategy else None,
         max_steps=entry.max_steps,
         retry_cap_tokens=entry.retry_cap_tokens,
+        features=entry.features or {},
+        multipliers=entry.multipliers or {},
         is_active=entry.is_active,
         updated_at=entry.updated_at.isoformat(),
         updated_by=entry.updated_by,
@@ -10576,6 +10672,18 @@ class PlanCreate(BaseModel):
     is_active: bool = True
 
 
+class PlanAdminUpdate(BaseModel):
+    name: str
+    slug: str
+    credits_per_month: int
+    price_monthly_cents: int
+    price_yearly_cents: int
+    seats: int = 1
+    features: Dict[str, Any] = {}
+    multipliers: Dict[str, Any] = {}
+    is_active: bool = True
+
+
 LEGACY_PLAN_MUTATION_DETAIL = (
     "Legacy plans/subscriptions are disabled. Use Credit Programs. "
     "This endpoint is read-only and will be removed."
@@ -10584,6 +10692,33 @@ LEGACY_PLAN_MUTATION_DETAIL = (
 @api_router.get('/admin/plans')
 async def list_plans(session: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     return session.exec(select(Plan)).all()
+
+@api_router.put('/admin/plans/{plan_id}')
+async def admin_update_plan(
+    plan_id: int,
+    payload: PlanAdminUpdate,
+    db: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    plan = db.get(Plan, plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    from app.schemas.pricing import PlanMultipliers
+    try:
+        PlanMultipliers(**(payload.multipliers or {}))
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Invalid multipliers payload: {exc}") from exc
+
+    update_data = payload.model_dump()
+    for key, value in update_data.items():
+        setattr(plan, key, value)
+    plan.version = int(getattr(plan, "version", 1) or 1) + 1
+
+    db.add(plan)
+    db.commit()
+    db.refresh(plan)
+    return plan
 
 @api_router.post('/admin/plans')
 async def admin_save_plan(plan: Plan, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
@@ -10735,7 +10870,7 @@ async def find_error_local(
     from app.schemas.find_error_local_schemas import (
         FindErrorLocalResponse, SelectionBBox, OCRResult, AnalysisResult, TimingsMs
     )
-    from app.services.math.error_localizer import analyze_error
+    from app.services.math.error_localizer import OCRPayload, Budget, find_first_error_from_ocr
     
     request_id = str(uuid.uuid4())
     start_time = time.time()
@@ -10805,7 +10940,21 @@ async def find_error_local(
         
         # OCR
         t1 = time.time()
-        ocr_result = ocr_service.recognize_region(crop_bytes, engine_name="local")
+        try:
+            ocr_result = ocr_service.recognize_region(crop_bytes, engine_name="local")
+        except Exception as exc:
+            return FindErrorLocalResponse(
+                ok=False,
+                request_id=request_id,
+                selection_bbox=selection_bbox,
+                error={
+                    "code": "DEPENDENCY_UNAVAILABLE",
+                    "status": "dependency_unavailable",
+                    "reason": f"OCR unavailable: {type(exc).__name__}",
+                    "retryable": True,
+                },
+                timings_ms=TimingsMs(**timings),
+            )
         timings["ocr"] = int((time.time() - t1) * 1000)
         
         if not ocr_result.get("text"):
@@ -10820,7 +10969,24 @@ async def find_error_local(
         
         # Analyze
         t2 = time.time()
-        analysis = analyze_error(ocr_result["text"], max_lines=max_lines)
+        payload = OCRPayload(raw=ocr_result.get("raw", ""), text=ocr_result["text"], confidence=float(ocr_result.get("confidence", 0.0)))
+        analysis_result = find_first_error_from_ocr(
+            payload,
+            transcript_hint="find_error",
+            max_lines=max_lines,
+            budget=Budget(
+                total_ms=int(os.getenv("LOCAL_FINDERR_TOTAL_MS", "1500")),
+                sympy_ms=int(os.getenv("LOCAL_FINDERR_SYMPY_MS", "700")),
+                numeric_ms=int(os.getenv("LOCAL_FINDERR_NUMERIC_MS", "700")),
+            ),
+        )
+        analysis = {
+            "detected_format": analysis_result.detected_format,
+            "first_wrong_line_index": analysis_result.first_wrong_line_index,
+            "what_is_wrong": analysis_result.what_is_wrong,
+            "minimal_fix": analysis_result.minimal_fix,
+            "confidence": float(analysis_result.confidence),
+        }
         timings["check"] = int((time.time() - t2) * 1000)
         timings["total"] = int((time.time() - start_time) * 1000)
         
@@ -11046,10 +11212,24 @@ async def get_whatsapp_status():
     """Get current WhatsApp bot status"""
     return whatsapp_service.get_status()
 
+@api_router.get("/whatsapp/status")
+async def get_public_whatsapp_status():
+    """Public WhatsApp bot status for user-profile gating."""
+    return whatsapp_service.get_status()
+
 @api_router.post("/admin/whatsapp/initialize")
-async def initialize_whatsapp_bot():
+async def initialize_whatsapp_bot(db: Session = Depends(get_session)):
     """Initialize WhatsApp bot and generate QR code"""
-    return await whatsapp_service.initialize()
+    previous_status = (whatsapp_service.get_status() or {}).get("status")
+    result = await whatsapp_service.initialize()
+    current_status = (result or {}).get("status")
+    if (
+        previous_status == "disconnected"
+        and current_status in {"connecting", "qr_ready", "connected"}
+    ):
+        regenerated_count = _regenerate_whatsapp_secrets_for_all_users(db)
+        result = {**result, "regenerated_whatsapp_codes": regenerated_count}
+    return result
 
 @api_router.post("/admin/whatsapp/disconnect")
 async def disconnect_whatsapp_bot():
@@ -11317,8 +11497,13 @@ async def handle_whatsapp_message(
         return {"reply": ""}
     
     # Check if this is a verification code (handle this first, before checking user)
-    if text.upper().startswith("CODE "):
-        code = text[5:].strip().upper()
+    cleaned_text = re.sub(r"[\u200B-\u200D\uFEFF]", "", text).strip()
+    code_match = re.match(
+        r"^(?:CODE[\s:\-]*)?([A-Z0-9]{8})$",
+        cleaned_text.upper(),
+    )
+    if code_match:
+        code = code_match.group(1)
         # Find user by verification code
         user = db.exec(
             select(User).where(User.whatsapp_secret == code)

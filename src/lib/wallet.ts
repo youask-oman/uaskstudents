@@ -12,9 +12,11 @@ export type WalletSummary = {
     expiring_soon_credits: number;
     expiring_soon_lots: number;
     entitlements: Record<string, unknown>;
-    effective_tier: "FREE" | "STANDARD" | "RESEARCH";
+    effective_tier: "FREE" | "SHORT" | "STANDARD" | "RESEARCH";
     active_programs: string[];
 };
+
+export type WalletTier = "FREE" | "SHORT" | "STANDARD" | "RESEARCH";
 
 export type WalletLot = {
     id: number;
@@ -85,6 +87,26 @@ export async function fetchWalletSummary(): Promise<WalletSummary> {
     return (await res.json()) as WalletSummary;
 }
 
+function mapWalletTierToApi(tier: WalletTier): string {
+    return String(tier || "STANDARD").toLowerCase();
+}
+
+export async function updateWalletTier(tier: WalletTier): Promise<{ subscription_tier: string; effective_tier: WalletTier | string }> {
+    const res = await fetch(`${API_BASE_URL}/api/v1/wallet/tier`, {
+        method: "PATCH",
+        headers: {
+            "Content-Type": "application/json",
+            ...(getAuthHeaders() || {}),
+        },
+        body: JSON.stringify({ tier: mapWalletTierToApi(tier) }),
+    });
+    if (!res.ok) {
+        const err = await parseApiError(res);
+        throw toApiError(err);
+    }
+    return (await res.json()) as { subscription_tier: string; effective_tier: WalletTier | string };
+}
+
 export async function fetchWalletLots(limit = 20, offset = 0): Promise<PaginatedResponse<WalletLot>> {
     const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
     const res = await fetch(`${API_BASE_URL}/api/v1/wallet/lots?${params.toString()}`, {
@@ -124,13 +146,19 @@ export async function fetchWalletPrograms(limit = 50, offset = 0): Promise<Pagin
 export type CreditsEstimateResponse = {
     total_credits: number;
     per_question_credits: number;
-    breakdown: {
-        tier_base: number;
-        ocr: number;
-        voice: number;
+    breakdown:
+    | {
+        tier_base?: number;
+        ocr?: number;
+        voice?: number;
         verify?: number;
         plot?: number;
         asset_type_addon?: number;
+    }
+    | {
+        base: number;
+        reason?: string;
+        addons?: Record<string, number>;
     };
     pricing_version: string;
     pricing_version_plan?: string;
@@ -142,7 +170,7 @@ export type SolveInputType = "text" | "snap" | "voice";
 export type SolveAssetType = "none" | "image" | "pdf";
 
 function mapTierToApi(tier: SolveTier): string {
-    if (tier === "FREE") return "three_step";
+    if (tier === "FREE") return "free";
     return tier.toLowerCase();
 }
 

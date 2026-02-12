@@ -70,6 +70,13 @@ try {
 
 const INTERNAL_KEY = process.env.WHATSAPP_INTERNAL_KEY || '';
 const INTERNAL_PORT = process.env.WHATSAPP_INTERNAL_PORT || '8791';
+const API_BACKEND_SCHEME = process.env.API_BACKEND_SCHEME || 'http';
+const API_BACKEND_HOST = process.env.API_BACKEND_HOST || '127.0.0.1';
+const API_BACKEND_PORT = process.env.API_BACKEND_PORT || '9000';
+const API_BACKEND_BASE_URL = (
+    process.env.API_BACKEND_BASE_URL
+    || `${API_BACKEND_SCHEME}://${API_BACKEND_HOST}:${API_BACKEND_PORT}`
+).replace(/[/]+$/, '');
 let currentSock = null;
 let sendServerStarted = false;
 
@@ -370,19 +377,43 @@ async function connectToWhatsApp() {
         }
     });
 
+    function unwrapMessage(message) {
+        let m = message || {};
+        if (m.ephemeralMessage?.message) m = m.ephemeralMessage.message;
+        if (m.viewOnceMessage?.message) m = m.viewOnceMessage.message;
+        if (m.viewOnceMessageV2?.message) m = m.viewOnceMessageV2.message;
+        if (m.viewOnceMessageV2Extension?.message) m = m.viewOnceMessageV2Extension.message;
+        if (m.documentWithCaptionMessage?.message) m = m.documentWithCaptionMessage.message;
+        return m || {};
+    }
+
+    function extractIncomingText(message) {
+        return message?.conversation
+            || message?.extendedTextMessage?.text
+            || message?.imageMessage?.caption
+            || message?.videoMessage?.caption
+            || message?.documentMessage?.caption
+            || message?.buttonsResponseMessage?.selectedDisplayText
+            || message?.buttonsResponseMessage?.selectedButtonId
+            || message?.listResponseMessage?.title
+            || message?.listResponseMessage?.singleSelectReply?.selectedRowId
+            || message?.templateButtonReplyMessage?.selectedDisplayText
+            || message?.templateButtonReplyMessage?.selectedId
+            || message?.interactiveResponseMessage?.nativeFlowResponseMessage?.paramsJson
+            || '';
+    }
+
     sock.ev.on('messages.upsert', async (m) => {
         const msg = m.messages[0];
         if (!msg.key.fromMe && m.type === 'notify') {
             const messageId = msg.key.id;
-            const text = msg.message?.conversation
-                || msg.message?.extendedTextMessage?.text
-                || msg.message?.imageMessage?.caption
-                || '';
+            const normalizedMessage = unwrapMessage(msg.message);
+            const text = extractIncomingText(normalizedMessage);
             const messageData = {
                 type: 'message',
                 from: msg.key.remoteJid,
                 text,
-                hasImage: !!msg.message?.imageMessage,
+                hasImage: !!normalizedMessage?.imageMessage,
                 timestamp: new Date().toISOString(),
                 message_id: messageId
             };
@@ -401,8 +432,8 @@ async function connectToWhatsApp() {
                             { logger: P({ level: 'silent' }) }
                         );
 
-                        const mimeType = msg.message?.imageMessage?.mimetype || 'image/jpeg';
-                        const caption = msg.message?.imageMessage?.caption || '';
+                        const mimeType = normalizedMessage?.imageMessage?.mimetype || 'image/jpeg';
+                        const caption = normalizedMessage?.imageMessage?.caption || '';
                         const fileExt = mimeType.includes('png') ? '.png' : (mimeType.includes('webp') ? '.webp' : '.jpg');
                         const filename = `${messageId || Date.now()}${fileExt}`;
 
@@ -414,7 +445,7 @@ async function connectToWhatsApp() {
                         if (caption) form.append('caption', caption);
                         form.append('file', new Blob([buffer], { type: mimeType }), filename);
 
-                        const mediaResp = await fetch('http://orchestrator:8000/api/v1/whatsapp/media', {
+                        const mediaResp = await fetch(`${API_BACKEND_BASE_URL}/api/v1/whatsapp/media`, {
                             method: 'POST',
                             headers: INTERNAL_KEY ? { 'X-UASK-INTERNAL-KEY': INTERNAL_KEY } : {},
                             body: form
@@ -435,7 +466,7 @@ async function connectToWhatsApp() {
                     }
                 }
 
-                const response = await fetch('http://orchestrator:8000/api/v1/whatsapp/message', {
+                const response = await fetch(`${API_BACKEND_BASE_URL}/api/v1/whatsapp/message`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(messageData)
@@ -477,6 +508,28 @@ connectToWhatsApp();
         
         print(f"[WhatsApp] Node.js script created at {self.node_script_path}")
 
+    def _resolve_node_binaries(self) -> tuple[Optional[str], Optional[str]]:
+        """
+        Resolve node/npm executables across Linux/Windows environments.
+        """
+        node_candidates = ["node", "node.exe"]
+        npm_candidates = ["npm", "npm.cmd", "npm.exe"]
+
+        node_path = None
+        npm_path = None
+
+        for candidate in node_candidates:
+            node_path = shutil.which(candidate)
+            if node_path:
+                break
+
+        for candidate in npm_candidates:
+            npm_path = shutil.which(candidate)
+            if npm_path:
+                break
+
+        return node_path, npm_path
+
     def _ensure_node_deps(self, script_dir: str) -> Optional[str]:
         """Ensure required Node.js deps are installed in the script directory."""
         required = ["@whiskeysockets/baileys", "@hapi/boom", "qrcode", "pino", "katex", "sharp", "mathjax-full"]
@@ -491,8 +544,7 @@ connectToWhatsApp();
         if all(has_pkg(pkg) for pkg in required):
             return None
 
-        node_path = shutil.which("node")
-        npm_path = shutil.which("npm")
+        node_path, npm_path = self._resolve_node_binaries()
         if not node_path or not npm_path:
             missing = []
             if not node_path:
@@ -510,14 +562,20 @@ connectToWhatsApp();
                 os.makedirs(script_dir, exist_ok=True)
 
             env = os.environ.copy()
-            # Ensure npm can write cache/logs in read-only container filesystems.
-            env.setdefault("HOME", "/tmp")
-            env.setdefault("NPM_CONFIG_CACHE", "/tmp/.npm")
+            # Ensure npm can write cache/logs in read-only/container filesystems.
+            if os.name == "nt":
+                home_dir = env.get("USERPROFILE") or env.get("HOMEDRIVE", "") + env.get("HOMEPATH", "")
+                if home_dir:
+                    env.setdefault("HOME", home_dir)
+                env.setdefault("NPM_CONFIG_CACHE", os.path.join(env.get("HOME", os.getcwd()), ".npm-cache"))
+            else:
+                env.setdefault("HOME", "/tmp")
+                env.setdefault("NPM_CONFIG_CACHE", "/tmp/.npm")
 
             # Initialize npm project if needed (keeps installs local to script_dir).
             if not os.path.isfile(os.path.join(script_dir, "package.json")):
                 subprocess.run(
-                    ["npm", "init", "-y"],
+                    [npm_path, "init", "-y"],
                     cwd=script_dir,
                     check=True,
                     stdout=subprocess.PIPE,
@@ -526,7 +584,7 @@ connectToWhatsApp();
                     env=env,
                 )
 
-            install_cmd = ["npm", "install", *required]
+            install_cmd = [npm_path, "install", *required]
             subprocess.run(
                 install_cmd,
                 cwd=script_dir,
@@ -595,13 +653,21 @@ connectToWhatsApp();
                     "status": "disconnected",
                     "error": install_error,
                 }
+
+            node_path, npm_path = self._resolve_node_binaries()
+            if not node_path:
+                self.status = "disconnected"
+                return {
+                    "status": "disconnected",
+                    "error": "Failed to start WhatsApp bot: node not found in PATH.",
+                }
             
             # Set NODE_PATH to include global npm modules
             env = os.environ.copy()
             if "NODE_PATH" not in env:
                 try:
-                    if shutil.which("npm"):
-                        npm_root = subprocess.check_output(["npm", "root", "-g"], text=True).strip()
+                    if npm_path:
+                        npm_root = subprocess.check_output([npm_path, "root", "-g"], text=True).strip()
                         if npm_root:
                             env["NODE_PATH"] = npm_root
                 except Exception:
@@ -609,7 +675,7 @@ connectToWhatsApp();
             
             # Start the Node.js process
             self.process = subprocess.Popen(
-                ['node', self.node_script_path],
+                [node_path, self.node_script_path],
                 cwd=script_dir,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -687,12 +753,16 @@ connectToWhatsApp();
                                 self.logged_out = False
                                 print(f"[WhatsApp] Connected: {self.phone_number}")
                             elif new_status == 'disconnected':
-                                self.status = "disconnected"
-                                self.qr_code = None
-                                if data.get("shouldReconnect") is False:
+                                should_reconnect = data.get("shouldReconnect") is not False
+                                if should_reconnect:
+                                    self.status = "connecting"
+                                    self.error = None
+                                else:
+                                    self.status = "disconnected"
+                                    self.qr_code = None
                                     self.logged_out = True
                                     self.error = "WhatsApp logged out. Re-initialize to generate a new QR code."
-                                print("[WhatsApp] Disconnected")
+                                print(f"[WhatsApp] Disconnected (reconnect={should_reconnect})")
                         
                         elif msg_type == 'message':
                             self.messages_count += 1

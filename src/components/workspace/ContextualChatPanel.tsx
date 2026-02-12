@@ -80,8 +80,8 @@ export default function ContextualChatPanel({
         try {
             // Use NEXT_PUBLIC_API_BASE_URL for backend API calls
             const apiBaseUrl = typeof window !== 'undefined' 
-                ? (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000")
-                : "http://localhost:8000";
+                ? (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:9000")
+                : "http://localhost:9000";
                 
             const response = await fetch(`${apiBaseUrl}/api/v1/sessions/${sessionId}/chat`, {
                 method: 'POST',

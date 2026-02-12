@@ -371,7 +371,17 @@ class PromptRegistryService:
     ) -> Tuple[str, Dict[str, Any], PromptBinding]:
         tier = self._resolve_tier(tier_slug)
         prompt_mode = self._resolve_mode(mode)
-        binding = self.get_active_binding(session, tier, prompt_mode)
+        tier_fallback_order: Dict[PromptTierEnum, List[PromptTierEnum]] = {
+            PromptTierEnum.RESEARCH: [PromptTierEnum.RESEARCH, PromptTierEnum.STANDARD, PromptTierEnum.SHORT, PromptTierEnum.FREE],
+            PromptTierEnum.STANDARD: [PromptTierEnum.STANDARD, PromptTierEnum.SHORT, PromptTierEnum.FREE],
+            PromptTierEnum.SHORT: [PromptTierEnum.SHORT, PromptTierEnum.FREE],
+            PromptTierEnum.FREE: [PromptTierEnum.FREE],
+        }
+        binding = None
+        for candidate_tier in tier_fallback_order.get(tier, [tier]):
+            binding = self.get_active_binding(session, candidate_tier, prompt_mode)
+            if binding:
+                break
         if not binding:
             raise PromptRegistryError(f"No active binding for tier={tier.value} mode={prompt_mode.value}")
 
@@ -769,6 +779,8 @@ class PromptRegistryService:
         trim_strategy: Optional[TrimStrategyEnum] = None,
         max_steps: Optional[int] = None,
         retry_cap_tokens: Optional[int] = None,
+        features: Optional[Dict[str, Any]] = None,
+        multipliers: Optional[Dict[str, Any]] = None,
     ) -> PromptBinding:
         active_rows = session.exec(
             select(PromptBinding)
@@ -803,6 +815,8 @@ class PromptRegistryService:
             trim_strategy=trim_strategy,
             max_steps=max_steps,
             retry_cap_tokens=retry_cap_tokens,
+            features=features or {},
+            multipliers=multipliers or {},
             is_active=True,
             updated_by=updated_by,
         )

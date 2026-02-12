@@ -99,7 +99,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
 
             if (userId) {
                 try {
-                    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+                    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:9000";
                     let url = `${apiBaseUrl}/api/v1/user/heartbeat?user_id=${userId}`;
                     if (sessionToken) {
                         url += `&session_token=${sessionToken}`;

@@ -776,6 +776,7 @@ export default function PaperPage({
                       <button
                         type="button"
                         className={styles.blockActionButton}
+                        data-testid={`block-edit-${block.id}`}
                         onClick={() => setEditingRecognition({ blockId: block.id, value: block.latex })}
                       >
                         Edit
@@ -783,6 +784,7 @@ export default function PaperPage({
                       <button
                         type="button"
                         className={styles.blockActionButton}
+                        data-testid={`block-delete-${block.id}`}
                         onClick={() => onDeleteBlock(block.id)}
                       >
                         Delete
@@ -825,7 +827,7 @@ export default function PaperPage({
                       </div>
                     </div>
                   ) : (
-                    <RecognitionBox latex={block.latex} exportMode={exportMode} />
+                    <RecognitionBox latex={block.latex} exportMode={exportMode} badgeLabel={block.badge} />
                   )}
                 </div>
               );
@@ -838,6 +840,7 @@ export default function PaperPage({
                       <button
                         type="button"
                         className={styles.blockActionButton}
+                        data-testid={`block-delete-${block.id}`}
                         onClick={() => onDeleteBlock(block.id)}
                       >
                         Delete
@@ -869,13 +872,15 @@ export default function PaperPage({
               );
             }
             if (block.type === "text") {
+              const isBatchSeparator = block.text === "__BATCH_SEPARATOR__";
               return (
                 <div key={block.id} id={block.id} className={styles.paperBlockWrap}>
-                  {!exportMode && viewMode === "edit" ? (
+                  {!isBatchSeparator && !exportMode && viewMode === "edit" ? (
                     <div className={styles.paperBlockActions} data-no-export="true">
                       <button
                         type="button"
                         className={styles.blockActionButton}
+                        data-testid={`block-edit-${block.id}`}
                         onClick={() => setEditingTextBlock({ blockId: block.id, value: block.text })}
                       >
                         Edit
@@ -883,6 +888,7 @@ export default function PaperPage({
                       <button
                         type="button"
                         className={styles.blockActionButton}
+                        data-testid={`block-delete-${block.id}`}
                         onClick={() => onDeleteBlock(block.id)}
                       >
                         Delete
@@ -923,6 +929,10 @@ export default function PaperPage({
                           Cancel
                         </button>
                       </div>
+                    </div>
+                  ) : isBatchSeparator ? (
+                    <div className={styles.batchQuestionDivider} aria-label="batch-question-divider">
+                      <span>-----------------------------</span>
                     </div>
                   ) : (
                     <div className={styles.paperTextBlock}>{block.text}</div>

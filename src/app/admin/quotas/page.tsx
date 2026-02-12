@@ -43,7 +43,7 @@ export default function AdminQuotasPage() {
     const [pageIndex, setPageIndex] = useState(0);
     const pageSize = 15;
     const baseUrl = API_BASE_URL;
-    const fallbackUrl = process.env.NEXT_PUBLIC_API_FALLBACK_URL || API_BASE_URL || "http://127.0.0.1:8000";
+    const fallbackUrl = process.env.NEXT_PUBLIC_API_FALLBACK_URL || API_BASE_URL || "http://127.0.0.1:9000";
 
     const fetchData = useCallback(
         async (signal?: AbortSignal) => {

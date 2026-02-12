@@ -50,6 +50,8 @@ class PromptBundle:
     trim_strategy: Optional[str] = None
     max_steps: Optional[int] = None
     retry_cap_tokens: Optional[int] = None
+    features: Optional[Dict[str, Any]] = None
+    multipliers: Optional[Dict[str, Any]] = None
 
 
 _CACHE_TTL_SECONDS = 60
@@ -260,6 +262,8 @@ def resolve_prompt_bundle(
         trim_strategy=binding.trim_strategy.value if binding.trim_strategy else None,
         max_steps=binding.max_steps,
         retry_cap_tokens=binding.retry_cap_tokens,
+        features=binding.features if isinstance(binding.features, dict) else {},
+        multipliers=binding.multipliers if isinstance(binding.multipliers, dict) else {},
     )
     _cache_set(cache_key, bundle)
     return bundle
@@ -364,6 +368,8 @@ def load_prompt_bundle(
             "trim_strategy": bundle.trim_strategy,
             "max_steps": bundle.max_steps,
             "retry_cap_tokens": bundle.retry_cap_tokens,
+            "features": bundle.features or {},
+            "multipliers": bundle.multipliers or {},
         },
         "system_prompt": bundle.system_prompt_content,
         "developer_prompt": bundle.developer_prompt_content,

@@ -17,6 +17,13 @@ import {
     getRotatedSize,
     decodeUnicodeEscapes,
 } from "./snapSolveUtils";
+import {
+    buildSolveBatchPayload,
+    getSolveBatchCap,
+    mapSolveBatchErrorMessage,
+    resolveSolveBatchMode,
+    resolveSolveBatchTier,
+} from "@/lib/solve-batch";
 
 type SnapSolveV2Props = {
     onUseText: (text: string) => void;
@@ -129,7 +136,7 @@ const MAX_EDGE = 2000;
 const JPEG_QUALITY = 0.83;
 const TOKENS_PER_CREDIT = 2000;
 
-export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "minimal" }: SnapSolveV2Props) {
+export default function SnapSolveV2({ onUseText, onSolveText, tier = "FREE", requestedMode = "minimal" }: SnapSolveV2Props) {
     const [file, setFile] = React.useState<File | null>(null);
     const [fileType, setFileType] = React.useState<"image" | "pdf" | null>(null);
     const [imageSrc, setImageSrc] = React.useState<string | null>(null);
@@ -705,6 +712,12 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
             setError("Select at least one question.");
             return;
         }
+        const mode = resolveSolveBatchMode(tier, requestedMode);
+        const cap = getSolveBatchCap(mode);
+        if (selected.length > cap) {
+            setError(mapSolveBatchErrorMessage("TOO_MANY_QUESTIONS", cap));
+            return;
+        }
         setStatus("solving");
         setIsBusy(true);
         setError(null);
@@ -714,34 +727,37 @@ export default function SnapSolveV2({ onUseText, onSolveText, requestedMode = "m
 
         try {
             const userId = localStorage.getItem("user_id") || "1";
-            const items = selected.map((q) => ({
-                question_id: q.id,
-                text: q.text,
-                requested_mode: requestedMode,
-                requires_figure: q.requires_figure || false,
-                figure_image_base64: figureCrops[q.id] || null,
-            }));
-            const res = await fetchApi(`/api/v1/solve_questions_batch?user_id=${userId}`, {
+            const payload = buildSolveBatchPayload({
+                selectedQuestions: selected.map((q) => ({ question_id: q.id, text: q.text })),
+                mode,
+                tier: resolveSolveBatchTier(tier),
+            });
+            const res = await fetchApi(`/api/v1/math/solve_text_batch?user_id=${userId}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    items,
-                    features_used: {
-                        ocr_used: true,
-                        ocr_confidence: ocrMetadata.ocr_confidence,
-                        ocr_warnings: ocrMetadata.ocr_warnings,
-                        ocr_source: ocrMetadata.ocr_source,
-                        ocr_engine: ocrMetadata.ocr_engine,
-                    },
-                }),
+                body: JSON.stringify(payload),
                 signal: controller.signal,
             });
             if (!res.ok) {
-                const detail = await res.text();
-                throw new Error(detail || "Solve failed");
+                const raw = await res.json().catch(() => ({}));
+                const detail = raw?.detail && typeof raw.detail === "object" ? raw.detail : raw;
+                const code = typeof detail?.code === "string" ? detail.code : undefined;
+                const maxAllowed = typeof detail?.max_allowed === "number" ? detail.max_allowed : cap;
+                throw new Error(mapSolveBatchErrorMessage(code, maxAllowed));
             }
             const data = await res.json();
-            setSolveResults(data.results || []);
+            const solutions = Array.isArray(data?.solutions) ? data.solutions : [];
+            const normalized: SolveResult[] = solutions
+                .filter((s: unknown) => s && typeof s === "object")
+                .map((s: unknown) => {
+                    const row = s as Record<string, unknown>;
+                    return {
+                        question_id: String(row.question_id || ""),
+                        ok: true,
+                        solve_response_json: row,
+                    };
+                });
+            setSolveResults(normalized);
             setStatus("done");
         } catch (err) {
             if (!(err instanceof DOMException && err.name === "AbortError")) {

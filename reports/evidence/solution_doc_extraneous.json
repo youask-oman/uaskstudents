@@ -1,0 +1,78 @@
+{
+  "parsed": {
+    "recognized_problem": {
+      "text": "sqrt(x) = x - 2",
+      "latex": "sqrt(x) = x - 2"
+    },
+    "domain_constraints": [],
+    "steps": [
+      {
+        "k": 1,
+        "title": "Square both sides",
+        "body_markdown": "x = x^2 - 4x + 4"
+      },
+      {
+        "k": 2,
+        "title": "Solve",
+        "body_markdown": "x in {2, 4}\n# Final Answer"
+      }
+    ],
+    "plots": [],
+    "verification": [],
+    "final_answer": {
+      "text": "x in {2, 4}",
+      "latex": "x \\in \\{2,4\\}"
+    },
+    "autocorrect": {
+      "applied": false
+    },
+    "parse_errors": [],
+    "latex_normalization_report": [
+      "removed_illegal_latex_line_breaks_outside_aligned"
+    ],
+    "raw_output_markdown": "\n## Step 1: Square both sides\nx = x^2 - 4x + 4\n## Step 2: Solve\nx in {2, 4}\n# Final Answer\nText: x in {2, 4}\nLaTeX: x \\in \\{2,4\\}\n",
+    "raw_fallback": "\n## Step 1: Square both sides\nx = x^2 - 4x + 4\n## Step 2: Solve\nx in {2, 4}\n# Final Answer\nText: x in {2, 4}\nLaTeX: x \\in \\{2,4\\}\n",
+    "parse_status": "ok"
+  },
+  "corrected": {
+    "recognized_problem": {
+      "text": "sqrt(x) = x - 2",
+      "latex": "sqrt(x) = x - 2"
+    },
+    "domain_constraints": [
+      "$x \\ge 0$",
+      "$x - 2 \\ge 0$"
+    ],
+    "steps": [
+      {
+        "k": 1,
+        "title": "Square both sides",
+        "body_markdown": "x = x^2 - 4x + 4"
+      },
+      {
+        "k": 2,
+        "title": "Solve",
+        "body_markdown": "x in {2, 4}\n# Final Answer"
+      }
+    ],
+    "plots": [],
+    "verification": [],
+    "final_answer": {
+      "text": "x = 4",
+      "latex": "x = 4"
+    },
+    "autocorrect": {
+      "applied": true,
+      "reason": "equation_substitution_verified",
+      "before": "x \\in \\{2,4\\}",
+      "after": "x = 4"
+    },
+    "parse_errors": [],
+    "latex_normalization_report": [
+      "removed_illegal_latex_line_breaks_outside_aligned"
+    ],
+    "raw_output_markdown": "\n## Step 1: Square both sides\nx = x^2 - 4x + 4\n## Step 2: Solve\nx in {2, 4}\n# Final Answer\nText: x in {2, 4}\nLaTeX: x \\in \\{2,4\\}\n",
+    "raw_fallback": "\n## Step 1: Square both sides\nx = x^2 - 4x + 4\n## Step 2: Solve\nx in {2, 4}\n# Final Answer\nText: x in {2, 4}\nLaTeX: x \\in \\{2,4\\}\n",
+    "parse_status": "ok"
+  }
+}

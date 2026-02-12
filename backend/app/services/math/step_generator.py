@@ -1,6 +1,8 @@
 import sympy as sp
 import re
+import time
 from typing import List, Dict, Any, Optional
+from app.services.runtime_audit import emit_runtime_audit
 
 def generate_local_steps(expr_str: str) -> List[str]:
     """
@@ -10,6 +12,7 @@ def generate_local_steps(expr_str: str) -> List[str]:
     2. Algebraic simplification
     3. Basic arithmetic with fractions
     """
+    started_at = time.perf_counter()
     steps = []
     expr_str = expr_str.strip().lower()
 
@@ -20,19 +23,47 @@ def generate_local_steps(expr_str: str) -> List[str]:
     # 0. Handle Equations (Solve for x)
     # Example: "4x-3/5 - 2x-3/2 = -2" or "50 + 60 = ___"
     if "=" in expr_str or "solve" in expr_str or ("x" in expr_str and any(c in expr_str for c in "+-*/")):
-        return _handle_equations(expr_str)
+        result = _handle_equations(expr_str)
+        emit_runtime_audit(
+            component="sympy_step_generator_entry",
+            started_at=started_at,
+            sympy_used=True,
+            extra={"steps_count": len(result)},
+        )
+        return result
 
     # 1. Handle "Write X as a decimal/percent"
     if "as a decimal" in expr_str or "as a percent" in expr_str:
-        return _handle_conversions(expr_str)
+        result = _handle_conversions(expr_str)
+        emit_runtime_audit(
+            component="sympy_step_generator_entry",
+            started_at=started_at,
+            sympy_used=True,
+            extra={"steps_count": len(result)},
+        )
+        return result
 
     # 2. Handle Algebraic Expressions (Simplify/Evaluate)
     # Catch-all for any string with numbers and math operators
     has_math = any(c.isdigit() for c in expr_str) and any(c in expr_str for c in "+-*/^")
     if "simplify" in expr_str or has_math:
-        return _handle_simplification(expr_str)
+        result = _handle_simplification(expr_str)
+        emit_runtime_audit(
+            component="sympy_step_generator_entry",
+            started_at=started_at,
+            sympy_used=True,
+            extra={"steps_count": len(result)},
+        )
+        return result
 
-    return ["No specific local solving rule matched for this query."]
+    result = ["No specific local solving rule matched for this query."]
+    emit_runtime_audit(
+        component="sympy_step_generator_entry",
+        started_at=started_at,
+        sympy_used=True,
+        extra={"steps_count": len(result)},
+    )
+    return result
 
 def _handle_equations(query: str) -> List[str]:
     steps = []

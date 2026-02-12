@@ -16,7 +16,7 @@ export type PublicLegalDocument = {
 const SERVER_API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:8000";
+  "http://localhost:9000";
 
 export async function fetchPublicPrivacyPolicy(version?: string): Promise<PublicLegalDocument> {
   const query = version ? `?version=${encodeURIComponent(version)}` : "";

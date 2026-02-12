@@ -97,7 +97,10 @@ export interface CreditsEstimateResponse {
  * Fetch subscription details for tier-aware solve UX.
  */
 export async function fetchSubscription(userId: string): Promise<SubscriptionResponse> {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const baseUrl =
+        process.env.NEXT_PUBLIC_API_BASE_URL ||
+        process.env.NEXT_PUBLIC_API_URL ||
+        "http://localhost:9000";
     const res = await fetch(`${baseUrl}/api/v1/users/me/subscription?user_id=${userId}`);
 
     if (!res.ok) {
@@ -126,7 +129,10 @@ export async function fetchCreditsEstimate(
         };
     }
 ): Promise<CreditsEstimateResponse> {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const baseUrl =
+        process.env.NEXT_PUBLIC_API_BASE_URL ||
+        process.env.NEXT_PUBLIC_API_URL ||
+        "http://localhost:9000";
     const res = await fetch(`${baseUrl}/api/v1/credits/estimate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

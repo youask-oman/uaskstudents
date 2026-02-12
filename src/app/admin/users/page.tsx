@@ -55,7 +55,7 @@ export default function AdminUsersPage() {
     const [activeRowMenu, setActiveRowMenu] = useState<number | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [availablePlans, setAvailablePlans] = useState<{ id: number; name: string; slug: string }[]>([]);
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:9000";
     const getAuthHeaders = (includeJson = false) => {
         const token = localStorage.getItem("token");
         const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};

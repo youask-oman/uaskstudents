@@ -29,7 +29,7 @@ class User(SQLModel, table=True):
     solving_mode: str = Field(default="Full Solution") # Full Solution, Hint Ladder, Socratic
 
     # Subscription & Quotas
-    subscription_tier: str = Field(default="free") # free, pro, enterprise
+    subscription_tier: str = Field(default="standard") # free, short, standard, research
     subscription_status: str = Field(default="active") # active, cancelled, expired, past_due
     subscription_expiry: Optional[datetime] = None
     
@@ -829,6 +829,8 @@ class PromptBinding(SQLModel, table=True):
     global_system_prompt_id: str = Field(index=True)
     developer_prompt_id: str = Field(index=True)
     output_schema_id: str = Field(index=True)
+    features: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    multipliers: dict = Field(default_factory=dict, sa_column=Column(JSON))
 
     # Dynamic Token Configuration (Overrides SystemConfig Defaults if set)
     max_output_tokens: Optional[int] = Field(default=None)

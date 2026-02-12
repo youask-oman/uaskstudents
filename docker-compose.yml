@@ -18,6 +18,10 @@ services:
       DATABASE_URL: postgresql://uask_user:uask_password@postgres:5432/uask_db
       REDIS_URL: redis://redis:6379/0
       TZ: UTC
+      API_BACKEND_SCHEME: http
+      API_BACKEND_HOST: 127.0.0.1
+      API_BACKEND_PORT: "8000"
+      MPLBACKEND: Agg
 
     depends_on:
       postgres:
@@ -79,6 +83,7 @@ services:
       OCR_MAX_FIGURE_REFINEMENTS: "1"
       HOME: /tmp
       XDG_CACHE_HOME: /tmp
+      MPLBACKEND: Agg
       MPLCONFIGDIR: /tmp/matplotlib
       PIX2TEXT_HOME: /tmp/pix2text
       YOLO_CONFIG_DIR: /tmp/Ultralytics
@@ -124,6 +129,7 @@ services:
       OCR_MAX_FIGURE_REFINEMENTS: "1"
       HOME: /tmp
       XDG_CACHE_HOME: /tmp
+      MPLBACKEND: Agg
       MPLCONFIGDIR: /tmp/matplotlib
       PIX2TEXT_HOME: /tmp/pix2text
       YOLO_CONFIG_DIR: /tmp/Ultralytics

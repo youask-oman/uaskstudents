@@ -44,4 +44,4 @@ class FindErrorLocalResponse(BaseModel):
     ocr: Optional[OCRResult] = None
     analysis: Optional[AnalysisResult] = None
     timings_ms: Optional[TimingsMs] = None
-    error: Optional[Dict[str, str]] = None
+    error: Optional[Dict[str, Any]] = None

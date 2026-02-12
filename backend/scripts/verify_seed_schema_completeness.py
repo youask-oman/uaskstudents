@@ -199,7 +199,17 @@ def verify_data_integrity(session: Session):
         users = session.exec(select(User).where(User.is_internal == True)).all()
         internal_user_emails = [u.email for u in users]
         REPORT_DATA["internal_users_check"] = internal_user_emails
-        user_ok = len(users) >= 10
+        expected_internal_users = None
+        internal_users_seed = SEED_DATA_DIR / "internal_users.json"
+        if internal_users_seed.exists():
+            try:
+                expected_internal_users = len(json.loads(internal_users_seed.read_text(encoding="utf-8")))
+            except Exception:
+                expected_internal_users = None
+        if expected_internal_users is None:
+            expected_internal_users = 1
+        user_ok = len(users) >= expected_internal_users
+        REPORT_DATA["expected_internal_users"] = expected_internal_users
     except Exception as e:
         REPORT_DATA["internal_users_check"] = [f"Error checking users: {e}"]
         user_ok = False

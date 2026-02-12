@@ -1,4 +1,6 @@
 import os
+import json
+from pathlib import Path
 
 from sqlmodel import Session, select
 
@@ -15,5 +17,7 @@ def test_internal_users_exist():
         users = session.exec(
             select(User).where(User.is_internal == True).where(User.email.like("%@uask.ai")).order_by(User.email.asc())
         ).all()
-        assert len(users) == 10
+        seed_file = Path(__file__).resolve().parents[2] / "seed_data" / "internal_users.json"
+        expected = len(json.loads(seed_file.read_text(encoding="utf-8")))
+        assert len(users) == expected
         assert all(u.role in {"admin", "employee", "superadmin"} for u in users)

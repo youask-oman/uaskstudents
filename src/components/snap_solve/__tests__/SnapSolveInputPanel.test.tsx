@@ -155,7 +155,7 @@ describe("SnapSolveInputPanel", () => {
         expect(questionInput.value).toContain("2) x=2\\sqrt{x-1}");
     });
 
-    test("image mode can solve selected extracted questions individually", async () => {
+    test("image mode solves selected extracted questions in one batch call", async () => {
         const fetchMock = jest.fn().mockImplementation(async (input: RequestInfo | URL) => {
             const url = typeof input === "string" ? input : String(input);
             if (url.includes("/api/v1/ocr/extract")) {
@@ -176,13 +176,22 @@ describe("SnapSolveInputPanel", () => {
                     }),
                 };
             }
-            if (url.includes("/api/v1/math/solve_from_image_or_sketch")) {
+            if (url.includes("/api/v1/math/solve_text_batch")) {
                 return {
                     ok: true,
                     json: async () => ({
-                        answer_markdown: "solved",
-                        answer_latex: null,
-                        meta: { mode: "upload", mime: "image/png", latency_ms: 10 },
+                        ok: true,
+                        request_id: "req-batch",
+                        attempt_id: "attempt-batch",
+                        requested_mode: "free_minimal",
+                        schema_name: "solve_free_minimal_v1",
+                        response_language: "en",
+                        question_count: 2,
+                        telemetry: { latency_ms: 10 },
+                        solutions: [
+                            { question_id: "q1", final_answer: { answer_text: "x=1", answer_latex: "x=1" } },
+                            { question_id: "q2", final_answer: { answer_text: "x=3 or x=-3", answer_latex: "x=\\pm 3" } },
+                        ],
                     }),
                 };
             }
@@ -217,9 +226,9 @@ describe("SnapSolveInputPanel", () => {
         });
 
         const solveCalls = fetchMock.mock.calls.filter(
-            (call) => typeof call[0] === "string" && call[0].includes("/api/v1/math/solve_from_image_or_sketch")
+            (call) => typeof call[0] === "string" && call[0].includes("/api/v1/math/solve_text_batch")
         );
-        expect(solveCalls).toHaveLength(2);
+        expect(solveCalls).toHaveLength(1);
     });
 
     test("select all and clear selection controls toggle extracted question selection", async () => {

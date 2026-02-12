@@ -25,6 +25,54 @@ EndpointType = Literal["chat_completions", "responses"]
 CallName = Literal["SOLVE", "VERIFY", "PLOT_TRIGGER", "PLOT_SPEC"]
 
 
+def _enforce_openai_required_properties(node: Any) -> Any:
+    """
+    OpenAI strict schema compatibility:
+    For every object schema with `properties`, `required` must include all property keys.
+    """
+    if isinstance(node, list):
+        for item in node:
+            _enforce_openai_required_properties(item)
+        return node
+
+    if not isinstance(node, dict):
+        return node
+
+    props = node.get("properties")
+    if isinstance(props, dict):
+        node["required"] = list(props.keys())
+        for prop_schema in props.values():
+            _enforce_openai_required_properties(prop_schema)
+    elif node.get("type") == "object" and "required" in node:
+        # OpenAI strict requires required keys to correspond to object properties.
+        node.pop("required", None)
+
+    items = node.get("items")
+    if isinstance(items, dict):
+        _enforce_openai_required_properties(items)
+    elif isinstance(items, list):
+        for item in items:
+            _enforce_openai_required_properties(item)
+
+    defs = node.get("$defs")
+    if isinstance(defs, dict):
+        for sub in defs.values():
+            _enforce_openai_required_properties(sub)
+
+    for key in ("anyOf", "oneOf", "allOf"):
+        value = node.get(key)
+        if isinstance(value, list):
+            for sub in value:
+                _enforce_openai_required_properties(sub)
+
+    for key in ("if", "then", "else", "not", "contains", "propertyNames", "additionalItems"):
+        value = node.get(key)
+        if isinstance(value, dict):
+            _enforce_openai_required_properties(value)
+
+    return node
+
+
 def compute_schema_hash(schema: Dict[str, Any]) -> str:
     """Compute SHA256 hash of schema for comparison/logging."""
     return hashlib.sha256(
@@ -163,6 +211,8 @@ def build_openai_structured_output(
     # We operate on a deep copy to avoid mutating the cached schema in memory
     import copy
     inner_schema = enforce_strict(copy.deepcopy(inner_schema))
+    if strict:
+        inner_schema = _enforce_openai_required_properties(inner_schema)
 
     # Ensure enforce_strict did not strip a necessary root type for object responses
     if isinstance(inner_schema, dict) and inner_schema.get('type') in (None, 'None'):

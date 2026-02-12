@@ -15,6 +15,7 @@ Simplified to pass through structured visual data to frontend.
 import os
 
 import json
+import re
 
 import time
 
@@ -126,6 +127,35 @@ class SolverV3:
         text = text.replace(os.environ.get("WHATSAPP_INTERNAL_KEY", ""), "[REDACTED]") if os.environ.get("WHATSAPP_INTERNAL_KEY") else text
 
         return text[:limit]
+
+    def _parse_json_from_llm_content(self, content: str) -> Dict[str, Any]:
+        raw = (content or "").strip()
+        if not raw:
+            return {"_raw": ""}
+
+        # Handle fenced blocks like ```json ... ```
+        fence_match = re.match(r"^```(?:json)?\s*(.*?)\s*```$", raw, re.IGNORECASE | re.DOTALL)
+        if fence_match:
+            raw = fence_match.group(1).strip()
+
+        try:
+            parsed = json.loads(raw)
+            return parsed if isinstance(parsed, dict) else {"_raw": raw}
+        except Exception:
+            pass
+
+        # Best-effort extraction of object JSON from mixed text output.
+        start = raw.find("{")
+        end = raw.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            candidate = raw[start : end + 1]
+            try:
+                parsed = json.loads(candidate)
+                return parsed if isinstance(parsed, dict) else {"_raw": raw}
+            except Exception:
+                pass
+
+        return {"_raw": content}
 
     # Module-level validator cache with size limits and expiration
 
@@ -1762,7 +1792,7 @@ class SolverV3:
 
                 prompt=None,
 
-                json_schema=schema_payload.get("schema") if schema_payload else None,
+                json_schema=schema_payload if schema_payload else None,
 
                 max_tokens=max_output_tokens,
 
@@ -1783,6 +1813,7 @@ class SolverV3:
              if isinstance(response, LLMResponse):
 
                  content = response.content
+                 status_info.update(response.status or {})
 
                  tokens = {
 
@@ -1802,21 +1833,11 @@ class SolverV3:
 
                  
 
-                 # Basic JSON parse
-
-                 try:
-
-                     response_data = json.loads(content)
-
-                     status_info["status"] = "complete" # Assume success if parsed
-
-                     status_info["finish_reason"] = "stop"
-
-                 except json.JSONDecodeError:
-
-                     response_data = {"_raw": content} # Marker for invalid JSON
-
+                 response_data = self._parse_json_from_llm_content(content)
+                 if not status_info.get("status"):
                      status_info["status"] = "complete"
+                 if response_data.get("_raw") is None:
+                     status_info["finish_reason"] = status_info.get("finish_reason") or "stop"
 
              else:
 
@@ -1927,14 +1948,7 @@ class SolverV3:
         data = None
 
         if llm_response.content:
-
-            try:
-
-                data = json.loads(llm_response.content)
-
-            except Exception:
-
-                data = {"_raw": llm_response.content}
+            data = self._parse_json_from_llm_content(llm_response.content)
 
 
 

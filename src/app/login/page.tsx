@@ -29,7 +29,7 @@ export default function LoginPage() {
         setError("");
 
         try {
-            const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+            const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:9000";
             const response = await fetch(`${apiBaseUrl}/api/v1/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

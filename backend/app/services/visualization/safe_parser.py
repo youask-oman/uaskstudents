@@ -11,6 +11,7 @@ Replaced eval() completely with sympy.sympify + lambdify.
 """
 
 import re
+import time
 import numpy as np
 from sympy import sympify, lambdify, Symbol
 from sympy.parsing.sympy_parser import (
@@ -20,6 +21,7 @@ from sympy.parsing.sympy_parser import (
 )
 from typing import Optional, Tuple, Dict, Any
 import logging
+from app.services.runtime_audit import emit_runtime_audit
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +119,7 @@ class SafeExpressionParser:
             If successful: (expression, None)
             If failed: (None, error_message)
         """
+        started_at = time.perf_counter()
         if variables is None:
             variables = ['x']
         
@@ -124,6 +127,14 @@ class SafeExpressionParser:
         is_safe, error = self.is_safe_expression(expr_str)
         if not is_safe:
             logger.warning(f"[SafeParser] Rejected unsafe expression: {expr_str[:100]}")
+            emit_runtime_audit(
+                component="sympy_safe_parser_parse",
+                started_at=started_at,
+                sympy_used=True,
+                result="error",
+                error_class="unsafe_expression",
+                extra={"ok": False, "reason": "unsafe_expression"},
+            )
             return None, f"Unsafe expression: {error}"
         
         # Clean expression
@@ -165,14 +176,36 @@ class SafeExpressionParser:
             # Check that only declared variables are used
             extra_symbols = symbol_names - set(variables)
             if extra_symbols:
+                emit_runtime_audit(
+                    component="sympy_safe_parser_parse",
+                    started_at=started_at,
+                    sympy_used=True,
+                    result="error",
+                    error_class="unknown_variables",
+                    extra={"ok": False, "reason": "unknown_variables"},
+                )
                 return None, f"Unknown variables: {extra_symbols}. Only {variables} allowed."
             
             logger.debug(f"[SafeParser] Successfully parsed: {expr_str[:50]}...")
+            emit_runtime_audit(
+                component="sympy_safe_parser_parse",
+                started_at=started_at,
+                sympy_used=True,
+                extra={"ok": True},
+            )
             return expr, None
         
         except Exception as e:
             error_msg = f"Parse error: {str(e)[:100]}"
             logger.warning(f"[SafeParser] Failed to parse '{expr_str[:50]}...': {error_msg}")
+            emit_runtime_audit(
+                component="sympy_safe_parser_parse",
+                started_at=started_at,
+                sympy_used=True,
+                result="error",
+                error_class="parse_error",
+                extra={"ok": False, "reason": "parse_error"},
+            )
             return None, error_msg
     
     def evaluate_for_plotting(
@@ -194,9 +227,19 @@ class SafeExpressionParser:
             If successful: (array, None)
             If failed: (None, error_message)
         """
+        started_at = time.perf_counter()
         # Parse expression
         expr, error = self.parse_expression(expr_str, variables)
         if error:
+            emit_runtime_audit(
+                component="sympy_numpy_safe_parser_eval",
+                started_at=started_at,
+                sympy_used=True,
+                numpy_used=True,
+                result="error",
+                error_class="parse_failed",
+                extra={"ok": False, "reason": "parse_failed"},
+            )
             return None, error
         
         try:
@@ -218,13 +261,38 @@ class SafeExpressionParser:
             if np.any(np.isinf(y_values)):
                 logger.debug(f"[SafeParser] Expression produced infinities: {expr_str[:50]}")
             if np.all(np.isnan(y_values)):
+                emit_runtime_audit(
+                    component="sympy_numpy_safe_parser_eval",
+                    started_at=started_at,
+                    sympy_used=True,
+                    numpy_used=True,
+                    result="error",
+                    error_class="all_nan",
+                    extra={"ok": False, "reason": "all_nan"},
+                )
                 return None, "Expression evaluates to NaN everywhere (invalid domain)"
             
+            emit_runtime_audit(
+                component="sympy_numpy_safe_parser_eval",
+                started_at=started_at,
+                sympy_used=True,
+                numpy_used=True,
+                extra={"ok": True, "points": int(x_values.size)},
+            )
             return y_values, None
         
         except Exception as e:
             error_msg = f"Evaluation error: {str(e)[:100]}"
             logger.warning(f"[SafeParser] Evaluation failed for '{expr_str[:50]}...': {error_msg}")
+            emit_runtime_audit(
+                component="sympy_numpy_safe_parser_eval",
+                started_at=started_at,
+                sympy_used=True,
+                numpy_used=True,
+                result="error",
+                error_class="evaluation_error",
+                extra={"ok": False, "reason": "evaluation_error"},
+            )
             return None, error_msg
     
     def validate_expression(self, expr_str: str) -> Dict[str, Any]:

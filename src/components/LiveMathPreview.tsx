@@ -12,9 +12,13 @@ interface LiveMathPreviewProps {
 
 export default function LiveMathPreview({ content, hideIfEmpty = true }: LiveMathPreviewProps) {
     if (hideIfEmpty && !content.trim()) return null;
+    const blocks = content
+        .split(/\n{2,}/)
+        .map((part) => part.trim())
+        .filter((part) => part.length > 0);
 
     return (
-        <div className="bg-yellow-50 dark:bg-slate-900 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] border border-yellow-100 dark:border-slate-800 overflow-hidden w-full transition-all duration-300 animate-in fade-in slide-in-from-top-4" suppressHydrationWarning>
+        <div data-testid="live-math-preview" className="bg-yellow-50 dark:bg-slate-900 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] border border-yellow-100 dark:border-slate-800 overflow-hidden w-full transition-all duration-300 animate-in fade-in slide-in-from-top-4" suppressHydrationWarning>
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-yellow-100/50 dark:border-slate-800/50">
                 <div className="flex items-center gap-3">
@@ -29,9 +33,13 @@ export default function LiveMathPreview({ content, hideIfEmpty = true }: LiveMat
             </div>
 
             {/* Content Area */}
-            <div className="p-8 flex items-center justify-center min-h-[120px] bg-yellow-50 dark:bg-slate-900">
-                <div className="text-xl text-red-600 dark:text-red-400 leading-relaxed">
-                    <MathRenderer content={content} mode="block" />
+            <div className="p-8 min-h-[120px] bg-yellow-50 dark:bg-slate-900">
+                <div className="text-xl text-red-600 dark:text-red-400 leading-relaxed space-y-5">
+                    {(blocks.length > 1 ? blocks : [content]).map((block, index) => (
+                        <div data-testid="live-math-preview-block" key={`${index}-${block.slice(0, 24)}`} className="overflow-x-auto">
+                            <MathRenderer content={block} mode="block" />
+                        </div>
+                    ))}
                 </div>
             </div>
         </div>

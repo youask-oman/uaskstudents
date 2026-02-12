@@ -7,8 +7,8 @@ from datetime import datetime, timezone
 import logging
 
 from app.database import get_session
-from app.models import User, Subscription, Plan
-from app.schemas.pricing import PlanMultipliers, PlanFeatures, CreditsConfig
+from app.models import User, Subscription
+from app.services.prompt_binding_pricing import normalize_tier_key, resolve_binding_pricing
 from app.auth import SECRET_KEY, ALGORITHM
 # from app.auth import get_current_user # Not available in auth.py, defining locally
 
@@ -178,6 +178,20 @@ class CreditsEstimateResponse(BaseModel):
 
 
 # --- Logic ---
+def _normalize_tier_key(raw_tier: str) -> Literal["free", "short", "standard", "research"]:
+    return normalize_tier_key(raw_tier)
+
+
+def _resolve_source_type(input_type: str, asset_type: str) -> Literal["text", "snap_image", "snap_pdf", "voice"]:
+    input_key = (input_type or "").strip().lower()
+    asset_key = (asset_type or "").strip().lower()
+    if input_key == "voice":
+        return "voice"
+    if input_key == "snap":
+        return "snap_pdf" if asset_key == "pdf" else "snap_image"
+    return "text"
+
+
 
 @router.post("/credits/estimate", response_model=CreditsEstimateResponse)
 async def estimate_credits(
@@ -185,65 +199,36 @@ async def estimate_credits(
     session: Session = Depends(get_session),
     user: Optional[User] = Depends(get_optional_user)
 ):
-    # 1. Resolve Plan
-    plan: Plan = None
+    # 1. Resolve pricing from active SOLVE prompt binding for the selected tier.
     subscription: Optional[Subscription] = None
-    
-    if user:
-        # Load subscription
-        from sqlmodel import select
-        # Assuming user.subscription is a relationship, or we query it.
-        # User <-> Subscription is usually 1:1
-        # Let's query active subscription
-        sub_query = select(Subscription).where(Subscription.user_id == user.id).where(Subscription.is_active == True)
-        subscription = session.exec(sub_query).first()
-        
-        if subscription:
-            # Query plan
-            plan = session.get(Plan, subscription.plan_id)
-    
-    if not plan:
-        # Fallback to default "Free" plan if no user or no subscription
-        # Ideally we fetch the "free" plan from DB
-        from sqlmodel import select
-        plan = session.exec(select(Plan).where(Plan.slug == "free")).first()
-        if not plan:
-             raise HTTPException(status_code=500, detail="Default pricing plan not found.")
+    tier_key = _normalize_tier_key(body.tier)
+    features, multipliers, binding = resolve_binding_pricing(session, tier_key)
 
-    # 2. Parse Schemas
-    try:
-        multipliers = PlanMultipliers(**(plan.multipliers or {}))
-        features = PlanFeatures(**(plan.features or {}))
-    except Exception as e:
-        # Fallback for legacy plans?
-        # print(f"Schema parse error: {e}")
-        # Create default generic structure
-        multipliers = PlanMultipliers()
-        features = PlanFeatures()
+    if user:
+        from sqlmodel import select
+        sub_query = (
+            select(Subscription)
+            .where(Subscription.user_id == user.id)
+            .where(Subscription.status == "active")
+        )
+        subscription = session.exec(sub_query).first()
 
     # 3. Determine Cost
-    # Map input tier (string) to config key
-    raw_tier = body.tier.lower()
-    if raw_tier in {"three_step", "free"}:
-        tier_key = "three_step"
-    elif raw_tier in {"short"}:
-        tier_key = "short"
-    elif raw_tier in {"standard"}:
-        tier_key = "standard"
-    elif raw_tier in {"research"}:
-        tier_key = "research"
+    source_type = _resolve_source_type(body.input_type, body.asset_type)
+    tier_config = getattr(multipliers.credits.solve, tier_key, None)
+    if tier_config is None:
+        raise HTTPException(status_code=500, detail=f"Missing tier pricing configuration for tier={tier_key}")
+
+    if source_type == "snap_image":
+        base_cost = float(tier_config.snap_image)
+    elif source_type == "snap_pdf":
+        base_cost = float(tier_config.snap_pdf)
+    elif source_type == "voice":
+        base_cost = float(tier_config.voice)
     else:
-        tier_key = "standard"
-    
-    # Flat credits per solve (business rule)
-    tier_costs = {
-        "three_step": 5.0,
-        "short": 7.0,
-        "standard": 10.0,
-        "research": 25.0,
-    }
-    base_cost = tier_costs.get(tier_key, 10.0)
-    reason_str = f"solve.{tier_key}.flat"
+        base_cost = float(tier_config.text)
+
+    reason_str = f"solve.{tier_key}.{source_type}"
         
     # Addons
     addons_cost = 0.0
@@ -257,11 +242,15 @@ async def estimate_credits(
     # If mode=SOLVE and verify requested:
     verify_req = body.addons.verification_requested or body.addons.verify
     if verify_req and features.allow_verify:
-        addon_detail["verify"] = 0.0
+        verify_cost = float(getattr(multipliers.credits.verify, tier_key, 0))
+        addons_cost += verify_cost
+        addon_detail["verify"] = verify_cost
         
     plot_req = body.addons.plot_requested or body.addons.plot
     if plot_req and features.allow_plot:
-        addon_detail["plot"] = 0.0
+        plot_cost = float(multipliers.credits.plot_trigger)
+        addons_cost += plot_cost
+        addon_detail["plot"] = plot_cost
 
     per_question = base_cost + addons_cost
     total = per_question * body.question_count

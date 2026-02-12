@@ -12,7 +12,7 @@ async function fetchAdmin<T = unknown>(path: string, options: RequestInit = {}):
     }
     const requestId = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Date.now());
     const baseUrl = API_BASE_URL;
-    const fallbackUrl = process.env.NEXT_PUBLIC_API_FALLBACK_URL || API_BASE_URL || "http://127.0.0.1:8000";
+    const fallbackUrl = process.env.NEXT_PUBLIC_API_FALLBACK_URL || API_BASE_URL || "http://127.0.0.1:9000";
 
     const attemptFetch = async (urlBase: string) =>
         fetch(`${urlBase}/api/admin/payments${path}`, {

@@ -63,3 +63,24 @@ def test_key_uniqueness():
     k2 = canonicalization_service.compute_canonical_key("factor", math2, assumptions2)
     
     assert k1 != k2
+
+
+def test_expression_canonicalization_never_boolean():
+    canonical = canonicalization_service.canonicalize_expression(
+        canonicalization_service._parse_relation("sin(x)^2 + cos(x)^2 = 1").lhs  # noqa: SLF001
+    )
+    assert isinstance(canonical, str)
+    assert canonical.lower() not in {"true", "false"}
+
+
+def test_relation_canonicalization_preserves_relation_shape():
+    rel = canonicalization_service._parse_relation("sin(x)^2 + cos(x)^2 = 1")  # noqa: SLF001
+    assert rel is not None
+    canonical = canonicalization_service.canonicalize_relation(rel)
+    assert "Equality" in canonical
+
+
+def test_factor_forms_canonicalize_equivalently_for_solve_intent():
+    m1, _ = canonicalization_service.normalize_math_object("x^2 - 4", "solve_equation")
+    m2, _ = canonicalization_service.normalize_math_object("(x-2)(x+2)", "solve_equation")
+    assert m1 == m2

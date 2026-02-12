@@ -6,6 +6,7 @@ import json
 
 from app.models import User, Plan, Subscription, UsageLedger
 from app.schemas.pricing import PlanMultipliers, PlanFeatures, CreditsConfig, SolveCreditsConfig, TierPricingConfig, VerifyCreditsConfig
+from app.services.prompt_binding_pricing import resolve_binding_pricing, normalize_tier_key
 
 class SubscriptionService:
     def ensure_plans_exist(self, session: Session):
@@ -150,36 +151,33 @@ class SubscriptionService:
     def calculate_cost(self, plan: Plan, tier: str, source_type: str = "text") -> float:
         """
         Calculate cost for a solve action based on Tier and Source Type.
-        tier: "free", "standard", "research"
+        tier: "free", "short", "standard", "research"
         source_type: "text", "snap_image", "snap_pdf", "voice"
         """
-        # Business rule: flat credits per solve (tier-based)
         tier_key = (tier or "").strip().lower()
         if tier_key in {"three_step", "free"}:
-            return 5.0
-        if tier_key == "short":
-            return 7.0
-        if tier_key == "standard":
-            return 10.0
-        if tier_key == "research":
-            return 25.0
+            tier_key = "free"
+        elif tier_key in {"family_standard", "family", "short"}:
+            tier_key = "short"
+        elif tier_key in {"student_standard", "pro", "premium", "standard"}:
+            tier_key = "standard"
+        elif tier_key in {"research", "enterprise"}:
+            tier_key = "research"
+        else:
+            tier_key = "standard"
 
         multipliers_data = plan.multipliers or {}
         
         # Parse into Pydantic model for validation/access
-        # If version missing, this might fail unless we migrated. 
-        # (Migration script assumed run)
         try:
             mults = PlanMultipliers(**multipliers_data)
-        except Exception:
-            # Fallback for unmigrated data (safety)
-            return 1000.0 
+        except Exception as exc:
+            raise ValueError(f"Invalid plan multipliers for plan_id={plan.id}: {exc}") from exc
 
         # 1. Get Tier Config
-        tier_config = getattr(mults.credits.solve, tier, None)
+        tier_config = getattr(mults.credits.solve, tier_key, None)
         if not tier_config:
-            # Invalid tier?
-            return 1000.0
+            raise ValueError(f"Missing solve tier pricing for tier={tier_key} plan_id={plan.id}")
             
         # 2. Get Cost by Source Type
         cost = 1
@@ -193,6 +191,21 @@ class SubscriptionService:
             cost = tier_config.text
             
         return float(cost)
+
+    def calculate_cost_for_tier(self, session: Session, tier: str, source_type: str = "text") -> float:
+        tier_key = normalize_tier_key(tier)
+        _, mults, _ = resolve_binding_pricing(session, tier_key)
+        tier_config = getattr(mults.credits.solve, tier_key, None)
+        if not tier_config:
+            raise ValueError(f"Missing solve tier pricing for tier={tier_key}")
+
+        if source_type == "snap_image":
+            return float(tier_config.snap_image)
+        if source_type == "snap_pdf":
+            return float(tier_config.snap_pdf)
+        if source_type == "voice":
+            return float(tier_config.voice)
+        return float(tier_config.text)
 
     def check_entitlement_and_debit(
         self, 
@@ -236,15 +249,8 @@ class SubscriptionService:
         if subscription.status != "active":
              return {"allowed": False, "reason": "Subscription not active"}
              
-        plan = subscription.plan
-        
-        # 1. Parse Features
-        features_data = plan.features or {}
-        try:
-            feats = PlanFeatures(**features_data)
-        except:
-             # Fallback
-             feats = PlanFeatures()
+        # 1. Resolve pricing/features from prompt bindings (source of truth for solve paths)
+        feats = PlanFeatures()
         
         feature_usage = subscription.feature_usage or {}
         
@@ -271,6 +277,7 @@ class SubscriptionService:
                 tier = "research"
             else:
                 tier = "standard"
+        feats, _, _ = resolve_binding_pricing(session, tier)
         
         source = action_request.get("source_type")
         if not source:
@@ -318,7 +325,7 @@ class SubscriptionService:
              # We haven't calculated `cost` variable yet in this function (it's below at step 5).
              # We can pre-calculate cost or check strictly strictly strict?
              # Let's peek cost.
-             peek_cost = self.calculate_cost(plan, tier, source)
+             peek_cost = self.calculate_cost_for_tier(session, tier, source)
              peek_cost_decimal = peek_cost if isinstance(peek_cost, Decimal) else Decimal(str(peek_cost))
              daily_cap = feats.daily_credit_cap if isinstance(feats.daily_credit_cap, Decimal) else Decimal(str(feats.daily_credit_cap))
              if (daily_used_decimal + peek_cost_decimal) > daily_cap:
@@ -333,12 +340,12 @@ class SubscriptionService:
         if is_make_it_right:
              if feature_usage.get("make_it_right", 0) >= feats.make_it_right_monthly_cap:
                  # Cap exceeded, charge normal price
-                 cost_val = self.calculate_cost(plan, tier, source)
+                 cost_val = self.calculate_cost_for_tier(session, tier, source)
                  cost = cost_val if isinstance(cost_val, Decimal) else Decimal(str(cost_val))
              else:
                  cost = Decimal("0")
         else:
-             cost_val = self.calculate_cost(plan, tier, source)
+             cost_val = self.calculate_cost_for_tier(session, tier, source)
              cost = cost_val if isinstance(cost_val, Decimal) else Decimal(str(cost_val))
 
         # 6. Check Balance

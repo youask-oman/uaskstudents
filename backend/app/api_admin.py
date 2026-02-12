@@ -23,10 +23,40 @@ import asyncio
 import io
 from datetime import datetime, timezone
 import os
+import secrets
+import string
 from pathlib import Path
 
 admin_router = APIRouter(prefix="/api/admin", tags=["admin"])
 legal_router = APIRouter(prefix="/api/legal", tags=["legal"])
+WHATSAPP_SECRET_LENGTH = 8
+WHATSAPP_SECRET_ALPHABET = string.ascii_uppercase + string.digits
+
+
+def _generate_whatsapp_secret(used: Optional[set[str]] = None) -> str:
+    used = used or set()
+    for _ in range(16):
+        candidate = "".join(
+            secrets.choice(WHATSAPP_SECRET_ALPHABET) for _ in range(WHATSAPP_SECRET_LENGTH)
+        )
+        if candidate not in used:
+            return candidate
+    raise RuntimeError("Failed to generate unique WhatsApp secret")
+
+
+def _regenerate_whatsapp_secrets_for_all_users(session: Session) -> int:
+    users = session.exec(select(User)).all()
+    if not users:
+        return 0
+    used: set[str] = set()
+    updated = 0
+    for user in users:
+        user.whatsapp_secret = _generate_whatsapp_secret(used=used)
+        used.add(user.whatsapp_secret)
+        session.add(user)
+        updated += 1
+    session.commit()
+    return updated
 
 # --- Models ---
 class ConfigUpdate(BaseModel):
@@ -392,7 +422,16 @@ async def admin_whatsapp_initialize(
     session: Session = Depends(get_session),
 ):
     _resolve_admin_from_request(request, session)
-    return await whatsapp_service.initialize()
+    previous_status = (whatsapp_service.get_status() or {}).get("status")
+    result = await whatsapp_service.initialize()
+    current_status = (result or {}).get("status")
+    if (
+        previous_status == "disconnected"
+        and current_status in {"connecting", "qr_ready", "connected"}
+    ):
+        regenerated_count = _regenerate_whatsapp_secrets_for_all_users(session)
+        result = {**result, "regenerated_whatsapp_codes": regenerated_count}
+    return result
 
 
 @admin_router.post("/whatsapp/disconnect")

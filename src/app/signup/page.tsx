@@ -38,7 +38,7 @@ export default function SignupPage() {
         setError("");
 
         try {
-            const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+            const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:9000";
             // Step 1: Create account
             const signupResponse = await fetch(`${apiBaseUrl}/api/v1/signup`, {
                 method: "POST",

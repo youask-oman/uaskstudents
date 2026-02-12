@@ -986,6 +986,95 @@ export const extractPrimarySolution = (
   return null;
 };
 
+export interface BatchSolutionItem {
+  questionId: string;
+  questionText?: string;
+  solution: MathSolutionPayload;
+}
+
+const parseQuestionOrder = (questionId: string): { group: number; index: number; raw: string } => {
+  const trimmed = (questionId || "").trim();
+  const simpleQ = trimmed.match(/^q(\d+)$/i);
+  if (simpleQ) return { group: 0, index: Number(simpleQ[1]), raw: trimmed.toLowerCase() };
+
+  const trailingDigits = trimmed.match(/(\d+)(?!.*\d)/);
+  if (trailingDigits) return { group: 1, index: Number(trailingDigits[1]), raw: trimmed.toLowerCase() };
+
+  return { group: 2, index: Number.MAX_SAFE_INTEGER, raw: trimmed.toLowerCase() };
+};
+
+const sortBatchQuestionIds = (left: string, right: string): number => {
+  const l = parseQuestionOrder(left);
+  const r = parseQuestionOrder(right);
+  if (l.group !== r.group) return l.group - r.group;
+  if (l.index !== r.index) return l.index - r.index;
+  return l.raw.localeCompare(r.raw);
+};
+
+const parseQuestionTextMap = (messages: SessionMessage[]): Record<string, string> => {
+  const out: Record<string, string> = {};
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const msg = messages[i];
+    if (msg.role !== "user") continue;
+    const raw = asString(msg.content) || "";
+    if (!raw.trim()) continue;
+
+    const lines = raw.split("\n");
+    lines.forEach((line) => {
+      const match = line.match(/^\s*-\s*\(([^)]+)\)\s*(.+)\s*$/);
+      if (!match) return;
+      const qid = (match[1] || "").trim();
+      const text = (match[2] || "").trim();
+      if (qid && text && !out[qid]) {
+        out[qid] = text;
+      }
+    });
+
+    if (Object.keys(out).length > 0) return out;
+  }
+  return out;
+};
+
+export const extractBatchSolutionsFromSessionMessages = (
+  messages: SessionMessage[]
+): BatchSolutionItem[] => {
+  if (!Array.isArray(messages) || messages.length === 0) return [];
+  const questionTextMap = parseQuestionTextMap(messages);
+
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const msg = messages[i];
+    if (msg.role !== "assistant") continue;
+    const structured = asRecord(msg.structured_data);
+    if (!structured) continue;
+
+    const mode = asString(structured.mode) || "";
+    const solutionsRaw = Array.isArray(structured.solutions) ? structured.solutions : [];
+    if (mode !== "batch_text_solve" && solutionsRaw.length === 0) continue;
+    if (solutionsRaw.length === 0) return [];
+
+    const parsed = solutionsRaw
+      .map((entry) => {
+        const solutionObj = asRecord(entry);
+        if (!solutionObj) return null;
+        const questionId = (asString(solutionObj.question_id) || "").trim();
+        if (!questionId) return null;
+
+        const payload = parseMathSolutionFromObject(solutionObj);
+        if (!payload) return null;
+        return {
+          questionId,
+          questionText: questionTextMap[questionId],
+          solution: payload,
+        } as BatchSolutionItem;
+      })
+      .filter((entry): entry is BatchSolutionItem => Boolean(entry))
+      .sort((left, right) => sortBatchQuestionIds(left.questionId, right.questionId));
+
+    if (parsed.length > 0) return parsed;
+  }
+  return [];
+};
+
 export const buildSuggestionPrompts = (steps: string[]): string[] => {
   const base = ["Simplify Eq", "Plot Graph", "Check Steps"];
   const extras = steps

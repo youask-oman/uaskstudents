@@ -36,6 +36,13 @@ import { fetchCreditsEstimate, CreditsEstimateResponse, SolveTier, WalletProgram
 import { TokenPolicy, fetchTokenPolicy } from "@/lib/tokenPolicy";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useToast } from "@/components/ui/ToastProvider";
+import {
+    buildSolveBatchPayload,
+    getSolveBatchCap,
+    mapSolveBatchErrorMessage,
+    resolveSolveBatchMode,
+    resolveSolveBatchTier,
+} from "@/lib/solve-batch";
 
 interface ChatSession {
     id: number;
@@ -102,7 +109,12 @@ interface StreamingRuntimeMeta {
         top_p?: number;
         timeout_ms?: number;
         trim_strategy?: string;
-    }
+    };
+    features?: {
+        allow_research?: boolean;
+        allow_verify?: boolean;
+        allow_plot?: boolean;
+    };
 }
 
 interface OcrMetadata {
@@ -128,11 +140,21 @@ interface DebugAttemptDetails {
     };
 }
 
+const ALL_SOLVE_TIERS: SolveTier[] = ["FREE", "SHORT", "STANDARD", "RESEARCH"];
+
 export default function DashboardPage() {
     const { pushToast } = useToast();
     const useSnapSolveUploadPanelV2 = process.env.NEXT_PUBLIC_SNAP_SOLVE_UPLOAD_PANEL_V2 !== "false";
     const devToolsEnabled = process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_ENABLE_DEV_TOOLS === "true";
-    const mapTierToApi = (tier: SolveTier) => (tier === "FREE" ? "three_step" : tier.toLowerCase());
+    const mapTierToApi = (tier: SolveTier) => (tier === "FREE" ? "free" : tier.toLowerCase());
+    const normalizeTierLabel = (tier?: string) => {
+        const raw = (tier || "").trim().toLowerCase();
+        if (raw === "three_step" || raw === "free") return "FREE";
+        if (raw === "short") return "SHORT";
+        if (raw === "standard" || raw === "student_standard") return "STANDARD";
+        if (raw === "research" || raw === "enterprise") return "RESEARCH";
+        return tier || "-";
+    };
     const formatDebugNumber = (value?: number) => (value === undefined ? "-" : Number(value));
     const [activeTab, setActiveTab] = useState<'text' | 'snap' | 'voice'>('text');
     const [history, setHistory] = useState<ChatSession[]>([]);
@@ -150,7 +172,7 @@ export default function DashboardPage() {
     const [debugForceError, setDebugForceError] = useState(false);
     const [reuseIdempotencyKey, setReuseIdempotencyKey] = useState(true);
     const [lastIdempotencyKey, setLastIdempotencyKey] = useState<string | null>(null);
-    const [stayOnSolveResult, setStayOnSolveResult] = useState(true);
+    const [stayOnSolveResult, setStayOnSolveResult] = useState(false);
     const [debugAttemptDetails, setDebugAttemptDetails] = useState<DebugAttemptDetails | null>(null);
     const [lastSolveError, setLastSolveError] = useState<{ code?: string; message?: string; request_id?: string } | null>(null);
 
@@ -174,6 +196,7 @@ export default function DashboardPage() {
     const [showSplitModal, setShowSplitModal] = useState(false);
     const [suggestedSplits, setSuggestedSplits] = useState<string[]>([]);
     const [multiQuestionConfirmed, setMultiQuestionConfirmed] = useState(false);
+    const [confirmedBatchQuestions, setConfirmedBatchQuestions] = useState<string[]>([]);
     const [mathValidityConfirmed, setMathValidityConfirmed] = useState(false);
 
     // Input mode state
@@ -181,6 +204,16 @@ export default function DashboardPage() {
 
     // Plot/Graph inclusion state
     const [graphMode, setGraphMode] = useState<'off' | 'auto' | 'on'>('auto');
+    const [tierFeatureGates, setTierFeatureGates] = useState<{ allow_verify: boolean; allow_plot: boolean }>({
+        allow_verify: true,
+        allow_plot: true,
+    });
+    const [tierEstimateByTier, setTierEstimateByTier] = useState<Record<SolveTier, number>>({
+        FREE: 0,
+        SHORT: 0,
+        STANDARD: 0,
+        RESEARCH: 0,
+    });
     const [attachToStepId] = useState<number | null>(null);
 
     // Random light background for Plot Mode, Tier Section, and Free Type Mode
@@ -333,6 +366,7 @@ export default function DashboardPage() {
         const nested = toObject(payloadObj.solve_meta ?? payloadObj);
         const versions = toObject(nested.prompt_versions ?? payloadObj.prompt_versions);
         const tokenConfig = toObject(payloadObj.token_config ?? nested.token_config);
+        const features = toObject(payloadObj.features ?? nested.features);
         return {
             request_id: (payloadObj.request_id as string | undefined) ?? (nested.request_id as string | undefined),
             provider: (payloadObj.provider as string | undefined) ?? (nested.provider as string | undefined),
@@ -371,6 +405,13 @@ export default function DashboardPage() {
                 (payloadObj.output_schema_version as number | undefined) ??
                 (versions.schema as number | undefined),
             token_config: Object.keys(tokenConfig).length ? tokenConfig : undefined,
+            features: Object.keys(features).length
+                ? {
+                    allow_research: Boolean(features.allow_research),
+                    allow_verify: Boolean(features.allow_verify ?? true),
+                    allow_plot: Boolean(features.allow_plot ?? true),
+                }
+                : undefined,
         };
     };
 
@@ -399,7 +440,7 @@ export default function DashboardPage() {
 
     // Tier-Aware Solve State
     const selectedGoal = 'solve';
-    const [selectedSolveTier, setSelectedSolveTier] = useState<SolveTier>("FREE");
+    const [selectedSolveTier, setSelectedSolveTier] = useState<SolveTier>("STANDARD");
     const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
     const [walletPrograms, setWalletPrograms] = useState<WalletProgramEnrollment[]>([]);
     const [walletLoaded, setWalletLoaded] = useState(false);
@@ -474,9 +515,37 @@ export default function DashboardPage() {
         if (!estimate) return null;
         return estimate.per_question_credits * estimatedQuestionCount;
     }, [estimate, estimatedQuestionCount]);
+    const estimateBreakdown = useMemo(() => {
+        if (!estimate?.breakdown) return undefined;
+        const raw = estimate.breakdown as Record<string, unknown>;
+        if (typeof raw.tier_base === "number") {
+            return {
+                tier_base: raw.tier_base as number,
+                ocr: Number(raw.ocr || 0),
+                voice: Number(raw.voice || 0),
+                verify: Number(raw.verify || 0),
+                plot: Number(raw.plot || 0),
+                asset_type_addon: Number(raw.asset_type_addon || 0),
+            };
+        }
+        const addons = (raw.addons && typeof raw.addons === "object") ? raw.addons as Record<string, unknown> : {};
+        return {
+            tier_base: Number(raw.base || 0),
+            ocr: Number(addons.ocr || 0),
+            voice: Number(addons.voice || 0),
+            verify: Number(addons.verify || 0),
+            plot: Number(addons.plot || 0),
+            asset_type_addon: Number(addons.asset_type_addon || 0),
+        };
+    }, [estimate]);
     const hasEnoughCredits = readyWallet && estimatedSolveCost != null
         ? readyWallet.computed_balance >= estimatedSolveCost
         : true;
+    const canAffordTier = (tier: SolveTier): boolean => {
+        if (!readyWallet) return true;
+        const required = Number(tierEstimateByTier[tier] || 0);
+        return readyWallet.computed_balance >= required;
+    };
     const creditBlockReason = readyWallet && estimatedSolveCost != null && !hasEnoughCredits
         ? `Insufficient credits. Need ${estimatedSolveCost.toFixed(2)} credits.`
         : null;
@@ -489,15 +558,76 @@ export default function DashboardPage() {
     }, []);
 
     useEffect(() => {
-        if (!walletReady || !readyWallet) return;
-        const hasStored = typeof window !== "undefined" ? localStorage.getItem("uask.solveTier") : null;
-        if (hasStored) return;
-        const defaultTier: SolveTier = readyWallet.effective_tier || "FREE";
+        if (!walletReady) return;
+        const stored = typeof window !== "undefined" ? localStorage.getItem("uask.solveTier") : null;
+        const defaultTier: SolveTier =
+            stored === "FREE" || stored === "STANDARD" || stored === "RESEARCH" || stored === "SHORT"
+                ? stored
+                : "STANDARD";
         setSelectedSolveTier(defaultTier);
-        if (typeof window !== "undefined") {
+        if (typeof window !== "undefined" && !stored) {
             localStorage.setItem("uask.solveTier", defaultTier);
         }
     }, [walletReady, readyWallet]);
+
+    useEffect(() => {
+        if (!tokenPolicyReady || !walletReady || !readyWallet) return;
+        let active = true;
+        const runTierAffordabilityEstimate = async () => {
+            const inputType = activeTab === "snap" ? "snap" : activeTab === "voice" ? "voice" : "text";
+            const assetType = activeTab === "snap" ? "image" : "none";
+            const rows = await Promise.all(
+                ALL_SOLVE_TIERS.map(async (tier) => {
+                    try {
+                        const response = await fetchCreditsEstimate({
+                            tier,
+                            input_type: inputType,
+                            asset_type: assetType,
+                            question_count: estimatedQuestionCount,
+                            addons: {
+                                ocr: activeTab === "snap",
+                                voice: activeTab === "voice",
+                                verify: false,
+                                plot: graphMode !== "off",
+                            },
+                        });
+                        return [tier, Number(response.total_credits || 0)] as const;
+                    } catch {
+                        return [tier, 0] as const;
+                    }
+                }),
+            );
+            if (!active) return;
+            const next: Record<SolveTier, number> = {
+                FREE: 0,
+                SHORT: 0,
+                STANDARD: 0,
+                RESEARCH: 0,
+            };
+            for (const [tier, credits] of rows) next[tier] = credits;
+            setTierEstimateByTier(next);
+        };
+        void runTierAffordabilityEstimate();
+        return () => {
+            active = false;
+        };
+    }, [tokenPolicyReady, walletReady, readyWallet, activeTab, estimatedQuestionCount, graphMode]);
+
+    useEffect(() => {
+        if (!readyWallet) return;
+        const selectedTierBlockedByCredits = !canAffordTier(selectedSolveTier);
+        if (!selectedTierBlockedByCredits) return;
+
+        const fallbackOrder: SolveTier[] = ["STANDARD", "SHORT", "FREE", "RESEARCH"];
+        const fallback = fallbackOrder.find((tier) => {
+            return canAffordTier(tier);
+        }) || "FREE";
+        setSelectedSolveTier(fallback);
+        if (typeof window !== "undefined") {
+            localStorage.setItem("uask.solveTier", fallback);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [readyWallet?.computed_balance, tierEstimateByTier, selectedSolveTier]);
 
     useEffect(() => {
         if (!tokenPolicyReady) return;
@@ -513,7 +643,7 @@ export default function DashboardPage() {
                         ocr: activeTab === "snap",
                         voice: activeTab === "voice",
                         verify: false,
-                        plot: false,
+                        plot: tierFeatureGates.allow_plot && graphMode !== "off",
                     },
                 });
                 setEstimate(response);
@@ -522,7 +652,28 @@ export default function DashboardPage() {
             }
         };
         void runEstimate();
-    }, [tokenPolicyReady, selectedSolveTier, activeTab, estimatedQuestionCount]);
+    }, [tokenPolicyReady, selectedSolveTier, activeTab, estimatedQuestionCount, graphMode, tierFeatureGates.allow_plot]);
+
+    useEffect(() => {
+        const userId = localStorage.getItem("user_id");
+        if (!userId) return;
+        const requestedMode = (selectedSolveTier === "FREE" || selectedSolveTier === "SHORT") ? "minimal" : "detailed";
+        void fetchSolveRuntimeMeta(userId, selectedSolveTier, requestedMode)
+            .then((runtimeMeta) => {
+                const gates = {
+                    allow_verify: runtimeMeta.features?.allow_verify ?? true,
+                    allow_plot: runtimeMeta.features?.allow_plot ?? true,
+                };
+                setTierFeatureGates(gates);
+                if (!gates.allow_plot && graphMode !== "off") {
+                    setGraphMode("off");
+                }
+            })
+            .catch(() => {
+                // Keep last known gates on fetch failure.
+            });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedSolveTier, graphMode]);
 
     useEffect(() => {
         const userId = localStorage.getItem("user_id");
@@ -666,6 +817,8 @@ export default function DashboardPage() {
         if (suggestion.insertMode === 'replace') {
             // If Math Mode was off, this state update will initialize MathInput with this value
             setQuery(suggestion.latex);
+            setConfirmedBatchQuestions([]);
+            setMultiQuestionConfirmed(false);
             setMathValidityConfirmed(false);
 
             // If checking ref immediately (it might be stale if we just switched mode), try to set it
@@ -681,6 +834,8 @@ export default function DashboardPage() {
             } else {
                 // If switching from text mode, just append to state
                 setQuery(prev => prev + suggestion.latex);
+                setConfirmedBatchQuestions([]);
+                setMultiQuestionConfirmed(false);
                 setMathValidityConfirmed(false);
             }
         }
@@ -691,6 +846,7 @@ export default function DashboardPage() {
 
     const handleClear = () => {
         setQuery("");
+        setConfirmedBatchQuestions([]);
         setMultiQuestionConfirmed(false);
         setMathValidityConfirmed(false);
         setInputError(null);
@@ -867,6 +1023,140 @@ export default function DashboardPage() {
         }
     };
 
+    const formatQuestionsForInput = (questions: string[]): string =>
+        questions
+            .map((question, index) => `${index + 1}) ${question.trim()}`)
+            .join("\n\n");
+
+    const handleSolveTextBatch = async (questionsToSolve: string[]) => {
+        if (isSolving) return;
+        const userId = localStorage.getItem("user_id") || "1";
+        const requestedMode = (selectedSolveTier === "FREE" || selectedSolveTier === "SHORT") ? "minimal" : "detailed";
+        const batchMode = resolveSolveBatchMode(selectedSolveTier, requestedMode);
+        const batchTier = resolveSolveBatchTier(selectedSolveTier);
+        const cap = getSolveBatchCap(batchMode);
+        const trimmedQuestions = questionsToSolve.map((q) => q.trim()).filter((q) => q.length > 0);
+
+        if (trimmedQuestions.length === 0) {
+            pushToast({
+                type: "error",
+                title: "Nothing to solve",
+                message: "No valid questions were detected for batch solve.",
+            });
+            return;
+        }
+
+        if (trimmedQuestions.length > cap) {
+            const message = mapSolveBatchErrorMessage("TOO_MANY_QUESTIONS", cap);
+            pushToast({
+                type: "error",
+                title: "Selection too large",
+                message,
+            });
+            return;
+        }
+
+        setIsSolving(true);
+        setSolveStartTime(Date.now());
+        setCurrentStage("Batch solving...");
+        setStreamingContent("");
+        setStreamingTelemetry(null);
+        setStreamingMeta(null);
+        setLastSolveError(null);
+        setPipelineStages(prev =>
+            prev.map(step =>
+                step.key === "attempt_created"
+                    ? { ...step, status: "completed", description: "Extraction complete." }
+                    : step.key === "calling_ai_core"
+                        ? { ...step, status: "active", description: `Solving 0/${trimmedQuestions.length} questions...` }
+                        : { ...step, status: "pending" }
+            )
+        );
+
+        let stageTick: number | null = null;
+        const stageStart = Date.now();
+        stageTick = window.setInterval(() => {
+            const elapsedSec = Math.floor((Date.now() - stageStart) / 1000);
+            const estimatedCurrent = Math.min(trimmedQuestions.length, Math.max(1, elapsedSec + 1));
+            setPipelineStages(prev =>
+                prev.map(step =>
+                    step.key === "calling_ai_core"
+                        ? { ...step, status: "active", description: `Solving ${estimatedCurrent}/${trimmedQuestions.length} questions...` }
+                        : step
+                )
+            );
+        }, 1000);
+
+        try {
+            const payload = buildSolveBatchPayload({
+                selectedQuestions: trimmedQuestions.map((text, index) => ({
+                    question_id: `q${index + 1}`,
+                    text,
+                })),
+                mode: batchMode,
+                tier: batchTier,
+            });
+
+            const response = await fetch(`/api/v1/math/solve_text_batch?user_id=${encodeURIComponent(userId)}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify(payload),
+            });
+            const raw = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                const detail = raw?.detail && typeof raw.detail === "object" ? raw.detail : raw;
+                const code = typeof detail?.code === "string" ? detail.code : undefined;
+                const maxAllowed = typeof detail?.max_allowed === "number" ? detail.max_allowed : cap;
+                const message = mapSolveBatchErrorMessage(code, maxAllowed);
+                pushToast({
+                    type: "error",
+                    title: "Batch solve failed",
+                    message,
+                });
+                return;
+            }
+
+            setPipelineStages(prev =>
+                prev.map(step =>
+                    step.key === "calling_ai_core"
+                        ? { ...step, status: "completed", description: "Reasoning complete." }
+                        : step.key === "schema_validate"
+                            ? { ...step, status: "completed", description: "Validation successful." }
+                            : step.key === "completed"
+                                ? { ...step, status: "completed", description: "Batch packaged for chat." }
+                                : step
+                )
+            );
+            setShowSplitModal(false);
+            pushToast({
+                type: "success",
+                title: "Batch solve complete",
+                message: `Solved ${trimmedQuestions.length} question(s) in one request.`,
+            });
+            const sessionId = Number(raw?.session_id);
+            if (Number.isFinite(sessionId) && sessionId > 0) {
+                setTimeout(() => router.push(`/chat/${sessionId}`), 300);
+                return;
+            }
+            pushToast({
+                type: "error",
+                title: "Missing chat session",
+                message: "Batch solved, but no chat session was returned.",
+            });
+        } catch (err) {
+            pushToast({
+                type: "error",
+                title: "Batch solve failed",
+                message: (err as Error).message || "Request failed.",
+            });
+        } finally {
+            if (stageTick !== null) window.clearInterval(stageTick);
+            setIsSolving(false);
+            setSolveStartTime(null);
+        }
+    };
+
     const handleSolve = async (textOverride?: string, featureOverrides?: Record<string, unknown>) => {
         if (isSolving) return;
         if (!tokenPolicyReady) {
@@ -899,6 +1189,27 @@ export default function DashboardPage() {
                 }
             } else {
                 setInputError(validationError);
+                return;
+            }
+        }
+
+        if (activeTab === "text") {
+            const splitCandidates = (
+                multiQuestionConfirmed && confirmedBatchQuestions.length > 0
+                    ? confirmedBatchQuestions
+                    : autoSplitQuestions(textToSolve)
+            )
+                .map((q) => q.trim())
+                .filter((q) => q.length > 0);
+
+            if (!multiQuestionConfirmed && splitCandidates.length > 1) {
+                setSuggestedSplits(splitCandidates);
+                setShowSplitModal(true);
+                return;
+            }
+
+            if (multiQuestionConfirmed && splitCandidates.length > 1) {
+                await handleSolveTextBatch(splitCandidates);
                 return;
             }
         }
@@ -949,7 +1260,7 @@ export default function DashboardPage() {
             const features = {
                 ocr_used: activeTab === 'snap',
                 voice_used: activeTab === 'voice',
-                plot_requested: graphMode !== 'off',
+                plot_requested: tierFeatureGates.allow_plot && graphMode !== 'off',
                 ...(activeTab === 'snap' ? ocrMetadata : {}),
                 ...(activeTab === 'voice' ? voiceFeatures : {}),
                 ...featureOverrideFeatures,
@@ -977,7 +1288,7 @@ export default function DashboardPage() {
                                 region_state_province: userProfile?.region_state_province || undefined
                             },
                             features_used: features,
-                            graph_mode: graphMode,
+                            graph_mode: tierFeatureGates.allow_plot ? graphMode : "off",
                             attach_to_step_id: attachToStepId,
                             force_validity: mathValidityConfirmed,
                             idempotency_key: idempotencyKey,
@@ -1242,7 +1553,7 @@ export default function DashboardPage() {
                                                 <CostPreview
                                                     perQuestionCost={estimate.per_question_credits}
                                                     questionCount={estimatedQuestionCount}
-                                                    breakdown={estimate.breakdown}
+                                                    breakdown={estimateBreakdown}
                                                     creditsRemaining={readyWallet.computed_balance}
                                                 />
                                             </div>
@@ -1250,10 +1561,36 @@ export default function DashboardPage() {
                                     </div>
                                     <SegmentedControl
                                         options={[
-                                            { value: "FREE", label: "Free", icon: "bolt" },
-                                            { value: "SHORT", label: "Short", icon: "bolt" },
-                                            { value: "STANDARD", label: "Standard", icon: "school" },
-                                            { value: "RESEARCH", label: "Research", icon: "science" },
+                                            {
+                                                value: "FREE",
+                                                label: "Final Answer",
+                                                icon: "bolt",
+                                                disabled: !canAffordTier("FREE"),
+                                                tooltip: !canAffordTier("FREE") ? `Need ${Number(tierEstimateByTier.FREE || 0).toFixed(2)} credits.` : undefined,
+                                            },
+                                            {
+                                                value: "SHORT",
+                                                label: "Short",
+                                                icon: "bolt",
+                                                disabled: !canAffordTier("SHORT"),
+                                                tooltip: !canAffordTier("SHORT") ? `Need ${Number(tierEstimateByTier.SHORT || 0).toFixed(2)} credits.` : undefined,
+                                            },
+                                            {
+                                                value: "STANDARD",
+                                                label: "Standard",
+                                                icon: "school",
+                                                disabled: !canAffordTier("STANDARD"),
+                                                tooltip: !canAffordTier("STANDARD") ? `Need ${Number(tierEstimateByTier.STANDARD || 0).toFixed(2)} credits.` : undefined,
+                                            },
+                                            {
+                                                value: "RESEARCH",
+                                                label: "Research",
+                                                icon: "science",
+                                                disabled: !canAffordTier("RESEARCH"),
+                                                tooltip: !canAffordTier("RESEARCH")
+                                                    ? `Need ${Number(tierEstimateByTier.RESEARCH || 0).toFixed(2)} credits.`
+                                                    : undefined,
+                                            },
                                         ]}
                                         value={selectedSolveTier}
                                         onChange={(v) => {
@@ -1301,10 +1638,16 @@ export default function DashboardPage() {
                                         <button
                                             key={mode}
                                             type="button"
-                                            onClick={() => setGraphMode(mode)}
+                                            onClick={() => {
+                                                if (!tierFeatureGates.allow_plot && mode !== "off") return;
+                                                setGraphMode(mode);
+                                            }}
+                                            disabled={!tierFeatureGates.allow_plot && mode !== "off"}
                                             className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all ${graphMode === mode
                                                 ? "bg-white dark:bg-slate-600 text-primary shadow-md scale-105"
-                                                : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
+                                                : !tierFeatureGates.allow_plot && mode !== "off"
+                                                    ? "text-slate-300 dark:text-slate-600 cursor-not-allowed"
+                                                    : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
                                                 }`}
                                         >
                                             {mode.charAt(0).toUpperCase() + mode.slice(1)}
@@ -1312,6 +1655,11 @@ export default function DashboardPage() {
                                     ))}
                                 </div>
                             </div>
+                            {!tierFeatureGates.allow_plot && (
+                                <p className="text-xs text-slate-500 dark:text-slate-400 text-right">
+                                    Plot mode is disabled by feature gates for this tier.
+                                </p>
+                            )}
                         </div>
 
                         {/* Input Mode Tabs */}
@@ -1559,6 +1907,7 @@ export default function DashboardPage() {
                                                             // Enforce character limit
                                                             if (textInputMaxChars <= 0 || value.length <= textInputMaxChars) {
                                                                 setQuery(value);
+                                                                setConfirmedBatchQuestions([]);
                                                                 setMultiQuestionConfirmed(false);
                                                                 setMathValidityConfirmed(false);
                                                                 if (inputError) setInputError(null);
@@ -1569,6 +1918,7 @@ export default function DashboardPage() {
                                                             if (textInputMaxChars > 0 && pastedText.length > textInputMaxChars) {
                                                                 setInputError(`Pasted text was truncated to ${textInputMaxChars} characters.`);
                                                             }
+                                                            setConfirmedBatchQuestions([]);
                                                             setMultiQuestionConfirmed(false);
                                                             setMathValidityConfirmed(false);
                                                             // Check for multi-question on paste
@@ -1582,12 +1932,14 @@ export default function DashboardPage() {
                                                     />
                                                 ) : (
                                                     <textarea
+                                                        data-testid="solve-query-textarea"
                                                         value={query}
                                                         onChange={(event) => {
                                                             const value = event.target.value;
                                                             // Enforce character limit
                                                             if (textInputMaxChars <= 0 || value.length <= textInputMaxChars) {
                                                                 setQuery(value);
+                                                                setConfirmedBatchQuestions([]);
                                                                 setMultiQuestionConfirmed(false);
                                                                 if (inputError) setInputError(null);
                                                             }
@@ -1600,6 +1952,7 @@ export default function DashboardPage() {
                                                                 setQuery(truncated);
                                                                 setInputError(`Pasted text was truncated to ${textInputMaxChars} characters.`);
                                                             }
+                                                            setConfirmedBatchQuestions([]);
                                                             setMultiQuestionConfirmed(false);
                                                             setMathValidityConfirmed(false);
                                                             // Check for multi-question on paste
@@ -1645,6 +1998,7 @@ export default function DashboardPage() {
                                                         <button
                                                             type="button"
                                                             onClick={() => setMathModeEnabled(enabled => !enabled)}
+                                                            data-testid="math-mode-toggle"
                                                             className={`relative w-10 h-5 rounded-full transition-colors ${mathModeEnabled ? "bg-primary" : "bg-slate-300 dark:bg-slate-700"}`}
                                                         >
                                                             <div className={`absolute top-1 left-1 size-3 bg-white rounded-full transition-transform ${mathModeEnabled ? "translate-x-5" : ""}`}></div>
@@ -1693,6 +2047,7 @@ export default function DashboardPage() {
                                                         </button>
                                                         <button
                                                             onClick={() => handleSolve()}
+                                                            data-testid="solve-submit-button"
                                                             disabled={isSolving || isInputTooShort(query) || !!tokenBlockReason || isBlockingInputError(inputError) || !hasEnoughCredits}
                                                             title={tokenBlockReason || creditBlockReason || undefined}
                                                             className="relative flex items-center gap-2 bg-primary hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-bold transition-all shadow-lg shadow-primary/25 text-sm overflow-hidden"
@@ -2258,7 +2613,12 @@ export default function DashboardPage() {
                             <div>
                                 <div>Attempt ID: {streamingMeta?.attempt_id || "-"}</div>
                                 <div>Request ID: {streamingMeta?.request_id || "-"}</div>
-                                <div>Tier: {streamingMeta?.tier_effective || streamingMeta?.tier_requested || "-"}</div>
+                                <div>Tier Selected (UI): {normalizeTierLabel(selectedSolveTier)}</div>
+                                <div>
+                                    Tier: {normalizeTierLabel(streamingMeta?.tier_effective || streamingMeta?.effective_tier)}
+                                    {" / requested "}
+                                    {normalizeTierLabel(streamingMeta?.tier_requested)}
+                                </div>
                                 <div>Credits Charged: {formatDebugNumber(debugAttemptDetails?.billing?.credits_charged)}</div>
                                 <div>Credits After: {formatDebugNumber(debugAttemptDetails?.billing?.credits_after)}</div>
                                 <div>Error Code: {lastSolveError?.code ?? "-"}</div>
@@ -2298,7 +2658,15 @@ export default function DashboardPage() {
                                 <p className="text-xs text-red-500">{runtimeDebugError}</p>
                             ) : (
                                 <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
-                                    <div>Tier: {runtimeDebugMeta?.effective_tier || selectedSolveTier}</div>
+                                    <div>
+                                        Tier Selected (UI): {normalizeTierLabel(selectedSolveTier)}
+                                    </div>
+                                    <div>
+                                        Tier Effective: {normalizeTierLabel(runtimeDebugMeta?.effective_tier || runtimeDebugMeta?.tier_effective || selectedSolveTier)}
+                                    </div>
+                                    <div>
+                                        Tier Requested: {normalizeTierLabel(runtimeDebugMeta?.tier_requested || selectedSolveTier)}
+                                    </div>
                                     <div>Mode: {runtimeDebugMeta?.mode_family || "SOLVE"}</div>
                                     <div>LLM Provider: {runtimeDebugMeta?.provider || "openai"}</div>
                                     <div>Model: {runtimeDebugMeta?.model || "unknown"}</div>
@@ -2365,7 +2733,7 @@ export default function DashboardPage() {
                                         const activeIndex = pipelineStages.findIndex(s => s.label === currentStage || s.key === currentStage);
                                         return pipelineStages.map((stage, index) => {
                                             const isCompleted = (activeIndex !== -1 && index < activeIndex) || stage.status === 'completed';
-                                            const isActive = (activeIndex !== -1 && index === activeIndex) || (stage.status === 'in-progress');
+                                            const isActive = (activeIndex !== -1 && index === activeIndex) || (stage.status === 'active');
 
                                             // Fallback for improved UX: If solving but no stage matched yet (Initializing), highlight first
                                             const effectiveActive = isActive || (activeIndex === -1 && index === 0 && currentStage === 'Initializing...');
@@ -2443,12 +2811,30 @@ export default function DashboardPage() {
                 splits={suggestedSplits}
                 onSelectQuestion={(question) => {
                     setQuery(question);
+                    setConfirmedBatchQuestions([]);
                     setMultiQuestionConfirmed(false);
                     setMathValidityConfirmed(false);
                     setShowSplitModal(false);
                 }}
                 onConfirmSingleQuestion={() => {
+                    setConfirmedBatchQuestions([]);
                     setMultiQuestionConfirmed(true);
+                    setShowSplitModal(false);
+                }}
+                onConfirmSelectedQuestions={(selectedQuestions) => {
+                    const picked = selectedQuestions
+                        .map((q) => q.trim())
+                        .filter((q) => q.length > 0);
+                    if (picked.length === 0) return;
+                    const formatted = formatQuestionsForInput(picked);
+                    setConfirmedBatchQuestions(picked);
+                    setMultiQuestionConfirmed(true);
+                    setMathValidityConfirmed(false);
+                    setInputError(null);
+                    setQuery(formatted);
+                    if (mathInputRef.current) {
+                        mathInputRef.current.setValue(formatted);
+                    }
                     setShowSplitModal(false);
                 }}
             />

@@ -40,6 +40,8 @@ interface SchoolSearchResult {
     district: string | null;
 }
 
+type WhatsAppBotStatus = "disconnected" | "connecting" | "connected" | "qr_ready";
+
 export default function ProfilePage() {
     const { pushToast } = useToast();
     const [activeTab, setActiveTab] = useState<TabId>('profile');
@@ -82,6 +84,8 @@ export default function ProfilePage() {
     const [whatsappSecret, setWhatsappSecret] = useState("");
     const [showWhatsappSecret, setShowWhatsappSecret] = useState(false);
     const [whatsappEnabled, setWhatsappEnabled] = useState(true);
+    const [whatsappBotStatus, setWhatsappBotStatus] = useState<WhatsAppBotStatus>("disconnected");
+    const [whatsappBotConnected, setWhatsappBotConnected] = useState(false);
 
     // Security (password)
     const [currentPassword, setCurrentPassword] = useState("");
@@ -99,7 +103,7 @@ export default function ProfilePage() {
         };
     } | null>(null);
 
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:9000";
 
     useEffect(() => {
         const userId = localStorage.getItem("user_id");
@@ -150,6 +154,39 @@ export default function ProfilePage() {
             .then((data) => setLegalStatus(data))
             .catch(() => setLegalStatus(null));
     }, [apiBaseUrl]);
+
+    useEffect(() => {
+        let active = true;
+        const loadWhatsappBotStatus = async () => {
+            try {
+                const res = await fetch(`${apiBaseUrl}/api/v1/whatsapp/status`);
+                if (!res.ok) return;
+                const data = await res.json();
+                if (!active) return;
+                const status = (data?.status || "disconnected") as WhatsAppBotStatus;
+                const connected = status === "connected";
+                setWhatsappBotStatus(status);
+                setWhatsappBotConnected(connected);
+                if (!connected) {
+                    setWhatsappEnabled(false);
+                }
+            } catch {
+                if (!active) return;
+                setWhatsappBotStatus("disconnected");
+                setWhatsappBotConnected(false);
+                setWhatsappEnabled(false);
+            }
+        };
+        void loadWhatsappBotStatus();
+        let interval: ReturnType<typeof setInterval> | undefined;
+        if (whatsappBotStatus === "connecting" || whatsappBotStatus === "qr_ready") {
+            interval = setInterval(loadWhatsappBotStatus, 30000);
+        }
+        return () => {
+            active = false;
+            if (interval) clearInterval(interval);
+        };
+    }, [apiBaseUrl, whatsappBotStatus]);
 
     useEffect(() => {
         let active = true;
@@ -234,7 +271,7 @@ export default function ProfilePage() {
     const handleSaveProfile = async () => {
         const userId = localStorage.getItem("user_id");
         setSaving(true);
-        const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+        const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:9000";
         try {
             const res = await fetch(`${apiBaseUrl}/api/v1/user/profile?user_id=${userId}`, {
                 method: 'POST',
@@ -277,7 +314,8 @@ export default function ProfilePage() {
                 body: JSON.stringify({
                     theme: theme,
                     preferred_language: language,
-                    solving_mode: solvingMode
+                    solving_mode: solvingMode,
+                    whatsapp_enabled: whatsappBotConnected ? whatsappEnabled : false,
                 })
             });
             if (res.ok) {
@@ -960,6 +998,15 @@ export default function ProfilePage() {
                                             <label className="text-sm font-bold">WhatsApp Integration</label>
                                             <p className="text-xs text-slate-500">Get math help via WhatsApp on your phone</p>
                                         </div>
+                                        <span
+                                            className={`ml-auto px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                                whatsappBotConnected
+                                                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                                                    : "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                                            }`}
+                                        >
+                                            {whatsappBotConnected ? "Active" : "Inactive"}
+                                        </span>
                                     </div>
                                     
                                     <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-xl p-5 space-y-4">
@@ -1019,6 +1066,11 @@ export default function ProfilePage() {
                                             </ol>
                                         </div>
                                     </div>
+                                    {!whatsappBotConnected && (
+                                        <div className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+                                            WhatsApp Bot is not connected right now (status: {whatsappBotStatus}). User access is disabled until bot status is connected.
+                                        </div>
+                                    )}
                                     
                                     <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
                                         <div className="flex items-center gap-3">
@@ -1029,9 +1081,15 @@ export default function ProfilePage() {
                                             </div>
                                         </div>
                                         <button
-                                            onClick={() => setWhatsappEnabled(!whatsappEnabled)}
+                                            onClick={() => {
+                                                if (!whatsappBotConnected) return;
+                                                setWhatsappEnabled(!whatsappEnabled);
+                                            }}
+                                            disabled={!whatsappBotConnected}
                                             className={`relative w-14 h-7 rounded-full transition-colors ${
-                                                whatsappEnabled 
+                                                !whatsappBotConnected
+                                                    ? "bg-slate-300 dark:bg-slate-700 cursor-not-allowed"
+                                                    : whatsappEnabled 
                                                     ? "bg-green-500" 
                                                     : "bg-slate-300 dark:bg-slate-700"
                                             }`}

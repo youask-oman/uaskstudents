@@ -1,0 +1,18 @@
+{
+  "sample1": {
+    "input": "sqrt(x+5) = x - 1",
+    "canonical": "Equality(Add(Mul(Integer(-1), Symbol('x')), Pow(Add(Symbol('x'), Integer(5)), Rational(1, 2)), Integer(1)), Integer(0))",
+    "assumptions": {}
+  },
+  "sample2": {
+    "input_a": "x^2 - 4",
+    "input_b": "(x-2)(x+2)",
+    "canonical_a": "Equality(Add(Pow(Symbol('x'), Integer(2)), Integer(-4)), Integer(0))",
+    "canonical_b": "Equality(Add(Pow(Symbol('x'), Integer(2)), Integer(-4)), Integer(0))",
+    "matched": true
+  },
+  "sample3": {
+    "input": "sin(x)^2 + cos(x)^2",
+    "canonical": "false"
+  }
+}

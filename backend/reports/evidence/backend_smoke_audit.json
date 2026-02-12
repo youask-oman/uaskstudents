@@ -1,0 +1,102 @@
+{
+  "base_url": "http://localhost:9000",
+  "user_id": 166,
+  "checks": [
+    {
+      "name": "health",
+      "status_code": 200,
+      "ok": true
+    },
+    {
+      "name": "solve_v3_runtime_meta",
+      "status_code": 200,
+      "ok": true,
+      "payload": {
+        "request_id": "008ab434-5d02-43aa-b7ce-43ecfad8f06c",
+        "provider": "openai",
+        "model": "gpt-5-mini",
+        "tier_requested": "standard",
+        "tier_effective": "standard",
+        "mode": "SOLVE",
+        "output_format": "json_schema",
+        "prompt_binding_id": "0ea3c664-6bb3-4ce0-a840-819f5e897e78",
+        "global_system_prompt_id": "global_system_prompt_v1",
+        "developer_prompt_id": "solve_standard_v1",
+        "output_schema_id": "solve_standard_detailed_v1.schema.json",
+        "prompt_versions": {
+          "system": 1,
+          "developer": 1,
+          "schema": 1
+        },
+        "token_config": {
+          "max_output_tokens": 4500,
+          "max_input_tokens": 7000,
+          "temperature": 0.12,
+          "top_p": 0.95,
+          "timeout_ms": 60000,
+          "trim_strategy": "summarize_context"
+        },
+        "features": {
+          "allow_research": false,
+          "allow_verify": false,
+          "allow_plot": true
+        }
+      }
+    },
+    {
+      "name": "find_error_local",
+      "status_code": 200,
+      "ok": true,
+      "payload": {
+        "ok": true,
+        "request_id": "8deae1b5-55e1-4ad8-bc36-563a7d59207e",
+        "selection_bbox": {
+          "x": 0.1,
+          "y": 0.1,
+          "w": 0.8,
+          "h": 0.8
+        },
+        "ocr": {
+          "raw": "",
+          "text": "",
+          "confidence": 0.0
+        },
+        "analysis": {
+          "detected_format": "unknown",
+          "first_wrong_line_index": null,
+          "what_is_wrong": "No readable math detected in the selected region.",
+          "minimal_fix": "Re-circle a larger/clearer region or type the equation.",
+          "confidence": 0.2,
+          "per_line": []
+        },
+        "local_steps": [
+          "No specific local solving rule matched for this query."
+        ],
+        "error": null,
+        "timings_ms": {
+          "crop": 0,
+          "ocr": 3,
+          "check": 0,
+          "total": 3
+        }
+      }
+    },
+    {
+      "name": "plot_pipeline",
+      "status_code": 200,
+      "ok": true,
+      "payload": {
+        "trigger": null,
+        "spec": {
+          "plot_id": "",
+          "attach_to_step_id": null,
+          "plotly_json": {},
+          "error": "Error code: 400 - {'error': {'message': \"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.\", 'type': 'invalid_request_error', 'param': 'max_tokens', 'code': 'unsupported_parameter'}}"
+        },
+        "plot_generated": false,
+        "error": "Spec failed: Error code: 400 - {'error': {'message': \"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.\", 'type': 'invalid_request_error', 'param': 'max_tokens', 'code': 'unsupported_parameter'}}"
+      }
+    }
+  ],
+  "ok": true
+}

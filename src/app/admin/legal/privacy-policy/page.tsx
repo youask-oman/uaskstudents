@@ -209,7 +209,7 @@ export default function AdminPrivacyPolicyPage() {
 
       <section className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
         <div className="flex flex-wrap gap-3 items-center justify-between mb-4">
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white">Legal - Privacy Policy Editor</h1>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white">Legal Documents - Privacy Policy Editor</h1>
           <div className="flex gap-2">
             <button className="px-3 py-2 rounded border text-xs font-semibold" onClick={createGeneratedDraft} disabled={saving}>
               New Draft from Inventory
