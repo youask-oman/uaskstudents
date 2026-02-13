@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Request, Form, Body
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import StreamingResponse, JSONResponse, Response
 from sqlmodel import Session, SQLModel, select
 from sqlalchemy import text as sql_text, or_, func
 from sqlalchemy.exc import IntegrityError
@@ -164,6 +164,15 @@ def _regenerate_whatsapp_secrets_for_all_users(session: Session) -> int:
         updated += 1
     session.commit()
     return updated
+
+
+def _enqueue_attempt_graph_render(attempt_id: Optional[str]) -> None:
+    if not attempt_id:
+        return
+    try:
+        celery_app.send_task("render_attempt_graph", args=[attempt_id], queue="celery")
+    except Exception as exc:
+        logger.warning("graph_enqueue_failed attempt_id=%s reason=%s", attempt_id, str(exc))
 
 
 @api_router.get("/health/llm")
@@ -6072,6 +6081,7 @@ async def solve_v3_endpoint(
         except Exception:
             session.rollback()
 
+        _enqueue_attempt_graph_render(attempt_id)
         return result
 
     except Exception as e:
@@ -7515,6 +7525,7 @@ async def solve_v3_stream_endpoint(
 
                 session.commit()
                 print(f"[SOLVER_V3_STREAM] ✅ Successfully persisted results for session {new_chat.id}")
+                _enqueue_attempt_graph_render(attempt_id)
                 if attempt_id:
                     emit_attempt_event(attempt_id, request_id, "completed_success", status="success")
 
@@ -13548,6 +13559,52 @@ async def get_attempt_status(
             "hold_status": hold.status if hold else None,
         },
     }
+
+
+@api_router.get("/attempt/{attempt_id}/graph.svg")
+async def get_attempt_graph_svg(
+    attempt_id: str,
+    theme: str = Query("light"),
+    width: int = Query(920, ge=320, le=2200),
+    height: int = Query(520, ge=220, le=1600),
+    session: Session = Depends(get_session),
+):
+    from app.services.graph.asset_service import get_or_render_graph_bytes
+
+    payload, error = get_or_render_graph_bytes(
+        session,
+        attempt_id=attempt_id,
+        fmt="svg",
+        theme=theme,
+        width_px=width,
+        height_px=height,
+    )
+    if payload is None:
+        raise HTTPException(status_code=404, detail=f"graph_not_available:{error}")
+    return Response(content=payload, media_type="image/svg+xml")
+
+
+@api_router.get("/attempt/{attempt_id}/graph.png")
+async def get_attempt_graph_png(
+    attempt_id: str,
+    theme: str = Query("light"),
+    width: int = Query(920, ge=320, le=2200),
+    height: int = Query(520, ge=220, le=1600),
+    session: Session = Depends(get_session),
+):
+    from app.services.graph.asset_service import get_or_render_graph_bytes
+
+    payload, error = get_or_render_graph_bytes(
+        session,
+        attempt_id=attempt_id,
+        fmt="png",
+        theme=theme,
+        width_px=width,
+        height_px=height,
+    )
+    if payload is None:
+        raise HTTPException(status_code=404, detail=f"graph_not_available:{error}")
+    return Response(content=payload, media_type="image/png")
 
 
 @api_router.get("/attempt/{attempt_id}/events")

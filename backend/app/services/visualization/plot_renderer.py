@@ -69,7 +69,8 @@ class PlotRenderer:
         
         for obj in plan.objects:
             # Handle standard functions/lines
-            if obj.kind in ["curve", "line", "function"]:
+            kind = obj.kind.value if hasattr(obj.kind, "value") else str(obj.kind)
+            if kind in ["curve", "line", "function"]:
                 try:
                     y = self._evaluate_expression(obj.expression, x)
                     points = [{"x": float(xi), "y": float(yi)} for xi, yi in zip(x, y) if not np.isnan(yi) and not np.isinf(yi)]

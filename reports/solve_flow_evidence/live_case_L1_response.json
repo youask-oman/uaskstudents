@@ -1,0 +1,274 @@
+{
+  "schema_version": "v2",
+  "tier": "STANDARD",
+  "mode": "SOLVE",
+  "response_kind": "solution",
+  "_raw_llm_output": "{\n  \"assumptions\": [],\n  \"candidates\": [\n    {\n      \"latex\": \"$x=2$\",\n      \"notes\": \"Root from factoring (x-2)(x-3)=0\",\n      \"value\": \"2\"\n    },\n    {\n      \"latex\": \"$x=3$\",\n      \"notes\": \"Root from factoring (x-2)(x-3)=0\",\n      \"value\": \"3\"\n    }\n  ],\n  \"clarification\": {\n    \"needs_clarification\": false,\n    \"note\": null,\n    \"questions\": []\n  },\n  \"confidence\": 0.71,\n  \"final_answer\": {\n    \"answer_latex\": \"$\\\\{2,\\\\,3\\\\}$\",\n    \"answer_text\": \"The solutions are x = 2 and x = 3.\",\n    \"values\": [\n      {\n        \"label\": \"x1\",\n        \"latex\": \"$2$\",\n        \"value\": \"2\"\n      },\n      {\n        \"label\": \"x2\",\n        \"latex\": \"$3$\",\n        \"value\": \"3\"\n      }\n    ]\n  },\n  \"language\": {\n    \"preferred_response_language\": \"english\",\n    \"response_language\": \"english\",\n    \"user_language\": null\n  },\n  \"plot\": {\n    \"decision_reason\": \"Graph of quadratic shows zeros at roots within domain [-2,5].\",\n    \"recipe\": {\n      \"axis_labels\": {\n        \"x\": \"x\",\n        \"y\": \"y\"\n      },\n      \"domain\": {\n        \"x_max\": 5,\n        \"x_min\": -2,\n        \"y_max\": null,\n        \"y_min\": null\n      },\n      \"expressions\": [\n        \"x^2-5*x+6\"\n      ],\n      \"key_points\": [\n        {\n          \"label\": \"(2,0)\",\n          \"x\": 2,\n          \"y\": 0\n        },\n        {\n          \"label\": \"(3,0)\",\n          \"x\": 3,\n          \"y\": 0\n        }\n      ],\n      \"plot_intent\": \"function_2d\",\n      \"sampling\": {\n        \"n_points\": 50\n      },\n      \"symbols\": [\n        \"x\"\n      ],\n      \"title\": \"y = x^2 - 5x + 6 on [-2,5]\"\n    }\n  ,\n    \"should_visualize\": true\n  },\n  \"refusal\": {\n    \"is_refusal\": false,\n    \"reason\": null,\n    \"safe_alternative\": null\n  },\n  \"response_kind\": \"solution\",\n  \"schema_version\": \"llm_min_v2\",\n  \"steps\": [\n    {\n      \"explanation\": \"Factor the quadratic: x^2-5x+6 = (x-2)(x-3).\",\n      \"index\": 1,\n      \"math_latex\": [\n        \"$x^2-5x+6=(x-2)(x-3)$\"\n      ],\n      \"title\": \"Factorization\"\n    },\n    {\n      \"explanation\": \"Set each factor to zero to find roots.\",\n      \"index\": 2,\n      \"math_latex\": [\n        \"$x-2=0$\",\n        \"$x-3=0$\"\n      ],\n      \"title\": \"Solve factors\"\n    },\n    {\n      \"explanation\": \"Solutions are x=2 and x=3, both lie in the interval [-2,5].\",\n      \"index\": 3,\n      \"math_latex\": [\n        \"$x=2$\",\n        \"$x=3$\"\n      ],\n      \"title\": \"Conclusion\"\n    },\n    {\n      \"explanation\": \"Plot the parabola y=x^2-5x+6 over x in [-2,5], marking zeros at (2,0) and (3,0).\",\n      \"index\": 4,\n      \"math_latex\": [\n        \"$y=x^2-5x+6$\"\n      ],\n      \"title\": \"Plotting\"\n    },\n    {\n      \"explanation\": \"Verify domain_mode real; roots are real and within given domain.\",\n      \"index\": 5,\n      \"math_latex\": [],\n      \"title\": \"Domain check\"\n    },\n    {\n      \"explanation\": \"Return final answer as set {2,3}.\",\n      \"index\": 6,\n      \"math_latex\": [\n        \"$\\\\{2,3\\\\}$\"\n      ],\n      \"title\": \"Final answer\"\n    }\n  ]\n}",
+  "refusal": {
+    "is_refusal": false,
+    "reason": null,
+    "safe_alternative": null
+  },
+  "problem": {
+    "original_text": "Solve and plot on x in [-2,5]:\nx^2 - 5x + 6 = 0",
+    "normalized_text": "Solve and plot on x in [-2,5]:\nx^2 - 5x + 6 = 0",
+    "language": {
+      "user_language": "english",
+      "response_language": "english",
+      "preferred_response_language": "english"
+    },
+    "detected_tasks": [
+      "equation",
+      "plot"
+    ]
+  },
+  "classification": {
+    "grade_band": "grades_9_10",
+    "domain": "other",
+    "topic": "math",
+    "difficulty": "medium"
+  },
+  "clarification": {
+    "needs_clarification": false,
+    "questions": [],
+    "note": null
+  },
+  "assumptions": [],
+  "steps": [
+    {
+      "index": 1,
+      "title": "Factorization",
+      "explanation": "Factor the quadratic: x^2-5x+6 = (x-2)(x-3).",
+      "math_latex": [
+        "$x^2-5x+6=(x-2)(x-3)$"
+      ],
+      "rules_used": [],
+      "plots_used": [],
+      "checks": [],
+      "notes": null
+    },
+    {
+      "index": 2,
+      "title": "Solve factors",
+      "explanation": "Set each factor to zero to find roots.",
+      "math_latex": [
+        "$x-2=0$",
+        "$x-3=0$"
+      ],
+      "rules_used": [],
+      "plots_used": [],
+      "checks": [],
+      "notes": null
+    },
+    {
+      "index": 3,
+      "title": "Conclusion",
+      "explanation": "Solutions are x=2 and x=3, both lie in the interval [-2,5].",
+      "math_latex": [
+        "$x=2$",
+        "$x=3$"
+      ],
+      "rules_used": [],
+      "plots_used": [],
+      "checks": [],
+      "notes": null
+    },
+    {
+      "index": 4,
+      "title": "Plotting",
+      "explanation": "Plot the parabola y=x^2-5x+6 over x in [-2,5], marking zeros at (2,0) and (3,0).",
+      "math_latex": [
+        "$y=x^2-5x+6$"
+      ],
+      "rules_used": [],
+      "plots_used": [],
+      "checks": [],
+      "notes": null
+    },
+    {
+      "index": 5,
+      "title": "Domain check",
+      "explanation": "Verify domain_mode real; roots are real and within given domain.",
+      "math_latex": [],
+      "rules_used": [],
+      "plots_used": [],
+      "checks": [],
+      "notes": null
+    },
+    {
+      "index": 6,
+      "title": "Final answer",
+      "explanation": "Return final answer as set {2,3}.",
+      "math_latex": [
+        "$\\{2,3\\}$"
+      ],
+      "rules_used": [],
+      "plots_used": [],
+      "checks": [],
+      "notes": null
+    }
+  ],
+  "final_answer": {
+    "answer_text": "2, 3",
+    "answer_latex": "2, 3",
+    "values": [
+      {
+        "label": "solution",
+        "value": "2",
+        "value_latex": "2"
+      },
+      {
+        "label": "solution",
+        "value": "3",
+        "value_latex": "3"
+      }
+    ],
+    "units": null
+  },
+  "verification": {
+    "verified": true,
+    "verification_method": "symbolic",
+    "unverified_reason": null,
+    "assumptions_used": [],
+    "candidate_solutions": [
+      {
+        "value_text": "2",
+        "value_latex": "$x=2$"
+      },
+      {
+        "value_text": "3",
+        "value_latex": "$x=3$"
+      }
+    ],
+    "dropped_candidates": [],
+    "final_solutions": [
+      {
+        "value_text": "2",
+        "value_latex": "2"
+      },
+      {
+        "value_text": "3",
+        "value_latex": "3"
+      }
+    ],
+    "verification_meta": {
+      "symbolic_parse": true,
+      "duration_ms": 1,
+      "candidates_checked": 2,
+      "timed_out": false,
+      "route": "openai"
+    }
+  },
+  "visuals": {
+    "should_visualize": true,
+    "decision_reason": "Forced ON by user graph_mode=on",
+    "plots": [
+      {
+        "kind": "function_2d",
+        "title": "y = x^2 - 5x + 6 on [-2,5]",
+        "subtitle": null,
+        "x_label": "x",
+        "y_label": "y",
+        "z_label": null,
+        "domain": {
+          "x_min": -2,
+          "x_max": 5,
+          "y_min": null,
+          "y_max": null
+        },
+        "series": [],
+        "key_points": [
+          {
+            "label": "(2,0)",
+            "x": 2,
+            "y": 0
+          },
+          {
+            "label": "(3,0)",
+            "x": 3,
+            "y": 0
+          }
+        ],
+        "render_hint": {
+          "preferred": "matplotlib",
+          "notes": "backend_recipe"
+        },
+        "recipe": {
+          "generator": "function_2d",
+          "expr": "x^2-5*x+6",
+          "system": null,
+          "symbols": [
+            "x"
+          ],
+          "data_ref": null,
+          "params": {
+            "zeta": null,
+            "beta": null,
+            "omega": null,
+            "gamma": null
+          },
+          "initial_conditions": {
+            "x0": null,
+            "v0": null
+          },
+          "sampling": {
+            "t_min": -2,
+            "t_max": 5,
+            "dt": null,
+            "samples": 50,
+            "discard": null,
+            "samples_per_period": null,
+            "transient_periods": null,
+            "keep_periods": null
+          },
+          "sweep": {
+            "param": null,
+            "min": null,
+            "max": null,
+            "steps": null
+          }
+        },
+        "rendered": {
+          "image_ref": null,
+          "mime": null,
+          "width_px": null,
+          "height_px": null,
+          "caption": null
+        }
+      }
+    ],
+    "alternative_visual": {
+      "kind": "none",
+      "description": "No additional visualization.",
+      "data": "n/a"
+    }
+  },
+  "quality": {
+    "confidence": 0.6,
+    "common_mistakes": []
+  },
+  "runtime_meta": {
+    "request_id": "live-solvev3-l1-1770962845-1",
+    "attempt_id": "cb95950e-65e3-495f-91f5-00b6a5f64ffe",
+    "provider": "openai",
+    "model": "gpt-5-mini",
+    "input_tokens": 1768,
+    "output_tokens": 988,
+    "total_tokens": 2756,
+    "latency_ms_total": 8520,
+    "latency_ms_openai": 8153,
+    "finish_reason": "unknown",
+    "truncated": false,
+    "cache_hit": false,
+    "timing_ms": {
+      "parse": 0,
+      "canonicalize": 3,
+      "openai": 8153,
+      "verify": 2,
+      "total": 8520
+    }
+  },
+  "request_id": "live-solvev3-l1-1770962845-1",
+  "attempt_id": "cb95950e-65e3-495f-91f5-00b6a5f64ffe",
+  "attempt_status": "success"
+}

@@ -14,6 +14,7 @@ import styles from "./MathCanvas.module.css";
 
 interface PaperPageProps {
   page: CanvasPageData;
+  attemptId?: string | null;
   active: boolean;
   activeTool: ToolType;
   selectedElementIds: string[];
@@ -178,6 +179,7 @@ const ResizeHandles = ({
 
 const ElementView = React.memo(function ElementView({
   element,
+  attemptId,
   selected,
   dragPreview,
   resizePreview,
@@ -186,6 +188,7 @@ const ElementView = React.memo(function ElementView({
   onResizePointerDown,
 }: {
   element: CanvasElement;
+  attemptId?: string | null;
   selected: boolean;
   dragPreview?: { dx: number; dy: number };
   resizePreview?: { width: number; height: number; x: number; y: number };
@@ -310,6 +313,8 @@ const ElementView = React.memo(function ElementView({
           <VisualRenderer
             visual={asPlotVisual(element.title, element.xLabel, element.yLabel, element.points)}
             height={Math.max(200, Math.floor(height - 20))}
+            attemptId={attemptId}
+            strictAsset
           />
         </div>
       ) : null}
@@ -334,6 +339,7 @@ const ElementView = React.memo(function ElementView({
 
 export default function PaperPage({
   page,
+  attemptId,
   active,
   activeTool,
   selectedElementIds,
@@ -961,6 +967,7 @@ export default function PaperPage({
             <ElementView
               key={element.id}
               element={element}
+              attemptId={attemptId}
               selected={selected}
               dragPreview={dragPreview}
               resizePreview={resizePreview}

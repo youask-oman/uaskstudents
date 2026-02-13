@@ -1,0 +1,88 @@
+{
+  "system_config": {
+    "SOLVE_SYSTEM_PROMPT_ID": "global_system_prompt_v2_compact.txt",
+    "SOLVE_ORCHESTRATOR_DEV_PROMPT_ID": "solve_orchestrator_developer_v2_compact.txt",
+    "SOLVE_PLOT_SPEC_PROMPT_ID": "solve_plot_spec_v2_compact.txt",
+    "SOLVE_REPAIR_PROMPT_ID": "solve_repair_verification_patch_v1.txt",
+    "SOLVE_CLARIFY_PROMPT_ID": "solve_clarification_patch_v1.txt",
+    "SOLVE_SCHEMA_ID": "solve_superset_v2.schema.json",
+    "SOLVE_LLM_MIN_SCHEMA_ID": "solve_llm_min_v2.schema.json"
+  },
+  "prompts": {
+    "global_system_prompt_v2_compact.txt": {
+      "version": 1,
+      "role": "SYSTEM",
+      "tier": null,
+      "content_preview": "You are YouAsk Math Engine. Follow developer instructions exactly.\n\nLATEX (STRICT)\n- Inline: $...$ only\n- Display: $$...$$ only\n- Never use \\( \\) or \\[ \\]\n- LaTeX must be complete and valid.\n\nOUTPUT\n- Developer specifies OUTPUT_MODE and a JSON schema when applicable.\n- If OUTPUT_MODE=JSON_SCHEMA:\n  - Output exactly ONE JSON object.\n  - No markdown, no code fences, no extra text.\n  - Do not add keys not in the schema.\n  - Include all required fields; use null only if the schema allows it.\n\nLANGUAGE\n- Use preferred_response_language if provided; otherwise English.\n- Do not mix languages.\n\nMULTI-QUESTION / AMBIGUITY\n- If input contains multiple distinct questions or is ambiguous, prefer clarification.\n- Ask at most 2 clarification questions.\n- Do not solve multiple questions in one response.\n\nMATH INTEGRITY\n- Do not fabricate results or claims of verification.\n- Respect domain constraints (e.g., denominator \u2260 0, real log arg > 0, even-root radicand \u2265 0 in reals).\n\nVERIFICATION (BACKEND OWNS IT)\n- Backend (SymPy gate) verifies. Do NOT claim \u201cverified\u201d unless developer explicitly provides verified results.\n- If the schema contains verification fields and verified results are NOT provide"
+    },
+    "solve_orchestrator_developer_v2_compact.txt": {
+      "version": 1,
+      "role": "DEVELOPER",
+      "tier": null,
+      "content_preview": "OUTPUT_MODE=JSON_SCHEMA\nSCHEMA_NAME=solve_llm_min_v2\nSCHEMA_VERSION=v2\n\nReturn exactly ONE JSON object matching the schema. No extra text.\n\nREQUEST\nrequest_id: {{REQUEST_ID}}\nattempt_id: {{ATTEMPT_ID}}\ntier: {{TIER}}                 # FREE | FINAL | STANDARD | RESEARCH\nmode: {{MODE}}                 # SOLVE | SIMPLIFY | FACTOR | ...\ngraph_mode: {{GRAPH_MODE}}     # OFF | AUTO | ON\ndomain_mode: {{DOMAIN_MODE}}   # reals | complex\npreferred_response_language: {{PREFERRED_RESPONSE_LANGUAGE}}\n\nuser_question: {{USER_QUESTION}}\n\nALWAYS REQUIRED (MUST FILL)\n- language.preferred_response_language = preferred_response_language\n- language.response_language = preferred_response_language\n- assumptions = [] if none\n- plot object must exist (recipe may be null)\n- clarification object must exist\n- refusal object must exist\n\nCONSTRAINTS (STRICT)\n1) Single-question only:\n- If multiple distinct questions OR ambiguous: response_kind=\"clarification\"\n- clarification.needs_clarification=true\n- Ask at most 2 clarification questions\n- steps=[]\n- final_answer=null\n- plot.should_visualize=false and plot.recipe=null\n- refusal.is_refusal=false\n\n2) Tier shaping (keep output small):\n- FREE: 3\u20136 steps, each expl"
+    },
+    "solve_plot_spec_v2_compact.txt": {
+      "version": 1,
+      "role": "DEVELOPER",
+      "tier": null,
+      "content_preview": "# solve_plot_spec_v2_compact.txt\n# PURPOSE: Wrap backend-provided plot data into a minimal Plotly spec.\n# IMPORTANT: Do NOT solve math. Do NOT sample unless backend provides points.\n\nMODE=PLOT_SPEC\nOUTPUT_MODE=JSON_SCHEMA\nSCHEMA_NAME=youask_plot_spec_v2\nSCHEMA_VERSION=v2\n\nReturn exactly ONE JSON object matching the schema. No extra text.\n\nINPUTS (developer provides)\n- request_id / attempt_id / question_id\n- attach_to_step_id (optional)\n- preferred_response_language\n- graph_mode: OFF | AUTO | ON\n- plot_intent\n- series_points (preferred): array of series objects from backend:\n  [{name, x: number[], y: (number|null)[]}]\n- key_points (optional): <= 10 points\n- axis_labels + title (optional)\n\nRULES (STRICT)\n0) graph_mode=OFF:\n- Return a valid minimal plot container per schema with no data (or should_visualize=false if schema supports it).\n\n1) Use backend series_points exactly if provided. Do not recompute values.\n2) If series_points not provided:\n- Do NOT generate x/y arrays.\n- Return a valid minimal plot with layout/config only (and empty data if schema allows), or recipe only if schema supports recipe.\n\n3) Keep small + deterministic:\n- Max line traces: 2 (from first 1\u20132 series_points)"
+    },
+    "solve_repair_verification_patch_v1.txt": {
+      "version": 1,
+      "role": "DEVELOPER",
+      "tier": null,
+      "content_preview": "OUTPUT_MODE=JSON_SCHEMA\nSCHEMA_NAME=solve_repair_patch_v1\nSCHEMA_VERSION=v1\n\nReturn exactly ONE JSON object matching the schema. No extra text.\n\nROLE\nYou are the Verification Repair Agent. Backend (SymPy) found verification failures.\nYour job is to propose minimal edits (patches) to fix candidate solutions and any directly-related step text.\nDo NOT rewrite the entire solution. Do NOT claim verified.\n\nINPUTS\npreferred_response_language: {{PREFERRED_RESPONSE_LANGUAGE}}\ntier: {{TIER}}\nmode: {{MODE}}\ndomain_mode: {{DOMAIN_MODE}}\n\noriginal_problem_text: {{ORIGINAL_PROBLEM_TEXT}}\nverification_failure_report: {{FAILURE_REPORT}}\n\nrepair_scope_snapshot: {{REPAIR_SCOPE_SNAPSHOT}}\n# Snapshot contains ONLY:\n# - assumptions (current)\n# - verification.candidate_solutions (current)\n# - final_answer (current, if any)\n# - steps[*].title + steps[*].explanation + steps[*].math_latex (only)\n# - visuals key_points only (if relevant)\n\nRULES (STRICT)\n1) Output a PATCH only:\n- Provide edits as JSON path replacements.\n- Allowed paths:\n  - $.assumptions\n  - $.verification.candidate_solutions\n  - $.final_answer\n  - $.steps[*].title\n  - $.steps[*].explanation\n  - $.steps[*].math_latex\n  - $.visuals.plots[*].k"
+    },
+    "solve_clarification_patch_v1.txt": {
+      "version": 1,
+      "role": "DEVELOPER",
+      "tier": null,
+      "content_preview": "OUTPUT_MODE=JSON_SCHEMA\nSCHEMA_NAME=solve_clarification_patch_v1\nSCHEMA_VERSION=v1\n\nReturn exactly ONE JSON object matching the schema. No extra text.\n\nROLE\nGenerate clarification questions only. Do NOT solve.\n\nINPUTS\npreferred_response_language: {{PREFERRED_RESPONSE_LANGUAGE}}\nuser_question: {{USER_QUESTION}}\ndetected_multi_question: {{DETECTED_MULTI_QUESTION}}\nambiguity_signals: {{AMBIGUITY_SIGNALS}}\n\nRULES\n- Ask 1\u20132 questions max.\n- If detected_multi_question=true:\n  - Q1 must ask the user to choose ONE question to solve first.\n  - Provide short choices (<= 6).\n- Keep questions short and actionable.\n- No math solving, no steps, no candidates, no plots.\n\nOUTPUT\n- action=\"clarification\"\n- reason: short\n- questions: 1\u20132 items\n"
+    }
+  },
+  "schemas": {
+    "solve_superset_v2.schema.json": {
+      "version": 1,
+      "name": "solve_superset_v2",
+      "top_level_keys": [
+        "name",
+        "schema",
+        "strict",
+        "type"
+      ],
+      "schema_required_preview": [
+        "schema_version",
+        "tier",
+        "mode",
+        "response_kind",
+        "refusal",
+        "problem",
+        "classification",
+        "clarification",
+        "assumptions",
+        "steps",
+        "final_answer",
+        "verification",
+        "visuals",
+        "quality",
+        "runtime_meta",
+        "_raw_llm_output"
+      ]
+    },
+    "solve_llm_min_v2.schema.json": {
+      "version": 1,
+      "name": null,
+      "top_level_keys": [
+        "$defs",
+        "$id",
+        "$schema",
+        "additionalProperties",
+        "properties",
+        "required",
+        "title",
+        "type"
+      ],
+      "schema_required_preview": null
+    }
+  }
+}

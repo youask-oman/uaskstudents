@@ -255,6 +255,18 @@ export default function DashboardPage() {
         { key: "schema_validate", label: "Strict Validation", description: "Checking schema v1.0...", status: "pending", icon: "verified_user" },
         { key: "completed", label: "Packet Delivery", description: "Assembling response...", status: "pending", icon: "network_check" },
     ]);
+    const [rotatingPipelineIndex, setRotatingPipelineIndex] = useState(0);
+
+    useEffect(() => {
+        if (!isSolving) {
+            setRotatingPipelineIndex(0);
+            return;
+        }
+        const intervalId = setInterval(() => {
+            setRotatingPipelineIndex((prev) => (prev + 1) % pipelineStages.length);
+        }, 3000);
+        return () => clearInterval(intervalId);
+    }, [isSolving, pipelineStages.length]);
 
     // SSE / Polling Event Listener
     useEffect(() => {
@@ -2743,15 +2755,15 @@ export default function DashboardPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     {(() => {
                                         const activeIndex = pipelineStages.findIndex(s => s.label === currentStage || s.key === currentStage);
+                                        const visualActiveIndex = isSolving
+                                            ? rotatingPipelineIndex
+                                            : activeIndex;
                                         return pipelineStages.map((stage, index) => {
-                                            const isCompleted = (activeIndex !== -1 && index < activeIndex) || stage.status === 'completed';
-                                            const isActive = (activeIndex !== -1 && index === activeIndex) || (stage.status === 'active');
-
-                                            // Fallback for improved UX: If solving but no stage matched yet (Initializing), highlight first
-                                            const effectiveActive = isActive || (activeIndex === -1 && index === 0 && currentStage === 'Initializing...');
+                                            const isCompleted = (visualActiveIndex !== -1 && index < visualActiveIndex) || stage.status === 'completed';
+                                            const effectiveActive = (visualActiveIndex !== -1 && index === visualActiveIndex) || stage.status === 'active';
 
                                             return (
-                                                <div key={stage.key} className={`flex items-start gap-4 p-5 wobbly-chalk transition-all cursor-default group ${effectiveActive || isCompleted ? 'border-white/60 bg-white/5' : 'border-white/20 opacity-60'}`}>
+                                                <div key={stage.key} className={`flex items-start gap-4 p-5 wobbly-chalk transition-all cursor-default group ${effectiveActive ? 'border-white/70 bg-slate-100/10' : isCompleted ? 'border-white/60 bg-white/5' : 'border-white/20 opacity-60'}`}>
                                                     <div className={`w-12 h-12 flex items-center justify-center transition-colors ${effectiveActive || isCompleted ? 'text-white' : 'text-white/70'}`}>
                                                         <span className="material-symbols-outlined text-4xl bg-clip-text">
                                                             {stage.icon}

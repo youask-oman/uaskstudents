@@ -1,0 +1,52 @@
+{
+  "label": "L3",
+  "request_id": "live-solvev3-l3-1770962863-3",
+  "problem": {
+    "original_text": "Simplify and plot on x in [-2,4]:\nf(x) = (x^2 - 4)/(x - 2)\nShow domain restriction and hole.",
+    "normalized_text": "Simplify and plot on x in [-2,4]:\nf(x) = (x^2 - 4)/(x - 2)\nShow domain restriction and hole.",
+    "language": {
+      "user_language": "english",
+      "response_language": "english",
+      "preferred_response_language": "english"
+    },
+    "detected_tasks": [
+      "equation",
+      "plot"
+    ]
+  },
+  "assumptions": [
+    "x != 2"
+  ],
+  "checks_performed": [],
+  "candidates_in": [
+    {
+      "value_text": "x+2",
+      "value_latex": "$x+2$"
+    },
+    {
+      "value_text": "all real x except 2",
+      "value_latex": "$\\{x\\in\\mathbb{R}:x\\neq 2\\}$"
+    },
+    {
+      "value_text": "(2,4)",
+      "value_latex": "$(2,4)$"
+    }
+  ],
+  "dropped_candidates": [],
+  "final_solutions": [
+    {
+      "value_text": "f(x)=x+2, x!=2, hole:(2,4)",
+      "value_latex": "f(x)=x+2, x!=2, hole:(2,4)"
+    }
+  ],
+  "verified": true,
+  "verification_method": "symbolic",
+  "unverified_reason": null,
+  "verification_meta": {
+    "symbolic_parse": true,
+    "duration_ms": 126,
+    "candidates_checked": 1,
+    "timed_out": false,
+    "route": "openai"
+  }
+}

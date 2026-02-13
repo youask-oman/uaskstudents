@@ -1,0 +1,8 @@
+{
+  "confirmed_text": "Find intersections and plot on x in [-4,4]:\ny = x^2  and  y = 2x + 3",
+  "requested_mode": "detailed",
+  "tier": "standard",
+  "graph_mode": "on",
+  "force_validity": true,
+  "idempotency_key": "live-solvev3-l2-1770962854-2"
+}

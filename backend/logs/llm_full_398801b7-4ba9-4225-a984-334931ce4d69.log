@@ -1,0 +1,81 @@
+{
+  "schema_version": "v1",
+  "problem": {
+    "original_text": "question_payload:\n{\"problem\":\"\\\\text{inverse } f(x) = \\\\frac{x - 1}{x + 2}\"}\n\ncontext_payload:\n{\"context\":\"Subject: General, Mode: general\",\"trusted_context\":{\"learning_mode\":\"solve\",\"requested_mode\":\"minimal\"}}\n\nruntime_hints:\n{\"requested_mode\":\"minimal\"}",
+    "normalized_text": "Find the inverse of f(x) = (x-1)/(x+2).",
+    "detected_tasks": [
+      "solve",
+      "function",
+      "inverse"
+    ],
+    "language": {
+      "user_language": "English",
+      "response_language": "English"
+    }
+  },
+  "steps": [
+    {
+      "index": 1,
+      "title": "Solve for inverse",
+      "explanation": "Swap x and y and solve for y.",
+      "math_latex": [
+        "y=\\frac{x-1}{x+2}",
+        "x=\\frac{y-1}{y+2}",
+        "x(y+2)=y-1"
+      ]
+    },
+    {
+      "index": 2,
+      "title": "Isolate y",
+      "explanation": "Collect y terms and solve.",
+      "math_latex": [
+        "xy+2x=y-1",
+        "xy-y=-2x-1",
+        "y(x-1)=-2x-1",
+        "y=\\frac{-2x-1}{x-1}=\\frac{2x+1}{1-x}"
+      ]
+    }
+  ],
+  "final_answer": {
+    "answer_text": "f^{-1}(x)=(-2x-1)/(x-1)= (2x+1)/(1-x)",
+    "answer_latex": "-2x-1\\over x-1 = 2x+1\\over 1-x",
+    "units": null,
+    "values": [
+      {
+        "label": "inverse function",
+        "value": "f^{-1}(x)=\\frac{-2x-1}{x-1}=\\frac{2x+1}{1-x}",
+        "value_latex": " -2x-1\\over x-1 = 2x+1\\over 1-x"
+      }
+    ]
+  },
+  "classification": {
+    "grade_band": "grades_11_12",
+    "domain": "algebra",
+    "difficulty": "easy",
+    "topic": "inverse functions"
+  },
+  "quality": {
+    "confidence": 0.99,
+    "common_mistakes": [
+      "Forgetting to swap x and y before solving",
+      "Algebraic sign errors when isolating y",
+      "Not noting domain restriction x\\u2261 1 for inverse (since denominator zero)"
+    ]
+  },
+  "debug": {
+    "finish_reason": null,
+    "input_tokens": null,
+    "output_tokens": null,
+    "latency_ms_total": null,
+    "model": null,
+    "provider": null,
+    "request_id": null,
+    "total_tokens": null,
+    "truncated": null
+  },
+  "refusal": {
+    "is_refusal": false,
+    "reason": null,
+    "safe_alternative": null
+  }
+}

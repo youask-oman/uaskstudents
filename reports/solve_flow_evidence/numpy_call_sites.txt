@@ -1,0 +1,41 @@
+backend/app/services/solve/superset_v2_pipeline.py:1548:                    numpy_used=True,
+backend/app/services/solve/superset_v2_pipeline.py:1558:                    numpy_used=True,
+backend/app/services/plot_sampling.py:107:    return isinstance(y, (int, float)) and not math.isnan(y) and not math.isinf(y)
+backend/app/services/visualization/plot_renderer.py:14:import numpy as np
+backend/app/services/visualization/plot_renderer.py:67:        # Use np.linspace to generate x values
+backend/app/services/visualization/plot_renderer.py:68:        x = np.linspace(window.x_min, window.x_max, plan.sampling.resolution)
+backend/app/services/visualization/plot_renderer.py:76:                    points = [{"x": float(xi), "y": float(yi)} for xi, yi in zip(x, y) if not np.isnan(yi) and not np.isinf(yi)]
+backend/app/services/visualization/plot_renderer.py:85:            component="numpy_plot_renderer_generate_data",
+backend/app/services/visualization/plot_renderer.py:87:            numpy_used=True,
+backend/app/services/visualization/plot_renderer.py:167:        x = np.linspace(window.x_min, window.x_max, plan.sampling.resolution)
+backend/app/services/visualization/plot_renderer.py:178:                ax.plot(x, np.zeros_like(x), '--', label=f"{obj.label} (error)", alpha=0.5)
+backend/app/services/visualization/plot_renderer.py:197:        x = np.linspace(window.x_min, window.x_max, plan.sampling.resolution)
+backend/app/services/visualization/plot_renderer.py:232:        x_ticks = np.linspace(window.x_min, window.x_max, 11)
+backend/app/services/visualization/plot_renderer.py:246:        x = np.linspace(window.x_min, window.x_max, plan.sampling.resolution)
+backend/app/services/visualization/plot_renderer.py:259:                y_lower = np.zeros_like(x)
+backend/app/services/visualization/plot_renderer.py:260:                y_upper = np.ones_like(x) * (window.y_max - window.y_min) / 2
+backend/app/services/visualization/plot_renderer.py:266:        x_data = np.random.rand(20) * (plan.recommended_window.x_max - plan.recommended_window.x_min) + plan.recommended_window.x_min
+backend/app/services/visualization/plot_renderer.py:267:        y_data = np.random.rand(20) * (plan.recommended_window.y_max - plan.recommended_window.y_min) + plan.recommended_window.y_min
+backend/app/services/visualization/plot_renderer.py:274:        data = np.random.randn(100) * 10 + 50
+backend/app/services/visualization/plot_renderer.py:281:        x = np.linspace(window.x_min, window.x_max, plan.sampling.resolution)
+backend/app/services/visualization/plot_renderer.py:282:        y = np.sin(x)  # Placeholder
+backend/app/services/visualization/plot_renderer.py:285:    def _evaluate_expression(self, expression: str, x: np.ndarray) -> np.ndarray:
+backend/app/services/visualization/plot_renderer.py:306:            return np.zeros_like(x)
+backend/app/services/visualization/safe_parser.py:15:import numpy as np
+backend/app/services/visualization/safe_parser.py:214:        x_values: np.ndarray,
+backend/app/services/visualization/safe_parser.py:216:    ) -> Tuple[Optional[np.ndarray], Optional[str]]:
+backend/app/services/visualization/safe_parser.py:235:                component="sympy_numpy_safe_parser_eval",
+backend/app/services/visualization/safe_parser.py:238:                numpy_used=True,
+backend/app/services/visualization/safe_parser.py:247:            # lambdify creates a numerical function with only numpy operations
+backend/app/services/visualization/safe_parser.py:249:                func = lambdify(self.x, expr, modules=['numpy'])
+backend/app/services/visualization/safe_parser.py:257:            # Ensure output is numpy array
+backend/app/services/visualization/safe_parser.py:258:            y_values = np.asarray(y_values, dtype=float)
+backend/app/services/visualization/safe_parser.py:261:            if np.any(np.isinf(y_values)):
+backend/app/services/visualization/safe_parser.py:263:            if np.all(np.isnan(y_values)):
+backend/app/services/visualization/safe_parser.py:265:                    component="sympy_numpy_safe_parser_eval",
+backend/app/services/visualization/safe_parser.py:268:                    numpy_used=True,
+backend/app/services/visualization/safe_parser.py:276:                component="sympy_numpy_safe_parser_eval",
+backend/app/services/visualization/safe_parser.py:279:                numpy_used=True,
+backend/app/services/visualization/safe_parser.py:288:                component="sympy_numpy_safe_parser_eval",
+backend/app/services/visualization/safe_parser.py:291:                numpy_used=True,
+backend/app/services/visualization/safe_parser.py:388:    x_vals = np.linspace(-5, 5, 10)

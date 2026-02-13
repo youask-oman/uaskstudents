@@ -2,37 +2,13 @@
 
 import React from "react";
 import MathRenderer from "@/components/math/MathJaxRenderer";
-import VisualRenderer from "@/components/workspace/VisualRenderer";
-import { ChartPayload, NormalizedChatMessage, NormalizedContentItem } from "./types";
+import { NormalizedChatMessage, NormalizedContentItem } from "./types";
 import styles from "./MathCanvas.module.css";
 
 interface ChatMessageProps {
   message: NormalizedChatMessage;
   originalProblem?: string;
 }
-
-const toVisualSpec = (chart: ChartPayload): Record<string, unknown> => {
-  const xValues = chart.points.map((point) => point.x);
-  const yValues = chart.points.map((point) => point.y);
-  const xMin = Math.min(...xValues);
-  const xMax = Math.max(...xValues);
-  const yMin = Math.min(...yValues);
-  const yMax = Math.max(...yValues);
-
-  return {
-    title: chart.title || "Graph",
-    axes: {
-      x_label: chart.xLabel || "x",
-      y_label: chart.yLabel || "y",
-      y_range: [yMin - 1, yMax + 1],
-    },
-    domain: {
-      x_min_latex: String(xMin - 1),
-      x_max_latex: String(xMax + 1),
-    },
-    series: [{ label: chart.title || "Series", points: chart.points }],
-  };
-};
 
 const normalizePromptPreview = (value: string): string => {
   return value
@@ -64,7 +40,13 @@ const splitPromptPreview = (value: string): { lead: string; expr: string } => {
   return { lead: "", expr: cleaned };
 };
 
-const RenderAssistantItem = ({ item, originalProblem }: { item: NormalizedContentItem, originalProblem?: string }) => {
+const RenderAssistantItem = ({
+  item,
+  originalProblem,
+}: {
+  item: NormalizedContentItem;
+  originalProblem?: string;
+}) => {
   if (item.type === "text") {
     return (
       <div className={styles.chatBubbleAssistant}>
@@ -90,13 +72,7 @@ const RenderAssistantItem = ({ item, originalProblem }: { item: NormalizedConten
       </div>
     );
   }
-  if (item.type === "chart") {
-    return (
-      <div className={styles.chatBubbleAssistant}>
-        <VisualRenderer visual={toVisualSpec(item.payload)} height={220} />
-      </div>
-    );
-  }
+  if (item.type === "chart") return null;
   return <div className={styles.chatBubbleAssistant}>{item.message}</div>;
 };
 

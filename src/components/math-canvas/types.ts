@@ -148,6 +148,7 @@ export interface ChartPayload {
   title?: string;
   xLabel?: string;
   yLabel?: string;
+  expressionLatex?: string;
   points: PlotPoint[];
 }
 

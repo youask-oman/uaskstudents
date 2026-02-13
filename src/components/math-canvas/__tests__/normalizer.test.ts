@@ -248,6 +248,103 @@ To verify the identity, we can consider a specific value of \\(x\\). Let's choos
     expect(chartItems).toHaveLength(0);
   });
 
+  test("parses visuals.plots with plotly_json payload into chart items", () => {
+    const assistant: SessionMessage = {
+      role: "assistant",
+      content: "",
+      structured_data: {
+        solution: {
+          steps: [{ step_id: 1, title: "Graph", explanation: "Render the function." }],
+          final_answer: { value: "y=x^2", latex: "y=x^2" },
+        },
+        visuals: {
+          should_visualize: true,
+          plots: [
+            {
+              plot_id: "p1",
+              plotly_json: {
+                data: [
+                  { type: "scatter", mode: "lines", x: [-2, -1, 0, 1, 2], y: [4, 1, 0, 1, 4] },
+                ],
+                layout: {
+                  title: "y = x^2",
+                  xaxis: { title: "x" },
+                  yaxis: { title: "y" },
+                },
+              },
+            },
+          ],
+        },
+      },
+    };
+
+    const normalized = normalizeAssistantMessage(assistant, 8);
+    const chartItems = normalized.items.filter((item) => item.type === "chart");
+    expect(chartItems).toHaveLength(1);
+  });
+
+  test("parses visuals.plots series x/y arrays into chart items", () => {
+    const assistant: SessionMessage = {
+      role: "assistant",
+      content: "",
+      structured_data: {
+        solution: {
+          steps: [{ step_id: 1, title: "Plot", explanation: "Use the generated plot payload." }],
+          final_answer: { value: "x = -2, 2", latex: "x=\\pm2" },
+        },
+        visuals: {
+          should_visualize: true,
+          plots: [
+            {
+              title: "Graph of y=x^2-4",
+              x_label: "x",
+              y_label: "y",
+              series: [
+                {
+                  mode: "markers",
+                  name: "roots",
+                  x: [-2, 2],
+                  y: [0, 0],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    };
+
+    const normalized = normalizeAssistantMessage(assistant, 9);
+    const chartItems = normalized.items.filter((item) => item.type === "chart");
+    expect(chartItems).toHaveLength(1);
+  });
+
+  test("captures recipe expression for equation-style rendering", () => {
+    const assistant: SessionMessage = {
+      role: "assistant",
+      content: "",
+      structured_data: {
+        visuals: {
+          should_visualize: true,
+          plots: [
+            {
+              title: "Graph of y=x^2-4",
+              x_label: "x",
+              y_label: "y",
+              recipe: { expr: "y=x^2-4" },
+              series: [{ x: [-2, 0, 2], y: [0, -4, 0] }],
+            },
+          ],
+        },
+      },
+    };
+
+    const normalized = normalizeAssistantMessage(assistant, 10);
+    const chart = normalized.items.find((item) => item.type === "chart");
+    expect(chart).toBeDefined();
+    if (!chart || chart.type !== "chart") return;
+    expect(chart.payload.expressionLatex).toBe("y=x^2-4");
+  });
+
   test("falls back to content extraction when solution_doc is partial with no meaningful content", () => {
     const assistant: SessionMessage = {
       role: "assistant",

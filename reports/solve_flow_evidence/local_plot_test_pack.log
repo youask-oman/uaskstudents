@@ -1,0 +1,22 @@
+poly_1 | polynomial | parse_ok=True | eval_ok=True | status=ok | parse_error=None | eval_error=None
+poly_2 | polynomial | parse_ok=True | eval_ok=True | status=ok | parse_error=None | eval_error=None
+poly_3 | polynomial | parse_ok=True | eval_ok=True | status=ok | parse_error=None | eval_error=None
+poly_4 | polynomial | parse_ok=True | eval_ok=True | status=ok | parse_error=None | eval_error=None
+rational_1 | rational | parse_ok=True | eval_ok=True | status=ok | parse_error=None | eval_error=None
+rational_2 | rational | parse_ok=True | eval_ok=True | status=ok | parse_error=None | eval_error=None
+rational_3 | rational | parse_ok=True | eval_ok=True | status=ok | parse_error=None | eval_error=None
+trig_1 | trig | parse_ok=True | eval_ok=True | status=ok | parse_error=None | eval_error=None
+trig_2 | trig | parse_ok=True | eval_ok=True | status=ok | parse_error=None | eval_error=None
+trig_3 | trig | parse_ok=True | eval_ok=True | status=ok | parse_error=None | eval_error=None
+trig_4 | trig | parse_ok=True | eval_ok=True | status=ok | parse_error=None | eval_error=None
+log_1 | log | parse_ok=True | eval_ok=True | status=ok | parse_error=None | eval_error=None
+log_2 | log | parse_ok=True | eval_ok=True | status=ok | parse_error=None | eval_error=None
+sqrt_1 | radical | parse_ok=True | eval_ok=True | status=ok | parse_error=None | eval_error=None
+sqrt_2 | radical | parse_ok=True | eval_ok=True | status=ok | parse_error=None | eval_error=None
+exp_1 | exp | parse_ok=True | eval_ok=True | status=ok | parse_error=None | eval_error=None
+abs_1 | abs | parse_ok=True | eval_ok=True | status=ok | parse_error=None | eval_error=None
+piecewise_1 | piecewise | parse_ok=True | eval_ok=True | status=ok | parse_error=None | eval_error=None
+implicit_1 | implicit | parse_ok=False | eval_ok=False | status=error | parse_error=Unknown variables: {'y'}. Only ['x'] allowed. | eval_error=parse_failed
+implicit_2 | implicit | parse_ok=False | eval_ok=False | status=error | parse_error=Unknown variables: {'y'}. Only ['x'] allowed. | eval_error=parse_failed
+param_1 | parametric_like | parse_ok=False | eval_ok=False | status=error | parse_error=Unknown variables: {'t'}. Only ['x'] allowed. | eval_error=parse_failed
+invalid_1 | invalid | parse_ok=False | eval_ok=False | status=error | parse_error=Unsafe expression: Dangerous pattern detected: __\w+__ | eval_error=parse_failed

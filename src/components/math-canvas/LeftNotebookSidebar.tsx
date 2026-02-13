@@ -83,6 +83,10 @@ export default function LeftNotebookSidebar({
           <div className={styles.outlineListStudio}>
             <div className={styles.outlineProgressRail} aria-hidden="true" />
             {outlineItems.map((item, index) => (
+              (() => {
+                const stepNumber = outlineItems.slice(0, index + 1).filter((entry) => entry.tag === "STEP").length;
+                const tagLabel = item.tag === "STEP" ? `STEP ${stepNumber}` : item.tag;
+                return (
               <button
                 key={`${item.tag}-${item.id}`}
                 type="button"
@@ -96,10 +100,12 @@ export default function LeftNotebookSidebar({
               >
                 <span className={`${styles.outlineDot} ${index < 2 ? styles.outlineDotDone : ""}`} aria-hidden="true" />
                 <span className={styles.outlineContent}>
-                  <span className={styles.outlineTag}>{item.tag}</span>
+                  <span className={styles.outlineTag}>{tagLabel}</span>
                   <span>{item.label}</span>
                 </span>
               </button>
+                );
+              })()
             ))}
           </div>
         </div>

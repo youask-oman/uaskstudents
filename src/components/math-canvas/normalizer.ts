@@ -63,6 +63,21 @@ const parsePointArray = (value: unknown): ChartPayload["points"] => {
     .filter((item): item is NonNullable<typeof item> => item !== null);
 };
 
+const parseSeriesXYArray = (entry: Record<string, unknown>): ChartPayload["points"] => {
+  const xs = Array.isArray(entry.x) ? entry.x : [];
+  const ys = Array.isArray(entry.y) ? entry.y : [];
+  const points: ChartPayload["points"] = [];
+  const length = Math.min(xs.length, ys.length, 500);
+  for (let i = 0; i < length; i += 1) {
+    const x = Number(xs[i]);
+    const y = Number(ys[i]);
+    if (Number.isFinite(x) && Number.isFinite(y)) {
+      points.push({ x, y });
+    }
+  }
+  return points;
+};
+
 const parseLayoutTitleFromObject = (value: unknown): string | undefined => {
   const obj = asRecord(value);
   if (!obj) return undefined;
@@ -175,11 +190,27 @@ const parsePlotFromObject = (value: unknown): ChartPayload[] => {
     const plot = asRecord(plotLike);
     if (!plot) return;
 
+    const plotlyFromNode = parseDirectPlotlyChart(plot.plotly_json ?? plot.plotly);
+    if (plotlyFromNode) {
+      parsed.push({
+        ...plotlyFromNode,
+        title:
+          layoutTitle ||
+          asString(plot.title) ||
+          asString(plot.plot_id) ||
+          plotlyFromNode.title ||
+          "Graph",
+      });
+      return;
+    }
+
     const series = Array.isArray(plot.series) ? plot.series : [];
     const seriesPoints = series.flatMap((seriesItem) => {
       const entry = asRecord(seriesItem);
       if (!entry) return [];
-      return parsePointArray(entry.points);
+      const fromPoints = parsePointArray(entry.points);
+      if (fromPoints.length > 0) return fromPoints;
+      return parseSeriesXYArray(entry);
     });
 
     const fallbackPoints = parsePointArray(plot.points);
@@ -190,6 +221,11 @@ const parsePlotFromObject = (value: unknown): ChartPayload[] => {
       title: layoutTitle || asString(plot.title) || asString(plot.name) || "Graph",
       xLabel: asString(plot.x_label) || "x",
       yLabel: asString(plot.y_label) || "y",
+      expressionLatex:
+        asString(asRecord(plot.recipe)?.expr) ||
+        asString(asRecord(series[0])?.expression_latex) ||
+        asString(asRecord(series[0])?.expression) ||
+        undefined,
       points,
     });
   });

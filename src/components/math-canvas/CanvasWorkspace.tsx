@@ -25,6 +25,7 @@ import styles from "./MathCanvas.module.css";
 
 interface CanvasWorkspaceProps {
   sessionId: string;
+  attemptId?: string | null;
   onOpenShare?: () => void;
   savedVersions?: SavedPaperVersion[];
   state: CanvasDocumentState;
@@ -50,6 +51,7 @@ const isInputLikeTarget = (target: EventTarget | null): boolean => {
 
 export default function CanvasWorkspace({
   sessionId,
+  attemptId,
   onOpenShare,
   savedVersions = [],
   state,
@@ -790,6 +792,7 @@ export default function CanvasWorkspace({
           <PaperPage
             key={page.id}
             page={page}
+            attemptId={attemptId}
             active={page.id === state.activePageId}
             activeTool={state.activeTool}
             selectedElementIds={page.id === state.activePageId ? state.selection.elementIds : []}

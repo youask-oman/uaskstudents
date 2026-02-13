@@ -13,6 +13,7 @@ export interface GraphTrace {
     kind: TraceKind;
     x: (number | null)[];
     y: (number | null)[];
+    expression?: string;
     z?: (number | null)[];
     z_matrix?: (number | null)[][];
     mode?: "lines" | "markers" | "lines+markers";

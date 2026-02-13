@@ -228,6 +228,12 @@ class AlternativeVisualV3(BaseModel):
     description: str
     data: Optional[List[VisualDataPointV3]] = None
 
+# Compatibility model used by visualization fallback utilities.
+class VisualizationAlternativeV3(BaseModel):
+    type: str
+    reason_no_standard_plot: str
+    instructions: List[str]
+
 class VisualsV3(BaseModel):
     should_visualize: bool
     decision_reason: str

@@ -438,7 +438,7 @@
 
 .solve-segmented .segmented-option {
   font-family: var(--font-sketch);
-  font-size: 1.3em;
+  font-size: 1.0em;
   padding: 0.3rem 0.5rem !important;
   gap: 0.2rem !important;
   line-height: 1.1;

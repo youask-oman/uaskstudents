@@ -224,9 +224,9 @@ const buildInitialPages = (
         type: "plot" as const,
         pageId: firstPage.id,
         x: 24,
-        y: 24 + index * 290,
-        width: 720,
-        height: 270,
+        y: 24 + index * 440,
+        width: 760,
+        height: 420,
         zIndex: 100 + index,
         style: {
           color: "#1e293b",
@@ -309,6 +309,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   const { id } = use(params);
   const searchParams = useSearchParams();
   const [session, setSession] = useState<ChatSessionPayload | null>(null);
+  const [resolvedAttemptId, setResolvedAttemptId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [documentState, dispatch] = useReducer(
@@ -523,6 +524,34 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   }, [session?.attempt_id, session?.messages]);
 
   useEffect(() => {
+    if (!session?.id) return;
+    if (shareAttemptId) {
+      setResolvedAttemptId(shareAttemptId);
+      return;
+    }
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) return;
+
+    const run = async () => {
+      try {
+        const resp = await fetch(`/api/v1/shares/session/${encodeURIComponent(String(session.id))}/attempt`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!resp.ok) return;
+        const payload = (await resp.json()) as { attempt_id?: string | null };
+        if (payload.attempt_id && payload.attempt_id.trim()) {
+          setResolvedAttemptId(payload.attempt_id.trim());
+        }
+      } catch {
+        // keep null; paper will show unavailable state
+      }
+    };
+    void run();
+  }, [session?.id, shareAttemptId]);
+
+  const effectiveAttemptId = shareAttemptId || resolvedAttemptId || null;
+
+  useEffect(() => {
     if (!session) return;
     const latestSavedPages = savedPaperVersions[0]?.pages;
     const initialPages = latestSavedPages && latestSavedPages.length > 0
@@ -599,6 +628,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         workspace={
           <CanvasWorkspace
             sessionId={String(session.id)}
+            attemptId={effectiveAttemptId}
             onOpenShare={() => setShareModalOpen(true)}
             savedVersions={savedPaperVersions}
             state={documentState}
@@ -618,7 +648,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
       />
       <ShareSolutionModal
         open={shareModalOpen}
-        attemptId={shareAttemptId}
+        attemptId={effectiveAttemptId}
         sessionId={String(session.id)}
         onClose={() => setShareModalOpen(false)}
       />

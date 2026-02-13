@@ -1,0 +1,40 @@
+{
+  "case": "L2",
+  "request_id": "live-solvev3-l2-1770962854-2",
+  "attempt_id": "f5f5276a-2635-4bec-b187-0913397c5603",
+  "expression": "y = x**2; y = 2*x + 3",
+  "range": {
+    "x_min": -4,
+    "x_max": 4,
+    "y_min": null,
+    "y_max": null
+  },
+  "sampling_params": {
+    "t_min": -4,
+    "t_max": 4,
+    "dt": null,
+    "samples": 50,
+    "discard": null,
+    "samples_per_period": null,
+    "transient_periods": null,
+    "keep_periods": null
+  },
+  "points_count": 0,
+  "key_points": [
+    {
+      "label": "(3,9)",
+      "x": 3,
+      "y": 9
+    },
+    {
+      "label": "(-1,1)",
+      "x": -1,
+      "y": 1
+    }
+  ],
+  "render_output_reference": {
+    "has_plotly_json": false,
+    "plot_title": "y = x^2 and y = 2x+3 on [-4,4]",
+    "artifact_ref": "plot_artifacts/live_l2_plotly.json"
+  }
+}

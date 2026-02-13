@@ -95,6 +95,7 @@ import app.tasks.whatsapp_tasks  # noqa: E402,F401
 import app.tasks.subscription_tasks # noqa: E402,F401
 import app.tasks.ocr_tasks  # noqa: E402,F401
 import app.tasks.credit_transfer_tasks  # noqa: E402,F401
+import app.tasks.graph_tasks  # noqa: E402,F401
 
 celery_app.conf.beat_schedule = {
     "daily_subscription_grant": {

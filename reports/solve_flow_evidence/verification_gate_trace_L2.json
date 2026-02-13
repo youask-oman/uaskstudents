@@ -1,0 +1,45 @@
+{
+  "label": "L2",
+  "request_id": "live-solvev3-l2-1770962854-2",
+  "problem": {
+    "original_text": "Find intersections and plot on x in [-4,4]:\ny = x^2  and  y = 2x + 3",
+    "normalized_text": "Find intersections and plot on x in [-4,4]:\ny = x^2  and  y = 2x + 3",
+    "language": {
+      "user_language": "english",
+      "response_language": "english",
+      "preferred_response_language": "english"
+    },
+    "detected_tasks": [
+      "equation",
+      "plot"
+    ]
+  },
+  "assumptions": [],
+  "checks_performed": [],
+  "candidates_in": [
+    {
+      "value_text": "x=3, x=-1",
+      "value_latex": "$x^2=2x+3\\Rightarrow x^2-2x-3=0\\Rightarrow (x-3)(x+1)=0$"
+    },
+    {
+      "value_text": "(3,9)",
+      "value_latex": "$y=x^2$ at x=3\\Rightarrow y=9$"
+    },
+    {
+      "value_text": "(-1,1)",
+      "value_latex": "$y=x^2$ at x=-1\\Rightarrow y=1$"
+    }
+  ],
+  "dropped_candidates": [],
+  "final_solutions": [],
+  "verified": false,
+  "verification_method": "none",
+  "unverified_reason": "unable_to_verify_symbolically",
+  "verification_meta": {
+    "symbolic_parse": false,
+    "duration_ms": 1,
+    "candidates_checked": 0,
+    "timed_out": false,
+    "route": "openai"
+  }
+}

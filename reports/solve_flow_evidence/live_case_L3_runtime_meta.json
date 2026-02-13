@@ -1,0 +1,21 @@
+{
+  "request_id": "live-solvev3-l3-1770962863-3",
+  "attempt_id": "2e6bc26f-480e-4048-a9e3-0160a08b57bc",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "input_tokens": 1780,
+  "output_tokens": 1070,
+  "total_tokens": 2850,
+  "latency_ms_total": 9565,
+  "latency_ms_openai": 9116,
+  "timing_ms": {
+    "parse": 0,
+    "canonicalize": 1,
+    "openai": 9116,
+    "verify": 127,
+    "total": 9565
+  },
+  "finish_reason": "unknown",
+  "truncated": false,
+  "attempt_status": "success"
+}
