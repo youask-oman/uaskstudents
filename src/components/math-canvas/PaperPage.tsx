@@ -14,7 +14,6 @@ import styles from "./MathCanvas.module.css";
 
 interface PaperPageProps {
   page: CanvasPageData;
-  index: number;
   active: boolean;
   activeTool: ToolType;
   selectedElementIds: string[];
@@ -31,6 +30,7 @@ interface PaperPageProps {
   onDeleteBlock: (blockId: string) => void;
   exportMode?: boolean;
   viewMode?: "edit" | "student_report";
+  isNew?: boolean;
 }
 
 interface Point {
@@ -334,7 +334,6 @@ const ElementView = React.memo(function ElementView({
 
 export default function PaperPage({
   page,
-  index,
   active,
   activeTool,
   selectedElementIds,
@@ -351,6 +350,7 @@ export default function PaperPage({
   onDeleteBlock,
   exportMode = false,
   viewMode = "edit",
+  isNew = false,
 }: PaperPageProps) {
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -755,14 +755,12 @@ export default function PaperPage({
 
   return (
     <article
-      className={`paper ${styles.paperPage} ${active ? styles.paperPageActive : ""} ${getCursorClass()}`.trim()}
+      className={`paper ${styles.paperPage} ${active ? styles.paperPageActive : ""} ${isNew ? styles.paperPageNew : ""} ${getCursorClass()}`.trim()}
       onClick={onActivate}
     >
       <div className={styles.paperPageHeader}>
-        <span className={styles.paperPageTitle}>
-          Page {index + 1}
-          {page.title ? ` - ${page.title}` : ""}
-        </span>
+        <span className={styles.paperChapterTitle}>Chapter 3: Quadratic Functions</span>
+        <span className={styles.paperVersionBadge}>v2.1</span>
       </div>
 
       {page.blocks && page.blocks.length > 0 ? (

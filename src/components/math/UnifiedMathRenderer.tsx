@@ -270,11 +270,14 @@ const MathSegment = ({
             role="img"
             aria-label={cleanValue}
             style={{
-                display: inline ? "inline-block" : "block",
-                verticalAlign: "middle",
+                display: inline ? "inline-flex" : "block",
+                alignItems: inline ? "baseline" : undefined,
+                flexWrap: inline ? "nowrap" : undefined,
+                verticalAlign: inline ? "baseline" : "middle",
                 maxWidth: "100%",
                 height: "auto",
                 overflow: "visible",
+                whiteSpace: inline ? "nowrap" : "normal",
             }}
             dangerouslySetInnerHTML={{ __html: safeSvg }}
         >

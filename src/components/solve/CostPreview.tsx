@@ -39,7 +39,7 @@ export default function CostPreview({
     );
 
     return (
-        <div className={`flex items-center gap-2 text-sm ${className}`}>
+        <div className={`flex w-full max-w-full flex-nowrap items-center justify-start gap-2 overflow-hidden text-sm ${className}`}>
             <div className="flex items-center gap-1">
                 <span className="material-symbols-outlined text-[16px] text-primary">
                     payments
@@ -54,7 +54,7 @@ export default function CostPreview({
 
             {/* Show breakdown for detailed mode or add-ons */}
             {showBreakdown && breakdown && (
-                <div className="flex items-center gap-1 text-xs text-slate-400">
+                <div className="flex min-w-0 shrink items-center gap-1 overflow-hidden text-xs text-slate-400 whitespace-nowrap">
                     <span>(</span>
                     <span>{breakdown.tier_base} tier</span>
                     {(breakdown.ocr || 0) > 0 && <span>+ {breakdown.ocr} OCR</span>}
@@ -68,7 +68,7 @@ export default function CostPreview({
             )}
 
             {!hasEnoughCredits && (
-                <span className="text-xs text-rose-500 font-medium flex items-center gap-1">
+                <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-medium text-rose-500">
                     <span className="material-symbols-outlined text-[14px]">warning</span>
                     Insufficient credits
                 </span>

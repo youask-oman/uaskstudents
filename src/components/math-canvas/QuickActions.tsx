@@ -8,6 +8,13 @@ interface QuickActionsProps {
   onSelect: (action: string) => void;
 }
 
+const actionIconByLabel: Record<string, string> = {
+  Hint: "lightbulb",
+  Solve: "calculate",
+  Graph: "auto_graph",
+  History: "history_edu",
+};
+
 export default function QuickActions({ actions, onSelect }: QuickActionsProps) {
   return (
     <div className={styles.quickActions}>
@@ -18,6 +25,9 @@ export default function QuickActions({ actions, onSelect }: QuickActionsProps) {
           className={styles.quickActionPill}
           onClick={() => onSelect(action)}
         >
+          <span className="material-symbols-outlined" aria-hidden="true">
+            {actionIconByLabel[action] || "bolt"}
+          </span>
           {action}
         </button>
       ))}

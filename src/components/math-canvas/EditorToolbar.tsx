@@ -101,6 +101,57 @@ export default function EditorToolbar({
   onNotice,
   onInsertImage,
 }: EditorToolbarProps) {
+  const getFocusedTextInput = (): HTMLTextAreaElement | HTMLInputElement | null => {
+    if (typeof document === "undefined") return null;
+    const active = document.activeElement;
+    if (active instanceof HTMLTextAreaElement) return active;
+    if (active instanceof HTMLInputElement && active.type === "text") return active;
+    return null;
+  };
+
+  const applyToFocusedInput = (label: string, value?: string): boolean => {
+    const input = getFocusedTextInput();
+    if (!input) return false;
+
+    const start = input.selectionStart ?? 0;
+    const end = input.selectionEnd ?? 0;
+    const selected = input.value.slice(start, end);
+    const fallbackSelected = selected || "text";
+
+    const setWrapped = (prefix: string, suffix: string) => {
+      const next = `${prefix}${fallbackSelected}${suffix}`;
+      input.setRangeText(next, start, end, "end");
+      const cursor = start + next.length;
+      input.setSelectionRange(cursor, cursor);
+    };
+
+    if (label === "bold") setWrapped("**", "**");
+    else if (label === "italic") setWrapped("*", "*");
+    else if (label === "bulleted list") {
+      const block = selected || input.value.slice(start);
+      const lines = block.split("\n").map((line) => (line.trim() ? `- ${line}` : line)).join("\n");
+      input.setRangeText(lines, start, end, "end");
+    } else if (label === "numbered list") {
+      const block = selected || input.value.slice(start);
+      const lines = block.split("\n").map((line, idx) => (line.trim() ? `${idx + 1}. ${line}` : line)).join("\n");
+      input.setRangeText(lines, start, end, "end");
+    } else if (label === "link") {
+      const href = value || "https://";
+      const text = fallbackSelected;
+      input.setRangeText(`[${text}](${href})`, start, end, "end");
+    } else if (label === "unlink") {
+      const raw = selected || input.value.slice(start, end);
+      const next = raw.replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1");
+      input.setRangeText(next, start, end, "end");
+    } else {
+      return false;
+    }
+
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.focus();
+    return true;
+  };
+
   const buildViewState = useCallback(
     (editor: Editor | null) => ({
       listMode: getActiveListMode(editor),
@@ -131,8 +182,29 @@ export default function EditorToolbar({
 
   const richTextEnabled = Boolean(activeEditor && activeEditor.isEditable);
 
+  const runExecFallback = (command: string, value?: string) => {
+    try {
+      document.execCommand(command, false, value);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const runRichCommand = (label: string, command: (editor: Editor) => boolean) => {
-    if (!activeEditor) return;
+    if (!activeEditor || !activeEditor.isEditable) {
+      if (applyToFocusedInput(label)) return;
+      const map: Record<string, string> = {
+        bold: "bold",
+        italic: "italic",
+        "bulleted list": "insertUnorderedList",
+        "numbered list": "insertOrderedList",
+      };
+      const fallback = map[label];
+      if (fallback && runExecFallback(fallback)) return;
+      onNotice?.(`Format "${label}" is unavailable in this field.`);
+      return;
+    }
     try {
       const success = command(activeEditor);
       if (!success) {
@@ -167,20 +239,17 @@ export default function EditorToolbar({
           icon="format_list_bulleted"
           label="Bulleted list"
           active={viewState.listMode === "bulleted"}
-          disabled={!richTextEnabled}
           onClick={() => runRichCommand("bulleted list", (editor) => editor.chain().focus().toggleBulletList().run())}
         />
         <IconButton
           icon="format_list_numbered"
           label="Numbered list"
           active={viewState.listMode === "numbered"}
-          disabled={!richTextEnabled}
           onClick={() => runRichCommand("numbered list", (editor) => editor.chain().focus().toggleOrderedList().run())}
         />
         <IconButton
           label="Bold"
           active={viewState.bold}
-          disabled={!richTextEnabled}
           onClick={() => runRichCommand("bold", (editor) => editor.chain().focus().toggleBold().run())}
         >
           <span style={{ fontWeight: 700, fontSize: 16 }}>B</span>
@@ -188,7 +257,6 @@ export default function EditorToolbar({
         <IconButton
           label="Italic"
           active={viewState.italic}
-          disabled={!richTextEnabled}
           onClick={() => runRichCommand("italic", (editor) => editor.chain().focus().toggleItalic().run())}
         >
           <span style={{ fontStyle: "italic", fontSize: 16, fontFamily: "serif" }}>I</span>
@@ -196,17 +264,26 @@ export default function EditorToolbar({
         <IconButton
           icon="link"
           label="Link"
-          disabled={!richTextEnabled}
           onClick={() => {
             const current = activeEditor?.getAttributes("link").href || "";
             const url = prompt("Link URL:", current);
             if (url !== null) {
               if (url) {
-                runRichCommand("link", (editor) =>
-                  editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run(),
-                );
+                if (activeEditor && activeEditor.isEditable) {
+                  runRichCommand("link", (editor) =>
+                    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run(),
+                  );
+                } else {
+                  if (!applyToFocusedInput("link", url) && !runExecFallback("createLink", url)) {
+                    onNotice?.("Link is unavailable in this field.");
+                  }
+                }
               } else {
-                runRichCommand("unlink", (editor) => editor.chain().focus().unsetLink().run());
+                if (activeEditor && activeEditor.isEditable) {
+                  runRichCommand("unlink", (editor) => editor.chain().focus().unsetLink().run());
+                } else {
+                  if (!applyToFocusedInput("unlink")) runExecFallback("unlink");
+                }
               }
             }
           }}
@@ -214,7 +291,6 @@ export default function EditorToolbar({
         <IconButton
           icon="grid_on"
           label="Insert Table"
-          disabled={!richTextEnabled}
           onClick={() => runRichCommand("table", (editor) => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run())}
         />
         <IconButton

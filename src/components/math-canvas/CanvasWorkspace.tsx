@@ -36,6 +36,9 @@ interface MathEditorTarget {
   initialLatex: string;
 }
 
+type PaperTone = "white" | "cream" | "sage" | "sky";
+type PaperTexture = "blank" | "lined" | "dot";
+
 const isInputLikeTarget = (target: EventTarget | null): boolean => {
   if (!(target instanceof HTMLElement)) return false;
   if (target.closest("input, textarea, select")) return true;
@@ -55,6 +58,9 @@ export default function CanvasWorkspace({
   const [graphEditorOpen, setGraphEditorOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [styleDraft, setStyleDraft] = useState(DEFAULT_ELEMENT_STYLE);
+  const [paperTone, setPaperTone] = useState<PaperTone>("cream");
+  const [paperTexture, setPaperTexture] = useState<PaperTexture>("lined");
+  const [newPageId, setNewPageId] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [savingVersion, setSavingVersion] = useState(false);
   const [exportingDocx, setExportingDocx] = useState(false);
@@ -139,15 +145,20 @@ export default function CanvasWorkspace({
 
 
   const handleAddPage = useCallback(() => {
+    const pageId = createPageId();
     dispatch({
       type: "ADD_PAGE",
       page: {
-        id: createPageId(),
+        id: pageId,
         blocks: [],
         elements: [],
       },
       setActive: true,
     });
+    setNewPageId(pageId);
+    window.setTimeout(() => {
+      setNewPageId((current) => (current === pageId ? null : current));
+    }, 420);
   }, [dispatch]);
 
   const handleDeletePage = useCallback(() => {
@@ -468,8 +479,21 @@ export default function CanvasWorkspace({
     if (ok) setRichTextPaletteColor(next);
   }, [activeTextEditor]);
 
+  const paperToneClass = useMemo(() => {
+    if (paperTone === "white") return styles.paperToneWhite;
+    if (paperTone === "sage") return styles.paperToneSage;
+    if (paperTone === "sky") return styles.paperToneSky;
+    return styles.paperToneCream;
+  }, [paperTone]);
+
+  const paperTextureClass = useMemo(() => {
+    if (paperTexture === "blank") return styles.paperTextureBlank;
+    if (paperTexture === "dot") return styles.paperTextureDot;
+    return styles.paperTextureLined;
+  }, [paperTexture]);
+
   return (
-    <section className={styles.centerColumn}>
+    <section className={`${styles.centerColumn} ${paperTextureClass}`.trim()}>
       {viewMode === "edit" ? (
         <>
           <EditorToolbar
@@ -489,6 +513,50 @@ export default function CanvasWorkspace({
             onNotice={(message) => setSaveMessage(message)}
             onInsertImage={handleInsertImage}
           />
+          {paletteOpen ? (
+            <div className={styles.paperSettingsPopover} role="dialog" aria-label="Paper settings">
+              <div className={styles.paperSettingsSection}>
+                <span className={styles.paperSettingsLabel}>Paper Color</span>
+                <div className={styles.paperToneRow}>
+                  {[
+                    { key: "white", color: "#FFFFFF", label: "White" },
+                    { key: "cream", color: "#FFFDF5", label: "Cream" },
+                    { key: "sage", color: "#F0F4F1", label: "Sage" },
+                    { key: "sky", color: "#F0F7FF", label: "Sky" },
+                  ].map((tone) => (
+                    <button
+                      key={tone.key}
+                      type="button"
+                      className={`${styles.paperToneDot} ${paperTone === tone.key ? styles.paperToneDotActive : ""}`.trim()}
+                      style={{ backgroundColor: tone.color }}
+                      onClick={() => setPaperTone(tone.key as PaperTone)}
+                      aria-label={`Set ${tone.label} paper color`}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className={styles.paperSettingsSection}>
+                <span className={styles.paperSettingsLabel}>Texture</span>
+                <div className={styles.paperTextureRow}>
+                  {[
+                    { key: "blank", label: "Blank" },
+                    { key: "lined", label: "Lined" },
+                    { key: "dot", label: "Dot Grid" },
+                  ].map((texture) => (
+                    <button
+                      key={texture.key}
+                      type="button"
+                      className={`${styles.paperTextureChip} ${paperTexture === texture.key ? styles.paperTextureChipActive : ""}`.trim()}
+                      onClick={() => setPaperTexture(texture.key as PaperTexture)}
+                      aria-label={`Set ${texture.label} paper texture`}
+                    >
+                      {texture.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : null}
           <RichTextToolbar
             key={activeTextEditorId || "no-active-editor"}
             canExport={canExport}
@@ -528,7 +596,7 @@ export default function CanvasWorkspace({
 
       {saveMessage ? <div className={styles.versionSaveNotice}>{saveMessage}</div> : null}
 
-      {viewMode === "edit" && paletteOpen ? (
+      {false && viewMode === "edit" && paletteOpen ? (
         <div
           className={styles.palettePanel}
           role="region"
@@ -713,12 +781,11 @@ export default function CanvasWorkspace({
         </div>
       ) : null}
 
-      <div className={styles.pagesStack}>
-        {state.pages.map((page, index) => (
+      <div className={`${styles.pagesStack} ${paperToneClass}`.trim()}>
+        {state.pages.map((page) => (
           <PaperPage
             key={page.id}
             page={page}
-            index={index}
             active={page.id === state.activePageId}
             activeTool={state.activeTool}
             selectedElementIds={page.id === state.activePageId ? state.selection.elementIds : []}
@@ -747,6 +814,7 @@ export default function CanvasWorkspace({
             onUpdateBlock={(blockId, updater) => dispatch({ type: "UPDATE_BLOCK", pageId: page.id, blockId, updater })}
             onDeleteBlock={(blockId) => dispatch({ type: "DELETE_BLOCK", pageId: page.id, blockId })}
             viewMode={viewMode}
+            isNew={page.id === newPageId}
           />
         ))}
       </div>

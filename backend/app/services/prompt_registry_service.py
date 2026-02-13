@@ -793,6 +793,45 @@ class PromptRegistryService:
             row.updated_at = datetime.utcnow()
             row.updated_by = updated_by
             session.add(row)
+        # Reuse an existing binding row when the tuple already exists.
+        # This avoids violating the unique constraint on
+        # (tier, mode, global_system_prompt_id, developer_prompt_id, output_schema_id)
+        # when admins "update" an existing active/inactive binding.
+        existing = session.exec(
+            select(PromptBinding)
+            .where(PromptBinding.tier == tier)
+            .where(PromptBinding.mode == mode)
+            .where(PromptBinding.global_system_prompt_id == global_system_prompt_id)
+            .where(PromptBinding.developer_prompt_id == developer_prompt_id)
+            .where(PromptBinding.output_schema_id == output_schema_id)
+            .order_by(PromptBinding.updated_at.desc())
+        ).first()
+
+        if existing:
+            existing.max_output_tokens = max_output_tokens
+            existing.max_input_tokens = max_input_tokens
+            existing.system_schema_budget_tokens = system_schema_budget_tokens
+            existing.context_budget_tokens = context_budget_tokens
+            existing.json_retry_max_output_tokens = json_retry_max_output_tokens
+            existing.json_retry_max_attempts = json_retry_max_attempts
+            existing.timeout_ms = timeout_ms
+            existing.temperature = temperature
+            existing.top_p = top_p
+            existing.plot_points_cap = plot_points_cap
+            existing.plot_traces_cap = plot_traces_cap
+            existing.plot_annotations_cap = plot_annotations_cap
+            existing.trim_strategy = trim_strategy
+            existing.max_steps = max_steps
+            existing.retry_cap_tokens = retry_cap_tokens
+            existing.features = features or {}
+            existing.multipliers = multipliers or {}
+            existing.is_active = True
+            existing.updated_at = datetime.utcnow()
+            existing.updated_by = updated_by
+            session.add(existing)
+            session.commit()
+            session.refresh(existing)
+            return existing
 
         entry = PromptBinding(
             tier=tier,

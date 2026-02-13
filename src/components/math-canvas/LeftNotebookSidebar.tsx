@@ -25,22 +25,23 @@ interface LeftNotebookSidebarProps {
     total_tokens: number;
   };
   confidence?: number;
+  onOutlineSelect?: (id: string) => void;
 }
-
-const navItems = [
-  { key: "overview", label: "Overview", icon: "home" },
-  { key: "canvas", label: "Math Canvas", icon: "edit_note" },
-];
 
 export default function LeftNotebookSidebar({
   notebookTitle,
   notebookSubtitle,
-  sessionId,
   outlineItems = [],
   classification,
   tokenUsage = { input_tokens: 0, output_tokens: 0, total_tokens: 0 },
   confidence,
+  onOutlineSelect,
 }: LeftNotebookSidebarProps) {
+  const clampedConfidence = typeof confidence === "number" ? Math.max(0, Math.min(1, confidence)) : null;
+  const confidencePercent = clampedConfidence === null ? null : Math.round(clampedConfidence * 100);
+  const ringCircumference = 2 * Math.PI * 34;
+  const ringOffset = confidencePercent === null ? ringCircumference : ringCircumference * (1 - confidencePercent / 100);
+
   return (
     <aside className={styles.leftSidebar}>
       <p className={styles.sidebarLabel}>Notebook</p>
@@ -76,56 +77,53 @@ export default function LeftNotebookSidebar({
         </div>
       )}
 
-      {typeof confidence === "number" && (
-        <div style={{ padding: "0 16px 16px", marginBottom: 16, borderBottom: "1px solid #f1f5f9" }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase" }}>
-            Confidence Score
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ flex: 1, height: 6, background: "#e2e8f0", borderRadius: 3, overflow: "hidden" }}>
-              <div style={{ width: `${Math.min(100, Math.max(0, confidence * 100))}%`, height: "100%", background: confidence > 0.8 ? "#22c55e" : confidence > 0.5 ? "#f59e0b" : "#ef4444" }} />
-            </div>
-            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-main)" }}>{Math.round(confidence * 100)}%</span>
-          </div>
-        </div>
-      )}
-
-      <nav className={styles.navList} aria-label="Notebook navigation">
-        {navItems.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            className={`${styles.navItem} ${item.key === "canvas" ? styles.navItemActive : ""}`}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
-              {item.icon}
-            </span>
-            <span>{item.label}</span>
-          </button>
-        ))}
-        {sessionId && (
-          <a
-            href={`/edit/${sessionId}`}
-            className={styles.navItem}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
-              edit
-            </span>
-            <span>Edit & Notes</span>
-          </a>
-        )}
-      </nav>
-
       {outlineItems.length > 0 ? (
         <div className={styles.outlineWrap}>
           <div className={styles.outlineTitle}>Paper Outline</div>
-          <div className={styles.outlineList}>
-            {outlineItems.map((item) => (
-              <a key={`${item.tag}-${item.id}`} href={`#${item.id}`} className={styles.outlineLink}>
-                <span className={styles.outlineTag}>{item.tag}</span>
-                <span>{item.label}</span>
-              </a>
+          <div className={styles.outlineListStudio}>
+            <div className={styles.outlineProgressRail} aria-hidden="true" />
+            {outlineItems.map((item, index) => (
+              <button
+                key={`${item.tag}-${item.id}`}
+                type="button"
+                className={styles.outlineNodeButton}
+                onClick={() => {
+                  onOutlineSelect?.(item.id);
+                  if (!onOutlineSelect && typeof document !== "undefined") {
+                    document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }
+                }}
+              >
+                <span className={`${styles.outlineDot} ${index < 2 ? styles.outlineDotDone : ""}`} aria-hidden="true" />
+                <span className={styles.outlineContent}>
+                  <span className={styles.outlineTag}>{item.tag}</span>
+                  <span>{item.label}</span>
+                </span>
+              </button>
             ))}
+          </div>
+        </div>
+      ) : null}
+
+      {confidencePercent !== null ? (
+        <div className={styles.confidenceCard}>
+          <div className={styles.confidenceHead}>
+            <span className={styles.outlineTitle}>Confidence</span>
+            <span className={styles.confidenceValue}>{confidencePercent}%</span>
+          </div>
+          <div className={styles.confidenceRingWrap}>
+            <svg className={styles.confidenceRing} viewBox="0 0 84 84" aria-hidden="true">
+              <circle cx="42" cy="42" r="34" className={styles.confidenceTrack} />
+              <circle
+                cx="42"
+                cy="42"
+                r="34"
+                className={styles.confidenceBar}
+                strokeDasharray={ringCircumference}
+                strokeDashoffset={ringOffset}
+              />
+            </svg>
+            <span className="material-symbols-outlined">school</span>
           </div>
         </div>
       ) : null}

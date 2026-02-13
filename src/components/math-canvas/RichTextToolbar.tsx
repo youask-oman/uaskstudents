@@ -69,14 +69,14 @@ export default function RichTextToolbar({
         type="button"
         className={`${styles.actionButtonDual} ${styles.actionButtonPrimary}`}
         onClick={onAddPage}
-        aria-label="Add Page"
+        aria-label="New Page"
         style={{ height: 36, padding: "0 8px", minWidth: 90 }}
       >
         <span className="material-symbols-outlined" style={{ fontSize: 20 }} aria-hidden="true">
           add_circle
         </span>
         <div className={styles.actionButtonTextCol}>
-          <span className={styles.actionTop} style={{ fontSize: 9 }}>Add</span>
+          <span className={styles.actionTop} style={{ fontSize: 9 }}>New</span>
           <span className={styles.actionBottom} style={{ fontSize: 12 }}>Page</span>
         </div>
       </button>

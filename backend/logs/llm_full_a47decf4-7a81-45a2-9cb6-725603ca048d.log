@@ -1,0 +1,81 @@
+{
+  "schema_version": "v1",
+  "problem": {
+    "original_text": "\\text{Solve for } x, x^2 - 5x + 6 = 0",
+    "normalized_text": "Solve x^2 - 5x + 6 = 0",
+    "detected_tasks": [
+      "solve",
+      "equation"
+    ],
+    "language": {
+      "user_language": "English",
+      "response_language": "English"
+    }
+  },
+  "steps": [
+    {
+      "index": 1,
+      "title": "Factor the quadratic",
+      "explanation": "Factor the quadratic into two linear factors.",
+      "math_latex": [
+        "x^2-5x+6=(x-2)(x-3)"
+      ]
+    },
+    {
+      "index": 2,
+      "title": "Solve each factor",
+      "explanation": "Set each factor equal to zero and solve for x.",
+      "math_latex": [
+        "x-2=0\\Rightarrow x=2",
+        "x-3=0\\Rightarrow x=3"
+      ]
+    }
+  ],
+  "final_answer": {
+    "answer_text": "x=2 or x=3",
+    "answer_latex": null,
+    "units": null,
+    "values": [
+      {
+        "label": "root1",
+        "value": 2,
+        "value_latex": "2"
+      },
+      {
+        "label": "root2",
+        "value": 3,
+        "value_latex": "3"
+      }
+    ]
+  },
+  "classification": {
+    "grade_band": "grades_9_10",
+    "domain": "algebra",
+    "difficulty": "easy",
+    "topic": "quadratic equations"
+  },
+  "quality": {
+    "common_mistakes": [
+      "Arithmetic errors when factoring",
+      "Forgetting one of the roots"
+    ],
+    "confidence": 0.9
+  },
+  "debug": {
+    "finish_reason": null,
+    "input_tokens": null,
+    "output_tokens": null,
+    "latency_ms_total": null,
+    "model": null,
+    "provider": null,
+    "request_id": null,
+    "total_tokens": null,
+    "truncated": null
+  },
+  "refusal": {
+    "is_refusal": false,
+    "reason": null,
+    "safe_alternative": null
+  },
+  "_raw_llm_output": null
+}

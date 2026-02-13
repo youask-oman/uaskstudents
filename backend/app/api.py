@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, 
 from fastapi.responses import StreamingResponse, JSONResponse
 from sqlmodel import Session, SQLModel, select
 from sqlalchemy import text as sql_text, or_, func
+from sqlalchemy.exc import IntegrityError
 from typing import List, Optional, Dict, Any, Tuple
 from pydantic import BaseModel, Field
 import uuid
@@ -4962,6 +4963,9 @@ async def solve_v3_runtime_meta(
     attempt_id: Optional[str] = Query(None),
     request_id: Optional[str] = Query(None),
     user_id: Optional[int] = Query(None),
+    tier: Optional[str] = Query(None),
+    mode_family: Optional[str] = Query("SOLVE"),
+    requested_mode: Optional[str] = Query("minimal"),
     session: Session = Depends(get_session),
 ):
     query = select(SolverOutputAttempt)
@@ -4984,6 +4988,60 @@ async def solve_v3_runtime_meta(
 
     attempt = session.exec(query.order_by(SolverOutputAttempt.created_at.desc())).first()
     if not attempt:
+        # Normal page-load behavior asks for runtime meta using only user_id before first solve.
+        # Return a stable empty payload instead of 404 to avoid noisy client/server logs.
+        if user_id is not None and not attempt_id and not request_id:
+            normalized_tier = (tier or "").strip().lower()
+            effective_tier = (
+                "free"
+                if normalized_tier in {"free", "three_step", ""}
+                else normalized_tier
+            )
+            return {
+                "status": "ok",
+                "has_runtime_evidence": False,
+                "attempt_id": None,
+                "request_id": None,
+                "user_id": user_id,
+                "provider": None,
+                "model": None,
+                "tier_requested": effective_tier,
+                "effective_tier": effective_tier,
+                "mode_family": (mode_family or "SOLVE"),
+                "mode": (requested_mode or "minimal"),
+                "prompt_binding_id": None,
+                "global_system_prompt_id": None,
+                "developer_prompt_id": None,
+                "output_schema_id": None,
+                "global_system_prompt_version": None,
+                "developer_prompt_version": None,
+                "output_schema_version": None,
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "total_tokens": 0,
+                "latency_ms_total": 0,
+                "latency_ms_openai": 0,
+                "finish_reason": None,
+                "truncated": False,
+                "cache_hit": False,
+                "timing_ms": {
+                    "parse": 0,
+                    "canonicalize": 0,
+                    "openai": 0,
+                    "verify": 0,
+                    "total": 0,
+                },
+                "verification": {
+                    "verified": False,
+                    "verification_method": None,
+                    "unverified_reason": "no_attempt_runtime_evidence",
+                    "verification_meta": {},
+                },
+                "attempt_status": None,
+                "failure_code": None,
+                "created_at": None,
+                "updated_at": None,
+            }
         raise HTTPException(
             status_code=404,
             detail={
@@ -11893,32 +11951,41 @@ async def admin_prompt_registry_audit(db: Session = Depends(get_session), admin:
 
 @api_router.post("/admin/prompt-registry/bindings/activate", response_model=RegistryBindingItem)
 async def admin_activate_prompt_registry_binding(req: BindingActivateRequest, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
-    entry = prompt_registry_service.activate_binding(
-        session=db,
-        tier=_parse_tier(req.tier),
-        mode=_parse_mode(req.mode),
-        global_system_prompt_id=req.global_system_prompt_id,
-        developer_prompt_id=req.developer_prompt_id,
-        output_schema_id=req.output_schema_id,
-        updated_by=req.updated_by,
-        max_output_tokens=req.max_output_tokens,
-        max_input_tokens=req.max_input_tokens,
-        system_schema_budget_tokens=req.system_schema_budget_tokens,
-        context_budget_tokens=req.context_budget_tokens,
-        json_retry_max_output_tokens=req.json_retry_max_output_tokens,
-        json_retry_max_attempts=req.json_retry_max_attempts,
-        timeout_ms=req.timeout_ms,
-        temperature=req.temperature,
-        top_p=req.top_p,
-        plot_points_cap=req.plot_points_cap,
-        plot_traces_cap=req.plot_traces_cap,
-        plot_annotations_cap=req.plot_annotations_cap,
-        trim_strategy=req.trim_strategy,
-        max_steps=req.max_steps,
-        retry_cap_tokens=req.retry_cap_tokens,
-        features=req.features,
-        multipliers=req.multipliers,
-    )
+    try:
+        entry = prompt_registry_service.activate_binding(
+            session=db,
+            tier=_parse_tier(req.tier),
+            mode=_parse_mode(req.mode),
+            global_system_prompt_id=req.global_system_prompt_id,
+            developer_prompt_id=req.developer_prompt_id,
+            output_schema_id=req.output_schema_id,
+            updated_by=req.updated_by,
+            max_output_tokens=req.max_output_tokens,
+            max_input_tokens=req.max_input_tokens,
+            system_schema_budget_tokens=req.system_schema_budget_tokens,
+            context_budget_tokens=req.context_budget_tokens,
+            json_retry_max_output_tokens=req.json_retry_max_output_tokens,
+            json_retry_max_attempts=req.json_retry_max_attempts,
+            timeout_ms=req.timeout_ms,
+            temperature=req.temperature,
+            top_p=req.top_p,
+            plot_points_cap=req.plot_points_cap,
+            plot_traces_cap=req.plot_traces_cap,
+            plot_annotations_cap=req.plot_annotations_cap,
+            trim_strategy=req.trim_strategy,
+            max_steps=req.max_steps,
+            retry_cap_tokens=req.retry_cap_tokens,
+            features=req.features,
+            multipliers=req.multipliers,
+        )
+    except PromptRegistryError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Binding activation conflict: this tuple already exists. Refresh and retry.",
+        )
     return RegistryBindingItem(
         id=entry.id,
         tier=entry.tier.value,

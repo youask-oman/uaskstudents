@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Gochi+Hand&family=Patrick+Hand&family=Caveat:wght@400..700&family=Lexend:wght@300;400;500;600;700&family=Noto+Sans:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Gochi+Hand&family=Patrick+Hand&family=Caveat:wght@400..700&family=Lexend:wght@300;400;500;600;700&family=Noto+Sans:wght@400;500&family=Quicksand:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -438,10 +438,17 @@
 
 .solve-segmented .segmented-option {
   font-family: var(--font-sketch);
-  font-size: 1.1rem;
+  font-size: 1.3em;
+  padding: 0.3rem 0.5rem !important;
+  gap: 0.2rem !important;
+  line-height: 1.1;
   color: #64748b;
   position: relative;
   z-index: 1;
+}
+
+.solve-segmented .segmented-option .material-symbols-outlined {
+  font-size: 14px !important;
 }
 
 .solve-segmented .segmented-option.is-selected {

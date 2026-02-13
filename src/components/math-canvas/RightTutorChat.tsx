@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import logo10 from "@/app/logo/logo-10.png";
+import logo13 from "@/app/logo/logo-13.png";
 import ChatMessage from "./ChatMessage";
 import QuickActions from "./QuickActions";
 import styles from "./MathCanvas.module.css";
@@ -20,7 +20,7 @@ interface RightTutorChatProps {
   };
 }
 
-const quickActionSeed = ["Simplify Eq", "Plot Graph", "Check Steps"];
+const quickActionSeed = ["Hint", "Solve", "Graph", "History"];
 
 export default function RightTutorChat({
   sessionId,
@@ -32,7 +32,14 @@ export default function RightTutorChat({
   const [messages, setMessages] = useState<NormalizedChatMessage[]>(initialMessages);
   const [loading, setLoading] = useState(false);
   const [input, setInput] = useState("");
+  const [analysisPrompt, setAnalysisPrompt] = useState("");
   const endRef = useRef<HTMLDivElement | null>(null);
+  const analysisLabel = useMemo(() => {
+    if (!analysisPrompt) return "Analyzing...";
+    const compact = analysisPrompt.replace(/\s+/g, " ").trim();
+    const clipped = compact.length > 64 ? `${compact.slice(0, 61)}...` : compact;
+    return `Analyzing ${clipped}`;
+  }, [analysisPrompt]);
 
   useEffect(() => {
     setMessages(initialMessages);
@@ -44,12 +51,13 @@ export default function RightTutorChat({
 
   const actions = useMemo(() => {
     const generated = buildSuggestionPrompts(stepTitles);
-    return Array.from(new Set([...quickActionSeed, ...generated])).slice(0, 5);
+    return Array.from(new Set([...quickActionSeed, ...generated])).slice(0, 4);
   }, [stepTitles]);
 
   const sendMessage = async (rawMessage: string) => {
     const message = rawMessage.trim();
     if (!message || loading) return;
+    setAnalysisPrompt(message);
 
     const user: NormalizedChatMessage = {
       id: `user-${Date.now()}`,
@@ -113,12 +121,14 @@ export default function RightTutorChat({
 
   const mapQuickActionToPrompt = (action: string): string => {
     switch (action) {
-      case "Simplify Eq":
-        return "Simplify this equation and show concise steps.";
-      case "Plot Graph":
+      case "Hint":
+        return "Give me a concise hint for the current step.";
+      case "Solve":
+        return "Solve the full problem with concise steps.";
+      case "Graph":
         return "Plot the graph and explain key points.";
-      case "Check Steps":
-        return "Check each step for mistakes.";
+      case "History":
+        return "Summarize what we already solved so far.";
       default:
         return action;
     }
@@ -128,8 +138,16 @@ export default function RightTutorChat({
     <aside className={styles.rightSidebar}>
       <div className={styles.chatHeader}>
         <div className={styles.chatHeaderTitle}>
-          <Image src={logo10} alt="Uask.ai" width={26} height={26} className={styles.chatTutorLogo} />
-          Uask AI Tutor
+          <div className={styles.chatHeaderIcon}>
+            <Image src={logo13} alt="Uask Tutor" width={46} height={46} />
+          </div>
+          <div>
+            <div>Uask Me</div>
+            <span className={styles.chatHeaderStatus}>
+              <span className={styles.chatHeaderStatusDot} />
+              {analysisLabel}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -139,7 +157,14 @@ export default function RightTutorChat({
         ))}
         {loading ? (
           <div className={styles.chatBubbleRowAssistant}>
-            <div className={styles.chatBubbleAssistant}>Thinking...</div>
+            <div className={styles.tutorThinking}>
+              <div className={styles.tutorThinkingDots} aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </div>
+              <span>Tutor is thinking...</span>
+            </div>
           </div>
         ) : null}
         <div ref={endRef} />
@@ -154,17 +179,18 @@ export default function RightTutorChat({
           }}
         />
         <div className={styles.composerRow} style={{ marginTop: 10 }}>
-          <input
+          <textarea
             className={styles.composerInput}
             value={input}
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "Enter") {
+              if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();
                 void sendMessage(input);
               }
             }}
             placeholder="Ask anything about the math..."
+            rows={3}
           />
           <button
             type="button"

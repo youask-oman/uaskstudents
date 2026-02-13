@@ -568,6 +568,11 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             outlineItems={outlineItems}
             classification={classification}
             confidence={primarySolution?.confidence}
+            onOutlineSelect={(targetId) => {
+              const target = document.getElementById(targetId);
+              if (!target) return;
+              target.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
           />
         }
         workspace={

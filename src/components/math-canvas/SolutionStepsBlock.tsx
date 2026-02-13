@@ -262,18 +262,9 @@ export default function SolutionStepsBlock({
             </div>
           ) : (
             <>
-              {originalProblem && (
-                <div style={{ marginBottom: normalizedProblem ? 12 : 0 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase" }}>Original Problem</div>
-                  <div style={{ whiteSpace: "pre-wrap", fontSize: 13, color: "var(--text-main)", lineHeight: 1.6 }}>{originalProblem}</div>
-                </div>
-              )}
-              {normalizedProblem && (
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase" }}>Normalized Interpretation</div>
-                  <div style={{ whiteSpace: "pre-wrap", fontSize: 13, color: "var(--text-main)", lineHeight: 1.6 }}><MathRenderer content={normalizedProblem} mode="prose" /></div>
-                </div>
-              )}
+              <div style={{ whiteSpace: "pre-wrap", fontSize: 13, color: "var(--text-main)", lineHeight: 1.6 }}>
+                <MathRenderer content={normalizedProblem || originalProblem || ""} mode="prose" />
+              </div>
               {editable && !exportMode && (
                 <div className={styles.blockActions} style={{ marginTop: 8 }}>
                   <button type="button" className={styles.blockActionButton} onClick={() => setEditingProblem(true)}>Edit</button>
@@ -543,10 +534,10 @@ export default function SolutionStepsBlock({
           </div>
         ) : (
           <div style={{
-            background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
-            border: "1px solid #e2e8f0",
-            borderRadius: 12,
-            padding: 20,
+            background: "transparent",
+            border: "0",
+            borderRadius: 0,
+            padding: 2,
           }}>
             {/* Answer Text */}
             {displayAnswerText && (
@@ -554,7 +545,7 @@ export default function SolutionStepsBlock({
                 <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 8, letterSpacing: "0.05em" }}>
                   Summary
                 </div>
-                <div style={{ fontSize: 14, color: "#334155", lineHeight: 1.7 }}>
+                <div style={{ fontSize: 14, color: "#0f172a", fontWeight: 700, lineHeight: 1.7 }}>
                   <MathRenderer content={displayAnswerText} mode="prose" />
                 </div>
               </div>
@@ -598,16 +589,16 @@ export default function SolutionStepsBlock({
                 </div>
                 <div style={{ display: "grid", gap: 12 }}>
                   {displayValues.map((val, idx) => (
-                    <div key={idx} style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: 12 }}>
+                    <div key={idx} style={{ background: "transparent", border: "1px solid #dbe3ee", borderRadius: 8, padding: 12 }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 6, textTransform: "capitalize" }}>
                         {val.label.replace(/_/g, " ")}
                       </div>
                       {val.value_latex ? (
-                        <div style={{ fontSize: 14, color: "#0f172a" }}>
+                        <div style={{ fontSize: 14, color: "#0f172a", fontWeight: 700 }}>
                           <MathRenderer content={val.value_latex} mode="inline" />
                         </div>
                       ) : (
-                        <div style={{ fontSize: 13, color: "#475569", fontFamily: "monospace", whiteSpace: "pre-wrap" }}>
+                        <div style={{ fontSize: 13, color: "#0f172a", fontWeight: 700, fontFamily: "monospace", whiteSpace: "pre-wrap" }}>
                           {typeof val.value === "string"
                             ? val.value
                             : (val.value === null || val.value === undefined)

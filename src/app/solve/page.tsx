@@ -1547,10 +1547,10 @@ export default function DashboardPage() {
 
                                 {/* Tier Selector Section */}
                                 <div className="flex flex-col gap-2 flex-grow w-full max-w-[620px]">
-                                    <div className="flex justify-between items-end mb-1">
+                                    <div className="mb-1 flex flex-col items-start gap-1">
                                         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">Tier</h3>
                                         {readyWallet && estimate && (
-                                            <div className="scale-90 origin-right">
+                                            <div className="w-full max-w-full">
                                                 <CostPreview
                                                     perQuestionCost={estimate.per_question_credits}
                                                     questionCount={estimatedQuestionCount}
@@ -1602,7 +1602,7 @@ export default function DashboardPage() {
                                                 }
                                             }
                                         }}
-                                        size="md"
+                                        size="sm"
                                         className="solve-segmented"
                                     />
                                 </div>

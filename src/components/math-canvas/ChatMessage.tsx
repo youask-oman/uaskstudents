@@ -34,6 +34,36 @@ const toVisualSpec = (chart: ChartPayload): Record<string, unknown> => {
   };
 };
 
+const normalizePromptPreview = (value: string): string => {
+  return value
+    .replace(/\\\(|\\\)|\\\[|\\\]/g, "")
+    .replace(/\$/g, "")
+    .replace(/\\text\{([^}]*)\}/g, "$1")
+    .replace(/\\begin\{aligned\}/g, "")
+    .replace(/\\end\{aligned\}/g, "")
+    .replace(/\\begin\{[^}]+\}/g, "")
+    .replace(/\\end\{[^}]+\}/g, "")
+    .replace(/\\(?:newline|cr|quad|qquad|hfill)\b/g, " ")
+    .replace(/\\\\/g, " ")
+    .replace(/\r?\n/g, " ")
+    .replace(/\\,/g, " ")
+    .replace(/\\left|\\right/g, "")
+    .replace(/[{}]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
+const splitPromptPreview = (value: string): { lead: string; expr: string } => {
+  const cleaned = normalizePromptPreview(value);
+  const parts = cleaned.split(",");
+  if (parts.length >= 2) {
+    const lead = `${parts[0].trim()},`;
+    const expr = parts.slice(1).join(",").trim();
+    return { lead, expr };
+  }
+  return { lead: "", expr: cleaned };
+};
+
 const RenderAssistantItem = ({ item, originalProblem }: { item: NormalizedContentItem, originalProblem?: string }) => {
   if (item.type === "text") {
     return (
@@ -45,11 +75,17 @@ const RenderAssistantItem = ({ item, originalProblem }: { item: NormalizedConten
   if (item.type === "math_solution") {
     // Prefer originalProblem > layoutTitle > recognizedLatex > "this problem"
     const contextContent = originalProblem || item.payload.layoutTitle || item.payload.recognizedLatex || "this problem";
+    const { lead, expr } = splitPromptPreview(contextContent);
 
     return (
       <div className={styles.chatBubbleAssistant}>
-        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-          Uask about anything related to <MathRenderer content={contextContent} mode="inline" />
+        <div className={styles.chatPromptPreviewRow}>
+          <span>Uask about anything related to {lead ? `${lead} ` : ""}</span>
+          {expr ? (
+            <span className={styles.inlineMathPreview}>
+              <MathRenderer content={expr} mode="inline" />
+            </span>
+          ) : null}
         </div>
       </div>
     );
@@ -79,7 +115,7 @@ export default function ChatMessage({ message, originalProblem }: ChatMessagePro
   return (
     <div className={styles.chatBubbleRowAssistant}>
       <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4 }}>AI TUTOR</div>
-      <div style={{ display: "grid", gap: 8 }}>
+      <div style={{ display: "grid", gap: 8, width: "100%" }}>
         {message.items.map((item, index) => (
           <RenderAssistantItem key={`${message.id}-${index}`} item={item} originalProblem={originalProblem} />
         ))}
