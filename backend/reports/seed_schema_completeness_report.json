@@ -13,6 +13,7 @@
     ],
     "missing": [],
     "all_tables": [
+      "solution_shares",
       "seed_registry",
       "legal_documents",
       "alembic_version",
@@ -108,16 +109,16 @@
   },
   "db_row_counts": {
     "user_internal": 5,
-    "systemconfig": 45,
+    "systemconfig": 54,
     "prompt_templates": 21,
     "prompt_bindings": 9,
     "json_schemas": 12,
     "providermodelpricing": 8,
-    "credit_program_definition": 6,
+    "credit_program_definition": 4,
     "plan": 6,
     "school": 117960,
-    "credit_transfers": 0,
-    "notifications": 0,
+    "credit_transfers": 2,
+    "notifications": 4,
     "expected_school": 117960
   },
   "forbidden_tables_status": {
@@ -125,21 +126,21 @@
     "invoice": 0,
     "invoice_line_item": 0,
     "refund": 0,
-    "subscription": 0,
+    "subscription": 1,
     "subscriptionperiod": 0,
-    "chatsession": 0,
-    "chatmessage": 0,
-    "solveroutputattempt": 0,
-    "billingledger": 0
+    "chatsession": 8,
+    "chatmessage": 20,
+    "solveroutputattempt": 13,
+    "billingledger": 13
   },
   "internal_users_check": [
-    "admin@uask.ai",
-    "loai@uask.ai",
     "michael.b@uask.ai",
     "sam.wilson@uask.ai",
-    "student@uask.ai"
+    "student@uask.ai",
+    "loai@uask.ai",
+    "admin@uask.ai"
   ],
-  "verification_success": true,
+  "verification_success": false,
   "expected_internal_users": 5,
   "integrity_issues": "PASS"
 }
