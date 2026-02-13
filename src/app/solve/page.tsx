@@ -1527,10 +1527,10 @@ export default function DashboardPage() {
         <div className="solve-ui bg-background-light dark:bg-background-dark min-h-screen text-slate-900 dark:text-slate-100 font-display transition-colors duration-200">
             <DashboardNavBar />
 
-            <main className="max-w-6xl mx-auto px-4 py-8 md:py-12">
+            <main className="max-w-6xl mx-auto px-4 py-5 md:py-7">
                 {/* Hand-Drawn Title Section */}
-                <header className="mb-12 text-center">
-                    <h2 className="sketch-title mb-2 flex items-center justify-center gap-3">
+                <header className="mb-7 text-center">
+                    <h2 className="sketch-title mb-1 flex items-center justify-center gap-2">
                         New Solve
                         <span className="text-xs font-black px-2 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-lg border border-blue-200 dark:border-blue-800 rotate-3 tracking-tighter">
                             uask AI v1.0
@@ -2336,55 +2336,6 @@ export default function DashboardPage() {
                             }
                         />
 
-                        {/* Online Users Widget */}
-                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                    <span className="relative flex h-3 w-3">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-                                    </span>
-                                    Online Students
-                                </h3>
-                                {isPublic && <span className="text-xs font-bold text-slate-500">{onlineUsers.length} Active</span>}
-                            </div>
-
-                            {!isPublic ? (
-                                <div className="text-center py-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                                    <p className="text-sm text-slate-500 mb-3 px-4">Turn on Public Profile to see and connect with peers.</p>
-                                    <button
-                                        onClick={() => router.push('/dashboard')}
-                                        className="text-primary text-xs font-bold hover:underline"
-                                    >
-                                        Go to Settings
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    {onlineUsers.length === 0 ? (
-                                        <p className="text-sm text-slate-500 italic">No one else is public right now.</p>
-                                    ) : (
-                                        onlineUsers.slice(0, 5).map((u) => (
-                                            <div key={u.id} className="flex items-center gap-3">
-                                                <div
-                                                    className="w-8 h-8 rounded-full bg-cover bg-center border border-slate-200 dark:border-slate-700"
-                                                    style={{ backgroundImage: `url('${u.avatar_url || 'https://lh3.googleusercontent.com/aida-public/AB6AXuD_gpHP7vJM1mkTxszlDYSYslefzDpqT7kS3EUblVETFcyH2Sl2xHETdTN_AcqdawcLn0mOa7LR69Ol1T3hAFSvpJss7LzshfwXBbhjMZqOGSH9S1nVdhEO1aeexaHXJAn_VqN1tFoPVazJP1aq1rARcjsg7F4-pStNL1jl7KEpohReYVX52pfbq3YO6IKCX71lAo42c76k2H4WrKWI5r79xsjqMPNL1zZPzcajFKkIs40bZTGM732P1j_aCdcr67zOQ2bNSaRrATQz'}')` }}
-                                                />
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-semibold truncate text-slate-900 dark:text-slate-100">{u.full_name}</p>
-                                                    <p className="text-[10px] text-slate-500 truncate">
-                                                        {u.learning_interests && u.learning_interests.length > 0
-                                                            ? u.learning_interests.slice(0, 2).join(", ")
-                                                            : "Studying Math"}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-                            )}
-                        </div>
-
                         {/* Tips Sidebar - Photo */}
                         {activeTab === 'snap' && (
                             <div className="bg-primary/5 border border-primary/20 rounded-xl p-6 transition-all animate-in fade-in slide-in-from-right-4 duration-500">
@@ -2456,6 +2407,55 @@ export default function DashboardPage() {
                                 </ul>
                             </div>
                         )}
+
+                        {/* Online Users Widget */}
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                    <span className="relative flex h-3 w-3">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                                    </span>
+                                    Online Students
+                                </h3>
+                                {isPublic && <span className="text-xs font-bold text-slate-500">{onlineUsers.length} Active</span>}
+                            </div>
+
+                            {!isPublic ? (
+                                <div className="text-center py-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                                    <p className="text-sm text-slate-500 mb-3 px-4">Turn on Public Profile to see and connect with peers.</p>
+                                    <button
+                                        onClick={() => router.push('/dashboard')}
+                                        className="text-primary text-xs font-bold hover:underline"
+                                    >
+                                        Go to Settings
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {onlineUsers.length === 0 ? (
+                                        <p className="text-sm text-slate-500 italic">No one else is public right now.</p>
+                                    ) : (
+                                        onlineUsers.slice(0, 5).map((u) => (
+                                            <div key={u.id} className="flex items-center gap-3">
+                                                <div
+                                                    className="w-8 h-8 rounded-full bg-cover bg-center border border-slate-200 dark:border-slate-700"
+                                                    style={{ backgroundImage: `url('${u.avatar_url || 'https://lh3.googleusercontent.com/aida-public/AB6AXuD_gpHP7vJM1mkTxszlDYSYslefzDpqT7kS3EUblVETFcyH2Sl2xHETdTN_AcqdawcLn0mOa7LR69Ol1T3hAFSvpJss7LzshfwXBbhjMZqOGSH9S1nVdhEO1aeexaHXJAn_VqN1tFoPVazJP1aq1rARcjsg7F4-pStNL1jl7KEpohReYVX52pfbq3YO6IKCX71lAo42c76k2H4WrKWI5r79xsjqMPNL1zZPzcajFKkIs40bZTGM732P1j_aCdcr67zOQ2bNSaRrATQz'}')` }}
+                                                />
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-semibold truncate text-slate-900 dark:text-slate-100">{u.full_name}</p>
+                                                    <p className="text-[10px] text-slate-500 truncate">
+                                                        {u.learning_interests && u.learning_interests.length > 0
+                                                            ? u.learning_interests.slice(0, 2).join(", ")
+                                                            : "Studying Math"}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            )}
+                        </div>
 
                         {/* Recent Solutions - Always visible */}
                         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 transition-all animate-in fade-in slide-in-from-right-4 duration-500">

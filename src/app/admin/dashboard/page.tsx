@@ -318,10 +318,6 @@ export default function AdminDashboardPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button className="p-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors relative">
-                        <span className="material-symbols-outlined">notifications</span>
-                        <span className="absolute top-2 right-2.5 size-2 bg-rose-500 rounded-full border-2 border-slate-200 dark:border-[#0F172A]"></span>
-                    </button>
                     <button
                         onClick={handleAdminLogout}
                         className="px-3 py-2 rounded-lg bg-red-600/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/40 hover:bg-red-600/20 transition-colors text-xs font-bold uppercase tracking-widest"

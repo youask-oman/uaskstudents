@@ -263,9 +263,6 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                         <div className="flex items-center justify-center w-10 h-10">
                             <ThemeToggle className="static shadow-none border-none bg-transparent dark:bg-transparent w-full h-full hover:bg-slate-100 dark:hover:bg-slate-800" />
                         </div>
-                        <button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                            <span className="material-symbols-outlined text-slate-500">notifications</span>
-                        </button>
                     </div>
                 </header>
 

@@ -158,9 +158,6 @@ export default function DashboardNavBar() {
                         >
                             <span className="material-symbols-outlined">{mounted && isDark ? 'light_mode' : 'dark_mode'}</span>
                         </button>
-                        <button className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors flex items-center">
-                            <span className="material-symbols-outlined">notifications</span>
-                        </button>
                         <div
                             className="relative flex items-center gap-3 cursor-pointer group"
                             ref={dropdownRef}

@@ -1075,7 +1075,7 @@ export default function ProfilePage() {
                                     
                                     <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
                                         <div className="flex items-center gap-3">
-                                            <span className="material-symbols-outlined text-slate-600 dark:text-slate-400">notifications</span>
+                                            <span className="material-symbols-outlined text-slate-600 dark:text-slate-400">sms</span>
                                             <div>
                                                 <p className="text-sm font-semibold">WhatsApp Notifications</p>
                                                 <p className="text-xs text-slate-500">Enable/disable WhatsApp bot responses</p>

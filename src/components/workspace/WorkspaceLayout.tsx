@@ -248,11 +248,6 @@ export default function WorkspaceLayout({
                         <span className="material-symbols-outlined text-[20px] hidden dark:block">light_mode</span>
                     </button>
 
-                    <button className="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all relative">
-                        <span className="material-symbols-outlined text-[20px]">notifications</span>
-                        <span className="absolute top-1.5 right-1.5 size-2 bg-red-500 rounded-full"></span>
-                    </button>
-
                     <Link href="/profile" className="flex items-center gap-3 pl-3 border-l border-slate-200 dark:border-slate-700 hover:opacity-80 transition-opacity">
                         <div className="size-9 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md">
                             NR

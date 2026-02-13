@@ -137,45 +137,39 @@ export default function TransferAndNotificationsPanel({ onInfo }: Props) {
                 </div>
             </div>
 
-            <div
-                className={`border rounded-xl p-4 transition-colors ${
-                    hasUnread
-                        ? "bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700 animate-pulse"
-                        : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
-                }`}
-            >
-                <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">Notifications</h4>
-                    <span className={`text-xs ${hasUnread ? "text-amber-700 dark:text-amber-300 font-bold" : "text-slate-500"}`}>
-                        Unread: {unreadCount}
-                    </span>
-                </div>
-                {loading ? (
-                    <p className="text-xs text-slate-500">Loading…</p>
-                ) : notifications.length === 0 ? (
-                    <p className="text-xs text-slate-500">No notifications</p>
-                ) : (
-                    <div className="space-y-2 max-h-56 overflow-auto pr-1">
-                        {notifications.map((n) => (
-                            <button
-                                key={n.id}
-                                className={`w-full text-left rounded-md border px-2 py-2 text-xs ${n.is_read ? "border-slate-200 dark:border-slate-700" : "border-amber-400 bg-amber-100/70 dark:bg-amber-900/30 animate-pulse"}`}
-                                onClick={async () => {
-                                    try {
-                                        await markNotificationRead(n.id);
-                                        await refresh();
-                                    } catch {
-                                        // noop
-                                    }
-                                }}
-                            >
-                                <div className="font-semibold text-slate-800 dark:text-slate-100">{n.title}</div>
-                                <div className="text-slate-600 dark:text-slate-300">{n.body}</div>
-                            </button>
-                        ))}
+            {hasUnread && (
+                <div className="border rounded-xl p-4 transition-colors bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700 animate-pulse">
+                    <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">Notifications</h4>
+                        <span className="text-xs text-amber-700 dark:text-amber-300 font-bold">
+                            Unread: {unreadCount}
+                        </span>
                     </div>
-                )}
-            </div>
+                    {loading ? (
+                        <p className="text-xs text-slate-500">Loading…</p>
+                    ) : (
+                        <div className="space-y-2 max-h-56 overflow-auto pr-1">
+                            {notifications.map((n) => (
+                                <button
+                                    key={n.id}
+                                    className={`w-full text-left rounded-md border px-2 py-2 text-xs ${n.is_read ? "border-slate-200 dark:border-slate-700" : "border-amber-400 bg-amber-100/70 dark:bg-amber-900/30 animate-pulse"}`}
+                                    onClick={async () => {
+                                        try {
+                                            await markNotificationRead(n.id);
+                                            await refresh();
+                                        } catch {
+                                            // noop
+                                        }
+                                    }}
+                                >
+                                    <div className="font-semibold text-slate-800 dark:text-slate-100">{n.title}</div>
+                                    <div className="text-slate-600 dark:text-slate-300">{n.body}</div>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
