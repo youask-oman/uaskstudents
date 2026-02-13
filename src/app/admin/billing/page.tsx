@@ -20,11 +20,23 @@ interface Transaction {
     user_id: number;
     action_type: string;
     status: string;
-    estimated_credits: number;
-    actual_credits: number;
-    delta_credits: number;
+    estimated_credits: number | string;
+    actual_credits: number | string;
+    credits_charged?: number | string;
+    delta_credits: number | string;
     created_at: string;
 }
+
+const toCreditNumber = (value: number | string | null | undefined): number => {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const formatCredits = (value: number): string => {
+    return value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 });
+};
 
 export default function BillingControlCenter() {
     const { pushToast } = useToast();
@@ -96,7 +108,25 @@ export default function BillingControlCenter() {
             });
             if (!res.ok) { setTransactions([]); setLoading(false); return; }
             const data = await res.json();
-            setTransactions(Array.isArray(data.data) ? data.data : []);
+            const normalized = Array.isArray(data.data)
+                ? (data.data as Transaction[]).map((tx) => {
+                    const estimated = toCreditNumber(tx.estimated_credits);
+                    const actual = toCreditNumber(tx.actual_credits);
+                    const charged = toCreditNumber(tx.credits_charged);
+                    // BillingLedger in this system records debits in credits_charged for CHARGED rows.
+                    const effectiveActual = actual > 0 ? actual : charged;
+                    const rawDelta = toCreditNumber(tx.delta_credits);
+                    const computedDelta = rawDelta !== 0 ? rawDelta : (effectiveActual - estimated);
+                    return {
+                        ...tx,
+                        estimated_credits: estimated,
+                        actual_credits: effectiveActual,
+                        credits_charged: charged,
+                        delta_credits: computedDelta,
+                    };
+                })
+                : [];
+            setTransactions(normalized);
         } catch (e) {
             console.error(e);
             pushToast({
@@ -363,18 +393,27 @@ export default function BillingControlCenter() {
                         <tbody>
                             {transactions.map(tx => (
                                 <tr key={tx.id} className="border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700">
-                                    <td className="py-2">{tx.id}</td>
-                                    <td className="py-2">{tx.user_id}</td>
-                                    <td className="py-2">{tx.action_type}</td>
-                                    <td className="py-2">
-                                        <span className={`px-2 py-1 rounded text-xs ${tx.status === "SETTLED" ? "bg-green-100 text-green-800" : tx.status === "PENDING" ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"}`}>
+                                    <td className="py-2 px-3">{tx.id}</td>
+                                    <td className="py-2 px-3">{tx.user_id}</td>
+                                    <td className="py-2 px-3">{tx.action_type}</td>
+                                    <td className="py-2 px-3">
+                                        <span
+                                            className={`px-2 py-1 rounded text-xs ${tx.status === "SETTLED"
+                                                ? "bg-green-100 text-green-800"
+                                                : tx.status === "PENDING"
+                                                    ? "bg-yellow-100 text-yellow-800"
+                                                    : tx.status === "CHARGED"
+                                                        ? "bg-blue-100 text-blue-800"
+                                                        : "bg-rose-100 text-rose-800"
+                                                }`}
+                                        >
                                             {tx.status}
                                         </span>
                                     </td>
-                                    <td className="py-2 text-right">{tx.estimated_credits}</td>
-                                    <td className="py-2 text-right">{tx.actual_credits}</td>
-                                    <td className="py-2 text-right">{tx.delta_credits}</td>
-                                    <td className="py-2">{new Date(tx.created_at).toLocaleString()}</td>
+                                    <td className="py-2 px-3 text-right whitespace-nowrap">{formatCredits(toCreditNumber(tx.estimated_credits))}</td>
+                                    <td className="py-2 px-3 text-right whitespace-nowrap">{formatCredits(toCreditNumber(tx.actual_credits))}</td>
+                                    <td className="py-2 px-3 text-right whitespace-nowrap">{formatCredits(toCreditNumber(tx.delta_credits))}</td>
+                                    <td className="py-2 px-3 whitespace-nowrap">{new Date(tx.created_at).toLocaleString()}</td>
                                 </tr>
                             ))}
                         </tbody>

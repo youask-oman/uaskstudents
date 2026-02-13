@@ -58,9 +58,36 @@ export default function AdminCanonicalCachePage() {
     verification_status: "pending",
     solution_json: "{}",
   });
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const baseUrl = API_BASE_URL;
+  const fallbackUrl = process.env.NEXT_PUBLIC_API_FALLBACK_URL || API_BASE_URL || "http://localhost:9000";
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : "";
-  const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+  const getHeaders = (contentType = false): HeadersInit => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    return {
+      ...(contentType ? { "Content-Type": "application/json" } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
+
+  const fetchAdmin = async (path: string, init?: RequestInit) => {
+    const run = async (urlBase: string) =>
+      fetch(`${urlBase}${path}`, {
+        ...init,
+        headers: {
+          ...getHeaders(Boolean(init?.body)),
+          ...(init?.headers || {}),
+        },
+      });
+    try {
+      return await run(baseUrl);
+    } catch {
+      if (baseUrl !== fallbackUrl) {
+        return run(fallbackUrl);
+      }
+      throw new Error("Network error");
+    }
+  };
 
   const filteredProblems = useMemo(() => {
     if (!q.trim()) return problems;
@@ -77,12 +104,15 @@ export default function AdminCanonicalCachePage() {
   const refreshProblems = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/admin/cache/canonical/problems?limit=200`, { headers });
+      const res = await fetchAdmin(`/api/v1/admin/cache/canonical/problems?limit=200`);
       if (!res.ok) throw new Error((await parseApiError(res)).message);
       const data = await res.json();
       setProblems(Array.isArray(data.items) ? data.items : []);
+      setErrorMessage(null);
     } catch (err) {
-      pushToast({ type: "error", title: "Failed", message: err instanceof Error ? err.message : "Failed to load problems" });
+      const message = err instanceof Error ? err.message : "Failed to load problems";
+      setErrorMessage(message);
+      pushToast({ type: "error", title: "Failed", message });
     } finally {
       setLoading(false);
     }
@@ -91,12 +121,15 @@ export default function AdminCanonicalCachePage() {
   const refreshSolutions = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/admin/cache/canonical/solutions?limit=200`, { headers });
+      const res = await fetchAdmin(`/api/v1/admin/cache/canonical/solutions?limit=200`);
       if (!res.ok) throw new Error((await parseApiError(res)).message);
       const data = await res.json();
       setSolutions(Array.isArray(data.items) ? data.items : []);
+      setErrorMessage(null);
     } catch (err) {
-      pushToast({ type: "error", title: "Failed", message: err instanceof Error ? err.message : "Failed to load solutions" });
+      const message = err instanceof Error ? err.message : "Failed to load solutions";
+      setErrorMessage(message);
+      pushToast({ type: "error", title: "Failed", message });
     } finally {
       setLoading(false);
     }
@@ -110,9 +143,8 @@ export default function AdminCanonicalCachePage() {
 
   const deleteProblem = async (id: number) => {
     if (!reason.trim()) return pushToast({ type: "error", title: "Reason required", message: "Enter reason first." });
-    const res = await fetch(`${API_BASE_URL}/api/v1/admin/cache/canonical/problems/${id}`, {
+    const res = await fetchAdmin(`/api/v1/admin/cache/canonical/problems/${id}`, {
       method: "DELETE",
-      headers: { ...headers, "Content-Type": "application/json" },
       body: JSON.stringify({ reason }),
     });
     if (!res.ok) return pushToast({ type: "error", title: "Delete failed", message: (await parseApiError(res)).message });
@@ -122,9 +154,8 @@ export default function AdminCanonicalCachePage() {
 
   const createProblem = async () => {
     if (!reason.trim()) return pushToast({ type: "error", title: "Reason required", message: "Enter reason first." });
-    const res = await fetch(`${API_BASE_URL}/api/v1/admin/cache/canonical/problems`, {
+    const res = await fetchAdmin(`/api/v1/admin/cache/canonical/problems`, {
       method: "POST",
-      headers: { ...headers, "Content-Type": "application/json" },
       body: JSON.stringify({ ...newProblem, reason, seen_count: 1 }),
     });
     if (!res.ok) return pushToast({ type: "error", title: "Create failed", message: (await parseApiError(res)).message });
@@ -136,9 +167,8 @@ export default function AdminCanonicalCachePage() {
   const updateProblem = async () => {
     if (!editingProblem) return;
     if (!reason.trim()) return pushToast({ type: "error", title: "Reason required", message: "Enter reason first." });
-    const res = await fetch(`${API_BASE_URL}/api/v1/admin/cache/canonical/problems/${editingProblem.id}`, {
+    const res = await fetchAdmin(`/api/v1/admin/cache/canonical/problems/${editingProblem.id}`, {
       method: "PATCH",
-      headers: { ...headers, "Content-Type": "application/json" },
       body: JSON.stringify({
         normalized_text: editingProblem.normalized_text,
         intent: editingProblem.intent,
@@ -155,9 +185,8 @@ export default function AdminCanonicalCachePage() {
 
   const deleteSolution = async (id: number) => {
     if (!reason.trim()) return pushToast({ type: "error", title: "Reason required", message: "Enter reason first." });
-    const res = await fetch(`${API_BASE_URL}/api/v1/admin/cache/canonical/solutions/${id}`, {
+    const res = await fetchAdmin(`/api/v1/admin/cache/canonical/solutions/${id}`, {
       method: "DELETE",
-      headers: { ...headers, "Content-Type": "application/json" },
       body: JSON.stringify({ reason }),
     });
     if (!res.ok) return pushToast({ type: "error", title: "Delete failed", message: (await parseApiError(res)).message });
@@ -172,9 +201,8 @@ export default function AdminCanonicalCachePage() {
     } catch {
       return pushToast({ type: "error", title: "Invalid JSON", message: "solution_json must be valid JSON." });
     }
-    const res = await fetch(`${API_BASE_URL}/api/v1/admin/cache/canonical/solutions`, {
+    const res = await fetchAdmin(`/api/v1/admin/cache/canonical/solutions`, {
       method: "POST",
-      headers: { ...headers, "Content-Type": "application/json" },
       body: JSON.stringify({
         problem_id: newSolution.problem_id,
         solution_json: parsed,
@@ -191,9 +219,8 @@ export default function AdminCanonicalCachePage() {
   const updateSolution = async () => {
     if (!editingSolution) return;
     if (!reason.trim()) return pushToast({ type: "error", title: "Reason required", message: "Enter reason first." });
-    const res = await fetch(`${API_BASE_URL}/api/v1/admin/cache/canonical/solutions/${editingSolution.id}`, {
+    const res = await fetchAdmin(`/api/v1/admin/cache/canonical/solutions/${editingSolution.id}`, {
       method: "PATCH",
-      headers: { ...headers, "Content-Type": "application/json" },
       body: JSON.stringify({
         problem_id: editingSolution.problem_id,
         verification_status: editingSolution.verification_status,
@@ -209,9 +236,8 @@ export default function AdminCanonicalCachePage() {
 
   const bumpProblemSeen = async (item: CanonicalProblem) => {
     if (!reason.trim()) return pushToast({ type: "error", title: "Reason required", message: "Enter reason first." });
-    const res = await fetch(`${API_BASE_URL}/api/v1/admin/cache/canonical/problems/${item.id}`, {
+    const res = await fetchAdmin(`/api/v1/admin/cache/canonical/problems/${item.id}`, {
       method: "PATCH",
-      headers: { ...headers, "Content-Type": "application/json" },
       body: JSON.stringify({ seen_count: item.seen_count + 1, reason }),
     });
     if (!res.ok) return pushToast({ type: "error", title: "Update failed", message: (await parseApiError(res)).message });
@@ -220,9 +246,8 @@ export default function AdminCanonicalCachePage() {
 
   const bumpSolutionServed = async (item: CanonicalSolution) => {
     if (!reason.trim()) return pushToast({ type: "error", title: "Reason required", message: "Enter reason first." });
-    const res = await fetch(`${API_BASE_URL}/api/v1/admin/cache/canonical/solutions/${item.id}`, {
+    const res = await fetchAdmin(`/api/v1/admin/cache/canonical/solutions/${item.id}`, {
       method: "PATCH",
-      headers: { ...headers, "Content-Type": "application/json" },
       body: JSON.stringify({ served_count: item.served_count + 1, reason }),
     });
     if (!res.ok) return pushToast({ type: "error", title: "Update failed", message: (await parseApiError(res)).message });
@@ -233,6 +258,11 @@ export default function AdminCanonicalCachePage() {
     <div className="p-8 max-w-[1500px] mx-auto w-full flex flex-col gap-5">
       <h2 className="text-xl font-bold text-slate-900 dark:text-white">Canonical Cache</h2>
       <p className="text-sm text-slate-500">Full control over `canonicalproblem` and `canonicalsolution`.</p>
+      {errorMessage && (
+        <div className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          {errorMessage}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-3">
         <button onClick={() => setTab("problems")} className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === "problems" ? "bg-admin-primary text-white" : "bg-slate-200"}`}>Problems</button>

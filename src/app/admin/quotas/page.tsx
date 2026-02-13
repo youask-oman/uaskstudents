@@ -30,6 +30,36 @@ interface QuotaData {
     [key: string]: unknown;
 }
 
+function toFiniteNumber(value: unknown): number | null {
+    if (typeof value === "number" && Number.isFinite(value)) {
+        return value;
+    }
+    if (typeof value === "string" && value.trim() !== "") {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+}
+
+function resolveUsagePercent(user: QuotaUser): number {
+    const dailyTokens = toFiniteNumber(user.daily_tokens_used) ?? 0;
+    const overrideTokenLimit = toFiniteNumber(user.override_token_limit);
+    const dailyCreditsUsed = toFiniteNumber(user.daily_credits_used) ?? 0;
+    const dailyCreditCap = toFiniteNumber(user.daily_credit_cap);
+    const reportedPercent = toFiniteNumber(user.usage_percent);
+
+    if (overrideTokenLimit && overrideTokenLimit > 0) {
+        return Math.max(0, Math.min((dailyTokens / overrideTokenLimit) * 100, 100));
+    }
+    if (dailyCreditCap && dailyCreditCap > 0) {
+        return Math.max(0, Math.min((dailyCreditsUsed / dailyCreditCap) * 100, 100));
+    }
+    if (reportedPercent !== null) {
+        return Math.max(0, Math.min(reportedPercent, 100));
+    }
+    return 0;
+}
+
 export default function AdminQuotasPage() {
     const { pushToast } = useToast();
     const [data, setData] = useState<QuotaData | null>(null);
@@ -267,6 +297,13 @@ export default function AdminQuotasPage() {
                         </thead>
                         <tbody className="divide-y divide-slate-800">
                             {pagedUsers.map((u) => (
+                                (() => {
+                                    const usagePercent = resolveUsagePercent(u);
+                                    const usageBarWidth = usagePercent > 0 && usagePercent < 1 ? 1 : usagePercent;
+                                    const usageLabel = usagePercent > 0 && usagePercent < 1 ? "<1%" : `${Math.round(usagePercent)}%`;
+                                    const isHighUsage = usagePercent > 80;
+
+                                    return (
                                 <tr
                                     key={u.id}
                                     onClick={() => setSelectedUser(u)}
@@ -294,16 +331,16 @@ export default function AdminQuotasPage() {
                                         <div className="flex items-center gap-3">
                                             <div className="flex-1 bg-slate-800 h-1.5 rounded-full overflow-hidden">
                                                 <div
-                                                    className={`h-full ${u.usage_percent && u.usage_percent > 80 ? "bg-rose-500" : "bg-admin-primary"}`}
-                                                    style={{ width: `${u.usage_percent ?? 0}%` }}
+                                                    className={`h-full ${isHighUsage ? "bg-rose-500" : "bg-admin-primary"}`}
+                                                    style={{ width: `${usageBarWidth}%` }}
                                                 ></div>
                                             </div>
                                             <span
-                                                className={`text-sm font-bold w-8 text-right ${
-                                                    u.usage_percent && u.usage_percent > 80 ? "text-rose-500" : "text-slate-600 dark:text-slate-300"
+                                                className={`text-sm font-bold w-10 text-right ${
+                                                    isHighUsage ? "text-rose-500" : "text-slate-600 dark:text-slate-300"
                                                 }`}
                                             >
-                                                {u.usage_percent ?? 0}%
+                                                {usageLabel}
                                             </span>
                                         </div>
                                     </td>
@@ -328,6 +365,8 @@ export default function AdminQuotasPage() {
                                         </div>
                                     </td>
                                 </tr>
+                                    );
+                                })()
                             ))}
                         </tbody>
                     </table>

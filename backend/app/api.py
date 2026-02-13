@@ -175,6 +175,122 @@ def _enqueue_attempt_graph_render(attempt_id: Optional[str]) -> None:
         logger.warning("graph_enqueue_failed attempt_id=%s reason=%s", attempt_id, str(exc))
 
 
+def _extract_steps_text_for_solve_session(solution_payload: Dict[str, Any]) -> str:
+    if not isinstance(solution_payload, dict):
+        return ""
+    steps = solution_payload.get("steps")
+    if not isinstance(steps, list):
+        steps = (solution_payload.get("solution") or {}).get("steps")
+    if not isinstance(steps, list):
+        return ""
+    out: List[str] = []
+    for idx, step in enumerate(steps, start=1):
+        if isinstance(step, dict):
+            text = (
+                step.get("explanation")
+                or step.get("text")
+                or step.get("work")
+                or step.get("output")
+                or ""
+            )
+            text = str(text).strip()
+        else:
+            text = str(step).strip()
+        if text:
+            out.append(f"Step {idx}: {text}")
+    return "\n".join(out)
+
+
+def _extract_final_answer_text_for_solve_session(solution_payload: Dict[str, Any]) -> str:
+    if not isinstance(solution_payload, dict):
+        return ""
+    final_answer = solution_payload.get("final_answer")
+    if isinstance(final_answer, dict):
+        text = (
+            final_answer.get("answer_text")
+            or final_answer.get("value")
+            or final_answer.get("answer_latex")
+            or final_answer.get("latex")
+            or ""
+        )
+        if text:
+            return str(text).strip()
+    if isinstance(final_answer, str):
+        return final_answer.strip()
+    nested_solution = solution_payload.get("solution")
+    if isinstance(nested_solution, dict):
+        nested_final = nested_solution.get("final_answer")
+        if isinstance(nested_final, dict):
+            text = (
+                nested_final.get("answer_text")
+                or nested_final.get("value")
+                or nested_final.get("answer_latex")
+                or nested_final.get("latex")
+                or ""
+            )
+            if text:
+                return str(text).strip()
+        if isinstance(nested_final, str):
+            return nested_final.strip()
+        if isinstance(nested_solution.get("result"), str):
+            return nested_solution.get("result", "").strip()
+    return ""
+
+
+def _persist_solve_session_and_llm_usage(
+    session: Session,
+    *,
+    user_id: int,
+    problem_text: str,
+    topic: str,
+    solution_payload: Dict[str, Any],
+    provider: Optional[str],
+    model: Optional[str],
+    request_id: Optional[str],
+    input_tokens: Optional[int],
+    output_tokens: Optional[int],
+    total_tokens: Optional[int],
+    latency_ms: Optional[int],
+) -> Optional[int]:
+    try:
+        steps_text = _extract_steps_text_for_solve_session(solution_payload)
+        final_answer_text = _extract_final_answer_text_for_solve_session(solution_payload)
+        solve_session = SolveSession(
+            user_id=user_id,
+            problem_text=(problem_text or "").strip(),
+            topic=(topic or "Math").strip() or "Math",
+            solution_steps_text=steps_text,
+            final_answer_text=final_answer_text,
+        )
+        session.add(solve_session)
+        session.commit()
+        session.refresh(solve_session)
+
+        input_tok = max(0, int(input_tokens or 0))
+        output_tok = max(0, int(output_tokens or 0))
+        computed_total = input_tok + output_tok
+        total_tok = max(0, int(total_tokens if total_tokens is not None else computed_total))
+        usage_row = LlmUsageLedger(
+            solve_session_id=solve_session.id or 0,
+            followup_turn_id=None,
+            provider=(provider or "openai").strip() or "openai",
+            model=(model or os.environ.get("OPENAI_MODEL_DEFAULT") or "unknown_model").strip(),
+            request_id=(request_id or "").strip() or None,
+            system_prompt_tokens=0,
+            input_tokens=input_tok,
+            output_tokens=output_tok,
+            total_tokens=total_tok,
+            latency_ms=int(latency_ms) if latency_ms is not None else None,
+        )
+        session.add(usage_row)
+        session.commit()
+        return solve_session.id
+    except Exception as exc:
+        session.rollback()
+        logger.warning("solve_session_or_usage_persist_failed user_id=%s reason=%s", user_id, str(exc))
+        return None
+
+
 @api_router.get("/health/llm")
 async def health_llm():
     """
@@ -4848,12 +4964,28 @@ async def solve_problem(
     record_request_event(session, event_payload)
     session.commit()
 
+    solve_session_id = _persist_solve_session_and_llm_usage(
+        session,
+        user_id=user_id,
+        problem_text=base_query,
+        topic=body.subject or "Math",
+        solution_payload=solution_data if isinstance(solution_data, dict) else {},
+        provider="openai",
+        model=model_name,
+        request_id=req_id,
+        input_tokens=telemetry_data.get("input_tokens"),
+        output_tokens=telemetry_data.get("output_tokens"),
+        total_tokens=telemetry_data.get("total_tokens"),
+        latency_ms=telemetry_data.get("latency_ms_total"),
+    )
+
     # Transformation complete, visuals handled at runtime in frontend
     # Structured Log (Success)
     print(f"request_id={req_id} attempt_id={attempt_id} phase=solve_end status=success latency={telemetry_data.get('latency_ms_total')}ms")
     
     return SolveResponse(
         session_id=new_chat.id,
+        solve_session_id=solve_session_id,
         solution=solution_data,
         concepts=solution_data.get("concepts") or [],
         model_used=model_name,
@@ -5941,10 +6073,26 @@ async def solve_v3_endpoint(
         ))
         
         session.commit()
+
+        solve_session_id = _persist_solve_session_and_llm_usage(
+            session,
+            user_id=user_id,
+            problem_text=problem_text,
+            topic=body.subject or "Math",
+            solution_payload=result if isinstance(result, dict) else {},
+            provider=(result.get("telemetry") or {}).get("provider") if isinstance(result, dict) else "openai",
+            model=((result.get("telemetry") or {}).get("model") if isinstance(result, dict) else None) or (result.get("_model") if isinstance(result, dict) else None),
+            request_id=request_id,
+            input_tokens=(result.get("telemetry") or {}).get("input_tokens") if isinstance(result, dict) else None,
+            output_tokens=(result.get("telemetry") or {}).get("output_tokens") if isinstance(result, dict) else None,
+            total_tokens=(result.get("telemetry") or {}).get("total_tokens") if isinstance(result, dict) else tokens_actual,
+            latency_ms=((result.get("telemetry") or {}).get("latency_ms_total") if isinstance(result, dict) else None),
+        )
         
         # Return V3 response
         # Merge session info into the result
         result["session_id"] = new_chat.id
+        result["solve_session_id"] = solve_session_id
         result["plot_url"] = plot_url
         result["tokens_used"] = tokens_actual
         result["request_id"] = request_id
@@ -7411,6 +7559,7 @@ async def solve_v3_stream_endpoint(
                                 existing_plots[i] = formatted_plot
                                 break
 
+            solve_session_id = None
             if True: # Always attempt to save what we have
                 # Stage: Rendering plot...
                 plot_url = None
@@ -7482,6 +7631,8 @@ async def solve_v3_stream_endpoint(
                     attempt.status = "success" if schema_valid else "failure"
                     if is_ambiguous:
                         attempt.status = "ambiguous"
+                    attempt.session_id = new_chat.id
+                    attempt.message_id = placeholder_msg.id
                     
                     attempt.raw_solution_text = raw_llm_output
                     attempt.validation_json = final_data if schema_valid else None
@@ -7524,6 +7675,20 @@ async def solve_v3_stream_endpoint(
                 except: pass
 
                 session.commit()
+                solve_session_id = _persist_solve_session_and_llm_usage(
+                    session,
+                    user_id=user_id,
+                    problem_text=problem_text,
+                    topic=body.subject or "Math",
+                    solution_payload=final_data if isinstance(final_data, dict) else {},
+                    provider=openai_telemetry.get("provider") or stream_provider,
+                    model=openai_telemetry.get("model") or stream_model,
+                    request_id=request_id,
+                    input_tokens=openai_telemetry.get("input_tokens"),
+                    output_tokens=openai_telemetry.get("output_tokens"),
+                    total_tokens=openai_telemetry.get("total_tokens"),
+                    latency_ms=openai_telemetry.get("latency_ms_total") or openai_telemetry.get("latency_ms_openai"),
+                )
                 print(f"[SOLVER_V3_STREAM] ✅ Successfully persisted results for session {new_chat.id}")
                 _enqueue_attempt_graph_render(attempt_id)
                 if attempt_id:
@@ -7707,7 +7872,7 @@ async def solve_v3_stream_endpoint(
             yield f"event: telemetry\ndata: {json.dumps(openai_telemetry)}\n\n"
 
             # Done Event
-            yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': True, 'session_id': new_chat.id, 'message_id': placeholder_msg.id})}\n\n"
+            yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': True, 'session_id': new_chat.id, 'message_id': placeholder_msg.id, 'solve_session_id': solve_session_id})}\n\n"
 
         except Exception as e:
             import traceback
@@ -10710,22 +10875,33 @@ async def admin_list_canonical_problems(
     admin: User = Depends(get_admin_user),
 ):
     query = select(CanonicalProblem)
+    where_clauses = []
     if q:
         needle = f"%{q.strip()}%"
-        query = query.where(
+        clause = (
             or_(
                 CanonicalProblem.normalized_problem_hash.ilike(needle),
                 CanonicalProblem.normalized_text.ilike(needle),
                 CanonicalProblem.canonical_math_object.ilike(needle),
             )
         )
+        where_clauses.append(clause)
+        query = query.where(clause)
     if intent:
-        query = query.where(CanonicalProblem.intent == intent.strip())
+        clause = CanonicalProblem.intent == intent.strip()
+        where_clauses.append(clause)
+        query = query.where(clause)
     if subject:
-        query = query.where(CanonicalProblem.subject == subject.strip())
+        clause = CanonicalProblem.subject == subject.strip()
+        where_clauses.append(clause)
+        query = query.where(clause)
 
     rows = db.exec(query.order_by(CanonicalProblem.last_seen_at.desc()).offset(offset).limit(limit)).all()
-    total = len(db.exec(query).all())
+    total = db.exec(
+        select(func.count())
+        .select_from(CanonicalProblem)
+        .where(*where_clauses)
+    ).one()
     return AdminCanonicalProblemListResponse(total=total, items=[_serialize_canonical_problem_row(r) for r in rows])
 
 
@@ -10877,21 +11053,32 @@ async def admin_list_canonical_solutions(
     admin: User = Depends(get_admin_user),
 ):
     query = select(CanonicalSolution)
+    where_clauses = []
     if problem_id is not None:
-        query = query.where(CanonicalSolution.problem_id == problem_id)
+        clause = CanonicalSolution.problem_id == problem_id
+        where_clauses.append(clause)
+        query = query.where(clause)
     if verification_status:
-        query = query.where(CanonicalSolution.verification_status == verification_status.strip())
+        clause = CanonicalSolution.verification_status == verification_status.strip()
+        where_clauses.append(clause)
+        query = query.where(clause)
     if q:
         needle = f"%{q.strip()}%"
-        query = query.where(
+        clause = (
             or_(
                 CanonicalSolution.model_id.ilike(needle),
                 CanonicalSolution.prompt_version.ilike(needle),
             )
         )
+        where_clauses.append(clause)
+        query = query.where(clause)
 
     rows = db.exec(query.order_by(CanonicalSolution.last_served_at.desc()).offset(offset).limit(limit)).all()
-    total = len(db.exec(query).all())
+    total = db.exec(
+        select(func.count())
+        .select_from(CanonicalSolution)
+        .where(*where_clauses)
+    ).one()
     return AdminCanonicalSolutionListResponse(total=total, items=[_serialize_canonical_solution_row(r) for r in rows])
 
 
@@ -11025,6 +11212,8 @@ class AdminQuestionIdentityItem(BaseModel):
     hit_count: int
     created_at: str
     last_seen_at: str
+    last_user_id: Optional[int] = None
+    last_user_email: Optional[str] = None
 
 
 class AdminQuestionIdentityListResponse(BaseModel):
@@ -11058,7 +11247,11 @@ class AdminQuestionIdentityDeleteRequest(BaseModel):
     reason: str
 
 
-def _serialize_question_identity_row(row: QuestionIdentityCache) -> AdminQuestionIdentityItem:
+def _serialize_question_identity_row(
+    row: QuestionIdentityCache,
+    last_user_id: Optional[int] = None,
+    last_user_email: Optional[str] = None,
+) -> AdminQuestionIdentityItem:
     return AdminQuestionIdentityItem(
         id=int(row.id or 0),
         question_key=row.question_key,
@@ -11070,6 +11263,8 @@ def _serialize_question_identity_row(row: QuestionIdentityCache) -> AdminQuestio
         hit_count=row.hit_count,
         created_at=row.created_at.isoformat() if row.created_at else "",
         last_seen_at=row.last_seen_at.isoformat() if row.last_seen_at else "",
+        last_user_id=last_user_id,
+        last_user_email=last_user_email,
     )
 
 
@@ -11095,8 +11290,30 @@ async def admin_list_question_identity_cache(
         query = query.where(QuestionIdentityCache.question_type == question_type.strip())
 
     rows = db.exec(query.order_by(QuestionIdentityCache.last_seen_at.desc()).offset(offset).limit(limit)).all()
+    question_keys = [r.question_key for r in rows if r.question_key]
+    last_user_by_key: Dict[str, Tuple[Optional[int], Optional[str]]] = {}
+    if question_keys:
+        hold_rows = db.exec(
+            select(CreditHold.question_id, CreditHold.user_id, User.email, CreditHold.created_at)
+            .join(User, User.id == CreditHold.user_id)
+            .where(CreditHold.question_id.in_(question_keys))
+            .order_by(CreditHold.created_at.desc())
+        ).all()
+        for question_id, hold_user_id, hold_user_email, _created_at in hold_rows:
+            if question_id and question_id not in last_user_by_key:
+                last_user_by_key[question_id] = (hold_user_id, hold_user_email)
     total = len(db.exec(query).all())
-    return AdminQuestionIdentityListResponse(total=total, items=[_serialize_question_identity_row(r) for r in rows])
+    return AdminQuestionIdentityListResponse(
+        total=total,
+        items=[
+            _serialize_question_identity_row(
+                r,
+                last_user_id=(last_user_by_key.get(r.question_key) or (None, None))[0],
+                last_user_email=(last_user_by_key.get(r.question_key) or (None, None))[1],
+            )
+            for r in rows
+        ],
+    )
 
 
 @api_router.get("/admin/cache/question-identity/{entry_id}", response_model=AdminQuestionIdentityItem)
@@ -11108,7 +11325,19 @@ async def admin_get_question_identity_cache_entry(
     row = db.get(QuestionIdentityCache, entry_id)
     if not row:
         raise HTTPException(status_code=404, detail="Question identity cache entry not found")
-    return _serialize_question_identity_row(row)
+    last_user_id: Optional[int] = None
+    last_user_email: Optional[str] = None
+    if row.question_key:
+        latest_hold = db.exec(
+            select(CreditHold.user_id, User.email)
+            .join(User, User.id == CreditHold.user_id)
+            .where(CreditHold.question_id == row.question_key)
+            .order_by(CreditHold.created_at.desc())
+        ).first()
+        if latest_hold:
+            last_user_id = latest_hold[0]
+            last_user_email = latest_hold[1]
+    return _serialize_question_identity_row(row, last_user_id=last_user_id, last_user_email=last_user_email)
 
 
 @api_router.post("/admin/cache/question-identity", response_model=AdminQuestionIdentityItem)
@@ -11293,6 +11522,7 @@ async def admin_get_quotas(db: Session = Depends(get_session), admin: User = Dep
     """Admin only: List users and their usage for quota management"""
     from datetime import timedelta
     from decimal import Decimal
+    from app.models import BillingLedger
     now = datetime.utcnow()
     last_24h = now - timedelta(days=1)
     
@@ -11328,6 +11558,24 @@ async def admin_get_quotas(db: Session = Depends(get_session), admin: User = Dep
             daily_credits_used = sum([l.amount for l in daily_ledger], Decimal("0"))
         else:
             daily_credits_used = Decimal("0")
+
+        # Billing v2 path: credits are tracked in BillingLedger. Fallback to it when legacy UsageLedger is empty.
+        if daily_credits_used <= 0:
+            billing_rows = db.exec(
+                select(BillingLedger)
+                .where(BillingLedger.user_id == u.id)
+                .where(BillingLedger.created_at >= last_24h)
+                .where(BillingLedger.ok == True)
+            ).all()
+            if billing_rows:
+                billed_credits = Decimal("0")
+                for row in billing_rows:
+                    status = (row.status or "").upper()
+                    if status in {"CHARGED", "SETTLED"}:
+                        charged = Decimal(str(row.credits_charged or 0))
+                        if charged > 0:
+                            billed_credits += charged
+                daily_credits_used = billed_credits
 
         total_daily_credits_used += daily_credits_used
         if daily_credit_cap > 0:

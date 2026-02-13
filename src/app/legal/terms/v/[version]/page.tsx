@@ -2,7 +2,8 @@ import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 
-import { fetchPublicTermsOfService } from "@/lib/legal";
+import { fetchPublicTermsOfService, formatEffectiveDate } from "@/lib/legal";
+import AdminLegalActions from "@/components/legal/AdminLegalActions";
 
 type TermsVersionPageProps = {
   params: Promise<{ version: string }>;
@@ -18,10 +19,11 @@ export default async function TermsVersionPage({ params }: TermsVersionPageProps
         <div className="mb-6">
           <h1 className="text-3xl md:text-4xl font-black font-display text-[#111318] dark:text-white">Terms of Service</h1>
           <p className="text-sm text-slate-500 mt-2">
-            Effective date: {doc.effective_at ? new Date(doc.effective_at).toLocaleDateString() : "Not published yet"} | Version: {doc.version}
+            Effective date: {formatEffectiveDate(doc.effective_at)} | Version: {doc.version}
           </p>
         </div>
-        <article className="prose prose-slate dark:prose-invert max-w-none markdown-math">
+        <AdminLegalActions docKey="terms_of_service" />
+        <article suppressHydrationWarning className="prose prose-slate dark:prose-invert max-w-none markdown-math">
           <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
             {doc.content_md}
           </ReactMarkdown>

@@ -153,8 +153,10 @@ class QuestionIdentityService:
         """
         Further normalize the question stem.
         """
-        # Remove question numbers like "3." or "Q3:" at the start
-        stem = re.sub(r'^[qQ]?\d+[.:)\]]\s*', '', stem)
+        # Remove question prefixes like "Q3", "Q3:", "Q 3)", and "3." at the start.
+        # Keep bare leading numbers intact to avoid damaging equations like "2x + 3 = 7".
+        stem = re.sub(r'^[qQ]\s*\d+\s*[.:)\]]?\s*', '', stem)
+        stem = re.sub(r'^\d+[.:)\]]\s*', '', stem)
         
         # Remove trailing punctuation that might vary
         stem = re.sub(r'[.!?:]+$', '', stem)

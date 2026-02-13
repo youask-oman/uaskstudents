@@ -33,6 +33,41 @@ WHATSAPP_SECRET_LENGTH = 8
 WHATSAPP_SECRET_ALPHABET = string.ascii_uppercase + string.digits
 
 
+def _load_terms_markdown_inventory() -> str:
+    """
+    Load Terms markdown from disk using resilient path discovery.
+    Never returns empty content; falls back to a minimal template.
+    """
+    candidates = []
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        candidates.append(parent / "terms_of_service.md")
+    candidates.append(Path.cwd() / "terms_of_service.md")
+    candidates.append(Path.cwd().parent / "terms_of_service.md")
+
+    seen: set[str] = set()
+    for candidate in candidates:
+        key = str(candidate)
+        if key in seen:
+            continue
+        seen.add(key)
+        try:
+            if candidate.exists():
+                data = candidate.read_text(encoding="utf-8")
+                if data.strip():
+                    return data
+        except Exception:
+            continue
+
+    # Final guard so admin editor is never blank.
+    return (
+        "# Terms of Service\n\n"
+        "Effective date: TBD\n\n"
+        "These Terms of Service govern access to and use of the Service.\n"
+        "By using the Service, you agree to these Terms.\n"
+    )
+
+
 def _generate_whatsapp_secret(used: Optional[set[str]] = None) -> str:
     used = used or set()
     for _ in range(16):
@@ -345,6 +380,12 @@ def get_transactions(
     user: User = Depends(get_staff_user)
 ):
     """Search transaction ledger"""
+    def _num(value: Any) -> float:
+        try:
+            return float(value or 0)
+        except Exception:
+            return 0.0
+
     query = select(BillingLedger).order_by(desc(BillingLedger.created_at))
     
     if user_id:
@@ -357,8 +398,28 @@ def get_transactions(
     # Pagination
     offset = (page - 1) * page_size
     results = session.exec(query.offset(offset).limit(page_size)).all()
-    
-    return {"data": results, "page": page, "page_size": page_size}
+    rows = []
+    for row in results:
+        estimated = _num(row.estimated_credits)
+        actual = _num(row.actual_credits)
+        charged = _num(row.credits_charged)
+        effective_actual = actual if actual > 0 else charged
+        delta = _num(row.delta_credits)
+        if delta == 0:
+            delta = effective_actual - estimated
+        rows.append({
+            "id": row.id,
+            "user_id": row.user_id,
+            "action_type": row.action_type,
+            "status": row.status,
+            "estimated_credits": estimated,
+            "actual_credits": effective_actual,
+            "credits_charged": charged,
+            "delta_credits": delta,
+            "created_at": row.created_at,
+        })
+
+    return {"data": rows, "page": page, "page_size": page_size}
 
 @admin_router.post("/config/revert")
 def revert_config(
@@ -733,6 +794,17 @@ def get_public_terms_of_service(
     }
 
 
+@legal_router.get("/terms/inventory")
+def get_terms_inventory_source():
+    content_md = _load_terms_markdown_inventory()
+    return {
+        "key": "terms_of_service",
+        "version": "inventory-source",
+        "status": "draft",
+        "content_md": content_md,
+    }
+
+
 @legal_router.get("/terms/v/{version}")
 def get_public_terms_of_service_by_path(
     version: str,
@@ -826,6 +898,42 @@ def admin_list_legal_documents(
         .where(LegalDocument.key == key)
         .order_by(desc(LegalDocument.created_at), desc(LegalDocument.id))
     ).all()
+
+    # Auto-bootstrap Terms editor when DB has no usable content.
+    # This keeps admin /legal/terms behavior aligned with public fallback rendering.
+    if key == "terms_of_service":
+        latest = docs[0] if docs else None
+        should_seed_latest = bool(latest and not (latest.content_md or "").strip())
+        should_create_seed = latest is None
+        if should_seed_latest or should_create_seed:
+            seed_md = _load_terms_markdown_inventory()
+            if seed_md.strip():
+                if should_seed_latest and latest is not None:
+                    latest.content_md = seed_md
+                    latest.content_html = markdown_to_basic_html(seed_md)
+                    latest.checksum_sha256 = _compute_checksum(seed_md)
+                    latest.updated_by = admin.id
+                    session.add(latest)
+                    session.commit()
+                elif should_create_seed:
+                    seeded = LegalDocument(
+                        key=key,
+                        version=_generate_version_key(session, key),
+                        status="draft",
+                        content_md=seed_md,
+                        content_html=markdown_to_basic_html(seed_md),
+                        created_by=admin.id,
+                        updated_by=admin.id,
+                        checksum_sha256=_compute_checksum(seed_md),
+                    )
+                    session.add(seeded)
+                    session.commit()
+                docs = session.exec(
+                    select(LegalDocument)
+                    .where(LegalDocument.key == key)
+                    .order_by(desc(LegalDocument.created_at), desc(LegalDocument.id))
+                ).all()
+
     return [
         {
             "id": d.id,
@@ -883,9 +991,7 @@ def admin_upsert_legal_document(
         if key == "privacy_policy":
             content_md = build_privacy_policy_markdown()
         elif key == "terms_of_service":
-            terms_path = Path(__file__).resolve().parents[2] / "terms_of_service.md"
-            if terms_path.exists():
-                content_md = terms_path.read_text(encoding="utf-8")
+            content_md = _load_terms_markdown_inventory()
     content_html = payload.content_html or markdown_to_basic_html(content_md)
     checksum = _compute_checksum(content_md)
 

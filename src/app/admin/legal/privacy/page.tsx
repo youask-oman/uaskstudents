@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
@@ -34,31 +34,87 @@ export default function AdminPrivacyPolicyPage() {
   const [effectiveAt, setEffectiveAt] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [bootstrapped, setBootstrapped] = useState(false);
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const baseUrl = API_BASE_URL;
+  const fallbackUrl = process.env.NEXT_PUBLIC_API_FALLBACK_URL || API_BASE_URL || "http://localhost:9000";
 
-  const headers = useMemo(
-    () => ({
-      "Content-Type": "application/json",
+  const getHeaders = (contentType = false): HeadersInit => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    return {
+      ...(contentType ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    }),
-    [token]
-  );
+    };
+  };
 
-  const refresh = async () => {
+  const fetchAdmin = async (path: string, init?: RequestInit) => {
+    const candidates = Array.from(
+      new Set(
+        [baseUrl, fallbackUrl, "http://localhost:9000", "http://127.0.0.1:9000"]
+          .map((x) => (x || "").trim())
+          .filter(Boolean),
+      ),
+    );
+    let lastNetworkError: unknown = null;
+
+    for (const candidate of candidates) {
+      try {
+        const res = await fetch(`${candidate}${path}`, {
+          ...init,
+          headers: {
+            ...getHeaders(Boolean(init?.body)),
+            ...(init?.headers || {}),
+          },
+        });
+        if (res.status === 404 || res.status >= 500) {
+          continue;
+        }
+        return res;
+      } catch (err) {
+        lastNetworkError = err;
+      }
+    }
+
+    if (lastNetworkError) {
+      throw new Error("Network error");
+    }
+    throw new Error("API endpoint not reachable");
+  };
+
+  const refresh = async (preferredId?: number | null) => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/admin/legal-documents?key=privacy_policy`, { headers });
+      const res = await fetchAdmin(`/api/admin/legal-documents?key=privacy_policy`);
       if (!res.ok) {
         const err = await parseApiError(res);
         throw new Error(err.message);
       }
-      const data = (await res.json()) as LegalListItem[];
+      let data = (await res.json()) as LegalListItem[];
+      if (data.length === 0 && !bootstrapped) {
+        const createRes = await fetchAdmin(`/api/admin/legal-documents`, {
+          method: "POST",
+          body: JSON.stringify({ key: "privacy_policy", generate_from_inventory: true }),
+        });
+        if (createRes.ok) {
+          setBootstrapped(true);
+          const retryRes = await fetchAdmin(`/api/admin/legal-documents?key=privacy_policy`);
+          if (retryRes.ok) {
+            data = (await retryRes.json()) as LegalListItem[];
+          }
+        }
+      }
       setItems(data);
-      const nextId = selectedId ?? data[0]?.id ?? null;
+      const availableIds = new Set(data.map((d) => d.id));
+      const latestPublishedId = data.find((d) => d.status === "published")?.id ?? null;
+      const nextId =
+        (preferredId && availableIds.has(preferredId) ? preferredId : null) ??
+        (selectedId && availableIds.has(selectedId) ? selectedId : null) ??
+        (latestPublishedId && availableIds.has(latestPublishedId) ? latestPublishedId : null) ??
+        data[0]?.id ??
+        null;
       setSelectedId(nextId);
       if (nextId) {
-        const detail = await fetch(`${API_BASE_URL}/api/admin/legal-documents/${nextId}`, { headers });
+        const detail = await fetchAdmin(`/api/admin/legal-documents/${nextId}`);
         if (!detail.ok) {
           const err = await parseApiError(detail);
           throw new Error(err.message);
@@ -91,23 +147,24 @@ export default function AdminPrivacyPolicyPage() {
   const saveDraft = async () => {
     setSaving(true);
     try {
-      const payload = {
+      const requestPayload = {
         id: doc?.id ?? undefined,
         key: "privacy_policy",
         content_md: contentMd,
         effective_at: effectiveAt ? new Date(`${effectiveAt}T00:00:00.000Z`).toISOString() : undefined,
       };
-      const res = await fetch(`${API_BASE_URL}/api/admin/legal-documents`, {
+      const res = await fetchAdmin(`/api/admin/legal-documents`, {
         method: "PUT",
-        headers,
-        body: JSON.stringify(payload),
+        body: JSON.stringify(requestPayload),
       });
       if (!res.ok) {
         const err = await parseApiError(res);
         throw new Error(err.message);
       }
       pushToast({ type: "success", title: "Saved draft" });
-      await refresh();
+      const payload = await res.json();
+      const nextId = typeof payload?.id === "number" ? payload.id : null;
+      await refresh(nextId);
     } catch (error) {
       pushToast({
         type: "error",
@@ -122,9 +179,8 @@ export default function AdminPrivacyPolicyPage() {
   const createGeneratedDraft = async () => {
     setSaving(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/admin/legal-documents`, {
+      const res = await fetchAdmin(`/api/admin/legal-documents`, {
         method: "POST",
-        headers,
         body: JSON.stringify({ key: "privacy_policy", generate_from_inventory: true }),
       });
       if (!res.ok) {
@@ -132,7 +188,9 @@ export default function AdminPrivacyPolicyPage() {
         throw new Error(err.message);
       }
       pushToast({ type: "success", title: "Generated new draft from inventory" });
-      await refresh();
+      const payload = await res.json();
+      const nextId = typeof payload?.id === "number" ? payload.id : null;
+      await refresh(nextId);
     } catch (error) {
       pushToast({
         type: "error",
@@ -148,9 +206,26 @@ export default function AdminPrivacyPolicyPage() {
     if (!doc?.id) return;
     setSaving(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/admin/legal-documents/${doc.id}/publish`, {
+      // Ensure current editor content is persisted first. If current doc is
+      // already published, backend creates a new draft/version and returns its id.
+      const upsertRes = await fetchAdmin(`/api/admin/legal-documents`, {
+        method: "PUT",
+        body: JSON.stringify({
+          id: doc.id,
+          key: "privacy_policy",
+          content_md: contentMd,
+          effective_at: effectiveAt ? new Date(`${effectiveAt}T00:00:00.000Z`).toISOString() : undefined,
+        }),
+      });
+      if (!upsertRes.ok) {
+        const err = await parseApiError(upsertRes);
+        throw new Error(err.message);
+      }
+      const upsertPayload = await upsertRes.json();
+      const publishId = typeof upsertPayload?.id === "number" ? upsertPayload.id : doc.id;
+
+      const res = await fetchAdmin(`/api/admin/legal-documents/${publishId}/publish`, {
         method: "POST",
-        headers,
         body: JSON.stringify({
           effective_at: effectiveAt ? new Date(`${effectiveAt}T00:00:00.000Z`).toISOString() : undefined,
         }),
@@ -160,7 +235,7 @@ export default function AdminPrivacyPolicyPage() {
         throw new Error(err.message);
       }
       pushToast({ type: "success", title: "Published privacy policy" });
-      await refresh();
+      await refresh(publishId);
     } catch (error) {
       pushToast({
         type: "error",
@@ -187,7 +262,7 @@ export default function AdminPrivacyPolicyPage() {
               key={item.id}
               onClick={async () => {
                 setSelectedId(item.id);
-                const res = await fetch(`${API_BASE_URL}/api/admin/legal-documents/${item.id}`, { headers });
+                const res = await fetchAdmin(`/api/admin/legal-documents/${item.id}`);
                 if (!res.ok) return;
                 const detail = (await res.json()) as LegalDetail;
                 setDoc(detail);

@@ -15,6 +15,8 @@ type QIEntry = {
   hit_count: number;
   created_at: string;
   last_seen_at: string;
+  last_user_id?: number | null;
+  last_user_email?: string | null;
 };
 
 type CreatePayload = {
@@ -179,6 +181,9 @@ export default function AdminQuestionIdentityPage() {
               <th className="px-3 py-2 text-left">Key</th>
               <th className="px-3 py-2 text-left">Type</th>
               <th className="px-3 py-2 text-left">Hits</th>
+              <th className="px-3 py-2 text-left">User</th>
+              <th className="px-3 py-2 text-left">Created</th>
+              <th className="px-3 py-2 text-left">Variant (50)</th>
               <th className="px-3 py-2 text-left">Action</th>
             </tr>
           </thead>
@@ -189,6 +194,20 @@ export default function AdminQuestionIdentityPage() {
                 <td className="px-3 py-2 font-mono text-xs">{x.question_key}</td>
                 <td className="px-3 py-2">{x.question_type}</td>
                 <td className="px-3 py-2">{x.hit_count}</td>
+                <td className="px-3 py-2">
+                  <div className="text-xs leading-tight">
+                    <div>{x.last_user_email || "-"}</div>
+                    <div className="text-slate-500">{x.last_user_id ?? "-"}</div>
+                  </div>
+                </td>
+                <td className="px-3 py-2 text-xs whitespace-nowrap">
+                  {x.created_at ? new Date(x.created_at).toLocaleString() : "-"}
+                </td>
+                <td className="px-3 py-2 max-w-[320px]">
+                  <span className="font-mono text-xs break-words">
+                    {(x.original_variants?.[0] || "").slice(0, 50) || "-"}
+                  </span>
+                </td>
                 <td className="px-3 py-2 flex gap-2">
                   <button onClick={() => setEditing({ ...x })} className="px-2 py-1 rounded bg-slate-700 text-white text-xs">Edit</button>
                   <button onClick={() => void deleteEntry(x.id)} className="px-2 py-1 rounded bg-rose-600 text-white text-xs">Delete</button>
@@ -196,7 +215,7 @@ export default function AdminQuestionIdentityPage() {
               </tr>
             ))}
             {!loading && filtered.length === 0 && (
-              <tr><td className="px-3 py-4 text-slate-500" colSpan={5}>No rows found.</td></tr>
+              <tr><td className="px-3 py-4 text-slate-500" colSpan={8}>No rows found.</td></tr>
             )}
           </tbody>
         </table>
@@ -234,4 +253,3 @@ export default function AdminQuestionIdentityPage() {
     </div>
   );
 }
-

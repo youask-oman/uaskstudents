@@ -166,6 +166,10 @@ export default function AdminDashboardPage() {
 
     const adminFeatureLinks = [
         { label: "Overview", href: "/admin/dashboard" },
+        { label: "Public Terms", href: "/legal/terms" },
+        { label: "Public Privacy", href: "/legal/privacy" },
+        { label: "Edit Terms", href: "/admin/legal/terms" },
+        { label: "Edit Privacy", href: "/admin/legal/privacy" },
         { label: "Users", href: "/admin/users" },
         { label: "Quotas", href: "/admin/quotas" },
         { label: "Legacy Subscriptions", href: "/admin/legacy/subscriptions" },
@@ -375,6 +379,25 @@ export default function AdminDashboardPage() {
             </header>
 
             <div className="p-8 max-w-[1400px] mx-auto w-full flex flex-col gap-8">
+                <section className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-5">
+                    <h4 className="text-base font-bold text-slate-900 dark:text-white">Legal Quick Access</h4>
+                    <p className="text-xs text-slate-500 mt-1">View public legal pages or open admin editors to update/publish.</p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                        <Link href="/legal/terms" className="px-3 py-2 rounded border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800">
+                            View Public Terms
+                        </Link>
+                        <Link href="/legal/privacy" className="px-3 py-2 rounded border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800">
+                            View Public Privacy
+                        </Link>
+                        <Link href="/admin/legal/terms" className="px-3 py-2 rounded bg-admin-primary text-white text-xs font-semibold hover:bg-admin-primary/90">
+                            Edit Terms
+                        </Link>
+                        <Link href="/admin/legal/privacy" className="px-3 py-2 rounded bg-admin-primary text-white text-xs font-semibold hover:bg-admin-primary/90">
+                            Edit Privacy
+                        </Link>
+                    </div>
+                </section>
+
                 <section className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-5">
                     <div className="flex flex-wrap items-center gap-4 text-sm text-slate-300">
                         <div className="flex items-center gap-2">

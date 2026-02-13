@@ -216,7 +216,7 @@ export default function ShareSolutionModal({
           <span className="material-symbols-outlined text-orange-400 text-base">info</span>
           <p>
             Do not share personal information. Sharing publicly lets anyone with the link view this solution. See{" "}
-            <Link href="/api/legal/terms" className="underline">
+            <Link href="/legal/terms" className="underline">
               Terms of Service
             </Link>.
           </p>

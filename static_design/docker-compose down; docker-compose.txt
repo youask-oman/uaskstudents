@@ -2,6 +2,7 @@ docker-compose down; docker-compose up -d --build
 
 taskkill /IM uvicorn.exe /F
 uvicorn app.main:app --port 9000 --log-level debug
+uvicorn app.main:app --host 0.0.0.0 --port 9000 --lifespan on --log-level info
 
 docker compose exec -e APP_ENV=DEV orchestrator python scripts/run_admin_smoke_all.py
 

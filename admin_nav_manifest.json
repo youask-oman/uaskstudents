@@ -96,22 +96,22 @@
     },
     {
       "type": "link",
-      "label": "Legal",
-      "href": "/admin/legal/privacy-policy",
-      "icon": "gavel",
-      "page_title": "Legal Documents",
+      "label": "Terms of Service",
+      "href": "/legal/terms",
+      "icon": "description",
+      "page_title": "Terms of Service",
       "api_checks": [
-        "/api/admin/legal-documents"
+        "/api/legal/terms"
       ]
     },
     {
       "type": "link",
-      "label": "Terms",
-      "href": "/admin/legal/terms-of-service",
-      "icon": "balance",
-      "page_title": "Terms of Service",
+      "label": "Privacy Policy",
+      "href": "/legal/privacy",
+      "icon": "policy",
+      "page_title": "Privacy Policy",
       "api_checks": [
-        "/api/admin/legal-documents?key=terms_of_service"
+        "/api/legal/privacy"
       ]
     },
     {

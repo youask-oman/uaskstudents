@@ -1,8 +1,6 @@
-import ReactMarkdown from "react-markdown";
-import remarkMath from "remark-math";
-import rehypeKatex from "rehype-katex";
-
-import { fetchPublicPrivacyPolicy } from "@/lib/legal";
+import { fetchPublicPrivacyPolicy, formatEffectiveDate } from "@/lib/legal";
+import AdminLegalActions from "@/components/legal/AdminLegalActions";
+import LegalMarkdownClient from "@/components/legal/LegalMarkdownClient";
 
 type PrivacyPageProps = {
   searchParams?: Promise<{ version?: string }>;
@@ -18,14 +16,11 @@ export default async function PrivacyPolicyPage({ searchParams }: PrivacyPagePro
         <div className="mb-6">
           <h1 className="text-3xl md:text-4xl font-black font-display text-[#111318] dark:text-white">Privacy Policy</h1>
           <p className="text-sm text-slate-500 mt-2">
-            Effective date: {doc.effective_at ? new Date(doc.effective_at).toLocaleDateString() : "Not published yet"} | Version: {doc.version}
+            Effective date: {formatEffectiveDate(doc.effective_at)} | Version: {doc.version}
           </p>
         </div>
-        <article className="prose prose-slate dark:prose-invert max-w-none markdown-math">
-          <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-            {doc.content_md}
-          </ReactMarkdown>
-        </article>
+        <AdminLegalActions docKey="privacy_policy" />
+        <LegalMarkdownClient content={doc.content_md} />
       </section>
     </main>
   );

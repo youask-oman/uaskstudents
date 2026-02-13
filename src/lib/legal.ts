@@ -13,6 +13,18 @@ export type PublicLegalDocument = {
   checksum_sha256?: string;
 };
 
+export function formatEffectiveDate(effectiveAt?: string | null): string {
+  if (!effectiveAt) {
+    return "Not published yet";
+  }
+  const dt = new Date(effectiveAt);
+  if (Number.isNaN(dt.getTime())) {
+    return "Not published yet";
+  }
+  // Keep this deterministic across server/client environments.
+  return dt.toLocaleDateString("en-US", { timeZone: "UTC" });
+}
+
 const SERVER_API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   process.env.NEXT_PUBLIC_API_URL ||

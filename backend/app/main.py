@@ -220,6 +220,7 @@ async def enforce_terms_acceptance(request: Request, call_next):
         "/api/v1/login",
         "/api/v1/signup",
         "/api/legal/",
+        "/api/admin/legal-documents",
         "/health",
         "/ready",
     )
@@ -246,6 +247,10 @@ async def enforce_terms_acceptance(request: Request, call_next):
         with Session(engine) as session:
             user = session.exec(select(User).where(User.email == email)).first()
             if not user:
+                return await call_next(request)
+            # Admin/staff users must be able to access admin/legal operations
+            # even if terms acceptance is pending, to avoid management deadlocks.
+            if user.role in {"admin", "superadmin", "devops", "support", "finance"}:
                 return await call_next(request)
             required, required_version = get_terms_requirement_status(session, user_id=user.id)
             if required:
