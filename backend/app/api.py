@@ -44,7 +44,8 @@ from app.models import (
     SolveSession, FollowupChatTurn, LlmUsageLedger,
     CreditLot, CreditProgramEnrollment,
     ChatEditNoteV2, ChatEditCopyV2,
-    LegalDocument, LegalAcceptance
+    LegalDocument, LegalAcceptance,
+    SolutionShare,
 )
 from app.utils.token_utils import count_tokens, count_messages_tokens
 from app.services.plot_sampling import process_visuals
@@ -99,6 +100,7 @@ from app.services.intent import should_require_visual
 from app.services.solve.solution_doc import parse_solution_doc, render_solution_doc_markdown
 from app.services.legal_service import get_terms_requirement_status
 from app.services.audit_log_service import audit_log_service
+from app.services.share_service import share_service
 from app.services.credit_transfer_config import load_credit_transfer_config
 
 
@@ -1092,6 +1094,7 @@ def _sqlmodel_list(items: List[Any]) -> List[Dict[str, Any]]:
 
 class ChatHistoryItem(BaseModel):
     id: int
+    attempt_id: Optional[str] = None
     title: str
     created_at: str
     subject: Optional[str] = None
@@ -8284,6 +8287,12 @@ async def get_history(
     
     history_items = []
     for chat in results:
+        latest_attempt = session.exec(
+            select(SolverOutputAttempt)
+            .where(SolverOutputAttempt.session_id == chat.id)
+            .order_by(SolverOutputAttempt.created_at.desc())
+        ).first()
+
         # Extract user input
         user_input = None
         for msg in chat.messages:
@@ -8333,6 +8342,7 @@ async def get_history(
         
         history_items.append(ChatHistoryItem(
             id=chat.id, 
+            attempt_id=latest_attempt.attempt_id if latest_attempt else None,
             title=chat.title, 
             created_at=chat.created_at.isoformat(),
             subject=msg_subject or chat.subject or "Math",
@@ -8361,6 +8371,7 @@ class ChatMessageSchema(BaseModel):
 
 class ChatSessionResponse(BaseModel):
     id: int
+    attempt_id: Optional[str] = None
     title: str
     subject: Optional[str] = None
     is_saved: bool = False
@@ -8381,6 +8392,29 @@ class SolutionDocResponse(BaseModel):
 
 class SolutionDocPreviewRequest(BaseModel):
     markdown: str
+
+
+class ShareVisibilityUpdateRequest(BaseModel):
+    visibility: str = Field(..., description="PRIVATE or PUBLIC")
+
+
+class ShareStateResponse(BaseModel):
+    attempt_id: str
+    visibility: str
+    share_url: Optional[str] = None
+    revoked: bool
+
+
+class PublicShareResponse(BaseModel):
+    attempt_id: str
+    paper: Dict[str, Any]
+    problem: Dict[str, Any]
+    created_at: Optional[str] = None
+    visibility: str
+
+
+class ShareAttemptResolutionResponse(BaseModel):
+    attempt_id: Optional[str] = None
 
 
 class NotesResponse(BaseModel):
@@ -8435,9 +8469,16 @@ async def get_session_details(session_id: int, session: Session = Depends(get_se
     chat_session = session.get(ChatSession, session_id)
     if not chat_session:
         raise HTTPException(status_code=404, detail="Session not found")
+
+    latest_attempt = session.exec(
+        select(SolverOutputAttempt)
+        .where(SolverOutputAttempt.session_id == chat_session.id)
+        .order_by(SolverOutputAttempt.created_at.desc())
+    ).first()
         
     return ChatSessionResponse(
         id=chat_session.id,
+        attempt_id=latest_attempt.attempt_id if latest_attempt else None,
         title=chat_session.title,
         subject=chat_session.subject,
         is_saved=chat_session.is_saved,
@@ -8468,6 +8509,157 @@ async def get_session_details(session_id: int, session: Session = Depends(get_se
             for msg in chat_session.messages
         ]
     )
+
+
+@api_router.get("/shares/attempt/{attempt_id}", response_model=ShareStateResponse)
+async def get_attempt_share_state(
+    attempt_id: str,
+    request: Request,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    attempt = share_service.get_attempt_by_attempt_id(session, attempt_id)
+    if not attempt:
+        raise HTTPException(status_code=404, detail="Attempt not found")
+    if attempt.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not authorized for this attempt")
+
+    share = share_service.get_share_for_attempt(session, attempt_id, user.id)
+    origin = request.headers.get("origin")
+    return share_service.read_state(
+        share=share,
+        attempt_id=attempt_id,
+        request_origin=origin,
+    )
+
+
+@api_router.get("/shares/session/{session_id}/attempt", response_model=ShareAttemptResolutionResponse)
+async def resolve_share_attempt_for_session(
+    session_id: int,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    chat_session = session.get(ChatSession, session_id)
+    if not chat_session or chat_session.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    attempt = session.exec(
+        select(SolverOutputAttempt)
+        .where(
+            SolverOutputAttempt.session_id == session_id,
+            SolverOutputAttempt.user_id == user.id,
+            SolverOutputAttempt.status == "success",
+        )
+        .order_by(SolverOutputAttempt.created_at.desc())
+    ).first()
+    if not attempt:
+        assistant_messages = [msg for msg in chat_session.messages if msg.role == "assistant"]
+        target = None
+        for msg in reversed(assistant_messages):
+            if isinstance(msg.structured_data, dict) and msg.structured_data:
+                target = msg
+                break
+            if isinstance(msg.content, str) and msg.content.strip():
+                target = msg
+                break
+        if target:
+            synthetic_attempt = SolverOutputAttempt(
+                request_id=f"share_session_{uuid.uuid4()}",
+                attempt_id=str(uuid.uuid4()),
+                user_id=user.id,
+                session_id=chat_session.id,
+                message_id=target.id,
+                output_format="json_schema" if isinstance(target.structured_data, dict) else "freeform",
+                attempt_number=1,
+                char_count=len((target.content or "").strip()),
+                status="success",
+                raw_solution_text=(target.content or "").strip(),
+                validation_json=target.structured_data if isinstance(target.structured_data, dict) else None,
+            )
+            session.add(synthetic_attempt)
+            session.commit()
+            session.refresh(synthetic_attempt)
+            attempt = synthetic_attempt
+    if not attempt:
+        return ShareAttemptResolutionResponse(attempt_id=None)
+    return ShareAttemptResolutionResponse(attempt_id=attempt.attempt_id)
+
+
+@api_router.post("/shares/attempt/{attempt_id}", response_model=ShareStateResponse)
+async def upsert_attempt_share_state(
+    attempt_id: str,
+    body: ShareVisibilityUpdateRequest,
+    request: Request,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    attempt = share_service.get_attempt_by_attempt_id(session, attempt_id)
+    if not attempt:
+        raise HTTPException(status_code=404, detail="Attempt not found")
+    if attempt.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not authorized for this attempt")
+
+    visibility = (body.visibility or "").strip().upper()
+    if visibility not in {"PRIVATE", "PUBLIC"}:
+        raise HTTPException(status_code=422, detail="visibility must be PRIVATE or PUBLIC")
+    if visibility == "PUBLIC" and (attempt.status or "").lower() != "success":
+        raise HTTPException(status_code=409, detail="Solve must complete before sharing.")
+
+    share = share_service.upsert_visibility(
+        session=session,
+        attempt=attempt,
+        owner_user_id=user.id,
+        visibility=visibility,
+    )
+    logger.info(
+        "share_event=%s attempt_id=%s user_id=%s",
+        "share_enabled" if visibility == "PUBLIC" else "share_disabled",
+        attempt_id,
+        user.id,
+    )
+    if share.created_at == share.updated_at:
+        logger.info("share_event=share_created attempt_id=%s user_id=%s", attempt_id, user.id)
+
+    origin = request.headers.get("origin")
+    return share_service.read_state(
+        share=share,
+        attempt_id=attempt_id,
+        request_origin=origin,
+    )
+
+
+@api_router.get("/shares/public/{token}", response_model=PublicShareResponse)
+async def get_public_shared_solution(
+    token: str,
+    request: Request,
+    session: Session = Depends(get_session),
+):
+    client_ip = request.client.host if request.client else "unknown"
+    if not share_service.allow_public_request(client_ip):
+        raise HTTPException(status_code=429, detail="Too many requests")
+
+    share = share_service.resolve_public_share(session, token)
+    if not share:
+        raise HTTPException(status_code=404, detail="This shared solution is unavailable.")
+
+    payload = share_service.build_public_view_model(session, share)
+    if not payload:
+        raise HTTPException(status_code=404, detail="This shared solution is unavailable.")
+
+    try:
+        share_service.mark_view(session, share)
+    except Exception:
+        session.rollback()
+
+    logger.info("share_event=share_viewed attempt_id=%s", payload.get("attempt_id"))
+    response = JSONResponse(
+        content=payload,
+        headers={
+            "X-Robots-Tag": "noindex, nofollow, noarchive",
+            "Cache-Control": "no-store",
+        },
+    )
+    return response
 
 
 @api_router.get("/chat/{session_id}/canonical_markdown", response_model=CanonicalMarkdownResponse)

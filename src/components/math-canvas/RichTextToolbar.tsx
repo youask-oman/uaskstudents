@@ -15,6 +15,8 @@ interface RichTextToolbarProps {
   onAddPage: () => void;
   onDeletePage: () => void;
   canDeletePage: boolean;
+  canShare: boolean;
+  onShare: () => void;
 
   // Version Loading props
   versionOptions: SavedPaperVersion[];
@@ -35,6 +37,8 @@ export default function RichTextToolbar({
   onAddPage,
   onDeletePage,
   canDeletePage,
+  canShare,
+  onShare,
   versionOptions,
   selectedVersionKey,
   setSelectedVersionKey,
@@ -132,6 +136,22 @@ export default function RichTextToolbar({
         <div className={styles.actionButtonTextCol}>
           <span className={styles.actionTop} style={{ fontSize: 9 }}>SAVE</span>
           <span className={styles.actionBottom} style={{ fontSize: 12 }}>{savingVersion ? "..." : "Version"}</span>
+        </div>
+      </button>
+      <button
+        type="button"
+        className={`${styles.actionButtonDual} ${styles.actionButtonSecondary}`}
+        onClick={onShare}
+        aria-label="Share Solution"
+        disabled={!canShare}
+        style={{ height: 36, padding: "0 8px", minWidth: 90 }}
+      >
+        <span className="material-symbols-outlined" style={{ fontSize: 20 }} aria-hidden="true">
+          share
+        </span>
+        <div className={styles.actionButtonTextCol}>
+          <span className={styles.actionTop} style={{ fontSize: 9 }}>SHARE</span>
+          <span className={styles.actionBottom} style={{ fontSize: 12 }}>Link</span>
         </div>
       </button>
 

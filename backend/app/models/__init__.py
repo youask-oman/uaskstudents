@@ -1056,6 +1056,32 @@ class SolverOutputAttempt(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class SolutionShare(SQLModel, table=True):
+    __tablename__ = "solution_shares"
+
+    id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True, index=True)
+    solver_output_attempt_id: int = Field(foreign_key="solveroutputattempt.id", index=True)
+    attempt_id: str = Field(index=True)
+    owner_user_id: int = Field(foreign_key="user.id", index=True)
+    visibility: str = Field(default="PRIVATE", index=True)  # PRIVATE | PUBLIC
+    share_token: Optional[str] = Field(default=None, index=True)
+    share_token_hash: Optional[str] = Field(default=None, index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    revoked_at: Optional[datetime] = Field(default=None, index=True)
+    last_viewed_at: Optional[datetime] = Field(default=None, index=True)
+    view_count: int = Field(default=0)
+    expires_at: Optional[datetime] = Field(default=None, index=True)
+    metadata_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+
+    __table_args__ = (
+        UniqueConstraint("owner_user_id", "attempt_id", name="uq_solution_share_owner_attempt"),
+        UniqueConstraint("share_token", name="uq_solution_share_token"),
+        UniqueConstraint("share_token_hash", name="uq_solution_share_token_hash"),
+        Index("ix_solution_share_attempt_owner", "attempt_id", "owner_user_id"),
+    )
+
+
 class ProviderPricingAction(str, Enum):
     CREATE = "CREATE"
     UPDATE = "UPDATE"

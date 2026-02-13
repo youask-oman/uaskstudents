@@ -25,6 +25,7 @@ import styles from "./MathCanvas.module.css";
 
 interface CanvasWorkspaceProps {
   sessionId: string;
+  onOpenShare?: () => void;
   savedVersions?: SavedPaperVersion[];
   state: CanvasDocumentState;
   dispatch: React.Dispatch<DocumentAction>;
@@ -49,6 +50,7 @@ const isInputLikeTarget = (target: EventTarget | null): boolean => {
 
 export default function CanvasWorkspace({
   sessionId,
+  onOpenShare,
   savedVersions = [],
   state,
   dispatch,
@@ -569,6 +571,8 @@ export default function CanvasWorkspace({
             onAddPage={handleAddPage}
             onDeletePage={handleDeletePage}
             canDeletePage={state.pages.length > 1 && state.activePageId !== state.pages[0].id}
+            canShare={Boolean(onOpenShare)}
+            onShare={() => onOpenShare?.()}
             versionOptions={versionOptions}
             selectedVersionKey={selectedVersionKey}
             setSelectedVersionKey={setSelectedVersionKey}

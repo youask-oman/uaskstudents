@@ -7,6 +7,7 @@ import MathCanvasLayout from "@/components/math-canvas/MathCanvasLayout";
 import LeftNotebookSidebar from "@/components/math-canvas/LeftNotebookSidebar";
 import CanvasWorkspace from "@/components/math-canvas/CanvasWorkspace";
 import RightTutorChat from "@/components/math-canvas/RightTutorChat";
+import ShareSolutionModal from "@/components/share/ShareSolutionModal";
 import {
   extractBatchSolutionsFromSessionMessages,
   extractPrimarySolution,
@@ -21,6 +22,7 @@ import { DEMO_BATCH_MESSAGES } from "@/lib/mock-batch-session";
 
 interface ChatSessionPayload {
   id: number | string;
+  attempt_id?: string | null;
   title: string;
   subject?: string;
   created_at: string;
@@ -308,6 +310,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   const searchParams = useSearchParams();
   const [session, setSession] = useState<ChatSessionPayload | null>(null);
   const [loading, setLoading] = useState(true);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const [documentState, dispatch] = useReducer(
     documentReducer,
     buildInitialDocumentState([createPage()], "none")
@@ -501,6 +504,24 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     [session?.messages]
   );
 
+  const shareAttemptId = useMemo(() => {
+    if (session?.attempt_id && typeof session.attempt_id === "string") return session.attempt_id;
+    const sourceMessages = session?.messages || [];
+    for (let i = sourceMessages.length - 1; i >= 0; i -= 1) {
+      const payload = sourceMessages[i].structured_data;
+      if (!payload || typeof payload !== "object") continue;
+      const raw = payload as Record<string, unknown>;
+      const direct = raw.attempt_id;
+      if (typeof direct === "string" && direct.trim()) return direct.trim();
+      const solveMeta = raw.solve_meta;
+      if (solveMeta && typeof solveMeta === "object") {
+        const nestedAttempt = (solveMeta as Record<string, unknown>).attempt_id;
+        if (typeof nestedAttempt === "string" && nestedAttempt.trim()) return nestedAttempt.trim();
+      }
+    }
+    return null;
+  }, [session?.attempt_id, session?.messages]);
+
   useEffect(() => {
     if (!session) return;
     const latestSavedPages = savedPaperVersions[0]?.pages;
@@ -578,6 +599,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         workspace={
           <CanvasWorkspace
             sessionId={String(session.id)}
+            onOpenShare={() => setShareModalOpen(true)}
             savedVersions={savedPaperVersions}
             state={documentState}
             dispatch={dispatch}
@@ -593,6 +615,12 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             classification={classification}
           />
         }
+      />
+      <ShareSolutionModal
+        open={shareModalOpen}
+        attemptId={shareAttemptId}
+        sessionId={String(session.id)}
+        onClose={() => setShareModalOpen(false)}
       />
     </>
   );

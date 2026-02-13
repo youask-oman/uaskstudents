@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import StudentLayout from "@/components/layout/StudentLayout";
 import MathRenderer from "@/components/math/MathJaxRenderer";
+import ShareSolutionModal from "@/components/share/ShareSolutionModal";
 import { useToast } from "@/components/ui/ToastProvider";
 import {
     fetchWalletLedger,
@@ -18,6 +19,7 @@ import {
 
 interface ChatSession {
     id: number;
+    attempt_id?: string | null;
     title: string;
     subject?: string;
     topic?: string;
@@ -94,6 +96,9 @@ function DashboardContent() {
     const [historyPage, setHistoryPage] = useState(1);
     const historyPerPage = 10;
     const [historySearch, setHistorySearch] = useState("");
+    const [shareModalOpen, setShareModalOpen] = useState(false);
+    const [shareAttemptId, setShareAttemptId] = useState<string | null>(null);
+    const [shareSessionId, setShareSessionId] = useState<number | null>(null);
 
     const updateProfile = async (updates: ProfileUpdate) => {
         const userId = localStorage.getItem("user_id");
@@ -652,7 +657,21 @@ function DashboardContent() {
                                                             </div>
 
                                                             <div className="text-xs text-slate-500 text-right">
-                                                                {new Date(session.created_at).toLocaleDateString()}
+                                                                <div>{new Date(session.created_at).toLocaleDateString()}</div>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(event) => {
+                                                                        event.stopPropagation();
+                                                                        setShareAttemptId(session.attempt_id || null);
+                                                                        setShareSessionId(session.id);
+                                                                        setShareModalOpen(true);
+                                                                    }}
+                                                                    className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-slate-500 hover:text-primary"
+                                                                    title="Share solution"
+                                                                >
+                                                                    <span className="material-symbols-outlined text-sm">share</span>
+                                                                    Share
+                                                                </button>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -708,6 +727,19 @@ function DashboardContent() {
                                                         </p>
                                                     </div>
                                                     <div className="flex gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                setShareAttemptId(session.attempt_id || null);
+                                                                setShareSessionId(session.id);
+                                                                setShareModalOpen(true);
+                                                            }}
+                                                            className="material-symbols-outlined text-slate-400 hover:text-primary transition-colors"
+                                                            title="Share solution"
+                                                        >
+                                                            share
+                                                        </button>
                                                         <button className="material-symbols-outlined text-slate-400 hover:text-red-500 transition-colors">delete</button>
                                                     </div>
                                                 </div>
@@ -722,6 +754,16 @@ function DashboardContent() {
                     </div>
                 </div>
             </section>
+            <ShareSolutionModal
+                open={shareModalOpen}
+                attemptId={shareAttemptId}
+                sessionId={shareSessionId}
+                onClose={() => {
+                    setShareModalOpen(false);
+                    setShareAttemptId(null);
+                    setShareSessionId(null);
+                }}
+            />
         </StudentLayout>
     );
 }
