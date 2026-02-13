@@ -70,14 +70,56 @@ const getAuthHeaders = (): HeadersInit | undefined => {
     return token ? { Authorization: `Bearer ${token}` } : undefined;
 };
 
+const FALLBACK_API_BASE_URL =
+    process.env.NEXT_PUBLIC_API_FALLBACK_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://localhost:9000";
+
+function buildApiCandidates(): string[] {
+    return Array.from(
+        new Set(
+            [API_BASE_URL, FALLBACK_API_BASE_URL, "http://localhost:9000", "http://127.0.0.1:9000", ""]
+                .map((x) => (x || "").trim())
+        )
+    );
+}
+
+function joinUrl(base: string, path: string): string {
+    if (!base) return path;
+    return `${base}${path}`;
+}
+
 const toApiError = (err: ApiError) => {
     const error = new Error(err.message) as Error & { requestId?: string };
     error.requestId = err.requestId;
     return error;
 };
 
+async function fetchWithFallback(path: string, init?: RequestInit): Promise<Response> {
+    const candidates = buildApiCandidates();
+    let lastNetworkError: unknown = null;
+
+    for (const base of candidates) {
+        try {
+            const res = await fetch(joinUrl(base, path), init);
+            // If base points to wrong app/backend, try next candidate.
+            if (res.status === 404 || res.status >= 500) {
+                continue;
+            }
+            return res;
+        } catch (err) {
+            lastNetworkError = err;
+        }
+    }
+
+    if (lastNetworkError) {
+        throw lastNetworkError;
+    }
+    throw new Error("Network error");
+}
+
 export async function fetchWalletSummary(): Promise<WalletSummary> {
-    const res = await fetch(`${API_BASE_URL}/api/v1/wallet/summary`, {
+    const res = await fetchWithFallback(`/api/v1/wallet/summary`, {
         headers: getAuthHeaders(),
     });
     if (!res.ok) {
@@ -92,7 +134,7 @@ function mapWalletTierToApi(tier: WalletTier): string {
 }
 
 export async function updateWalletTier(tier: WalletTier): Promise<{ subscription_tier: string; effective_tier: WalletTier | string }> {
-    const res = await fetch(`${API_BASE_URL}/api/v1/wallet/tier`, {
+    const res = await fetchWithFallback(`/api/v1/wallet/tier`, {
         method: "PATCH",
         headers: {
             "Content-Type": "application/json",
@@ -109,7 +151,7 @@ export async function updateWalletTier(tier: WalletTier): Promise<{ subscription
 
 export async function fetchWalletLots(limit = 20, offset = 0): Promise<PaginatedResponse<WalletLot>> {
     const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-    const res = await fetch(`${API_BASE_URL}/api/v1/wallet/lots?${params.toString()}`, {
+    const res = await fetchWithFallback(`/api/v1/wallet/lots?${params.toString()}`, {
         headers: getAuthHeaders(),
     });
     if (!res.ok) {
@@ -121,7 +163,7 @@ export async function fetchWalletLots(limit = 20, offset = 0): Promise<Paginated
 
 export async function fetchWalletLedger(limit = 20, offset = 0): Promise<PaginatedResponse<WalletLedgerEntry>> {
     const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-    const res = await fetch(`${API_BASE_URL}/api/v1/wallet/ledger?${params.toString()}`, {
+    const res = await fetchWithFallback(`/api/v1/wallet/ledger?${params.toString()}`, {
         headers: getAuthHeaders(),
     });
     if (!res.ok) {
@@ -133,7 +175,7 @@ export async function fetchWalletLedger(limit = 20, offset = 0): Promise<Paginat
 
 export async function fetchWalletPrograms(limit = 50, offset = 0): Promise<PaginatedResponse<WalletProgramEnrollment>> {
     const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-    const res = await fetch(`${API_BASE_URL}/api/v1/wallet/programs?${params.toString()}`, {
+    const res = await fetchWithFallback(`/api/v1/wallet/programs?${params.toString()}`, {
         headers: getAuthHeaders(),
     });
     if (!res.ok) {
@@ -186,7 +228,7 @@ export async function fetchCreditsEstimate(payload: {
         plot: boolean;
     };
 }): Promise<CreditsEstimateResponse> {
-    const res = await fetch(`${API_BASE_URL}/api/v1/credits/estimate`, {
+    const res = await fetchWithFallback(`/api/v1/credits/estimate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

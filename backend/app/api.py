@@ -11532,12 +11532,20 @@ async def admin_get_quotas(db: Session = Depends(get_session), admin: User = Dep
     total_daily_tokens = 0
     total_daily_credits_used = Decimal("0")
     total_daily_credit_cap = 0.0
+    tier_default_daily_caps = {
+        "free": 5.0,
+        "short": 5.0,
+        "standard": 50.0,
+        "research": 200.0,
+    }
     
     for u in users:
         subscription = db.exec(select(Subscription).where(Subscription.user_id == u.id)).first()
         plan = subscription.plan if subscription else None
         plan_features = plan.features or {} if plan else {}
         daily_credit_cap = float(plan_features.get("daily_credit_cap", 0)) if plan_features else 0.0
+        if daily_credit_cap <= 0:
+            daily_credit_cap = tier_default_daily_caps.get((u.subscription_tier or "").lower(), 0.0)
 
         daily_usage_logs = db.exec(
             select(UsageLog).where(UsageLog.user_id == u.id, UsageLog.timestamp >= last_24h)
@@ -11587,10 +11595,13 @@ async def admin_get_quotas(db: Session = Depends(get_session), admin: User = Dep
         override_expires_at = override.expires_at.isoformat() if override and override.expires_at else None
 
         usage_pct = 0
-        if override_token_limit and override_token_limit > 0:
+        if daily_credit_cap > 0:
+            # Daily usage bar is credit-cap based; if credit debits are not yet available,
+            # fall back to token usage as a non-zero signal for active daily consumption.
+            usage_basis = float(daily_credits_used) if float(daily_credits_used) > 0 else float(daily_tokens)
+            usage_pct = int((usage_basis / daily_credit_cap) * 100)
+        elif override_token_limit and override_token_limit > 0:
             usage_pct = int((daily_tokens / override_token_limit) * 100)
-        elif daily_credit_cap > 0:
-            usage_pct = int((float(daily_credits_used) / daily_credit_cap) * 100)
         
         last_active = (u.last_active_at or u.created_at or now)
         diff = now - last_active
@@ -11609,7 +11620,7 @@ async def admin_get_quotas(db: Session = Depends(get_session), admin: User = Dep
             is_banned=u.subscription_status == "expired",
             credits_balance=subscription.credits_balance if subscription else None,
             credits_used_this_period=subscription.credits_used_this_period if subscription else None,
-            daily_credits_used=daily_credits_used,
+            daily_credits_used=float(daily_credits_used),
             daily_credit_cap=daily_credit_cap or None,
             daily_tokens_used=daily_tokens,
             override_token_limit=override_token_limit,

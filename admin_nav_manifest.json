@@ -391,6 +391,16 @@
       "api_checks": [
         "/api/v1/admin/system-config"
       ]
+    },
+    {
+      "type": "link",
+      "label": "Credit Transfer Config",
+      "href": "/admin/config/credit_transfer",
+      "icon": "swap_horiz",
+      "page_title": "Credit Transfer Configuration",
+      "api_checks": [
+        "/api/v1/admin/config/credit_transfer"
+      ]
     }
   ]
 }

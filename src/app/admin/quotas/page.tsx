@@ -11,6 +11,7 @@ interface QuotaUser {
     plan?: string;
     usage_percent?: number;
     daily_tokens_used?: number;
+    daily_credits_used?: number;
     daily_credit_cap?: number;
     last_active?: string;
     is_banned?: boolean;
@@ -43,19 +44,20 @@ function toFiniteNumber(value: unknown): number | null {
 
 function resolveUsagePercent(user: QuotaUser): number {
     const dailyTokens = toFiniteNumber(user.daily_tokens_used) ?? 0;
-    const overrideTokenLimit = toFiniteNumber(user.override_token_limit);
     const dailyCreditsUsed = toFiniteNumber(user.daily_credits_used) ?? 0;
     const dailyCreditCap = toFiniteNumber(user.daily_credit_cap);
     const reportedPercent = toFiniteNumber(user.usage_percent);
+    const overrideTokenLimit = toFiniteNumber(user.override_token_limit);
 
-    if (overrideTokenLimit && overrideTokenLimit > 0) {
-        return Math.max(0, Math.min((dailyTokens / overrideTokenLimit) * 100, 100));
-    }
     if (dailyCreditCap && dailyCreditCap > 0) {
-        return Math.max(0, Math.min((dailyCreditsUsed / dailyCreditCap) * 100, 100));
+        const usageBasis = dailyCreditsUsed > 0 ? dailyCreditsUsed : dailyTokens;
+        return Math.max(0, Math.min((usageBasis / dailyCreditCap) * 100, 100));
     }
     if (reportedPercent !== null) {
         return Math.max(0, Math.min(reportedPercent, 100));
+    }
+    if (overrideTokenLimit && overrideTokenLimit > 0) {
+        return Math.max(0, Math.min((dailyTokens / overrideTokenLimit) * 100, 100));
     }
     return 0;
 }
@@ -302,6 +304,11 @@ export default function AdminQuotasPage() {
                                     const usageBarWidth = usagePercent > 0 && usagePercent < 1 ? 1 : usagePercent;
                                     const usageLabel = usagePercent > 0 && usagePercent < 1 ? "<1%" : `${Math.round(usagePercent)}%`;
                                     const isHighUsage = usagePercent > 80;
+                                    const dailyCreditsUsed = toFiniteNumber(u.daily_credits_used);
+                                    const dailyUsageLeft =
+                                        dailyCreditsUsed !== null && dailyCreditsUsed > 0
+                                            ? `${dailyCreditsUsed.toLocaleString(undefined, { maximumFractionDigits: 2 })} cr`
+                                            : `${u.daily_tokens_used?.toLocaleString() ?? 0} tok`;
 
                                     return (
                                 <tr
@@ -345,7 +352,7 @@ export default function AdminQuotasPage() {
                                         </div>
                                     </td>
                                     <td className="px-6 py-5 text-slate-400 text-xs">
-                                        {u.daily_tokens_used?.toLocaleString() ?? 0} tok / {u.daily_credit_cap ? `${u.daily_credit_cap} cr` : "n/a"}
+                                        {dailyUsageLeft} / {u.daily_credit_cap ? `${u.daily_credit_cap} cr` : "n/a"}
                                     </td>
                                     <td className="px-6 py-5 text-slate-400 text-sm">{u.last_active}</td>
                                     <td className="px-6 py-5 text-right">
