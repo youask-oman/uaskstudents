@@ -13,33 +13,33 @@ from app.schemas.na_math_solver_v3 import (
 # the strict enum values. These maps normalize common variations.
 
 TASK_NORMALIZATION_MAP = {
-    # Common LLM variations -> valid TaskEnum values
-    "equation": "solve_equation",
-    "inequality": "solve_inequality",
-    "solving": "solve_equation",
+    # Common LLM variations -> conservative cross-schema task values
+    "equation": "equation",
+    "inequality": "inequality",
+    "solving": "solve",
     "simplification": "simplify",
     "factoring": "factor",
     "factorize": "factor",
     "expansion": "expand",
     "evaluation": "evaluate",
     "graphing": "graph",
-    "plot": "graph",
-    "roots": "find_roots",
-    "intercepts": "find_intercepts",
-    "vertex": "find_vertex",
-    "extrema": "find_extrema",
-    "system_of_equations": "system_solve",
-    "systems": "system_solve",
-    "derivative": "calculus_derivative",
-    "differentiate": "calculus_derivative",
-    "integral": "calculus_integral",
-    "integrate": "calculus_integral",
+    "plot": "plot",
+    "roots": "solve",
+    "intercepts": "graph",
+    "vertex": "graph",
+    "extrema": "calculus",
+    "system_of_equations": "system",
+    "systems": "system",
+    "derivative": "calculus",
+    "differentiate": "calculus",
+    "integral": "calculus",
+    "integrate": "calculus",
     "word": "word_problem",
     "trig": "trigonometry",
     "stats": "statistics",
     "prob": "probability",
-    "sequences": "sequence_series",
-    "series": "sequence_series",
+    "sequences": "other",
+    "series": "other",
 }
 
 DOMAIN_NORMALIZATION_MAP = {
@@ -60,20 +60,20 @@ DOMAIN_NORMALIZATION_MAP = {
 }
 
 GRADE_BAND_NORMALIZATION_MAP = {
-    # Common LLM variations -> valid GradeBandEnum values
-    "k-2": "K-2",
-    "k2": "K-2",
-    "kindergarten": "K-2",
-    "3-5": "3-5",
-    "elementary": "3-5",
-    "6-8": "6-8",
-    "middle_school": "6-8",
-    "middle school": "6-8",
-    "9-10": "9-10",
-    "high_school": "9-10",
-    "high school": "9-10",
-    "11-12": "11-12",
-    "advanced_high_school": "11-12",
+    # Common LLM variations -> current solve schema grade bands
+    "k-2": "grades_6_8",
+    "k2": "grades_6_8",
+    "kindergarten": "grades_6_8",
+    "3-5": "grades_6_8",
+    "elementary": "grades_6_8",
+    "6-8": "grades_6_8",
+    "middle_school": "grades_6_8",
+    "middle school": "grades_6_8",
+    "9-10": "grades_9_10",
+    "high_school": "grades_9_10",
+    "high school": "grades_9_10",
+    "11-12": "grades_11_12",
+    "advanced_high_school": "grades_11_12",
     "college": "college_intro",
     "university": "college_intro",
     "undergraduate": "college_intro",
@@ -83,12 +83,12 @@ DIFFICULTY_NORMALIZATION_MAP = {
     "basic": "easy",
     "simple": "easy",
     "beginner": "easy",
-    "medium": "standard",
-    "moderate": "standard",
-    "intermediate": "standard",
-    "hard": "challenging",
-    "difficult": "challenging",
-    "advanced": "challenging",
+    "standard": "medium",
+    "moderate": "medium",
+    "intermediate": "medium",
+    "challenging": "hard",
+    "difficult": "hard",
+    "advanced": "hard",
 }
 
 
@@ -114,7 +114,7 @@ def _normalize_domain(domain: str) -> str:
         return domain_lower
     if domain_lower in DOMAIN_NORMALIZATION_MAP:
         return DOMAIN_NORMALIZATION_MAP[domain_lower]
-    return "unknown"
+    return "other"
 
 
 def _normalize_grade_band(grade: str) -> str:
@@ -127,7 +127,7 @@ def _normalize_grade_band(grade: str) -> str:
             return valid
     if grade_lower in GRADE_BAND_NORMALIZATION_MAP:
         return GRADE_BAND_NORMALIZATION_MAP[grade_lower]
-    return "unknown"
+    return "college_intro"
 
 
 def _normalize_difficulty(difficulty: str) -> str:
@@ -138,7 +138,7 @@ def _normalize_difficulty(difficulty: str) -> str:
         return diff_lower
     if diff_lower in DIFFICULTY_NORMALIZATION_MAP:
         return DIFFICULTY_NORMALIZATION_MAP[diff_lower]
-    return "unknown"
+    return "medium"
 
 
 def normalize_raw_llm_response(data: Dict[str, Any]) -> Dict[str, Any]:
@@ -153,13 +153,24 @@ def normalize_raw_llm_response(data: Dict[str, Any]) -> Dict[str, Any]:
     if not isinstance(data, dict):
         return data
     
-    # Normalize problem.detected_tasks
+    # Normalize problem.detected_tasks and backfill via backend classifier when weak.
     if "problem" in data and isinstance(data["problem"], dict):
+        problem_obj = data["problem"]
         raw_tasks = data["problem"].get("detected_tasks", [])
         if isinstance(raw_tasks, list):
-            data["problem"]["detected_tasks"] = [
+            normalized_tasks = [
                 _normalize_task(t) for t in raw_tasks if isinstance(t, str)
             ]
+            inferred = _infer_detected_tasks_from_text(
+                str(problem_obj.get("original_text") or problem_obj.get("normalized_text") or "")
+            )
+            if not normalized_tasks or set(normalized_tasks) == {"other"}:
+                normalized_tasks = inferred
+            merged = []
+            for task in normalized_tasks + inferred:
+                if task not in merged:
+                    merged.append(task)
+            data["problem"]["detected_tasks"] = merged[:6] if merged else ["solve"]
     
     # Normalize classification fields
     if "classification" in data and isinstance(data["classification"], dict):
@@ -173,8 +184,59 @@ def normalize_raw_llm_response(data: Dict[str, Any]) -> Dict[str, Any]:
         
         if "difficulty" in cls and isinstance(cls["difficulty"], str):
             cls["difficulty"] = _normalize_difficulty(cls["difficulty"])
+
+    _apply_tier_compactness(data)
     
     return data
+
+
+def _infer_detected_tasks_from_text(problem_text: str) -> List[str]:
+    text = (problem_text or "").lower()
+    tasks: List[str] = []
+    if any(k in text for k in ["solve", "find", "determine", "compute"]):
+        tasks.append("solve")
+    if any(k in text for k in ["derivative", "differentiate", "integral", "limit", "critical point", "extrema"]):
+        tasks.append("calculus")
+    if any(k in text for k in ["plot", "graph", "sketch", "visualize"]):
+        tasks.append("plot")
+    if any(k in text for k in ["system of", "simultaneous"]):
+        tasks.append("system")
+    if any(k in text for k in ["inequality", "<=", ">=", "<", ">"]):
+        tasks.append("inequality")
+    if any(k in text for k in ["simplify"]):
+        tasks.append("simplify")
+    if any(k in text for k in ["factor"]):
+        tasks.append("factor")
+    if not tasks:
+        tasks = ["solve"]
+    return tasks[:6]
+
+
+def _apply_tier_compactness(data: Dict[str, Any]) -> None:
+    tier = str(data.get("tier") or "").upper()
+    caps = {
+        "FREE": {"steps": 6, "exp": 180, "latex": 3},
+        "SHORT": {"steps": 2, "exp": 180, "latex": 3},
+        "STANDARD": {"steps": 8, "exp": 260, "latex": 5},
+        "RESEARCH": {"steps": 12, "exp": 380, "latex": 6},
+    }
+    cfg = caps.get(tier)
+    if not cfg:
+        return
+    steps = data.get("steps")
+    if not isinstance(steps, list):
+        return
+    trimmed_steps = steps[: cfg["steps"]]
+    for step in trimmed_steps:
+        if not isinstance(step, dict):
+            continue
+        exp = step.get("explanation")
+        if isinstance(exp, str) and len(exp) > cfg["exp"]:
+            step["explanation"] = exp[: cfg["exp"]].rstrip()
+        latex = step.get("math_latex")
+        if isinstance(latex, list):
+            step["math_latex"] = [x for x in latex if isinstance(x, str)][: cfg["latex"]]
+    data["steps"] = trimmed_steps
 
 
 def map_minimal_to_canonical(

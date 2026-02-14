@@ -8,6 +8,7 @@ import styles from "./MathCanvas.module.css";
 interface ChatMessageProps {
   message: NormalizedChatMessage;
   originalProblem?: string;
+  direction?: "ltr" | "rtl";
 }
 
 const normalizePromptPreview = (value: string): string => {
@@ -76,12 +77,16 @@ const RenderAssistantItem = ({
   return <div className={styles.chatBubbleAssistant}>{item.message}</div>;
 };
 
-export default function ChatMessage({ message, originalProblem }: ChatMessageProps) {
+export default function ChatMessage({ message, originalProblem, direction = "ltr" }: ChatMessageProps) {
+  const isRtl = direction === "rtl";
   if (message.role === "user") {
     const text = message.items.find((item) => item.type === "text");
     return (
-      <div className={styles.chatBubbleRowUser}>
-        <div className={styles.chatBubbleUser}>
+      <div
+        className={`${styles.chatBubbleRowUser} ${isRtl ? styles.chatBubbleRowUserRtl : ""}`.trim()}
+        dir={direction}
+      >
+        <div className={`${styles.chatBubbleUser} ${isRtl ? styles.chatBubbleRtl : ""}`.trim()}>
           <MathRenderer content={text && text.type === "text" ? text.text : ""} mode="prose" />
         </div>
       </div>
@@ -89,14 +94,17 @@ export default function ChatMessage({ message, originalProblem }: ChatMessagePro
   }
 
   return (
-    <div className={styles.chatBubbleRowAssistant}>
+    <div
+      className={`${styles.chatBubbleRowAssistant} ${isRtl ? styles.chatBubbleRowAssistantRtl : ""}`.trim()}
+      dir={direction}
+    >
       <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4 }}>AI TUTOR</div>
       <div style={{ display: "grid", gap: 8, width: "100%" }}>
         {message.items.map((item, index) => (
           <RenderAssistantItem key={`${message.id}-${index}`} item={item} originalProblem={originalProblem} />
         ))}
       </div>
-      <div className={styles.chatSolutionSignature}>Uask.ai</div>
+      <div className={`${styles.chatSolutionSignature} ${isRtl ? styles.chatSolutionSignatureRtl : ""}`.trim()}>Uask.ai</div>
     </div>
   );
 }

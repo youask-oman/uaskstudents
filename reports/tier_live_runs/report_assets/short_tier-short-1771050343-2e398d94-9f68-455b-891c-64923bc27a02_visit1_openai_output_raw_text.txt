@@ -1,0 +1,57 @@
+{
+  "schema_version": "v1",
+  "problem": {
+    "original_text": "University calculus task: For f(x)=x^4-4x^2+1, find all critical points by solving f'(x)=0, classify each as local min/max using f''(x), determine global extrema on [-3,3], and plot f(x) on [-3,3] marking all critical points and extrema.",
+    "normalized_text": "Find critical points of f(x)=x^4-4x^2+1, classify them with the second derivative, find global extrema on [-3,3], and produce a plot marking critical points and extrema.",
+    "detected_tasks": [
+      "derivative",
+      "solve",
+      "classification",
+      "global_extrema",
+      "plot"
+    ],
+    "language": {
+      "user_language": "English",
+      "response_language": "English"
+    }
+  },
+  "classification": {
+    "grade_band": "undergraduate_lower",
+    "domain": "calculus",
+    "difficulty": "medium",
+    "topic": "critical points and extrema of a polynomial"
+  },
+  "steps": [
+    {
+      "index": 1,
+      "title": "Compute derivatives and solve",
+      "explanation": "Compute f' and f'', solve f'(x)=0 for critical points.",
+      "math_latex": [
+        "f(x)=x^4-4x^2+1",
+        "f'(x)=4x^3-8x=4x(x^2-2)",
+        "f''(x)=12x^2-8",
+        "f'(x)=0\\Rightarrow x=0,\\;x=\\pm\\sqrt{2}"
+      ]
+    },
+    {
+      "index": 2,
+      "title": "Classify and evaluate endpoints",
+      "explanation": "Use f'' for classification and compare values on [-3,3] for global extrema.",
+      "math_latex": [
+        "f''(0)=-8\\Rightarrow\\text{local maximum at }0",
+        "f''(\\pm\\sqrt{2})=12(2)-8=16\\Rightarrow\\text{local minima at }\\pm\\sqrt{2}",
+        "f(0)=1,\\;f(\\pm\\sqrt{2})=(\\,2^2-4\\cdot2+1\\,)=1-8+1=-6+?\\text{(compute properly)}",
+        "f(\\pm\\sqrt{2})=(\\sqrt{2})^4-4(\\sqrt{2})^2+1=4-8+1=-3",
+        "f(-3)=81-36+1=46,\\;f(3)=81-36+1=46"
+      ]
+    }
+  ],
+  "final_answer": {
+    "answer_text": "Critical points: x=0 (local max), x=\\pm\\sqrt{2} (local mins). On [-3,3] global minima at x=\\pm\\sqrt{2} with f=-3; global maxima at x=\\pm3 with f=46.",
+    "answer_latex": "\\text{Critical points: }0,\\pm\\sqrt{2}.\\\\\\text{Classification: }0\\text{ is local max (}f(0)=1\\text{)},\\;\\pm\\sqrt{2}\\text{ are local minima (}f(\\pm\\sqrt{2})=-3\\text{)}.\\\\\\text{Global extrema on }[-3,3]:\\;\\text{global minima at }x=\\pm\\sqrt{2},\\;f=-3;\\;\\text{global maxima at }x=\\pm3,\\;f=46.",
+    "units": null,
+    "values": [
+      {
+        "label": "critical_points",
+        "value": "0, \\pm\\sqrt{2}",
+        "value_latex": "0,\\;\\pm\\sqrt{2}"

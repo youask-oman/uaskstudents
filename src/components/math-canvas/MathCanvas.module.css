@@ -1329,6 +1329,23 @@
   text-align: left;
 }
 
+.chatBubbleRowAssistantRtl {
+  align-items: flex-end;
+}
+
+.chatBubbleRowUserRtl {
+  align-items: flex-start;
+}
+
+.chatBubbleRtl {
+  direction: rtl;
+  text-align: right;
+}
+
+.chatSolutionSignatureRtl {
+  text-align: right;
+}
+
 .chatComposer {
   padding: 12px 14px;
   background: #ffffff;
@@ -1380,6 +1397,25 @@
   outline: none;
   background: #f8fbff;
   transition: border-color 0.2s ease;
+}
+
+[dir="rtl"] .chatBubbleAssistant,
+[dir="rtl"] .chatBubbleUser,
+[dir="rtl"] .composerInput,
+[dir="rtl"] .chatPromptPreviewRow {
+  direction: rtl;
+  text-align: right;
+}
+
+[dir="rtl"] .stepsBlock {
+  direction: rtl;
+  border-left: 1px solid #e6edf5;
+  border-right: 4px solid #d4dce8;
+}
+
+[dir="rtl"] .stepsBlock .stepValue {
+  direction: rtl;
+  text-align: right;
 }
 
 .composerInput:focus {

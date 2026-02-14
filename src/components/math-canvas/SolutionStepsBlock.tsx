@@ -321,7 +321,15 @@ export default function SolutionStepsBlock({
             </div>
           ) : (
             <>
-              <ul style={{ margin: 0, paddingLeft: 20, listStyleType: "disc", fontSize: 13, lineHeight: 1.6 }}>
+              <ul
+                style={{
+                  margin: 0,
+                  paddingInlineStart: 20,
+                  listStyleType: "disc",
+                  fontSize: 13,
+                  lineHeight: 1.6,
+                }}
+              >
                 {assumptions.map((assumption, index) => (
                   <li key={`${sectionId}-assumption-${index}`} style={{ marginBottom: 4 }}>
                     <MathRenderer content={assumption} mode="prose" />

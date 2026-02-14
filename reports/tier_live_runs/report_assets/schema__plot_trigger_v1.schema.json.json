@@ -1,0 +1,173 @@
+{
+  "name": "plot_trigger_v1",
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "key_points": {
+        "items": {
+          "additionalProperties": false,
+          "properties": {
+            "label": {
+              "maxLength": 40,
+              "minLength": 1,
+              "type": "string"
+            },
+            "x": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "y": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "label"
+          ],
+          "type": "object"
+        },
+        "maxItems": 8,
+        "minItems": 0,
+        "type": "array"
+      },
+      "plot_needed": {
+        "type": "boolean"
+      },
+      "plot_type": {
+        "enum": [
+          "function",
+          "implicit",
+          "region",
+          "points",
+          "histogram",
+          "boxplot",
+          "unknown",
+          null
+        ],
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "ranges": {
+        "additionalProperties": false,
+        "properties": {
+          "x": {
+            "additionalProperties": false,
+            "properties": {
+              "max": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "min": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "min",
+              "max"
+            ],
+            "type": "object"
+          },
+          "y": {
+            "additionalProperties": false,
+            "properties": {
+              "max": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "min": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "min",
+              "max"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ],
+        "type": [
+          "object",
+          "null"
+        ]
+      },
+      "reason": {
+        "maxLength": 160,
+        "minLength": 1,
+        "type": "string"
+      },
+      "series_plan": {
+        "items": {
+          "additionalProperties": false,
+          "properties": {
+            "expr_latex": {
+              "description": "Delimiter-free TeX only (no $, $$, \\(\\), \\[\\]).",
+              "maxLength": 240,
+              "minLength": 1,
+              "pattern": "^(?!.*\\$)(?!.*\\\\\\[)(?!.*\\\\\\])(?!.*\\\\\\()(?!.*\\\\\\)).+",
+              "type": "string"
+            },
+            "label": {
+              "maxLength": 40,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "label",
+            "expr_latex"
+          ],
+          "type": "object"
+        },
+        "maxItems": 3,
+        "minItems": 0,
+        "type": "array"
+      },
+      "variables": {
+        "items": {
+          "maxLength": 8,
+          "minLength": 1,
+          "type": "string"
+        },
+        "maxItems": 3,
+        "minItems": 0,
+        "type": "array"
+      }
+    },
+    "required": [
+      "plot_needed",
+      "plot_type",
+      "variables",
+      "ranges",
+      "reason",
+      "series_plan",
+      "key_points"
+    ],
+    "title": "YouAsk Plot Trigger v1",
+    "type": "object"
+  },
+  "strict": true,
+  "type": "json_schema"
+}

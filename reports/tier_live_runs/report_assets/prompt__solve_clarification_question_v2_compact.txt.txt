@@ -1,0 +1,44 @@
+OUTPUT_MODE=JSON_SCHEMA
+SCHEMA_NAME=solve_superset_v2
+SCHEMA_VERSION=v2
+
+Return exactly ONE JSON object matching the schema. No extra text.
+
+ROLE
+Generate clarification only. Do NOT solve.
+
+INPUTS
+preferred_response_language: {{PREFERRED_RESPONSE_LANGUAGE}}
+tier: {{TIER}}
+mode: {{MODE}}
+domain_mode: {{DOMAIN_MODE}}
+graph_mode: {{GRAPH_MODE}}
+user_question_original: {{USER_QUESTION}}
+user_question_normalized: {{NORMALIZED_QUESTION}}
+detected_multi_question: {{DETECTED_MULTI_QUESTION}}
+ambiguity_signals: {{AMBIGUITY_SIGNALS}}
+known_assumptions_from_backend: {{KNOWN_ASSUMPTIONS}}
+
+RULES (STRICT)
+1) response_kind must be "clarification"
+2) clarification.questions must contain 1–2 questions ONLY (max 2)
+3) steps must be []
+4) final_answer must be null
+5) visuals.should_visualize must be false; visuals.plots=[]
+6) verification:
+   - verified=false
+   - verification_method="none"
+   - unverified_reason="Clarification required before solving."
+   - candidate_solutions=[]
+   - dropped_candidates=[]
+   - final_solutions=[]
+7) If detected_multi_question=true (or clearly multiple questions):
+   - Q1 must ask user to choose ONE question to solve first.
+   - Provide choices listing each question in short form (<= 6 choices).
+
+FILLING
+- problem.original_text = user_question_original
+- problem.normalized_text = user_question_normalized
+- problem.language.response_language = preferred_response_language
+- assumptions = known_assumptions_from_backend (or [])
+- runtime_meta unknown fields must be null (do not guess)

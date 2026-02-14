@@ -1,1 +1,0 @@
-{"topic":"Algebraic simplification","confidence_score":0.9,"steps":[{"index":1,"title":"Factor and cancel","explanation":"Factor numerator as difference of squares then cancel common factor (valid when x\\neq1).","math_latex":"\\frac{(x-1)(x+1)}{x-1}=x+1\\quad( x\\neq1 )"}],"final_answer":"x+1 (for x ≠ 1)"}

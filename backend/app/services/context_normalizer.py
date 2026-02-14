@@ -20,6 +20,20 @@ COUNTRY_MAP = {
     "us": "US",
 }
 
+# Language normalization
+LANGUAGE_MAP = {
+    "en": "en",
+    "english": "en",
+    "fr": "fr",
+    "french": "fr",
+    "francais": "fr",
+    "français": "fr",
+    "ar": "ar",
+    "arabic": "ar",
+    "es": "es",
+    "spanish": "es",
+}
+
 # Province/State normalization (prefix with country code)
 PROVINCE_STATE_MAP = {
     # Canadian provinces
@@ -189,6 +203,14 @@ def normalize_difficulty(value: Optional[str]) -> Optional[str]:
     return val[:4] if len(val) > 4 else val
 
 
+def normalize_language(value: Optional[str]) -> Optional[str]:
+    """Normalize language to short code (e.g., en/fr/ar/es)."""
+    if not value:
+        return None
+    key = str(value).strip().lower()
+    return LANGUAGE_MAP.get(key, key[:2] if len(key) >= 2 else None)
+
+
 def normalize_trusted_context(ctx: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Normalize all trusted_context fields to compact enums.
@@ -236,6 +258,17 @@ def normalize_trusted_context(ctx: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         province = normalize_province_state(ctx["region_state_province"], country)
         if province:
             normalized["region_state_province"] = province
+
+    # language hints (authoritative from server/user profile when available)
+    for language_key in ("response_language", "preferred_response_language", "user_language", "preferred_language"):
+        if language_key in ctx:
+            lang = normalize_language(ctx.get(language_key))
+            if not lang:
+                continue
+            if language_key == "preferred_language":
+                normalized["response_language"] = lang
+            else:
+                normalized[language_key] = lang
     
     return normalized
 

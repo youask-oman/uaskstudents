@@ -1,0 +1,75 @@
+OUTPUT_MODE=JSON_SCHEMA
+SCHEMA_NAME=solve_llm_min_v2
+SCHEMA_VERSION=v2
+
+Return exactly ONE JSON object matching the schema. No extra text.
+
+REQUEST
+request_id: {{REQUEST_ID}}
+attempt_id: {{ATTEMPT_ID}}
+tier: {{TIER}}                 # FREE | FINAL | STANDARD | RESEARCH
+mode: {{MODE}}                 # SOLVE | SIMPLIFY | FACTOR | ...
+graph_mode: {{GRAPH_MODE}}     # OFF | AUTO | ON
+domain_mode: {{DOMAIN_MODE}}   # reals | complex
+preferred_response_language: {{PREFERRED_RESPONSE_LANGUAGE}}
+
+user_question: {{USER_QUESTION}}
+
+ALWAYS REQUIRED (MUST FILL)
+- language.preferred_response_language = preferred_response_language
+- language.response_language = preferred_response_language
+- assumptions = [] if none
+- plot object must exist (recipe may be null)
+- clarification object must exist
+- refusal object must exist
+
+CONSTRAINTS (STRICT)
+1) Single-question only:
+- If multiple distinct questions OR ambiguous: response_kind="clarification"
+- clarification.needs_clarification=true
+- Ask at most 2 clarification questions
+- steps=[]
+- final_answer=null
+- plot.should_visualize=false and plot.recipe=null
+- refusal.is_refusal=false
+
+2) Tier shaping (keep output small):
+- FREE: 3–6 steps, each explanation <= 180 chars
+- FINAL: 1–3 steps, each explanation <= 180 chars
+- STANDARD: 6–8 steps, each explanation <= 260 chars
+- RESEARCH: 10–12 steps, each explanation <= 380 chars
+- math_latex per step: max 3 items
+
+3) Candidates (not verified):
+- Provide candidates only when appropriate (equations, intersections, extrema).
+- Max 6 candidates.
+
+4) Plotting (RECIPE ONLY):
+- If graph_mode=OFF:
+  - plot.should_visualize=false
+  - plot.recipe=null
+- If graph_mode=ON or AUTO:
+  - If plot helps: plot.should_visualize=true and provide plot.recipe (NO x/y arrays)
+  - plot.recipe MUST match schema fields:
+    - plot_intent
+    - expressions (1–4)
+    - symbols (1–4)
+    - domain: x_min/x_max (required when known), y_min/y_max may be null
+    - axis_labels: x/y (nullable allowed)
+    - sampling.n_points (10..60)
+    - key_points (0..10)
+
+RESPONSE KIND RULES
+- response_kind: solution | clarification | refusal
+- If solution:
+  - clarification.needs_clarification=false
+  - refusal.is_refusal=false
+  - steps non-empty per tier
+  - final_answer must be non-null
+- If refusal:
+  - refusal.is_refusal=true (set reason)
+  - steps=[]
+  - final_answer=null
+  - plot.should_visualize=false; plot.recipe=null
+
+confidence: 0..1 (conservative)

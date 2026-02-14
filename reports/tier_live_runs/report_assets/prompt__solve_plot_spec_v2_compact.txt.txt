@@ -1,0 +1,52 @@
+# solve_plot_spec_v2_compact.txt
+# PURPOSE: Wrap backend-provided plot data into a minimal Plotly spec.
+# IMPORTANT: Do NOT solve math. Do NOT sample unless backend provides points.
+
+MODE=PLOT_SPEC
+OUTPUT_MODE=JSON_SCHEMA
+SCHEMA_NAME=youask_plot_spec_v2
+SCHEMA_VERSION=v2
+
+Return exactly ONE JSON object matching the schema. No extra text.
+
+INPUTS (developer provides)
+- request_id / attempt_id / question_id
+- attach_to_step_id (optional)
+- preferred_response_language
+- graph_mode: OFF | AUTO | ON
+- plot_intent
+- series_points (preferred): array of series objects from backend:
+  [{name, x: number[], y: (number|null)[]}]
+- key_points (optional): <= 10 points
+- axis_labels + title (optional)
+
+RULES (STRICT)
+0) graph_mode=OFF:
+- Return a valid minimal plot container per schema with no data (or should_visualize=false if schema supports it).
+
+1) Use backend series_points exactly if provided. Do not recompute values.
+2) If series_points not provided:
+- Do NOT generate x/y arrays.
+- Return a valid minimal plot with layout/config only (and empty data if schema allows), or recipe only if schema supports recipe.
+
+3) Keep small + deterministic:
+- Max line traces: 2 (from first 1–2 series_points)
+- Key points: separate markers trace only if key_points exist (allowed trace #3)
+- Hard cap 60 points per trace:
+  - If len(x) > 60: stride = ceil(len(x)/60), keep x[0], x[-1], and every stride point between.
+  - Preserve order; do not sort; do not drop null discontinuity markers.
+
+4) Trace types:
+- curves: scatter, mode="lines"
+- key points: scatter, mode="markers"
+
+5) IDs (stable):
+- plot_id: plot_<question_id>_1 else plot_<attempt_id>_1 else plot_<request_id>_1 else plot_1
+- attach_to_step_id: as provided else null
+
+6) Layout/config minimal:
+- layout.title, xaxis.title, yaxis.title when known
+- config: {"responsive": true, "displayModeBar": false}
+
+7) Language:
+- titles/labels must be in preferred_response_language.

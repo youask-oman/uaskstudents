@@ -370,18 +370,11 @@ def _clamp_requested_tier(requested_tier: Optional[str], entitled_tier_slug: str
 
 
 def _schema_object_for_validation(schema_config: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    from app.utils.solve_schema_contract import optimize_schema_for_validation
+
     if not isinstance(schema_config, dict):
         return {}
-    inner = schema_config.get("schema")
-    if isinstance(inner, dict):
-        return inner
-    json_schema_block = schema_config.get("json_schema")
-    if isinstance(json_schema_block, dict):
-        nested = json_schema_block.get("schema")
-        if isinstance(nested, dict):
-            return nested
-        return json_schema_block
-    return schema_config
+    return optimize_schema_for_validation(schema_config)
 
 
 def _format_json_schema_errors(errors: List[ValidationError]) -> List[str]:
@@ -476,6 +469,42 @@ def _is_truthy(value: Any) -> bool:
     if value is None:
         return False
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _normalize_language_code(raw_value: Any) -> str:
+    raw = str(raw_value or "").strip().lower()
+    if not raw:
+        return "en"
+    mapping = {
+        "english": "en",
+        "en": "en",
+        "french": "fr",
+        "francais": "fr",
+        "français": "fr",
+        "fr": "fr",
+        "arabic": "ar",
+        "ar": "ar",
+        "spanish": "es",
+        "es": "es",
+    }
+    return mapping.get(raw, raw[:2] if len(raw) >= 2 else "en")
+
+
+def _build_solver_trusted_context(
+    base_context: Optional[Dict[str, Any]],
+    user_obj: Optional[User],
+) -> Dict[str, Any]:
+    merged = dict(base_context or {})
+    if user_obj:
+        profile_lang = (
+            getattr(user_obj, "default_language", None)
+            or getattr(user_obj, "preferred_language", None)
+        )
+        lang_code = _normalize_language_code(profile_lang)
+        merged["response_language"] = lang_code
+        merged.setdefault("preferred_response_language", lang_code)
+        merged.setdefault("user_language", lang_code)
+    return merged
 
 
 def _resolve_freeform_max_attempts(
@@ -4800,9 +4829,10 @@ async def solve_problem(
     solver = get_solver_v3()
     from app.utils.token_limits import get_effective_max_tokens
     requested_mode = body.requested_mode or ("detailed" if body.mode == "detailed" else "minimal")
+    solver_trusted_context = _build_solver_trusted_context(body.trusted_context, user)
     effective_max_tokens = get_effective_max_tokens(
         requested_mode,
-        (body.trusted_context or {}).get("learning_mode", "solve"),
+        solver_trusted_context.get("learning_mode", "solve"),
         token_policy
     )
     try:
@@ -4826,7 +4856,7 @@ async def solve_problem(
             user_id=user_id,
             db_session=session,
             requested_mode=requested_mode,
-            trusted_context=body.trusted_context,
+            trusted_context=solver_trusted_context,
             max_output_tokens=effective_max_tokens,
             attempt_id=attempt_id, # Phase 1
             image_url=body.image_url
@@ -5425,6 +5455,8 @@ async def solve_v3_endpoint(
     # --- STUDENT LOCATION CONTEXT INJECTION ---
     # Fetch user to get profile location for curriculum adaptation
     user = session.get(User, user_id)
+    solver_trusted_context = _build_solver_trusted_context(body.trusted_context, user)
+    learning_mode = solver_trusted_context.get("learning_mode", learning_mode)
     from app.llm_profiles.profile_resolver import ProfileResolver
     from app.llm_profiles.profile_resolver import ProfileResolutionError
     from app.services.llm.manager import get_configured_openai_model
@@ -5711,7 +5743,7 @@ async def solve_v3_endpoint(
                     user_id=user_id,
                     db_session=session,
                     requested_mode=requested_mode,
-                    trusted_context=body.trusted_context,
+                    trusted_context=solver_trusted_context,
                     learning_mode=learning_mode,
                     image_url=body.image_url,
                     max_output_tokens=effective_max_tokens,
@@ -5802,7 +5834,7 @@ async def solve_v3_endpoint(
                 user_id=user_id,
                 db_session=session,
                 requested_mode=requested_mode,
-                trusted_context=body.trusted_context,
+                trusted_context=solver_trusted_context,
                 learning_mode=learning_mode,
                 image_url=body.image_url,
                 max_output_tokens=effective_max_tokens,
@@ -6473,6 +6505,7 @@ async def solve_v3_stream_endpoint(
         .where(User.id == user_id)
         .options(selectinload(User.subscription))
     ).first()
+    solver_trusted_context = _build_solver_trusted_context(body.trusted_context, user_obj)
     user_grade_level = user_obj.grade_level if user_obj else None
     user_profile_country = user_obj.profile_country if user_obj else None
     user_profile_province = user_obj.profile_province_state if user_obj else None
@@ -6602,7 +6635,7 @@ async def solve_v3_stream_endpoint(
         # request_id already defined in outer scope
         
         requested_mode = body.requested_mode or "minimal"
-        learning_mode = (body.trusted_context or {}).get("learning_mode", "solve")
+        learning_mode = solver_trusted_context.get("learning_mode", "solve")
         is_ambiguous = False
         refusal = None
         deduct_attempted = {"credits": False, "ocr": False, "voice": False}
@@ -7070,17 +7103,22 @@ async def solve_v3_stream_endpoint(
         chunk_type_counts = {}
 
         try:
+            # Give compact tiers extra completion headroom to reduce truncation-driven repair calls.
+            stream_max_output_tokens = int(effective_max_tokens or 0)
+            if effective_tier in {"FREE", "SHORT"}:
+                stream_max_output_tokens = min(2200, max(stream_max_output_tokens, int(stream_max_output_tokens * 1.5)))
+
             async for chunk in solver.solve_stream(
                 problem_text=problem_text,
                 context=context,
                 trace=True,
                 request_id=request_id,
-                max_output_tokens=effective_max_tokens,
+                max_output_tokens=stream_max_output_tokens,
                 system_prompt=profile.system_prompt_content,
                 developer_prompt=profile.developer_prompt_content,
                 json_schema_config=profile.json_schema_content,
                 requested_mode=requested_mode,
-                trusted_context={"learning_mode": learning_mode},
+                trusted_context=solver_trusted_context,
                 attempt_id=attempt_id,
                 debug_simulated_tokens=debug_simulated_tokens,
                 debug_force_error=debug_force_error,
@@ -7267,7 +7305,8 @@ async def solve_v3_stream_endpoint(
                     )
 
                     # Pass 2: Minimal Fallback if Pass 1 failed (and not just refused)
-                    if not repaired_data and requested_mode == "detailed":
+                    allow_second_repair_pass = os.environ.get("SOLVE_V3_SECOND_REPAIR_PASS", "false").lower() in {"1", "true", "yes"}
+                    if not repaired_data and requested_mode == "detailed" and allow_second_repair_pass:
                          print("[SOLVER_V3_STREAM] Repair Pass 1 failed. Trying Pass 2 (Minimal Mode)...")
                          repaired_data, repaired_text = await solver._repair_response(
                             problem=problem_text,

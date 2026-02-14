@@ -38,6 +38,7 @@ from app.services.validation_v3 import create_error_response
 from app.utils.schema_deref import deref_json_schema, validate_no_refs
 
 from app.utils.schema_deref import deref_json_schema, validate_no_refs
+from app.utils.solve_schema_contract import optimize_schema_for_model
 
 # from app.llm_profiles.profiles import get_prompt_profile 
 
@@ -156,6 +157,124 @@ class SolverV3:
                 pass
 
         return {"_raw": content}
+
+    def _build_messages(
+        self,
+        system_prompt: Optional[str],
+        developer_prompt: Optional[str],
+        user_content: Any,
+    ) -> List[Dict[str, Any]]:
+        """
+        Build request messages and avoid duplicating identical system/developer prompts.
+        """
+        messages: List[Dict[str, Any]] = []
+        sys_text = (system_prompt or "").strip()
+        dev_text = (developer_prompt or "").strip()
+
+        if sys_text:
+            messages.append({"role": "system", "content": sys_text})
+
+        if dev_text:
+            # Do not pay for duplicated instructions across roles.
+            norm_sys = self._normalize_prompt_text(sys_text)
+            norm_dev = self._normalize_prompt_text(dev_text)
+            is_duplicate = bool(norm_sys and norm_dev and (norm_dev == norm_sys or norm_dev in norm_sys))
+            if not is_duplicate:
+                messages.append({"role": "developer", "content": dev_text})
+
+        messages.append({"role": "user", "content": user_content})
+        return messages
+
+    def _normalize_prompt_text(self, text: str) -> str:
+        return re.sub(r"\s+", " ", (text or "").strip())
+
+    def _augment_developer_prompt_for_enum_safety(
+        self,
+        developer_prompt: Optional[str],
+        schema_wrapper: Optional[Dict[str, Any]],
+    ) -> Optional[str]:
+        base = (developer_prompt or "").strip()
+        if "ENUM-SAFETY (MANDATORY)" in base:
+            return base
+
+        schema_obj = optimize_schema_for_model(schema_wrapper) if isinstance(schema_wrapper, dict) else {}
+        difficulty_enum = self._find_enum_for_key(schema_obj, "difficulty")
+        detected_tasks_enum = self._find_array_item_enum_for_key(schema_obj, "detected_tasks")
+
+        lines = [
+            "ENUM-SAFETY (MANDATORY):",
+            "- Never invent enum labels.",
+            "- If uncertain, choose nearest valid enum value from allowed list.",
+        ]
+        if difficulty_enum:
+            lines.append(f"- difficulty allowed: {', '.join(difficulty_enum)}")
+        if detected_tasks_enum:
+            lines.append(f"- detected_tasks allowed: {', '.join(detected_tasks_enum)}")
+        lines.extend(
+            [
+                "- Do not output backend-only fields: _raw_llm_output, debug, runtime_meta, timing_ms.",
+                "- Visual output must be recipe-only; do not emit dense x/y arrays.",
+            ]
+        )
+
+        block = "\n".join(lines)
+        return f"{base}\n\n{block}" if base else block
+
+    def _find_enum_for_key(self, schema: Dict[str, Any], key: str) -> List[str]:
+        if not isinstance(schema, dict):
+            return []
+        seen: List[str] = []
+        for node in self._walk_schema_nodes(schema):
+            props = node.get("properties")
+            if not isinstance(props, dict):
+                continue
+            candidate = props.get(key)
+            if isinstance(candidate, dict) and isinstance(candidate.get("enum"), list):
+                for v in candidate["enum"]:
+                    s = str(v)
+                    if s not in seen:
+                        seen.append(s)
+        return seen
+
+    def _find_array_item_enum_for_key(self, schema: Dict[str, Any], key: str) -> List[str]:
+        if not isinstance(schema, dict):
+            return []
+        seen: List[str] = []
+        for node in self._walk_schema_nodes(schema):
+            props = node.get("properties")
+            if not isinstance(props, dict):
+                continue
+            candidate = props.get(key)
+            if not isinstance(candidate, dict):
+                continue
+            items = candidate.get("items")
+            if isinstance(items, dict) and isinstance(items.get("enum"), list):
+                for v in items["enum"]:
+                    s = str(v)
+                    if s not in seen:
+                        seen.append(s)
+        return seen
+
+    def _walk_schema_nodes(self, schema: Dict[str, Any]) -> List[Dict[str, Any]]:
+        stack = [schema]
+        out: List[Dict[str, Any]] = []
+        while stack:
+            node = stack.pop()
+            if not isinstance(node, dict):
+                continue
+            out.append(node)
+            for key in ("properties", "$defs", "definitions", "patternProperties"):
+                block = node.get(key)
+                if isinstance(block, dict):
+                    stack.extend([v for v in block.values() if isinstance(v, dict)])
+            for key in ("allOf", "anyOf", "oneOf", "prefixItems"):
+                block = node.get(key)
+                if isinstance(block, list):
+                    stack.extend([v for v in block if isinstance(v, dict)])
+            items = node.get("items")
+            if isinstance(items, dict):
+                stack.append(items)
+        return out
 
     # Module-level validator cache with size limits and expiration
 
@@ -540,6 +659,7 @@ class SolverV3:
 
 
 
+                deref = optimize_schema_for_model(deref)
                 deref = enforce_strict(deref)
 
                 if deref.get("type") is None:
@@ -561,6 +681,10 @@ class SolverV3:
 
 
             openai_schema_wrapper = prepare_schema(json_schema_config)
+            effective_developer_prompt = self._augment_developer_prompt_for_enum_safety(
+                profile.developer_prompt_content,
+                openai_schema_wrapper,
+            )
 
 
 
@@ -703,7 +827,7 @@ class SolverV3:
 
                             base_system_prompt,
 
-                            developer_prompt=profile.developer_prompt_content,
+                            developer_prompt=effective_developer_prompt,
 
                             json_schema_config=openai_schema_wrapper,
 
@@ -1375,17 +1499,15 @@ class SolverV3:
 
             
 
-            messages = [
-
-                {"role": "system", "content": resolved_system_prompt},
-
-            ]
-
-            if developer_prompt:
-
-                messages.append({"role": "developer", "content": developer_prompt})
-
-            messages.append({"role": "user", "content": user_message})
+            effective_developer_prompt = self._augment_developer_prompt_for_enum_safety(
+                developer_prompt,
+                json_schema_config if isinstance(json_schema_config, dict) else None,
+            )
+            messages = self._build_messages(
+                resolved_system_prompt,
+                effective_developer_prompt,
+                user_message,
+            )
 
 
 
@@ -1397,6 +1519,13 @@ class SolverV3:
                 emit_attempt_event(attempt_id, request_id, "calling_ai_core_start", metadata={"provider": provider})
 
             schema_payload = json_schema_config
+            if isinstance(schema_payload, dict):
+                strict_schema = enforce_strict(optimize_schema_for_model(schema_payload))
+                schema_payload = {
+                    "name": (schema_payload.get("name") or "solve_response_v3_stream"),
+                    "strict": True,
+                    "schema": strict_schema,
+                }
             response_stream = client.generate_stream(
                 messages=messages,
                 system_prompt=None,
@@ -1729,6 +1858,17 @@ class SolverV3:
 
 
         schema_payload = json_schema_config
+        if isinstance(schema_payload, dict):
+            strict_schema = enforce_strict(optimize_schema_for_model(schema_payload))
+            schema_payload = {
+                "name": (schema_payload.get("name") or "solve_response_v3"),
+                "strict": True,
+                "schema": strict_schema,
+            }
+        developer_prompt = self._augment_developer_prompt_for_enum_safety(
+            developer_prompt,
+            schema_payload if isinstance(schema_payload, dict) else None,
+        )
 
         provider = provider.lower()
 
@@ -1750,17 +1890,11 @@ class SolverV3:
 
 
 
-             messages = [
-
-                {"role": "system", "content": system_prompt},
-
-             ]
-
-             if developer_prompt:
-
-                 messages.append({"role": "developer", "content": developer_prompt})
-
-             messages.append({"role": "user", "content": user_message})
+             messages = self._build_messages(
+                 system_prompt,
+                 developer_prompt,
+                 user_message,
+             )
 
              
 
@@ -2010,22 +2144,19 @@ class SolverV3:
 
 
 
+        # Keep repair prompt compact; schema is already enforced by structured output.
+        clipped_raw = raw_text
+        if len(clipped_raw) > 12000:
+            clipped_raw = clipped_raw[:6000] + "\n...[clipped]...\n" + clipped_raw[-6000:]
+
+        compact_errors = [str(e) for e in (error_list or [])[:8]]
         repair_prompt = (
-
             "You are a strict JSON repair engine.\n"
-
-            "Your task: output ONLY valid JSON that matches the provided JSON Schema exactly.\n"
-
-            "Do not include markdown, commentary, or extra keys.\n\n"
-
-            f"JSON Schema:\n{json.dumps(json_schema_config.get('schema', json_schema_config), ensure_ascii=True)}\n\n"
-
-            f"Invalid output:\n{raw_text}\n\n"
-
-            f"Validation/parsing errors:\n{json.dumps(error_list or [], ensure_ascii=True)}\n\n"
-
-            "Return ONLY the corrected JSON."
-
+            "Return ONLY valid JSON matching the provided response schema.\n"
+            "No markdown, no commentary, no extra keys.\n\n"
+            f"Validation/parsing errors:\n{json.dumps(compact_errors, ensure_ascii=True)}\n\n"
+            f"Invalid output (clipped if large):\n{clipped_raw}\n\n"
+            "Fix only what is needed for schema compliance and internal consistency."
         )
 
         
@@ -2041,20 +2172,15 @@ class SolverV3:
         
 
         provider = provider.lower()
-
         system_for_provider = system_prompt
-
-        if provider == "openai":
-
-            schema_text = json.dumps(json_schema_config.get("schema", json_schema_config), separators=(",", ":"))
-
-            system_for_provider = (
-
-                f"{system_prompt}\n\nJSON_SCHEMA:\n{schema_text}\n\n"
-
-                "Output only valid JSON that matches the schema."
-
-            )
+        optimized_schema = json_schema_config
+        if isinstance(optimized_schema, dict):
+            strict_schema = enforce_strict(optimize_schema_for_model(optimized_schema))
+            optimized_schema = {
+                "name": (optimized_schema.get("name") or "solve_response_repair"),
+                "strict": True,
+                "schema": strict_schema,
+            }
 
 
 
@@ -2078,7 +2204,7 @@ class SolverV3:
 
             prompt=None,
 
-            json_schema=json_schema_config if provider == "openai" else None,
+            json_schema=optimized_schema if provider == "openai" else None,
 
             max_tokens=max_output_tokens,
 

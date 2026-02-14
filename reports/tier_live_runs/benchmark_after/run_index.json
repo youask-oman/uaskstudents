@@ -1,0 +1,94 @@
+[
+  {
+    "tier_label": "FREE",
+    "tier_sent": "free",
+    "mode_sent": "minimal",
+    "status_code": 200,
+    "idempotency_key": "bench-free-1771052836-0d4d4236-8c8c-4454-88b3-cbddb83a739c",
+    "request_id": "bench-free-1771052836-0d4d4236-8c8c-4454-88b3-cbddb83a739c",
+    "attempt_id": "ea29bdc8-37fe-4317-a88a-84aa77d02dc3",
+    "events_count": 6,
+    "telemetry": null
+  },
+  {
+    "tier_label": "SHORT",
+    "tier_sent": "short",
+    "mode_sent": "minimal",
+    "status_code": 200,
+    "idempotency_key": "bench-short-1771052837-9c05f05c-ee04-4f3f-b799-585f2ebb2798",
+    "request_id": "bench-short-1771052837-9c05f05c-ee04-4f3f-b799-585f2ebb2798",
+    "attempt_id": "fca2ca15-3a6a-4c6e-935c-fc9819f4b4f7",
+    "events_count": 11,
+    "telemetry": {
+      "request_id": "bench-short-1771052837-9c05f05c-ee04-4f3f-b799-585f2ebb2798",
+      "model": "gpt-5-mini",
+      "provider": "openai",
+      "input_tokens": 2347,
+      "output_tokens": 757,
+      "total_tokens": 3104,
+      "cached_tokens": null,
+      "latency_ms_openai": 0,
+      "truncated": false,
+      "validated": false,
+      "repaired": false,
+      "openai_calls_count": 0,
+      "openai_payload": null,
+      "requested_mode": "minimal",
+      "learning_mode": "solve",
+      "max_output_tokens_effective": 900,
+      "status": {
+        "status": "completed",
+        "finish_reason": "unknown"
+      },
+      "latency_ms_total": 6875,
+      "schema_valid": true,
+      "type": "telemetry"
+    }
+  },
+  {
+    "tier_label": "STANDARD",
+    "tier_sent": "standard",
+    "mode_sent": "detailed",
+    "status_code": 200,
+    "idempotency_key": "bench-standard-1771052844-64bdc5d4-3641-4f3e-afd5-e1293b9790e1",
+    "request_id": "bench-standard-1771052844-64bdc5d4-3641-4f3e-afd5-e1293b9790e1",
+    "attempt_id": "d30319f6-9ef2-4b57-b664-b5b36e5c4e22",
+    "events_count": 11,
+    "telemetry": {
+      "request_id": "bench-standard-1771052844-64bdc5d4-3641-4f3e-afd5-e1293b9790e1",
+      "model": "gpt-5-mini",
+      "provider": "openai",
+      "input_tokens": 4630,
+      "output_tokens": 2194,
+      "total_tokens": 6824,
+      "cached_tokens": null,
+      "latency_ms_openai": 0,
+      "truncated": false,
+      "validated": false,
+      "repaired": false,
+      "openai_calls_count": 0,
+      "openai_payload": null,
+      "requested_mode": "detailed",
+      "learning_mode": "solve",
+      "max_output_tokens_effective": 4500,
+      "status": {
+        "status": "completed",
+        "finish_reason": "unknown"
+      },
+      "latency_ms_total": 17093,
+      "schema_valid": true,
+      "type": "telemetry"
+    }
+  },
+  {
+    "tier_label": "RESEARCH",
+    "tier_sent": "research",
+    "mode_sent": "detailed",
+    "status_code": 200,
+    "idempotency_key": "bench-research-1771052862-d21e2b16-4d01-4ace-8761-bf95f2f75ee9",
+    "request_id": "bench-research-1771052862-d21e2b16-4d01-4ace-8761-bf95f2f75ee9",
+    "attempt_id": "037aabdf-85ce-4e8f-8d53-5d2e8975f186",
+    "events_count": 6,
+    "telemetry": null
+  }
+]

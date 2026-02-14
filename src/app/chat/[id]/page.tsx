@@ -309,6 +309,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   const { id } = use(params);
   const searchParams = useSearchParams();
   const [session, setSession] = useState<ChatSessionPayload | null>(null);
+  const [layoutDirection, setLayoutDirection] = useState<"ltr" | "rtl">("ltr");
   const [resolvedAttemptId, setResolvedAttemptId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [shareModalOpen, setShareModalOpen] = useState(false);
@@ -316,6 +317,39 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     documentReducer,
     buildInitialDocumentState([createPage()], "none")
   );
+
+  useEffect(() => {
+    const normalizeLanguageCode = (value: string): string => {
+      const raw = (value || "").trim().toLowerCase();
+      const map: Record<string, string> = {
+        ar: "ar",
+        arabic: "ar",
+        العربية: "ar",
+        en: "en",
+        english: "en",
+      };
+      return map[raw] || raw.slice(0, 2);
+    };
+
+    const fetchLanguagePreference = async () => {
+      if (typeof window === "undefined") return;
+      const rawUserId = localStorage.getItem("user_id");
+      if (!rawUserId) return;
+      const userId = Number(rawUserId);
+      if (!Number.isFinite(userId) || userId <= 0) return;
+      try {
+        const res = await fetch(`/api/v1/user/profile?user_id=${userId}`);
+        if (!res.ok) return;
+        const payload = (await res.json()) as { preferred_language?: string | null };
+        const lang = normalizeLanguageCode(payload.preferred_language || "");
+        setLayoutDirection(lang === "ar" ? "rtl" : "ltr");
+      } catch {
+        setLayoutDirection("ltr");
+      }
+    };
+
+    void fetchLanguagePreference();
+  }, []);
 
   useEffect(() => {
     const fetchSession = async () => {
@@ -585,7 +619,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--app-bg)]">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--app-bg)]" dir={layoutDirection}>
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[var(--primary-color)]" />
       </div>
     );
@@ -593,7 +627,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
 
   if (!session) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--app-bg)] text-slate-500">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--app-bg)] text-slate-500" dir={layoutDirection}>
         Session not found.
       </div>
     );
@@ -606,7 +640,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     (searchParams.get("view") || "").toLowerCase() === "student_report" ? "student_report" : "edit";
 
   return (
-    <>
+    <div dir={layoutDirection}>
       <MathCanvasLayout
         header={<DashboardNavBar />}
         leftSidebar={
@@ -643,6 +677,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             originalProblem={originalProblemStatement}
             stepTitles={stepTitles}
             classification={classification}
+            direction={layoutDirection}
           />
         }
       />
@@ -652,6 +687,6 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         sessionId={String(session.id)}
         onClose={() => setShareModalOpen(false)}
       />
-    </>
+    </div>
   );
 }

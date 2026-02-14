@@ -14,6 +14,7 @@ interface RightTutorChatProps {
   initialMessages: NormalizedChatMessage[];
   originalProblem: string;
   stepTitles: string[];
+  direction?: "ltr" | "rtl";
   classification?: {
     domain?: string;
     topic?: string;
@@ -27,8 +28,10 @@ export default function RightTutorChat({
   initialMessages,
   originalProblem,
   stepTitles,
+  direction = "ltr",
   classification,
 }: RightTutorChatProps) {
+  const isRtl = direction === "rtl";
   const [messages, setMessages] = useState<NormalizedChatMessage[]>(initialMessages);
   const [loading, setLoading] = useState(false);
   const [input, setInput] = useState("");
@@ -135,7 +138,7 @@ export default function RightTutorChat({
   };
 
   return (
-    <aside className={styles.rightSidebar}>
+    <aside className={styles.rightSidebar} dir={direction}>
       <div className={styles.chatHeader}>
         <div className={styles.chatHeaderTitle}>
           <div className={styles.chatHeaderIcon}>
@@ -153,10 +156,15 @@ export default function RightTutorChat({
 
       <div className={styles.chatScroll}>
         {messages.map((message) => (
-          <ChatMessage key={message.id} message={message} originalProblem={originalProblem} />
+          <ChatMessage
+            key={message.id}
+            message={message}
+            originalProblem={originalProblem}
+            direction={direction}
+          />
         ))}
         {loading ? (
-          <div className={styles.chatBubbleRowAssistant}>
+          <div className={`${styles.chatBubbleRowAssistant} ${isRtl ? styles.chatBubbleRowAssistantRtl : ""}`.trim()}>
             <div className={styles.tutorThinking}>
               <div className={styles.tutorThinkingDots} aria-hidden="true">
                 <span />
@@ -178,9 +186,11 @@ export default function RightTutorChat({
             setInput(prompt);
           }}
         />
-        <div className={styles.composerRow} style={{ marginTop: 10 }}>
+        <div className={styles.composerRow} style={{ marginTop: 10, flexDirection: isRtl ? "row-reverse" : "row" }}>
           <textarea
             className={styles.composerInput}
+            dir={direction}
+            style={{ textAlign: isRtl ? "right" : "left" }}
             value={input}
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={(event) => {

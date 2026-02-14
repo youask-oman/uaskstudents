@@ -1,0 +1,297 @@
+{
+  "_raw_llm_output": null,
+  "assumptions": [
+    "Standard real-valued function calculus on domain of all real numbers",
+    "Endpoints included when finding global extrema on closed interval [-3,3]"
+  ],
+  "classification": {
+    "difficulty": "medium",
+    "domain": "calculus",
+    "grade_band": "college_intro",
+    "topic": "critical points, second derivative test, global extrema"
+  },
+  "debug": {
+    "finish_reason": null,
+    "input_tokens": null,
+    "latency_ms_total": null,
+    "model": null,
+    "output_tokens": null,
+    "provider": null,
+    "request_id": null,
+    "total_tokens": null,
+    "truncated": null
+  },
+  "final_answer": {
+    "answer_latex": "f'(x)=4x^3-8x=4x(x^2-2),\\quad f''(x)=12x^2-8\\\\\\text{Critical points: }x=0,\\;x=\\pm\\sqrt{2}\\\\\\text{Classification: }f''(0)=-8\\Rightarrow\\text{local maximum at }x=0;\\\\f''(\\pm\\sqrt{2})=12(2)-8=16>0\\Rightarrow\\text{local minima at }x=\\pm\\sqrt{2}.\\\\\\text{Values: }f(0)=1,\\;f(\\pm\\sqrt{2})=(\\sqrt{2})^4-4(\\sqrt{2})^2+1=4-8+1=-3.\\\\\\text{Evaluate endpoints: }f(3)=3^4-4\\cdot3^2+1=81-36+1=46,\\;f(-3)=46.\\\\\\text{Global extrema on }[-3,3]:\\text{ global minimum }f=-3\\text{ at }x=\\pm\\sqrt{2};\\text{ global maximum }f=46\\text{ at }x=\\pm3.",
+    "answer_text": "Critical points: x=0 and x=±√2. x=0 is a local maximum (f(0)=1). x=±√2 are local minima (f(±√2)=-3). On [-3,3] global minimum is -3 at x=±√2 and global maximum is 46 at x=±3.",
+    "units": null,
+    "values": [
+      {
+        "label": "critical_points",
+        "value": "0, \\pm\\sqrt{2}"
+      ,
+        "value_latex": null
+      },
+      {
+        "label": "local_maximum",
+        "value": "x=0, f(0)=1",
+        "value_latex": null
+      },
+      {
+        "label": "local_minima",
+        "value": "x=\\pm\\sqrt{2}, f(\\pm\\sqrt{2})=-3",
+        "value_latex": null
+      },
+      {
+        "label": "global_minimum_on_[-3,3]",
+        "value": "x=\\pm\\sqrt{2}, f=-3",
+        "value_latex": null
+      },
+      {
+        "label": "global_maximum_on_[-3,3]",
+        "value": "x=\\pm3, f=46",
+        "value_latex": null
+      }
+    ]
+  },
+  "problem": {
+    "detected_tasks": [
+      "solve",
+      "calculus",
+      "plot",
+      "graph"
+    ],
+    "language": {
+      "response_language": "English",
+      "user_language": "English"
+    },
+    "normalized_text": "For f(x)=x^4-4x^2+1 find critical points solving f'(x)=0 classify each using f''(x) determine global extrema on [-3,3] and plot f on [-3,3] marking critical points and extrema.",
+    "original_text": "University calculus task: For f(x)=x^4-4x^2+1, find all critical points by solving f'(x)=0, classify each as local min/max using f''(x), determine global extrema on [-3,3], and plot f(x) on [-3,3] marking all critical points and extrema."
+  },
+  "quality": {
+    "common_mistakes": [
+      "Forgetting factor 4 when differentiating and missing roots",
+      "Misapplying the second derivative test at x=0 if sign is mistaken",
+      "Failing to evaluate endpoints when finding global extrema on closed interval",
+      "Arithmetic error computing f(\\pm\\sqrt{2})",
+      "Confusing local and global extrema"
+    ],
+    "confidence": 0.9
+  },
+  "refusal": {
+    "is_refusal": false,
+    "reason": null,
+    "safe_alternative": null
+  },
+  "schema_version": "v1",
+  "steps": [
+    {
+      "checks": [
+        "Derivative computed correctly",
+        "Factors extracted to find roots"
+      ],
+      "explanation": "Differentiate f to find critical points by solving f'(x)=0.",
+      "index": 1,
+      "math_latex": [
+        "f'(x)=4x^3-8x=4x(x^2-2)"
+      ],
+      "notes": null,
+      "plots_used": [],
+      "rules_used": [
+        "power rule",
+        "factor theorem"
+      ],
+      "title": "Compute derivative and factor"
+    },
+    {
+      "checks": [
+        "All real roots of f' found"
+      ],
+      "explanation": "Set the derivative equal to zero and solve the factored equation.",
+      "index": 2,
+      "math_latex": [
+        "4x(x^2-2)=0\\\\\\Rightarrow x=0,\\;x^2=2\\\\\\Rightarrow x=\\pm\\sqrt{2}"
+      ],
+      "notes": null,
+      "plots_used": [],
+      "rules_used": [
+        "zero product property"
+      ],
+      "title": "Solve f'(x)=0"
+    },
+    {
+      "checks": [
+        "Second derivative computed",
+        "Second derivative evaluated at critical points"
+      ],
+      "explanation": "Compute f'' and evaluate at each critical point to classify using the second derivative test.",
+      "index": 3,
+      "math_latex": [
+        "f''(x)=12x^2-8\\\\\\Rightarrow f''(0)=-8,\\;f''(\\pm\\sqrt{2})=12(2)-8=16"
+      ],
+      "notes": null,
+      "plots_used": [],
+      "rules_used": [
+        "second derivative test"
+      ],
+      "title": "Compute and evaluate second derivative"
+    },
+    {
+      "checks": [
+        "Classification follows sign of f''"
+      ],
+      "explanation": "Use signs of f'' to classify critical points: negative implies local maximum, positive implies local minimum.",
+      "index": 4,
+      "math_latex": [
+        "f''(0)=-8<0\\Rightarrow\\text{local maximum at }x=0\\\\f''(\\pm\\sqrt{2})=16>0\\Rightarrow\\text{local minima at }x=\\pm\\sqrt{2}"
+      ],
+      "notes": null,
+      "plots_used": [],
+      "rules_used": [
+        "second derivative test"
+      ],
+      "title": "Classify critical points"
+    },
+    {
+      "checks": [
+        "Compute function values at critical points and endpoints"
+      ],
+      "explanation": "Evaluate f at critical points and at the interval endpoints to compare and find global extrema on [-3,3].",
+      "index": 5,
+      "math_latex": [
+        "f(0)=1\\\\f(\\pm\\sqrt{2})=(\\sqrt{2})^4-4(\\sqrt{2})^2+1=4-8+1=-3\\\\f(3)=3^4-4\\cdot3^2+1=81-36+1=46\\\\f(-3)=46"
+      ],
+      "notes": null,
+      "plots_used": [],
+      "rules_used": [
+        "evaluation",
+        "closed interval extreme value theorem"
+      ],
+      "title": "Evaluate at critical points and endpoints"
+    },
+    {
+      "checks": [
+        "Compare all values to pick global min and max"
+      ],
+      "explanation": "Compare computed values: smallest is global minimum, largest is global maximum on the closed interval.",
+      "index": 6,
+      "math_latex": [
+        "\\text{Global minimum }-3\\text{ at }x=\\pm\\sqrt{2},\\quad \\text{Global maximum }46\\text{ at }x=\\pm3"
+      ],
+      "notes": null,
+      "plots_used": [
+        "function_2d"
+      ],
+      "rules_used": [
+        "comparison"
+      ],
+      "title": "Determine global extrema"
+    }
+  ],
+  "visuals": {
+    "alternative_visual": {
+      "data": "function expression and key points",
+      "description": "Plot recipe below; marks critical points and endpoints",
+      "kind": "explanation"
+    },
+    "decision_reason": "User requested a plot; visualization helps show critical points and extrema.",
+    "plots": [
+      {
+        "domain": {
+          "x_max": 3,
+          "x_min": -3,
+          "y_max": null,
+          "y_min": null
+        },
+        "key_points": [
+          {
+            "label": "0",
+            "x": 0,
+            "y": 1
+          },
+          {
+            "label": "sqrt2",
+            "x": "sqrt(2)",
+            "y": -3
+          },
+          {
+            "label": "-sqrt2",
+            "x": "-sqrt(2)",
+            "y": -3
+          },
+          {
+            "label": "3",
+            "x": 3,
+            "y": 46
+          },
+          {
+            "label": "-3",
+            "x": -3,
+            "y": 46
+          }
+        ],
+        "kind": "function_2d",
+        "recipe": {
+          "data_ref": null,
+          "expr": "x**4-4*x**2+1",
+          "generator": "function_2d",
+          "initial_conditions": {
+            "v0": null,
+            "x0": null
+          },
+          "params": {
+            "beta": null,
+            "gamma": null,
+            "omega": null,
+            "zeta": null
+          },
+          "sampling": {
+            "discard": null,
+            "dt": null,
+            "keep_periods": null,
+            "samples": 400,
+            "samples_per_period": null,
+            "t_max": 3,
+            "t_min": -3,
+            "transient_periods": null
+          },
+          "sweep": {
+            "max": null,
+            "min": null,
+            "param": null,
+            "steps": null
+          },
+          "symbols": [
+            "x"
+          ],
+          "system": null
+        },
+        "render_hint": {
+          "notes": "Mark critical points and label endpoints; use markers for key points",
+          "preferred": "matplotlib"
+        },
+        "rendered": {
+          "caption": "Plot of f(x)=x^4-4x^2+1 on [-3,3] with critical points and extrema marked",
+          "height_px": null,
+          "image_ref": null,
+          "mime": null,
+          "width_px": null
+        }
+     
+        ,
+        "series": []
+     
+     
+     
+     
+      ,
+        "subtitle": null,
+        "title": "f(x)=x^4-4x^2+1 on [-3,3]",
+        "x_label": "x",
+        "y_label": "f(x)",
+        "z_label": null
+      }
+    ],
+    "should_visualize": true
+  }
+}

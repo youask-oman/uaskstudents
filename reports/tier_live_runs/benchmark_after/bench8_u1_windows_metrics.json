@@ -1,0 +1,34 @@
+[
+  {
+    "request_id": "bench8-u1-free-1771053507-10e563da-138a-4a9e-b1a4-82124cdd1904",
+    "start_line": 73880,
+    "end_line": 73932,
+    "openai_visits": 2,
+    "plot_calls": 0,
+    "repair_calls": 0
+  },
+  {
+    "request_id": "bench8-u1-short-1771053536-2409dfcf-2aa5-4a77-a308-5af33f94eed0",
+    "start_line": 73933,
+    "end_line": 73979,
+    "openai_visits": 2,
+    "plot_calls": 0,
+    "repair_calls": 0
+  },
+  {
+    "request_id": "bench8-u1-standard-1771053553-e26c03f6-2a4f-440e-9bcc-fa3f85919064",
+    "start_line": 73980,
+    "end_line": 74009,
+    "openai_visits": 1,
+    "plot_calls": 0,
+    "repair_calls": 0
+  },
+  {
+    "request_id": "bench8-u1-research-1771053575-eb1d1720-0c71-4f14-ba86-311adea7246e",
+    "start_line": 74010,
+    "end_line": 74040,
+    "openai_visits": 1,
+    "plot_calls": 0,
+    "repair_calls": 0
+  }
+]

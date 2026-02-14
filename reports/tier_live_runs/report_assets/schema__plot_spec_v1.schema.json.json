@@ -1,0 +1,36 @@
+{
+  "name": "plot_spec_v1",
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "attach_to_step_id": {
+        "default": null,
+        "minimum": 1,
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "plot_id": {
+        "maxLength": 64,
+        "minLength": 1,
+        "type": "string"
+      },
+      "plotly_json": {
+        "additionalProperties": true,
+        "description": "Plotly JSON object containing at least keys 'data' and 'layout'.",
+        "type": "object"
+      }
+    },
+    "required": [
+      "plot_id",
+      "plotly_json",
+      "attach_to_step_id"
+    ],
+    "title": "YouAsk Plot Spec v1",
+    "type": "object"
+  },
+  "strict": true,
+  "type": "json_schema"
+}

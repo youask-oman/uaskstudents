@@ -1,0 +1,16 @@
+# solve_output_contract_v2_compact.txt
+# Purpose: minimal guardrails for compact LLM output (NOT Superset).
+OUTPUT_MODE=JSON_SCHEMA
+SCHEMA_NAME=solve_llm_compact_v2
+SCHEMA_VERSION=v2
+
+Return exactly ONE JSON object matching the schema. No extra text. No extra keys.
+
+Rules:
+- response_kind must be one of: solution | clarification | refusal
+- If clarification: steps=[] and ask max 2 questions; no answer
+- If refusal: steps=[] and include reason
+- If solution: include steps (tier-limited) and optional candidates
+- Do NOT claim verified; verification is backend
+- Plot must be recipe-only (no x/y arrays) unless explicitly requested (max 25 points)
+- Do not guess runtime_meta/tokens/latency (not in this schema)

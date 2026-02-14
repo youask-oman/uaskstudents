@@ -1,0 +1,182 @@
+# solve_output_contract_v2.txt
+# PURPOSE: Hard contract for model output. This is the “don’t get creative” layer.
+# This file is included as DEVELOPER content alongside the orchestrator developer prompt.
+# It is schema-first and pipeline-aware (backend verification gate will overwrite verification fields).
+
+OUTPUT_MODE=JSON_SCHEMA
+SCHEMA_NAME=solve_superset_v2
+SCHEMA_VERSION=v2
+
+Return exactly ONE JSON object that conforms to the provided schema.
+No markdown. No code fences. No extra text. No extra keys.
+
+========================
+CORE CONTRACT
+========================
+You must always output ALL required top-level keys:
+schema_version, tier, mode, response_kind, refusal, problem, classification,
+clarification, assumptions, steps, final_answer, verification, visuals,
+quality, runtime_meta, _raw_llm_output
+
+- Use null only when the schema allows null.
+- Do not omit required fields even if empty is allowed.
+- Never guess runtime_meta tokens/latency. Use null where allowed.
+
+========================
+RESPONSE KIND CONTRACT
+========================
+Set response_kind exactly to one of: "solution" | "clarification" | "refusal"
+
+A) If response_kind="solution":
+- refusal.is_refusal must be false
+- clarification.needs_clarification must be false
+- steps must contain a coherent solution path (count controlled by tier rules in orchestrator)
+- final_answer must be an object (not null)
+- visuals must reflect graph_mode policy (from orchestrator inputs)
+
+B) If response_kind="clarification":
+- refusal.is_refusal must be false
+- clarification.needs_clarification must be true
+- clarification.questions length must be 1–2 (max 2)
+- steps must be [] (empty) or minimal safe partial steps (only if explicitly allowed by orchestrator)
+- final_answer must be null
+- verification.verified must be false, verification_method="none", provide unverified_reason
+
+C) If response_kind="refusal":
+- refusal.is_refusal must be true
+- refusal.reason must be set (short, specific)
+- refusal.safe_alternative should be provided when possible
+- steps must be []
+- final_answer must be null
+- verification.verified must be false, verification_method="none", unverified_reason set
+
+========================
+PROBLEM + LANGUAGE CONTRACT
+========================
+problem.language must always be present and consistent:
+- user_language: inferred from user input
+- response_language: must equal preferred_response_language (given by orchestrator)
+- preferred_response_language: must equal preferred_response_language (given by orchestrator)
+
+All natural-language strings in the entire JSON must be in preferred_response_language.
+Math expressions are LaTeX only.
+
+========================
+LATEX CONTRACT
+========================
+- Inline math: $...$ only
+- Display math: $$...$$ only
+- Never use \( \) or \[ \]
+- Ensure LaTeX is complete and valid.
+
+========================
+STEPS CONTRACT
+========================
+Each step must include:
+- index (1..)
+- title (short)
+- explanation (clear)
+- math_latex (array, can be empty but should usually include key expressions)
+- rules_used (optional list of rule names)
+- plots_used (if the step relies on a plot; else ["none"] or [])
+- checks (short checks or validations)
+- notes (optional)
+
+Rules:
+- Steps must be logically ordered and consistent with the final answer.
+- Do not include contradictory steps.
+- Do not exceed tier max step counts provided by orchestrator.
+
+========================
+FINAL ANSWER CONTRACT
+========================
+When response_kind="solution":
+final_answer must include:
+- answer_text: final result in words (brief, clear)
+- answer_latex: optional but recommended if math-heavy
+- values: include structured values when applicable (roots, extrema, parameters, intervals)
+- units: if relevant
+
+Candidate solutions should be included in:
+verification.candidate_solutions (as solution_item entries)
+(These are candidates, not verified.)
+
+========================
+VERIFICATION CONTRACT (BACKEND OVERWRITES)
+========================
+IMPORTANT: Backend verification gate (SymPy) will overwrite these fields.
+Your job is to supply:
+- candidate_solutions: best candidates you believe are correct
+- assumptions_used: domain assumptions you relied on
+- verified must be false (unless orchestrator explicitly provides verified results)
+- verification_method must be "none" (unless orchestrator explicitly provides verified method)
+- dropped_candidates must be []
+- final_solutions must be []
+
+Set unverified_reason to a short statement like:
+"Pending backend verification (symbolic substitution/domain checks)."
+
+verification_meta:
+- symbolic_parse: true if the math is reasonably parseable; else false
+- duration_ms: null
+- candidates_checked: null
+- timed_out: false
+- route: "openai"
+
+Never claim verified correctness in any natural-language text.
+
+========================
+VISUALIZATION CONTRACT
+========================
+visuals must always be present:
+- should_visualize: boolean
+- decision_reason: short explanation in preferred_response_language
+- plots: array (0..10)
+- alternative_visual: optional
+
+If should_visualize=true:
+- Provide at least 1 plot object in plots.
+- Each plot must include:
+  - kind, title, labels, domain (if known), series, key_points, render_hint, recipe, rendered
+- Use render_hint.preferred="matplotlib" unless instructed otherwise.
+
+Plot data rules:
+- Keep each series <= 200 points.
+- Max 6 series per plot.
+- Include key_points for intersections/roots/extrema when relevant.
+
+If you cannot safely output numeric series:
+- Provide recipe with generator + expr + symbols + sampling so backend can render.
+
+rendered must be null (backend fills it).
+
+========================
+QUALITY CONTRACT
+========================
+quality.confidence must be 0..1 (conservative).
+quality.common_mistakes: up to 5 likely mistakes.
+
+========================
+RUNTIME META CONTRACT
+========================
+runtime_meta is required by schema:
+- request_id and attempt_id: echo if provided by orchestrator and schema allows; else null
+- provider/model/tokens/latency/finish_reason: set null (do not guess)
+- cache_hit: null
+- timing_ms: fill nulls (do not guess)
+
+========================
+ANTI-EMPTY / SAFETY
+========================
+- Never output placeholder-only content.
+- If insufficient info: respond_kind="clarification" with 1–2 questions.
+- If multi-question input: respond_kind="clarification" and ask user to choose one.
+- If you cannot comply with schema: still return the closest valid JSON with refusal/clarification rather than malformed output.
+
+FINAL CHECK BEFORE OUTPUT
+- Valid JSON
+- No extra keys
+- All required keys present
+- Enum casing matches schema
+- Language consistency enforced
+- verification fields set to “pending backend verification” unless explicitly instructed otherwise
