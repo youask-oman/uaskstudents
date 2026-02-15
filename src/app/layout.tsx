@@ -1,7 +1,5 @@
-/* eslint-disable @next/next/no-page-custom-font */
 import "katex/dist/katex.min.css";
 import type { Metadata } from "next";
-import { Space_Grotesk, Lexend } from "next/font/google"; // For Student & Admin
 
 import "./globals.css";
 import { ThemeProvider } from "@/hooks/useTheme";
@@ -9,9 +7,6 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ToastProvider } from "@/components/ui/ToastProvider";
 import AnalyticsCookieBanner from "@/components/AnalyticsCookieBanner";
 import TermsAcceptanceGate from "@/components/TermsAcceptanceGate";
-
-const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: '--font-space-grotesk' });
-const lexend = Lexend({ subsets: ["latin"], variable: '--font-lexend' });
 
 export const metadata: Metadata = {
   title: "uask.ai | Master Math & Physics with AI",
@@ -24,16 +19,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${spaceGrotesk.variable} ${lexend.variable}`}>
-      <head>
-        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
-        <style>{`
-          .material-symbols-outlined {
-              font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-          }
-        `}</style>
-      </head>
-      <body className="min-h-screen bg-background-light dark:bg-background-dark text-[#111318] dark:text-white transition-colors duration-200">
+    <html lang="en" suppressHydrationWarning>
+      <body suppressHydrationWarning className="min-h-screen bg-background-light dark:bg-background-dark text-[#111318] dark:text-white transition-colors duration-200">
         <ThemeProvider>
           <AuthProvider>
             <ToastProvider>

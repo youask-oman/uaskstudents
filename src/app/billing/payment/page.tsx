@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import DashboardNavBar from "@/components/DashboardNavBar";
-import { API_BASE_URL, parseApiError } from "@/lib/api";
+import { fetchApi, parseApiError } from "@/lib/api";
 import { fetchWalletSummary } from "@/lib/wallet";
 import { useToast } from "@/components/ui/ToastProvider";
 
@@ -13,6 +13,7 @@ type TopUpProduct = {
     name: string;
     credits: number;
     price_usd: number;
+    stripe_price_id?: string | null;
 };
 
 export default function BillingPaymentPage() {
@@ -24,7 +25,7 @@ export default function BillingPaymentPage() {
     useEffect(() => {
         const loadProducts = async () => {
             try {
-                const res = await fetch(`${API_BASE_URL}/api/v1/topups/products`);
+                const res = await fetchApi(`/api/v1/topups/products`);
                 if (!res.ok) {
                     const err = await parseApiError(res);
                     pushToast({
@@ -35,8 +36,9 @@ export default function BillingPaymentPage() {
                     });
                     return;
                 }
-                const data = (await res.json()) as TopUpProduct[];
-                setProducts(Array.isArray(data) ? data : []);
+                const data = await res.json();
+                const rows = Array.isArray(data) ? data : [];
+                setProducts(rows);
             } catch (error) {
                 pushToast({
                     type: "error",
@@ -70,18 +72,14 @@ export default function BillingPaymentPage() {
             localStorage.setItem("topup_last_product_credits", String(product.credits));
             localStorage.setItem("topup_last_started_at", new Date().toISOString());
 
-            const successUrl = `${window.location.origin}/billing/success?product=${encodeURIComponent(product.code)}&session_id={CHECKOUT_SESSION_ID}`;
-            const cancelUrl = `${window.location.origin}/billing/payment?status=cancelled`;
-            const res = await fetch(`${API_BASE_URL}/api/v1/topups/stripe/checkout`, {
+            const res = await fetchApi(`/api/v1/stripe/create_checkout_session`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({
-                    product_code: product.code,
-                    success_url: successUrl,
-                    cancel_url: cancelUrl,
+                    pack_code: product.code,
                 }),
             });
             if (!res.ok) {
@@ -139,12 +137,9 @@ export default function BillingPaymentPage() {
                         {products.map((product) => (
                             <div key={product.code} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 flex flex-col gap-4">
                                 <div>
-                                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">{product.name}</h2>
-                                    <p className="text-sm text-slate-500">{product.credits.toLocaleString()} credits</p>
-                                </div>
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-3xl font-black text-primary">${product.price_usd.toFixed(2)}</span>
-                                    <span className="text-xs text-slate-500">USD</span>
+                                <h2 className="text-xl font-bold text-slate-900 dark:text-white">{product.name}</h2>
+                                <p className="text-sm text-slate-500">{product.credits.toLocaleString()} credits</p>
+                                <p className="text-xs text-slate-400 uppercase tracking-wide">${Number(product.price_usd || 0).toFixed(2)} one-time</p>
                                 </div>
                                 <button
                                     onClick={() => handleCheckout(product)}

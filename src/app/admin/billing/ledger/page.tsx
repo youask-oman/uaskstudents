@@ -3,13 +3,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
-import { API_BASE_URL, parseApiError } from '@/lib/api';
+import { fetchApi, parseApiError } from '@/lib/api';
 import { useToast } from '@/components/ui/ToastProvider';
 
 interface LedgerEntry {
-    id: number;
+    id: string;
     user_id: number;
-    user_email: string;
+    user_email?: string;
     action_type: string;
     request_id: string | null;
     status: string;
@@ -34,17 +34,27 @@ export default function LedgerExplorerPage() {
     const fetchLedger = useCallback(async (userId?: string) => {
         setLoading(true);
         try {
-            const url = userId
-                ? `${API_BASE_URL}/api/admin/billing/ledger?user_id=${userId}&limit=50`
-                : `${API_BASE_URL}/api/admin/billing/ledger?limit=50`;
+            const path = userId
+                ? `/api/v1/admin/credits/ledger?user_id=${userId}&limit=50`
+                : `/api/v1/admin/credits/ledger?limit=50`;
 
-            const res = await fetch(url, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const res = await fetchApi(path, { headers: { Authorization: `Bearer ${token}` } });
             if (res.ok) {
                 const data = await res.json();
-                setEntries(data.items);
-                setTotal(data.total);
+                setEntries((data.items || []).map((row: ApiLedgerRow) => ({
+                    id: row.ledger_id,
+                    user_id: row.user_id,
+                    user_email: row.user_email,
+                    action_type: row.action,
+                    request_id: row.request_id,
+                    status: row.outcome,
+                    credits_charged: Number(row.total_cost || 0),
+                    credits_before: null,
+                    credits_after: null,
+                    tier: row.tier,
+                    created_at: row.created_at,
+                })));
+                setTotal((data.items || []).length);
             } else {
                 const err = await parseApiError(res);
                 pushToast({
@@ -191,3 +201,14 @@ export default function LedgerExplorerPage() {
         </div>
     );
 }
+    type ApiLedgerRow = {
+        ledger_id: string;
+        user_id: number;
+        user_email?: string;
+        action: string;
+        request_id: string | null;
+        outcome: string;
+        total_cost?: number;
+        tier: string | null;
+        created_at: string;
+    };

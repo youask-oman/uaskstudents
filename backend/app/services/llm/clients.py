@@ -256,12 +256,15 @@ class OpenAIClient:
         system_prompt: Optional[str],
         prompt: Optional[str],
         json_schema: Optional[Dict[str, Any]],
-        max_tokens: int,
+        max_tokens: Optional[int],
         temperature: Optional[float],
-        stream: bool,
-        request_id: Optional[str],
+        top_p: Optional[float] = None,
+        stream: bool = False,
+        request_id: Optional[str] = None,
+        timeout_ms: Optional[int] = None,
         model: Optional[str] = None,
         verbosity: Optional[str] = None,
+        reasoning_effort: Optional[str] = None,
     ) -> LLMResponse:
         del stream
         if not self.api_key:
@@ -340,17 +343,20 @@ class OpenAIClient:
                 params: Dict[str, Any] = {
                     "model": model_name,
                     "input": input_items,
-                    "max_output_tokens": max_tokens,
                 }
+                if max_tokens is not None:
+                    params["max_output_tokens"] = max_tokens
                 text_payload: Dict[str, Any] = {"verbosity": verbosity}
                 if text_format:
                     text_payload["format"] = text_format
                 params["text"] = text_payload
-                reasoning_effort = (os.environ.get("OPENAI_REASONING_EFFORT") or "minimal").strip().lower()
+                if top_p is not None:
+                    params["top_p"] = top_p
                 if reasoning_effort in {"minimal", "low", "medium", "high"}:
                     params["reasoning"] = {"effort": reasoning_effort}
 
-                response = await self.client.responses.create(**params)
+                effective_client = self.client.with_options(timeout=(max(1.0, float(timeout_ms) / 1000.0))) if timeout_ms else self.client
+                response = await effective_client.responses.create(**params)
                 status_info["status"] = getattr(response, "status", "completed")
                 if status_info["status"] == "incomplete":
                     details = getattr(response, "incomplete_details", None)
@@ -390,8 +396,9 @@ class OpenAIClient:
                 params = {
                     "model": model_name,
                     "messages": messages,
-                    "max_completion_tokens": max_tokens,
                 }
+                if max_tokens is not None:
+                    params["max_completion_tokens"] = max_tokens
                 json_schema_norm = _normalize_openai_schema_wrapper(json_schema) if json_schema else None
                 if json_schema_norm:
                     # Use shared helper to build structured output param for Chat Completions API
@@ -402,8 +409,11 @@ class OpenAIClient:
                     )
                 if temperature is not None:
                     params["temperature"] = temperature
+                if top_p is not None:
+                    params["top_p"] = top_p
 
-                response = await self.client.chat.completions.create(**params)
+                effective_client = self.client.with_options(timeout=(max(1.0, float(timeout_ms) / 1000.0))) if timeout_ms else self.client
+                response = await effective_client.chat.completions.create(**params)
                 status_info["status"] = "completed"
                 status_info["finish_reason"] = response.choices[0].finish_reason
 
@@ -464,11 +474,14 @@ class OpenAIClient:
         system_prompt: Optional[str],
         prompt: Optional[str],
         json_schema: Optional[Dict[str, Any]],
-        max_tokens: int,
+        max_tokens: Optional[int],
         temperature: Optional[float],
-        request_id: Optional[str],
+        top_p: Optional[float] = None,
+        request_id: Optional[str] = None,
+        timeout_ms: Optional[int] = None,
         model: Optional[str] = None,
         verbosity: Optional[str] = None,
+        reasoning_effort: Optional[str] = None,
     ) -> AsyncIterator[LLMStreamResponse]:
         response = await self.generate(
             messages=messages,
@@ -477,10 +490,13 @@ class OpenAIClient:
             json_schema=json_schema,
             max_tokens=max_tokens,
             temperature=temperature,
+            top_p=top_p,
             stream=False,
             request_id=request_id,
+            timeout_ms=timeout_ms,
             model=model,
             verbosity=verbosity,
+            reasoning_effort=reasoning_effort,
         )
         yield LLMStreamResponse(
             content=response.content,

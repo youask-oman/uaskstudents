@@ -3,12 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "next dev --webpack --hostname localhost --port 3000",
+    "dev:e2e": "next dev --webpack --hostname 127.0.0.1 --port 3000",
+    "start:e2e": "next start --hostname 127.0.0.1 --port 3000",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "validate:templates": "powershell -ExecutionPolicy Bypass -File scripts/validate-templates.ps1",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "e2e": "playwright test tests/e2e/frontend_regression_gate.spec.ts",
+    "qa:frontend-regression": "node scripts/run-frontend-regression-gate.mjs"
   },
   "dependencies": {
     "@mdxeditor/editor": "^3.52.3",

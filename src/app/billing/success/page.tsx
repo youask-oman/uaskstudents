@@ -2,18 +2,14 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import DashboardNavBar from "@/components/DashboardNavBar";
-import { API_BASE_URL, parseApiError } from "@/lib/api";
+import { fetchApi, parseApiError } from "@/lib/api";
 import { useToast } from "@/components/ui/ToastProvider";
 import { fetchWalletSummary, WalletSummary } from "@/lib/wallet";
 
 type TopUpProduct = {
-    id: number;
-    code: string;
-    name: string;
-    usd_amount: number;
+    pack_code: string;
+    display_name: string;
     credits: number;
-    currency: string;
-    is_active: boolean;
 };
 
 export default function BillingSuccessPage() {
@@ -27,7 +23,7 @@ export default function BillingSuccessPage() {
     const productCode = useMemo(() => {
         if (typeof window === "undefined") return null;
         const params = new URLSearchParams(window.location.search);
-        return params.get("product");
+        return params.get("pack") || params.get("product");
     }, []);
     const lastBalance = useMemo(() => {
         if (typeof window === "undefined") return null;
@@ -57,7 +53,7 @@ export default function BillingSuccessPage() {
             if (!token) return;
 
             try {
-                const res = await fetch(`${API_BASE_URL}/api/v1/topups/stripe/confirm-session`, {
+                const res = await fetchApi(`/api/v1/topups/stripe/confirm-session`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -111,10 +107,11 @@ export default function BillingSuccessPage() {
         const loadProductCredits = async () => {
             if (!productCode || purchasedCredits != null) return;
             try {
-                const res = await fetch(`${API_BASE_URL}/api/v1/topups/products`);
+                const res = await fetchApi(`/api/v1/credits/packs`);
                 if (!res.ok) return;
-                const products = (await res.json()) as TopUpProduct[];
-                const match = products.find((item) => item.code === productCode);
+                const payload = await res.json();
+                const products = (payload?.items || []) as TopUpProduct[];
+                const match = products.find((item) => item.pack_code === productCode);
                 if (match) setPurchasedCredits(match.credits);
             } catch {
                 return;

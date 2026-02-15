@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import SystemConfigPanel from "@/components/admin/SystemConfigPanel";
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL, fetchApi } from "@/lib/api";
 
 type FilterState = {
     mode: string;
@@ -172,7 +172,6 @@ export default function AdminDashboardPage() {
         { label: "Edit Privacy", href: "/admin/legal/privacy" },
         { label: "Users", href: "/admin/users" },
         { label: "Quotas", href: "/admin/quotas" },
-        { label: "Legacy Subscriptions", href: "/admin/legacy/subscriptions" },
         { label: "Prompt Registry", href: "/admin/prompt-registry" },
         { label: "Prompt Bindings", href: "/admin/prompt-bindings" },
         { label: "Logs", href: "/admin/logs" },
@@ -221,9 +220,9 @@ export default function AdminDashboardPage() {
             const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
             try {
                 const [statsRes, routingRes, tracesRes] = await Promise.all([
-                    fetch(`${baseUrl}/api/v1/admin/stats/dashboard`, { headers, signal: controller.signal }),
-                    fetch(`${baseUrl}/api/v1/admin/stats/model-routing`, { headers, signal: controller.signal }),
-                    fetch(`${baseUrl}/api/v1/admin/solve-traces?limit=120`, { headers, signal: controller.signal })
+                    fetchApi(`/api/v1/admin/stats/dashboard`, { headers, signal: controller.signal }),
+                    fetchApi(`/api/v1/admin/stats/model-routing`, { headers, signal: controller.signal }),
+                    fetchApi(`/api/v1/admin/solve-traces?limit=120`, { headers, signal: controller.signal })
                 ]);
                 if (!statsRes.ok || !routingRes.ok || !tracesRes.ok) {
                     throw new Error("Failed to load admin metrics.");
@@ -254,9 +253,9 @@ export default function AdminDashboardPage() {
             const query = buildQuery({ range, ...filters });
             try {
                 const [overviewRes, errorsRes, anomaliesRes] = await Promise.all([
-                    fetch(`${baseUrl}/api/v1/admin/analytics/overview?${query}`, { headers, signal: controller.signal }),
-                    fetch(`${baseUrl}/api/v1/admin/analytics/errors?${buildQuery({ range, ...filters })}`, { headers, signal: controller.signal }),
-                    fetch(`${baseUrl}/api/v1/admin/analytics/anomalies?${buildQuery({ range, ...filters })}`, { headers, signal: controller.signal })
+                    fetchApi(`/api/v1/admin/analytics/overview?${query}`, { headers, signal: controller.signal }),
+                    fetchApi(`/api/v1/admin/analytics/errors?${buildQuery({ range, ...filters })}`, { headers, signal: controller.signal }),
+                    fetchApi(`/api/v1/admin/analytics/anomalies?${buildQuery({ range, ...filters })}`, { headers, signal: controller.signal })
                 ]);
                 if (!overviewRes.ok || !errorsRes.ok || !anomaliesRes.ok) {
                     throw new Error("Failed to load analytics data.");

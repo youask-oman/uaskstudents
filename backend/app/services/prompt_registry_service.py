@@ -359,9 +359,10 @@ class PromptRegistryService:
         return None
 
     def build_system_prompt(self, global_system: str, developer: str) -> str:
-        if not developer:
-            return global_system
-        return f"{global_system.strip()}\n\n{developer.strip()}"
+        # Keep system and developer prompts separated by role.
+        # Merging them here causes repeated instruction blocks and higher token usage.
+        _ = developer
+        return (global_system or "").strip()
 
     def resolve_binding_payload(
         self,
@@ -371,17 +372,7 @@ class PromptRegistryService:
     ) -> Tuple[str, Dict[str, Any], PromptBinding]:
         tier = self._resolve_tier(tier_slug)
         prompt_mode = self._resolve_mode(mode)
-        tier_fallback_order: Dict[PromptTierEnum, List[PromptTierEnum]] = {
-            PromptTierEnum.RESEARCH: [PromptTierEnum.RESEARCH, PromptTierEnum.STANDARD, PromptTierEnum.SHORT, PromptTierEnum.FREE],
-            PromptTierEnum.STANDARD: [PromptTierEnum.STANDARD, PromptTierEnum.SHORT, PromptTierEnum.FREE],
-            PromptTierEnum.SHORT: [PromptTierEnum.SHORT, PromptTierEnum.FREE],
-            PromptTierEnum.FREE: [PromptTierEnum.FREE],
-        }
-        binding = None
-        for candidate_tier in tier_fallback_order.get(tier, [tier]):
-            binding = self.get_active_binding(session, candidate_tier, prompt_mode)
-            if binding:
-                break
+        binding = self.get_active_binding(session, tier, prompt_mode)
         if not binding:
             raise PromptRegistryError(f"No active binding for tier={tier.value} mode={prompt_mode.value}")
 
@@ -766,6 +757,7 @@ class PromptRegistryService:
         updated_by: Optional[str],
         max_output_tokens: Optional[int] = None,
         max_input_tokens: Optional[int] = None,
+        max_questions_allowed: Optional[int] = None,
         system_schema_budget_tokens: Optional[int] = None,
         context_budget_tokens: Optional[int] = None,
         json_retry_max_output_tokens: Optional[int] = None,
@@ -779,6 +771,13 @@ class PromptRegistryService:
         trim_strategy: Optional[TrimStrategyEnum] = None,
         max_steps: Optional[int] = None,
         retry_cap_tokens: Optional[int] = None,
+        solve_text_cost: Optional[float] = None,
+        solve_snap_image_cost: Optional[float] = None,
+        solve_snap_pdf_cost: Optional[float] = None,
+        solve_voice_cost: Optional[float] = None,
+        verify_addon_cost: Optional[float] = None,
+        plot_addon_cost: Optional[float] = None,
+        attempt_fee: Optional[float] = None,
         features: Optional[Dict[str, Any]] = None,
         multipliers: Optional[Dict[str, Any]] = None,
     ) -> PromptBinding:
@@ -810,6 +809,7 @@ class PromptRegistryService:
         if existing:
             existing.max_output_tokens = max_output_tokens
             existing.max_input_tokens = max_input_tokens
+            existing.max_questions_allowed = max_questions_allowed
             existing.system_schema_budget_tokens = system_schema_budget_tokens
             existing.context_budget_tokens = context_budget_tokens
             existing.json_retry_max_output_tokens = json_retry_max_output_tokens
@@ -823,6 +823,13 @@ class PromptRegistryService:
             existing.trim_strategy = trim_strategy
             existing.max_steps = max_steps
             existing.retry_cap_tokens = retry_cap_tokens
+            existing.solve_text_cost = solve_text_cost
+            existing.solve_snap_image_cost = solve_snap_image_cost
+            existing.solve_snap_pdf_cost = solve_snap_pdf_cost
+            existing.solve_voice_cost = solve_voice_cost
+            existing.verify_addon_cost = verify_addon_cost
+            existing.plot_addon_cost = plot_addon_cost
+            existing.attempt_fee = attempt_fee
             existing.features = features or {}
             existing.multipliers = multipliers or {}
             existing.is_active = True
@@ -841,6 +848,7 @@ class PromptRegistryService:
             output_schema_id=output_schema_id,
             max_output_tokens=max_output_tokens,
             max_input_tokens=max_input_tokens,
+            max_questions_allowed=max_questions_allowed,
             system_schema_budget_tokens=system_schema_budget_tokens,
             context_budget_tokens=context_budget_tokens,
             json_retry_max_output_tokens=json_retry_max_output_tokens,
@@ -854,6 +862,13 @@ class PromptRegistryService:
             trim_strategy=trim_strategy,
             max_steps=max_steps,
             retry_cap_tokens=retry_cap_tokens,
+            solve_text_cost=solve_text_cost,
+            solve_snap_image_cost=solve_snap_image_cost,
+            solve_snap_pdf_cost=solve_snap_pdf_cost,
+            solve_voice_cost=solve_voice_cost,
+            verify_addon_cost=verify_addon_cost,
+            plot_addon_cost=plot_addon_cost,
+            attempt_fee=attempt_fee,
             features=features or {},
             multipliers=multipliers or {},
             is_active=True,

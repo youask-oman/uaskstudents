@@ -20,6 +20,7 @@ from app.models import (
     Notification,
     Payment,
     Plan,
+    LegalDocument,
     PromptBinding,
     PromptModeEnum,
     PromptRoleEnum,
@@ -34,6 +35,8 @@ from app.models import (
     User,
 )
 from app.models.credit_program_models import CreditProgramDefinition
+from app.services.legal_document_renderer import markdown_to_basic_html
+from app.services.privacy_policy_generator import build_privacy_policy_markdown
 from app.services.school_import_service import import_school_csvs
 
 
@@ -83,6 +86,88 @@ def _res(c: int = 0, u: int = 0, s: int = 0) -> Dict[str, int]:
     return {"created_count": c, "updated_count": u, "skipped_count": s}
 
 
+def _terms_inventory_markdown() -> str:
+    candidates = [
+        ROOT.parent / "terms_of_service.md",
+        ROOT / "terms_of_service.md",
+        Path.cwd() / "terms_of_service.md",
+    ]
+    for path in candidates:
+        if path.exists():
+            txt = path.read_text(encoding="utf-8").strip()
+            if txt:
+                return txt
+    return "# Terms of Service\n\nTerms content is currently unavailable."
+
+
+def _seed_legal_documents(session: Session, app_env: str) -> Tuple[int, Dict[str, int]]:
+    terms_md = _terms_inventory_markdown()
+    privacy_md = build_privacy_policy_markdown()
+    payload = [
+        {"key": "terms_of_service", "version": "seed-v1", "content_md": terms_md},
+        {"key": "privacy_policy", "version": "seed-v1", "content_md": privacy_md},
+    ]
+    checksum = _sha256_payload(payload)
+    if _reg_same(session, "legal_documents", checksum):
+        count = len(
+            session.exec(
+                select(LegalDocument).where(LegalDocument.key.in_(["terms_of_service", "privacy_policy"]))
+            ).all()
+        )
+        return count, _res(s=len(payload))
+
+    now = datetime.now(timezone.utc)
+    c = u = s = 0
+    for row in payload:
+        key = row["key"]
+        version = row["version"]
+        md = row["content_md"]
+        html = markdown_to_basic_html(md)
+        sha = hashlib.sha256(md.encode("utf-8")).hexdigest()
+        existing = session.exec(
+            select(LegalDocument).where(LegalDocument.key == key).where(LegalDocument.version == version)
+        ).first()
+        if existing:
+            if (
+                existing.status == "published"
+                and existing.content_md == md
+                and existing.content_html == html
+                and existing.checksum_sha256 == sha
+            ):
+                s += 1
+                continue
+            existing.status = "published"
+            existing.content_md = md
+            existing.content_html = html
+            existing.effective_at = now
+            existing.published_at = now
+            existing.checksum_sha256 = sha
+            existing.updated_at = datetime.utcnow()
+            session.add(existing)
+            u += 1
+            continue
+
+        session.add(
+            LegalDocument(
+                key=key,
+                version=version,
+                status="published",
+                content_md=md,
+                content_html=html,
+                effective_at=now,
+                published_at=now,
+                checksum_sha256=sha,
+            )
+        )
+        c += 1
+    session.commit()
+    count = len(
+        session.exec(select(LegalDocument).where(LegalDocument.key.in_(["terms_of_service", "privacy_policy"]))).all()
+    )
+    _reg_set(session, "legal_documents", checksum, app_env, count)
+    return count, _res(c, u, s)
+
+
 def _seed_systemconfig(session: Session, app_env: str) -> Tuple[int, Dict[str, int]]:
     payload = _load_json(SEED_DATA_DIR / "systemconfig.json")
     checksum = _sha256_payload(payload)
@@ -112,28 +197,6 @@ def _seed_systemconfig(session: Session, app_env: str) -> Tuple[int, Dict[str, i
 def _seed_json_schemas(session: Session, app_env: str) -> Tuple[int, Dict[str, int]]:
     path = SEED_DATA_DIR / "json_schemas.json"
     payload = _load_json(path) if path.exists() else []
-    v2_bundle_path = SEED_DATA_DIR / "solve_superset_v2_bundle.json"
-    if v2_bundle_path.exists():
-        try:
-            bundle = _load_json(v2_bundle_path)
-            for row in (bundle.get("json_schemas") or []):
-                if not isinstance(row, dict) or not row.get("schema_id"):
-                    continue
-                match = next(
-                    (
-                        item
-                        for item in payload
-                        if item.get("schema_id") == row.get("schema_id")
-                        and int(item.get("version") or 0) == int(row.get("version") or 0)
-                    ),
-                    None,
-                )
-                if match:
-                    match.update(row)
-                else:
-                    payload.append(row)
-        except Exception:
-            pass
     checksum = _sha256_payload(payload)
     if _reg_same(session, "json_schemas", checksum):
         return len(session.exec(select(JsonSchemaEntry)).all()), _res(s=len(payload))
@@ -185,28 +248,6 @@ def _seed_prompt_templates(session: Session, app_env: str) -> Tuple[int, Dict[st
                 item.setdefault("version", 1)
                 item.setdefault("is_active", True)
                 payload.append(item)
-    v2_bundle_path = SEED_DATA_DIR / "solve_superset_v2_bundle.json"
-    if v2_bundle_path.exists():
-        try:
-            bundle = _load_json(v2_bundle_path)
-            for row in (bundle.get("prompt_templates") or []):
-                if not isinstance(row, dict) or not row.get("prompt_id"):
-                    continue
-                match = next(
-                    (
-                        item
-                        for item in payload
-                        if item.get("prompt_id") == row.get("prompt_id")
-                        and int(item.get("version") or 0) == int(row.get("version") or 0)
-                    ),
-                    None,
-                )
-                if match:
-                    match.update(row)
-                else:
-                    payload.append(row)
-        except Exception:
-            pass
     checksum = _sha256_payload(payload)
     if _reg_same(session, "prompt_templates", checksum):
         return len(session.exec(select(PromptTemplateEntry)).all()), _res(s=len(payload))
@@ -370,12 +411,22 @@ def _seed_prompt_bindings(session: Session, app_env: str) -> Tuple[int, Dict[str
                 "output_schema_id": row["output_schema_id"],
                 "max_output_tokens": row.get("max_output_tokens"),
                 "max_input_tokens": row.get("max_input_tokens"),
+                "max_questions_allowed": row.get("max_questions_allowed"),
+                "system_schema_budget_tokens": row.get("system_schema_budget_tokens"),
+                "context_budget_tokens": row.get("context_budget_tokens"),
+                "json_retry_max_output_tokens": row.get("json_retry_max_output_tokens"),
                 "json_retry_max_attempts": row.get("json_retry_max_attempts"),
                 "timeout_ms": row.get("timeout_ms"),
                 "temperature": row.get("temperature"),
                 "top_p": row.get("top_p"),
+                "plot_points_cap": row.get("plot_points_cap"),
+                "plot_traces_cap": row.get("plot_traces_cap"),
+                "plot_annotations_cap": row.get("plot_annotations_cap"),
                 "trim_strategy": trim,
                 "max_steps": row.get("max_steps"),
+                "retry_cap_tokens": row.get("retry_cap_tokens"),
+                "features": row.get("features") or {},
+                "multipliers": row.get("multipliers") or {},
                 "is_active": bool(row.get("is_active", True)),
             }
             changed = False
@@ -401,12 +452,22 @@ def _seed_prompt_bindings(session: Session, app_env: str) -> Tuple[int, Dict[str
                     output_schema_id=row["output_schema_id"],
                     max_output_tokens=row.get("max_output_tokens"),
                     max_input_tokens=row.get("max_input_tokens"),
+                    max_questions_allowed=row.get("max_questions_allowed"),
+                    system_schema_budget_tokens=row.get("system_schema_budget_tokens"),
+                    context_budget_tokens=row.get("context_budget_tokens"),
+                    json_retry_max_output_tokens=row.get("json_retry_max_output_tokens"),
                     json_retry_max_attempts=row.get("json_retry_max_attempts"),
                     timeout_ms=row.get("timeout_ms"),
                     temperature=row.get("temperature"),
                     top_p=row.get("top_p"),
+                    plot_points_cap=row.get("plot_points_cap"),
+                    plot_traces_cap=row.get("plot_traces_cap"),
+                    plot_annotations_cap=row.get("plot_annotations_cap"),
                     trim_strategy=trim,
                     max_steps=row.get("max_steps"),
+                    retry_cap_tokens=row.get("retry_cap_tokens"),
+                    features=row.get("features") or {},
+                    multipliers=row.get("multipliers") or {},
                     is_active=bool(row.get("is_active", True)),
                     updated_by=row.get("updated_by") or f"seed:{app_env.lower()}",
                 )
@@ -613,40 +674,41 @@ def _seed_internal_users(session: Session, app_env: str, allow_user_seeding: boo
         payload = _load_json(path) if path.exists() else _load_json(SEED_DATA_DIR / "internal_users.example.json")
 
     if not override_path:
+        superadmin_emails = {
+            os.environ.get("SEED_PRIMARY_SUPERADMIN_EMAIL", "admin@uask.ai").strip().lower(),
+            os.environ.get("SEED_SECOND_SUPERADMIN_EMAIL", "loai@uask.ai").strip().lower(),
+        }
+        superadmin_emails = {x for x in superadmin_emails if x}
         if app_env == "DEV":
-            target_email = os.environ.get("SEED_DEV_SUPERADMIN_EMAIL", "admin@uask.ai").strip().lower()
-            superadmin_row = None
+            for email in sorted(superadmin_emails):
+                existing = next((r for r in payload if r.get("email", "").strip().lower() == email), None)
+                if existing is None:
+                    payload.insert(
+                        0,
+                        {
+                            "email": email,
+                            "full_name": email.split("@")[0],
+                            "role": "superadmin",
+                            "is_verified": True,
+                        },
+                    )
             for row in payload:
-                if row.get("email", "").strip().lower() == target_email:
-                    superadmin_row = row
-                    break
-            if not superadmin_row and payload:
-                superadmin_row = payload[0]
-            if not superadmin_row:
-                superadmin_row = {
-                    "email": target_email,
-                    "full_name": "Dev Superadmin",
-                    "role": "superadmin",
-                    "is_verified": True,
-                }
-                payload.insert(0, superadmin_row)
-
-            superadmin_row["role"] = "superadmin"
-            for row in payload:
-                if row is not superadmin_row and row.get("role") == "superadmin":
+                email = row.get("email", "").strip().lower()
+                if email in superadmin_emails:
+                    row["role"] = "superadmin"
+                elif row.get("role") == "superadmin":
                     row["role"] = "admin"
         else:
             for row in payload:
-                if row.get("role") == "superadmin":
-                    row["role"] = "admin"
-    default_password = os.environ.get("SEED_DEV_DEFAULT_PASSWORD", "DevOnlyChangeMe123!")
+                email = row.get("email", "").strip().lower()
+                if email in superadmin_emails:
+                    row["role"] = "superadmin"
+    default_password = os.environ.get("SEED_DEV_DEFAULT_PASSWORD", "admin1234")
     checksum_payload = []
     for row in payload:
         password_env = row.get("password_env")
-        password_fingerprint = None
-        if password_env:
-            resolved = os.environ.get(password_env, default_password)
-            password_fingerprint = hashlib.sha256(resolved.encode("utf-8")).hexdigest()
+        resolved = os.environ.get(password_env, default_password) if password_env else default_password
+        password_fingerprint = hashlib.sha256(resolved.encode("utf-8")).hexdigest()
         checksum_payload.append(
             {
                 "email": row.get("email"),
@@ -664,14 +726,10 @@ def _seed_internal_users(session: Session, app_env: str, allow_user_seeding: boo
     for row in payload:
         email = row["email"].strip().lower()
         cur = session.exec(select(User).where(User.email == email)).first()
-        password_hash = row.get("password_hash")
         password_env = row.get("password_env")
-        force_password_update = False
-
-        if password_env and not password_hash:
-            plain = os.environ.get(password_env, default_password)
-            password_hash = get_password_hash(plain)
-            force_password_update = True
+        plain = os.environ.get(password_env, default_password) if password_env else default_password
+        password_hash = get_password_hash(plain)
+        force_password_update = True
 
         if cur:
             changed = False
@@ -874,6 +932,8 @@ def run_seed(app_env: str, rotate_passwords: bool, dev_fixtures: bool, allow_use
         summary["credit_transfers"] = {"row_count": count, **ops}
         count, ops = _seed_notifications(session, app_env)
         summary["notifications"] = {"row_count": count, **ops}
+        count, ops = _seed_legal_documents(session, app_env)
+        summary["legal_documents"] = {"row_count": count, **ops}
         _assert_no_payment_transactions(session)
         summary["payment"] = {"row_count": 0, **_res()}
     return summary
@@ -902,6 +962,7 @@ def main() -> None:
         "user",
         "credit_transfers",
         "notifications",
+        "legal_documents",
         "payment",
     ]:
         row = summary.get(k, {})

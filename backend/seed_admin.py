@@ -14,7 +14,7 @@ def seed_admin():
             admin = User(
                 full_name="Loai Admin",
                 email="loai@uask.ai",
-                password_hash=get_password_hash("ssLr1980"),
+                password_hash=get_password_hash("admin1234"),
                 role="admin",
                 subscription_tier="enterprise",
                 subscription_status="active",
@@ -29,7 +29,7 @@ def seed_admin():
         else:
             # Update role and password just in case
             admin.role = "admin"
-            admin.password_hash = get_password_hash("ssLr1980")
+            admin.password_hash = get_password_hash("admin1234")
             session.add(admin)
             session.commit()
             print("Admin user updated: loai@uask.ai")

@@ -37,6 +37,7 @@ import { fetchCreditsEstimate, CreditsEstimateResponse, SolveTier, WalletProgram
 import { TokenPolicy, fetchTokenPolicy } from "@/lib/tokenPolicy";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useToast } from "@/components/ui/ToastProvider";
+import { fetchApi } from "@/lib/api";
 import {
     buildSolveBatchPayload,
     getSolveBatchCap,
@@ -44,6 +45,7 @@ import {
     resolveSolveBatchMode,
     resolveSolveBatchTier,
 } from "@/lib/solve-batch";
+import { SolveBatchResponse, SolveBatchResponseSchema } from "@/lib/contracts";
 
 interface ChatSession {
     id: number;
@@ -143,6 +145,339 @@ interface DebugAttemptDetails {
 
 const ALL_SOLVE_TIERS: SolveTier[] = ["FREE", "SHORT", "STANDARD", "RESEARCH"];
 
+const normalizeLanguageCode = (value: string): string => {
+    const raw = (value || "").trim().toLowerCase();
+    const map: Record<string, string> = {
+        en: "en",
+        english: "en",
+        "english (us)": "en",
+        ar: "ar",
+        arabic: "ar",
+        "العربية": "ar",
+        fr: "fr",
+        french: "fr",
+        francais: "fr",
+        "français": "fr",
+        es: "es",
+        spanish: "es",
+        espanol: "es",
+        "español": "es",
+        pt: "pt",
+        portuguese: "pt",
+        portugues: "pt",
+        "português": "pt",
+        ru: "ru",
+        russian: "ru",
+        "русский": "ru",
+        it: "it",
+        italian: "it",
+        italiano: "it",
+    };
+    return map[raw] || "en";
+};
+
+const SOLVE_I18N: Record<string, Record<string, string>> = {
+    en: {
+        solvingMathProblem: "Solving Math Problem...",
+        advancedNeuralComputation: "Advanced Neural Computation",
+        elapsedTime: "Elapsed Time",
+        systemPipelineState: "System Pipeline State",
+        semanticExtraction: "Semantic Extraction",
+        parsingMathSymbols: "Parsing math symbols...",
+        neuralReasoning: "Neural Reasoning",
+        mappingLogicalSteps: "Mapping logical steps...",
+        strictValidation: "Strict Validation",
+        checkingSchema: "Checking schema v1.0...",
+        packetDelivery: "Packet Delivery",
+        assemblingResponse: "Assembling response...",
+        extractionComplete: "Extraction complete.",
+        initializingReasoning: "Initializing reasoning...",
+        callingProvider: "Calling {provider}...",
+        reasoningComplete: "Reasoning complete.",
+        validatingOutput: "Validating output...",
+        validatingSchema: "Validating schema v1.0...",
+        validationSuccessful: "Validation successful.",
+        streamingResults: "Streaming results...",
+        schemaInvalidRepair: "Schema invalid, attempting repair...",
+        attemptingRepair: "Attempting automated repair...",
+        repairSuccessful: "Repair successful.",
+        validationFailed: "Validation failed.",
+        solveComplete: "Solve complete.",
+        solveFailed: "Solve failed.",
+        clarificationRequested: "Clarification requested.",
+        batchSolving: "Batch solving...",
+        solvingProgress: "Solving {current}/{total} questions...",
+        batchPackagedForChat: "Batch packaged for chat.",
+        restoringSession: "Restoring session...",
+        initializing: "Initializing...",
+        resolvingAmbiguity: "Resolving ambiguity...",
+        streamingActive: "Streaming Active",
+        packetDeliveryRealtime: "Packet delivery in real-time",
+        solutionGenerationInProgress: "Solution generation in progress",
+        encryptedStream: "Encrypted Stream",
+        secureStream: "Secure Stream",
+        debugRuntime: "DEBUG / RUNTIME",
+    },
+    ar: {
+        solvingMathProblem: "جاري حل مسألة الرياضيات...",
+        advancedNeuralComputation: "حوسبة عصبية متقدمة",
+        elapsedTime: "الوقت المنقضي",
+        systemPipelineState: "حالة خط سير النظام",
+        semanticExtraction: "استخراج دلالي",
+        parsingMathSymbols: "تحليل رموز الرياضيات...",
+        neuralReasoning: "استدلال عصبي",
+        mappingLogicalSteps: "مواءمة الخطوات المنطقية...",
+        strictValidation: "تحقق صارم",
+        checkingSchema: "فحص المخطط v1.0...",
+        packetDelivery: "تسليم الحزمة",
+        assemblingResponse: "تجميع الاستجابة...",
+        extractionComplete: "اكتمل الاستخراج.",
+        initializingReasoning: "تهيئة الاستدلال...",
+        callingProvider: "جارٍ استدعاء {provider}...",
+        reasoningComplete: "اكتمل الاستدلال.",
+        validatingOutput: "جارٍ التحقق من المخرجات...",
+        validatingSchema: "جارٍ التحقق من المخطط v1.0...",
+        validationSuccessful: "تم التحقق بنجاح.",
+        streamingResults: "جارٍ بث النتائج...",
+        schemaInvalidRepair: "المخطط غير صالح، محاولة الإصلاح...",
+        attemptingRepair: "محاولة إصلاح آلي...",
+        repairSuccessful: "نجح الإصلاح.",
+        validationFailed: "فشل التحقق.",
+        solveComplete: "اكتمل الحل.",
+        solveFailed: "فشل الحل.",
+        clarificationRequested: "تم طلب توضيح.",
+        batchSolving: "جاري الحل الدفعي...",
+        solvingProgress: "جاري حل {current}/{total} أسئلة...",
+        batchPackagedForChat: "تم تجهيز الدفعة للدردشة.",
+        restoringSession: "جاري استعادة الجلسة...",
+        initializing: "جارٍ التهيئة...",
+        resolvingAmbiguity: "جارٍ حل الغموض...",
+        streamingActive: "البث نشط",
+        packetDeliveryRealtime: "تسليم الحزمة في الزمن الحقيقي",
+        solutionGenerationInProgress: "جاري توليد الحل",
+        encryptedStream: "بث مشفر",
+        secureStream: "بث آمن",
+        debugRuntime: "التصحيح / وقت التشغيل",
+    },
+    fr: {
+        solvingMathProblem: "Resolution du probleme de mathematiques...",
+        advancedNeuralComputation: "Calcul neuronal avance",
+        elapsedTime: "Temps ecoule",
+        systemPipelineState: "Etat du pipeline systeme",
+        semanticExtraction: "Extraction semantique",
+        parsingMathSymbols: "Analyse des symboles mathematiques...",
+        neuralReasoning: "Raisonnement neuronal",
+        mappingLogicalSteps: "Cartographie des etapes logiques...",
+        strictValidation: "Validation stricte",
+        checkingSchema: "Verification du schema v1.0...",
+        packetDelivery: "Livraison du paquet",
+        assemblingResponse: "Assemblage de la reponse...",
+        extractionComplete: "Extraction terminee.",
+        initializingReasoning: "Initialisation du raisonnement...",
+        callingProvider: "Appel de {provider}...",
+        reasoningComplete: "Raisonnement termine.",
+        validatingOutput: "Validation de la sortie...",
+        validatingSchema: "Validation du schema v1.0...",
+        validationSuccessful: "Validation reussie.",
+        streamingResults: "Diffusion des resultats...",
+        schemaInvalidRepair: "Schema invalide, tentative de correction...",
+        attemptingRepair: "Tentative de correction automatique...",
+        repairSuccessful: "Correction reussie.",
+        validationFailed: "Echec de validation.",
+        solveComplete: "Resolution terminee.",
+        solveFailed: "Echec de la resolution.",
+        clarificationRequested: "Clarification demandee.",
+        batchSolving: "Resolution par lot...",
+        solvingProgress: "Resolution de {current}/{total} questions...",
+        batchPackagedForChat: "Lot pret pour le chat.",
+        restoringSession: "Restauration de la session...",
+        initializing: "Initialisation...",
+        resolvingAmbiguity: "Resolution de l'ambiguite...",
+        streamingActive: "Streaming actif",
+        packetDeliveryRealtime: "Livraison des paquets en temps reel",
+        solutionGenerationInProgress: "Generation de solution en cours",
+        encryptedStream: "Flux chiffre",
+        secureStream: "Flux securise",
+        debugRuntime: "DEBUG / EXECUTION",
+    },
+    es: {
+        solvingMathProblem: "Resolviendo problema matematico...",
+        advancedNeuralComputation: "Computacion neuronal avanzada",
+        elapsedTime: "Tiempo transcurrido",
+        systemPipelineState: "Estado de la canalizacion del sistema",
+        semanticExtraction: "Extraccion semantica",
+        parsingMathSymbols: "Analizando simbolos matematicos...",
+        neuralReasoning: "Razonamiento neuronal",
+        mappingLogicalSteps: "Mapeando pasos logicos...",
+        strictValidation: "Validacion estricta",
+        checkingSchema: "Comprobando esquema v1.0...",
+        packetDelivery: "Entrega de paquete",
+        assemblingResponse: "Ensamblando respuesta...",
+        extractionComplete: "Extraccion completada.",
+        initializingReasoning: "Inicializando razonamiento...",
+        callingProvider: "Llamando a {provider}...",
+        reasoningComplete: "Razonamiento completado.",
+        validatingOutput: "Validando salida...",
+        validatingSchema: "Validando esquema v1.0...",
+        validationSuccessful: "Validacion exitosa.",
+        streamingResults: "Transmitiendo resultados...",
+        schemaInvalidRepair: "Esquema invalido, intentando reparacion...",
+        attemptingRepair: "Intentando reparacion automatica...",
+        repairSuccessful: "Reparacion exitosa.",
+        validationFailed: "Validacion fallida.",
+        solveComplete: "Resolucion completada.",
+        solveFailed: "Resolucion fallida.",
+        clarificationRequested: "Se solicito aclaracion.",
+        batchSolving: "Resolucion por lotes...",
+        solvingProgress: "Resolviendo {current}/{total} preguntas...",
+        batchPackagedForChat: "Lote preparado para chat.",
+        restoringSession: "Restaurando sesion...",
+        initializing: "Inicializando...",
+        resolvingAmbiguity: "Resolviendo ambiguedad...",
+        streamingActive: "Transmision activa",
+        packetDeliveryRealtime: "Entrega de paquetes en tiempo real",
+        solutionGenerationInProgress: "Generacion de solucion en progreso",
+        encryptedStream: "Flujo cifrado",
+        secureStream: "Flujo seguro",
+        debugRuntime: "DEPURACION / RUNTIME",
+    },
+    pt: {
+        solvingMathProblem: "Resolvendo problema matematico...",
+        advancedNeuralComputation: "Computacao neural avancada",
+        elapsedTime: "Tempo decorrido",
+        systemPipelineState: "Estado do pipeline do sistema",
+        semanticExtraction: "Extracao semantica",
+        parsingMathSymbols: "Analisando simbolos matematicos...",
+        neuralReasoning: "Raciocinio neural",
+        mappingLogicalSteps: "Mapeando passos logicos...",
+        strictValidation: "Validacao rigorosa",
+        checkingSchema: "Verificando esquema v1.0...",
+        packetDelivery: "Entrega de pacote",
+        assemblingResponse: "Montando resposta...",
+        extractionComplete: "Extracao concluida.",
+        initializingReasoning: "Inicializando raciocinio...",
+        callingProvider: "Chamando {provider}...",
+        reasoningComplete: "Raciocinio concluido.",
+        validatingOutput: "Validando saida...",
+        validatingSchema: "Validando esquema v1.0...",
+        validationSuccessful: "Validacao bem-sucedida.",
+        streamingResults: "Transmitindo resultados...",
+        schemaInvalidRepair: "Esquema invalido, tentando reparar...",
+        attemptingRepair: "Tentando reparo automatizado...",
+        repairSuccessful: "Reparo concluido.",
+        validationFailed: "Falha na validacao.",
+        solveComplete: "Resolucao concluida.",
+        solveFailed: "Falha na resolucao.",
+        clarificationRequested: "Esclarecimento solicitado.",
+        batchSolving: "Resolucao em lote...",
+        solvingProgress: "Resolvendo {current}/{total} perguntas...",
+        batchPackagedForChat: "Lote preparado para o chat.",
+        restoringSession: "Restaurando sessao...",
+        initializing: "Inicializando...",
+        resolvingAmbiguity: "Resolvendo ambiguidade...",
+        streamingActive: "Streaming ativo",
+        packetDeliveryRealtime: "Entrega de pacotes em tempo real",
+        solutionGenerationInProgress: "Geracao de solucao em andamento",
+        encryptedStream: "Fluxo criptografado",
+        secureStream: "Fluxo seguro",
+        debugRuntime: "DEBUG / EXECUCAO",
+    },
+    ru: {
+        solvingMathProblem: "\u0420\u0435\u0448\u0435\u043d\u0438\u0435 \u043c\u0430\u0442\u0435\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0439 \u0437\u0430\u0434\u0430\u0447\u0438...",
+        advancedNeuralComputation: "\u041f\u0440\u043e\u0434\u0432\u0438\u043d\u0443\u0442\u044b\u0435 \u043d\u0435\u0439\u0440\u043e\u043d\u043d\u044b\u0435 \u0432\u044b\u0447\u0438\u0441\u043b\u0435\u043d\u0438\u044f",
+        elapsedTime: "\u041f\u0440\u043e\u0448\u0435\u0434\u0448\u0435\u0435 \u0432\u0440\u0435\u043c\u044f",
+        systemPipelineState: "\u0421\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u0435 \u0441\u0438\u0441\u0442\u0435\u043c\u043d\u043e\u0433\u043e \u043a\u043e\u043d\u0432\u0435\u0439\u0435\u0440\u0430",
+        semanticExtraction: "\u0421\u0435\u043c\u0430\u043d\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0435 \u0438\u0437\u0432\u043b\u0435\u0447\u0435\u043d\u0438\u0435",
+        parsingMathSymbols: "\u0420\u0430\u0437\u0431\u043e\u0440 \u043c\u0430\u0442\u0435\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0438\u0445 \u0441\u0438\u043c\u0432\u043e\u043b\u043e\u0432...",
+        neuralReasoning: "\u041d\u0435\u0439\u0440\u043e\u043d\u043d\u043e\u0435 \u0440\u0430\u0441\u0441\u0443\u0436\u0434\u0435\u043d\u0438\u0435",
+        mappingLogicalSteps: "\u041f\u043e\u0441\u0442\u0440\u043e\u0435\u043d\u0438\u0435 \u043b\u043e\u0433\u0438\u0447\u0435\u0441\u043a\u0438\u0445 \u0448\u0430\u0433\u043e\u0432...",
+        strictValidation: "\u0421\u0442\u0440\u043e\u0433\u0430\u044f \u0432\u0430\u043b\u0438\u0434\u0430\u0446\u0438\u044f",
+        checkingSchema: "\u041f\u0440\u043e\u0432\u0435\u0440\u043a\u0430 \u0441\u0445\u0435\u043c\u044b v1.0...",
+        packetDelivery: "\u0414\u043e\u0441\u0442\u0430\u0432\u043a\u0430 \u043f\u0430\u043a\u0435\u0442\u0430",
+        assemblingResponse: "\u0421\u0431\u043e\u0440\u043a\u0430 \u043e\u0442\u0432\u0435\u0442\u0430...",
+        extractionComplete: "\u0418\u0437\u0432\u043b\u0435\u0447\u0435\u043d\u0438\u0435 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u043e.",
+        initializingReasoning: "\u0418\u043d\u0438\u0446\u0438\u0430\u043b\u0438\u0437\u0430\u0446\u0438\u044f \u0440\u0430\u0441\u0441\u0443\u0436\u0434\u0435\u043d\u0438\u044f...",
+        callingProvider: "\u0412\u044b\u0437\u043e\u0432 {provider}...",
+        reasoningComplete: "\u0420\u0430\u0441\u0441\u0443\u0436\u0434\u0435\u043d\u0438\u0435 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u043e.",
+        validatingOutput: "\u041f\u0440\u043e\u0432\u0435\u0440\u043a\u0430 \u0432\u044b\u0432\u043e\u0434\u0430...",
+        validatingSchema: "\u041f\u0440\u043e\u0432\u0435\u0440\u043a\u0430 \u0441\u0445\u0435\u043c\u044b v1.0...",
+        validationSuccessful: "\u041f\u0440\u043e\u0432\u0435\u0440\u043a\u0430 \u0443\u0441\u043f\u0435\u0448\u043d\u0430.",
+        streamingResults: "\u041f\u043e\u0442\u043e\u043a\u043e\u0432\u0430\u044f \u043f\u0435\u0440\u0435\u0434\u0430\u0447\u0430 \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442\u043e\u0432...",
+        schemaInvalidRepair: "\u0421\u0445\u0435\u043c\u0430 \u043d\u0435\u0432\u0430\u043b\u0438\u0434\u043d\u0430, \u043f\u043e\u043f\u044b\u0442\u043a\u0430 \u0438\u0441\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0438\u044f...",
+        attemptingRepair: "\u041f\u043e\u043f\u044b\u0442\u043a\u0430 \u0430\u0432\u0442\u043e\u0438\u0441\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0438\u044f...",
+        repairSuccessful: "\u0418\u0441\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0438\u0435 \u0443\u0441\u043f\u0435\u0448\u043d\u043e.",
+        validationFailed: "\u041f\u0440\u043e\u0432\u0435\u0440\u043a\u0430 \u043d\u0435 \u043f\u0440\u043e\u0439\u0434\u0435\u043d\u0430.",
+        solveComplete: "\u0420\u0435\u0448\u0435\u043d\u0438\u0435 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u043e.",
+        solveFailed: "\u0420\u0435\u0448\u0435\u043d\u0438\u0435 \u043d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c.",
+        clarificationRequested: "\u0422\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044f \u0443\u0442\u043e\u0447\u043d\u0435\u043d\u0438\u0435.",
+        batchSolving: "\u041f\u0430\u043a\u0435\u0442\u043d\u043e\u0435 \u0440\u0435\u0448\u0435\u043d\u0438\u0435...",
+        solvingProgress: "\u0420\u0435\u0448\u0435\u043d\u0438\u0435 \u0432\u043e\u043f\u0440\u043e\u0441\u043e\u0432 {current}/{total}...",
+        batchPackagedForChat: "\u041f\u0430\u043a\u0435\u0442 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d \u0434\u043b\u044f \u0447\u0430\u0442\u0430.",
+        restoringSession: "\u0412\u043e\u0441\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435 \u0441\u0435\u0441\u0441\u0438\u0438...",
+        initializing: "\u0418\u043d\u0438\u0446\u0438\u0430\u043b\u0438\u0437\u0430\u0446\u0438\u044f...",
+        resolvingAmbiguity: "\u0423\u0441\u0442\u0440\u0430\u043d\u0435\u043d\u0438\u0435 \u043d\u0435\u043e\u0434\u043d\u043e\u0437\u043d\u0430\u0447\u043d\u043e\u0441\u0442\u0438...",
+        streamingActive: "\u041f\u043e\u0442\u043e\u043a \u0430\u043a\u0442\u0438\u0432\u0435\u043d",
+        packetDeliveryRealtime: "\u0414\u043e\u0441\u0442\u0430\u0432\u043a\u0430 \u043f\u0430\u043a\u0435\u0442\u043e\u0432 \u0432 \u0440\u0435\u0430\u043b\u044c\u043d\u043e\u043c \u0432\u0440\u0435\u043c\u0435\u043d\u0438",
+        solutionGenerationInProgress: "\u0418\u0434\u0435\u0442 \u0433\u0435\u043d\u0435\u0440\u0430\u0446\u0438\u044f \u0440\u0435\u0448\u0435\u043d\u0438\u044f",
+        encryptedStream: "\u0417\u0430\u0448\u0438\u0444\u0440\u043e\u0432\u0430\u043d\u043d\u044b\u0439 \u043f\u043e\u0442\u043e\u043a",
+        secureStream: "\u0411\u0435\u0437\u043e\u043f\u0430\u0441\u043d\u044b\u0439 \u043f\u043e\u0442\u043e\u043a",
+        debugRuntime: "\u041e\u0422\u041b\u0410\u0414\u041a\u0410 / RUNTIME",
+    },
+    it: {
+        solvingMathProblem: "Risoluzione del problema matematico...",
+        advancedNeuralComputation: "Calcolo neurale avanzato",
+        elapsedTime: "Tempo trascorso",
+        systemPipelineState: "Stato della pipeline di sistema",
+        semanticExtraction: "Estrazione semantica",
+        parsingMathSymbols: "Analisi dei simboli matematici...",
+        neuralReasoning: "Ragionamento neurale",
+        mappingLogicalSteps: "Mappatura dei passaggi logici...",
+        strictValidation: "Validazione rigorosa",
+        checkingSchema: "Controllo schema v1.0...",
+        packetDelivery: "Consegna pacchetto",
+        assemblingResponse: "Assemblaggio risposta...",
+        extractionComplete: "Estrazione completata.",
+        initializingReasoning: "Inizializzazione del ragionamento...",
+        callingProvider: "Chiamata a {provider}...",
+        reasoningComplete: "Ragionamento completato.",
+        validatingOutput: "Validazione output...",
+        validatingSchema: "Validazione schema v1.0...",
+        validationSuccessful: "Validazione riuscita.",
+        streamingResults: "Trasmissione risultati...",
+        schemaInvalidRepair: "Schema non valido, tentativo di riparazione...",
+        attemptingRepair: "Tentativo di riparazione automatica...",
+        repairSuccessful: "Riparazione riuscita.",
+        validationFailed: "Validazione fallita.",
+        solveComplete: "Risoluzione completata.",
+        solveFailed: "Risoluzione fallita.",
+        clarificationRequested: "Richiesta chiarimento.",
+        batchSolving: "Risoluzione batch...",
+        solvingProgress: "Risoluzione {current}/{total} domande...",
+        batchPackagedForChat: "Batch preparato per la chat.",
+        restoringSession: "Ripristino sessione...",
+        initializing: "Inizializzazione...",
+        resolvingAmbiguity: "Risoluzione ambiguita...",
+        streamingActive: "Streaming attivo",
+        packetDeliveryRealtime: "Consegna pacchetti in tempo reale",
+        solutionGenerationInProgress: "Generazione della soluzione in corso",
+        encryptedStream: "Flusso crittografato",
+        secureStream: "Flusso sicuro",
+        debugRuntime: "DEBUG / RUNTIME",
+    },
+};
+
+const translateSolveText = (
+    language: string,
+    key: string,
+    vars?: Record<string, string | number>
+): string => {
+    const lang = normalizeLanguageCode(language);
+    const dict = SOLVE_I18N[lang] || SOLVE_I18N.en;
+    const template = dict[key] || SOLVE_I18N.en[key] || key;
+    if (!vars) return template;
+    return template.replace(/\{(\w+)\}/g, (_, name) => String(vars[name] ?? ""));
+};
+
 export default function DashboardPage() {
     const { pushToast } = useToast();
     const useSnapSolveUploadPanelV2 = process.env.NEXT_PUBLIC_SNAP_SOLVE_UPLOAD_PANEL_V2 !== "false";
@@ -176,6 +511,7 @@ export default function DashboardPage() {
     const [stayOnSolveResult, setStayOnSolveResult] = useState(false);
     const [debugAttemptDetails, setDebugAttemptDetails] = useState<DebugAttemptDetails | null>(null);
     const [lastSolveError, setLastSolveError] = useState<{ code?: string; message?: string; request_id?: string } | null>(null);
+    const [batchSolveResult, setBatchSolveResult] = useState<SolveBatchResponse | null>(null);
 
     const [activeMode, setActiveMode] = useState<ModeId | null>(null);
     const [isSeeAllOpen, setIsSeeAllOpen] = useState(false);
@@ -248,12 +584,15 @@ export default function DashboardPage() {
     const [clarificationResponse, setClarificationResponse] = useState("");
     const [activeAttemptId, setActiveAttemptId] = useState<string | null>(null);
     const [clarificationHistory, setClarificationHistory] = useState<string[]>([]);
+    const [preferredLanguage, setPreferredLanguage] = useState<string>("en");
+    const uiDirection = preferredLanguage === "ar" ? "rtl" : "ltr";
+    const t = (key: string, vars?: Record<string, string | number>) => translateSolveText(preferredLanguage, key, vars);
 
     const [pipelineStages, setPipelineStages] = useState<TimelineStep[]>([
-        { key: "attempt_created", label: "Semantic Extraction", description: "Parsing math symbols...", status: "pending", icon: "barcode_reader" },
-        { key: "calling_ai_core", label: "Neural Reasoning", description: "Mapping logical steps...", status: "pending", icon: "psychology" },
-        { key: "schema_validate", label: "Strict Validation", description: "Checking schema v1.0...", status: "pending", icon: "verified_user" },
-        { key: "completed", label: "Packet Delivery", description: "Assembling response...", status: "pending", icon: "network_check" },
+        { key: "attempt_created", label: t("semanticExtraction"), description: t("parsingMathSymbols"), status: "pending", icon: "barcode_reader" },
+        { key: "calling_ai_core", label: t("neuralReasoning"), description: t("mappingLogicalSteps"), status: "pending", icon: "psychology" },
+        { key: "schema_validate", label: t("strictValidation"), description: t("checkingSchema"), status: "pending", icon: "verified_user" },
+        { key: "completed", label: t("packetDelivery"), description: t("assemblingResponse"), status: "pending", icon: "network_check" },
     ]);
     const [rotatingPipelineIndex, setRotatingPipelineIndex] = useState(0);
 
@@ -268,9 +607,47 @@ export default function DashboardPage() {
         return () => clearInterval(intervalId);
     }, [isSolving, pipelineStages.length]);
 
+    useEffect(() => {
+        setPipelineStages((prev) =>
+            prev.map((stage) => {
+                if (stage.key === "attempt_created") {
+                    return {
+                        ...stage,
+                        label: t("semanticExtraction"),
+                        description: stage.status === "pending" ? t("parsingMathSymbols") : stage.description,
+                    };
+                }
+                if (stage.key === "calling_ai_core") {
+                    return {
+                        ...stage,
+                        label: t("neuralReasoning"),
+                        description: stage.status === "pending" ? t("mappingLogicalSteps") : stage.description,
+                    };
+                }
+                if (stage.key === "schema_validate") {
+                    return {
+                        ...stage,
+                        label: t("strictValidation"),
+                        description: stage.status === "pending" ? t("checkingSchema") : stage.description,
+                    };
+                }
+                if (stage.key === "completed") {
+                    return {
+                        ...stage,
+                        label: t("packetDelivery"),
+                        description: stage.status === "pending" ? t("assemblingResponse") : stage.description,
+                    };
+                }
+                return stage;
+            })
+        );
+    }, [preferredLanguage]);
+
     // SSE / Polling Event Listener
     useEffect(() => {
         if (!activeAttemptId || !isSolving) return;
+        const tr = (key: string, vars?: Record<string, string | number>) =>
+            translateSolveText(preferredLanguage, key, vars);
 
         let eventSource: EventSource | null = null;
         let pollInterval: NodeJS.Timeout | null = null;
@@ -289,37 +666,37 @@ export default function DashboardPage() {
             const { phase, status, metadata } = data;
 
             if (phase === "attempt_created") {
-                updateStep("attempt_created", "completed", "Extraction complete.");
-                updateStep("calling_ai_core", "active", "Initializing reasoning...");
+                updateStep("attempt_created", "completed", tr("extractionComplete"));
+                updateStep("calling_ai_core", "active", tr("initializingReasoning"));
             } else if (phase === "calling_ai_core_start") {
-                updateStep("calling_ai_core", "active", `Calling ${metadata?.provider || 'AI'}...`);
+                updateStep("calling_ai_core", "active", tr("callingProvider", { provider: String(metadata?.provider || "AI") }));
             } else if (phase === "calling_ai_core_done") {
-                updateStep("calling_ai_core", "completed", "Reasoning complete.");
-                updateStep("schema_validate", "active", "Validating output...");
+                updateStep("calling_ai_core", "completed", tr("reasoningComplete"));
+                updateStep("schema_validate", "active", tr("validatingOutput"));
             } else if (phase === "schema_validate_start") {
-                updateStep("schema_validate", "active", "Validating schema v1.0...");
+                updateStep("schema_validate", "active", tr("validatingSchema"));
             } else if (phase === "schema_validate_done") {
                 if (status === "success") {
-                    updateStep("schema_validate", "completed", "Validation successful.");
-                    updateStep("completed", "active", "Streaming results...");
+                    updateStep("schema_validate", "completed", tr("validationSuccessful"));
+                    updateStep("completed", "active", tr("streamingResults"));
                 } else {
-                    updateStep("schema_validate", "active", "Schema invalid, attempting repair...");
+                    updateStep("schema_validate", "active", tr("schemaInvalidRepair"));
                 }
             } else if (phase === "schema_repair_start") {
-                updateStep("schema_validate", "active", "Attempting automated repair...");
+                updateStep("schema_validate", "active", tr("attemptingRepair"));
             } else if (phase === "schema_repair_done") {
                 if (status === "success") {
-                    updateStep("schema_validate", "completed", "Repair successful.");
-                    updateStep("completed", "active", "Streaming results...");
+                    updateStep("schema_validate", "completed", tr("repairSuccessful"));
+                    updateStep("completed", "active", tr("streamingResults"));
                 } else {
-                    updateStep("schema_validate", "failed", "Validation failed.");
+                    updateStep("schema_validate", "failed", tr("validationFailed"));
                 }
             } else if (phase === "completed_success") {
-                updateStep("completed", "completed", "Solve complete.");
+                updateStep("completed", "completed", tr("solveComplete"));
             } else if (phase === "completed_failure") {
-                updateStep("completed", "failed", "Solve failed.");
+                updateStep("completed", "failed", tr("solveFailed"));
             } else if (phase === "clarification_needed") {
-                updateStep("completed", "active", "Clarification requested.");
+                updateStep("completed", "active", tr("clarificationRequested"));
             }
         };
 
@@ -369,7 +746,7 @@ export default function DashboardPage() {
             eventSource?.close();
             if (pollInterval) clearInterval(pollInterval);
         };
-    }, [activeAttemptId, isSolving]);
+    }, [activeAttemptId, isSolving, preferredLanguage]);
 
     const buildRuntimeMetaFromPayload = (payload: unknown, fallbackRequestedMode: string): StreamingRuntimeMeta => {
         const toObject = (value: unknown): Record<string, unknown> =>
@@ -463,6 +840,7 @@ export default function DashboardPage() {
         region_country?: string | null;
         region_state_province?: string | null;
         is_public?: boolean;
+        preferred_language?: string | null;
         school_name?: string | null;
         profile_province_state?: string | null;
         profile_country?: string | null;
@@ -528,6 +906,10 @@ export default function DashboardPage() {
         if (!estimate) return null;
         return estimate.per_question_credits * estimatedQuestionCount;
     }, [estimate, estimatedQuestionCount]);
+    const maxQuestionsAllowed = useMemo(() => {
+        const raw = Number(estimate?.max_questions_allowed ?? 0);
+        return Number.isFinite(raw) && raw > 0 ? Math.trunc(raw) : null;
+    }, [estimate?.max_questions_allowed]);
     const estimateBreakdown = useMemo(() => {
         if (!estimate?.breakdown) return undefined;
         const raw = estimate.breakdown as Record<string, unknown>;
@@ -714,6 +1096,7 @@ export default function DashboardPage() {
                     const profile = await profileRes.json();
                     setIsPublic(profile.is_public);
                     setUserProfile(profile);
+                    setPreferredLanguage(normalizeLanguageCode(profile.preferred_language || "en"));
 
                     if (profile.is_public) {
                         const onlineRes = await fetch(`/api/v1/users/online`);
@@ -774,7 +1157,7 @@ export default function DashboardPage() {
 
                 try {
                     setIsSolving(true);
-                    setCurrentStage("Restoring session...");
+                    setCurrentStage(t("restoringSession"));
                     setSolveStartTime(Date.now());
 
                     const res = await fetch(`/api/v1/attempt/${savedAttemptId}`);
@@ -1047,7 +1430,7 @@ export default function DashboardPage() {
         const requestedMode = (selectedSolveTier === "FREE" || selectedSolveTier === "SHORT") ? "minimal" : "detailed";
         const batchMode = resolveSolveBatchMode(selectedSolveTier, requestedMode);
         const batchTier = resolveSolveBatchTier(selectedSolveTier);
-        const cap = getSolveBatchCap(batchMode);
+        const cap = maxQuestionsAllowed ?? getSolveBatchCap(batchMode);
         const trimmedQuestions = questionsToSolve.map((q) => q.trim()).filter((q) => q.length > 0);
 
         if (trimmedQuestions.length === 0) {
@@ -1071,17 +1454,18 @@ export default function DashboardPage() {
 
         setIsSolving(true);
         setSolveStartTime(Date.now());
-        setCurrentStage("Batch solving...");
+        setCurrentStage(t("batchSolving"));
         setStreamingContent("");
         setStreamingTelemetry(null);
         setStreamingMeta(null);
         setLastSolveError(null);
+        setBatchSolveResult(null);
         setPipelineStages(prev =>
             prev.map(step =>
                 step.key === "attempt_created"
-                    ? { ...step, status: "completed", description: "Extraction complete." }
+                    ? { ...step, status: "completed", description: t("extractionComplete") }
                     : step.key === "calling_ai_core"
-                        ? { ...step, status: "active", description: `Solving 0/${trimmedQuestions.length} questions...` }
+                        ? { ...step, status: "active", description: t("solvingProgress", { current: 0, total: trimmedQuestions.length }) }
                         : { ...step, status: "pending" }
             )
         );
@@ -1094,7 +1478,7 @@ export default function DashboardPage() {
             setPipelineStages(prev =>
                 prev.map(step =>
                     step.key === "calling_ai_core"
-                        ? { ...step, status: "active", description: `Solving ${estimatedCurrent}/${trimmedQuestions.length} questions...` }
+                        ? { ...step, status: "active", description: t("solvingProgress", { current: estimatedCurrent, total: trimmedQuestions.length }) }
                         : step
                 )
             );
@@ -1109,35 +1493,66 @@ export default function DashboardPage() {
                 mode: batchMode,
                 tier: batchTier,
             });
+            const createIdempotencyKey = () =>
+                typeof crypto !== "undefined" && "randomUUID" in crypto
+                    ? crypto.randomUUID()
+                    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-            const response = await fetch(`/api/v1/math/solve_text_batch?user_id=${encodeURIComponent(userId)}`, {
+            const response = await fetchApi(`/api/v1/solve_questions_batch?user_id=${encodeURIComponent(userId)}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
-                body: JSON.stringify(payload),
+                body: JSON.stringify({
+                    tier: selectedSolveTier,
+                    mode: "SOLVE",
+                    graph_mode: tierFeatureGates.allow_plot ? graphMode.toUpperCase() : "OFF",
+                    domain_mode: "reals",
+                    preferred_response_language: "English",
+                    questions_json: payload.questions.map((q, idx) => ({
+                        question_id: q.question_id || `q${idx + 1}`,
+                        question_text: q.text,
+                    })),
+                    idempotency_key: createIdempotencyKey(),
+                }),
             });
+
             const raw = await response.json().catch(() => ({}));
             if (!response.ok) {
                 const detail = raw?.detail && typeof raw.detail === "object" ? raw.detail : raw;
                 const code = typeof detail?.code === "string" ? detail.code : undefined;
+                const requestId = detail?.request_id || raw?.request_id || undefined;
                 const maxAllowed = typeof detail?.max_allowed === "number" ? detail.max_allowed : cap;
-                const message = mapSolveBatchErrorMessage(code, maxAllowed);
+                let message = mapSolveBatchErrorMessage(code, maxAllowed);
+                let title = "Batch solve failed";
+                if (response.status === 402) {
+                    title = "Insufficient credits";
+                    message = "Not enough credits. Please buy credits and retry.";
+                } else if (response.status === 409) {
+                    title = "Already processed";
+                    message = "This request was already processed. No additional charge applied.";
+                } else if (response.status >= 500) {
+                    title = "Provider timeout";
+                    message = "Provider timeout. You were NOT charged. Retry with a new request.";
+                }
                 pushToast({
                     type: "error",
-                    title: "Batch solve failed",
-                    message,
+                    title,
+                    message: requestId ? `${message} (request_id: ${requestId})` : message,
                 });
                 return;
             }
 
+            const parsed = SolveBatchResponseSchema.parse(raw);
+            setBatchSolveResult(parsed);
+
             setPipelineStages(prev =>
                 prev.map(step =>
                     step.key === "calling_ai_core"
-                        ? { ...step, status: "completed", description: "Reasoning complete." }
+                        ? { ...step, status: "completed", description: t("reasoningComplete") }
                         : step.key === "schema_validate"
-                            ? { ...step, status: "completed", description: "Validation successful." }
+                            ? { ...step, status: "completed", description: t("validationSuccessful") }
                             : step.key === "completed"
-                                ? { ...step, status: "completed", description: "Batch packaged for chat." }
+                                ? { ...step, status: "completed", description: t("batchPackagedForChat") }
                                 : step
                 )
             );
@@ -1146,16 +1561,6 @@ export default function DashboardPage() {
                 type: "success",
                 title: "Batch solve complete",
                 message: `Solved ${trimmedQuestions.length} question(s) in one request.`,
-            });
-            const sessionId = Number(raw?.session_id);
-            if (Number.isFinite(sessionId) && sessionId > 0) {
-                setTimeout(() => router.push(`/chat/${sessionId}`), 300);
-                return;
-            }
-            pushToast({
-                type: "error",
-                title: "Missing chat session",
-                message: "Batch solved, but no chat session was returned.",
             });
         } catch (err) {
             pushToast({
@@ -1229,7 +1634,7 @@ export default function DashboardPage() {
 
         setIsSolving(true);
         setStreamingContent("");
-        setCurrentStage("Initializing...");
+        setCurrentStage(t("initializing"));
         setStreamingTelemetry(null);
         setStreamingMeta(null);
         setSolveStartTime(Date.now());
@@ -1391,13 +1796,9 @@ export default function DashboardPage() {
                                         setTimeout(() => router.push(`/chat/${data.session_id}`), 500);
                                     }
                                 } else if (data.error?.code === "ambiguous_response") {
-                                    setIsClarifying(true);
-                                    setClarificationMessage(data.error.refusal || data.error.message);
-                                    setActiveAttemptId(data.error.request_id);
-                                    if (data.error.request_id) {
-                                        localStorage.setItem("uask.activeAttemptId", data.error.request_id);
-                                        localStorage.setItem("uask.activeQuery", textToSolve);
-                                    }
+                                    localStorage.removeItem("uask.activeAttemptId");
+                                    localStorage.removeItem("uask.activeQuery");
+                                    throw new Error("Clarification is disabled. Please submit one clear question.");
                                 } else {
                                     localStorage.removeItem("uask.activeAttemptId");
                                     localStorage.removeItem("uask.activeQuery");
@@ -1436,7 +1837,7 @@ export default function DashboardPage() {
 
         setIsSolving(true);
         setSolveStartTime(Date.now());
-        setCurrentStage("Resolving ambiguity...");
+        setCurrentStage(t("resolvingAmbiguity"));
 
         try {
             const userId = localStorage.getItem("user_id") || "1";
@@ -1524,7 +1925,7 @@ export default function DashboardPage() {
 
 
     return (
-        <div className="solve-ui bg-background-light dark:bg-background-dark min-h-screen text-slate-900 dark:text-slate-100 font-display transition-colors duration-200">
+        <div dir={uiDirection} className="solve-ui bg-background-light dark:bg-background-dark min-h-screen text-slate-900 dark:text-slate-100 font-display transition-colors duration-200">
             <DashboardNavBar />
 
             <main className="max-w-6xl mx-auto px-4 py-5 md:py-7">
@@ -1569,6 +1970,12 @@ export default function DashboardPage() {
                                                     breakdown={estimateBreakdown}
                                                     creditsRemaining={readyWallet.computed_balance}
                                                 />
+                                                {maxQuestionsAllowed && (
+                                                    <p className="mt-2 inline-flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs text-amber-800">
+                                                        <span className="material-symbols-outlined text-[14px]">rule</span>
+                                                        Max questions per request: <span className="font-bold">{maxQuestionsAllowed}</span>
+                                                    </p>
+                                                )}
                                             </div>
                                         )}
                                     </div>
@@ -1778,7 +2185,7 @@ export default function DashboardPage() {
                                         {useSnapSolveUploadPanelV2 ? (
                                             <SnapSolveInputPanel
                                                 tier={selectedSolveTier}
-                                                requestedMode={selectedSolveTier === "FREE" ? "minimal" : "detailed"}
+                                                requestedMode={(selectedSolveTier === "FREE" || selectedSolveTier === "SHORT") ? "minimal" : "detailed"}
                                                 onResolveText={(text, featureOverrides) => {
                                                     setQuery(text);
                                                     setMathValidityConfirmed(false);
@@ -1885,8 +2292,8 @@ export default function DashboardPage() {
 
                                                 {/* Suggestions Dropdown (Combobox) */}
                                                 {activeMode && (
-                                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl overflow-hidden z-50">
-                                                        <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-2 border-b border-slate-100 dark:border-slate-800 text-xs font-bold text-slate-500 uppercase tracking-widest flex justify-between">
+                                                    <div className="absolute top-full left-0 right-0 mt-2 bg-amber-50 dark:bg-slate-900 border border-amber-100 dark:border-slate-800 rounded-xl shadow-xl overflow-hidden z-50">
+                                                        <div className="bg-amber-100/40 dark:bg-slate-800/50 px-4 py-2 border-b border-amber-100 dark:border-slate-800 text-xs font-bold text-slate-500 uppercase tracking-widest flex justify-between">
                                                             <span>{MODES.find(m => m.id === activeMode)?.label} Templates</span>
                                                             <span className="text-[10px]">Select to insert</span>
                                                         </div>
@@ -1895,9 +2302,9 @@ export default function DashboardPage() {
                                                                 <button
                                                                     key={idx}
                                                                     onClick={() => handleSuggestionClick(suggestion)}
-                                                                    className="w-full text-left px-4 py-3 rounded-lg hover:bg-primary/5 hover:text-primary dark:hover:bg-primary/10 transition-colors flex items-center gap-3 group/item"
+                                                                    className="w-full text-left px-4 py-3 rounded-lg hover:bg-amber-100/60 hover:text-primary dark:hover:bg-primary/10 transition-colors flex items-center gap-3 group/item"
                                                                 >
-                                                                    <span className="w-8 h-8 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover/item:text-primary transition-colors text-xs font-mono">
+                                                                    <span className="w-8 h-8 rounded bg-amber-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 group-hover/item:text-primary transition-colors text-xs font-mono">
                                                                         TeX
                                                                     </span>
                                                                     <div className="flex-1 font-medium text-slate-700 dark:text-slate-200">
@@ -2553,6 +2960,40 @@ export default function DashboardPage() {
                 </div>
             </main>
 
+            {batchSolveResult && (
+                <section className="max-w-7xl mx-auto px-4 pb-10">
+                    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="font-semibold text-slate-900 dark:text-slate-100">Batch Results</h3>
+                            <div className="text-xs text-slate-500">
+                                request_id: {batchSolveResult.request_id || "-"} | attempt_id: {batchSolveResult.attempt_id || "-"}
+                            </div>
+                        </div>
+                        <div className="space-y-3">
+                            {batchSolveResult.items.map((item, idx) => {
+                                const isRefusal = Boolean(item.refusal?.is_refusal);
+                                return (
+                                    <div key={`${item.question_id || idx}`} className="rounded-lg border border-slate-200 dark:border-slate-700 p-3">
+                                        <div className="text-xs text-slate-500 mb-1">
+                                            Q{item.question_index ?? idx + 1} ({item.question_id || `q${idx + 1}`})
+                                        </div>
+                                        {isRefusal ? (
+                                            <div className="text-sm text-amber-700 dark:text-amber-300">
+                                                Refusal: {item.refusal?.reason || "Unable to answer this item safely."}
+                                            </div>
+                                        ) : (
+                                            <div className="text-sm text-slate-800 dark:text-slate-100 whitespace-pre-wrap">
+                                                {item.final_answer || "No final answer returned."}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </section>
+            )}
+
             {devToolsEnabled && (
                 <section className="max-w-7xl mx-auto px-4 pb-10">
                     <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 text-sm">
@@ -2720,7 +3161,7 @@ export default function DashboardPage() {
             {
                 isSolving && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-sm animate-in fade-in duration-300">
-                        <div className="relative w-full max-w-4xl p-8 md:p-12 text-white chalkboard-texture chalk-border shadow-2xl overflow-hidden">
+                        <div dir={uiDirection} className="relative w-full max-w-4xl p-8 md:p-12 text-white chalkboard-texture chalk-border shadow-2xl overflow-hidden">
                             {/* Decorative Elements */}
                             <div className="dust-smudge w-40 h-40 -top-10 -left-10 opacity-30"></div>
                             <div className="dust-smudge w-64 h-32 bottom-20 right-10 opacity-20"></div>
@@ -2734,12 +3175,12 @@ export default function DashboardPage() {
                                         Σ
                                     </div>
                                     <div>
-                                        <h1 className="text-3xl md:text-4xl font-architects tracking-wide text-white/90">Solving Math Problem...</h1>
-                                        <p className="font-hand text-lg opacity-60 tracking-widest mt-1 uppercase">Advanced Neural Computation</p>
+                                        <h1 className="text-3xl md:text-4xl font-architects tracking-wide text-white/90">{t("solvingMathProblem")}</h1>
+                                        <p className="font-hand text-lg opacity-60 tracking-widest mt-1 uppercase">{t("advancedNeuralComputation")}</p>
                                     </div>
                                 </div>
                                 <div className="text-right font-hand">
-                                    <p className="text-xs uppercase opacity-50 tracking-widest">Elapsed Time</p>
+                                    <p className="text-xs uppercase opacity-50 tracking-widest">{t("elapsedTime")}</p>
                                     <div className="text-5xl font-architects cyan-glow flex items-baseline">
                                         {formatElapsed(elapsedMs)}<span className="text-xl ml-1">s</span>
                                     </div>
@@ -2750,7 +3191,7 @@ export default function DashboardPage() {
                             <div className="mb-12 relative z-10">
                                 <div className="flex items-center gap-2 mb-8 opacity-80">
                                     <span className="material-symbols-outlined text-2xl">refresh</span>
-                                    <h2 className="font-hand text-xl uppercase tracking-[0.2em]">System Pipeline State</h2>
+                                    <h2 className="font-hand text-xl uppercase tracking-[0.2em]">{t("systemPipelineState")}</h2>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     {(() => {
@@ -2800,20 +3241,20 @@ export default function DashboardPage() {
                                     <div>
                                         <div className="flex items-center gap-2">
                                             <div className="w-2.5 h-2.5 bg-chalk-cyan rounded-full cyan-bar-glow animate-pulse"></div>
-                                            <span className="font-hand text-xl font-bold uppercase tracking-widest text-chalk-cyan cyan-glow">Streaming Active</span>
+                                            <span className="font-hand text-xl font-bold uppercase tracking-widest text-chalk-cyan cyan-glow">{t("streamingActive")}</span>
                                         </div>
-                                        <p className="font-hand text-sm opacity-50">Packet delivery in real-time</p>
+                                        <p className="font-hand text-sm opacity-50">{t("packetDeliveryRealtime")}</p>
                                     </div>
                                 </div>
                                 <div className="text-right space-y-1">
-                                    <p className="font-sketch italic opacity-40 text-lg">Solution generation in progress</p>
+                                    <p className="font-sketch italic opacity-40 text-lg">{t("solutionGenerationInProgress")}</p>
                                     <div className="flex flex-col items-end gap-1">
-                                        <p className="font-hand text-sm uppercase opacity-50 tracking-tighter">v4.0.1 Stable • {streamingContent ? "Encrypted Stream" : "Secure Stream"}</p>
+                                        <p className="font-hand text-sm uppercase opacity-50 tracking-tighter">v4.0.1 Stable • {streamingContent ? t("encryptedStream") : t("secureStream")}</p>
                                         <button
                                             onClick={() => setShowRuntimeDebug(true)}
                                             className="font-hand text-sm font-bold opacity-70 cursor-pointer hover:text-white transition-colors border-b border-dashed border-white/30"
                                         >
-                                            ▶ DEBUG / RUNTIME
+                                            ▶ {t("debugRuntime")}
                                         </button>
                                     </div>
                                 </div>

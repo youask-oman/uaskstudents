@@ -1,0 +1,759 @@
+{
+  "name": "solve_batch_final_v2",
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "$defs": {
+      "language": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "user_language": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 32
+          },
+          "preferred_response_language": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 32
+          },
+          "response_language": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 32
+          }
+        },
+        "required": [
+          "user_language",
+          "preferred_response_language",
+          "response_language"
+        ]
+      },
+      "problem": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "original_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200000
+          },
+          "normalized_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200000
+          },
+          "detected_tasks": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "solve",
+                "simplify",
+                "factor",
+                "expand",
+                "evaluate",
+                "equation",
+                "inequality",
+                "system",
+                "word_problem",
+                "graph",
+                "plot",
+                "geometry",
+                "trigonometry",
+                "calculus",
+                "probability",
+                "statistics",
+                "linear_algebra",
+                "matrix_algebra",
+                "diagonalization",
+                "eigenvalues",
+                "eigenvectors",
+                "svd",
+                "pca",
+                "determinants",
+                "rank",
+                "nullspace",
+                "orthogonality",
+                "quadratic_forms",
+                "spectral_theory",
+                "numerical_linear_algebra",
+                "real_analysis",
+                "complex_analysis",
+                "functional_analysis",
+                "measure_theory",
+                "topology",
+                "differential_equations",
+                "ode",
+                "pde",
+                "dynamical_systems",
+                "stability_analysis",
+                "bifurcation_analysis",
+                "chaos",
+                "fourier_analysis",
+                "laplace_transform",
+                "z_transform",
+                "number_theory",
+                "discrete_math",
+                "combinatorics",
+                "graph_theory",
+                "logic",
+                "set_theory",
+                "optimization",
+                "convex_optimization",
+                "nonconvex_optimization",
+                "linear_programming",
+                "integer_programming",
+                "variational_methods",
+                "stochastic_processes",
+                "markov_chains",
+                "bayesian_inference",
+                "time_series",
+                "regression",
+                "hypothesis_testing",
+                "statistical_learning",
+                "information_theory",
+                "numerical_analysis",
+                "approximation",
+                "interpolation",
+                "integration",
+                "differentiation",
+                "monte_carlo",
+                "simulation",
+                "abstract_algebra",
+                "group_theory",
+                "ring_theory",
+                "field_theory",
+                "galois_theory",
+                "geometry_analytic",
+                "geometry_differential",
+                "tensor_calculus",
+                "vector_calculus",
+                "physics_math",
+                "signals_systems",
+                "control_theory",
+                "computer_algebra",
+                "proof",
+                "counterexample",
+                "derivation",
+                "verification",
+                "error_analysis",
+                "data_science",
+                "machine_learning_math",
+                "other"
+              ]
+            },
+            "minItems": 0,
+            "maxItems": 30
+          },
+          "extra": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/extra_kv"
+            },
+            "minItems": 0,
+            "maxItems": 40
+          }
+        },
+        "required": [
+          "original_text",
+          "normalized_text",
+          "detected_tasks",
+          "extra"
+        ]
+      },
+      "classification": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "grade_band": {
+            "type": "string",
+            "enum": [
+              "grades_6_8",
+              "grades_9_10",
+              "grades_11_12",
+              "college_intro",
+              "undergraduate_lower",
+              "undergraduate_upper",
+              "graduate"
+            ]
+          },
+          "domain": {
+            "type": "string",
+            "enum": [
+              "arithmetic",
+              "pre_algebra",
+              "algebra",
+              "geometry",
+              "trigonometry",
+              "precalculus",
+              "calculus",
+              "linear_algebra",
+              "analysis",
+              "number_theory",
+              "discrete_math",
+              "probability",
+              "statistics",
+              "optimization",
+              "differential_equations",
+              "numerical_analysis",
+              "abstract_algebra",
+              "complex_analysis",
+              "topology",
+              "applied_math",
+              "other"
+            ]
+          },
+          "topic": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "difficulty": {
+            "type": "string",
+            "enum": [
+              "very_easy",
+              "easy",
+              "medium",
+              "hard",
+              "very_hard",
+              "research"
+            ]
+          }
+        },
+        "required": [
+          "grade_band",
+          "domain",
+          "topic",
+          "difficulty"
+        ]
+      },
+      "refusal": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "is_refusal": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000
+          },
+          "safe_next_step": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "is_refusal",
+          "reason",
+          "safe_next_step"
+        ]
+      },
+      "value_item": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "value": {
+            "type": [
+              "string",
+              "number",
+              "integer",
+              "boolean",
+              "null"
+            ]
+          },
+          "value_latex": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 20000
+          }
+        },
+        "required": [
+          "label",
+          "value",
+          "value_latex"
+        ]
+      },
+      "final_answer": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "answer_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "answer_latex": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 20000
+          },
+          "units": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/value_item"
+            },
+            "minItems": 0,
+            "maxItems": 30
+          }
+        },
+        "required": [
+          "answer_text",
+          "answer_latex",
+          "values",
+          "units"
+        ]
+      },
+      "step": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "explanation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 220
+          },
+          "math_latex": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20000
+            },
+            "minItems": 0,
+            "maxItems": 6
+          }
+        },
+        "required": [
+          "index",
+          "title",
+          "explanation",
+          "math_latex"
+        ]
+      },
+      "plot_recipe": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "plot_intent": {
+            "type": "string",
+            "enum": [
+              "function_2d",
+              "implicit_2d",
+              "parametric_2d",
+              "scatter_2d",
+              "histogram",
+              "custom"
+            ]
+          },
+          "expressions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20000
+            },
+            "minItems": 1,
+            "maxItems": 4
+          },
+          "symbols": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20
+            },
+            "minItems": 0,
+            "maxItems": 4
+          },
+          "domain": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "x_min": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "x_max": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "y_min": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "y_max": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "x_min",
+              "x_max",
+              "y_min",
+              "y_max"
+            ]
+          },
+          "axis_labels": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "x": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 40
+              },
+              "y": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 40
+              }
+            },
+            "required": [
+              "x",
+              "y"
+            ]
+          },
+          "sampling": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "n_points": {
+                "type": "integer",
+                "minimum": 10,
+                "maximum": 60
+              }
+            },
+            "required": [
+              "n_points"
+            ]
+          },
+          "key_points": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                },
+                "x": {
+                  "type": [
+                    "number",
+                    "string",
+                    "null"
+                  ]
+                },
+                "y": {
+                  "type": [
+                    "number",
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "label",
+                "x",
+                "y"
+              ]
+            },
+            "minItems": 0,
+            "maxItems": 10
+          }
+        },
+        "required": [
+          "plot_intent",
+          "expressions",
+          "symbols",
+          "domain",
+          "axis_labels",
+          "sampling",
+          "key_points"
+        ]
+      },
+      "plot": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "should_visualize": {
+            "type": "boolean"
+          },
+          "decision_reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 600
+          },
+          "recipe": {
+            "$ref": "#/$defs/plot_recipe"
+          }
+        },
+        "required": [
+          "should_visualize",
+          "decision_reason",
+          "recipe"
+        ]
+      },
+      "quality": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "common_mistakes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "minItems": 0,
+            "maxItems": 0
+          }
+        },
+        "required": [
+          "confidence",
+          "common_mistakes"
+        ]
+      },
+      "clarification": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "needs_clarification": {
+            "type": "boolean",
+            "const": false
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300
+            },
+            "minItems": 0,
+            "maxItems": 0
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 300
+          }
+        },
+        "required": [
+          "needs_clarification",
+          "questions",
+          "note"
+        ]
+      },
+      "solution_item": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "question_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "question_index": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "SOLVE",
+              "SIMPLIFY",
+              "FACTOR",
+              "EXPAND",
+              "EVALUATE",
+              "DERIVATIVE",
+              "INTEGRAL",
+              "LIMIT",
+              "PLOT",
+              "PROOF",
+              "CHECK_WORK",
+              "OTHER"
+            ]
+          },
+          "problem": {
+            "$ref": "#/$defs/problem"
+          },
+          "classification": {
+            "$ref": "#/$defs/classification"
+          },
+          "assumptions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 400
+            },
+            "minItems": 0,
+            "maxItems": 10
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/step"
+            },
+            "minItems": 0,
+            "maxItems": 2
+          },
+          "final_answer": {
+            "$ref": "#/$defs/final_answer"
+          },
+          "plot": {
+            "$ref": "#/$defs/plot"
+          },
+          "refusal": {
+            "$ref": "#/$defs/refusal"
+          },
+          "quality": {
+            "$ref": "#/$defs/quality"
+          },
+          "clarification": {
+            "$ref": "#/$defs/clarification"
+          }
+        },
+        "required": [
+          "question_id",
+          "question_index",
+          "mode",
+          "problem",
+          "classification",
+          "assumptions",
+          "steps",
+          "final_answer",
+          "plot",
+          "refusal",
+          "quality",
+          "clarification"
+        ]
+      },
+      "extra_kv": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "k": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "v": {
+            "type": [
+              "string",
+              "number",
+              "integer",
+              "boolean",
+              "null"
+            ],
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "k",
+          "v"
+        ]
+      }
+    },
+    "$id": "https://youask.ai/schemas/solve_batch_final_v2.schema.json",
+    "properties": {
+      "schema_version": {
+        "type": "string",
+        "enum": [
+          "v2"
+        ]
+      },
+      "tier": {
+        "type": "string",
+        "enum": [
+          "FINAL"
+        ]
+      },
+      "language": {
+        "$ref": "#/$defs/language"
+      },
+      "items": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/solution_item"
+        },
+        "minItems": 1,
+        "maxItems": 15
+      }
+    },
+    "required": [
+      "schema_version",
+      "tier",
+      "language",
+      "items"
+    ]
+  },
+  "strict": true,
+  "type": "json_schema"
+}

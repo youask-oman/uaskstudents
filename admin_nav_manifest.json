@@ -20,8 +20,7 @@
       "icon": "group",
       "page_title": "User Directory",
       "api_checks": [
-        "/api/v1/admin/users",
-        "/api/v1/admin/plans"
+        "/api/v1/admin/users"
       ]
     },
     {
@@ -210,12 +209,12 @@
 
     {
       "type": "link",
-      "label": "Billing Control",
+      "label": "Credits Overview",
       "href": "/admin/billing",
       "icon": "account_balance",
-      "page_title": "Billing Control Center",
+      "page_title": "Credits Overview",
       "api_checks": [
-        "/api/admin/transactions"
+        "/api/v1/admin/credits/overview"
       ]
     },
     {
@@ -230,6 +229,16 @@
     },
     {
       "type": "link",
+      "label": "User Credit Inspector",
+      "href": "/admin/billing/inspector",
+      "icon": "manage_search",
+      "page_title": "User Credit Inspector",
+      "api_checks": [
+        "/api/v1/admin/credits/user?query=1"
+      ]
+    },
+    {
+      "type": "link",
       "label": "Enrollments",
       "href": "/admin/billing/enrollments",
       "icon": "person_add",
@@ -240,22 +249,12 @@
     },
     {
       "type": "link",
-      "label": "Pricing Config",
-      "href": "/admin/billing/pricing",
+      "label": "Prompt Binding Pricing",
+      "href": "/admin/prompt-bindings",
       "icon": "payments",
-      "page_title": "LLM Model Pricing",
+      "page_title": "Prompt Binding Pricing",
       "api_checks": [
-        "/api/admin/billing/pricing"
-      ]
-    },
-    {
-      "type": "link",
-      "label": "Credit Packs",
-      "href": "/admin/billing/packs",
-      "icon": "inventory_2",
-      "page_title": "Credit Packs",
-      "api_checks": [
-        "/api/admin/billing/packs"
+        "/api/v1/admin/prompt_bindings?scope=solve"
       ]
     },
     {
@@ -270,12 +269,12 @@
     },
     {
       "type": "link",
-      "label": "Ledger Explorer",
+      "label": "Usage Ledger",
       "href": "/admin/billing/ledger",
       "icon": "menu_book",
-      "page_title": "Ledger Explorer",
+      "page_title": "Usage Ledger",
       "api_checks": [
-        "/api/admin/billing/ledger"
+        "/api/v1/admin/credits/ledger"
       ]
     },
     {
@@ -290,12 +289,12 @@
     },
     {
       "type": "link",
-      "label": "Active Holds",
+      "label": "Holds Monitor",
       "href": "/admin/billing/holds",
       "icon": "pause_circle",
-      "page_title": "Active Credit Holds",
+      "page_title": "Holds Monitor",
       "api_checks": [
-        "/api/admin/billing/holds"
+        "/api/v1/admin/credits/holds"
       ]
     },
     {
@@ -310,12 +309,12 @@
     },
     {
       "type": "link",
-      "label": "Payments",
-      "href": "/adminpayments",
-      "icon": "payments",
-      "page_title": "Payments Dashboard",
+      "label": "Top-Up Products",
+      "href": "/admin/billing/topup-products",
+      "icon": "add_card",
+      "page_title": "Top-Up Products",
       "api_checks": [
-        "/api/admin/payments/overview"
+        "/api/admin/payments/pricing"
       ]
     },
     {
@@ -341,34 +340,7 @@
 
     { "type": "divider" },
 
-    {
-      "type": "link",
-      "label": "Legacy Plans (RO)",
-      "href": "/admin/legacy/plans",
-      "icon": "history",
-      "page_title": "Legacy Plans",
-      "api_checks": [
-        "/api/v1/admin/plans"
-      ]
-    },
-    {
-      "type": "link",
-      "label": "Legacy Subscriptions (RO)",
-      "href": "/admin/legacy/subscriptions",
-      "icon": "card_membership",
-      "page_title": "Legacy Subscriptions",
-      "api_checks": [
-        "/api/v1/admin/plans"
-      ]
-    },
-    {
-      "type": "link",
-      "label": "Legacy Payments",
-      "href": "/admin/legacy/payments",
-      "icon": "history",
-      "page_title": "Legacy Payments",
-      "api_checks": []
-    },
+    
 
     { "type": "divider" },
 

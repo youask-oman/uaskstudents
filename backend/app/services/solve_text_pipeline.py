@@ -78,8 +78,34 @@ def _resolve_user_default_language(session: Session, user_id: int) -> str:
     else:
         # Compatibility path for deployments where the profile model has not yet migrated.
         raw_lang = getattr(user, "preferred_language", None)
-    lang = str(raw_lang or "").strip().lower()
-    return lang or "en"
+    raw = str(raw_lang or "").strip().lower()
+    lang_map = {
+        "en": "en",
+        "english": "en",
+        "english (us)": "en",
+        "fr": "fr",
+        "french": "fr",
+        "francais": "fr",
+        "fran\u00e7ais": "fr",
+        "ar": "ar",
+        "arabic": "ar",
+        "\u0627\u0644\u0639\u0631\u0628\u064a\u0629": "ar",
+        "es": "es",
+        "spanish": "es",
+        "espanol": "es",
+        "espa\u00f1ol": "es",
+        "pt": "pt",
+        "portuguese": "pt",
+        "portugues": "pt",
+        "portugu\u00eas": "pt",
+        "ru": "ru",
+        "russian": "ru",
+        "\u0440\u0443\u0441\u0441\u043a\u0438\u0439": "ru",
+        "it": "it",
+        "italian": "it",
+        "italiano": "it",
+    }
+    return lang_map.get(raw, (raw[:2] if len(raw) >= 2 else "en"))
 
 
 def _parse_tier_enum(raw_tier: str) -> PromptTierEnum:

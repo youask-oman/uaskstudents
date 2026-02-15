@@ -1,19 +1,21 @@
 from typing import Dict, Any, Literal, Optional, List
-from fastapi import APIRouter, Depends, HTTPException, Header, Request
+from fastapi import APIRouter, Depends, HTTPException, Header, Request, Query
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
+from sqlalchemy import and_, func, or_
 from jose import jwt, JWTError, ExpiredSignatureError
 from datetime import datetime, timezone
 import logging
 from decimal import Decimal
 
 from app.database import get_session
-from app.models import User, Subscription, CreditTransfer
+from app.models import User, Subscription, CreditTransfer, CreditHoldV2, CreditLotV2, UsageLedgerV2, TopUpProduct, StripePriceMap
 from app.services.prompt_binding_pricing import normalize_tier_key, resolve_binding_pricing
 from app.auth import SECRET_KEY, ALGORITHM
 from app.services.credit_transfer_config import load_credit_transfer_config
 from app.services.credit_transfer_service import credit_transfer_service, CreditTransferError
 from app.services.notification_service import notification_service
+from app.admin_billing.deps import get_current_user as get_current_user_strict
 # from app.auth import get_current_user # Not available in auth.py, defining locally
 
 router = APIRouter()
@@ -159,6 +161,8 @@ class CreditsEstimateRequest(BaseModel):
     question_count: int = Field(default=1, ge=1, le=100)
     addons: EstimateAddons = Field(default_factory=EstimateAddons)
     graph_mode: Optional[str] = None
+    include_attempt_fee: bool = False
+    openai_call_expected: bool = False
 
 class CapChecks(BaseModel):
     daily_ok: bool
@@ -179,6 +183,7 @@ class CreditsEstimateResponse(BaseModel):
     pricing_version: str
     pricing_version_plan: str
     pricing_version_token_config: Optional[int] = None
+    max_questions_allowed: Optional[int] = None
 
 
 class TransferRequest(BaseModel):
@@ -201,6 +206,11 @@ class ClaimPendingResponse(BaseModel):
 
 
 class CreditsBalanceResponse(BaseModel):
+    user_id: int
+    available_credits: float
+    reserved_credits: float
+    expiring_soon_credits: float
+    lots_summary: Dict[str, float]
     spendable_balance: float
     pending_outgoing_total: float
     can_transfer: bool
@@ -209,6 +219,26 @@ class CreditsBalanceResponse(BaseModel):
     daily_remaining: float
     reason_if_disabled: Optional[str] = None
     credit_transfer_enabled: bool = False
+
+
+class CursorPage(BaseModel):
+    items: List[Dict[str, Any]]
+    next_cursor: Optional[str] = None
+    limit: int
+
+
+def _decode_cursor(cursor: Optional[str]) -> tuple[Optional[datetime], Optional[str]]:
+    if not cursor:
+        return None, None
+    try:
+        created_raw, entity_id = cursor.split("|", 1)
+        return datetime.fromisoformat(created_raw), entity_id
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid cursor")
+
+
+def _encode_cursor(created_at: datetime, entity_id: str) -> str:
+    return f"{created_at.isoformat()}|{entity_id}"
 
 
 # --- Logic ---
@@ -224,6 +254,55 @@ def _resolve_source_type(input_type: str, asset_type: str) -> Literal["text", "s
     if input_key == "snap":
         return "snap_pdf" if asset_key == "pdf" else "snap_image"
     return "text"
+
+
+def _binding_costs(binding: Optional[Any], tier_key: str) -> Dict[str, float]:
+    if not binding:
+        return {
+            "text": 0.0,
+            "snap_image": 0.0,
+            "snap_pdf": 0.0,
+            "voice": 0.0,
+            "verify_addon": 0.0,
+            "plot_addon": 0.0,
+            "attempt_fee": 0.0,
+        }
+
+    # Prefer dedicated prompt_bindings pricing columns for consistency with actual billing.
+    if (
+        getattr(binding, "solve_text_cost", None) is not None
+        and getattr(binding, "solve_snap_image_cost", None) is not None
+        and getattr(binding, "solve_snap_pdf_cost", None) is not None
+        and getattr(binding, "solve_voice_cost", None) is not None
+        and getattr(binding, "verify_addon_cost", None) is not None
+        and getattr(binding, "plot_addon_cost", None) is not None
+        and getattr(binding, "attempt_fee", None) is not None
+    ):
+        return {
+            "text": float(binding.solve_text_cost or 0),
+            "snap_image": float(binding.solve_snap_image_cost or 0),
+            "snap_pdf": float(binding.solve_snap_pdf_cost or 0),
+            "voice": float(binding.solve_voice_cost or 0),
+            "verify_addon": float(binding.verify_addon_cost or 0),
+            "plot_addon": float(binding.plot_addon_cost or 0),
+            "attempt_fee": float(binding.attempt_fee or 0),
+        }
+
+    multipliers = (getattr(binding, "multipliers", None) or {}) if binding else {}
+    credits = multipliers.get("credits") if isinstance(multipliers, dict) else {}
+    solve = credits.get("solve") if isinstance(credits, dict) else {}
+    tier_cfg = solve.get(tier_key) if isinstance(solve, dict) else {}
+    verify_map = credits.get("verify") if isinstance(credits, dict) else {}
+    attempt_map = credits.get("attempt_fee") if isinstance(credits, dict) else {}
+    return {
+        "text": float((tier_cfg or {}).get("text") or 0),
+        "snap_image": float((tier_cfg or {}).get("snap_image") or 0),
+        "snap_pdf": float((tier_cfg or {}).get("snap_pdf") or 0),
+        "voice": float((tier_cfg or {}).get("voice") or 0),
+        "verify_addon": float((verify_map or {}).get(tier_key) or 0),
+        "plot_addon": float((credits or {}).get("plot_trigger") or 0),
+        "attempt_fee": float((attempt_map or {}).get(tier_key) or 0),
+    }
 
 
 
@@ -249,18 +328,9 @@ async def estimate_credits(
 
     # 3. Determine Cost
     source_type = _resolve_source_type(body.input_type, body.asset_type)
-    tier_config = getattr(multipliers.credits.solve, tier_key, None)
-    if tier_config is None:
-        raise HTTPException(status_code=500, detail=f"Missing tier pricing configuration for tier={tier_key}")
-
-    if source_type == "snap_image":
-        base_cost = float(tier_config.snap_image)
-    elif source_type == "snap_pdf":
-        base_cost = float(tier_config.snap_pdf)
-    elif source_type == "voice":
-        base_cost = float(tier_config.voice)
-    else:
-        base_cost = float(tier_config.text)
+    costs = _binding_costs(binding, tier_key)
+    base_key = source_type if source_type in {"text", "snap_image", "snap_pdf", "voice"} else "text"
+    base_cost = float(costs.get(base_key, 0.0))
 
     reason_str = f"solve.{tier_key}.{source_type}"
         
@@ -276,15 +346,21 @@ async def estimate_credits(
     # If mode=SOLVE and verify requested:
     verify_req = body.addons.verification_requested or body.addons.verify
     if verify_req and features.allow_verify:
-        verify_cost = float(getattr(multipliers.credits.verify, tier_key, 0))
+        verify_cost = float(costs.get("verify_addon", 0.0))
         addons_cost += verify_cost
         addon_detail["verify"] = verify_cost
         
     plot_req = body.addons.plot_requested or body.addons.plot
     if plot_req and features.allow_plot:
-        plot_cost = float(multipliers.credits.plot_trigger)
+        plot_cost = float(costs.get("plot_addon", 0.0))
         addons_cost += plot_cost
         addon_detail["plot"] = plot_cost
+
+    attempt_fee = 0.0
+    if body.include_attempt_fee or body.openai_call_expected:
+        attempt_fee = float(costs.get("attempt_fee", 0.0))
+        addons_cost += attempt_fee
+        addon_detail["attempt_fee"] = attempt_fee
 
     per_question = base_cost + addons_cost
     total = per_question * body.question_count
@@ -336,18 +412,48 @@ async def estimate_credits(
         ),
         pricing_version=str(multipliers.version),
         pricing_version_plan=str(multipliers.version),
-        pricing_version_token_config=token_config_version
+        pricing_version_token_config=token_config_version,
+        max_questions_allowed=(int(getattr(binding, "max_questions_allowed", 0) or 0) or None),
     )
 
 
 @router.get("/credits/balance", response_model=CreditsBalanceResponse)
 async def credits_balance(
     session: Session = Depends(get_session),
-    user: User = Depends(get_current_user_required),
+    user: User = Depends(get_current_user_strict),
 ):
     cfg = load_credit_transfer_config(session)
     view = credit_transfer_service.get_balance_view(session, user, cfg)
+    available = session.exec(
+        select(func.coalesce(func.sum(CreditLotV2.credits_remaining), 0)).where(CreditLotV2.user_id == user.id)
+    ).one()
+    reserved = session.exec(
+        select(func.coalesce(func.sum(CreditHoldV2.amount_reserved - CreditHoldV2.amount_settled - CreditHoldV2.amount_released), 0))
+        .where(CreditHoldV2.user_id == user.id)
+        .where(CreditHoldV2.status == "active")
+    ).one()
+    now = datetime.utcnow()
+    soon_cutoff = now + __import__("datetime").timedelta(days=30)
+    expiring = session.exec(
+        select(func.coalesce(func.sum(CreditLotV2.credits_remaining), 0))
+        .where(CreditLotV2.user_id == user.id)
+        .where(CreditLotV2.expires_at != None)
+        .where(CreditLotV2.expires_at >= now)
+        .where(CreditLotV2.expires_at <= soon_cutoff)
+    ).one()
+    lots_count = session.exec(select(func.count(CreditLotV2.lot_id)).where(CreditLotV2.user_id == user.id)).one()
+    active_lots = session.exec(
+        select(func.count(CreditLotV2.lot_id))
+        .where(CreditLotV2.user_id == user.id)
+        .where(CreditLotV2.credits_remaining > 0)
+    ).one()
+
     return CreditsBalanceResponse(
+        user_id=user.id,
+        available_credits=float(available),
+        reserved_credits=float(reserved),
+        expiring_soon_credits=float(expiring),
+        lots_summary={"total_lots": float(lots_count), "active_lots": float(active_lots)},
         spendable_balance=float(view.spendable_balance),
         pending_outgoing_total=float(view.pending_outgoing_total),
         can_transfer=view.can_transfer,
@@ -359,12 +465,153 @@ async def credits_balance(
     )
 
 
+@router.get("/credits/holds", response_model=CursorPage)
+async def credits_holds(
+    status: Optional[str] = None,
+    limit: int = Query(default=20, ge=1, le=200),
+    cursor: Optional[str] = None,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user_strict),
+):
+    cursor_dt, cursor_id = _decode_cursor(cursor)
+    q = select(CreditHoldV2).where(CreditHoldV2.user_id == user.id)
+    if status:
+        q = q.where(CreditHoldV2.status == status.lower())
+    if cursor_dt and cursor_id:
+        q = q.where(
+            or_(
+                CreditHoldV2.created_at < cursor_dt,
+                and_(CreditHoldV2.created_at == cursor_dt, CreditHoldV2.hold_id < cursor_id),
+            )
+        )
+    rows = session.exec(q.order_by(CreditHoldV2.created_at.desc(), CreditHoldV2.hold_id.desc()).limit(int(limit) + 1)).all()
+    has_more = len(rows) > int(limit)
+    rows = rows[: int(limit)]
+    items = [
+        {
+            "hold_id": r.hold_id,
+            "status": r.status,
+            "reserved": float(r.amount_reserved),
+            "settled": float(r.amount_settled),
+            "released": float(r.amount_released),
+            "created_at": r.created_at,
+            "expires_at": r.expires_at,
+            "tier": r.tier,
+            "action": r.action,
+            "request_id": r.request_id,
+            "attempt_id": r.attempt_id,
+        }
+        for r in rows
+    ]
+    next_cursor = _encode_cursor(rows[-1].created_at, rows[-1].hold_id) if has_more and rows else None
+    return CursorPage(items=items, next_cursor=next_cursor, limit=int(limit))
+
+
+@router.get("/credits/ledger", response_model=CursorPage)
+async def credits_ledger(
+    limit: int = Query(default=20, ge=1, le=200),
+    cursor: Optional[str] = None,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user_strict),
+):
+    cursor_dt, cursor_id = _decode_cursor(cursor)
+    q = select(UsageLedgerV2).where(UsageLedgerV2.user_id == user.id)
+    if cursor_dt and cursor_id:
+        q = q.where(
+            or_(
+                UsageLedgerV2.created_at < cursor_dt,
+                and_(UsageLedgerV2.created_at == cursor_dt, UsageLedgerV2.ledger_id < cursor_id),
+            )
+        )
+    rows = session.exec(q.order_by(UsageLedgerV2.created_at.desc(), UsageLedgerV2.ledger_id.desc()).limit(int(limit) + 1)).all()
+    has_more = len(rows) > int(limit)
+    rows = rows[: int(limit)]
+    items = [
+        {
+            "ledger_id": r.ledger_id,
+            "tier": r.tier,
+            "action": r.action,
+            "question_index": r.question_index,
+            "total_cost": float(r.total_cost),
+            "outcome": r.outcome,
+            "created_at": r.created_at,
+            "request_id": r.request_id,
+            "attempt_id": r.attempt_id,
+        }
+        for r in rows
+    ]
+    next_cursor = _encode_cursor(rows[-1].created_at, rows[-1].ledger_id) if has_more and rows else None
+    return CursorPage(items=items, next_cursor=next_cursor, limit=int(limit))
+
+
+@router.get("/credits/lots", response_model=CursorPage)
+async def credits_lots(
+    limit: int = Query(default=20, ge=1, le=200),
+    cursor: Optional[str] = None,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user_strict),
+):
+    cursor_dt, cursor_id = _decode_cursor(cursor)
+    q = select(CreditLotV2).where(CreditLotV2.user_id == user.id)
+    if cursor_dt and cursor_id:
+        q = q.where(
+            or_(
+                CreditLotV2.created_at < cursor_dt,
+                and_(CreditLotV2.created_at == cursor_dt, CreditLotV2.lot_id < cursor_id),
+            )
+        )
+    rows = session.exec(q.order_by(CreditLotV2.created_at.desc(), CreditLotV2.lot_id.desc()).limit(int(limit) + 1)).all()
+    has_more = len(rows) > int(limit)
+    rows = rows[: int(limit)]
+    items = [
+        {
+            "lot_id": r.lot_id,
+            "source": r.source,
+            "credits_total": float(r.credits_total),
+            "credits_remaining": float(r.credits_remaining),
+            "expires_at": r.expires_at,
+            "created_at": r.created_at,
+        }
+        for r in rows
+    ]
+    next_cursor = _encode_cursor(rows[-1].created_at, rows[-1].lot_id) if has_more and rows else None
+    return CursorPage(items=items, next_cursor=next_cursor, limit=int(limit))
+
+
+@router.get("/credits/packs")
+async def credits_packs(
+    session: Session = Depends(get_session),
+):
+    packs = session.exec(select(TopUpProduct).where(TopUpProduct.is_active == True).order_by(TopUpProduct.credits.asc())).all()
+    mappings = session.exec(select(StripePriceMap).where(StripePriceMap.kind == "TOPUP").where(StripePriceMap.active == True)).all()
+    by_code = {m.internal_code: m.stripe_price_id for m in mappings}
+    items = []
+    for idx, p in enumerate(packs):
+        meta = p.metadata_json or {}
+        label = str(meta.get("label") or "")
+        items.append(
+            {
+                "pack_code": p.code,
+                "credits": p.credits,
+                "label": label,
+                "active": p.is_active,
+                "sort_order": idx + 1,
+                "display_name": p.name or p.code.replace("_", " ").title(),
+                "stripe_mapping": {
+                    "stripe_price_id": by_code.get(p.code),
+                    "mapped": bool(by_code.get(p.code)),
+                },
+            }
+        )
+    return {"items": items}
+
+
 @router.post("/credits/transfer", response_model=TransferResponse)
 async def transfer_credits(
     body: TransferRequest,
     request: Request,
     session: Session = Depends(get_session),
-    user: User = Depends(get_current_user_required),
+    user: User = Depends(get_current_user_strict),
 ):
     cfg = load_credit_transfer_config(session)
     try:
@@ -420,7 +667,7 @@ async def transfer_credits(
 @router.post("/credits/claim_pending", response_model=ClaimPendingResponse)
 async def claim_pending_credits(
     session: Session = Depends(get_session),
-    user: User = Depends(get_current_user_required),
+    user: User = Depends(get_current_user_strict),
 ):
     cfg = load_credit_transfer_config(session)
     if not cfg.enabled:

@@ -62,7 +62,6 @@ export default function AdminPaymentsLayout({
         { label: "Overview", href: "/adminpayments", icon: "monitoring" },
         { label: "Requests", href: "/adminpayments/requests", icon: "table_view" },
         { label: "Top-Ups", href: "/adminpayments/topups", icon: "add_card" },
-        { label: "Legacy Subscriptions", href: "/adminpayments/subscriptions", icon: "card_membership" },
         { label: "Invoices", href: "/adminpayments?tab=invoices", icon: "receipt" },
         { label: "Stripe Events", href: "/adminpayments?tab=stripe_events", icon: "receipt_long" },
         { label: "Reconciliation", href: "/adminpayments?tab=reconciliation", icon: "balance" },

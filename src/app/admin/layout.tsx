@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import navManifest from "../../../admin_nav_manifest.json";
 import { ToastProvider } from "@/components/ui/ToastProvider";
 
@@ -20,43 +20,48 @@ export default function AdminLayout({
 }) {
     const pathname = usePathname();
     const router = useRouter();
-    const [adminProfile, setAdminProfile] = useState<AdminProfile>({
-        name: "Admin User",
-        role: "",
-        avatar: "",
-        authorized: false,
-    });
+    const isHydrated = useSyncExternalStore(
+        () => () => {},
+        () => true,
+        () => false
+    );
+
+    const adminProfile: AdminProfile = (() => {
+        if (!isHydrated) {
+            return { name: "Admin User", role: "", avatar: "", authorized: false };
+        }
+        const roleRaw = localStorage.getItem("user_role") ?? "";
+        const role = roleRaw.trim().toLowerCase();
+        return {
+            name: localStorage.getItem("user_name") ?? "Admin User",
+            role,
+            avatar: localStorage.getItem("user_avatar") ?? "",
+            authorized: ["admin", "superadmin", "support", "finance", "devops"].includes(role),
+        };
+    })();
 
     useEffect(() => {
-        if (typeof window === "undefined") {
-            router.push("/login");
-            return;
-        }
-        const role = localStorage.getItem("user_role") ?? "";
-        const profile: AdminProfile = {
-            name: localStorage.getItem("user_name") ?? "Admin User",
-            role: role,
-            avatar: localStorage.getItem("user_avatar") ?? "",
-            authorized: role === "admin" || role === "superadmin",
-        };
-
-        // Defer update to avoid synchronous state update warning
-        setTimeout(() => {
-            setAdminProfile(prev => {
-                if (JSON.stringify(prev) !== JSON.stringify(profile)) {
-                    return profile;
-                }
-                return prev;
-            });
-        }, 0);
-
-        if (!profile.authorized) {
+        if (isHydrated && !adminProfile.authorized) {
             router.push("/login");
         }
-    }, [pathname, router]);
-    if (!adminProfile.authorized) return null;
+    }, [adminProfile.authorized, isHydrated, router]);
 
-    const adminRoleLabel = adminProfile.role === "superadmin" ? "Super Admin" : "Platform Administrator";
+    if (!isHydrated) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-background-light dark:bg-background-dark text-slate-500">
+                Loading admin workspace...
+            </div>
+        );
+    }
+    if (!adminProfile.authorized) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-background-light dark:bg-background-dark text-slate-500">
+                Redirecting to login...
+            </div>
+        );
+    }
+
+    const adminRoleLabel = adminProfile.role === "superadmin" ? "Super Admin" : "Admin Console";
 
     const navItems = Array.isArray(navManifest?.nav_items) ? navManifest.nav_items : [];
 

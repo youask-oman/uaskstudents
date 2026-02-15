@@ -1,862 +1,691 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { fetchApi, parseApiError } from "@/lib/api";
+import { useToast } from "@/components/ui/ToastProvider";
 
-interface BindingEntry {
+type Binding = {
     id: string;
     tier: string;
     mode: string;
     global_system_prompt_id: string;
     developer_prompt_id: string;
     output_schema_id: string;
-    max_output_tokens?: number | null;
-    max_input_tokens?: number | null;
-    system_schema_budget_tokens?: number | null;
-    context_budget_tokens?: number | null;
-    json_retry_max_output_tokens?: number | null;
-    json_retry_max_attempts?: number | null;
-    timeout_ms?: number | null;
-    temperature?: number | null;
-    top_p?: number | null;
-    plot_points_cap?: number | null;
-    plot_traces_cap?: number | null;
-    plot_annotations_cap?: number | null;
-    trim_strategy?: string | null;
-    max_steps?: number | null;
-    retry_cap_tokens?: number | null;
-    features?: Record<string, unknown> | null;
-    multipliers?: Record<string, unknown> | null;
+    features: Record<string, unknown>;
+    multipliers: Record<string, unknown>;
     is_active: boolean;
+    max_questions_allowed: number | null;
+    timeout_ms: number | null;
+    max_input_tokens: number | null;
+    max_output_tokens: number | null;
+    system_schema_budget_tokens: number | null;
+    context_budget_tokens: number | null;
+    json_retry_max_output_tokens: number | null;
+    json_retry_max_attempts: number | null;
+    plot_points_cap: number | null;
+    plot_traces_cap: number | null;
+    plot_annotations_cap: number | null;
+    temperature: number | null;
+    top_p: number | null;
+    trim_strategy: string | null;
+    max_steps: number | null;
+    retry_cap_tokens: number | null;
+    solve_text_cost: number;
+    solve_snap_image_cost: number;
+    solve_snap_pdf_cost: number;
+    solve_voice_cost: number;
+    verify_addon_cost: number;
+    plot_addon_cost: number;
+    attempt_fee: number;
     updated_at: string;
-    updated_by?: string | null;
-}
+    updated_by?: string;
+};
 
-interface PromptEntry {
+type PromptRegistryEntry = {
     prompt_id: string;
-    tier: string | null;
-    mode: string;
-    role: string;
-    version: number;
-    is_active: boolean;
-}
+    tier?: string | null;
+    mode?: string | null;
+    role?: string | null;
+    version?: number;
+    is_active?: boolean;
+};
 
-interface SchemaEntry {
+type SchemaRegistryEntry = {
     schema_id: string;
-    version: number;
-    is_active: boolean;
+    version?: number;
+    is_active?: boolean;
+};
+
+type DraftBinding = Omit<Binding, "features" | "multipliers"> & {
+    features_obj: Record<string, unknown>;
+    multipliers_obj: Record<string, unknown>;
+};
+
+const modeOptions = ["SOLVE", "VERIFY", "PLOT_TRIGGER", "PLOT_SPEC", "OCR_EXTRACT"];
+const trimStrategyOptions = [
+    "",
+    "none",
+    "trim_context_first",
+    "trim_user_first",
+    "summarize_context",
+    "trim_everything_except_plot_plan",
+];
+
+const numericKeys: Array<keyof Binding> = [
+    "max_questions_allowed",
+    "timeout_ms",
+    "max_input_tokens",
+    "max_output_tokens",
+    "system_schema_budget_tokens",
+    "context_budget_tokens",
+    "json_retry_max_output_tokens",
+    "json_retry_max_attempts",
+    "plot_points_cap",
+    "plot_traces_cap",
+    "plot_annotations_cap",
+    "temperature",
+    "top_p",
+    "max_steps",
+    "retry_cap_tokens",
+    "solve_text_cost",
+    "solve_snap_image_cost",
+    "solve_snap_pdf_cost",
+    "solve_voice_cost",
+    "verify_addon_cost",
+    "plot_addon_cost",
+    "attempt_fee",
+];
+
+const intKeys = new Set<keyof Binding>([
+    "max_questions_allowed",
+    "timeout_ms",
+    "max_input_tokens",
+    "max_output_tokens",
+    "system_schema_budget_tokens",
+    "context_budget_tokens",
+    "json_retry_max_output_tokens",
+    "json_retry_max_attempts",
+    "plot_points_cap",
+    "plot_traces_cap",
+    "plot_annotations_cap",
+    "max_steps",
+    "retry_cap_tokens",
+]);
+
+const bindingTones = [
+    { badge: "bg-rose-100 border-rose-200 text-rose-800", badgeActive: "bg-rose-200 border-rose-300 text-rose-900 ring-rose-300", section: "border-rose-200", sectionHeader: "bg-rose-50 border-rose-200", sectionTitle: "text-rose-800" },
+    { badge: "bg-amber-100 border-amber-200 text-amber-800", badgeActive: "bg-amber-200 border-amber-300 text-amber-900 ring-amber-300", section: "border-amber-200", sectionHeader: "bg-amber-50 border-amber-200", sectionTitle: "text-amber-800" },
+    { badge: "bg-emerald-100 border-emerald-200 text-emerald-800", badgeActive: "bg-emerald-200 border-emerald-300 text-emerald-900 ring-emerald-300", section: "border-emerald-200", sectionHeader: "bg-emerald-50 border-emerald-200", sectionTitle: "text-emerald-800" },
+    { badge: "bg-sky-100 border-sky-200 text-sky-800", badgeActive: "bg-sky-200 border-sky-300 text-sky-900 ring-sky-300", section: "border-sky-200", sectionHeader: "bg-sky-50 border-sky-200", sectionTitle: "text-sky-800" },
+    { badge: "bg-indigo-100 border-indigo-200 text-indigo-800", badgeActive: "bg-indigo-200 border-indigo-300 text-indigo-900 ring-indigo-300", section: "border-indigo-200", sectionHeader: "bg-indigo-50 border-indigo-200", sectionTitle: "text-indigo-800" },
+    { badge: "bg-fuchsia-100 border-fuchsia-200 text-fuchsia-800", badgeActive: "bg-fuchsia-200 border-fuchsia-300 text-fuchsia-900 ring-fuchsia-300", section: "border-fuchsia-200", sectionHeader: "bg-fuchsia-50 border-fuchsia-200", sectionTitle: "text-fuchsia-800" },
+    { badge: "bg-teal-100 border-teal-200 text-teal-800", badgeActive: "bg-teal-200 border-teal-300 text-teal-900 ring-teal-300", section: "border-teal-200", sectionHeader: "bg-teal-50 border-teal-200", sectionTitle: "text-teal-800" },
+    { badge: "bg-orange-100 border-orange-200 text-orange-800", badgeActive: "bg-orange-200 border-orange-300 text-orange-900 ring-orange-300", section: "border-orange-200", sectionHeader: "bg-orange-50 border-orange-200", sectionTitle: "text-orange-800" },
+];
+
+function toDraft(b: Binding): DraftBinding {
+    return {
+        ...b,
+        features_obj: JSON.parse(JSON.stringify(b.features || {})),
+        multipliers_obj: JSON.parse(JSON.stringify(b.multipliers || {})),
+    };
 }
 
-type BindingFeatures = {
-    allow_research?: unknown;
-    allow_verify?: unknown;
-    allow_plot?: unknown;
-    daily_credit_cap?: unknown;
-    ocr_monthly_cap?: unknown;
-    voice_monthly_cap?: unknown;
-    generated_images_monthly_cap?: unknown;
-    make_it_right_monthly_cap?: unknown;
-};
+function asRecord(v: unknown): Record<string, unknown> {
+    return v && typeof v === "object" ? (v as Record<string, unknown>) : {};
+}
 
-type SolveTierCosts = {
-    text?: unknown;
-    snap_image?: unknown;
-    snap_pdf?: unknown;
-    voice?: unknown;
-};
+function asInput(v: string | number | null | undefined): string {
+    if (v === null || v === undefined) return "";
+    return String(v);
+}
 
-type BindingMultipliers = {
-    credits?: {
-        solve?: Record<string, SolveTierCosts | undefined>;
-        verify?: Record<string, unknown>;
-        plot_trigger?: unknown;
-    };
-};
+function parseNullableNumber(v: string): number | null {
+    if (v.trim() === "") return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+}
 
-const DEFAULT_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:9000";
+function stableHash(value: string): number {
+    let hash = 0;
+    for (let i = 0; i < value.length; i += 1) {
+        hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
+    }
+    return hash;
+}
 
-const tierToPricingKey = (tier: string): "free" | "short" | "standard" | "research" => {
-    const normalized = String(tier || "").toUpperCase();
-    if (normalized === "FREE") return "free";
-    if (normalized === "SHORT") return "short";
-    if (normalized === "RESEARCH") return "research";
+function toneForBinding(binding: Pick<Binding, "id" | "tier" | "mode"> | null | undefined) {
+    if (!binding) return bindingTones[0];
+    const key = `${binding.id}|${binding.tier}|${binding.mode}`;
+    return bindingTones[stableHash(key) % bindingTones.length];
+}
+
+function tierKey(tier: string): "free" | "standard" | "research" | "short" {
+    const t = (tier || "").toUpperCase();
+    if (t === "FREE") return "free";
+    if (t === "RESEARCH") return "research";
+    if (t === "SHORT") return "short";
     return "standard";
-};
+}
 
-const parseNum = (value: string, fallback = 0): number => {
-    const n = Number(value);
-    return Number.isFinite(n) ? n : fallback;
-};
+function parseNumberMaybe(v: string | number | null | undefined, integer: boolean): number | null {
+    if (v === null || v === undefined || v === "") return null;
+    const n = Number(v);
+    if (!Number.isFinite(n)) return null;
+    return integer ? Math.trunc(n) : n;
+}
 
-const parseOptionalInt = (value: string): number | null => (value === "" ? null : parseInt(value, 10));
-const parseOptionalFloat = (value: string): number | null => (value === "" ? null : parseFloat(value));
-const asFeatures = (value: Record<string, unknown> | null | undefined): BindingFeatures =>
-    (value as BindingFeatures | undefined) || {};
-const asMultipliers = (value: Record<string, unknown> | null | undefined): BindingMultipliers =>
-    (value as BindingMultipliers | undefined) || {};
+function normalizeRoleValue(value: unknown): string {
+    return String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[\s-]+/g, "_");
+}
 
-export default function AdminPromptBindingsPage() {
-    const baseUrl = useMemo(() => DEFAULT_API_BASE_URL, []);
-    const [bindings, setBindings] = useState<BindingEntry[]>([]);
-    const [prompts, setPrompts] = useState<PromptEntry[]>([]);
-    const [schemas, setSchemas] = useState<SchemaEntry[]>([]);
-    const [form, setForm] = useState({
-        tier: "FREE",
-        mode: "SOLVE",
-        global_system_prompt_id: "",
-        developer_prompt_id: "",
-        output_schema_id: "",
-        max_output_tokens: "",
-        max_input_tokens: "",
-        system_schema_budget_tokens: "",
-        context_budget_tokens: "",
-        json_retry_max_output_tokens: "",
-        json_retry_max_attempts: "",
-        timeout_ms: "",
-        temperature: "",
-        top_p: "",
-        plot_points_cap: "",
-        plot_traces_cap: "",
-        plot_annotations_cap: "",
-        trim_strategy: "trim_context_first",
-        max_steps: "",
-        retry_cap_tokens: "",
-        allow_research: false,
-        allow_verify: true,
-        allow_plot: true,
-        daily_credit_cap: "",
-        ocr_monthly_cap: "",
-        voice_monthly_cap: "",
-        generated_images_monthly_cap: "",
-        make_it_right_monthly_cap: "",
-        solve_text_cost: "",
-        solve_snap_image_cost: "",
-        solve_snap_pdf_cost: "",
-        solve_voice_cost: "",
-        verify_cost: "",
-        plot_trigger_cost: "",
-    });
-    const [error, setError] = useState<string | null>(null);
+function Section({
+    title,
+    children,
+    tone,
+}: {
+    title: string;
+    children: React.ReactNode;
+    tone?: { section?: string; sectionHeader?: string; sectionTitle?: string };
+}) {
+    return (
+        <section className={`rounded-2xl border bg-white shadow-sm overflow-hidden ${tone?.section || "border-slate-200"}`}>
+            <header className={`px-6 py-4 border-b ${tone?.sectionHeader || "border-slate-200 bg-slate-50"}`}>
+                <h3 className={`text-base tracking-[0.08em] font-extrabold uppercase ${tone?.sectionTitle || "text-slate-700"}`}>{title}</h3>
+            </header>
+            <div className="p-6">{children}</div>
+        </section>
+    );
+}
+
+function Field({
+    label,
+    children,
+}: {
+    label: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <label className="block">
+            <div className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-2">{label}</div>
+            {children}
+        </label>
+    );
+}
+
+export default function PromptBindingsPage() {
+    const { pushToast } = useToast();
+    const [items, setItems] = useState<Binding[]>([]);
+    const [drafts, setDrafts] = useState<Record<string, DraftBinding>>({});
+    const [selectedId, setSelectedId] = useState<string>("");
+    const [reason, setReason] = useState("");
+    const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [deletingBindingId, setDeletingBindingId] = useState<string | null>(null);
-    const [testRunning, setTestRunning] = useState(false);
-    const [testResult, setTestResult] = useState<string | null>(null);
+    const [role, setRole] = useState("");
+    const [promptOptions, setPromptOptions] = useState<PromptRegistryEntry[]>([]);
+    const [schemaOptions, setSchemaOptions] = useState<SchemaRegistryEntry[]>([]);
 
-    const headers = (includeJson = false) => {
-        const token = localStorage.getItem("token");
-        const h: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
-        if (includeJson) (h as Record<string, string>)["Content-Type"] = "application/json";
+    const normalizedRole = useMemo(() => normalizeRoleValue(role), [role]);
+    const canEdit = !normalizedRole || normalizedRole === "admin" || normalizedRole === "superadmin" || normalizedRole === "super_admin";
+
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const rawRole = normalizeRoleValue(localStorage.getItem("user_role") || "");
+            if (rawRole) {
+                setRole(rawRole);
+                return;
+            }
+            const token = localStorage.getItem("token") || "";
+            if (token.includes(".")) {
+                try {
+                    const payload = JSON.parse(atob(token.split(".")[1] || ""));
+                    const roleCandidates: unknown[] = [
+                        payload?.role,
+                        payload?.user_role,
+                        payload?.user?.role,
+                        Array.isArray(payload?.roles) ? payload.roles[0] : undefined,
+                    ];
+                    const tokenRole = roleCandidates
+                        .map((v) => normalizeRoleValue(v))
+                        .find((v) => Boolean(v)) || "";
+                    if (tokenRole) {
+                        setRole(tokenRole);
+                        return;
+                    }
+                } catch {
+                    // ignore malformed token payload
+                }
+            }
+            setRole("");
+        }
+    }, []);
+
+    const headers = useMemo(() => {
+        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        const h: Record<string, string> = { "Content-Type": "application/json" };
+        if (token) h.Authorization = `Bearer ${token}`;
         return h;
-    };
+    }, []);
 
-    const loadBindings = async () => {
-        const res = await fetch(`${baseUrl}/api/v1/admin/prompt-registry/bindings`, { headers: headers() });
-        if (!res.ok) throw new Error("Failed to load bindings");
-        const data: BindingEntry[] = await res.json();
-        setBindings(data);
-    };
+    const load = useCallback(async () => {
+        setLoading(true);
+        try {
+            const [res, promptRes, schemaRes] = await Promise.all([
+                fetchApi("/api/v1/admin/prompt_bindings?scope=all", { headers }),
+                fetchApi("/api/v1/admin/prompt-registry/prompts?include_inactive=true", { headers }),
+                fetchApi("/api/v1/admin/prompt-registry/schemas?include_inactive=true", { headers }),
+            ]);
 
-    const loadPrompts = async () => {
-        const res = await fetch(`${baseUrl}/api/v1/admin/prompt-registry/prompts`, { headers: headers() });
-        if (!res.ok) throw new Error("Failed to load prompts");
-        const data: PromptEntry[] = await res.json();
-        setPrompts(data);
-    };
+            if (!res.ok) throw new Error((await parseApiError(res)).message);
+            if (!promptRes.ok) throw new Error((await parseApiError(promptRes)).message);
+            if (!schemaRes.ok) throw new Error((await parseApiError(schemaRes)).message);
 
-    const loadSchemas = async () => {
-        const res = await fetch(`${baseUrl}/api/v1/admin/prompt-registry/schemas`, { headers: headers() });
-        if (!res.ok) throw new Error("Failed to load schemas");
-        const data: SchemaEntry[] = await res.json();
-        setSchemas(data);
-    };
-
-    const getGlobalPromptOptions = (tier: string, mode: string) =>
-        prompts.filter((p) => {
-            if (p.role !== "SYSTEM") return false;
-            if (mode === "OCR_EXTRACT") return true;
-            return p.mode === mode && (p.tier === null || p.tier === tier);
-        });
-
-    const getDeveloperPromptOptions = (tier: string, mode: string) =>
-        prompts.filter((p) => {
-            if (p.role !== "DEVELOPER") return false;
-            if (mode === "OCR_EXTRACT") return true;
-            return p.mode === mode && (p.tier === null || p.tier === tier);
-        });
-
-    const pickValidOption = (
-        preferred: string,
-        options: string[],
-    ) => (preferred && options.includes(preferred) ? preferred : options[0] || "");
-
-    const normalizeFormSelection = (nextTier: string, nextMode: string, currentForm: typeof form) => {
-        const activeBinding = bindings.find((b) => b.is_active && b.tier === nextTier && b.mode === nextMode) || null;
-        const globalOptions = getGlobalPromptOptions(nextTier, nextMode).map((p) => p.prompt_id);
-        const developerOptions = getDeveloperPromptOptions(nextTier, nextMode).map((p) => p.prompt_id);
-        const schemaOptions = schemas.map((s) => s.schema_id);
-
-        return {
-            tier: nextTier,
-            mode: nextMode,
-            global_system_prompt_id: pickValidOption(
-                activeBinding?.global_system_prompt_id || currentForm.global_system_prompt_id,
-                globalOptions,
-            ),
-            developer_prompt_id: pickValidOption(
-                activeBinding?.developer_prompt_id || currentForm.developer_prompt_id,
-                developerOptions,
-            ),
-            output_schema_id: pickValidOption(
-                activeBinding?.output_schema_id || currentForm.output_schema_id,
-                schemaOptions,
-            ),
-            max_output_tokens: activeBinding?.max_output_tokens?.toString() || "",
-            max_input_tokens: activeBinding?.max_input_tokens?.toString() || "",
-            system_schema_budget_tokens: activeBinding?.system_schema_budget_tokens?.toString() || "",
-            context_budget_tokens: activeBinding?.context_budget_tokens?.toString() || "",
-            json_retry_max_output_tokens: activeBinding?.json_retry_max_output_tokens?.toString() || "",
-            json_retry_max_attempts: activeBinding?.json_retry_max_attempts?.toString() || "",
-            timeout_ms: activeBinding?.timeout_ms?.toString() || "",
-            temperature: activeBinding?.temperature?.toString() || "",
-            top_p: activeBinding?.top_p?.toString() || "",
-            plot_points_cap: activeBinding?.plot_points_cap?.toString() || "",
-            plot_traces_cap: activeBinding?.plot_traces_cap?.toString() || "",
-            plot_annotations_cap: activeBinding?.plot_annotations_cap?.toString() || "",
-            trim_strategy: activeBinding?.trim_strategy || "trim_context_first",
-            max_steps: activeBinding?.max_steps?.toString() || "",
-            retry_cap_tokens: activeBinding?.retry_cap_tokens?.toString() || "",
-            allow_research: Boolean(asFeatures(activeBinding?.features).allow_research ?? false),
-            allow_verify: Boolean(asFeatures(activeBinding?.features).allow_verify ?? true),
-            allow_plot: Boolean(asFeatures(activeBinding?.features).allow_plot ?? true),
-            daily_credit_cap: String(asFeatures(activeBinding?.features).daily_credit_cap ?? ""),
-            ocr_monthly_cap: String(asFeatures(activeBinding?.features).ocr_monthly_cap ?? ""),
-            voice_monthly_cap: String(asFeatures(activeBinding?.features).voice_monthly_cap ?? ""),
-            generated_images_monthly_cap: String(asFeatures(activeBinding?.features).generated_images_monthly_cap ?? ""),
-            make_it_right_monthly_cap: String(asFeatures(activeBinding?.features).make_it_right_monthly_cap ?? ""),
-            solve_text_cost: String(
-                (
-                    asMultipliers(activeBinding?.multipliers).credits?.solve?.[tierToPricingKey(nextTier)]?.text ?? ""
-                ),
-            ),
-            solve_snap_image_cost: String(
-                (
-                    asMultipliers(activeBinding?.multipliers).credits?.solve?.[tierToPricingKey(nextTier)]?.snap_image ?? ""
-                ),
-            ),
-            solve_snap_pdf_cost: String(
-                (
-                    asMultipliers(activeBinding?.multipliers).credits?.solve?.[tierToPricingKey(nextTier)]?.snap_pdf ?? ""
-                ),
-            ),
-            solve_voice_cost: String(
-                (
-                    asMultipliers(activeBinding?.multipliers).credits?.solve?.[tierToPricingKey(nextTier)]?.voice ?? ""
-                ),
-            ),
-            verify_cost: String(
-                (asMultipliers(activeBinding?.multipliers).credits?.verify?.[tierToPricingKey(nextTier)] ?? ""),
-            ),
-            plot_trigger_cost: String((asMultipliers(activeBinding?.multipliers).credits?.plot_trigger ?? "")),
-        };
-    };
+            const data = await res.json();
+            const promptData: PromptRegistryEntry[] = await promptRes.json();
+            const schemaData: SchemaRegistryEntry[] = await schemaRes.json();
+            const rowsRaw: Binding[] = Array.isArray(data?.items) ? data.items : [];
+            const rows: Binding[] = rowsRaw.map((row) => ({
+                ...row,
+                id: String(row.id),
+                tier: String(row.tier || ""),
+                mode: String(row.mode || ""),
+            }));
+            setItems(rows);
+            setDrafts(Object.fromEntries(rows.map((r) => [r.id, toDraft(r)])));
+            const promptMap = new Map<string, PromptRegistryEntry>();
+            for (const item of promptData || []) {
+                if (!item?.prompt_id) continue;
+                const prev = promptMap.get(item.prompt_id);
+                if (!prev || Boolean(item.is_active) || Number(item.version || 0) > Number(prev.version || 0)) {
+                    promptMap.set(item.prompt_id, item);
+                }
+            }
+            const schemaMap = new Map<string, SchemaRegistryEntry>();
+            for (const item of schemaData || []) {
+                if (!item?.schema_id) continue;
+                const prev = schemaMap.get(item.schema_id);
+                if (!prev || Boolean(item.is_active) || Number(item.version || 0) > Number(prev.version || 0)) {
+                    schemaMap.set(item.schema_id, item);
+                }
+            }
+            setPromptOptions(Array.from(promptMap.values()).sort((a, b) => a.prompt_id.localeCompare(b.prompt_id)));
+            setSchemaOptions(Array.from(schemaMap.values()).sort((a, b) => a.schema_id.localeCompare(b.schema_id)));
+            if (rows.length > 0) {
+                setSelectedId((prev) => (prev && rows.some((x) => String(x.id) === String(prev)) ? String(prev) : String(rows[0].id)));
+            }
+        } catch (err) {
+            pushToast({ type: "error", title: "Failed to load", message: err instanceof Error ? err.message : "Unexpected error" });
+        } finally {
+            setLoading(false);
+        }
+    }, [headers, pushToast]);
 
     useEffect(() => {
-        const loadAll = async () => {
-            try {
-                setError(null);
-                await Promise.all([loadBindings(), loadPrompts(), loadSchemas()]);
-            } catch {
-                setError("Unable to load binding options.");
-            }
-        };
-        loadAll();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [baseUrl]);
+        void load();
+    }, [load]);
 
-    useEffect(() => {
-        if (prompts.length === 0 && schemas.length === 0 && bindings.length === 0) return;
-        setForm((current) => {
-            const normalized = normalizeFormSelection(current.tier, current.mode, current);
-            if (
-                normalized.tier === current.tier &&
-                normalized.mode === current.mode &&
-                normalized.global_system_prompt_id === current.global_system_prompt_id &&
-                normalized.developer_prompt_id === current.developer_prompt_id &&
-                normalized.output_schema_id === current.output_schema_id
-            ) {
-                return current;
+    const selected = items.find((x) => String(x.id) === String(selectedId)) || null;
+    const draft = selected ? drafts[selected.id] : null;
+    const activeCount = useMemo(() => items.filter((x) => Boolean(x.is_active)).length, [items]);
+    const activeTone = toneForBinding(selected);
+    const systemPromptOptions = useMemo(() => {
+        const opts = promptOptions.filter((p) => String(p.role || "").toUpperCase() === "SYSTEM");
+        return opts.length > 0 ? opts : promptOptions;
+    }, [promptOptions]);
+
+    const developerPromptOptions = useMemo(() => {
+        const opts = promptOptions.filter((p) => String(p.role || "").toUpperCase() === "DEVELOPER");
+        return opts.length > 0 ? opts : promptOptions;
+    }, [promptOptions]);
+
+    const updateDraft = (key: keyof DraftBinding, value: string | number | boolean | null) => {
+        if (!draft) return;
+        setDrafts((prev) => ({ ...prev, [draft.id]: { ...prev[draft.id], [key]: value } }));
+    };
+
+    const setFeature = (key: string, value: unknown) => {
+        if (!draft) return;
+        setDrafts((prev) => ({
+            ...prev,
+            [draft.id]: {
+                ...prev[draft.id],
+                features_obj: { ...asRecord(prev[draft.id].features_obj), [key]: value },
+            },
+        }));
+    };
+
+    const setMultiplier = (path: string[], value: unknown) => {
+        if (!draft) return;
+        setDrafts((prev) => {
+            const curr = asRecord(prev[draft.id].multipliers_obj);
+            const root = { ...curr };
+            let cursor: Record<string, unknown> = root;
+            for (let i = 0; i < path.length - 1; i += 1) {
+                const step = path[i];
+                const next = asRecord(cursor[step]);
+                cursor[step] = { ...next };
+                cursor = cursor[step] as Record<string, unknown>;
             }
-            return normalized;
+            cursor[path[path.length - 1]] = value;
+            return { ...prev, [draft.id]: { ...prev[draft.id], multipliers_obj: root } };
         });
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [prompts, schemas, bindings]);
+    };
 
-    const globalPromptOptions = useMemo(
-        () => getGlobalPromptOptions(form.tier, form.mode),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [prompts, form.tier, form.mode],
-    );
-    const developerPromptOptions = useMemo(
-        () => getDeveloperPromptOptions(form.tier, form.mode),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [prompts, form.tier, form.mode],
-    );
-    const schemaOptions = useMemo(() => schemas, [schemas]);
+    const resetCurrent = () => {
+        if (!selected) return;
+        setDrafts((prev) => ({ ...prev, [selected.id]: toDraft(selected) }));
+    };
 
-    const handleSubmit = async () => {
+    const saveCurrent = async () => {
+        if (!selected || !draft) return;
+        if (!canEdit) {
+            pushToast({ type: "error", title: "Forbidden", message: "Only admin/superadmin can edit prompt bindings." });
+            return;
+        }
+        if (!reason.trim()) {
+            pushToast({ type: "error", title: "Reason required", message: "Please provide an audit reason." });
+            return;
+        }
+
+        const payload: Record<string, unknown> = { reason: reason.trim() };
+
+        const scalarKeys: Array<keyof Binding> = [
+            "tier",
+            "mode",
+            "global_system_prompt_id",
+            "developer_prompt_id",
+            "output_schema_id",
+            "is_active",
+            "trim_strategy",
+            ...numericKeys,
+        ];
+
+        for (const key of scalarKeys) {
+            const prevVal = selected[key];
+            const nextVal = draft[key as keyof DraftBinding];
+
+            if (typeof prevVal === "boolean") {
+                if (Boolean(nextVal) !== prevVal) payload[key] = Boolean(nextVal);
+                continue;
+            }
+
+            if (numericKeys.includes(key)) {
+                const prevNum = parseNumberMaybe(prevVal as number | null, intKeys.has(key));
+                const nextNum = parseNumberMaybe(nextVal as string | number | null, intKeys.has(key));
+                if (prevNum !== nextNum) payload[key] = nextNum;
+                continue;
+            }
+
+            const prevStr = String(prevVal ?? "").trim();
+            const nextStr = String(nextVal ?? "").trim();
+            if (prevStr !== nextStr && nextStr !== "") payload[key] = nextStr;
+        }
+
+        if (JSON.stringify(draft.features_obj || {}) !== JSON.stringify(selected.features || {})) {
+            payload.features = draft.features_obj || {};
+        }
+        if (JSON.stringify(draft.multipliers_obj || {}) !== JSON.stringify(selected.multipliers || {})) {
+            payload.multipliers = draft.multipliers_obj || {};
+        }
+
+        if (Object.keys(payload).length === 1) {
+            pushToast({ type: "info", title: "No changes", message: "No fields changed." });
+            return;
+        }
+
         setSaving(true);
         try {
-            setError(null);
-            const res = await fetch(`${baseUrl}/api/v1/admin/prompt-registry/bindings/activate`, {
-                method: "POST",
-                headers: headers(true),
-                body: JSON.stringify({
-                    ...form,
-                    max_output_tokens: parseOptionalInt(form.max_output_tokens),
-                    max_input_tokens: parseOptionalInt(form.max_input_tokens),
-                    system_schema_budget_tokens: parseOptionalInt(form.system_schema_budget_tokens),
-                    context_budget_tokens: parseOptionalInt(form.context_budget_tokens),
-                    json_retry_max_output_tokens: parseOptionalInt(form.json_retry_max_output_tokens),
-                    json_retry_max_attempts: parseOptionalInt(form.json_retry_max_attempts),
-                    timeout_ms: parseOptionalInt(form.timeout_ms),
-                    temperature: parseOptionalFloat(form.temperature),
-                    top_p: parseOptionalFloat(form.top_p),
-                    plot_points_cap: parseOptionalInt(form.plot_points_cap),
-                    plot_traces_cap: parseOptionalInt(form.plot_traces_cap),
-                    plot_annotations_cap: parseOptionalInt(form.plot_annotations_cap),
-                    max_steps: parseOptionalInt(form.max_steps),
-                    retry_cap_tokens: parseOptionalInt(form.retry_cap_tokens),
-                    features: {
-                        allow_research: form.allow_research,
-                        allow_verify: form.allow_verify,
-                        allow_plot: form.allow_plot,
-                        daily_credit_cap: parseNum(form.daily_credit_cap, 0),
-                        ocr_monthly_cap: parseNum(form.ocr_monthly_cap, 0),
-                        voice_monthly_cap: parseNum(form.voice_monthly_cap, 0),
-                        generated_images_monthly_cap: parseNum(form.generated_images_monthly_cap, 0),
-                        make_it_right_monthly_cap: parseNum(form.make_it_right_monthly_cap, 0),
-                    },
-                    multipliers: {
-                        version: 1,
-                        credits: {
-                            solve: {
-                                [tierToPricingKey(form.tier)]: {
-                                    text: parseNum(form.solve_text_cost, 0),
-                                    snap_image: parseNum(form.solve_snap_image_cost, 0),
-                                    snap_pdf: parseNum(form.solve_snap_pdf_cost, 0),
-                                    voice: parseNum(form.solve_voice_cost, 0),
-                                },
-                            },
-                            verify: {
-                                [tierToPricingKey(form.tier)]: parseNum(form.verify_cost, 0),
-                            },
-                            plot_trigger: parseNum(form.plot_trigger_cost, 0),
-                        },
-                    },
-                    updated_by: localStorage.getItem("user_name") || "admin",
-                }),
+            const res = await fetchApi(`/api/v1/admin/prompt_bindings/${selected.id}`, {
+                method: "PATCH",
+                headers,
+                body: JSON.stringify(payload),
             });
-            if (!res.ok) throw new Error("Activate failed");
-            await Promise.all([loadBindings(), loadPrompts(), loadSchemas()]);
-        } catch {
-            setError("Unable to activate binding.");
+            if (!res.ok) throw new Error((await parseApiError(res)).message);
+            pushToast({ type: "success", title: "Saved", message: `${draft.tier} / ${draft.mode} updated.` });
+            await load();
+        } catch (err) {
+            pushToast({ type: "error", title: "Save failed", message: err instanceof Error ? err.message : "Unexpected error" });
         } finally {
             setSaving(false);
         }
     };
 
-    const runTestPrompt = async () => {
-        setTestRunning(true);
-        setTestResult(null);
-        try {
-            const res = await fetch(`${baseUrl}/api/v1/admin/prompt-registry/test`, {
-                method: "POST",
-                headers: headers(true),
-                body: JSON.stringify({
-                    tier: form.tier,
-                    mode: form.mode,
-                    question_payload: { problem: "Solve x + 2 = 5" },
-                    context_payload: { locale: "en-US" },
-                    runtime_hints: { requested_mode: "minimal" },
-                }),
-            });
-            const text = await res.text();
-            setTestResult(text);
-        } catch {
-            setTestResult("Test failed.");
-        } finally {
-            setTestRunning(false);
-        }
-    };
+    const features = draft ? asRecord(draft.features_obj) : {};
+    const multipliers = draft ? asRecord(draft.multipliers_obj) : {};
+    const credits = asRecord(multipliers.credits);
+    const tKey = draft ? tierKey(draft.tier) : "standard";
+    const solveTier = asRecord(asRecord(credits.solve)[tKey]);
+    const verifyTier = asRecord(credits.verify);
+    const attemptTier = asRecord(credits.attempt_fee);
 
-    const handleEditBinding = (binding: BindingEntry) => {
-        setForm({
-            tier: binding.tier,
-            mode: binding.mode,
-            global_system_prompt_id: binding.global_system_prompt_id,
-            developer_prompt_id: binding.developer_prompt_id,
-            output_schema_id: binding.output_schema_id,
-            max_output_tokens: binding.max_output_tokens?.toString() || "",
-            max_input_tokens: binding.max_input_tokens?.toString() || "",
-            system_schema_budget_tokens: binding.system_schema_budget_tokens?.toString() || "",
-            context_budget_tokens: binding.context_budget_tokens?.toString() || "",
-            json_retry_max_output_tokens: binding.json_retry_max_output_tokens?.toString() || "",
-            json_retry_max_attempts: binding.json_retry_max_attempts?.toString() || "",
-            timeout_ms: binding.timeout_ms?.toString() || "",
-            temperature: binding.temperature?.toString() || "",
-            top_p: binding.top_p?.toString() || "",
-            plot_points_cap: binding.plot_points_cap?.toString() || "",
-            plot_traces_cap: binding.plot_traces_cap?.toString() || "",
-            plot_annotations_cap: binding.plot_annotations_cap?.toString() || "",
-            trim_strategy: binding.trim_strategy || "trim_context_first",
-            max_steps: binding.max_steps?.toString() || "",
-            retry_cap_tokens: binding.retry_cap_tokens?.toString() || "",
-            allow_research: Boolean(asFeatures(binding?.features).allow_research ?? false),
-            allow_verify: Boolean(asFeatures(binding?.features).allow_verify ?? true),
-            allow_plot: Boolean(asFeatures(binding?.features).allow_plot ?? true),
-            daily_credit_cap: String(asFeatures(binding?.features).daily_credit_cap ?? ""),
-            ocr_monthly_cap: String(asFeatures(binding?.features).ocr_monthly_cap ?? ""),
-            voice_monthly_cap: String(asFeatures(binding?.features).voice_monthly_cap ?? ""),
-            generated_images_monthly_cap: String(asFeatures(binding?.features).generated_images_monthly_cap ?? ""),
-            make_it_right_monthly_cap: String(asFeatures(binding?.features).make_it_right_monthly_cap ?? ""),
-            solve_text_cost: String(
-                (
-                    asMultipliers(binding?.multipliers).credits?.solve?.[tierToPricingKey(binding.tier)]?.text ?? ""
-                ),
-            ),
-            solve_snap_image_cost: String(
-                (
-                    asMultipliers(binding?.multipliers).credits?.solve?.[tierToPricingKey(binding.tier)]?.snap_image ?? ""
-                ),
-            ),
-            solve_snap_pdf_cost: String(
-                (
-                    asMultipliers(binding?.multipliers).credits?.solve?.[tierToPricingKey(binding.tier)]?.snap_pdf ?? ""
-                ),
-            ),
-            solve_voice_cost: String(
-                (
-                    asMultipliers(binding?.multipliers).credits?.solve?.[tierToPricingKey(binding.tier)]?.voice ?? ""
-                ),
-            ),
-            verify_cost: String(
-                (asMultipliers(binding?.multipliers).credits?.verify?.[tierToPricingKey(binding.tier)] ?? ""),
-            ),
-            plot_trigger_cost: String((asMultipliers(binding?.multipliers).credits?.plot_trigger ?? "")),
-        });
-        window.scrollTo({ top: 0, behavior: "smooth" });
-    };
-
-    const handleDeleteBinding = async (binding: BindingEntry) => {
-        const confirmed = window.confirm(
-            `Delete binding "${binding.tier} - ${binding.mode}" from the table?`
-        );
-        if (!confirmed) return;
-
-        setDeletingBindingId(binding.id);
-        try {
-            setError(null);
-            const res = await fetch(
-                `${baseUrl}/api/v1/admin/prompt-registry/bindings/${encodeURIComponent(binding.id)}`,
-                {
-                    method: "DELETE",
-                    headers: headers(),
-                }
-            );
-            if (!res.ok) {
-                const payload = await res.json().catch(() => null);
-                throw new Error(payload?.detail || "Delete failed");
-            }
-            await loadBindings();
-        } catch (err) {
-            setError((err as Error)?.message || "Unable to delete binding.");
-        } finally {
-            setDeletingBindingId(null);
-        }
-    };
+    if (loading) {
+        return <div className="p-8 text-slate-500">Loading prompt bindings...</div>;
+    }
 
     return (
-        <div className="w-full p-6 xl:p-8 flex flex-col gap-6 max-w-[1920px] mx-auto">
+        <div className="p-6 max-w-6xl mx-auto space-y-6">
             <header className="space-y-2">
-                <p className="text-sm uppercase tracking-[0.4em] text-slate-400 font-semibold">Admin Panel</p>
-                <div className="flex items-baseline justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Prompt Bindings</h1>
-                        <p className="text-sm text-slate-500 mt-1">Configure tier-specific runtime constraints and prompt linking.</p>
-                    </div>
-                </div>
+                <p className="text-sm uppercase tracking-[0.4em] text-slate-400">Admin</p>
+                <h1 className="text-xl font-bold text-slate-900 dark:text-white">Prompt Bindings</h1>
+                <p className="text-sm text-slate-500">Configure prompt binding runtime, pricing, and feature gates for each tier.</p>
             </header>
 
-            {error && (
-                <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm font-medium flex items-center gap-2">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                    {error}
-                </div>
-            )}
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-
-                {/* --- Left Column: Configuration Form --- */}
-                <div className="lg:col-span-5 space-y-6">
-
-                    {/* section: Context Definition */}
-                    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50">
-                            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Core Context</h2>
-                        </div>
-                        <div className="p-5 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Legacy Tier</label>
-                                    <select
-                                        className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                                        value={form.tier}
-                                        onChange={(e) => setForm((current) => normalizeFormSelection(e.target.value, current.mode, current))}
-                                    >
-                                        <option value="FREE">FREE</option>
-                                        <option value="STANDARD">STANDARD</option>
-                                        <option value="RESEARCH">RESEARCH</option>
-                                        <option value="SHORT">SHORT</option>
-                                    </select>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Execution Mode</label>
-                                    <select
-                                        className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                                        value={form.mode}
-                                        onChange={(e) => setForm((current) => normalizeFormSelection(current.tier, e.target.value, current))}
-                                    >
-                                        <option value="SOLVE">SOLVE</option>
-                                        <option value="OCR_EXTRACT">OCR_EXTRACT</option>
-                                        <option value="VERIFY">VERIFY</option>
-                                        <option value="PLOT_TRIGGER">PLOT_TRIGGER</option>
-                                        <option value="PLOT_SPEC">PLOT_SPEC</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">System Prompt</label>
-                                <select
-                                    className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm text-slate-700 dark:text-slate-200"
-                                    value={form.global_system_prompt_id}
-                                    onChange={(e) => setForm({ ...form, global_system_prompt_id: e.target.value })}
-                                >
-                                    {globalPromptOptions.length === 0 && <option value="">No system prompts available</option>}
-                                    {globalPromptOptions.map((prompt) => (
-                                        <option key={`${prompt.prompt_id}-${prompt.version}`} value={prompt.prompt_id}>
-                                            {prompt.prompt_id} (v{prompt.version})
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Developer Prompt</label>
-                                <select
-                                    className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm text-slate-700 dark:text-slate-200"
-                                    value={form.developer_prompt_id}
-                                    onChange={(e) => setForm({ ...form, developer_prompt_id: e.target.value })}
-                                >
-                                    {developerPromptOptions.length === 0 && <option value="">No developer prompts available</option>}
-                                    {developerPromptOptions.map((prompt) => (
-                                        <option key={`${prompt.prompt_id}-${prompt.version}`} value={prompt.prompt_id}>
-                                            {prompt.prompt_id} (v{prompt.version}{prompt.tier ? `, ${prompt.tier}` : ""})
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Output Schema</label>
-                                <select
-                                    className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm text-slate-700 dark:text-slate-200"
-                                    value={form.output_schema_id}
-                                    onChange={(e) => setForm({ ...form, output_schema_id: e.target.value })}
-                                >
-                                    {schemaOptions.length === 0 && <option value="">No schemas available</option>}
-                                    {schemaOptions.map((schema) => (
-                                        <option key={`${schema.schema_id}-${schema.version}`} value={schema.schema_id}>
-                                            {schema.schema_id} (v{schema.version})
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
+            <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+                {activeCount === 0 && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                        No active prompt bindings detected. Solves may fail until at least one binding per tier is active.
                     </div>
-
-                    {/* Section: Tokens & Limits */}
-                    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50">
-                            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Limits & Budgets</h2>
-                        </div>
-                        <div className="p-5 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-slate-500">Max Input Tokens</label>
-                                    <input type="number" placeholder="Auto" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.max_input_tokens} onChange={(e) => setForm({ ...form, max_input_tokens: e.target.value })} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-slate-500">Max Output Tokens</label>
-                                    <input type="number" placeholder="Auto" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.max_output_tokens} onChange={(e) => setForm({ ...form, max_output_tokens: e.target.value })} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-slate-500">System Budget</label>
-                                    <input type="number" placeholder="Auto" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.system_schema_budget_tokens} onChange={(e) => setForm({ ...form, system_schema_budget_tokens: e.target.value })} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-slate-500">Context Budget</label>
-                                    <input type="number" placeholder="Auto" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.context_budget_tokens} onChange={(e) => setForm({ ...form, context_budget_tokens: e.target.value })} />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Section: Inference Parameters */}
-                    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50">
-                            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Inference Parameters</h2>
-                        </div>
-                        <div className="p-5 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-slate-500">Temperature</label>
-                                    <input type="number" step="0.1" placeholder="0.1" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.temperature} onChange={(e) => setForm({ ...form, temperature: e.target.value })} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-slate-500">Top P</label>
-                                    <input type="number" step="0.1" placeholder="1.0" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.top_p} onChange={(e) => setForm({ ...form, top_p: e.target.value })} />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-slate-500">Timeout (ms)</label>
-                                    <input type="number" placeholder="60000" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.timeout_ms} onChange={(e) => setForm({ ...form, timeout_ms: e.target.value })} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-slate-500">Trim Strategy</label>
-                                    <select className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.trim_strategy} onChange={(e) => setForm({ ...form, trim_strategy: e.target.value })}>
-                                        <option value="none">None</option>
-                                        <option value="trim_context_first">Trim Context First</option>
-                                        <option value="trim_user_first">Trim User First</option>
-                                        <option value="summarize_context">Summarize Context</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Section: Retry & Plots (2 col for better spacing) */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50">
-                                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Retry Logic</h2>
-                            </div>
-                            <div className="p-4 space-y-3">
-                                <div className="space-y-1">
-                                    <label className="text-[11px] font-medium text-slate-400">JSON Retry Max Output</label>
-                                    <input type="number" placeholder="Auto" className="w-full rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2.5 py-1.5 text-sm" value={form.json_retry_max_output_tokens} onChange={(e) => setForm({ ...form, json_retry_max_output_tokens: e.target.value })} />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[11px] font-medium text-slate-400">Retry Attempts</label>
-                                    <input type="number" placeholder="1" className="w-full rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2.5 py-1.5 text-sm" value={form.json_retry_max_attempts} onChange={(e) => setForm({ ...form, json_retry_max_attempts: e.target.value })} />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[11px] font-medium text-slate-400">Max Steps</label>
-                                    <input type="number" placeholder="Auto" className="w-full rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2.5 py-1.5 text-sm" value={form.max_steps} onChange={(e) => setForm({ ...form, max_steps: e.target.value })} />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50">
-                                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Plotting</h2>
-                            </div>
-                            <div className="p-4 space-y-3">
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1">
-                                        <label className="text-[11px] font-medium text-slate-400">Points Cap</label>
-                                        <input type="number" placeholder="25" className="w-full rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2.5 py-1.5 text-sm" value={form.plot_points_cap} onChange={(e) => setForm({ ...form, plot_points_cap: e.target.value })} />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-[11px] font-medium text-slate-400">Traces Cap</label>
-                                        <input type="number" placeholder="5" className="w-full rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2.5 py-1.5 text-sm" value={form.plot_traces_cap} onChange={(e) => setForm({ ...form, plot_traces_cap: e.target.value })} />
-                                    </div>
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[11px] font-medium text-slate-400">Annotations Cap</label>
-                                    <input type="number" placeholder="5" className="w-full rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2.5 py-1.5 text-sm" value={form.plot_annotations_cap} onChange={(e) => setForm({ ...form, plot_annotations_cap: e.target.value })} />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50">
-                            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Credit Pricing</h2>
-                        </div>
-                        <div className="p-5 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-slate-500">Solve Text Cost</label>
-                                    <input type="number" step="1" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.solve_text_cost} onChange={(e) => setForm({ ...form, solve_text_cost: e.target.value })} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-slate-500">Solve Snap Image Cost</label>
-                                    <input type="number" step="1" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.solve_snap_image_cost} onChange={(e) => setForm({ ...form, solve_snap_image_cost: e.target.value })} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-slate-500">Solve Snap PDF Cost</label>
-                                    <input type="number" step="1" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.solve_snap_pdf_cost} onChange={(e) => setForm({ ...form, solve_snap_pdf_cost: e.target.value })} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-slate-500">Solve Voice Cost</label>
-                                    <input type="number" step="1" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.solve_voice_cost} onChange={(e) => setForm({ ...form, solve_voice_cost: e.target.value })} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-slate-500">Verify Add-on Cost</label>
-                                    <input type="number" step="1" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.verify_cost} onChange={(e) => setForm({ ...form, verify_cost: e.target.value })} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-slate-500">Plot Trigger Add-on Cost</label>
-                                    <input type="number" step="1" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.plot_trigger_cost} onChange={(e) => setForm({ ...form, plot_trigger_cost: e.target.value })} />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50">
-                            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Feature Gates & Caps</h2>
-                        </div>
-                        <div className="p-5 space-y-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <label className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                                    <input type="checkbox" checked={form.allow_research} onChange={(e) => setForm({ ...form, allow_research: e.target.checked })} />
-                                    Allow Research
-                                </label>
-                                <label className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                                    <input type="checkbox" checked={form.allow_verify} onChange={(e) => setForm({ ...form, allow_verify: e.target.checked })} />
-                                    Allow Verify
-                                </label>
-                                <label className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                                    <input type="checkbox" checked={form.allow_plot} onChange={(e) => setForm({ ...form, allow_plot: e.target.checked })} />
-                                    Allow Plot
-                                </label>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-slate-500">Daily Credit Cap</label>
-                                    <input type="number" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.daily_credit_cap} onChange={(e) => setForm({ ...form, daily_credit_cap: e.target.value })} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-slate-500">OCR Monthly Cap</label>
-                                    <input type="number" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.ocr_monthly_cap} onChange={(e) => setForm({ ...form, ocr_monthly_cap: e.target.value })} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-slate-500">Voice Monthly Cap</label>
-                                    <input type="number" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.voice_monthly_cap} onChange={(e) => setForm({ ...form, voice_monthly_cap: e.target.value })} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-slate-500">Generated Images Monthly Cap</label>
-                                    <input type="number" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.generated_images_monthly_cap} onChange={(e) => setForm({ ...form, generated_images_monthly_cap: e.target.value })} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-slate-500">Make It Right Monthly Cap</label>
-                                    <input type="number" className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" value={form.make_it_right_monthly_cap} onChange={(e) => setForm({ ...form, make_it_right_monthly_cap: e.target.value })} />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-
-                    <div className="pt-4 flex gap-3">
-                        <button
-                            className="flex-1 px-4 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            onClick={handleSubmit}
-                            disabled={saving || !form.global_system_prompt_id || !form.developer_prompt_id || !form.output_schema_id}
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Field label="Binding">
+                        <select
+                            value={selectedId}
+                            onChange={(e) => setSelectedId(e.target.value)}
+                            className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100"
                         >
-                            {saving ? "Saving Changes..." : "Activate / Update Binding"}
-                        </button>
-                        <button
-                            className="px-6 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold transition-colors disabled:opacity-50"
-                            onClick={runTestPrompt}
-                            disabled={testRunning || form.mode === "OCR_EXTRACT"}
-                        >
-                            {testRunning ? "Testing..." : "Test"}
-                        </button>
-                    </div>
-
-                    {testResult && (
-                        <div className="bg-slate-900 rounded-xl p-4 overflow-x-auto border border-slate-800">
-                            <h4 className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Test Result</h4>
-                            <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap leading-relaxed">{testResult}</pre>
-                        </div>
-                    )}
-
-                </div>
-
-                {/* --- Right Column: List --- */}
-                <div className="lg:col-span-7 space-y-4">
-                    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col h-[calc(100vh-140px)]">
-                        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-950/50 rounded-t-xl">
-                            <h2 className="font-semibold text-slate-800 dark:text-slate-100">Active Bindings</h2>
-                            <span className="text-xs text-slate-500 bg-slate-200 dark:bg-slate-800 px-2 py-1 rounded-full">{bindings.length} configured</span>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                            {bindings.length === 0 && (
-                                <div className="text-center py-12 text-slate-400 text-sm">No active bindings found. Configure one on the left.</div>
-                            )}
-                            {bindings.map((binding, index) => (
-                                <div
-                                    key={binding.id || `${binding.tier}-${binding.mode}-${index}`}
-                                    className="group relative bg-white dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 p-4 hover:border-blue-400 transition-colors"
-                                >
-                                    <div className="flex items-start justify-between mb-3">
-                                        <div className="flex items-center gap-3">
-                                            <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide ${binding.tier === 'FREE' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                                binding.tier === 'STANDARD' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                                    'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                                                }`}>
-                                                {binding.tier}
-                                            </span>
-                                            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{binding.mode}</span>
-                                        </div>
-                                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => handleEditBinding(binding)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="Edit">
-                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                            </button>
-                                            <button onClick={() => handleDeleteBinding(binding)} disabled={deletingBindingId === binding.id} className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Delete">
-                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4 text-xs text-slate-600 dark:text-slate-400 mb-3">
-                                        <div className="space-y-1">
-                                            <div className="flex gap-2"><span className="text-slate-400 w-16">Global:</span> <span className="font-mono text-slate-700 dark:text-slate-300 truncate">{binding.global_system_prompt_id}</span></div>
-                                            <div className="flex gap-2"><span className="text-slate-400 w-16">Dev:</span> <span className="font-mono text-slate-700 dark:text-slate-300 truncate">{binding.developer_prompt_id}</span></div>
-                                            <div className="flex gap-2"><span className="text-slate-400 w-16">Schema:</span> <span className="font-mono text-slate-700 dark:text-slate-300 truncate">{binding.output_schema_id}</span></div>
-                                        </div>
-                                        <div className="space-y-1 border-l pl-4 border-slate-100 dark:border-slate-800">
-                                            <div className="flex justify-between"><span>Out Tokens:</span> <span className="font-medium">{binding.max_output_tokens || 'Auto'}</span></div>
-                                            <div className="flex justify-between"><span>Timeout:</span> <span className="font-medium">{binding.timeout_ms ? `${binding.timeout_ms}ms` : 'Default'}</span></div>
-                                            <div className="flex justify-between"><span>Temp:</span> <span className="font-medium">{binding.temperature ?? '0.1'}</span></div>
-                                        </div>
-                                    </div>
-
-                                    {/* Mini badges for active features */}
-                                    <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                        {binding.trim_strategy && binding.trim_strategy !== 'none' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">Trim: {binding.trim_strategy}</span>}
-                                        {binding.plot_points_cap && <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600">Plot Cap: {binding.plot_points_cap}</span>}
-                                    </div>
-                                </div>
+                            {items.map((b) => (
+                                <option key={b.id} value={b.id}>
+                                    {b.tier} / {b.mode}
+                                </option>
                             ))}
-                        </div>
+                        </select>
+                    </Field>
+                    <Field label="Audit Reason">
+                        <input
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                            className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100"
+                            placeholder="Reason is required before save"
+                        />
+                    </Field>
+                </div>
+                <div className="flex items-center justify-between">
+                    <div className="text-xs text-slate-500">
+                        Role: <span className="font-semibold uppercase">{normalizedRole || "unknown"}</span> · Last updated by {selected?.updated_by || "unknown"} · {items.length} bindings loaded
+                        {!canEdit ? " · read-only" : ""}
+                    </div>
+                    <div className="flex gap-3">
+                        <button onClick={resetCurrent} disabled={saving} className="px-4 py-2 rounded-lg border border-slate-300 text-sm font-semibold">Reset</button>
+                        <button onClick={() => void saveCurrent()} disabled={saving || !canEdit} className="px-5 py-2 rounded-lg bg-admin-primary text-white text-sm font-bold disabled:opacity-60">
+                            {saving ? "Saving..." : "Save Changes"}
+                        </button>
                     </div>
                 </div>
-            </div>
+                <div className="flex flex-wrap gap-2 pt-1">
+                    {items.map((b) => {
+                        const tone = toneForBinding(b);
+                        const isActive = String(b.id) === String(selectedId);
+                        return (
+                            <button
+                                key={b.id}
+                                type="button"
+                                onClick={() => setSelectedId(String(b.id))}
+                                className={`px-3 py-1 rounded-full border text-xs font-semibold transition ring-2 ${isActive ? tone.badgeActive : `${tone.badge} ring-transparent opacity-80 hover:opacity-100`}`}
+                            >
+                                {b.tier} / {b.mode}
+                            </button>
+                        );
+                    })}
+                </div>
+            </section>
+
+            {!draft ? (
+                <div className="text-slate-500 text-sm">No binding selected.</div>
+            ) : (
+                <>
+                    <Section title="Binding Identity" tone={activeTone}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <Field label="Tier">
+                                <select value={draft.tier} onChange={(e) => updateDraft("tier", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100">
+                                    <option value="FREE">FREE</option>
+                                    <option value="STANDARD">STANDARD</option>
+                                    <option value="RESEARCH">RESEARCH</option>
+                                    <option value="SHORT">SHORT</option>
+                                </select>
+                            </Field>
+                            <Field label="Mode">
+                                <select value={draft.mode} onChange={(e) => updateDraft("mode", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100">
+                                    {modeOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                                </select>
+                            </Field>
+                            <Field label="Global System Prompt ID">
+                                <select value={draft.global_system_prompt_id || ""} onChange={(e) => updateDraft("global_system_prompt_id", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100">
+                                    {!!draft.global_system_prompt_id && !systemPromptOptions.some((p) => p.prompt_id === draft.global_system_prompt_id) && (
+                                        <option value={draft.global_system_prompt_id}>{draft.global_system_prompt_id} (current)</option>
+                                    )}
+                                    {systemPromptOptions.map((p) => (
+                                        <option key={p.prompt_id} value={p.prompt_id}>
+                                            {p.prompt_id} · v{p.version ?? 1}{p.is_active ? "" : " · inactive"}
+                                        </option>
+                                    ))}
+                                </select>
+                            </Field>
+                            <Field label="Developer Prompt ID">
+                                <select value={draft.developer_prompt_id || ""} onChange={(e) => updateDraft("developer_prompt_id", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100">
+                                    {!!draft.developer_prompt_id && !developerPromptOptions.some((p) => p.prompt_id === draft.developer_prompt_id) && (
+                                        <option value={draft.developer_prompt_id}>{draft.developer_prompt_id} (current)</option>
+                                    )}
+                                    {developerPromptOptions.map((p) => (
+                                        <option key={p.prompt_id} value={p.prompt_id}>
+                                            {p.prompt_id} · v{p.version ?? 1}{p.is_active ? "" : " · inactive"}
+                                        </option>
+                                    ))}
+                                </select>
+                            </Field>
+                            <Field label="Output Schema ID">
+                                <select value={draft.output_schema_id || ""} onChange={(e) => updateDraft("output_schema_id", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100">
+                                    {!!draft.output_schema_id && !schemaOptions.some((s) => s.schema_id === draft.output_schema_id) && (
+                                        <option value={draft.output_schema_id}>{draft.output_schema_id} (current)</option>
+                                    )}
+                                    {schemaOptions.map((s) => (
+                                        <option key={s.schema_id} value={s.schema_id}>
+                                            {s.schema_id} · v{s.version ?? 1}{s.is_active ? "" : " · inactive"}
+                                        </option>
+                                    ))}
+                                </select>
+                            </Field>
+                            <Field label="Binding ID">
+                                <input value={draft.id} disabled className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-slate-50 text-slate-600" />
+                            </Field>
+                            <Field label="Active">
+                                <label className="inline-flex items-center gap-3 rounded-xl border border-slate-300 px-4 py-3 bg-white">
+                                    <input type="checkbox" checked={Boolean(draft.is_active)} onChange={(e) => updateDraft("is_active", e.target.checked)} disabled={!canEdit} className="size-4" />
+                                    <span className="text-sm font-semibold text-slate-700">{draft.is_active ? "Enabled" : "Disabled"}</span>
+                                </label>
+                            </Field>
+                        </div>
+                    </Section>
+
+                    <Section title="Limits & Budgets" tone={activeTone}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <Field label="Max Questions Allowed"><input value={asInput(draft.max_questions_allowed)} onChange={(e) => updateDraft("max_questions_allowed", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" placeholder="Required" /></Field>
+                            <Field label="Max Input Tokens"><input value={asInput(draft.max_input_tokens)} onChange={(e) => updateDraft("max_input_tokens", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" placeholder="Auto" /></Field>
+                            <Field label="Max Output Tokens"><input value={asInput(draft.max_output_tokens)} onChange={(e) => updateDraft("max_output_tokens", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" placeholder="Auto" /></Field>
+                            <Field label="System Budget"><input value={asInput(draft.system_schema_budget_tokens)} onChange={(e) => updateDraft("system_schema_budget_tokens", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" placeholder="Auto" /></Field>
+                            <Field label="Context Budget"><input value={asInput(draft.context_budget_tokens)} onChange={(e) => updateDraft("context_budget_tokens", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" placeholder="Auto" /></Field>
+                        </div>
+                    </Section>
+
+                    <Section title="Inference Parameters" tone={activeTone}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <Field label="Temperature"><input value={asInput(draft.temperature)} onChange={(e) => updateDraft("temperature", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" /></Field>
+                            <Field label="Top P"><input value={asInput(draft.top_p)} onChange={(e) => updateDraft("top_p", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" /></Field>
+                            <Field label="Timeout (ms)"><input value={asInput(draft.timeout_ms)} onChange={(e) => updateDraft("timeout_ms", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" /></Field>
+                            <Field label="Trim Strategy">
+                                <select value={draft.trim_strategy || ""} onChange={(e) => updateDraft("trim_strategy", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100">
+                                    {trimStrategyOptions.map((opt, i) => <option key={`trim-${i}-${opt || "null"}`} value={opt}>{opt || "(null)"}</option>)}
+                                </select>
+                            </Field>
+                        </div>
+                    </Section>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <Section title="Retry Logic" tone={activeTone}>
+                            <div className="space-y-6">
+                                <Field label="JSON Retry Max Output"><input value={asInput(draft.json_retry_max_output_tokens)} onChange={(e) => updateDraft("json_retry_max_output_tokens", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" placeholder="Auto" /></Field>
+                                <Field label="Retry Attempts"><input value={asInput(draft.json_retry_max_attempts)} onChange={(e) => updateDraft("json_retry_max_attempts", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" /></Field>
+                                <Field label="Max Steps"><input value={asInput(draft.max_steps)} onChange={(e) => updateDraft("max_steps", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" placeholder="Auto" /></Field>
+                            </div>
+                        </Section>
+                        <Section title="Plotting" tone={activeTone}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <Field label="Points Cap"><input value={asInput(draft.plot_points_cap)} onChange={(e) => updateDraft("plot_points_cap", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" /></Field>
+                                <Field label="Traces Cap"><input value={asInput(draft.plot_traces_cap)} onChange={(e) => updateDraft("plot_traces_cap", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" /></Field>
+                                <Field label="Annotations Cap"><input value={asInput(draft.plot_annotations_cap)} onChange={(e) => updateDraft("plot_annotations_cap", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" /></Field>
+                            </div>
+                        </Section>
+                    </div>
+
+                    <Section title="Credit Pricing" tone={activeTone}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <Field label="Solve Text Cost"><input value={asInput(draft.solve_text_cost)} onChange={(e) => updateDraft("solve_text_cost", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" /></Field>
+                            <Field label="Solve Snap Image Cost"><input value={asInput(draft.solve_snap_image_cost)} onChange={(e) => updateDraft("solve_snap_image_cost", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" /></Field>
+                            <Field label="Solve Snap PDF Cost"><input value={asInput(draft.solve_snap_pdf_cost)} onChange={(e) => updateDraft("solve_snap_pdf_cost", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" /></Field>
+                            <Field label="Solve Voice Cost"><input value={asInput(draft.solve_voice_cost)} onChange={(e) => updateDraft("solve_voice_cost", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" /></Field>
+                            <Field label="Verify Add-on Cost"><input value={asInput(draft.verify_addon_cost)} onChange={(e) => updateDraft("verify_addon_cost", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" /></Field>
+                            <Field label="Plot Trigger Add-on Cost"><input value={asInput(draft.plot_addon_cost)} onChange={(e) => updateDraft("plot_addon_cost", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" /></Field>
+                        </div>
+                    </Section>
+
+                    <Section title="Feature Gates & Caps" tone={activeTone}>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                            <label className="flex items-center gap-3 text-base font-semibold text-slate-700"><input type="checkbox" checked={Boolean(features.allow_research)} onChange={(e) => setFeature("allow_research", e.target.checked)} disabled={!canEdit} className="size-4" />Allow Research</label>
+                            <label className="flex items-center gap-3 text-base font-semibold text-slate-700"><input type="checkbox" checked={Boolean(features.allow_verify ?? true)} onChange={(e) => setFeature("allow_verify", e.target.checked)} disabled={!canEdit} className="size-4" />Allow Verify</label>
+                            <label className="flex items-center gap-3 text-base font-semibold text-slate-700"><input type="checkbox" checked={Boolean(features.allow_plot ?? true)} onChange={(e) => setFeature("allow_plot", e.target.checked)} disabled={!canEdit} className="size-4" />Allow Plot</label>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <Field label="Daily Credit Cap"><input value={asInput(features.daily_credit_cap as number | null)} onChange={(e) => setFeature("daily_credit_cap", parseNullableNumber(e.target.value))} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" /></Field>
+                            <Field label="OCR Monthly Cap"><input value={asInput(features.ocr_monthly_cap as number | null)} onChange={(e) => setFeature("ocr_monthly_cap", parseNullableNumber(e.target.value))} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" /></Field>
+                            <Field label="Voice Monthly Cap"><input value={asInput(features.voice_monthly_cap as number | null)} onChange={(e) => setFeature("voice_monthly_cap", parseNullableNumber(e.target.value))} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" /></Field>
+                            <Field label="Generated Images Monthly Cap"><input value={asInput(features.generated_images_monthly_cap as number | null)} onChange={(e) => setFeature("generated_images_monthly_cap", parseNullableNumber(e.target.value))} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" /></Field>
+                            <Field label="Make It Right Monthly Cap"><input value={asInput(features.make_it_right_monthly_cap as number | null)} onChange={(e) => setFeature("make_it_right_monthly_cap", parseNullableNumber(e.target.value))} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" /></Field>
+                        </div>
+                    </Section>
+
+                    <Section title="Multiplier Overrides" tone={activeTone}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <Field label="Multiplier Text"><input value={asInput(solveTier.text as number | null)} onChange={(e) => setMultiplier(["credits", "solve", tKey, "text"], parseNullableNumber(e.target.value))} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" /></Field>
+                            <Field label="Multiplier Snap Image"><input value={asInput(solveTier.snap_image as number | null)} onChange={(e) => setMultiplier(["credits", "solve", tKey, "snap_image"], parseNullableNumber(e.target.value))} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" /></Field>
+                            <Field label="Multiplier Snap PDF"><input value={asInput(solveTier.snap_pdf as number | null)} onChange={(e) => setMultiplier(["credits", "solve", tKey, "snap_pdf"], parseNullableNumber(e.target.value))} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" /></Field>
+                            <Field label="Multiplier Voice"><input value={asInput(solveTier.voice as number | null)} onChange={(e) => setMultiplier(["credits", "solve", tKey, "voice"], parseNullableNumber(e.target.value))} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" /></Field>
+                            <Field label="Multiplier Verify"><input value={asInput(verifyTier[tKey] as number | null)} onChange={(e) => setMultiplier(["credits", "verify", tKey], parseNullableNumber(e.target.value))} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" /></Field>
+                            <Field label="Plot Trigger Multiplier"><input value={asInput(credits.plot_trigger as number | null)} onChange={(e) => setMultiplier(["credits", "plot_trigger"], parseNullableNumber(e.target.value))} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" /></Field>
+                            <Field label="Attempt Fee Multiplier"><input value={asInput(attemptTier[tKey] as number | null)} onChange={(e) => setMultiplier(["credits", "attempt_fee", tKey], parseNullableNumber(e.target.value))} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100" /></Field>
+                            <Field label="Current Binding Mode">
+                                <select value={draft.mode} onChange={(e) => updateDraft("mode", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100">
+                                    {modeOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                                </select>
+                            </Field>
+                        </div>
+                    </Section>
+                </>
+            )}
         </div>
     );
-
 }
+
+
 

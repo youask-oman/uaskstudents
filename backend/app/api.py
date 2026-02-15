@@ -102,6 +102,10 @@ from app.services.legal_service import get_terms_requirement_status
 from app.services.audit_log_service import audit_log_service
 from app.services.share_service import share_service
 from app.services.credit_transfer_config import load_credit_transfer_config
+from app.services.prompt_binding_policy import (
+    ALLOWED_PROMPT_IDS,
+    ALLOWED_SCHEMA_IDS,
+)
 
 
 
@@ -1510,6 +1514,7 @@ class SolveTraceEntry(BaseModel):
     problem_text: Optional[str] = None
     error: Optional[str] = None
     logged_at: Optional[str] = None
+    source: Optional[str] = None
 
 class DashboardStatsResponse(BaseModel):
     total_users: int
@@ -2481,14 +2486,24 @@ class ExtractQuestionsResponse(BaseModel):
 
 class SolveBatchItem(BaseModel):
     question_id: str
-    text: str
+    text: Optional[str] = None
+    question_text: Optional[str] = None
+    mode: Optional[str] = None
+    graph_mode: Optional[str] = None
+    domain_mode: Optional[str] = None
     requested_mode: Optional[str] = "minimal"
     requires_figure: Optional[bool] = False
     figure_image_base64: Optional[str] = None
 
 
 class SolveBatchRequest(BaseModel):
-    items: List[SolveBatchItem]
+    items: List[SolveBatchItem] = Field(default_factory=list)
+    tier: Optional[str] = "FREE"
+    mode: Optional[str] = "SOLVE"
+    graph_mode: Optional[str] = "AUTO"
+    domain_mode: Optional[str] = "reals"
+    preferred_response_language: Optional[str] = "English"
+    questions_json: Optional[List[Dict[str, Any]]] = None
     features_used: Optional[Dict[str, Any]] = None
     input_modality: Optional[str] = None
     verification_level: Optional[str] = None
@@ -2496,6 +2511,9 @@ class SolveBatchRequest(BaseModel):
     image_url: Optional[str] = None
     artifact_id: Optional[int] = None
     has_voice: Optional[bool] = False
+    verify_requested: Optional[bool] = False
+    plot_requested: Optional[bool] = False
+    idempotency_key: Optional[str] = None
 
 
 class SolveBatchItemResult(BaseModel):
@@ -2512,6 +2530,13 @@ class SolveBatchItemResult(BaseModel):
 class SolveBatchResponse(BaseModel):
     ok: bool
     results: List[SolveBatchItemResult]
+    request_id: Optional[str] = None
+    attempt_id: Optional[str] = None
+    tier: Optional[str] = None
+    language: Optional[Dict[str, Any]] = None
+    items: Optional[List[Dict[str, Any]]] = None
+    payload: Optional[Dict[str, Any]] = None
+    telemetry: Optional[Dict[str, Any]] = None
 
 
 TOKENS_PER_CREDIT = float(os.getenv("TOKENS_PER_CREDIT", "2000"))
@@ -3821,298 +3846,220 @@ async def solve_questions_batch(
     user_id: int = Query(...),
     session: Session = Depends(get_session)
 ):
-    from app.services.admin.analytics_service import record_request_event, _calc_cost
-    if not body.items:
-        raise HTTPException(status_code=400, detail="No items provided")
+    from app.services.solve.batch_tier_runtime import BatchSolveError, execute_batch_solve
+    from app.services.credit_billing_service import CreditBillingError, credit_billing_service
+
+    if not body.items and not body.questions_json:
+        raise HTTPException(status_code=400, detail="No questions provided")
 
     user = session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    token_policy = get_token_policy(session)
-    subscription = subscription_service.get_or_create_subscription(session, user)
-    if not subscription:
-        raise HTTPException(status_code=500, detail="Subscription not available")
+    questions_json: List[Dict[str, Any]] = []
+    if isinstance(body.questions_json, list) and body.questions_json:
+        questions_json = body.questions_json
+    else:
+        for item in body.items:
+            q_text = (item.question_text or item.text or "").strip()
+            questions_json.append(
+                {
+                    "question_id": item.question_id,
+                    "question_text": q_text,
+                    "mode": item.mode or body.mode or "SOLVE",
+                    "graph_mode": item.graph_mode or body.graph_mode or "AUTO",
+                    "domain_mode": item.domain_mode or body.domain_mode or "reals",
+                }
+            )
 
-    plan = session.get(Plan, subscription.plan_id)
-    if not plan:
-        raise HTTPException(status_code=500, detail="Plan not available for subscription")
+    if not questions_json:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "invalid_question_item",
+                "message": "No valid questions provided.",
+                "details": {},
+            },
+        )
 
-    features_used = body.features_used or {}
-    token_policy = get_token_policy(session)
-    ocr_metadata = _collect_ocr_metadata(features_used)
-    voice_metadata = _collect_voice_metadata(features_used)
-    ocr_confidence = ocr_metadata.get("ocr_confidence")
-    modality = _resolve_modality_flags(body, features_used, bool(body.image_url or body.artifact_id), bool(body.has_voice))
-    verification_level = _get_verification_level(body, modality)
-    token_policy_key = body.token_policy or "system_config"
-    has_ocr = bool(features_used.get("ocr_used", True))
-    has_voice = bool(features_used.get("voice_used", False))
-    if has_voice:
-        raise HTTPException(status_code=400, detail="Voice modality is not supported in OCR batch solves")
-    if modality in ("ocr_image", "ocr_pdf"):
-        _enforce_ocr_confidence(ocr_confidence)
-
-    reserve_map: Dict[str, float] = {}
-    total_reserve = 0.0
-    for item in body.items:
-        reserve = _estimate_credits(plan, item.requested_mode or "minimal", item.text, has_ocr, has_voice)
-        reserve_map[item.question_id] = reserve
-        total_reserve += reserve
-
-    if subscription.credits_balance < total_reserve:
-        raise HTTPException(status_code=402, detail="Insufficient credits for batch solve")
+    normalized_questions: List[Dict[str, Any]] = []
+    for idx, q in enumerate(questions_json, start=1):
+        qid = str((q or {}).get("question_id") or "").strip()
+        qtext = str((q or {}).get("question_text") or "").strip()
+        if not qid or not qtext:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "invalid_question_item",
+                    "message": "Each question requires non-empty question_id and question_text.",
+                    "details": {"question_index": idx},
+                },
+            )
+        normalized_questions.append(
+            {
+                "question_id": qid,
+                "question_text": qtext,
+                "mode": str((q or {}).get("mode") or body.mode or "SOLVE"),
+                "graph_mode": str((q or {}).get("graph_mode") or body.graph_mode or "AUTO"),
+                "domain_mode": str((q or {}).get("domain_mode") or body.domain_mode or "reals"),
+            }
+        )
+    questions_json = normalized_questions
 
     request_id = str(uuid.uuid4())
-    holds: Dict[str, CreditHold] = {}
-    for item in body.items:
-        reserve = reserve_map[item.question_id]
-        subscription.credits_balance -= reserve
-        subscription.credits_used_this_period += reserve
-        hold = CreditHold(
-            user_id=user.id,
-            subscription_id=subscription.id,
-            request_id=request_id,
-            question_id=item.question_id,
-            reserved_credits=reserve,
-            status="held",
-            metadata={
-                "requested_mode": item.requested_mode,
-                "has_ocr": has_ocr,
-                "has_voice": has_voice,
-                "text_length": len(item.text)
-            }
-        )
-        holds[item.question_id] = hold
-        session.add(hold)
-        session.add(UsageLedger(
-            subscription_id=subscription.id,
-            transaction_type="HOLD",
-            amount=reserve,
-            balance_after=subscription.credits_balance,
-            reference_id=request_id,
-            meta={"question_id": item.question_id}
-        ))
+    attempt_id = str(uuid.uuid4())
+    modality = "text"
+    raw_modality = str(body.input_modality or "").strip().lower()
+    if raw_modality in {"ocr_image", "snap_image", "image"}:
+        modality = "snap_image"
+    elif raw_modality in {"ocr_pdf", "snap_pdf", "pdf"}:
+        modality = "snap_pdf"
+    elif bool(body.has_voice):
+        modality = "voice"
 
-    session.add(subscription)
-    session.commit()
-
-    semaphore = asyncio.Semaphore(SOLVE_BATCH_CONCURRENCY)
-    from app.services.solver_v3 import get_solver_v3
-    from app.database import engine
-
-    async def solve_one(item: SolveBatchItem) -> SolveBatchItemResult:
-        async with semaphore:
-            if item.requires_figure and not item.figure_image_base64:
-                return SolveBatchItemResult(
-                    question_id=item.question_id,
-                    ok=False,
-                    error="Figure required. Please crop the figure region."
-                )
-            token_estimate = _estimate_input_tokens(item.text)
-            max_input = token_policy.ocr_image_input_max + token_policy.ocr_image_input_overhead
-            if token_estimate > max_input:
-                return SolveBatchItemResult(
-                    question_id=item.question_id,
-                    ok=False,
-                    error=f"OCR input exceeds token limit ({token_estimate} > {max_input})"
-                )
-
-            image_url = None
-            if item.figure_image_base64:
-                data = item.figure_image_base64
-                if data.startswith("data:image"):
-                    image_url = data
-                else:
-                    image_url = f"data:image/jpeg;base64,{data}"
-
-            local_session = Session(engine)
-            try:
-                solver = get_solver_v3()
-                from app.utils.token_limits import get_effective_max_tokens
-                effective_max_tokens = get_effective_max_tokens(item.requested_mode or "minimal", "solve", token_policy)
-                result = await solver.solve(
-                    problem_text=item.text,
-                    context="",
-                    request_id=request_id,
-                    user_id=user_id,
-                    db_session=local_session,
-                    requested_mode=item.requested_mode or "minimal",
-                    trusted_context=None,
-                    learning_mode="solve",
-                    image_url=image_url,
-                    max_output_tokens=effective_max_tokens
-                )
-                telemetry = result.get("telemetry") or result.get("_telemetry") or {}
-                return SolveBatchItemResult(
-                    question_id=item.question_id,
-                    ok=not result.get("error", False),
-                    solve_response_json=result,
-                    telemetry=telemetry
-                )
-            except Exception as exc:
-                logging.exception("solve_questions_batch item failed")
-                return SolveBatchItemResult(
-                    question_id=item.question_id,
-                    ok=False,
-                    error=str(exc)
-                )
-            finally:
-                local_session.close()
-
-    results = await asyncio.gather(*[solve_one(item) for item in body.items])
-
-    for item_result in results:
-        hold = holds.get(item_result.question_id)
-        reserved = hold.reserved_credits if hold else 0.0
-
-        if not item_result.ok or not item_result.solve_response_json:
-            subscription_service.refund_credits(
-                session,
-                subscription.id,
-                reserved,
-                "Solve failed",
-                request_id
-            )
-            item_result.credits_reserved = reserved
-            item_result.credits_final = 0.0
-            item_result.credits_refunded = reserved
-            if hold:
-                hold.status = "released"
-                hold.finalized_at = datetime.utcnow()
-                session.add(hold)
-            event_payload = {
-                "request_id": request_id,
-                "user_id": user_id,
-                "mode": hold.meta.get("requested_mode") if hold and hold.meta else None,
-                "learning_mode": "solve",
-                "subject": None,
-                "grade_level": user.grade_level if user else None,
-                "model": None,
-                "provider": "openai",
-                "route": "solve_question",
-                "tokens_in": None,
-                "tokens_out": None,
-                "tokens_total": None,
-                "cost_usd": 0.0,
-                "latency_ms": None,
-                "status": "error",
-                "error_type": item_result.error or "solve_failed",
-                "schema_valid": None,
-                "verification_pass": bool(final_data.get("verified")),
-                "is_stream": False,
-                "is_cached": False,
-                "credit_deducted": False,
-                "credit_amount": 0.0,
-                "ocr_used": has_ocr,
-                "voice_used": has_voice,
-                "response_truncated": False
-            }
-            _record_event_with_modality(session, event_payload, modality, ocr_metadata, voice_metadata, verification_level, token_policy_key)
-            session.commit()
-            continue
-
-        telemetry = item_result.telemetry or {}
-        total_tokens = telemetry.get("total_tokens")
-        if total_tokens is None:
-            total_tokens = (telemetry.get("input_tokens") or 0) + (telemetry.get("output_tokens") or 0)
-
-        base_cost = subscription_service.calculate_cost(
-            plan,
-            "detailed" if (hold.meta or {}).get("requested_mode") == "detailed" else "concise",
-            has_ocr,
-            has_voice
-        )
-        actual_cost = float(base_cost + (float(total_tokens or 0) / TOKENS_PER_CREDIT))
-
-        refund_amount = 0.0
-        if actual_cost <= reserved:
-            refund_amount = reserved - actual_cost
-            if refund_amount > 0:
-                subscription_service.refund_credits(
-                    session,
-                    subscription.id,
-                    refund_amount,
-                    "Solve refund",
-                    request_id
-                )
-        else:
-            extra = actual_cost - reserved
-            if subscription.credits_balance >= extra:
-                subscription_service.execute_debit(
-                    session,
-                    subscription,
-                    extra,
-                    {"action": "solve_batch_extra", "question_id": item_result.question_id},
-                    request_id
-                )
-                session.commit()
-            else:
-                actual_cost = reserved
-
-        item_result.credits_reserved = reserved
-        item_result.credits_final = actual_cost
-        item_result.credits_refunded = refund_amount
-
-        session.add(UsageLog(
+    verify_requested = bool(body.verify_requested)
+    plot_requested = bool(body.plot_requested)
+    reserve_result = None
+    try:
+        reserve_result = credit_billing_service.reserve_for_batch_solve(
+            session=session,
             user_id=user_id,
-            action_type="solve_question",
-            tokens_used=int(total_tokens or 0),
-            timestamp=datetime.utcnow()
-        ))
-        record_request_event(session, {
-            "request_id": request_id,
-            "user_id": user_id,
-                "mode": hold.meta.get("requested_mode") if hold and hold.meta else None,
-            "learning_mode": "solve",
-            "subject": None,
-            "grade_level": user.grade_level if user else None,
-            "model": telemetry.get("model") if isinstance(telemetry, dict) else None,
-            "provider": "openai",
-            "route": "solve_question",
-            "tokens_in": telemetry.get("input_tokens") if isinstance(telemetry, dict) else None,
-            "tokens_out": telemetry.get("output_tokens") if isinstance(telemetry, dict) else None,
-            "tokens_total": total_tokens,
-            "cost_usd": _calc_cost(total_tokens, telemetry.get("model") if isinstance(telemetry, dict) else None, telemetry.get("input_tokens") if isinstance(telemetry, dict) else None, telemetry.get("output_tokens") if isinstance(telemetry, dict) else None),
-            "latency_ms": telemetry.get("latency_ms_total") if isinstance(telemetry, dict) else None,
-            "status": "ok" if item_result.ok else "error",
-            "error_type": item_result.error if not item_result.ok else None,
-            "schema_valid": telemetry.get("validated") if isinstance(telemetry, dict) else None,
-            "verification_pass": None,
-            "is_stream": False,
-            "is_cached": False,
-            "credit_deducted": item_result.ok,
-            "credit_amount": actual_cost if item_result.ok else None,
-            "ocr_used": has_ocr,
-            "voice_used": has_voice,
-            "response_truncated": bool(telemetry.get("truncated")) if isinstance(telemetry, dict) else False
-            ,
-            "ocr_engine": ocr_metadata.get("ocr_engine"),
-            "ocr_source": ocr_metadata.get("ocr_source"),
-            "ocr_warnings": ocr_metadata.get("ocr_warnings"),
-            "ocr_confidence": ocr_confidence,
-            "voice_confirmed": voice_metadata.get("voice_confirmed"),
-            "voice_ambiguity_flags": voice_metadata.get("voice_ambiguity_flags"),
-            "voice_clarifier_question": voice_metadata.get("voice_clarifier_question"),
-            "voice_stt_provider": voice_metadata.get("voice_stt_provider"),
-            "voice_transcript_confidence": voice_metadata.get("voice_transcript_confidence"),
-            "verification_level": verification_level,
-            "token_policy_key": token_policy_key
-        })
-
-        if hold:
-            hold.status = "finalized"
-            hold.finalized_at = datetime.utcnow()
-            hold.meta = {
-                **(hold.meta or {}),
-                "total_tokens": total_tokens,
-                "credits_final": actual_cost,
-                "credits_refunded": refund_amount
-            }
-            session.add(hold)
+            tier=body.tier or "FREE",
+            mode=body.mode or "SOLVE",
+            modality=modality,
+            verify_requested=verify_requested,
+            plot_requested=plot_requested,
+            questions_json=questions_json,
+            request_id=request_id,
+            attempt_id=attempt_id,
+            idempotency_key=body.idempotency_key,
+        )
         session.commit()
+        if reserve_result.reused:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "already_processed",
+                    "message": "Request idempotency key already processed or in-flight.",
+                    "request_id": request_id,
+                    "attempt_id": attempt_id,
+                    "details": {
+                        "hold_id": reserve_result.hold_id,
+                        "hold_status": reserve_result.hold_status,
+                    },
+                },
+            )
+    except CreditBillingError as exc:
+        session.rollback()
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={
+                "code": exc.code,
+                "message": str(exc),
+                "request_id": request_id,
+                "attempt_id": attempt_id,
+                "details": exc.details,
+            },
+        )
+    try:
+        payload, telemetry = await execute_batch_solve(
+            session=session,
+            tier=body.tier or "FREE",
+            request_id=request_id,
+            attempt_id=attempt_id,
+            mode=body.mode or "SOLVE",
+            graph_mode=body.graph_mode or "AUTO",
+            domain_mode=body.domain_mode or "reals",
+            preferred_response_language=body.preferred_response_language or "English",
+            questions_json=questions_json,
+        )
+    except BatchSolveError as exc:
+        if reserve_result and reserve_result.hold_id:
+            try:
+                credit_billing_service.release_hold_full(session=session, hold_id=reserve_result.hold_id)
+                session.commit()
+            except Exception:
+                session.rollback()
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={
+                "code": exc.code,
+                "message": str(exc),
+                "request_id": request_id,
+                "attempt_id": attempt_id,
+                "details": exc.details,
+            },
+        )
+    except Exception:
+        if reserve_result and reserve_result.hold_id:
+            try:
+                credit_billing_service.release_hold_full(session=session, hold_id=reserve_result.hold_id)
+                session.commit()
+            except Exception:
+                session.rollback()
+        raise
 
-    return SolveBatchResponse(ok=True, results=results)
+    settlement_summary = None
+    if reserve_result:
+        try:
+            settlement_summary = credit_billing_service.settle_batch_hold(
+                session=session,
+                hold_id=reserve_result.hold_id,
+                request_id=str(telemetry.get("request_id") or request_id),
+                attempt_id=str(telemetry.get("attempt_id") or attempt_id),
+                idempotency_key=reserve_result.idempotency_key,
+                item_costs=reserve_result.item_costs,
+                payload_items=payload.get("items") or [],
+                pricing_snapshot=reserve_result.pricing_snapshot,
+                provider_failed=False,
+            )
+            session.commit()
+        except Exception:
+            session.rollback()
+            settlement_summary = {
+                "hold_id": reserve_result.hold_id,
+                "status": "settlement_failed",
+            }
+
+    results: List[SolveBatchItemResult] = []
+    for idx, item in enumerate(payload.get("items", []), start=1):
+        qid = str(item.get("question_id") or "")
+        item_reserved = None
+        item_final = None
+        item_refunded = None
+        if reserve_result and idx - 1 < len(reserve_result.item_costs):
+            row = reserve_result.item_costs[idx - 1]
+            item_reserved = float(row.total_reserved)
+            refusal = bool(((item.get("refusal") or {}) if isinstance(item.get("refusal"), dict) else {}).get("is_refusal"))
+            if refusal:
+                item_final = float(row.attempt_fee)
+                item_refunded = float(row.total_reserved - row.attempt_fee)
+            else:
+                item_final = float(row.total_reserved)
+                item_refunded = 0.0
+        results.append(
+            SolveBatchItemResult(
+                question_id=qid,
+                ok=True,
+                solve_response_json=item,
+                telemetry={**telemetry, "billing_settlement": settlement_summary} if isinstance(telemetry, dict) else telemetry,
+                credits_reserved=item_reserved,
+                credits_final=item_final,
+                credits_refunded=item_refunded,
+            )
+        )
+
+    return SolveBatchResponse(
+        ok=True,
+        results=results,
+        request_id=str(telemetry.get("request_id") or request_id),
+        attempt_id=str(telemetry.get("attempt_id") or attempt_id),
+        tier=str(payload.get("tier") or body.tier or ""),
+        language=payload.get("language") if isinstance(payload.get("language"), dict) else None,
+        items=payload.get("items") if isinstance(payload.get("items"), list) else None,
+        payload=payload,
+        telemetry=telemetry,
+    )
 
 @api_router.post("/uploads")
 @limiter.limit("5/minute")
@@ -5353,6 +5300,77 @@ async def solve_v3_endpoint(
     if requested_mode not in {"minimal", "detailed"}:
         raise HTTPException(status_code=400, detail="requested_mode must be one of minimal|detailed")
 
+    from app.services.solve.batch_tier_runtime import BatchSolveError, execute_batch_solve
+    try:
+        payload, telemetry = await execute_batch_solve(
+            session=session,
+            tier=body.tier or "FREE",
+            request_id=request_id,
+            attempt_id=attempt_id,
+            mode=(body.mode or "SOLVE"),
+            graph_mode=(body.graph_mode or "AUTO"),
+            domain_mode=((body.trusted_context or {}).get("domain_mode") if isinstance(body.trusted_context, dict) else "reals"),
+            preferred_response_language=((body.trusted_context or {}).get("preferred_response_language") if isinstance(body.trusted_context, dict) else "English"),
+            questions_json=[
+                {
+                    "question_id": str(body.question_id or "q1"),
+                    "question_text": problem_text,
+                    "mode": body.mode or "SOLVE",
+                    "graph_mode": body.graph_mode or "AUTO",
+                    "domain_mode": ((body.trusted_context or {}).get("domain_mode") if isinstance(body.trusted_context, dict) else "reals"),
+                }
+            ],
+        )
+    except BatchSolveError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={
+                "code": exc.code,
+                "status": "failed_controlled",
+                "reason": str(exc),
+                "retryable": exc.status_code >= 500,
+                "request_id": request_id,
+                "attempt_id": attempt_id,
+                "details": exc.details,
+            },
+        )
+
+    chat_session = ChatSession(
+        user_id=user_id,
+        title=(problem_text[:80] or "Batch Solve"),
+        learning_mode="solve",
+        requested_mode=requested_mode,
+        solve_tier=str(body.tier or "free").lower(),
+    )
+    session.add(chat_session)
+    session.commit()
+    session.refresh(chat_session)
+
+    answer_item = (payload.get("items") or [{}])[0]
+    msg = ChatMessage(
+        session_id=int(chat_session.id),
+        role="assistant",
+        content=str(((answer_item.get("final_answer") or {}).get("answer_text")) or "Solution generated."),
+        structured_data=payload,
+        telemetry=telemetry,
+        model_used=telemetry.get("model"),
+        tokens_used=int(telemetry.get("total_tokens") or 0),
+    )
+    session.add(msg)
+    session.commit()
+
+    return SolveResponse(
+        session_id=int(chat_session.id),
+        solution=payload,
+        concepts=[],
+        visuals=[],
+        model_used=telemetry.get("model"),
+        tokens_used=int(telemetry.get("total_tokens") or 0),
+        has_image=bool(body.image_url),
+        telemetry=telemetry,
+        solve_session_id=None,
+    )
+
     validate_math_query(problem_text)
     use_superset_v2 = os.getenv("SOLVE_V3_USE_SUPERSET_V2", "true").strip().lower() in {"1", "true", "yes", "on"}
     if use_superset_v2:
@@ -6421,6 +6439,98 @@ async def solve_v3_stream_endpoint(
         f.write(f"[{datetime.utcnow().isoformat()}] graph_mode={graph_mode}, body.graph_mode={getattr(body, 'graph_mode', 'MISSING')}\n")
         f.flush()
     print(f"[SOLVE_V3_STREAM] Extracted graph_mode: {graph_mode}")
+
+    from app.services.solve.batch_tier_runtime import BatchSolveError, execute_batch_solve
+
+    raw_problem_text = (
+        body.question_text
+        or body.confirmed_text
+        or body.confirmed_markdown
+        or body.text_query
+        or ""
+    ).strip()
+    if not raw_problem_text:
+        raise HTTPException(status_code=400, detail="No input provided")
+
+    async def _batch_stream():
+        meta_data = {
+            "request_id": request_id,
+            "attempt_id": attempt_id,
+            "provider": "openai",
+            "model": get_configured_openai_model(),
+            "tier_requested": str(body.tier or "free").lower(),
+            "effective_tier": str(body.tier or "free").lower(),
+            "type": "meta",
+        }
+        yield f"event: meta\ndata: {json.dumps(meta_data)}\n\n"
+        try:
+            payload, telemetry = await execute_batch_solve(
+                session=session,
+                tier=body.tier or "FREE",
+                request_id=request_id,
+                attempt_id=attempt_id,
+                mode=(body.mode or "SOLVE"),
+                graph_mode=(body.graph_mode or "AUTO"),
+                domain_mode=((body.trusted_context or {}).get("domain_mode") if isinstance(body.trusted_context, dict) else "reals"),
+                preferred_response_language=((body.trusted_context or {}).get("preferred_response_language") if isinstance(body.trusted_context, dict) else "English"),
+                questions_json=[
+                    {
+                        "question_id": str(body.question_id or "q1"),
+                        "question_text": raw_problem_text,
+                        "mode": body.mode or "SOLVE",
+                        "graph_mode": body.graph_mode or "AUTO",
+                        "domain_mode": ((body.trusted_context or {}).get("domain_mode") if isinstance(body.trusted_context, dict) else "reals"),
+                    }
+                ],
+            )
+
+            session_row = ChatSession(
+                user_id=user_id,
+                title=(raw_problem_text[:80] or "Batch Solve"),
+                learning_mode="solve",
+                requested_mode=(body.requested_mode or "minimal"),
+                solve_tier=str(body.tier or "free").lower(),
+            )
+            session.add(session_row)
+            session.commit()
+            session.refresh(session_row)
+
+            first_item = (payload.get("items") or [{}])[0]
+            answer_text = str(((first_item.get("final_answer") or {}).get("answer_text")) or "Solution generated.")
+            msg = ChatMessage(
+                session_id=int(session_row.id),
+                role="assistant",
+                content=answer_text,
+                structured_data=payload,
+                telemetry=telemetry,
+                model_used=telemetry.get("model"),
+                tokens_used=int(telemetry.get("total_tokens") or 0),
+            )
+            session.add(msg)
+            session.commit()
+
+            yield f"event: delta\ndata: {json.dumps({'type': 'delta', 'text': json.dumps(payload, ensure_ascii=False)})}\n\n"
+            yield f"event: telemetry\ndata: {json.dumps({'telemetry': telemetry})}\n\n"
+            yield f"event: done\ndata: {json.dumps({'ok': True, 'session_id': int(session_row.id), 'message_id': int(msg.id or 0)})}\n\n"
+        except BatchSolveError as exc:
+            err = {
+                "code": exc.code,
+                "message": str(exc),
+                "request_id": request_id,
+                "attempt_id": attempt_id,
+                "details": exc.details,
+            }
+            yield f"event: done\ndata: {json.dumps({'ok': False, 'error': err})}\n\n"
+        except Exception as exc:  # pragma: no cover - defensive path
+            err = {
+                "code": "stream_batch_failed",
+                "message": str(exc),
+                "request_id": request_id,
+                "attempt_id": attempt_id,
+            }
+            yield f"event: done\ndata: {json.dumps({'ok': False, 'error': err})}\n\n"
+
+    return StreamingResponse(_batch_stream(), media_type="text/event-stream")
 
     
     # Initialize TraceContext with solving phase
@@ -8500,6 +8610,29 @@ async def get_history(
         
     results = session.exec(stmt).all()
     
+    def _extract_problem_from_structured(payload: Any) -> Optional[str]:
+        if not isinstance(payload, dict):
+            return None
+        problem = payload.get("problem")
+        if isinstance(problem, dict):
+            for key in ("original_text", "normalized_text", "text"):
+                value = problem.get(key)
+                if isinstance(value, str) and value.strip():
+                    return value.strip()
+        items = payload.get("items")
+        if isinstance(items, list):
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                problem = item.get("problem")
+                if not isinstance(problem, dict):
+                    continue
+                for key in ("original_text", "normalized_text", "text"):
+                    value = problem.get(key)
+                    if isinstance(value, str) and value.strip():
+                        return value.strip()
+        return None
+
     history_items = []
     for chat in results:
         latest_attempt = session.exec(
@@ -8514,6 +8647,14 @@ async def get_history(
             if msg.role == "user" and not user_input:
                 user_input = msg.content
                 break
+        if not user_input:
+            for msg in reversed(chat.messages):
+                if msg.role != "assistant":
+                    continue
+                extracted = _extract_problem_from_structured(msg.structured_data)
+                if extracted:
+                    user_input = extracted
+                    break
         
         # Extract metadata from any assistant message (prefer most recent)
         telemetry = None
@@ -10227,15 +10368,18 @@ async def admin_get_dashboard_stats(db: Session = Depends(get_session), admin: U
     llm_cost_est_fallback = (total_tokens_24h / 1_000_000) * fallback_cost_per_million
 
     openai_key = os.getenv("OPENAI_API_KEY")
+    # External usage API can block admin responses when the upstream is slow.
+    # Keep it opt-in so dashboard reads are always fast/stable by default.
+    fetch_external_usage = (os.getenv("ADMIN_DASHBOARD_FETCH_OPENAI_USAGE", "false") or "").strip().lower() in {"1", "true", "yes", "on"}
     def fetch_openai_usage(start_date: str, end_date: str):
-        if not openai_key:
+        if not fetch_external_usage or not openai_key:
             return None
         try:
             resp = requests.get(
                 "https://api.openai.com/v1/usage",
                 headers={"Authorization": f"Bearer {openai_key}"},
                 params={"start_date": start_date, "end_date": end_date},
-                timeout=15
+                timeout=2
             )
             resp.raise_for_status()
             payload = resp.json()
@@ -10412,7 +10556,7 @@ class SolverOutputAttemptDetail(SolverOutputAttemptListItem):
 
 class AdminLlmUsageLedgerItem(BaseModel):
     id: int
-    solve_session_id: int
+    solve_session_id: Optional[int] = None
     followup_turn_id: Optional[int] = None
     user_id: Optional[int] = None
     provider: str
@@ -10429,6 +10573,7 @@ class AdminLlmUsageLedgerItem(BaseModel):
 class AdminLlmUsageLedgerListResponse(BaseModel):
     total: int
     items: List[AdminLlmUsageLedgerItem]
+    source: str = "llmusageledger"
 
 
 class AdminLlmUsageCreateRequest(BaseModel):
@@ -10477,6 +10622,53 @@ def _serialize_llm_usage_row(row: LlmUsageLedger, user_id: Optional[int] = None)
         latency_ms=row.latency_ms,
         created_at=row.created_at.isoformat() if row.created_at else "",
     )
+
+
+def _serialize_solver_attempt_as_llm_usage(row: SolverOutputAttempt) -> AdminLlmUsageLedgerItem:
+    return AdminLlmUsageLedgerItem(
+        id=int(row.id or 0),
+        solve_session_id=None,
+        followup_turn_id=None,
+        user_id=row.user_id,
+        provider=(row.provider or "openai"),
+        model=(row.model or "unknown"),
+        request_id=row.request_id,
+        system_prompt_tokens=0,
+        input_tokens=max(0, int(row.input_tokens or 0)),
+        output_tokens=max(0, int(row.output_tokens or 0)),
+        total_tokens=max(0, int(row.total_tokens or 0)),
+        latency_ms=row.latency_ms,
+        created_at=row.created_at.isoformat() if row.created_at else "",
+    )
+
+
+def _serialize_solver_attempt_as_trace(row: SolverOutputAttempt) -> Dict[str, Any]:
+    schema_name = None
+    if isinstance(row.prompt_meta, dict):
+        schema_name = (
+            row.prompt_meta.get("output_schema_id")
+            or row.prompt_meta.get("schema_name")
+        )
+    if not schema_name and isinstance(row.validation_json, dict):
+        runtime_meta = row.validation_json.get("runtime_meta")
+        if isinstance(runtime_meta, dict):
+            schema_name = runtime_meta.get("schema_name")
+
+    return {
+        "request_id": row.request_id,
+        "user_id": row.user_id,
+        "ui_goal": None,
+        "ui_style": None,
+        "schema_name": schema_name,
+        "input_tokens": int(row.input_tokens or 0),
+        "output_tokens": int(row.output_tokens or 0),
+        "deduct_committed": None,
+        "problem_text": (row.input_text_normalized or row.input_text_raw),
+        "openai_payload": row.llm_raw_response if isinstance(row.llm_raw_response, dict) else None,
+        "error": row.error_message,
+        "logged_at": row.created_at.isoformat() if row.created_at else None,
+        "source": "solver_attempt_fallback",
+    }
 
 
 def _serialize_solver_output_attempt(
@@ -10553,23 +10745,34 @@ admin: User = Depends(get_admin_user)):
 
 @api_router.get("/admin/solve-traces", response_model=List[SolveTraceEntry])
 async def admin_get_solve_traces(
-    limit: int = Query(100, ge=1, le=1000)
-, admin: User = Depends(get_admin_user)):
+    limit: int = Query(100, ge=1, le=1000),
+    db: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
     from app.services.solve.trace_logger import TRACE_LOG_PATH
-    if not TRACE_LOG_PATH.exists():
-        return []
-    try:
-        lines = TRACE_LOG_PATH.read_text(encoding="utf-8").splitlines()
-    except Exception:
-        return []
-    trimmed = lines[-limit:]
     entries: List[Dict[str, Any]] = []
-    for line in trimmed:
+    if TRACE_LOG_PATH.exists():
         try:
-            entries.append(json.loads(line))
+            lines = TRACE_LOG_PATH.read_text(encoding="utf-8").splitlines()
+            trimmed = lines[-limit:]
+            for line in trimmed:
+                try:
+                    entries.append(json.loads(line))
+                except Exception:
+                    continue
         except Exception:
-            continue
-    return entries
+            entries = []
+    if entries:
+        for entry in entries:
+            if isinstance(entry, dict):
+                entry.setdefault("source", "trace_file")
+        return entries
+
+    # Fallback: derive traces from solver attempts when file-based traces are missing/empty.
+    rows = db.exec(
+        select(SolverOutputAttempt).order_by(SolverOutputAttempt.created_at.desc()).limit(limit)
+    ).all()
+    return [_serialize_solver_attempt_as_trace(row) for row in rows]
 
 
 @api_router.get("/admin/observability/llm-usage", response_model=AdminLlmUsageLedgerListResponse)
@@ -10596,7 +10799,7 @@ async def admin_list_llm_usage_ledger(
     if user_id is not None:
         session_ids = db.exec(select(SolveSession.id).where(SolveSession.user_id == user_id)).all()
         if not session_ids:
-            return AdminLlmUsageLedgerListResponse(total=0, items=[])
+            return AdminLlmUsageLedgerListResponse(total=0, items=[], source="llmusageledger")
         query = query.where(LlmUsageLedger.solve_session_id.in_(session_ids))
 
     rows = db.exec(query.order_by(LlmUsageLedger.created_at.desc()).offset(offset).limit(limit)).all()
@@ -10613,7 +10816,35 @@ async def admin_list_llm_usage_ledger(
         session_rec = session_map.get(row.solve_session_id)
         items.append(_serialize_llm_usage_row(row, user_id=session_rec.user_id if session_rec else None))
 
-    return AdminLlmUsageLedgerListResponse(total=total, items=items)
+    if items:
+        return AdminLlmUsageLedgerListResponse(total=total, items=items, source="llmusageledger")
+
+    # Fallback: derive usage list from solver attempts when llmusageledger is empty.
+    # solve_session_id filter cannot be mapped from solver attempts.
+    if solve_session_id is not None:
+        return AdminLlmUsageLedgerListResponse(total=0, items=[], source="solver_attempt_fallback")
+
+    attempt_query = select(SolverOutputAttempt)
+    if provider:
+        attempt_query = attempt_query.where(SolverOutputAttempt.provider == provider.strip())
+    if model:
+        attempt_query = attempt_query.where(SolverOutputAttempt.model == model.strip())
+    if request_id:
+        attempt_query = attempt_query.where(SolverOutputAttempt.request_id.contains(request_id.strip()))
+    if user_id is not None:
+        attempt_query = attempt_query.where(SolverOutputAttempt.user_id == user_id)
+
+    fallback_rows = db.exec(
+        attempt_query.order_by(SolverOutputAttempt.created_at.desc()).offset(offset).limit(limit)
+    ).all()
+    fallback_total = len(db.exec(attempt_query).all())
+    fallback_items = [_serialize_solver_attempt_as_llm_usage(row) for row in fallback_rows]
+
+    return AdminLlmUsageLedgerListResponse(
+        total=fallback_total,
+        items=fallback_items,
+        source="solver_attempt_fallback",
+    )
 
 
 @api_router.get("/admin/observability/llm-usage/{entry_id}", response_model=AdminLlmUsageLedgerItem)
@@ -12073,6 +12304,7 @@ class RegistryBindingItem(BaseModel):
     output_schema_id: str
     max_output_tokens: Optional[int] = None
     max_input_tokens: Optional[int] = None
+    max_questions_allowed: Optional[int] = None
     system_schema_budget_tokens: Optional[int] = None
     context_budget_tokens: Optional[int] = None
     json_retry_max_output_tokens: Optional[int] = None
@@ -12086,6 +12318,13 @@ class RegistryBindingItem(BaseModel):
     trim_strategy: Optional[str] = None
     max_steps: Optional[int] = None
     retry_cap_tokens: Optional[int] = None
+    solve_text_cost: Optional[float] = None
+    solve_snap_image_cost: Optional[float] = None
+    solve_snap_pdf_cost: Optional[float] = None
+    solve_voice_cost: Optional[float] = None
+    verify_addon_cost: Optional[float] = None
+    plot_addon_cost: Optional[float] = None
+    attempt_fee: Optional[float] = None
     features: Dict[str, Any] = Field(default_factory=dict)
     multipliers: Dict[str, Any] = Field(default_factory=dict)
     is_active: bool
@@ -12147,6 +12386,7 @@ class BindingActivateRequest(BaseModel):
     output_schema_id: str
     max_output_tokens: Optional[int] = None
     max_input_tokens: Optional[int] = None
+    max_questions_allowed: Optional[int] = None
     system_schema_budget_tokens: Optional[int] = None
     context_budget_tokens: Optional[int] = None
     json_retry_max_output_tokens: Optional[int] = None
@@ -12160,6 +12400,13 @@ class BindingActivateRequest(BaseModel):
     trim_strategy: Optional[str] = None
     max_steps: Optional[int] = None
     retry_cap_tokens: Optional[int] = None
+    solve_text_cost: Optional[float] = None
+    solve_snap_image_cost: Optional[float] = None
+    solve_snap_pdf_cost: Optional[float] = None
+    solve_voice_cost: Optional[float] = None
+    verify_addon_cost: Optional[float] = None
+    plot_addon_cost: Optional[float] = None
+    attempt_fee: Optional[float] = None
     features: Dict[str, Any] = Field(default_factory=dict)
     multipliers: Dict[str, Any] = Field(default_factory=dict)
     updated_by: Optional[str] = None
@@ -12181,6 +12428,16 @@ def _parse_mode(value: str) -> PromptModeEnum:
 
 def _parse_role(value: str) -> PromptRoleEnum:
     return PromptRoleEnum(value.upper())
+
+
+def _enforce_allowed_prompt_id(prompt_id: str) -> None:
+    if prompt_id not in ALLOWED_PROMPT_IDS:
+        raise HTTPException(status_code=400, detail=f"prompt_id not allowed in production: {prompt_id}")
+
+
+def _enforce_allowed_schema_id(schema_id: str) -> None:
+    if schema_id not in ALLOWED_SCHEMA_IDS:
+        raise HTTPException(status_code=400, detail=f"schema_id not allowed in production: {schema_id}")
 
 @api_router.get("/admin/prompt-registry/prompts", response_model=List[RegistryPromptItem])
 async def admin_list_prompt_registry_prompts(
@@ -12208,6 +12465,7 @@ admin: User = Depends(get_admin_user)):
                 latest_by_id[row.prompt_id] = row
         rows = sorted(latest_by_id.values(), key=lambda item: item.prompt_id)
 
+    filtered = [row for row in rows if row.prompt_id in ALLOWED_PROMPT_IDS]
     return [
         RegistryPromptItem(
             prompt_id=row.prompt_id,
@@ -12220,11 +12478,12 @@ admin: User = Depends(get_admin_user)):
             updated_at=row.updated_at.isoformat(),
             updated_by=row.updated_by,
         )
-        for row in rows
+        for row in filtered
     ]
 
 @api_router.get("/admin/prompt-registry/prompts/{prompt_id}/versions", response_model=List[RegistryPromptItem])
 async def admin_list_prompt_registry_versions(prompt_id: str, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
+    _enforce_allowed_prompt_id(prompt_id)
     rows = prompt_registry_service.get_prompt_versions(db, prompt_id)
     return [
         RegistryPromptItem(
@@ -12243,6 +12502,7 @@ async def admin_list_prompt_registry_versions(prompt_id: str, db: Session = Depe
 
 @api_router.post("/admin/prompt-registry/prompts/{prompt_id}/update", response_model=RegistryPromptItem)
 async def admin_update_prompt_registry_prompt(prompt_id: str, req: PromptRegistryUpdateRequest, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
+    _enforce_allowed_prompt_id(prompt_id)
     entry = prompt_registry_service.update_prompt(
         session=db,
         prompt_id=prompt_id,
@@ -12266,6 +12526,7 @@ async def admin_update_prompt_registry_prompt(prompt_id: str, req: PromptRegistr
 
 @api_router.post("/admin/prompt-registry/prompts/{prompt_id}/rollback", response_model=RegistryPromptItem)
 async def admin_rollback_prompt_registry_prompt(prompt_id: str, req: RegistryRollbackRequest, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
+    _enforce_allowed_prompt_id(prompt_id)
     entry = prompt_registry_service.rollback_prompt(db, prompt_id, req.version, req.updated_by)
     return RegistryPromptItem(
         prompt_id=entry.prompt_id,
@@ -12285,6 +12546,7 @@ async def admin_delete_prompt_registry_prompt(
     updated_by: Optional[str] = Query(None),
     db: Session = Depends(get_session),
 admin: User = Depends(get_admin_user)):
+    _enforce_allowed_prompt_id(prompt_id)
     try:
         result = prompt_registry_service.delete_prompt(
             session=db,
@@ -12328,6 +12590,7 @@ admin: User = Depends(get_admin_user)):
                 latest_by_id[row.schema_id] = row
         rows = sorted(latest_by_id.values(), key=lambda item: item.schema_id)
 
+    filtered = [row for row in rows if row.schema_id in ALLOWED_SCHEMA_IDS]
     return [
         RegistrySchemaItem(
             schema_id=row.schema_id,
@@ -12337,11 +12600,12 @@ admin: User = Depends(get_admin_user)):
             updated_at=row.updated_at.isoformat(),
             updated_by=row.updated_by,
         )
-        for row in rows
+        for row in filtered
     ]
 
 @api_router.get("/admin/prompt-registry/schemas/{schema_id}/versions", response_model=List[RegistrySchemaItem])
 async def admin_list_prompt_registry_schema_versions(schema_id: str, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
+    _enforce_allowed_schema_id(schema_id)
     rows = prompt_registry_service.get_schema_versions(db, schema_id)
     return [
         RegistrySchemaItem(
@@ -12357,6 +12621,7 @@ async def admin_list_prompt_registry_schema_versions(schema_id: str, db: Session
 
 @api_router.post("/admin/prompt-registry/schemas/{schema_id}/update", response_model=RegistrySchemaItem)
 async def admin_update_prompt_registry_schema(schema_id: str, req: SchemaRegistryUpdateRequest, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
+    _enforce_allowed_schema_id(schema_id)
     error = prompt_registry_service.validate_schema(req.content)
     if error:
         raise HTTPException(status_code=400, detail=f"Invalid schema: {error}")
@@ -12372,6 +12637,7 @@ async def admin_update_prompt_registry_schema(schema_id: str, req: SchemaRegistr
 
 @api_router.post("/admin/prompt-registry/schemas/{schema_id}/rollback", response_model=RegistrySchemaItem)
 async def admin_rollback_prompt_registry_schema(schema_id: str, req: RegistryRollbackRequest, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
+    _enforce_allowed_schema_id(schema_id)
     entry = prompt_registry_service.rollback_schema(db, schema_id, req.version, req.updated_by)
     return RegistrySchemaItem(
         schema_id=entry.schema_id,
@@ -12388,6 +12654,7 @@ async def admin_delete_prompt_registry_schema(
     updated_by: Optional[str] = Query(None),
     db: Session = Depends(get_session),
 admin: User = Depends(get_admin_user)):
+    _enforce_allowed_schema_id(schema_id)
     try:
         result = prompt_registry_service.delete_schema(
             session=db,
@@ -12407,7 +12674,14 @@ admin: User = Depends(get_admin_user)):
 
 @api_router.get("/admin/prompt-registry/bindings", response_model=List[RegistryBindingItem])
 async def admin_list_prompt_registry_bindings(db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
-    rows = db.exec(select(PromptBinding).order_by(PromptBinding.updated_at.desc())).all()
+    rows = db.exec(
+        select(PromptBinding)
+        .where(PromptBinding.mode == PromptModeEnum.SOLVE)
+        .where(PromptBinding.global_system_prompt_id.in_(ALLOWED_PROMPT_IDS))
+        .where(PromptBinding.developer_prompt_id.in_(ALLOWED_PROMPT_IDS))
+        .where(PromptBinding.output_schema_id.in_(ALLOWED_SCHEMA_IDS))
+        .order_by(PromptBinding.updated_at.desc())
+    ).all()
     return [
         RegistryBindingItem(
             id=row.id,
@@ -12418,6 +12692,7 @@ async def admin_list_prompt_registry_bindings(db: Session = Depends(get_session)
             output_schema_id=row.output_schema_id,
             max_output_tokens=row.max_output_tokens,
             max_input_tokens=row.max_input_tokens,
+            max_questions_allowed=row.max_questions_allowed,
             system_schema_budget_tokens=row.system_schema_budget_tokens,
             context_budget_tokens=row.context_budget_tokens,
             json_retry_max_output_tokens=row.json_retry_max_output_tokens,
@@ -12431,6 +12706,13 @@ async def admin_list_prompt_registry_bindings(db: Session = Depends(get_session)
             trim_strategy=row.trim_strategy.value if row.trim_strategy else None,
             max_steps=row.max_steps,
             retry_cap_tokens=row.retry_cap_tokens,
+            solve_text_cost=float(row.solve_text_cost) if row.solve_text_cost is not None else None,
+            solve_snap_image_cost=float(row.solve_snap_image_cost) if row.solve_snap_image_cost is not None else None,
+            solve_snap_pdf_cost=float(row.solve_snap_pdf_cost) if row.solve_snap_pdf_cost is not None else None,
+            solve_voice_cost=float(row.solve_voice_cost) if row.solve_voice_cost is not None else None,
+            verify_addon_cost=float(row.verify_addon_cost) if row.verify_addon_cost is not None else None,
+            plot_addon_cost=float(row.plot_addon_cost) if row.plot_addon_cost is not None else None,
+            attempt_fee=float(row.attempt_fee) if row.attempt_fee is not None else None,
             features=row.features or {},
             multipliers=row.multipliers or {},
             is_active=row.is_active,
@@ -12452,6 +12734,11 @@ async def admin_prompt_registry_audit(db: Session = Depends(get_session), admin:
 
 @api_router.post("/admin/prompt-registry/bindings/activate", response_model=RegistryBindingItem)
 async def admin_activate_prompt_registry_binding(req: BindingActivateRequest, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
+    _enforce_allowed_prompt_id(req.global_system_prompt_id)
+    _enforce_allowed_prompt_id(req.developer_prompt_id)
+    _enforce_allowed_schema_id(req.output_schema_id)
+    if _parse_mode(req.mode) != PromptModeEnum.SOLVE:
+        raise HTTPException(status_code=400, detail="Only SOLVE mode bindings are allowed in production.")
     try:
         entry = prompt_registry_service.activate_binding(
             session=db,
@@ -12463,6 +12750,7 @@ async def admin_activate_prompt_registry_binding(req: BindingActivateRequest, db
             updated_by=req.updated_by,
             max_output_tokens=req.max_output_tokens,
             max_input_tokens=req.max_input_tokens,
+            max_questions_allowed=req.max_questions_allowed,
             system_schema_budget_tokens=req.system_schema_budget_tokens,
             context_budget_tokens=req.context_budget_tokens,
             json_retry_max_output_tokens=req.json_retry_max_output_tokens,
@@ -12476,6 +12764,13 @@ async def admin_activate_prompt_registry_binding(req: BindingActivateRequest, db
             trim_strategy=req.trim_strategy,
             max_steps=req.max_steps,
             retry_cap_tokens=req.retry_cap_tokens,
+            solve_text_cost=req.solve_text_cost,
+            solve_snap_image_cost=req.solve_snap_image_cost,
+            solve_snap_pdf_cost=req.solve_snap_pdf_cost,
+            solve_voice_cost=req.solve_voice_cost,
+            verify_addon_cost=req.verify_addon_cost,
+            plot_addon_cost=req.plot_addon_cost,
+            attempt_fee=req.attempt_fee,
             features=req.features,
             multipliers=req.multipliers,
         )
@@ -12496,6 +12791,7 @@ async def admin_activate_prompt_registry_binding(req: BindingActivateRequest, db
         output_schema_id=entry.output_schema_id,
         max_output_tokens=entry.max_output_tokens,
         max_input_tokens=entry.max_input_tokens,
+        max_questions_allowed=entry.max_questions_allowed,
         system_schema_budget_tokens=entry.system_schema_budget_tokens,
         context_budget_tokens=entry.context_budget_tokens,
         json_retry_max_output_tokens=entry.json_retry_max_output_tokens,
@@ -12509,6 +12805,13 @@ async def admin_activate_prompt_registry_binding(req: BindingActivateRequest, db
         trim_strategy=entry.trim_strategy.value if entry.trim_strategy else None,
         max_steps=entry.max_steps,
         retry_cap_tokens=entry.retry_cap_tokens,
+        solve_text_cost=float(entry.solve_text_cost) if entry.solve_text_cost is not None else None,
+        solve_snap_image_cost=float(entry.solve_snap_image_cost) if entry.solve_snap_image_cost is not None else None,
+        solve_snap_pdf_cost=float(entry.solve_snap_pdf_cost) if entry.solve_snap_pdf_cost is not None else None,
+        solve_voice_cost=float(entry.solve_voice_cost) if entry.solve_voice_cost is not None else None,
+        verify_addon_cost=float(entry.verify_addon_cost) if entry.verify_addon_cost is not None else None,
+        plot_addon_cost=float(entry.plot_addon_cost) if entry.plot_addon_cost is not None else None,
+        attempt_fee=float(entry.attempt_fee) if entry.attempt_fee is not None else None,
         features=entry.features or {},
         multipliers=entry.multipliers or {},
         is_active=entry.is_active,

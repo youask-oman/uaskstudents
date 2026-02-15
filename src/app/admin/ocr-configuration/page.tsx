@@ -105,7 +105,20 @@ export default function AdminOcrConfigurationPage() {
         setConfig((prev) => (prev ? { ...prev, [key]: value } : prev));
     };
 
-    const canSave = useMemo(() => Boolean(reason.trim()) && Boolean(config), [reason, config]);
+    const validPromptKeys = useMemo(() => new Set(prompts.map((p) => p.key)), [prompts]);
+    const validSchemaKeys = useMemo(() => new Set(schemas.map((s) => s.key)), [schemas]);
+    const promptKeyValid = useMemo(
+        () => Boolean(config?.openai_system_prompt_key) && validPromptKeys.has(config?.openai_system_prompt_key || ""),
+        [config, validPromptKeys]
+    );
+    const schemaKeyValid = useMemo(
+        () => Boolean(config?.openai_schema_key) && validSchemaKeys.has(config?.openai_schema_key || ""),
+        [config, validSchemaKeys]
+    );
+    const canSave = useMemo(
+        () => Boolean(reason.trim()) && Boolean(config) && promptKeyValid && schemaKeyValid,
+        [reason, config, promptKeyValid, schemaKeyValid]
+    );
 
     const handleSave = async () => {
         if (!config) return;
@@ -198,6 +211,11 @@ export default function AdminOcrConfigurationPage() {
                     </div>
                     <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">ACTIVE</span>
                 </div>
+                {(!promptKeyValid || !schemaKeyValid) && (
+                    <div className="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                        OCR prompt/schema keys are not valid against active registry options. Pick valid keys before saving.
+                    </div>
+                )}
             </section>
 
             <section className="grid gap-6 md:grid-cols-2">
@@ -366,6 +384,11 @@ export default function AdminOcrConfigurationPage() {
                         {saving ? 'Saving...' : 'Save Configuration'}
                     </button>
                 </div>
+                {!canSave && config && (
+                    <p className="text-xs text-slate-500">
+                        Save is disabled until reason is provided and prompt/schema keys are valid.
+                    </p>
+                )}
             </section>
 
             <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm space-y-4">

@@ -833,6 +833,7 @@ class PromptBinding(SQLModel, table=True):
     multipliers: dict = Field(default_factory=dict, sa_column=Column(JSON))
 
     # Dynamic Token Configuration (Overrides SystemConfig Defaults if set)
+    max_questions_allowed: Optional[int] = Field(default=None)
     max_output_tokens: Optional[int] = Field(default=None)
     max_input_tokens: Optional[int] = Field(default=None)
     system_schema_budget_tokens: Optional[int] = Field(default=None)
@@ -850,6 +851,15 @@ class PromptBinding(SQLModel, table=True):
 
     # Trimming
     trim_strategy: Optional[TrimStrategyEnum] = Field(default=None, sa_column=Column(SAEnum(TrimStrategyEnum)))
+
+    # Billing (credits) - may be absent in older DB snapshots.
+    solve_text_cost: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(18, 10)))
+    solve_snap_image_cost: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(18, 10)))
+    solve_snap_pdf_cost: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(18, 10)))
+    solve_voice_cost: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(18, 10)))
+    verify_addon_cost: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(18, 10)))
+    plot_addon_cost: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(18, 10)))
+    attempt_fee: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(18, 10)))
 
     max_steps: Optional[int] = Field(default=None)
     retry_cap_tokens: Optional[int] = Field(default=None) # Legacy field, keeping for compatibility
@@ -1323,6 +1333,87 @@ class StripePriceMap(SQLModel, table=True):
     currency: str = Field(default="USD")
     active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class CreditLotV2(SQLModel, table=True):
+    __tablename__ = "credit_lots"
+
+    lot_id: str = Field(primary_key=True, max_length=36)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    source: str = Field(default="manual", max_length=64)
+    credits_total: Decimal = Field(sa_column=Column(Numeric(20, 10), nullable=False))
+    credits_remaining: Decimal = Field(sa_column=Column(Numeric(20, 10), nullable=False))
+    expires_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class CreditHoldV2(SQLModel, table=True):
+    __tablename__ = "credit_holds"
+    __table_args__ = (
+        UniqueConstraint("user_id", "idempotency_key", name="uq_credit_holds_user_idempotency"),
+    )
+
+    hold_id: str = Field(primary_key=True, max_length=36)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    request_id: str = Field(max_length=255)
+    attempt_id: Optional[str] = Field(default=None, max_length=36)
+    idempotency_key: str = Field(index=True, max_length=255)
+    tier: str = Field(max_length=32)
+    action: str = Field(max_length=64)
+    amount_reserved: Decimal = Field(sa_column=Column(Numeric(20, 10), nullable=False))
+    amount_settled: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(20, 10), nullable=False))
+    amount_released: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(20, 10), nullable=False))
+    status: str = Field(max_length=32)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    expires_at: datetime
+
+
+class CreditHoldAllocationV2(SQLModel, table=True):
+    __tablename__ = "credit_hold_allocations"
+    __table_args__ = (
+        UniqueConstraint("hold_id", "lot_id", name="credit_hold_allocations_pkey"),
+    )
+
+    hold_id: str = Field(foreign_key="credit_holds.hold_id", primary_key=True, max_length=36)
+    lot_id: str = Field(foreign_key="credit_lots.lot_id", primary_key=True, max_length=36)
+    amount: Decimal = Field(sa_column=Column(Numeric(20, 10), nullable=False))
+
+
+class UsageLedgerV2(SQLModel, table=True):
+    __tablename__ = "usage_ledger"
+
+    ledger_id: str = Field(primary_key=True, max_length=36)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    hold_id: Optional[str] = Field(default=None, foreign_key="credit_holds.hold_id", max_length=36)
+    request_id: str = Field(max_length=255)
+    attempt_id: Optional[str] = Field(default=None, max_length=36)
+    idempotency_key: str = Field(index=True, max_length=255)
+    tier: str = Field(max_length=32)
+    action: str = Field(max_length=64)
+    question_id: Optional[str] = Field(default=None, max_length=255)
+    question_index: Optional[int] = None
+    base_cost: Decimal = Field(sa_column=Column(Numeric(20, 10), nullable=False))
+    addons_cost: Decimal = Field(sa_column=Column(Numeric(20, 10), nullable=False))
+    attempt_fee: Decimal = Field(sa_column=Column(Numeric(20, 10), nullable=False))
+    total_cost: Decimal = Field(sa_column=Column(Numeric(20, 10), nullable=False))
+    pricing_snapshot: dict = Field(sa_column=Column(JSON, nullable=False))
+    outcome: str = Field(max_length=32)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class CreditPack(SQLModel, table=True):
+    __tablename__ = "credit_packs"
+    __table_args__ = (
+        UniqueConstraint("pack_code", name="uq_credit_packs_pack_code"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    pack_code: str = Field(index=True, max_length=64)
+    credits: int
+    pricing_strategy_label: str = Field(max_length=128)
+    is_active: bool = Field(default=True, index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 class InvoiceKind(str, Enum):
     TOPUP = "TOPUP"

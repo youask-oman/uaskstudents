@@ -320,13 +320,31 @@ async def solve_text_batch(
     user_id: int = Param(...),
     session: Session = Depends(get_session),
 ):
+    from app.services.solve.batch_tier_runtime import BatchSolveError, execute_batch_solve
+
     try:
-        result = await solve_text_questions(
+        tier_slug = _normalize_tier_slug(body.tier)
+        tier_external = "FINAL" if tier_slug == "short" else tier_slug.upper()
+        questions_json = [
+            {
+                "question_id": q.question_id,
+                "question_text": q.text,
+                "mode": "SOLVE",
+                "graph_mode": "AUTO",
+                "domain_mode": "reals",
+            }
+            for q in body.questions
+        ]
+        payload, telemetry = await execute_batch_solve(
             session=session,
-            user_id=user_id,
-            requested_mode=body.requested_mode,
-            tier=body.tier,
-            questions=[q.model_dump() for q in body.questions],
+            tier=tier_external,
+            request_id=str(uuid.uuid4()),
+            attempt_id=str(uuid.uuid4()),
+            mode="SOLVE",
+            graph_mode="AUTO",
+            domain_mode="reals",
+            preferred_response_language="English",
+            questions_json=questions_json,
         )
         # Persist a chat session so frontend can route to /chat/{session_id}
         user_prompt_lines = ["Solve the selected questions:"]
@@ -335,7 +353,8 @@ async def solve_text_batch(
         user_prompt = "\n".join(user_prompt_lines)
 
         assistant_sections: List[str] = []
-        for idx, solution in enumerate(result["solutions"], start=1):
+        solutions = payload.get("items") if isinstance(payload.get("items"), list) else []
+        for idx, solution in enumerate(solutions, start=1):
             item = _render_solution_item_markdown(solution if isinstance(solution, dict) else {})
             question_id = str((solution or {}).get("question_id") or f"q{idx}")
             assistant_sections.append(f"## {question_id}\n{item.get('markdown') or 'No answer returned.'}")
@@ -343,7 +362,7 @@ async def solve_text_batch(
 
         new_chat = ChatSession(
             user_id=user_id,
-            title=f"Batch solve ({result['question_count']})",
+            title=f"Batch solve ({len(solutions)})",
             subject="Math",
             is_saved=False,
             learning_mode="solve",
@@ -362,29 +381,32 @@ async def solve_text_batch(
                 content=assistant_markdown,
                 structured_data={
                     "mode": "batch_text_solve",
-                    "requested_mode": result["requested_mode"],
-                    "response_language": result["response_language"],
-                    "question_count": result["question_count"],
-                    "solutions": result["solutions"],
+                    "requested_mode": body.requested_mode,
+                    "response_language": ((payload.get("language") or {}).get("response_language") if isinstance(payload.get("language"), dict) else "English"),
+                    "question_count": len(solutions),
+                    "solutions": solutions,
                 },
-                telemetry=result.get("telemetry") or {},
-                model_used=str((result.get("telemetry") or {}).get("model") or ""),
+                telemetry=telemetry or {},
+                model_used=str((telemetry or {}).get("model") or ""),
             )
         )
         session.commit()
 
         return SolveTextBatchResponse(
             ok=True,
-            request_id=result["request_id"],
-            attempt_id=result["attempt_id"],
-            requested_mode=result["requested_mode"],
-            schema_name=result["schema_name"],
-            response_language=result["response_language"],
-            question_count=result["question_count"],
-            solutions=result["solutions"],
-            telemetry=result.get("telemetry") or {},
+            request_id=str(telemetry.get("request_id") or ""),
+            attempt_id=str(telemetry.get("attempt_id") or ""),
+            requested_mode=body.requested_mode,
+            schema_name=str(telemetry.get("schema_name") or ""),
+            response_language=((payload.get("language") or {}).get("response_language") if isinstance(payload.get("language"), dict) else "English"),
+            question_count=len(solutions),
+            solutions=solutions,
+            telemetry=telemetry or {},
             session_id=new_chat.id,
         )
+    except BatchSolveError as exc:
+        detail = {"code": exc.code, "message": str(exc), **(exc.details or {})}
+        raise HTTPException(status_code=exc.status_code, detail=detail) from exc
     except SolveTextPipelineError as exc:
         detail = {"code": exc.code, "message": exc.message, **(exc.details or {})}
         raise HTTPException(status_code=exc.http_status, detail=detail) from exc

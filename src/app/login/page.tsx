@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { fetchApi, parseApiError } from "@/lib/api";
 
 interface LoginResponse {
     access_token: string;
@@ -20,8 +21,14 @@ export default function LoginPage() {
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
-    const isDark = typeof window !== "undefined" && document.documentElement.classList.contains("dark");
+    const [mounted, setMounted] = useState(false);
+    const [isDark, setIsDark] = useState(false);
     const router = useRouter();
+
+    useEffect(() => {
+        setMounted(true);
+        setIsDark(document.documentElement.classList.contains("dark"));
+    }, []);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -29,16 +36,15 @@ export default function LoginPage() {
         setError("");
 
         try {
-            const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:9000";
-            const response = await fetch(`${apiBaseUrl}/api/v1/login`, {
+            const response = await fetchApi("/api/v1/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, password }),
             });
 
             if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.detail || "Login failed");
+                const apiError = await parseApiError(response);
+                throw new Error(apiError.message || "Login failed");
             }
 
             const data = (await response.json()) as LoginResponse;
@@ -77,7 +83,7 @@ export default function LoginPage() {
                 <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-black/5 dark:border-white/5 px-6 md:px-10 py-4 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md">
                     <Link href="/" className="flex items-center gap-3 text-[#111318] dark:text-white">
                         <Image
-                            src={isDark ? "/logo-dark.png" : "/logo.png"}
+                            src={mounted && isDark ? "/logo-dark.png" : "/logo.png"}
                             alt="uask.ai"
                             width={96}
                             height={24}
@@ -130,7 +136,7 @@ export default function LoginPage() {
                                 <div className="relative">
                                     <input
                                         className="form-input w-full rounded-lg text-[#111318] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/20 border border-[#dbdfe6] dark:border-gray-700 bg-white dark:bg-[#101622] focus:border-primary h-12 placeholder:text-[#616f89] px-4 pr-12 text-sm font-normal"
-                                        placeholder="••••••••"
+                                        placeholder="********"
                                         type={showPassword ? "text" : "password"}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
@@ -176,15 +182,9 @@ export default function LoginPage() {
                         {/* OAuth Buttons */}
                         <div className="grid grid-cols-2 gap-4">
                             <button className="flex items-center justify-center gap-2 py-3 border border-[#dbdfe6] dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group">
-                                <Image
-                                    alt="Google icon"
-                                    className="w-5 h-5"
-                                    data-alt="Google colorful icon logo"
-                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuAJWbywDH8KRd1dJJEkxXYBQ0UsO11AYQEWqePDSRvpdcYQxgbR39aHPFaq1SspnSEpJDyR30md6bK5rcnBFV0WFayiGt1FTjdk0HCY64aR4ivtOCH2eXyR7KwIumZPDpiWw7b47yeX4PEJeKJLFDE9c5M6rgP_wJ5dwdZNM7QcYB47R3CpCL_luMEqdCEUN799qAkfMqCETnzzZl-2mYwUOSKCoHRy1nNrEKQtO4pcYJ33ZDhuEvmKh8f2AoXUjUv_ckHkua-Ecl-k"
-                                    width={20}
-                                    height={20}
-                                    unoptimized
-                                />
+                                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white text-[#4285F4] text-xs font-extrabold border border-slate-200 dark:border-slate-700">
+                                    G
+                                </span>
                                 <span className="text-sm font-semibold text-[#111318] dark:text-white">Google</span>
                             </button>
                             <button className="flex items-center justify-center gap-2 py-3 border border-[#dbdfe6] dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group">
@@ -205,9 +205,10 @@ export default function LoginPage() {
 
                 {/* Footer Copyright */}
                 <footer className="py-6 px-10 text-center">
-                    <p className="text-xs text-[#616f89] dark:text-gray-500">© 2024 uask.ai. All rights reserved. Physics-informed AI for education.</p>
+                    <p className="text-xs text-[#616f89] dark:text-gray-500">� 2024 uask.ai. All rights reserved. Physics-informed AI for education.</p>
                 </footer>
             </div>
         </div>
     );
 }
+

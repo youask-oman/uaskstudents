@@ -319,14 +319,33 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   );
 
   useEffect(() => {
-    const normalizeLanguageCode = (value: string): string => {
+        const normalizeLanguageCode = (value: string): string => {
       const raw = (value || "").trim().toLowerCase();
       const map: Record<string, string> = {
-        ar: "ar",
-        arabic: "ar",
-        العربية: "ar",
         en: "en",
         english: "en",
+        "english (us)": "en",
+        ar: "ar",
+        arabic: "ar",
+        "\u0627\u0644\u0639\u0631\u0628\u064a\u0629": "ar",
+        fr: "fr",
+        french: "fr",
+        francais: "fr",
+        "fran\u00e7ais": "fr",
+        es: "es",
+        spanish: "es",
+        espanol: "es",
+        "espa\u00f1ol": "es",
+        pt: "pt",
+        portuguese: "pt",
+        portugues: "pt",
+        "portugu\u00eas": "pt",
+        ru: "ru",
+        russian: "ru",
+        "\u0440\u0443\u0441\u0441\u043a\u0438\u0439": "ru",
+        it: "it",
+        italian: "it",
+        italiano: "it",
       };
       return map[raw] || raw.slice(0, 2);
     };
@@ -690,3 +709,4 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     </div>
   );
 }
+

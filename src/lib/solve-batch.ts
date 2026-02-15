@@ -1,5 +1,5 @@
 export type SolveBatchMode = "free_minimal" | "final_only" | "standard_detailed" | "research_detailed";
-export type SolveBatchTier = "FREE" | "STANDARD" | "RESEARCH";
+export type SolveBatchTier = "FREE" | "SHORT" | "STANDARD" | "RESEARCH";
 
 export type SolveBatchQuestion = {
     question_id: string;
@@ -13,9 +13,9 @@ export type BuildSolveBatchPayloadInput = {
 };
 
 export const SOLVE_BATCH_CAPS: Record<SolveBatchMode, number> = {
-    free_minimal: 10,
-    final_only: 10,
-    standard_detailed: 3,
+    free_minimal: 5,
+    final_only: 15,
+    standard_detailed: 2,
     research_detailed: 1,
 };
 
@@ -34,6 +34,7 @@ export function resolveSolveBatchTier(tier: string): SolveBatchTier {
     const t = String(tier || "").trim().toUpperCase();
     if (t === "RESEARCH") return "RESEARCH";
     if (t === "STANDARD") return "STANDARD";
+    if (t === "SHORT" || t === "FINAL") return "SHORT";
     return "FREE";
 }
 
@@ -66,7 +67,13 @@ export function mapSolveBatchErrorMessage(code?: string, maxAllowed?: number): s
         return `This mode supports up to ${cap} question(s). Reduce selection.`;
     }
     if (code === "PROVIDER_TIMEOUT" || code === "LLM_TIMEOUT" || code === "TIMEOUT") {
-        return "Timed out. Try fewer questions or a lighter mode.";
+        return "Provider timeout. You were NOT charged. Retry with a new request.";
+    }
+    if (code === "already_processed") {
+        return "This request was already processed; no additional charge was applied.";
+    }
+    if (code === "insufficient_credits") {
+        return "Insufficient credits. Please top up and retry.";
     }
     if (code === "SCHEMA_INVALID") {
         return "Response formatting failed. Please retry.";

@@ -894,9 +894,34 @@ def _load_user_language(session: Session, user_id: int) -> str:
     user = session.get(User, user_id)
     if not user:
         return "en"
-    raw = getattr(user, "preferred_language", None) or "en"
-    lang = str(raw or "en").strip().lower()
-    return lang if lang else "en"
+    raw = str(getattr(user, "preferred_language", None) or "en").strip().lower()
+    lang_map = {
+        "en": "en",
+        "english": "en",
+        "english (us)": "en",
+        "fr": "fr",
+        "french": "fr",
+        "francais": "fr",
+        "fran\u00e7ais": "fr",
+        "ar": "ar",
+        "arabic": "ar",
+        "\u0627\u0644\u0639\u0631\u0628\u064a\u0629": "ar",
+        "es": "es",
+        "spanish": "es",
+        "espanol": "es",
+        "espa\u00f1ol": "es",
+        "pt": "pt",
+        "portuguese": "pt",
+        "portugues": "pt",
+        "portugu\u00eas": "pt",
+        "ru": "ru",
+        "russian": "ru",
+        "\u0440\u0443\u0441\u0441\u043a\u0438\u0439": "ru",
+        "it": "it",
+        "italian": "it",
+        "italiano": "it",
+    }
+    return lang_map.get(raw, (raw[:2] if len(raw) >= 2 else "en"))
 
 
 def _normalize_plot_from_pipeline(payload: Dict[str, Any], plot_data: Dict[str, Any]) -> Dict[str, Any]:

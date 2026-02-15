@@ -1702,10 +1702,10 @@
 }
 
 /* Top-level global math safety rules for this component */
-:global(.mathBlock),
-:global(.latexBox),
-:global([data-math-block]),
-:global([data-math]) {
+.root :global(.mathBlock),
+.root :global(.latexBox),
+.root :global([data-math-block]),
+.root :global([data-math]) {
   overflow: visible !important;
   max-height: none !important;
 }

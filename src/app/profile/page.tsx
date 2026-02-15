@@ -43,6 +43,47 @@ interface SchoolSearchResult {
 
 type WhatsAppBotStatus = "disconnected" | "connecting" | "connected" | "qr_ready";
 
+const LANGUAGE_OPTIONS: Array<{ value: string; label: string }> = [
+    { value: "en", label: "English" },
+    { value: "ar", label: "\u0627\u0644\u0639\u0631\u0628\u064a\u0629" },
+    { value: "fr", label: "Fran\u00e7ais" },
+    { value: "es", label: "Espa\u00f1ol" },
+    { value: "pt", label: "Portugu\u00eas" },
+    { value: "ru", label: "\u0420\u0443\u0441\u0441\u043a\u0438\u0439" },
+    { value: "it", label: "Italiano" },
+];
+
+const normalizeLanguageCode = (value: string): string => {
+    const raw = (value || "").trim().toLowerCase();
+    const map: Record<string, string> = {
+        en: "en",
+        english: "en",
+        "english (us)": "en",
+        ar: "ar",
+        arabic: "ar",
+        "\u0627\u0644\u0639\u0631\u0628\u064a\u0629": "ar",
+        fr: "fr",
+        french: "fr",
+        francais: "fr",
+        "fran\u00e7ais": "fr",
+        es: "es",
+        spanish: "es",
+        espanol: "es",
+        "espa\u00f1ol": "es",
+        pt: "pt",
+        portuguese: "pt",
+        portugues: "pt",
+        "portugu\u00eas": "pt",
+        ru: "ru",
+        russian: "ru",
+        "\u0440\u0443\u0441\u0441\u043a\u0438\u0439": "ru",
+        it: "it",
+        italian: "it",
+        italiano: "it",
+    };
+    return map[raw] || "en";
+};
+
 export default function ProfilePage() {
     const { pushToast } = useToast();
     const [activeTab, setActiveTab] = useState<TabId>('profile');
@@ -119,7 +160,7 @@ export default function ProfilePage() {
                 setAcademicLevel(data.academic_level || "Undergraduate - Year 2");
                 setTimezone(data.timezone || "GMT (UTC +0:00)");
                 setTheme(data.theme || "light");
-                setLanguage(data.preferred_language || "English (US)");
+                setLanguage(normalizeLanguageCode(data.preferred_language || "en"));
                 setSolvingMode(data.solving_mode || "Full Solution");
                 // Location profile
                 setProfileCountry(data.profile_country || "");
@@ -950,9 +991,9 @@ export default function ProfilePage() {
                                             onChange={(e) => setLanguage(e.target.value)}
                                             className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl h-12 px-4 text-sm font-medium focus:ring-2 focus:ring-primary outline-none"
                                         >
-                                            <option>English (US)</option>
-                                            <option>Arabic</option>
-                                            <option>French</option>
+                                            {LANGUAGE_OPTIONS.map((opt) => (
+                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                            ))}
                                         </select>
                                     </div>
                                 </div>

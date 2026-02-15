@@ -80,11 +80,13 @@ def _validate_config(session: Session, payload: OcrConfigPayload) -> Dict[str, A
     if payload.openai_engine_enabled and not payload.openai_model:
         raise HTTPException(status_code=422, detail="openai_model is required when OpenAI OCR is enabled")
 
-    prompt_entry = resolve_prompt_entry(session, payload.openai_system_prompt_key)
+    prompt_key = (payload.openai_system_prompt_key or "").strip()
+    schema_key = (payload.openai_schema_key or "").strip()
+    prompt_entry = resolve_prompt_entry(session, prompt_key)
     if not prompt_entry:
         raise HTTPException(status_code=422, detail="Invalid openai_system_prompt_key")
 
-    schema_entry = resolve_schema_entry(session, payload.openai_schema_key)
+    schema_entry = resolve_schema_entry(session, schema_key)
     if not schema_entry:
         raise HTTPException(status_code=422, detail="Invalid openai_schema_key")
 
@@ -229,6 +231,17 @@ def activate_ocr_configuration(
     current_cfg = get_active_ocr_config(session)
     current_payload = _config_to_payload(current_cfg)
 
+    target_version = session.get(SystemConfigVersion, config_id)
+    if not target_version:
+        raise HTTPException(status_code=404, detail="Configuration version not found")
+    if target_version.config_type != OCR_CONFIG_TYPE:
+        raise HTTPException(status_code=400, detail="Selected version is not an OCR configuration")
+    try:
+        target_payload = OcrConfigPayload(**(target_version.value or {}))
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Invalid OCR configuration payload in version: {exc}")
+    _validate_config(session, target_payload)
+
     new_version = admin_config_service.revert_config(
         session=session,
         version_id=config_id,
@@ -255,4 +268,3 @@ def activate_ocr_configuration(
         "version": new_version.version,
         "config": new_version.value,
     }
-

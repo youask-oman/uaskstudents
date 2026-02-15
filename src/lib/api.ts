@@ -5,6 +5,11 @@ export const API_BASE_URL =
     process.env.NEXT_PUBLIC_API_URL ||
     "";
 
+const API_FALLBACK_URL =
+    process.env.NEXT_PUBLIC_API_FALLBACK_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://127.0.0.1:9016";
+
 export const getAuthToken = () =>
     typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
@@ -77,5 +82,47 @@ export async function parseApiError(res: Response): Promise<ApiError> {
         details,
         status: res.status,
     };
+}
+
+function buildApiCandidates(): string[] {
+    return Array.from(
+        new Set(
+            [
+                API_BASE_URL,
+                API_FALLBACK_URL,
+                "http://127.0.0.1:9000",
+                "http://localhost:9000",
+                "http://127.0.0.1:9016",
+                "http://localhost:9016",
+                "",
+            ]
+                .map((x) => (x || "").trim())
+        )
+    );
+}
+
+function joinApiUrl(base: string, path: string): string {
+    if (!base) return path;
+    return `${base}${path}`;
+}
+
+export async function fetchApi(path: string, init?: RequestInit): Promise<Response> {
+    const candidates = buildApiCandidates();
+    let lastErr: unknown = null;
+
+    for (const base of candidates) {
+        try {
+            const res = await fetch(joinApiUrl(base, path), init);
+            if (res.status === 404 || res.status >= 500) {
+                continue;
+            }
+            return res;
+        } catch (err) {
+            lastErr = err;
+        }
+    }
+
+    if (lastErr) throw lastErr;
+    throw new Error("Network error");
 }
 

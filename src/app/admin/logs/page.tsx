@@ -14,6 +14,7 @@ interface SolveTrace {
     output_tokens?: number;
     deduct_committed?: boolean;
     problem_text?: string;
+    source?: string;
     [key: string]: unknown;
 }
 
@@ -28,6 +29,7 @@ export default function AdminLogsPage() {
     const [filter, setFilter] = useState("");
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [traceSource, setTraceSource] = useState<"trace_file" | "solver_attempt_fallback">("trace_file");
 
     useEffect(() => {
         const controller = new AbortController();
@@ -41,7 +43,10 @@ export default function AdminLogsPage() {
                     throw new Error("Failed to load solve traces.");
                 }
                 const data = await res.json();
-                setTraces(Array.isArray(data) ? data : []);
+                const parsed = Array.isArray(data) ? data : [];
+                setTraces(parsed);
+                const hasFallback = parsed.some((entry) => String((entry as SolveTrace).source || "") === "solver_attempt_fallback");
+                setTraceSource(hasFallback ? "solver_attempt_fallback" : "trace_file");
             } catch (err) {
                 if ((err as Error).name === "AbortError") return;
                 console.error("Failed to fetch solve traces:", err);
@@ -105,6 +110,11 @@ export default function AdminLogsPage() {
                 <div className="flex flex-col gap-2">
                     <h2 className="text-xl font-bold text-slate-900 dark:text-white">Solve Request Logs</h2>
                     <p className="text-sm text-slate-400">Full trace log for each request, including OpenAI payload metadata.</p>
+                    {traceSource === "solver_attempt_fallback" && (
+                        <div className="inline-flex w-fit items-center rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
+                            Source: solver attempts fallback
+                        </div>
+                    )}
                 </div>
                 <button
                     onClick={async () => {

@@ -49,7 +49,7 @@ export default function TopNavBar() {
                 <nav className="hidden md:flex flex-1 justify-center gap-8">
                     <Link className="text-[#111318] dark:text-gray-300 text-sm font-medium hover:text-primary transition-colors" href="/#how-it-works">How it Works</Link>
                     <Link className="text-[#111318] dark:text-gray-300 text-sm font-medium hover:text-primary transition-colors" href="/#features">Features</Link>
-                    <Link className="text-[#111318] dark:text-gray-300 text-sm font-medium hover:text-primary transition-colors" href="/pricing">Pricing</Link>
+                    <Link className="text-[#111318] dark:text-gray-300 text-sm font-medium hover:text-primary transition-colors" href="/#pricing">Pricing</Link>
                 </nav>
 
                 <div className="flex items-center gap-3">

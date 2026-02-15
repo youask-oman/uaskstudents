@@ -506,7 +506,8 @@ connectToWhatsApp();
         with open(self.node_script_path, 'w') as f:
             f.write(script_content)
         
-        print(f"[WhatsApp] Node.js script created at {self.node_script_path}")
+        display_path = self.node_script_path.replace("\\", "/")
+        print(f"[WhatsApp] Node.js script created at {display_path}")
 
     def _resolve_node_binaries(self) -> tuple[Optional[str], Optional[str]]:
         """

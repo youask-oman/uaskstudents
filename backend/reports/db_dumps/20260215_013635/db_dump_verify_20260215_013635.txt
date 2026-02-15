@@ -1,0 +1,13 @@
+﻿timestamp=20260215_013635
+alembic_heads=20260215_ocr_registry_restore (head)
+alembic_current=20260215_ocr_registry_restore (head)
+public_table_count=83
+dump_file=uask_db_20260215_013635.dump
+dump_size_bytes=24743156
+dump_sha256=D266010077390ACB73ECF8A61AD40BDD01A2228B8C7515C89FAE629820C8910A
+sql_file=uask_db_20260215_013635.sql
+sql_size_bytes=82285856
+sql_sha256=F1973ACECCA5CBC018338AC8CCB9A88FD21A4389E966D0718D9300B0869F28D5
+
+restore_list_preview:
+pg_restore not run

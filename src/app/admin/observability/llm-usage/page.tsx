@@ -23,6 +23,7 @@ type LlmUsageItem = {
 type LlmUsageListResponse = {
   total: number;
   items: LlmUsageItem[];
+  source?: string;
 };
 
 type CreatePayload = {
@@ -66,6 +67,7 @@ export default function AdminLlmUsagePage() {
   const [items, setItems] = useState<LlmUsageItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [dataSource, setDataSource] = useState<string>("llmusageledger");
   const [query, setQuery] = useState("");
   const [provider, setProvider] = useState("");
   const [model, setModel] = useState("");
@@ -103,6 +105,7 @@ export default function AdminLlmUsagePage() {
       const data = (await res.json()) as LlmUsageListResponse;
       setItems(Array.isArray(data.items) ? data.items : []);
       setTotal(Number(data.total || 0));
+      setDataSource((data.source || "llmusageledger").toLowerCase());
     } catch (err) {
       pushToast({
         type: "error",
@@ -209,6 +212,11 @@ export default function AdminLlmUsagePage() {
       <header className="flex flex-col gap-2">
         <h2 className="text-xl font-bold text-slate-900 dark:text-white">LLM Usage Ledger</h2>
         <p className="text-sm text-slate-500">Full admin control over `llmusageledger` records (read/create/update/delete).</p>
+        {dataSource === "solver_attempt_fallback" && (
+          <div className="inline-flex w-fit items-center rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
+            Source: solver attempts fallback
+          </div>
+        )}
       </header>
 
       <section className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-wrap gap-3">
@@ -343,4 +351,3 @@ export default function AdminLlmUsagePage() {
     </div>
   );
 }
-

@@ -1,51 +1,43 @@
 {
   "files": {
     "credit_programs_or_plans.json": {
-      "row_count": 1,
-      "sha256": "3bfef87e893c33a5359e7ffaa1cd5efbe0cc89141fe3d709fc8c2ee5264ab7be"
+      "row_count": 12,
+      "sha256": "9d854262ed054688b5bbcf475281d07ce3509030942b41a863fcf04dd2767da2"
     },
     "internal_users.json": {
       "row_count": 5,
-      "sha256": "3d38fcd3dad413d11a5b41e419e6ee3b895d793cc05eaba408bf71f880d8e0e5"
+      "sha256": "7dc2b69ea0d2a97de5dc5f50bc4d39eff58f3a55eb5631d47a633bd3a51eeddd"
     },
     "json_schemas.json": {
-      "row_count": 12,
-      "sha256": "34cc29aeb8f56aa37d95173108e2a4d4be46485d72d3ebd2684b9349af3a2a6b"
+      "row_count": 7,
+      "sha256": "cb89c0a984eda9bf6db444d0d594483980061166b6e57cb21f1b6f1f235eaf81"
     },
     "prompt_bindings.json": {
-      "row_count": 9,
-      "sha256": "7651df7d6e46405dd62236dfb99db5f8009ea539a5d9d64d05c84c557bf93205"
+      "row_count": 4,
+      "sha256": "c592b8956dfa99f40509e67812949e1da8c3b152aa474a9f70948a25e805dfcf"
     },
     "prompt_schema_links.json": {
       "row_count": 0,
       "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
     },
     "prompt_templates.json": {
-      "row_count": 21,
-      "sha256": "5c0e333f905ee7ec40733fca61fced80138cde0bd10907d40ccf312d76da9b4a"
+      "row_count": 7,
+      "sha256": "2de4a5eea86fcd3044277eb0d1910d24173cb5bd96d63d851e816a7c94ea4514"
     },
     "providermodelpricing.json": {
-      "row_count": 8,
-      "sha256": "e39903b4d4f422669efa460ffe3b8393d8e6ee8596513fd3dfd7189a3e4b48d2"
+      "row_count": 10,
+      "sha256": "1905ab7099458707cedacf60336fe6707c8e9d0f88d25c724ff5f4f38594f2d2"
     },
     "schools.json": {
       "row_count": 117960,
-      "sha256": "ea649669a6c43040ae80dd76af597dfd20bc69a5672e1d75119d90850a80beaa"
+      "sha256": "e9700b7221df7303bf732917e97be96d41b0c2fe51a9e0b0c353990bf2728810"
     },
     "systemconfig.json": {
-      "row_count": 45,
-      "sha256": "eb065f5a8e5ac4a97eff1be102ebdd15ac144342fcc363943fbf0dea0ddc2d72"
-    },
-    "credit_transfers.json": {
-      "row_count": 12,
-      "sha256": "ebcb4c10d1aec509ccea26d2982f51174b84bddac6434411e39c7eb4875aa5d3"
-    },
-    "notifications.json": {
-      "row_count": 0,
-      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      "row_count": 54,
+      "sha256": "3ab6bddd8f0f1a6024db3543dde755962dd4991cc9a0021f073d21c9a8026301"
     }
   },
-  "generated_at": "2026-02-12T19:14:07.988235+00:00",
+  "generated_at": "2026-02-15T08:11:23.034311+00:00",
   "schema_table_map": {
     "link_tables": [],
     "prompt_binding_reference_model": "key-based strings",

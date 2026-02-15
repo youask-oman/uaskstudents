@@ -1,9 +1,8 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import LegacyPlansPage from "@/app/admin/billing/legacy/page";
-
-export const PAGE_TITLE = "Legacy Plans";
+const PAGE_TITLE = "Legacy Plans";
+void PAGE_TITLE;
 
 export default function LegacyPlansAliasPage() {
-    return <LegacyPlansPage />;
+  redirect("/admin/billing");
 }

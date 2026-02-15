@@ -5,14 +5,23 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 
-def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[3]
+def _inventory_candidates() -> List[Path]:
+    here = Path(__file__).resolve()
+    return [
+        here.parents[3] / "privacy_data_inventory.json",  # local repo layout
+        here.parents[2] / "privacy_data_inventory.json",  # docker /app/app layout
+        Path.cwd() / "privacy_data_inventory.json",
+        Path.cwd().parent / "privacy_data_inventory.json",
+        Path("/src/privacy_data_inventory.json"),  # docker compose repo mount
+    ]
 
 
 def load_privacy_inventory() -> Dict[str, Any]:
-    inventory_path = _repo_root() / "privacy_data_inventory.json"
-    with inventory_path.open("r", encoding="utf-8") as f:
-        return json.load(f)
+    for inventory_path in _inventory_candidates():
+        if inventory_path.exists():
+            with inventory_path.open("r", encoding="utf-8") as f:
+                return json.load(f)
+    raise FileNotFoundError("privacy_data_inventory.json not found in expected locations")
 
 
 def _bullets(items: List[str]) -> str:

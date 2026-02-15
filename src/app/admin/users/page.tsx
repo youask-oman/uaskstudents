@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useMemo, useState, useEffect, useCallback } from "react";
+import { fetchApi } from "@/lib/api";
 
 interface UserListItem {
     id: number;
@@ -55,7 +56,7 @@ export default function AdminUsersPage() {
     const [activeRowMenu, setActiveRowMenu] = useState<number | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [availablePlans, setAvailablePlans] = useState<{ id: number; name: string; slug: string }[]>([]);
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:9000";
+    const [didInitialReset, setDidInitialReset] = useState(false);
     const getAuthHeaders = (includeJson = false) => {
         const token = localStorage.getItem("token");
         const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
@@ -65,27 +66,57 @@ export default function AdminUsersPage() {
         return headers;
     };
 
+    const allowedRoleFilters = useMemo(
+        () => new Set(["student", "employee", "supervisor", "support", "finance", "devops", "admin", "superadmin"]),
+        []
+    );
+
     const fetchUsers = useCallback(async (pageToFetch: number, signal?: AbortSignal) => {
         setLoading(true);
         try {
             setErrorMessage(null);
             const params = new URLSearchParams();
-            if (search) params.append("q", search);
-            if (roleFilter) params.append("role", roleFilter);
-            if (planFilter) params.append("plan", planFilter);
+            if (search.trim()) params.append("q", search.trim());
+            if (roleFilter && allowedRoleFilters.has(roleFilter.toLowerCase())) {
+                params.append("role", roleFilter);
+            }
+            if (planFilter && availablePlans.some((plan) => plan.slug === planFilter)) {
+                params.append("plan", planFilter);
+            }
             params.append("offset", ((pageToFetch - 1) * limit).toString());
             params.append("limit", limit.toString());
 
-            const res = await fetch(`${baseUrl}/api/v1/admin/users?${params.toString()}`, {
+            const res = await fetchApi(`/api/v1/admin/users?${params.toString()}`, {
                 headers: getAuthHeaders(),
                 signal
             });
             if (!res.ok) {
-                throw new Error("Failed to load user list.");
+                throw new Error(`Failed to load user list (${res.status}).`);
             }
             const data = await res.json();
-            setUsers(data.users);
-            setTotalCount(data.total_count);
+            const parsedUsers = Array.isArray(data?.users) ? data.users : [];
+            const parsedTotal = typeof data?.total_count === "number" ? data.total_count : 0;
+
+            // Recovery guard: when no filters are set, an empty payload is suspicious.
+            // Retry once with canonical default query to avoid sticky empty state.
+            const hasAnyFilter = !!search.trim() || !!roleFilter || !!planFilter;
+            if (!hasAnyFilter && parsedUsers.length === 0 && parsedTotal === 0) {
+                const fallbackRes = await fetchApi(`/api/v1/admin/users?offset=0&limit=${limit}`, {
+                    headers: getAuthHeaders(),
+                    signal,
+                });
+                if (fallbackRes.ok) {
+                    const fallbackData = await fallbackRes.json();
+                    setUsers(Array.isArray(fallbackData?.users) ? fallbackData.users : []);
+                    setTotalCount(typeof fallbackData?.total_count === "number" ? fallbackData.total_count : 0);
+                } else {
+                    setUsers(parsedUsers);
+                    setTotalCount(parsedTotal);
+                }
+            } else {
+                setUsers(parsedUsers);
+                setTotalCount(parsedTotal);
+            }
         } catch (error) {
             if ((error as Error).name === "AbortError") return;
             console.error("Failed to load user list", error);
@@ -93,7 +124,16 @@ export default function AdminUsersPage() {
         } finally {
             setLoading(false);
         }
-    }, [baseUrl, limit, search, roleFilter, planFilter]);
+    }, [limit, search, roleFilter, planFilter, allowedRoleFilters, availablePlans]);
+
+    useEffect(() => {
+        if (didInitialReset) return;
+        setSearch("");
+        setRoleFilter("");
+        setPlanFilter("");
+        setPage(1);
+        setDidInitialReset(true);
+    }, [didInitialReset]);
 
     useEffect(() => {
         const controller = new AbortController();
@@ -113,7 +153,7 @@ export default function AdminUsersPage() {
         const controller = new AbortController();
         const loadPlans = async () => {
             try {
-                const res = await fetch(`${baseUrl}/api/v1/admin/plans`, { headers: getAuthHeaders(), signal: controller.signal });
+                const res = await fetchApi(`/api/v1/admin/plans`, { headers: getAuthHeaders(), signal: controller.signal });
                 if (res.ok) {
                     const data = await res.json();
                     setAvailablePlans(Array.isArray(data) ? data : []);
@@ -125,13 +165,13 @@ export default function AdminUsersPage() {
         };
         loadPlans();
         return () => controller.abort();
-    }, [baseUrl]);
+    }, []);
 
     const handleInvite = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
             setErrorMessage(null);
-            const res = await fetch(`${baseUrl}/api/v1/admin/invite`, {
+            const res = await fetchApi(`/api/v1/admin/invite`, {
                 method: "POST",
                 headers: getAuthHeaders(true),
                 body: JSON.stringify(inviteForm),
@@ -172,7 +212,7 @@ export default function AdminUsersPage() {
     const updateRole = async (userId: number, newRole: string) => {
         try {
             setErrorMessage(null);
-            const res = await fetch(`${baseUrl}/api/v1/admin/users/${userId}`, {
+            const res = await fetchApi(`/api/v1/admin/users/${userId}`, {
                 method: "PATCH",
                 headers: getAuthHeaders(true),
                 body: JSON.stringify({ role: newRole.toLowerCase() }),
@@ -190,11 +230,11 @@ export default function AdminUsersPage() {
         try {
             let res;
             setErrorMessage(null);
-            if (action === "reset") res = await fetch(`${baseUrl}/api/v1/admin/users/${userId}/reset-password`, { method: "POST", headers: getAuthHeaders() });
-            if (action === "ban") res = await fetch(`${baseUrl}/api/v1/admin/users/${userId}/ban`, { method: "PATCH", headers: getAuthHeaders() });
+            if (action === "reset") res = await fetchApi(`/api/v1/admin/users/${userId}/reset-password`, { method: "POST", headers: getAuthHeaders() });
+            if (action === "ban") res = await fetchApi(`/api/v1/admin/users/${userId}/ban`, { method: "PATCH", headers: getAuthHeaders() });
             if (action === "delete") {
                 if (!confirm("Are you sure you want to delete this user?")) return;
-                res = await fetch(`${baseUrl}/api/v1/admin/users/${userId}`, { method: "DELETE", headers: getAuthHeaders() });
+                res = await fetchApi(`/api/v1/admin/users/${userId}`, { method: "DELETE", headers: getAuthHeaders() });
             }
             if (res?.ok) fetchUsers(page);
             else if (res) throw new Error("Action failed.");

@@ -3,11 +3,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
-import { API_BASE_URL, parseApiError } from '@/lib/api';
+import { fetchApi, parseApiError } from '@/lib/api';
 import { useToast } from '@/components/ui/ToastProvider';
 
 interface CreditHold {
-    id: number;
+    id: string;
     user_id: number;
     user_email: string;
     request_id: string;
@@ -31,23 +31,31 @@ export default function ActiveHoldsPage() {
     const [stats, setStats] = useState<Stats | null>(null);
     const [loading, setLoading] = useState(true);
     const [isSuper, setIsSuper] = useState(false);
-    const [releasingOcr, setReleasingOcr] = useState(false);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             const [holdsRes, statsRes] = await Promise.all([
-                fetch(`${API_BASE_URL}/api/admin/billing/holds?limit=50`, {
+                fetchApi(`/api/v1/admin/credits/holds?limit=50`, {
                     headers: { Authorization: `Bearer ${token}` },
                 }),
-                fetch(`${API_BASE_URL}/api/admin/billing/holds/stats`, {
+                fetchApi(`/api/v1/admin/credits/overview`, {
                     headers: { Authorization: `Bearer ${token}` },
                 })
             ]);
 
             if (holdsRes.ok) {
                 const data = await holdsRes.json();
-                setHolds(data.items);
+                setHolds((data.items || []).map((row: ApiHoldRow) => ({
+                    id: row.hold_id,
+                    user_id: row.user_id,
+                    user_email: row.user_email || `User #${row.user_id}`,
+                    request_id: row.request_id,
+                    reserved_credits: Number(row.reserved || 0),
+                    status: row.status,
+                    age_seconds: Math.max(0, Math.floor((Date.now() - new Date(row.created_at).getTime()) / 1000)),
+                    created_at: row.created_at,
+                })));
             } else {
                 const err = await parseApiError(holdsRes);
                 pushToast({
@@ -59,7 +67,12 @@ export default function ActiveHoldsPage() {
             }
             if (statsRes.ok) {
                 const data = await statsRes.json();
-                setStats(data);
+                setStats({
+                    active_holds: Number(data.active_holds_count || 0),
+                    stuck_holds_1hr: 0,
+                    max_age_seconds: 0,
+                    total_reserved_credits: Number(data.active_holds_reserved || 0),
+                });
             } else {
                 const err = await parseApiError(statsRes);
                 pushToast({
@@ -84,17 +97,17 @@ export default function ActiveHoldsPage() {
     useEffect(() => {
         fetchData();
         const storedRole = typeof window !== 'undefined' ? localStorage.getItem('user_role') : '';
-        if (storedRole === 'system_admin' || storedRole === 'superadmin') {
+        if (storedRole === 'superadmin') {
             setIsSuper(true);
         }
     }, [fetchData]);
 
-    const handleRelease = async (holdId: number) => {
+    const handleRelease = async (holdId: string) => {
         const reason = prompt('Reason for forced release?');
         if (!reason) return;
 
         try {
-            const res = await fetch(`${API_BASE_URL}/api/admin/billing/holds/${holdId}/release`, {
+            const res = await fetchApi(`/api/v1/admin/credits/holds/${holdId}/release`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -128,55 +141,11 @@ export default function ActiveHoldsPage() {
     };
 
     const handleReleaseOcrHolds = async () => {
-        if (!isSuper) return;
-        const reason = prompt("Reason for releasing OCR holds?");
-        if (!reason) return;
-        const userIdRaw = prompt("Optional: release holds for a specific user_id (leave blank for all).", "");
-        const userId = userIdRaw ? Number(userIdRaw) : undefined;
-        if (userIdRaw && Number.isNaN(userId)) {
-            pushToast({ type: "error", title: "Invalid user_id", message: "Please enter a numeric user_id." });
-            return;
-        }
-        setReleasingOcr(true);
-        try {
-            const res = await fetch(`${API_BASE_URL}/api/admin/billing/holds/release-ocr`, {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    reason,
-                    user_id: userId || undefined,
-                    idempotency_key: `ocr_hold_release_${Date.now()}`,
-                }),
-            });
-            if (res.ok) {
-                const data = await res.json();
-                pushToast({
-                    type: "success",
-                    title: "OCR holds released",
-                    message: `Released ${data.released} holds.`,
-                });
-                fetchData();
-            } else {
-                const err = await parseApiError(res);
-                pushToast({
-                    type: "error",
-                    title: "Failed to release OCR holds",
-                    message: err.message,
-                    requestId: err.requestId,
-                });
-            }
-        } catch (e) {
-            pushToast({
-                type: "error",
-                title: "Failed to release OCR holds",
-                message: e instanceof Error ? e.message : "Unexpected error",
-            });
-        } finally {
-            setReleasingOcr(false);
-        }
+        pushToast({
+            type: "info",
+            title: "Not available",
+            message: "Bulk OCR hold release is not exposed on canonical API.",
+        });
     };
 
     if (loading && holds.length === 0) {
@@ -214,11 +183,10 @@ export default function ActiveHoldsPage() {
                 {isSuper && (
                     <button
                         onClick={handleReleaseOcrHolds}
-                        disabled={releasingOcr}
                         className="flex items-center gap-2 px-6 py-3 bg-rose-50 dark:bg-rose-900/40 text-rose-700 dark:text-rose-200 text-sm font-bold rounded-2xl transition-all border border-rose-200 dark:border-rose-800 shadow-lg disabled:opacity-50"
                     >
                         <span className="material-symbols-outlined text-[20px]">delete_sweep</span>
-                        {releasingOcr ? "Releasing..." : "Release OCR Holds"}
+                        Release OCR Holds
                     </button>
                 )}
             </header>
@@ -320,3 +288,12 @@ export default function ActiveHoldsPage() {
         </div>
     );
 }
+    type ApiHoldRow = {
+        hold_id: string;
+        user_id: number;
+        user_email?: string;
+        request_id: string;
+        reserved?: number;
+        status: string;
+        created_at: string;
+    };

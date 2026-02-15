@@ -1,6 +1,11 @@
 "use client";
 
 import { API_BASE_URL, getAuthToken, parseApiError, ApiError } from "@/lib/api";
+import {
+    CreditsBalanceSchema,
+    CreditsLedgerPageSchema,
+    CreditsLotsPageSchema,
+} from "@/lib/contracts";
 
 export type WalletSummary = {
     user_id: number;
@@ -119,14 +124,28 @@ async function fetchWithFallback(path: string, init?: RequestInit): Promise<Resp
 }
 
 export async function fetchWalletSummary(): Promise<WalletSummary> {
-    const res = await fetchWithFallback(`/api/v1/wallet/summary`, {
+    const res = await fetchWithFallback(`/api/v1/credits/balance`, {
         headers: getAuthHeaders(),
     });
     if (!res.ok) {
         const err = await parseApiError(res);
         throw toApiError(err);
     }
-    return (await res.json()) as WalletSummary;
+    const data = CreditsBalanceSchema.parse(await res.json());
+    const effectiveTier = (typeof window !== "undefined" ? (localStorage.getItem("uask.solveTier") || "STANDARD") : "STANDARD") as WalletTier;
+    return {
+        user_id: data.user_id,
+        cached_balance: Number(data.available_credits || 0),
+        computed_balance: Number(data.available_credits || 0),
+        delta: 0,
+        pending_holds: 0,
+        pending_hold_credits: Number(data.reserved_credits || 0),
+        expiring_soon_credits: Number(data.expiring_soon_credits || 0),
+        expiring_soon_lots: Number(data?.lots_summary?.active_lots || 0),
+        entitlements: {},
+        effective_tier: effectiveTier,
+        active_programs: [],
+    } as WalletSummary;
 }
 
 function mapWalletTierToApi(tier: WalletTier): string {
@@ -150,27 +169,70 @@ export async function updateWalletTier(tier: WalletTier): Promise<{ subscription
 }
 
 export async function fetchWalletLots(limit = 20, offset = 0): Promise<PaginatedResponse<WalletLot>> {
-    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-    const res = await fetchWithFallback(`/api/v1/wallet/lots?${params.toString()}`, {
+    const params = new URLSearchParams({ limit: String(limit) });
+    const res = await fetchWithFallback(`/api/v1/credits/lots?${params.toString()}`, {
         headers: getAuthHeaders(),
     });
     if (!res.ok) {
         const err = await parseApiError(res);
         throw toApiError(err);
     }
-    return (await res.json()) as PaginatedResponse<WalletLot>;
+    const data = CreditsLotsPageSchema.parse(await res.json());
+    type CreditsLotRow = {
+        lot_id: string;
+        source?: string;
+        credits_total?: number;
+        credits_remaining?: number;
+        expires_at?: string | null;
+        created_at: string;
+    };
+    const items = Array.isArray(data.items)
+        ? data.items.map((row: CreditsLotRow, idx: number) => ({
+            id: idx + 1,
+            lot_type: row.source,
+            credits_total: Number(row.credits_total || 0),
+            credits_remaining: Number(row.credits_remaining || 0),
+            status: "ACTIVE",
+            expires_at: row.expires_at || null,
+            created_at: row.created_at,
+            source_label: row.source,
+            source_meta: { lot_id: row.lot_id },
+        }))
+        : [];
+    return { items, total: items.length, limit, offset };
 }
 
 export async function fetchWalletLedger(limit = 20, offset = 0): Promise<PaginatedResponse<WalletLedgerEntry>> {
-    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-    const res = await fetchWithFallback(`/api/v1/wallet/ledger?${params.toString()}`, {
+    const params = new URLSearchParams({ limit: String(limit) });
+    const res = await fetchWithFallback(`/api/v1/credits/ledger?${params.toString()}`, {
         headers: getAuthHeaders(),
     });
     if (!res.ok) {
         const err = await parseApiError(res);
         throw toApiError(err);
     }
-    return (await res.json()) as PaginatedResponse<WalletLedgerEntry>;
+    const data = CreditsLedgerPageSchema.parse(await res.json());
+    type CreditsLedgerRow = {
+        action: string;
+        outcome?: string;
+        total_cost?: number;
+        request_id?: string | null;
+        created_at: string;
+    };
+    const items = Array.isArray(data.items)
+        ? data.items.map((row: CreditsLedgerRow, idx: number) => ({
+            id: idx + 1,
+            event_type: row.action,
+            status: row.outcome,
+            credits_delta: -Number(row.total_cost || 0),
+            credits_before: 0,
+            credits_after: 0,
+            reference: row.request_id,
+            request_id: row.request_id,
+            created_at: row.created_at,
+        }))
+        : [];
+    return { items, total: items.length, limit, offset };
 }
 
 export async function fetchWalletPrograms(limit = 50, offset = 0): Promise<PaginatedResponse<WalletProgramEnrollment>> {
@@ -188,6 +250,7 @@ export async function fetchWalletPrograms(limit = 50, offset = 0): Promise<Pagin
 export type CreditsEstimateResponse = {
     total_credits: number;
     per_question_credits: number;
+    max_questions_allowed?: number | null;
     breakdown:
     | {
         tier_base?: number;
@@ -234,6 +297,7 @@ export async function fetchCreditsEstimate(payload: {
         body: JSON.stringify({
             ...payload,
             tier: mapTierToApi(payload.tier),
+            include_attempt_fee: true,
         }),
     });
     if (!res.ok) {

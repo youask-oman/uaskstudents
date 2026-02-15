@@ -526,6 +526,19 @@ const parseMathSolutionFromObject = (value: unknown): MathSolutionPayload | null
   const obj = asRecord(value);
   if (!obj) return null;
 
+  // New solve payload shape stores per-question outputs under `items[]`.
+  // Use the first non-refusal item as the primary canvas solution.
+  const rawItems = Array.isArray(obj.items) ? obj.items : [];
+  const parsedItems = rawItems
+    .map((item) => asRecord(item))
+    .filter((item): item is Record<string, unknown> => Boolean(item));
+  if (parsedItems.length > 0) {
+    const primaryItem =
+      parsedItems.find((item) => asRecord(item.refusal)?.is_refusal !== true) || parsedItems[0];
+    const parsedPrimary = parseMathSolutionFromObject(primaryItem);
+    if (parsedPrimary) return parsedPrimary;
+  }
+
   const layoutTitle = parseLayoutTitleFromObject(obj);
   const steps = parseStepsFromObject(obj);
   const result = parseResultFromObject(obj);

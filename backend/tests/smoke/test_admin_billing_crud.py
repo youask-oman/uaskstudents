@@ -144,43 +144,58 @@ def test_admin_billing_crud_endpoints():
 
     pack_code = f"smoke_pack_{stamp}"
     pack_resp = client.post(
-        "/api/admin/billing/packs",
+        "/api/admin/payments/pricing",
         headers=headers,
         json={
-            "code": pack_code,
-            "name": f"Smoke Pack {stamp}",
-            "credits": 500,
-            "price_usd": 9.99,
-            "is_active": True,
-            "description": "Smoke test pack",
+            "kind": "TOPUP_PACK",
+            "action": "create",
             "reason": "smoke create pack",
             "idempotency_key": f"smoke_pack_create_{stamp}",
+            "data": {
+                "code": pack_code,
+                "name": f"Smoke Pack {stamp}",
+                "credits": 500,
+                "price_usd": 9.99,
+                "is_active": True,
+                "metadata_json": {"description": "Smoke test pack"},
+            },
         },
     )
     assert pack_resp.status_code == 200, pack_resp.text
     pack_id = pack_resp.json()["id"]
 
-    pack_update_resp = client.put(
-        f"/api/admin/billing/packs/{pack_id}",
+    pack_update_resp = client.post(
+        "/api/admin/payments/pricing",
         headers=headers,
         json={
-            "name": f"Smoke Pack {stamp} Updated",
-            "credits": 750,
-            "price_usd": 12.99,
-            "description": "Smoke test pack updated",
+            "kind": "TOPUP_PACK",
+            "action": "update",
             "reason": "smoke update pack",
             "idempotency_key": f"smoke_pack_update_{stamp}",
+            "data": {
+                "id": pack_id,
+                "name": f"Smoke Pack {stamp} Updated",
+                "credits": 750,
+                "price_usd": 12.99,
+                "metadata_json": {"description": "Smoke test pack updated"},
+            },
         },
     )
     assert pack_update_resp.status_code == 200, pack_update_resp.text
 
     pack_delete_resp = client.request(
-        "DELETE",
-        f"/api/admin/billing/packs/{pack_id}",
+        "POST",
+        "/api/admin/payments/pricing",
         headers=headers,
         json={
+            "kind": "TOPUP_PACK",
+            "action": "deactivate",
             "reason": "smoke deactivate pack",
             "idempotency_key": f"smoke_pack_delete_{stamp}",
+            "data": {"id": pack_id},
         },
     )
     assert pack_delete_resp.status_code == 200, pack_delete_resp.text
+
+    retired_resp = client.get("/api/admin/billing/packs", headers=headers)
+    assert retired_resp.status_code == 410, retired_resp.text

@@ -14,11 +14,13 @@ def normalize_tier_key(raw_tier: Optional[str]) -> TierKey:
     value = (raw_tier or "").strip().lower()
     if value in {"three_step", "free"}:
         return "free"
-    if value in {"short", "family", "family_standard"}:
+    if value in {"short", "final"}:
         return "short"
-    if value in {"research", "enterprise"}:
+    if value in {"research"}:
         return "research"
-    return "standard"
+    if value in {"standard"}:
+        return "standard"
+    return "free"
 
 
 def _tier_to_enum(tier_key: TierKey) -> PromptTierEnum:
@@ -33,30 +35,21 @@ def _tier_to_enum(tier_key: TierKey) -> PromptTierEnum:
 
 def get_active_solve_binding(session: Session, raw_tier: Optional[str]) -> Optional[PromptBinding]:
     tier_key = normalize_tier_key(raw_tier)
-    candidates = [_tier_to_enum(tier_key)]
-    if tier_key == "short":
-        # Backward compatibility for older deployments that may miss SHORT bindings.
-        candidates.append(PromptTierEnum.STANDARD)
-
-    for tier in candidates:
+    tier = _tier_to_enum(tier_key)
+    try:
+        return session.exec(
+            select(PromptBinding)
+            .where(PromptBinding.tier == tier)
+            .where(PromptBinding.mode == PromptModeEnum.SOLVE)
+            .where(PromptBinding.is_active == True)
+            .order_by(PromptBinding.updated_at.desc(), PromptBinding.id.desc())
+        ).first()
+    except Exception:
         try:
-            row = session.exec(
-                select(PromptBinding)
-                .where(PromptBinding.tier == tier)
-                .where(PromptBinding.mode == PromptModeEnum.SOLVE)
-                .where(PromptBinding.is_active == True)
-                .order_by(PromptBinding.updated_at.desc(), PromptBinding.id.desc())
-            ).first()
-            if row:
-                return row
+            session.rollback()
         except Exception:
-            # Migration not applied yet (or schema drift): fall back to defaults.
-            try:
-                session.rollback()
-            except Exception:
-                pass
-            return None
-    return None
+            pass
+        return None
 
 
 def resolve_binding_pricing(session: Session, raw_tier: Optional[str]) -> Tuple[PlanFeatures, PlanMultipliers, Optional[PromptBinding]]:
