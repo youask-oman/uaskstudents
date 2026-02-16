@@ -1,0 +1,14 @@
+{
+  "timestamp_utc": "2026-02-16T06:06:41.984087+00:00",
+  "tier": "FINAL",
+  "attempt_policy": "single_call_no_retry",
+  "request": {
+    "request_id": "a710b2f9-d4c1-414b-aa75-8ac7ea1c2c91",
+    "attempt_id": "5b54872e-4e61-4cb9-b40d-681cff6d6327"
+  },
+  "status": "failed",
+  "error_type": "BatchSolveError",
+  "error_code": "empty_openai_response",
+  "error_message": "Empty OpenAI response content.",
+  "error_details": {}
+}

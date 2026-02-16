@@ -7,6 +7,7 @@ Endpoints for viewing and managing user credit wallets.
 from typing import Optional, List, Dict, Tuple
 from datetime import datetime, timedelta
 from decimal import Decimal
+from uuid import uuid4
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from sqlmodel import Session, select, func
@@ -15,6 +16,7 @@ from app.database import get_session
 from app.models import (
     User,
     CreditLot,
+    CreditLotV2,
     CreditLotConsumption,
     CreditHold,
     BillingLedger,
@@ -630,6 +632,17 @@ async def grant_credits(
     )
     session.add(lot)
     session.flush()
+    session.add(
+        CreditLotV2(
+            lot_id=str(uuid4()),
+            user_id=user_id,
+            source=f"admin_{str(body.lot_type or 'grant').lower()}",
+            credits_total=Decimal(str(body.credits)),
+            credits_remaining=Decimal(str(body.credits)),
+            expires_at=lot.expires_at,
+        )
+    )
+    session.flush()
 
     computed_after = compute_user_balance(session, user_id)
 
@@ -726,6 +739,17 @@ async def refund_credits(
         source_payment_id=body.source_payment_id,
         source_attempt_id=body.source_attempt_id,
         is_topup_reversal=body.is_topup_reversal,
+    )
+    session.flush()
+    session.add(
+        CreditLotV2(
+            lot_id=str(uuid4()),
+            user_id=user_id,
+            source="admin_refund",
+            credits_total=Decimal(str(body.credits)),
+            credits_remaining=Decimal(str(body.credits)),
+            expires_at=lot.expires_at,
+        )
     )
     session.flush()
 
@@ -927,6 +951,17 @@ async def grant_program_now(
     if not lot:
         raise HTTPException(status_code=400, detail="No grant issued (not enrolled or program inactive)")
 
+    session.flush()
+    session.add(
+        CreditLotV2(
+            lot_id=str(uuid4()),
+            user_id=user_id,
+            source="program_grant",
+            credits_total=Decimal(str(lot.credits_total or 0)),
+            credits_remaining=Decimal(str(lot.credits_total or 0)),
+            expires_at=lot.expires_at,
+        )
+    )
     session.flush()
     computed_after = compute_user_balance(session, user_id)
 

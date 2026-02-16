@@ -1,0 +1,64 @@
+{
+  "timestamp_utc": "2026-02-16T06:21:16.678101+00:00",
+  "endpoint": "/api/v1/solve_v3_stream",
+  "query": {
+    "user_id": "1"
+  },
+  "request_body": {
+    "confirmed_text": "Problem: Multivariable Calculus + Lagrange Multipliers + Geometry\n\nLet S be the surface defined by x^2 + y^2 + z^2 = 9 with the constraint plane x + 2y + 2z = 3.\n\nYou must do ALL of the following (12 requirements):\n\nDescribe geometrically the intersection curve C = S ? {x + 2y + 2z = 3}.\nSet up the constrained optimization problem to find the maximum and minimum of f(x,y,z) = x - y + 2z on C.\nUse Lagrange multipliers with two constraints to compute all critical points.\nSolve the resulting system exactly and list all candidate points.\nCompute the value of f at each candidate point.\nIdentify the global maximum and global minimum and justify why they are global.\nFind the distance from the origin to the plane and relate it to the circle radius of intersection.\nParametrize the curve C explicitly using an orthonormal basis in the plane.\nVerify your extrema by substituting the parametrization into f and doing a single-variable maximization.\nState the geometric meaning of the gradient alignment conditions.\nReport the final max/min values and the points where they occur.\nProvide a brief check that your points lie on both constraints.",
+    "requested_mode": "minimal",
+    "tier": "FINAL",
+    "graph_mode": "off",
+    "trusted_context": {
+      "learning_mode": "solve"
+    },
+    "features_used": {
+      "ocr_used": false,
+      "voice_used": false,
+      "plot_requested": false
+    }
+  },
+  "http_status": 200,
+  "content_type": "text/event-stream; charset=utf-8",
+  "raw_sse_preview": "event: meta\ndata: {\"request_id\": \"1cfd8f11-7503-47e6-a36e-9bce207b24a7\", \"attempt_id\": \"8a08b21f-116b-40c8-8b9c-db49c9798d9f\", \"provider\": \"openai\", \"model\": \"gpt-5-mini\", \"tier_requested\": \"final\", \"effective_tier\": \"final\", \"type\": \"meta\"}\n\nevent: done\ndata: {\"ok\": false, \"error\": {\"code\": \"prompt_binding_invalid\", \"message\": \"Expected exactly 1 active SOLVE binding for tier=FINAL, found 0.\", \"request_id\": \"1cfd8f11-7503-47e6-a36e-9bce207b24a7\", \"attempt_id\": \"8a08b21f-116b-40c8-8b9c-db49c9798d9f\", \"details\": {}}}\n\n",
+  "events": [
+    {
+      "event": "meta",
+      "data": {
+        "request_id": "1cfd8f11-7503-47e6-a36e-9bce207b24a7",
+        "attempt_id": "8a08b21f-116b-40c8-8b9c-db49c9798d9f",
+        "provider": "openai",
+        "model": "gpt-5-mini",
+        "tier_requested": "final",
+        "effective_tier": "final",
+        "type": "meta"
+      }
+    },
+    {
+      "event": "done",
+      "data": {
+        "ok": false,
+        "error": {
+          "code": "prompt_binding_invalid",
+          "message": "Expected exactly 1 active SOLVE binding for tier=FINAL, found 0.",
+          "request_id": "1cfd8f11-7503-47e6-a36e-9bce207b24a7",
+          "attempt_id": "8a08b21f-116b-40c8-8b9c-db49c9798d9f",
+          "details": {}
+        }
+      }
+    }
+  ],
+  "done_event": {
+    "event": "done",
+    "data": {
+      "ok": false,
+      "error": {
+        "code": "prompt_binding_invalid",
+        "message": "Expected exactly 1 active SOLVE binding for tier=FINAL, found 0.",
+        "request_id": "1cfd8f11-7503-47e6-a36e-9bce207b24a7",
+        "attempt_id": "8a08b21f-116b-40c8-8b9c-db49c9798d9f",
+        "details": {}
+      }
+    }
+  }
+}

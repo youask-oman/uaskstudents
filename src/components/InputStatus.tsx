@@ -9,7 +9,11 @@
 
 import React from 'react';
 import { TokenEstimate, getTokenStatus } from '@/lib/tokenEstimator';
-import { MultiQuestionResult } from '@/lib/multiQuestionDetector';
+
+type MultiQuestionStatus = {
+    isMultiple: boolean;
+    confidence: 'low' | 'medium' | 'high';
+};
 
 interface InputStatusProps {
     /** Current text in the input */
@@ -19,7 +23,7 @@ interface InputStatusProps {
     maxInputTokens: number;
     maxInputChars: number;
     /** Multi-question detection result */
-    multiQuestionResult?: MultiQuestionResult;
+    multiQuestionResult?: MultiQuestionStatus;
     /** Callback when user clicks "Split" action */
     onSplitClick?: () => void;
     /** Whether the component is in a dark container */

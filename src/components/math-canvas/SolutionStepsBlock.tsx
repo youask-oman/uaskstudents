@@ -76,6 +76,42 @@ const looksLikeMathExpression = (value: string): boolean => {
   return hasMathOps && words <= 2;
 };
 
+const hasStandaloneMathDelimiters = (text: string): boolean => {
+  const trimmed = (text || "").trim();
+  if (!trimmed) return false;
+  if ((trimmed.startsWith("\\(") && trimmed.endsWith("\\)")) || (trimmed.startsWith("\\[") && trimmed.endsWith("\\]"))) {
+    return true;
+  }
+  if ((trimmed.startsWith("$$") && trimmed.endsWith("$$")) || (trimmed.startsWith("$") && trimmed.endsWith("$"))) {
+    return true;
+  }
+  return false;
+};
+
+const shouldRenderAsProse = (value: string): boolean => {
+  const text = (value || "").trim();
+  if (!text) return false;
+  if (hasStandaloneMathDelimiters(text)) return false;
+  if (/^\\begin\{(?:aligned|align|gather|equation|cases|pmatrix|bmatrix|matrix)\}/.test(text)) return false;
+
+  const hasMathCommand = /\\[a-zA-Z]+/.test(text);
+  const hasMathOperators = /[=^_<>+\-*/]/.test(text);
+  const hasBraces = /[{}]/.test(text);
+  const plainWordCount = (text.match(/(?<!\\)\b[A-Za-z]{3,}\b/g) || []).length;
+
+  // Pure prose (no math signals) should always render as prose.
+  if (!hasMathCommand && !hasMathOperators && !hasBraces) return true;
+
+  // Command-heavy LaTeX with no natural-language words should remain math.
+  if (hasMathCommand && plainWordCount === 0) return false;
+
+  // Mixed prose + math should render as prose to preserve spacing.
+  if (plainWordCount >= 3) return true;
+
+  // Short equation-like snippets should remain math.
+  return false;
+};
+
 const normalizeValueLabel = (value: string): string => (value || "").replace(/_/g, " ").trim();
 
 const wrapProblemMath = (value: string): string => {
@@ -476,7 +512,7 @@ export default function SolutionStepsBlock({
                   />
                 ) : step.mathLatex ? (
                   <div style={{ marginTop: 8 }}>
-                    <MathRenderer content={step.mathLatex} mode="block" />
+                    <MathRenderer content={step.mathLatex} mode={shouldRenderAsProse(step.mathLatex) ? "prose" : "block"} />
                   </div>
                 ) : null}
                 {editable && !exportMode && (
@@ -595,7 +631,16 @@ export default function SolutionStepsBlock({
             )}
 
             {/* Answer LaTeX - with deterministic line breaking */}
-            {displayAnswerLatex && (() => {
+            {displayAnswerLatex && shouldRenderAsProse(displayAnswerLatex) ? (
+              <div className={styles.finalAnswerMathContainer} style={{ marginBottom: displayValues.length > 0 ? 16 : 0 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 8, letterSpacing: "0.05em" }}>
+                  Result
+                </div>
+                <div className={styles.finalAnswerTextBlock}>
+                  <MathRenderer content={displayAnswerLatex} mode="prose" />
+                </div>
+              </div>
+            ) : displayAnswerLatex && (() => {
               const blocks = parseLatexToBlocks(displayAnswerLatex);
               return (
                 <div className={styles.finalAnswerMathContainer} style={{ marginBottom: displayValues.length > 0 ? 16 : 0 }}>

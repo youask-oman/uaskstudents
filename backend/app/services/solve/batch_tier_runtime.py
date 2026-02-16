@@ -74,6 +74,13 @@ def _replace_prompt_tokens(template: str, replacements: Dict[str, str]) -> str:
     return out
 
 
+def _preview_text(value: Any, limit: int = 1200) -> str:
+    text = str(value or "")
+    if len(text) <= limit:
+        return text
+    return text[:limit] + "...<truncated>"
+
+
 def _extract_schema_body(schema_wrapper: Dict[str, Any]) -> Dict[str, Any]:
     if not isinstance(schema_wrapper, dict):
         raise BatchSolveError(
@@ -344,6 +351,8 @@ async def execute_batch_solve(
     questions_json: List[Dict[str, Any]],
     model: Optional[str] = None,
     max_output_tokens: Optional[int] = None,
+    allow_auto_split: Optional[bool] = None,
+    max_tasks_per_question: Optional[int] = None,
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     started = time.perf_counter()
     external_tier = normalize_external_tier(tier)
@@ -394,6 +403,12 @@ async def execute_batch_solve(
     runtime_graph = _coerce_graph_mode(graph_mode)
     runtime_domain = _coerce_domain_mode(domain_mode)
     runtime_lang = (preferred_response_language or "English").strip() or "English"
+    # Batch policy: multi-question payloads must always enable auto-splitting.
+    # This keeps developer prompt runtime flags aligned with solve-page multi-question intent,
+    # including FINAL tier.
+    is_multi_question = len(normalized_questions) > 1
+    runtime_allow_auto_split = is_multi_question or bool(allow_auto_split)
+    runtime_max_tasks_per_question = int(max_tasks_per_question or 6)
     questions_json_text = json.dumps(normalized_questions, ensure_ascii=False)
 
     developer_prompt = _replace_prompt_tokens(
@@ -408,6 +423,10 @@ async def execute_batch_solve(
             "DOMAIN_MODE": runtime_domain,
             "PREFERRED_RESPONSE_LANGUAGE": runtime_lang,
             "QUESTIONS_JSON": questions_json_text,
+            "ALLOW_AUTO_SPLIT": "true" if runtime_allow_auto_split else "false",
+            "allow_auto_split": "true" if runtime_allow_auto_split else "false",
+            "MAX_TASKS_PER_QUESTION": str(runtime_max_tasks_per_question),
+            "max_tasks_per_question": str(runtime_max_tasks_per_question),
         },
     )
 
@@ -442,7 +461,7 @@ async def execute_batch_solve(
     bound_max_output_tokens = int(_bget("max_output_tokens") or 0)
     if bound_max_output_tokens < 1:
         # Keep runtime resilient for legacy bindings missing this field.
-        bound_max_output_tokens = 2200
+        bound_max_output_tokens = 5000
     max_tokens = int(max_output_tokens) if max_output_tokens is not None else bound_max_output_tokens
     bound_temperature = float(_bget("temperature") or 0.0)
     bound_top_p = float(_bget("top_p") or 1.0)
@@ -462,15 +481,48 @@ async def execute_batch_solve(
             timeout_ms=bound_timeout_ms,
             model=model_name,
             verbosity="low",
-            reasoning_effort=(str(binding_features.get("reasoning_effort") or "").strip() or None),
+            reasoning_effort=(str(binding_features.get("reasoning_effort") or "").strip() or "minimal"),
         )
     except LLMProviderError as exc:
         raise BatchSolveError(
             "OpenAI call failed during batch solve.",
             status_code=502,
             code="openai_request_failed",
-            details={"message": str(exc)},
+            details={
+                "message": str(exc),
+                "provider_details": getattr(exc, "details", None),
+            },
         ) from exc
+
+    output_tokens = int((response.usage or {}).get("output") or 0)
+    if output_tokens == 0:
+        # One controlled retry for zero-completion responses (common transient failure mode).
+        try:
+            response = await client.generate(
+                messages=messages,
+                system_prompt=None,
+                prompt=None,
+                json_schema=schema_wrapper,
+                max_tokens=max_tokens,
+                temperature=bound_temperature,
+                top_p=bound_top_p,
+                stream=False,
+                request_id=f"{runtime_request_id}:retry1",
+                timeout_ms=bound_timeout_ms,
+                model=model_name,
+                verbosity="low",
+                reasoning_effort=(str(binding_features.get("reasoning_effort") or "").strip() or "minimal"),
+            )
+        except LLMProviderError as exc:
+            raise BatchSolveError(
+                "OpenAI retry failed after zero-completion response.",
+                status_code=502,
+                code="openai_retry_failed",
+                details={
+                    "message": str(exc),
+                    "provider_details": getattr(exc, "details", None),
+                },
+            ) from exc
 
     raw = (response.content or "").strip()
     if not raw:
@@ -478,6 +530,10 @@ async def execute_batch_solve(
             "Empty OpenAI response content.",
             status_code=502,
             code="empty_openai_response",
+            details={
+                "provider_status": response.status,
+                "provider_payload": response.payload,
+            },
         )
 
     try:
@@ -487,7 +543,11 @@ async def execute_batch_solve(
             "OpenAI returned invalid JSON payload.",
             status_code=502,
             code="invalid_openai_json",
-            details={"error": str(exc)},
+            details={
+                "error": str(exc),
+                "provider_status": response.status,
+                "raw_preview": _preview_text(raw),
+            },
         ) from exc
 
     validator = Draft202012Validator(schema_body)
@@ -516,6 +576,8 @@ async def execute_batch_solve(
         "request_id": runtime_request_id,
         "attempt_id": runtime_attempt_id,
         "tier": external_tier,
+        "questions_count": len(normalized_questions),
+        "allow_auto_split_effective": runtime_allow_auto_split,
         "model": response.model,
         "provider": response.provider,
         "input_tokens": int((response.usage or {}).get("input") or 0),

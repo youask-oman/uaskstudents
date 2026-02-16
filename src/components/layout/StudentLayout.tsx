@@ -237,7 +237,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                                     {walletSummary?.effective_tier || "SHORT_STEPS"}
                                 </span>
                                 <span className="text-slate-500 text-[11px] truncate">
-                                    {walletSummary ? `${walletSummary.computed_balance.toFixed(2)} credits` : "Wallet loading..."}
+                                    {walletSummary ? `${walletSummary.spendable_balance.toFixed(2)} credits` : "Wallet loading..."}
                                 </span>
                             </div>
                         </div>

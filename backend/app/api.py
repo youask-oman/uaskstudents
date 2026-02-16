@@ -3980,6 +3980,8 @@ async def solve_questions_batch(
             domain_mode=body.domain_mode or "reals",
             preferred_response_language=body.preferred_response_language or "English",
             questions_json=questions_json,
+            allow_auto_split=(len(questions_json) > 1),
+            max_tasks_per_question=6,
         )
     except BatchSolveError as exc:
         if reserve_result and reserve_result.hold_id:
@@ -4022,11 +4024,28 @@ async def solve_questions_batch(
                 provider_failed=False,
             )
             session.commit()
-        except Exception:
+        except Exception as settle_exc:
             session.rollback()
+            release_status = "settlement_failed"
+            try:
+                credit_billing_service.release_hold_full(session=session, hold_id=reserve_result.hold_id)
+                session.commit()
+                release_status = "settlement_failed_released"
+            except Exception:
+                session.rollback()
+                release_status = "settlement_failed_release_failed"
+            logger.exception(
+                "batch_settlement_failed request_id=%s attempt_id=%s hold_id=%s reason=%s release_status=%s",
+                str(telemetry.get("request_id") or request_id) if isinstance(telemetry, dict) else request_id,
+                str(telemetry.get("attempt_id") or attempt_id) if isinstance(telemetry, dict) else attempt_id,
+                reserve_result.hold_id,
+                str(settle_exc),
+                release_status,
+            )
             settlement_summary = {
                 "hold_id": reserve_result.hold_id,
-                "status": "settlement_failed",
+                "status": release_status,
+                "error": str(settle_exc),
             }
 
     results: List[SolveBatchItemResult] = []
@@ -4039,7 +4058,11 @@ async def solve_questions_batch(
             row = reserve_result.item_costs[idx - 1]
             item_reserved = float(row.total_reserved)
             refusal = bool(((item.get("refusal") or {}) if isinstance(item.get("refusal"), dict) else {}).get("is_refusal"))
-            if refusal:
+            settlement_status = str((settlement_summary or {}).get("status") or "")
+            if settlement_status.startswith("settlement_failed"):
+                item_final = 0.0
+                item_refunded = float(row.total_reserved)
+            elif refusal:
                 item_final = float(row.attempt_fee)
                 item_refunded = float(row.total_reserved - row.attempt_fee)
             else:
@@ -6562,7 +6585,171 @@ async def solve_v3_stream_endpoint(
     if not raw_problem_text:
         raise HTTPException(status_code=400, detail="No input provided")
 
+    def _auto_split_questions_for_batch(text: str) -> List[str]:
+        re_mod = __import__("re")
+        src = (text or "").replace("\r", "").strip()
+        if not src:
+            return []
+        lines = [ln.rstrip() for ln in src.split("\n")]
+        non_empty = [ln for ln in lines if ln.strip()]
+        if not non_empty:
+            return []
+
+        req_anchor_re = re_mod.compile(r"\b(must\s+do\s+all\s+of\s+the\s+following|do\s+all\s+of\s+the\s+following|requirements\s*:|tasks\s*:)\b", re_mod.I)
+        bullet_re = re_mod.compile(r"^\s*[-*•]\s+")
+        num_re = re_mod.compile(r"^\s*\(?\d{1,3}\)?\s*[.)\-:]\s+")
+        alpha_re = re_mod.compile(r"^\s*\(?[a-zA-Z]\)?\s*[.)\-:]\s+")
+        imperative_re = re_mod.compile(
+            r"^\s*(write|state|derive|prove|show|compute|evaluate|justify|expand|find|verify|interpret|deduce|normalize|combine|define|determine|substitute|solve|describe|identify|report|list|use|parametrize)\b",
+            re_mod.I,
+        )
+
+        anchor_idx = -1
+        for idx, ln in enumerate(lines):
+            if req_anchor_re.search(ln or ""):
+                anchor_idx = idx
+                break
+
+        def _strip_marker(ln: str) -> str:
+            out = bullet_re.sub("", ln)
+            out = num_re.sub("", out)
+            out = alpha_re.sub("", out)
+            return out.strip()
+
+        def _parse_task_lines(task_lines: List[str]) -> List[str]:
+            tasks: List[str] = []
+            cur: List[str] = []
+            for ln in task_lines:
+                t = (ln or "").strip()
+                if not t:
+                    continue
+                explicit = bool(bullet_re.match(ln) or num_re.match(ln) or alpha_re.match(ln))
+                implicit = bool(imperative_re.match(t))
+                if explicit or implicit:
+                    if cur:
+                        merged = " ".join(x.strip() for x in cur if x.strip()).strip()
+                        if merged:
+                            tasks.append(merged)
+                    cur = [_strip_marker(ln) if explicit else t]
+                elif cur:
+                    cur.append(t)
+                else:
+                    cur = [t]
+            if cur:
+                merged = " ".join(x.strip() for x in cur if x.strip()).strip()
+                if merged:
+                    tasks.append(merged)
+            return tasks
+
+        if anchor_idx >= 0:
+            preamble = "\n".join([ln for ln in lines[:anchor_idx] if ln.strip()]).strip()
+            tasks = _parse_task_lines(lines[anchor_idx + 1 :])
+            if len(tasks) >= 2:
+                if preamble:
+                    return [f"{preamble}\n\n{task}".strip() for task in tasks]
+                return tasks
+
+        first_item_idx = -1
+        for idx, ln in enumerate(lines):
+            if num_re.match(ln or "") or alpha_re.match(ln or "") or bullet_re.match(ln or ""):
+                first_item_idx = idx
+                break
+        if first_item_idx > 0:
+            preamble = "\n".join([ln for ln in lines[:first_item_idx] if ln.strip()]).strip()
+            tasks = _parse_task_lines(lines[first_item_idx:])
+            if len(tasks) >= 2:
+                if preamble:
+                    return [f"{preamble}\n\n{task}".strip() for task in tasks]
+                return tasks
+
+        q_lines = [ln.strip() for ln in lines if ln.strip().endswith("?")]
+        if len(q_lines) >= 2:
+            return q_lines
+
+        return [src]
+
+    def _input_looks_incomplete(text: str) -> bool:
+        re_mod = __import__("re")
+        src = (text or "").replace("\r", "").strip()
+        if len(src) < 12:
+            return True
+        lowered = src.lower()
+        if lowered.endswith(("...", "…", ":", ",", ";", " and", " or", " because")):
+            return True
+        if re_mod.search(r"\b(must\s+do\s+all\s+of\s+the\s+following|requirements\s*:|tasks\s*:)\b", lowered):
+            # Anchor is present but no concrete task lines after it.
+            parts = src.split("\n")
+            anchor_found = False
+            for ln in parts:
+                if re_mod.search(r"\b(must\s+do\s+all\s+of\s+the\s+following|requirements\s*:|tasks\s*:)\b", ln.lower()):
+                    anchor_found = True
+                    continue
+                if anchor_found and ln.strip():
+                    return False
+            return True
+        # Single short sentence without a full question/task signal.
+        lines = [ln.strip() for ln in src.split("\n") if ln.strip()]
+        if len(lines) == 1 and len(lines[0]) < 24 and "?" not in lines[0] and "=" not in lines[0]:
+            return True
+        return False
+
+    trusted_ctx = body.trusted_context if isinstance(body.trusted_context, dict) else {}
+    default_domain_mode = trusted_ctx.get("domain_mode") or "reals"
+    default_mode = "SOLVE"
+    default_graph_mode = body.graph_mode or "AUTO"
+
+    incoming_questions_json = getattr(body, "questions_json", None)
+    if isinstance(incoming_questions_json, list) and incoming_questions_json:
+        runtime_questions_json = []
+        for idx, q in enumerate(incoming_questions_json, start=1):
+            qtext = str((q or {}).get("question_text") or "").strip()
+            if not qtext:
+                continue
+            runtime_questions_json.append(
+                {
+                    "question_id": str((q or {}).get("question_id") or f"q{idx}"),
+                    "question_text": qtext,
+                    "mode": str((q or {}).get("mode") or default_mode),
+                    "graph_mode": str((q or {}).get("graph_mode") or default_graph_mode),
+                    "domain_mode": str((q or {}).get("domain_mode") or default_domain_mode),
+                }
+            )
+        if not runtime_questions_json:
+            runtime_questions_json = [
+                {
+                    "question_id": str(body.question_id or "q1"),
+                    "question_text": raw_problem_text,
+                    "mode": default_mode,
+                    "graph_mode": default_graph_mode,
+                    "domain_mode": default_domain_mode,
+                }
+            ]
+    else:
+        split_texts = _auto_split_questions_for_batch(raw_problem_text)
+        runtime_questions_json = [
+            {
+                "question_id": f"q{idx}",
+                "question_text": qtext,
+                "mode": default_mode,
+                "graph_mode": default_graph_mode,
+                "domain_mode": default_domain_mode,
+            }
+            for idx, qtext in enumerate(split_texts, start=1)
+            if str(qtext or "").strip()
+        ]
+        if not runtime_questions_json:
+            runtime_questions_json = [
+                {
+                    "question_id": str(body.question_id or "q1"),
+                    "question_text": raw_problem_text,
+                    "mode": default_mode,
+                    "graph_mode": default_graph_mode,
+                    "domain_mode": default_domain_mode,
+                }
+            ]
+
     async def _batch_stream():
+        from app.services.credit_billing_service import CreditBillingError, credit_billing_service
         meta_data = {
             "request_id": request_id,
             "attempt_id": attempt_id,
@@ -6573,26 +6760,89 @@ async def solve_v3_stream_endpoint(
             "type": "meta",
         }
         yield f"event: meta\ndata: {json.dumps(meta_data)}\n\n"
+        if _input_looks_incomplete(raw_problem_text):
+            err = {
+                "code": "incomplete_input",
+                "message": "Input looks incomplete. Please provide the full question before solve.",
+                "request_id": request_id,
+                "attempt_id": attempt_id,
+            }
+            yield f"event: done\ndata: {json.dumps({'ok': False, 'error': err})}\n\n"
+            return
+        reserve_result = None
         try:
+            try:
+                reserve_result = credit_billing_service.reserve_for_batch_solve(
+                    session=session,
+                    user_id=user_id,
+                    tier=body.tier or "SHORT_STEPS",
+                    mode=default_mode,
+                    modality="text",
+                    verify_requested=False,
+                    plot_requested=False,
+                    questions_json=runtime_questions_json,
+                    request_id=request_id,
+                    attempt_id=attempt_id,
+                    idempotency_key=getattr(body, "idempotency_key", None),
+                )
+                session.flush()
+            except CreditBillingError as exc:
+                err = {
+                    "code": exc.code,
+                    "message": str(exc),
+                    "request_id": request_id,
+                    "attempt_id": attempt_id,
+                    "details": exc.details,
+                }
+                yield f"event: done\ndata: {json.dumps({'ok': False, 'error': err})}\n\n"
+                return
+
             payload, telemetry = await execute_batch_solve(
                 session=session,
                 tier=body.tier or "SHORT_STEPS",
                 request_id=request_id,
                 attempt_id=attempt_id,
-                mode=(body.mode or "SOLVE"),
-                graph_mode=(body.graph_mode or "AUTO"),
-                domain_mode=((body.trusted_context or {}).get("domain_mode") if isinstance(body.trusted_context, dict) else "reals"),
-                preferred_response_language=((body.trusted_context or {}).get("preferred_response_language") if isinstance(body.trusted_context, dict) else "English"),
-                questions_json=[
-                    {
-                        "question_id": str(body.question_id or "q1"),
-                        "question_text": raw_problem_text,
-                        "mode": body.mode or "SOLVE",
-                        "graph_mode": body.graph_mode or "AUTO",
-                        "domain_mode": ((body.trusted_context or {}).get("domain_mode") if isinstance(body.trusted_context, dict) else "reals"),
-                    }
-                ],
+                mode=default_mode,
+                graph_mode=default_graph_mode,
+                domain_mode=default_domain_mode,
+                preferred_response_language=(trusted_ctx.get("preferred_response_language") or "English"),
+                questions_json=runtime_questions_json,
+                allow_auto_split=(len(runtime_questions_json) > 1),
+                max_tasks_per_question=6,
+                max_output_tokens=5000,
             )
+            settlement_summary = None
+            if reserve_result:
+                try:
+                    settlement_summary = credit_billing_service.settle_batch_hold(
+                        session=session,
+                        hold_id=reserve_result.hold_id,
+                        request_id=str(telemetry.get("request_id") or request_id),
+                        attempt_id=str(telemetry.get("attempt_id") or attempt_id),
+                        idempotency_key=reserve_result.idempotency_key,
+                        item_costs=reserve_result.item_costs,
+                        payload_items=payload.get("items") or [],
+                        pricing_snapshot=reserve_result.pricing_snapshot,
+                        provider_failed=False,
+                    )
+                    session.commit()
+                except Exception as settle_exc:
+                    session.rollback()
+                    release_status = "settlement_failed"
+                    try:
+                        credit_billing_service.release_hold_full(session=session, hold_id=reserve_result.hold_id)
+                        session.commit()
+                        release_status = "settlement_failed_released"
+                    except Exception:
+                        session.rollback()
+                        release_status = "settlement_failed_release_failed"
+                    settlement_summary = {
+                        "hold_id": reserve_result.hold_id,
+                        "status": release_status,
+                        "error": str(settle_exc),
+                    }
+            if isinstance(telemetry, dict):
+                telemetry = {**telemetry, "billing_settlement": settlement_summary}
 
             session_row = ChatSession(
                 user_id=user_id,
@@ -6623,6 +6873,12 @@ async def solve_v3_stream_endpoint(
             yield f"event: telemetry\ndata: {json.dumps({'telemetry': telemetry})}\n\n"
             yield f"event: done\ndata: {json.dumps({'ok': True, 'session_id': int(session_row.id), 'message_id': int(msg.id or 0)})}\n\n"
         except BatchSolveError as exc:
+            if reserve_result and reserve_result.hold_id:
+                try:
+                    credit_billing_service.release_hold_full(session=session, hold_id=reserve_result.hold_id)
+                    session.commit()
+                except Exception:
+                    session.rollback()
             err = {
                 "code": exc.code,
                 "message": str(exc),
@@ -6632,6 +6888,12 @@ async def solve_v3_stream_endpoint(
             }
             yield f"event: done\ndata: {json.dumps({'ok': False, 'error': err})}\n\n"
         except Exception as exc:  # pragma: no cover - defensive path
+            if reserve_result and reserve_result.hold_id:
+                try:
+                    credit_billing_service.release_hold_full(session=session, hold_id=reserve_result.hold_id)
+                    session.commit()
+                except Exception:
+                    session.rollback()
             err = {
                 "code": "stream_batch_failed",
                 "message": str(exc),
@@ -6771,10 +7033,12 @@ async def solve_v3_stream_endpoint(
                 pass
 
     plan_pricing_version = None
+    pricing_binding = None
+    pricing_multipliers = None
     try:
-        from app.services.prompt_binding_pricing import resolve_binding_pricing
-        _, binding_mults, _ = resolve_binding_pricing(session, effective_billing_tier)
-        plan_pricing_version = str(binding_mults.version)
+        from app.services.prompt_binding_pricing import normalize_tier_key, resolve_binding_pricing
+        _, pricing_multipliers, pricing_binding = resolve_binding_pricing(session, effective_billing_tier)
+        plan_pricing_version = str(pricing_multipliers.version)
     except Exception:
         plan_pricing_version = None
 
@@ -6806,12 +7070,59 @@ async def solve_v3_stream_endpoint(
         elif action_req["has_ocr"]:
             source_type = "snap_image"
 
+        tier_key = normalize_tier_key(effective_billing_tier)
+        base_cost = 0.0
+        attempt_fee_cost = 0.0
+        plot_addon_cost = 0.0
+
+        # Prefer explicit per-binding credit columns; fallback to multipliers if missing.
+        if (
+            pricing_binding is not None
+            and getattr(pricing_binding, "solve_text_cost", None) is not None
+            and getattr(pricing_binding, "solve_snap_image_cost", None) is not None
+            and getattr(pricing_binding, "solve_snap_pdf_cost", None) is not None
+            and getattr(pricing_binding, "solve_voice_cost", None) is not None
+            and getattr(pricing_binding, "attempt_fee", None) is not None
+            and getattr(pricing_binding, "plot_addon_cost", None) is not None
+        ):
+            if source_type == "snap_image":
+                base_cost = float(pricing_binding.solve_snap_image_cost or 0)
+            elif source_type == "snap_pdf":
+                base_cost = float(pricing_binding.solve_snap_pdf_cost or 0)
+            elif source_type == "voice":
+                base_cost = float(pricing_binding.solve_voice_cost or 0)
+            else:
+                base_cost = float(pricing_binding.solve_text_cost or 0)
+            attempt_fee_cost = float(pricing_binding.attempt_fee or 0)
+            plot_addon_cost = float(pricing_binding.plot_addon_cost or 0)
+        else:
+            tier_cfg = getattr(getattr(pricing_multipliers, "credits", None), "solve", None)
+            tier_row = getattr(tier_cfg, tier_key, None) if tier_cfg is not None else None
+            if tier_row is not None:
+                if source_type == "snap_image":
+                    base_cost = float(getattr(tier_row, "snap_image", 0) or 0)
+                elif source_type == "snap_pdf":
+                    base_cost = float(getattr(tier_row, "snap_pdf", 0) or 0)
+                elif source_type == "voice":
+                    base_cost = float(getattr(tier_row, "voice", 0) or 0)
+                else:
+                    base_cost = float(getattr(tier_row, "text", 0) or 0)
+            attempt_map = getattr(getattr(pricing_multipliers, "credits", None), "attempt_fee", None)
+            attempt_fee_cost = float(getattr(attempt_map, tier_key, 0) or 0) if attempt_map is not None else 0.0
+            plot_addon_cost = float(getattr(getattr(pricing_multipliers, "credits", None), "plot_trigger", 0) or 0)
+
+        allow_plot = True
+        if pricing_binding is not None and isinstance(getattr(pricing_binding, "features", None), dict):
+            allow_plot = bool((pricing_binding.features or {}).get("allow_plot", True))
+        plot_requested_now = str(getattr(body, "graph_mode", "auto") or "auto").lower() != "off"
+        if effective_tier_internal == "FINAL":
+            plot_requested_now = False
+        extras_cost = attempt_fee_cost + (plot_addon_cost if (allow_plot and plot_requested_now) else 0.0)
+        billing_v2_cost = base_cost + extras_cost
+
         if (body.source_type or "").lower() == "ocr":
             ocr_cfg = get_active_ocr_config(session)
-            tier_cost = float(subscription_service.calculate_cost_for_tier(session, effective_billing_tier, "text"))
-            billing_v2_cost = max(tier_cost, float(ocr_cfg.solve_credit))
-        else:
-            billing_v2_cost = float(subscription_service.calculate_cost_for_tier(session, effective_billing_tier, source_type))
+            billing_v2_cost = max(float(billing_v2_cost), float(ocr_cfg.solve_credit))
         try:
             hold_result = billing_ledger_service_v2.create_hold(
                 session=session,
@@ -6978,6 +7289,9 @@ async def solve_v3_stream_endpoint(
         else:
             # Non-research tiers: cap at policy_limit, but honor binding if it's smaller
             effective_max_tokens = min(profile_max_output, policy_limit)
+        # Final tier needs larger completion budget to avoid truncated JSON responses.
+        if str(effective_tier or "").upper() == "FINAL":
+            effective_max_tokens = max(int(effective_max_tokens or 0), 5000)
         # ------------------------------------
 
         if not problem_text:
@@ -7049,7 +7363,10 @@ async def solve_v3_stream_endpoint(
             limit = (token_policy.ocr_image_input_max if modality == "ocr_image" else token_policy.ocr_pdf_input_max) + overhead
             _enforce_input_token_limit(problem_text, limit, modality)
         else:
-            _enforce_input_token_limit(problem_text, token_policy.text_input_max, modality)
+            text_input_limit = token_policy.text_input_max
+            if str(effective_tier or "").upper() == "FINAL":
+                text_input_limit = max(int(text_input_limit or 0), 5000)
+            _enforce_input_token_limit(problem_text, text_input_limit, modality)
 
         # Entitlement check + debit (credits/OCR/voice)
         action_mode = "detailed" if requested_mode == "detailed" else "concise"
@@ -7325,8 +7642,8 @@ async def solve_v3_stream_endpoint(
         try:
             # Give compact tiers extra completion headroom to reduce truncation-driven repair calls.
             stream_max_output_tokens = int(effective_max_tokens or 0)
-            if effective_tier in {"SHORT_STEPS", "FINAL"}:
-                stream_max_output_tokens = min(2200, max(stream_max_output_tokens, int(stream_max_output_tokens * 1.5)))
+            if str(effective_tier or "").upper() == "SHORT_STEPS":
+                stream_max_output_tokens = max(stream_max_output_tokens, int(stream_max_output_tokens * 1.5))
 
             async for chunk in solver.solve_stream(
                 problem_text=problem_text,

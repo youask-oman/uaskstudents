@@ -91,8 +91,8 @@ export function willRequestFit(inputTokens: number, policy: TokenBudgetPolicy): 
 
 /** Patterns that indicate multiple questions */
 export const MULTI_QUESTION_PATTERNS = [
-    /\bQ[12345]\b/gi,           // Q1, Q2, etc.
-    /^\s*[12345]\)\s*/gm,       // 1), 2), etc.
+    /\bQ\d{1,3}\b/gi,           // Q1, Q2, ... Q12
+    /^\s*\d{1,3}[.)]\s*/gm,     // 1), 2), ... 12)
     /^\s*\([a-e]\)\s*/gm,       // (a), (b), etc.
     /^\s*[a-e]\)\s*/gm,         // a), b), etc.
     /\balso\s+(?:find|solve|calculate|compute)/gi,

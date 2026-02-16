@@ -4,6 +4,14 @@ export const CreditsBalanceSchema = z.object({
   user_id: z.union([z.string(), z.number()]),
   available_credits: z.number(),
   reserved_credits: z.number(),
+  spendable_balance: z.number().optional(),
+  pending_outgoing_total: z.number().optional(),
+  can_transfer: z.boolean().optional(),
+  min_transfer: z.number().optional(),
+  max_transfer: z.number().optional(),
+  daily_remaining: z.number().optional(),
+  reason_if_disabled: z.string().nullable().optional(),
+  credit_transfer_enabled: z.boolean().optional(),
   expiring_soon_credits: z.number().optional(),
   lots_summary: z
     .object({

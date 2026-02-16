@@ -5,11 +5,12 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import List, Optional
+from uuid import uuid4
 
 from sqlmodel import Session, select, func
 
 from app.jobs.nightly_reconciliation import compute_user_balance
-from app.models import BillingLedger, CreditLot, CreditTransfer, User
+from app.models import BillingLedger, CreditLot, CreditLotV2, CreditTransfer, User
 from app.services.billing_ledger_service_v2 import billing_ledger_service_v2
 from app.services.credit_transfer_config import CreditTransferConfig
 
@@ -35,6 +36,52 @@ class CreditTransferError(Exception):
 
 
 class CreditTransferService:
+    def _compute_v2_balance(self, session: Session, user_id: int) -> Decimal:
+        total = session.exec(
+            select(func.coalesce(func.sum(CreditLotV2.credits_remaining), 0))
+            .where(CreditLotV2.user_id == user_id)
+        ).one()
+        return Decimal(str(total or 0))
+
+    def _allocate_v2_fifo(self, session: Session, user_id: int, amount: Decimal) -> None:
+        remaining = Decimal(str(amount or 0))
+        if remaining <= 0:
+            return
+        rows = session.exec(
+            select(CreditLotV2)
+            .where(CreditLotV2.user_id == user_id)
+            .where(CreditLotV2.credits_remaining > 0)
+            .order_by(CreditLotV2.expires_at.asc().nullslast(), CreditLotV2.created_at.asc())
+            .with_for_update(skip_locked=True)
+        ).all()
+        for lot in rows:
+            if remaining <= 0:
+                break
+            current = Decimal(str(lot.credits_remaining or 0))
+            if current <= 0:
+                continue
+            take = current if current <= remaining else remaining
+            lot.credits_remaining = current - take
+            session.add(lot)
+            remaining -= take
+        if remaining > 0:
+            raise CreditTransferError("insufficient_credits", "Insufficient v2 credits", 402)
+
+    def _add_v2_credit_lot(self, session: Session, user_id: int, amount: Decimal, *, source: str) -> None:
+        amt = Decimal(str(amount or 0))
+        if amt <= 0:
+            return
+        session.add(
+            CreditLotV2(
+                lot_id=str(uuid4()),
+                user_id=user_id,
+                source=source,
+                credits_total=amt,
+                credits_remaining=amt,
+                expires_at=None,
+            )
+        )
+
     def _normalize_email(self, email: str) -> str:
         return (email or "").strip().lower()
 
@@ -120,7 +167,9 @@ class CreditTransferService:
     def get_balance_view(self, session: Session, user: User, cfg: CreditTransferConfig) -> BalanceView:
         now = datetime.utcnow()
         day_start = datetime(now.year, now.month, now.day)
-        spendable = Decimal(str(compute_user_balance(session, user.id)))
+        spendable_legacy = Decimal(str(compute_user_balance(session, user.id)))
+        spendable_v2 = self._compute_v2_balance(session, user.id)
+        spendable = spendable_v2 if spendable_v2 < spendable_legacy else spendable_legacy
         pending_out = Decimal(
             str(
                 session.exec(
@@ -225,6 +274,7 @@ class CreditTransferService:
         session.flush()
 
         billing_ledger_service_v2._allocate_credits_fifo(session, sender.id, amount, attempt_id=transfer.id)
+        self._allocate_v2_fifo(session, sender.id, amount)
 
         escrow_lot = CreditLot(
             user_id=sender.id,
@@ -278,6 +328,7 @@ class CreditTransferService:
                 escrow_lot.reason_code = "TRANSFER_CLAIMED"
                 escrow_lot.expires_at = None
                 session.add(escrow_lot)
+                self._add_v2_credit_lot(session, recipient.id, amount, source="transfer_in")
 
                 recipient_after = Decimal(str(billing_ledger_service_v2._compute_available_balance_locked(session, recipient.id)))
                 recipient_ledger = BillingLedger(
@@ -358,6 +409,7 @@ class CreditTransferService:
             lot.reason_code = "TRANSFER_CLAIMED"
             lot.expires_at = None
             session.add(lot)
+            self._add_v2_credit_lot(session, user.id, Decimal(str(transfer.amount or 0)), source="transfer_in")
             after = Decimal(str(billing_ledger_service_v2._compute_available_balance_locked(session, user.id)))
 
             recipient_ledger = BillingLedger(
@@ -419,6 +471,7 @@ class CreditTransferService:
             lot.reason_code = "TRANSFER_EXPIRED_REFUND"
             lot.expires_at = None
             session.add(lot)
+            self._add_v2_credit_lot(session, sender.id, Decimal(str(transfer.amount or 0)), source="transfer_refund")
             after = Decimal(str(billing_ledger_service_v2._compute_available_balance_locked(session, sender.id)))
 
             ledger = BillingLedger(

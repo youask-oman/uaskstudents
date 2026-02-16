@@ -142,7 +142,7 @@ export default function DashboardNavBar() {
                         <div className="hidden lg:flex items-center gap-3">
                             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold">
                                 <span className="material-symbols-outlined text-[16px]">payments</span>
-                                {walletSummary.computed_balance.toFixed(2)} credits
+                                {walletSummary.spendable_balance.toFixed(2)} credits
                             </div>
                             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold">
                                 <span className="material-symbols-outlined text-[16px]">hourglass_empty</span>

@@ -1177,7 +1177,7 @@ export default function ProfilePage() {
                                     <div className="space-y-4">
                                         <div className="flex justify-between text-sm">
                                             <span className="font-medium">Computed Balance</span>
-                                            <span className="font-bold">{walletSummary ? walletSummary.computed_balance.toFixed(2) : "--"} credits</span>
+                                            <span className="font-bold">{walletSummary ? walletSummary.spendable_balance.toFixed(2) : "--"} credits</span>
                                         </div>
                                         <div className="flex justify-between text-sm">
                                             <span className="font-medium">Cached Balance</span>

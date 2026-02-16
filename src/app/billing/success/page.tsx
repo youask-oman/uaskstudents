@@ -122,8 +122,8 @@ export default function BillingSuccessPage() {
 
     const effectiveOldBalance = useMemo(() => {
         if (lastBalance != null) return lastBalance;
-        if (wallet && purchasedCredits != null) return wallet.computed_balance - purchasedCredits;
-        if (wallet) return wallet.computed_balance;
+        if (wallet && purchasedCredits != null) return wallet.spendable_balance - purchasedCredits;
+        if (wallet) return wallet.spendable_balance;
         return null;
     }, [lastBalance, purchasedCredits, wallet]);
 
@@ -175,7 +175,7 @@ export default function BillingSuccessPage() {
                     </div>
                     {wallet ? (
                         <div className="inline-flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-4 py-2 rounded-full text-sm text-slate-600 dark:text-slate-300">
-                            Current balance: <span className="font-semibold text-slate-900 dark:text-white">{wallet.computed_balance.toFixed(2)} credits</span>
+                            Current balance: <span className="font-semibold text-slate-900 dark:text-white">{wallet.spendable_balance.toFixed(2)} credits</span>
                         </div>
                     ) : (
                         expectedNewBalance != null && (

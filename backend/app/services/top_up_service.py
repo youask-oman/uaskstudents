@@ -2,7 +2,9 @@
 from typing import List, Optional
 from sqlmodel import Session, select
 from datetime import datetime
-from app.models import TopUpProduct, User, Payment, CreditLot, UsageLedger, TopUpOrder, BillingLedger
+from uuid import uuid4
+from decimal import Decimal
+from app.models import TopUpProduct, User, Payment, CreditLot, CreditLotV2, UsageLedger, TopUpOrder, BillingLedger
 from app.services.credit_wallet_service import credit_wallet_service
 from app.services.subscription_service import subscription_service
 from app.services.invoice_service import invoice_service
@@ -117,6 +119,17 @@ class TopUpService:
         lot.amount_paid = product.price_usd
         lot.currency = "USD"
         lot.source_payment_id = external_ref
+        session.add(
+            CreditLotV2(
+                lot_id=str(uuid4()),
+                user_id=user_id,
+                source="topup",
+                credits_total=Decimal(str(product.credits)),
+                credits_remaining=Decimal(str(product.credits)),
+                expires_at=lot.expires_at,
+            )
+        )
+        session.flush()
         
         # 3. Create Usage Ledger (CREDIT)
         # We need to sync Subscription balance here too.

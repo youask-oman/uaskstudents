@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { API_BASE_URL, getAuthToken, parseApiError, ApiError } from "@/lib/api";
+import { getAuthToken, parseApiError, ApiError, fetchApi } from "@/lib/api";
 
 export type CreditTransferBalance = {
     spendable_balance: number;
@@ -33,7 +33,7 @@ const authHeaders = (): HeadersInit => {
 };
 
 export async function fetchTransferBalance(): Promise<CreditTransferBalance> {
-    const res = await fetch(`${API_BASE_URL}/api/v1/credits/balance`, {
+    const res = await fetchApi(`/api/v1/credits/balance`, {
         headers: authHeaders(),
     });
     if (!res.ok) {
@@ -48,7 +48,7 @@ export async function transferCredits(payload: {
     amount: number;
     idempotency_key: string;
 }): Promise<CreditTransferResult> {
-    const res = await fetch(`${API_BASE_URL}/api/v1/credits/transfer`, {
+    const res = await fetchApi(`/api/v1/credits/transfer`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -64,7 +64,7 @@ export async function transferCredits(payload: {
 }
 
 export async function claimPendingCredits(): Promise<{ claimed_count: number; transfer_ids: string[] }> {
-    const res = await fetch(`${API_BASE_URL}/api/v1/credits/claim_pending`, {
+    const res = await fetchApi(`/api/v1/credits/claim_pending`, {
         method: "POST",
         headers: authHeaders(),
     });

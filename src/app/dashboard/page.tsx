@@ -385,7 +385,7 @@ function DashboardContent() {
                                 </span>
                             </div>
                             <div className="text-3xl font-black">
-                                {walletSummary ? walletSummary.computed_balance.toFixed(2) : "--"} credits
+                                {walletSummary ? walletSummary.spendable_balance.toFixed(2) : "--"} credits
                             </div>
                             <div className="space-y-2">
                                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">

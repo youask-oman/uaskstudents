@@ -10,6 +10,7 @@ interface CostPreviewProps {
         verify?: number;
         plot?: number;
         asset_type_addon?: number;
+        attempt_fee?: number;
     };
     creditsRemaining: number;
     className?: string;
@@ -35,6 +36,7 @@ export default function CostPreview({
             (breakdown.verify || 0) > 0 ||
             (breakdown.plot || 0) > 0 ||
             (breakdown.asset_type_addon || 0) > 0 ||
+            (breakdown.attempt_fee || 0) > 0 ||
             (breakdown.tier_base || 0) > 0)
     );
 
@@ -56,12 +58,13 @@ export default function CostPreview({
             {showBreakdown && breakdown && (
                 <div className="flex min-w-0 shrink items-center gap-1 overflow-hidden text-xs text-slate-400 whitespace-nowrap">
                     <span>(</span>
-                    <span>{breakdown.tier_base} tier</span>
+                    <span>base {Number(breakdown.tier_base || 0).toFixed(2)}</span>
                     {(breakdown.ocr || 0) > 0 && <span>+ {breakdown.ocr} OCR</span>}
                     {(breakdown.voice || 0) > 0 && <span>+ {breakdown.voice} voice</span>}
                     {(breakdown.verify || 0) > 0 && <span>+ {breakdown.verify} verify</span>}
                     {(breakdown.plot || 0) > 0 && <span>+ {breakdown.plot} plot</span>}
                     {(breakdown.asset_type_addon || 0) > 0 && <span>+ {breakdown.asset_type_addon} asset</span>}
+                    {(breakdown.attempt_fee || 0) > 0 && <span>+ {breakdown.attempt_fee} attempt fee</span>}
                     {questionCount > 1 && <span>x {questionCount}</span>}
                     <span>)</span>
                 </div>

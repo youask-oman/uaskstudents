@@ -5,6 +5,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
+from sqlalchemy import func
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
 
@@ -15,11 +16,15 @@ from app.models import (
     CreditHoldAllocationV2,
     CreditHoldV2,
     CreditLotV2,
+    User,
     PromptBinding,
     PromptModeEnum,
     PromptTierEnum,
     UsageLedgerV2,
+    BillingLedger,
 )
+from app.jobs.nightly_reconciliation import compute_user_balance
+from app.services.billing_ledger_service_v2 import billing_ledger_service_v2
 
 
 DECIMAL_ZERO = Decimal("0")
@@ -308,6 +313,51 @@ class CreditBillingService:
             remaining -= take
 
         if remaining > DECIMAL_ZERO:
+            # Bridge mode while legacy+v2 coexist:
+            # if legacy wallet has credits but v2 lots are missing, bootstrap v2 lots on-demand.
+            legacy_available = Decimal(str(compute_user_balance(session, user_id)))
+            v2_total = Decimal(
+                str(
+                    session.exec(
+                        select(func.coalesce(func.sum(CreditLotV2.credits_remaining), 0))
+                        .where(CreditLotV2.user_id == user_id)
+                    ).one()
+                    or 0
+                )
+            )
+            bootstrap_amount = legacy_available - v2_total
+            if bootstrap_amount > DECIMAL_ZERO:
+                session.add(
+                    CreditLotV2(
+                        lot_id=str(uuid4()),
+                        user_id=user_id,
+                        source="legacy_sync_autobridge",
+                        credits_total=bootstrap_amount,
+                        credits_remaining=bootstrap_amount,
+                        expires_at=None,
+                    )
+                )
+                session.flush()
+                lots_retry = session.exec(
+                    select(CreditLotV2)
+                    .where(CreditLotV2.user_id == user_id)
+                    .where(CreditLotV2.credits_remaining > 0)
+                    .order_by(CreditLotV2.expires_at.asc().nullslast(), CreditLotV2.created_at.asc())
+                    .with_for_update(skip_locked=True)
+                ).all()
+                for lot in lots_retry:
+                    if remaining <= DECIMAL_ZERO:
+                        break
+                    available = Decimal(str(lot.credits_remaining))
+                    if available <= DECIMAL_ZERO:
+                        continue
+                    take = available if available <= remaining else remaining
+                    lot.credits_remaining = available - take
+                    session.add(lot)
+                    allocations.append((lot, take))
+                    remaining -= take
+
+        if remaining > DECIMAL_ZERO:
             raise CreditBillingError(
                 "Insufficient credits for reserve",
                 code="insufficient_credits",
@@ -403,6 +453,7 @@ class CreditBillingService:
 
         costs_by_qid = {row.question_id: row for row in item_costs}
         total_settled = DECIMAL_ZERO
+        legacy_before = Decimal(str(compute_user_balance(session, hold.user_id)))
 
         for idx, item in enumerate(payload_items, start=1):
             qid = str(item.get("question_id") or f"q{idx}")
@@ -442,6 +493,37 @@ class CreditBillingService:
                     outcome=outcome,
                 )
             )
+
+        # Keep legacy and v2 balances in sync while both systems are still active.
+        if total_settled > DECIMAL_ZERO:
+            billing_ledger_service_v2._allocate_credits_fifo(
+                session,
+                hold.user_id,
+                total_settled,
+                attempt_id=attempt_id,
+            )
+        legacy_after = Decimal(str(compute_user_balance(session, hold.user_id)))
+        user = session.get(User, hold.user_id)
+        if user:
+            user.credits_balance = float(legacy_after)
+            session.add(user)
+        session.add(
+            BillingLedger(
+                user_id=hold.user_id,
+                action_type="SOLVE_BATCH",
+                request_id=request_id,
+                idempotency_key=f"batch_settle_{hold.hold_id}",
+                status="SETTLED",
+                credits_charged=total_settled,
+                estimated_credits=Decimal(str(hold.amount_reserved)),
+                actual_credits=total_settled,
+                delta_credits=Decimal("0") - total_settled,
+                credits_before=legacy_before,
+                credits_after=legacy_after,
+                tier=str(hold.tier or "").upper(),
+                ok=True,
+            )
+        )
 
         reserved = Decimal(str(hold.amount_reserved))
         release_amount = reserved - total_settled

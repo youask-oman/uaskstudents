@@ -448,9 +448,15 @@ async def credits_balance(
         .where(CreditLotV2.credits_remaining > 0)
     ).one()
 
+    # Unified end-user balance:
+    # `spendable_balance` is the operational source used by transfer/billing guards.
+    # `available_credits` is kept for backward compatibility, but we align it to the
+    # effective spendable value so all UI surfaces show the same number.
+    effective_available = Decimal(str(view.spendable_balance))
+
     return CreditsBalanceResponse(
         user_id=user.id,
-        available_credits=float(available),
+        available_credits=float(effective_available),
         reserved_credits=float(reserved),
         expiring_soon_credits=float(expiring),
         lots_summary={"total_lots": float(lots_count), "active_lots": float(active_lots)},

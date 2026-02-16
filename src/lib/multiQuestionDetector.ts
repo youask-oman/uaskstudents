@@ -141,26 +141,42 @@ export function autoSplitQuestions(text: string): string[] {
  * Split by numbered patterns (Q1, 1), (a), etc.)
  */
 function splitByNumberedPatterns(text: string): string[] {
-    // Try Q# pattern
-    const qPattern = /\bQ([1-9])\b[.:)\s]*/gi;
-    const parts = text.split(qPattern).filter(p => p.trim().length > 1);
-    if (parts.length >= 2) {
+    const normalized = text.replace(/\r\n/g, "\n");
+
+    const splitByLineMarkers = (source: string, marker: RegExp): string[] => {
+        const matches = [...source.matchAll(marker)];
+        if (matches.length < 2) return [];
+        const parts: string[] = [];
+        for (let i = 0; i < matches.length; i += 1) {
+            const start = matches[i].index ?? 0;
+            const end = i + 1 < matches.length ? (matches[i + 1].index ?? source.length) : source.length;
+            const raw = source.slice(start, end).trim();
+            const cleaned = raw
+                .replace(/^\s*Q\d{1,3}[.:)\s-]*/i, "")
+                .replace(/^\s*\d{1,3}[.)]\s*/, "")
+                .trim();
+            if (cleaned.length > 0) parts.push(cleaned);
+        }
         return cleanSplits(parts);
-    }
+    };
 
-    // Try 1) 2) pattern
-    const numPattern = /^\s*([1-9])\)\s*/gm;
-    const numParts = text.split(numPattern).filter(p => p.trim().length > 1);
-    if (numParts.length >= 2) {
-        return cleanSplits(numParts);
-    }
+    // Try Q1/Q2... at start of lines.
+    const qLineSplit = splitByLineMarkers(normalized, /^\s*Q\d{1,3}[.:)\s-]*/gim);
+    if (qLineSplit.length >= 2) return qLineSplit;
 
-    // Try (a) (b) pattern
+    // Try numeric 1), 2), ... 10), 11), ...
+    const numericLineSplit = splitByLineMarkers(normalized, /^\s*\d{1,3}[.)]\s+/gm);
+    if (numericLineSplit.length >= 2) return numericLineSplit;
+
+    // Handle inline numbering in the same physical line: "... 10) ... 11) ..."
+    const withInlineBreaks = normalized.replace(/([.?!:;])\s+(\d{1,3}[.)]\s+)/g, "$1\n$2");
+    const numericInlineSplit = splitByLineMarkers(withInlineBreaks, /^\s*\d{1,3}[.)]\s+/gm);
+    if (numericInlineSplit.length >= 2) return numericInlineSplit;
+
+    // Try (a), (b), ...
     const letterPattern = /^\s*\([a-e]\)\s*/gm;
-    const letterParts = text.split(letterPattern).filter(p => p.trim().length > 1);
-    if (letterParts.length >= 2) {
-        return cleanSplits(letterParts);
-    }
+    const letterParts = withInlineBreaks.split(letterPattern).filter(p => p.trim().length > 1);
+    if (letterParts.length >= 2) return cleanSplits(letterParts);
 
     return [];
 }

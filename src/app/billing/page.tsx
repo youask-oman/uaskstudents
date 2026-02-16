@@ -190,7 +190,7 @@ export default function BillingPage() {
                         <div>
                             <p className="text-xs font-bold text-primary uppercase tracking-widest">Wallet Summary</p>
                             <h2 className="text-2xl font-bold text-slate-900 dark:text-white mt-2">
-                                {wallet ? wallet.computed_balance.toFixed(2) : "--"} credits
+                                {wallet ? wallet.spendable_balance.toFixed(2) : "--"} credits
                             </h2>
                             <p className="text-sm text-slate-500 mt-1">
                                 Cached: {wallet ? wallet.cached_balance.toFixed(2) : "--"} | Delta {wallet ? wallet.delta.toFixed(2) : "--"}

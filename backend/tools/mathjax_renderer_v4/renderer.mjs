@@ -22,7 +22,8 @@ global.MathJax = {
 
 const MAX_MACROS = 25;
 const MAX_MACRO_TEXT_BYTES = 2048;
-const DEFAULT_TIMEOUT_MS = Number(process.env.MATHJAX_ITEM_TIMEOUT_MS || "1000");
+// 1s is often too tight in real deployments and causes fallback text rendering.
+const DEFAULT_TIMEOUT_MS = Number(process.env.MATHJAX_ITEM_TIMEOUT_MS || "5000");
 
 const adaptor = liteAdaptor();
 RegisterHTMLHandler(adaptor);
@@ -139,4 +140,3 @@ rl.on("line", async (line) => {
   const result = await renderOne(parsed);
   process.stdout.write(JSON.stringify(result) + "\n");
 });
-

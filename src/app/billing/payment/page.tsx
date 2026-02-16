@@ -64,7 +64,7 @@ export default function BillingPaymentPage() {
         try {
             try {
                 const summary = await fetchWalletSummary();
-                localStorage.setItem("topup_last_balance", String(summary.computed_balance ?? ""));
+                localStorage.setItem("topup_last_balance", String(summary.spendable_balance ?? ""));
             } catch {
                 localStorage.removeItem("topup_last_balance");
             }

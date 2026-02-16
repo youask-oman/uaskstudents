@@ -10,10 +10,46 @@ interface RecognitionBoxProps {
   badgeLabel?: string;
 }
 
+const hasStandaloneMathDelimiters = (text: string): boolean => {
+  const trimmed = (text || "").trim();
+  if (!trimmed) return false;
+  if ((trimmed.startsWith("\\(") && trimmed.endsWith("\\)")) || (trimmed.startsWith("\\[") && trimmed.endsWith("\\]"))) {
+    return true;
+  }
+  if ((trimmed.startsWith("$$") && trimmed.endsWith("$$")) || (trimmed.startsWith("$") && trimmed.endsWith("$"))) {
+    return true;
+  }
+  return false;
+};
+
+const shouldRenderAsProse = (value: string): boolean => {
+  const text = (value || "").trim();
+  if (!text) return false;
+  if (hasStandaloneMathDelimiters(text)) return false;
+  if (/^\\begin\{(?:aligned|align|gather|equation|cases|pmatrix|bmatrix|matrix)\}/.test(text)) return false;
+
+  const hasMathCommand = /\\[a-zA-Z]+/.test(text);
+  const hasMathOperators = /[=^_<>+\-*/]/.test(text);
+  const hasBraces = /[{}]/.test(text);
+  const plainWordCount = (text.match(/(?<!\\)\b[A-Za-z]{3,}\b/g) || []).length;
+
+  // Pure prose (no math signals) should always render as prose.
+  if (!hasMathCommand && !hasMathOperators && !hasBraces) return true;
+
+  // Command-heavy LaTeX with no natural-language words should remain math.
+  if (hasMathCommand && plainWordCount === 0) return false;
+
+  // Mixed prose + math should render as prose to preserve spacing.
+  if (plainWordCount >= 3) return true;
+
+  // Short equation-like snippets should remain math.
+  return false;
+};
+
 export default function RecognitionBox({ latex, exportMode = false, badgeLabel = "AI recognized" }: RecognitionBoxProps) {
   return (
     <div className={styles.recognitionBox}>
-      <MathRenderer content={latex} mode="block" />
+      <MathRenderer content={latex} mode={shouldRenderAsProse(latex) ? "prose" : "block"} />
       {!exportMode ? (
         <div className={styles.recognizedBadge} data-no-export="true">
           <span className="material-symbols-outlined" style={{ fontSize: 14 }}>

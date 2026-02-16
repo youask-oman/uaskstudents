@@ -310,6 +310,8 @@ class OpenAIClient:
         try:
             if "gpt-5" in model_name.lower():
                 verbosity = verbosity or "low"
+                if json_schema and reasoning_effort not in {"minimal", "low", "medium", "high"}:
+                    reasoning_effort = "minimal"
                 input_items: List[Dict[str, Any]] = []
                 for msg in messages:
                     role = msg.get("role")

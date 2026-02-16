@@ -341,11 +341,14 @@ class MathJaxWorkerPool:
 
 class MathRenderService:
     def __init__(self) -> None:
+        # 1s is too aggressive for cold/warm renderer workers on some environments.
+        # Use a safer default and keep it configurable.
+        default_timeout_ms = int(os.environ.get("MATH_RENDER_TIMEOUT_MS", "5000"))
         self.mem_cache = MemorySvgCache(max_entries=10000, ttl_hours=24)
         self.worker_pool = MathJaxWorkerPool(
             worker_count=int(os.environ.get("MATH_RENDER_WORKERS", "2")),
             max_inflight_per_worker=int(os.environ.get("MATH_RENDER_MAX_INFLIGHT", "2")),
-            timeout_ms=int(os.environ.get("MATH_RENDER_TIMEOUT_MS", "1000")),
+            timeout_ms=default_timeout_ms,
         )
         self._hit_updates: Dict[str, int] = {}
         self._hit_lock = asyncio.Lock()
@@ -500,6 +503,8 @@ class MathRenderService:
                 "scale": record["scale"],
                 "sanitize": sanitize,
                 "font": font,
+                # Keep worker-side timeout aligned with Python-side wait timeout.
+                "timeout_ms": self.worker_pool.timeout_ms,
             }
             worker_result = await self.worker_pool.render(payload)
             if worker_result.get("ok"):
