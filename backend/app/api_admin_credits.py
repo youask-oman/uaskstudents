@@ -69,6 +69,7 @@ class CursorPage(BaseModel):
     items: List[Dict[str, Any]]
     next_cursor: Optional[str] = None
     limit: int
+    total: Optional[int] = None
 
 
 class GrantCreditsBody(BaseModel):
@@ -175,6 +176,7 @@ def admin_lookup_credit_user(
 @router.get("/ledger", response_model=CursorPage)
 def admin_credits_ledger(
     user_id: Optional[int] = None,
+    request_id: Optional[str] = None,
     tier: Optional[str] = None,
     action: Optional[str] = None,
     outcome: Optional[str] = None,
@@ -189,18 +191,29 @@ def admin_credits_ledger(
     cursor_dt, cursor_id = _decode_cursor(cursor)
 
     q = select(UsageLedgerV2)
+    count_q = select(func.count(UsageLedgerV2.ledger_id))
     if user_id is not None:
         q = q.where(UsageLedgerV2.user_id == user_id)
+        count_q = count_q.where(UsageLedgerV2.user_id == user_id)
+    if request_id:
+        q = q.where(UsageLedgerV2.request_id == request_id.strip())
+        count_q = count_q.where(UsageLedgerV2.request_id == request_id.strip())
     if tier:
         q = q.where(UsageLedgerV2.tier == tier.upper())
+        count_q = count_q.where(UsageLedgerV2.tier == tier.upper())
     if action:
         q = q.where(UsageLedgerV2.action == action)
+        count_q = count_q.where(UsageLedgerV2.action == action)
     if outcome:
         q = q.where(UsageLedgerV2.outcome == outcome)
+        count_q = count_q.where(UsageLedgerV2.outcome == outcome)
     if date_from:
         q = q.where(UsageLedgerV2.created_at >= date_from)
+        count_q = count_q.where(UsageLedgerV2.created_at >= date_from)
     if date_to:
         q = q.where(UsageLedgerV2.created_at <= date_to)
+        count_q = count_q.where(UsageLedgerV2.created_at <= date_to)
+    total = int(session.exec(count_q).one() or 0)
     if cursor_dt and cursor_id:
         q = q.where(
             or_(
@@ -211,11 +224,17 @@ def admin_credits_ledger(
     rows = session.exec(q.order_by(UsageLedgerV2.created_at.desc(), UsageLedgerV2.ledger_id.desc()).limit(limit + 1)).all()
     has_more = len(rows) > limit
     rows = rows[:limit]
+    user_ids = {r.user_id for r in rows}
+    user_email_map: Dict[int, str] = {}
+    if user_ids:
+        users = session.exec(select(User).where(User.id.in_(user_ids))).all()
+        user_email_map = {int(u.id): u.email for u in users if u.id is not None}
 
     items = [
         {
             "ledger_id": r.ledger_id,
             "user_id": r.user_id,
+            "user_email": user_email_map.get(r.user_id),
             "hold_id": r.hold_id,
             "request_id": r.request_id,
             "attempt_id": r.attempt_id,
@@ -235,7 +254,7 @@ def admin_credits_ledger(
         for r in rows
     ]
     next_cursor = _encode_cursor(rows[-1].created_at, rows[-1].ledger_id) if has_more and rows else None
-    return CursorPage(items=items, next_cursor=next_cursor, limit=limit)
+    return CursorPage(items=items, next_cursor=next_cursor, limit=limit, total=total)
 
 
 @router.get("/holds", response_model=CursorPage)
@@ -598,6 +617,10 @@ def admin_list_prompt_bindings(
         tier_key = _tier_key(_val(row, "tier"))
         tier_cfg = solve.get(tier_key) if isinstance(solve, dict) else {}
         tier_cfg = tier_cfg if isinstance(tier_cfg, dict) else {}
+        if not tier_cfg and tier_key == "short_steps":
+            tier_cfg = solve.get("free") if isinstance(solve, dict) else {}
+        if not tier_cfg and tier_key == "final":
+            tier_cfg = solve.get("short") if isinstance(solve, dict) else {}
         verify_map = credits.get("verify") if isinstance(credits, dict) else {}
         verify_map = verify_map if isinstance(verify_map, dict) else {}
         attempt_map = credits.get("attempt_fee") if isinstance(credits, dict) else {}
@@ -608,9 +631,9 @@ def admin_list_prompt_bindings(
             "solve_snap_image_cost": float(tier_cfg.get("snap_image") or 0),
             "solve_snap_pdf_cost": float(tier_cfg.get("snap_pdf") or 0),
             "solve_voice_cost": float(tier_cfg.get("voice") or 0),
-            "verify_addon_cost": float(verify_map.get(tier_key) or 0),
+            "verify_addon_cost": float(verify_map.get(tier_key) or verify_map.get("free" if tier_key == "short_steps" else ("short" if tier_key == "final" else tier_key)) or 0),
             "plot_addon_cost": float(credits.get("plot_trigger") or 0),
-            "attempt_fee": float(attempt_map.get(tier_key) or 0),
+            "attempt_fee": float(attempt_map.get(tier_key) or attempt_map.get("free" if tier_key == "short_steps" else ("short" if tier_key == "final" else tier_key)) or 0),
         }
 
     return {

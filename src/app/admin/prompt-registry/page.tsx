@@ -273,10 +273,10 @@ export default function AdminPromptRegistryPage() {
                                 onChange={(e) => setNewPrompt({ ...newPrompt, tier: e.target.value })}
                             >
                                 <option value="NONE">NO_TIER</option>
-                                <option value="FREE">FREE</option>
+                                <option value="SHORT_STEPS">SHORT_STEPS</option>
                                 <option value="STANDARD">STANDARD</option>
                                 <option value="RESEARCH">RESEARCH</option>
-                                <option value="SHORT">SHORT</option>
+                                <option value="FINAL">FINAL</option>
                             </select>
                             <select
                                 className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-2 py-2 text-xs"
@@ -373,10 +373,10 @@ export default function AdminPromptRegistryPage() {
                                     }
                                 >
                                     <option value="NONE">NO_TIER</option>
-                                    <option value="FREE">FREE</option>
+                                    <option value="SHORT_STEPS">SHORT_STEPS</option>
                                     <option value="STANDARD">STANDARD</option>
                                     <option value="RESEARCH">RESEARCH</option>
-                                    <option value="SHORT">SHORT</option>
+                                    <option value="FINAL">FINAL</option>
                                 </select>
                                 <select
                                     className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-2 py-2 text-xs"

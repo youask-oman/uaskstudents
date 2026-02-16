@@ -4,8 +4,10 @@ from app.models import User
 
 
 LEGACY_TIER_TO_PLAN_SLUG = {
-    "free": "free",
-    "short": "family_standard",
+    "free": "short_steps",
+    "short_steps": "short_steps",
+    "short": "final",
+    "final": "final",
     "standard": "standard",
     "student_standard": "standard",
     "pro": "standard",
@@ -18,8 +20,8 @@ LEGACY_TIER_TO_PLAN_SLUG = {
 
 
 def normalize_tier_slug(tier: Optional[str]) -> str:
-    slug = (tier or "free").strip().lower()
-    return LEGACY_TIER_TO_PLAN_SLUG.get(slug, slug or "free")
+    slug = (tier or "short_steps").strip().lower()
+    return LEGACY_TIER_TO_PLAN_SLUG.get(slug, slug or "short_steps")
 
 
 def runtime_tier_from_plan_slug(plan_slug: Optional[str]) -> str:
@@ -31,18 +33,18 @@ def runtime_tier_from_plan_slug(plan_slug: Optional[str]) -> str:
         return "RESEARCH"
     if slug in {"standard", "student_standard", "pro", "premium"}:
         return "STANDARD"
-    if slug in {"family_standard", "short"}:
-        return "SHORT"
-    return "FREE"
+    if slug in {"final", "family_standard", "short"}:
+        return "FINAL"
+    return "SHORT_STEPS"
 
 
 def get_user_effective_tier_slug(user: Optional[User]) -> str:
     if not user:
-        return "free"
+        return "short_steps"
 
     # Source of truth is the user tier marker, not legacy Plan rows.
     return normalize_tier_slug(getattr(user, "subscription_tier", None))
 
 
 def is_paid_tier_slug(tier: Optional[str]) -> bool:
-    return normalize_tier_slug(tier) != "free"
+    return normalize_tier_slug(tier) != "short_steps"

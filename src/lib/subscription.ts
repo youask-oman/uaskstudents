@@ -20,15 +20,16 @@ export interface SubscriptionPlan {
         version?: number;
         credits?: {
             solve: {
-                free: TierPricing;
+                short_steps: TierPricing;
                 standard: TierPricing;
                 research: TierPricing;
-                short: TierPricing;
+                final: TierPricing;
             };
             verify: {
-                free: number;
+                short_steps: number;
                 standard: number;
                 research: number;
+                final?: number;
             };
             plot_trigger: number;
             plot_spec: number;
@@ -73,7 +74,7 @@ export interface SubscriptionResponse {
     allow_voice: boolean;
 }
 
-export type SolveTier = "FREE" | "STANDARD" | "RESEARCH" | "SHORT";
+export type SolveTier = "SHORT_STEPS" | "STANDARD" | "RESEARCH" | "FINAL";
 export type SolveInputType = "text" | "snap" | "voice";
 export type SolveAssetType = "none" | "image" | "pdf";
 
@@ -158,7 +159,7 @@ export function calculateSolveCost(
 
     // Check for V1 schema
     if (multipliers.version === 1 && multipliers.credits) {
-        const tier = answerStyle === "tutor" ? "standard" : "free";
+        const tier = answerStyle === "tutor" ? "standard" : "short_steps";
         const tierConfig = multipliers.credits.solve[tier];
 
         if (voiceUsed) return tierConfig.voice;

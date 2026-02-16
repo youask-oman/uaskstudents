@@ -379,7 +379,7 @@ class SolverV3:
         trace: bool = False,
         include_plot_base64: bool = False,
         request_id: str = None,
-        user_tier: str = "free",
+        user_tier: str = "short_steps",
         # New Context Params
         user_id: Optional[int] = None,
         db_session: Optional[Any] = None,  # SQLModel Session
@@ -540,7 +540,7 @@ class SolverV3:
 
                         allow_detailed=(requested_mode == "detailed"),
 
-                        allow_visuals_only_if_asked=(requested_mode == "minimal" and "free" in effective_tier_slug),
+                        allow_visuals_only_if_asked=(requested_mode == "minimal" and str(effective_tier_slug).lower() in {"short_steps", "free"}),
 
                         prompt_binding_meta=binding_bundle.get("meta"),
 

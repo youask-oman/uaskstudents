@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Request, Form, Body
 from fastapi.responses import StreamingResponse, JSONResponse, Response
+from fastapi.encoders import jsonable_encoder
 from sqlmodel import Session, SQLModel, select
 from sqlalchemy import text as sql_text, or_, func
 from sqlalchemy.exc import IntegrityError
@@ -43,6 +44,8 @@ from app.models import (
     PromptTierEnum, PromptModeEnum, PromptRoleEnum,
     SolveSession, FollowupChatTurn, LlmUsageLedger,
     CreditLot, CreditProgramEnrollment,
+    BillingLedger, UsageLedgerV2,
+    CreditLotV2,
     ChatEditNoteV2, ChatEditCopyV2,
     LegalDocument, LegalAcceptance,
     SolutionShare,
@@ -336,29 +339,29 @@ def _solve_tier_ceiling_slug() -> str:
     return "research"
 
 
-_TIER_ORDER = {"FREE": 0, "SHORT": 1, "STANDARD": 2, "RESEARCH": 3}
+_TIER_ORDER = {"SHORT_STEPS": 0, "FINAL": 1, "STANDARD": 2, "RESEARCH": 3}
 
 
 def _normalize_tier_for_prompt_binding(value: Optional[str]) -> str:
     raw = (value or "").strip().lower()
-    if raw in {"three_step", "free"}:
-        return "FREE"
+    if raw in {"three_step", "free", "short_steps"}:
+        return "SHORT_STEPS"
     if raw in {"research", "enterprise"}:
         return "RESEARCH"
-    if raw in {"family", "family_standard", "short"}:
-        return "SHORT"
+    if raw in {"family", "family_standard", "short", "final"}:
+        return "FINAL"
     if raw in {"standard", "student_standard", "pro", "premium"}:
         return "STANDARD"
-    return "FREE"
+    return "SHORT_STEPS"
 
 
 def _externalize_tier(value: str) -> str:
     return {
-        "FREE": "three_step",
-        "SHORT": "short",
+        "SHORT_STEPS": "short_steps",
+        "FINAL": "final",
         "STANDARD": "standard",
         "RESEARCH": "research",
-    }.get(value, "three_step")
+    }.get(value, "short_steps")
 
 
 def _clamp_requested_tier(requested_tier: Optional[str], entitled_tier_slug: str) -> Dict[str, str]:
@@ -517,7 +520,7 @@ def _resolve_freeform_max_attempts(
     trusted_context: Optional[Dict[str, Any]],
     is_make_it_right: bool,
 ) -> int:
-    tier_norm = (effective_tier or "FREE").strip().upper()
+    tier_norm = (effective_tier or "SHORT_STEPS").strip().upper()
     learning_mode = str((trusted_context or {}).get("learning_mode") or "").strip().lower()
     improve_requested = (
         is_make_it_right
@@ -942,7 +945,7 @@ class SolveRequest(BaseModel):
     has_voice: Optional[bool] = False
     
     # Tier-Aware & Trusted Context
-    tier: Optional[str] = Field(None, description="Requested tier from frontend: free|standard|research")
+    tier: Optional[str] = Field(None, description="Requested tier from frontend: short_steps|final|standard|research")
     trusted_context: Optional[Dict[str, Any]] = None
     requested_mode: Optional[str] = "minimal"
     features_used: Optional[Dict[str, Any]] = None
@@ -1253,6 +1256,7 @@ def _sqlmodel_list(items: List[Any]) -> List[Dict[str, Any]]:
 class ChatHistoryItem(BaseModel):
     id: int
     attempt_id: Optional[str] = None
+    request_id: Optional[str] = None
     title: str
     created_at: str
     subject: Optional[str] = None
@@ -1263,6 +1267,9 @@ class ChatHistoryItem(BaseModel):
     input: Optional[str] = None
     is_saved: Optional[bool] = None
     telemetry: Optional[Dict[str, Any]] = None
+    credits_charged_total: float = 0.0
+    credits_balance_after: Optional[float] = None
+    per_question_charges: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 
@@ -1902,7 +1909,7 @@ def build_subscription_response(
         status=subscription.status,
         current_period_start=subscription.current_period_start,
         current_period_end=subscription.current_period_end,
-        allow_detailed=features.get("allow_detailed", plan_info.slug != "free"),
+        allow_detailed=features.get("allow_detailed", plan_info.slug not in {"free", "short_steps", "final"}),
         allow_ocr=features.get("allow_ocr", True),
         allow_voice=features.get("allow_voice", True)
     )
@@ -2498,7 +2505,7 @@ class SolveBatchItem(BaseModel):
 
 class SolveBatchRequest(BaseModel):
     items: List[SolveBatchItem] = Field(default_factory=list)
-    tier: Optional[str] = "FREE"
+    tier: Optional[str] = "SHORT_STEPS"
     mode: Optional[str] = "SOLVE"
     graph_mode: Optional[str] = "AUTO"
     domain_mode: Optional[str] = "reals"
@@ -2532,6 +2539,7 @@ class SolveBatchResponse(BaseModel):
     results: List[SolveBatchItemResult]
     request_id: Optional[str] = None
     attempt_id: Optional[str] = None
+    session_id: Optional[int] = None
     tier: Optional[str] = None
     language: Optional[Dict[str, Any]] = None
     items: Optional[List[Dict[str, Any]]] = None
@@ -3924,7 +3932,7 @@ async def solve_questions_batch(
         reserve_result = credit_billing_service.reserve_for_batch_solve(
             session=session,
             user_id=user_id,
-            tier=body.tier or "FREE",
+            tier=body.tier or "SHORT_STEPS",
             mode=body.mode or "SOLVE",
             modality=modality,
             verify_requested=verify_requested,
@@ -3934,7 +3942,7 @@ async def solve_questions_batch(
             attempt_id=attempt_id,
             idempotency_key=body.idempotency_key,
         )
-        session.commit()
+        session.flush()
         if reserve_result.reused:
             raise HTTPException(
                 status_code=409,
@@ -3964,7 +3972,7 @@ async def solve_questions_batch(
     try:
         payload, telemetry = await execute_batch_solve(
             session=session,
-            tier=body.tier or "FREE",
+            tier=body.tier or "SHORT_STEPS",
             request_id=request_id,
             attempt_id=attempt_id,
             mode=body.mode or "SOLVE",
@@ -4049,11 +4057,113 @@ async def solve_questions_batch(
             )
         )
 
+    created_session_id: Optional[int] = None
+    try:
+        normalized_tier = _normalize_tier_for_prompt_binding(body.tier)
+        solve_tier_slug = _externalize_tier(normalized_tier)
+        requested_mode = "minimal" if normalized_tier in {"SHORT_STEPS", "FINAL"} else "detailed"
+        question_lines = [
+            f"- ({str(q.get('question_id') or '').strip()}) {str(q.get('question_text') or '').strip()}"
+            for q in questions_json
+            if str(q.get("question_id") or "").strip() and str(q.get("question_text") or "").strip()
+        ]
+        title_seed = str((questions_json[0] or {}).get("question_text") or "Batch Solve").strip() if questions_json else "Batch Solve"
+        title = (title_seed[:80] + "...") if len(title_seed) > 83 else title_seed
+        if not title:
+            title = "Batch Solve"
+
+        chat_session = ChatSession(
+            user_id=user_id,
+            title=title,
+            subject="Math",
+            is_saved=True,
+            learning_mode="solve",
+            requested_mode=requested_mode,
+            solve_tier=solve_tier_slug,
+        )
+        session.add(chat_session)
+        session.commit()
+        session.refresh(chat_session)
+        created_session_id = int(chat_session.id)
+
+        user_content = "Batch Solve Request"
+        if question_lines:
+            user_content = f"{user_content}\n" + "\n".join(question_lines)
+        safe_items = jsonable_encoder(payload.get("items") or [])
+        safe_telemetry = jsonable_encoder(telemetry if isinstance(telemetry, dict) else {})
+        assistant_structured = {
+            "mode": "batch_text_solve",
+            "solutions": safe_items,
+            "request_id": str(telemetry.get("request_id") or request_id),
+            "attempt_id": str(telemetry.get("attempt_id") or attempt_id),
+            "tier": str(payload.get("tier") or body.tier or ""),
+        }
+        session.add(
+            ChatMessage(
+                session_id=int(chat_session.id),
+                role="user",
+                content=user_content,
+            )
+        )
+        session.add(
+            ChatMessage(
+                session_id=int(chat_session.id),
+                role="assistant",
+                content=f"Batch solve complete for {len(payload.get('items') or [])} question(s).",
+                structured_data=assistant_structured,
+                telemetry=safe_telemetry if isinstance(safe_telemetry, dict) else None,
+            )
+        )
+        try:
+            session.commit()
+        except Exception as msg_exc:
+            session.rollback()
+            logger.exception(
+                "batch_session_message_persist_failed request_id=%s attempt_id=%s user_id=%s reason=%s",
+                str(telemetry.get("request_id") or request_id),
+                str(telemetry.get("attempt_id") or attempt_id),
+                user_id,
+                str(msg_exc),
+            )
+            # Fallback write with minimal JSON footprint to avoid losing session visibility.
+            session.add(
+                ChatMessage(
+                    session_id=int(chat_session.id),
+                    role="user",
+                    content=user_content,
+                )
+            )
+            session.add(
+                ChatMessage(
+                    session_id=int(chat_session.id),
+                    role="assistant",
+                    content=f"Batch solve complete for {len(safe_items)} question(s).",
+                    structured_data={
+                        "mode": "batch_text_solve",
+                        "request_id": str(telemetry.get("request_id") or request_id),
+                        "attempt_id": str(telemetry.get("attempt_id") or attempt_id),
+                        "tier": str(payload.get("tier") or body.tier or ""),
+                        "solutions_count": len(safe_items),
+                    },
+                )
+            )
+            session.commit()
+    except Exception as exc:
+        session.rollback()
+        logger.exception(
+            "batch_session_persist_failed request_id=%s attempt_id=%s user_id=%s reason=%s",
+            str(telemetry.get("request_id") if isinstance(telemetry, dict) else request_id),
+            str(telemetry.get("attempt_id") if isinstance(telemetry, dict) else attempt_id),
+            user_id,
+            str(exc),
+        )
+
     return SolveBatchResponse(
         ok=True,
         results=results,
         request_id=str(telemetry.get("request_id") or request_id),
         attempt_id=str(telemetry.get("attempt_id") or attempt_id),
+        session_id=created_session_id,
         tier=str(payload.get("tier") or body.tier or ""),
         language=payload.get("language") if isinstance(payload.get("language"), dict) else None,
         items=payload.get("items") if isinstance(payload.get("items"), list) else None,
@@ -5114,8 +5224,8 @@ async def solve_v3_runtime_meta(
         if user_id is not None and not attempt_id and not request_id:
             normalized_tier = (tier or "").strip().lower()
             effective_tier = (
-                "free"
-                if normalized_tier in {"free", "three_step", ""}
+                "short_steps"
+                if normalized_tier in {"free", "three_step", "short_steps", ""}
                 else normalized_tier
             )
             return {
@@ -5304,7 +5414,7 @@ async def solve_v3_endpoint(
     try:
         payload, telemetry = await execute_batch_solve(
             session=session,
-            tier=body.tier or "FREE",
+            tier=body.tier or "SHORT_STEPS",
             request_id=request_id,
             attempt_id=attempt_id,
             mode=(body.mode or "SOLVE"),
@@ -5340,7 +5450,7 @@ async def solve_v3_endpoint(
         title=(problem_text[:80] or "Batch Solve"),
         learning_mode="solve",
         requested_mode=requested_mode,
-        solve_tier=str(body.tier or "free").lower(),
+        solve_tier=str(body.tier or "short_steps").lower(),
     )
     session.add(chat_session)
     session.commit()
@@ -6458,15 +6568,15 @@ async def solve_v3_stream_endpoint(
             "attempt_id": attempt_id,
             "provider": "openai",
             "model": get_configured_openai_model(),
-            "tier_requested": str(body.tier or "free").lower(),
-            "effective_tier": str(body.tier or "free").lower(),
+            "tier_requested": str(body.tier or "short_steps").lower(),
+            "effective_tier": str(body.tier or "short_steps").lower(),
             "type": "meta",
         }
         yield f"event: meta\ndata: {json.dumps(meta_data)}\n\n"
         try:
             payload, telemetry = await execute_batch_solve(
                 session=session,
-                tier=body.tier or "FREE",
+                tier=body.tier or "SHORT_STEPS",
                 request_id=request_id,
                 attempt_id=attempt_id,
                 mode=(body.mode or "SOLVE"),
@@ -6489,7 +6599,7 @@ async def solve_v3_stream_endpoint(
                 title=(raw_problem_text[:80] or "Batch Solve"),
                 learning_mode="solve",
                 requested_mode=(body.requested_mode or "minimal"),
-                solve_tier=str(body.tier or "free").lower(),
+                solve_tier=str(body.tier or "short_steps").lower(),
             )
             session.add(session_row)
             session.commit()
@@ -7215,7 +7325,7 @@ async def solve_v3_stream_endpoint(
         try:
             # Give compact tiers extra completion headroom to reduce truncation-driven repair calls.
             stream_max_output_tokens = int(effective_max_tokens or 0)
-            if effective_tier in {"FREE", "SHORT"}:
+            if effective_tier in {"SHORT_STEPS", "FINAL"}:
                 stream_max_output_tokens = min(2200, max(stream_max_output_tokens, int(stream_max_output_tokens * 1.5)))
 
             async for chunk in solver.solve_stream(
@@ -8193,7 +8303,7 @@ async def solve_batch_endpoint(
         # 3. Solve
         try:
             solver = get_solver_v3()
-            resolved_tier = entitlement["meta"].get("tier", "free")
+            resolved_tier = entitlement["meta"].get("tier", "short_steps")
             
             solve_res = await solver.solve(
                 problem_text=item.text,
@@ -8633,6 +8743,61 @@ async def get_history(
                         return value.strip()
         return None
 
+    usage_rows_user = session.exec(
+        select(UsageLedgerV2)
+        .where(UsageLedgerV2.user_id == user_id)
+        .order_by(
+            UsageLedgerV2.created_at.asc(),
+            UsageLedgerV2.question_index.asc(),
+            UsageLedgerV2.ledger_id.asc(),
+        )
+    ).all()
+    lots_rows_user = session.exec(
+        select(CreditLotV2)
+        .where(CreditLotV2.user_id == user_id)
+        .order_by(CreditLotV2.created_at.asc(), CreditLotV2.lot_id.asc())
+    ).all()
+
+    usage_by_request: Dict[str, List[UsageLedgerV2]] = {}
+    for usage_row in usage_rows_user:
+        rid = str(usage_row.request_id or "").strip()
+        if not rid:
+            continue
+        usage_by_request.setdefault(rid, []).append(usage_row)
+
+    # Reconstruct per-usage "balance_after" from credit lot grants (+) and usage debits (-).
+    # This gives users an audit-style "left after charge" value even when BillingLedger rows are absent.
+    replay_events: List[Tuple[datetime, int, float, Optional[UsageLedgerV2]]] = []
+    for lot in lots_rows_user:
+        replay_events.append((lot.created_at or datetime.min, 0, float(lot.credits_total or 0), None))
+    for usage_row in usage_rows_user:
+        replay_events.append((usage_row.created_at or datetime.min, 1, float(usage_row.total_cost or 0), usage_row))
+    replay_events.sort(
+        key=lambda row: (
+            row[0],
+            row[1],
+            (row[3].question_index if row[3] is not None and row[3].question_index is not None else 10_000),
+            (row[3].ledger_id if row[3] is not None else ""),
+        )
+    )
+
+    balance_after_by_ledger_id: Dict[str, float] = {}
+    replay_balance = 0.0
+    for _event_at, event_kind, amount, usage_row in replay_events:
+        if event_kind == 0:
+            replay_balance += amount
+            continue
+        replay_balance -= amount
+        if usage_row is not None:
+            balance_after_by_ledger_id[usage_row.ledger_id] = replay_balance
+
+    # Calibrate with actual current lot balance to absorb legacy migration offsets.
+    expected_current = sum(float(lot.credits_remaining or 0) for lot in lots_rows_user)
+    offset = expected_current - replay_balance
+    if abs(offset) > 1e-6 and balance_after_by_ledger_id:
+        for ledger_id in list(balance_after_by_ledger_id.keys()):
+            balance_after_by_ledger_id[ledger_id] = balance_after_by_ledger_id[ledger_id] + offset
+
     history_items = []
     for chat in results:
         latest_attempt = session.exec(
@@ -8662,9 +8827,14 @@ async def get_history(
         difficulty = None
         topics_list = []
         msg_subject = None
+        session_request_id = str(latest_attempt.request_id or "").strip() if latest_attempt else ""
 
         for msg in reversed(chat.messages):
             if msg.role == "assistant":
+                if not session_request_id:
+                    extracted_request_id = _extract_chat_message_request_id(msg)
+                    if extracted_request_id:
+                        session_request_id = extracted_request_id
                 # Telemetry
                 if msg.telemetry:
                     telemetry = msg.telemetry
@@ -8695,10 +8865,40 @@ async def get_history(
                 
                 if telemetry: 
                     break
+
+        request_usage_rows = usage_by_request.get(session_request_id, []) if session_request_id else []
+        request_usage_rows = sorted(
+            request_usage_rows,
+            key=lambda item: (
+                item.question_index if item.question_index is not None else 10_000,
+                item.created_at,
+                item.ledger_id,
+            ),
+        )
+        per_question_charges: List[Dict[str, Any]] = []
+        credits_total = 0.0
+        for usage_row in request_usage_rows:
+            cost_val = float(usage_row.total_cost or 0)
+            credits_total += cost_val
+            per_question_charges.append(
+                {
+                    "question_id": usage_row.question_id,
+                    "question_index": usage_row.question_index,
+                    "credits_charged": cost_val,
+                    "balance_after": balance_after_by_ledger_id.get(usage_row.ledger_id),
+                    "created_at": usage_row.created_at.isoformat() if usage_row.created_at else None,
+                }
+            )
+        credits_balance_after = (
+            per_question_charges[-1].get("balance_after")
+            if per_question_charges
+            else None
+        )
         
         history_items.append(ChatHistoryItem(
             id=chat.id, 
             attempt_id=latest_attempt.attempt_id if latest_attempt else None,
+            request_id=session_request_id or None,
             title=chat.title, 
             created_at=chat.created_at.isoformat(),
             subject=msg_subject or chat.subject or "Math",
@@ -8708,7 +8908,10 @@ async def get_history(
             topics=topics_list,
             input=user_input,
             is_saved=chat.is_saved,
-            telemetry=telemetry
+            telemetry=telemetry,
+            credits_charged_total=credits_total,
+            credits_balance_after=credits_balance_after,
+            per_question_charges=per_question_charges,
         ))
         
     return history_items
@@ -8919,6 +9122,31 @@ async def resolve_share_attempt_for_session(
                 target = msg
                 break
         if target:
+            target_structured = target.structured_data if isinstance(target.structured_data, dict) else {}
+            target_telemetry = target.telemetry if isinstance(target.telemetry, dict) else {}
+            if not target_telemetry:
+                candidate_telemetry = target_structured.get("telemetry") if isinstance(target_structured.get("telemetry"), dict) else None
+                if not candidate_telemetry and isinstance(target_structured.get("_telemetry"), dict):
+                    candidate_telemetry = target_structured.get("_telemetry")
+                if isinstance(candidate_telemetry, dict):
+                    target_telemetry = candidate_telemetry
+            metrics = _resolve_attempt_metrics(
+                SolverOutputAttempt(
+                    request_id="synthetic",
+                    attempt_id=str(uuid.uuid4()),
+                    user_id=user.id,
+                    input_tokens=0,
+                    output_tokens=0,
+                    total_tokens=0,
+                    prompt_meta=target_structured.get("runtime_meta") if isinstance(target_structured.get("runtime_meta"), dict) else None,
+                    llm_raw_response=None,
+                    validation_json=target_structured if isinstance(target_structured, dict) else None,
+                    provider=target_telemetry.get("provider") if isinstance(target_telemetry, dict) else None,
+                    model=target_telemetry.get("model") if isinstance(target_telemetry, dict) else None,
+                ),
+                message_telemetry=target_telemetry if isinstance(target_telemetry, dict) else None,
+                message_structured=target_structured if isinstance(target_structured, dict) else None,
+            )
             synthetic_attempt = SolverOutputAttempt(
                 request_id=f"share_session_{uuid.uuid4()}",
                 attempt_id=str(uuid.uuid4()),
@@ -8929,6 +9157,13 @@ async def resolve_share_attempt_for_session(
                 attempt_number=1,
                 char_count=len((target.content or "").strip()),
                 status="success",
+                provider=metrics.get("provider"),
+                model=metrics.get("model"),
+                provider_model=f"{metrics.get('provider')}:{metrics.get('model')}" if metrics.get("provider") and metrics.get("model") else None,
+                input_tokens=int(metrics.get("input_tokens") or 0),
+                output_tokens=int(metrics.get("output_tokens") or 0),
+                total_tokens=int(metrics.get("total_tokens") or 0),
+                latency_ms=_safe_int(metrics.get("latency_ms")),
                 raw_solution_text=(target.content or "").strip(),
                 validation_json=target.structured_data if isinstance(target.structured_data, dict) else None,
             )
@@ -10559,9 +10794,25 @@ class AdminLlmUsageLedgerItem(BaseModel):
     solve_session_id: Optional[int] = None
     followup_turn_id: Optional[int] = None
     user_id: Optional[int] = None
+    user_email: Optional[str] = None
+    session_id: Optional[int] = None
+    message_id: Optional[int] = None
     provider: str
     model: str
     request_id: Optional[str] = None
+    output_format: Optional[str] = None
+    prompt_id: Optional[str] = None
+    prompt_version: Optional[str] = None
+    attempt_id: Optional[str] = None
+    attempt_number: Optional[int] = None
+    status: Optional[str] = None
+    char_count: Optional[int] = None
+    error_message: Optional[str] = None
+    source_record: str = "llmusageledger"
+    chat_session_title: Optional[str] = None
+    chat_message_preview: Optional[str] = None
+    solve_problem_preview: Optional[str] = None
+    request_summary: Optional[Dict[str, Any]] = None
     system_prompt_tokens: int
     input_tokens: int
     output_tokens: int
@@ -10606,15 +10857,204 @@ class AdminLlmUsageDeleteRequest(BaseModel):
     reason: str
 
 
-def _serialize_llm_usage_row(row: LlmUsageLedger, user_id: Optional[int] = None) -> AdminLlmUsageLedgerItem:
+def _safe_int(value: Any) -> Optional[int]:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        try:
+            return int(float(value))
+        except (TypeError, ValueError):
+            return None
+
+
+def _first_non_empty_str(*values: Any) -> Optional[str]:
+    for value in values:
+        if isinstance(value, str):
+            cleaned = value.strip()
+            if cleaned:
+                return cleaned
+    return None
+
+
+def _extract_usage_like(payload: Any) -> Dict[str, Optional[int]]:
+    if not isinstance(payload, dict):
+        return {"input": None, "output": None, "total": None}
+
+    usage = payload.get("usage") if isinstance(payload.get("usage"), dict) else payload
+    input_tokens = (
+        _safe_int(usage.get("input_tokens"))
+        if isinstance(usage, dict)
+        else None
+    )
+    if input_tokens is None and isinstance(usage, dict):
+        input_tokens = _safe_int(usage.get("prompt_tokens"))
+    if input_tokens is None and isinstance(usage, dict):
+        input_tokens = _safe_int(usage.get("input"))
+    if input_tokens is None and isinstance(usage, dict):
+        input_tokens = _safe_int(usage.get("tokens_in"))
+
+    output_tokens = (
+        _safe_int(usage.get("output_tokens"))
+        if isinstance(usage, dict)
+        else None
+    )
+    if output_tokens is None and isinstance(usage, dict):
+        output_tokens = _safe_int(usage.get("completion_tokens"))
+    if output_tokens is None and isinstance(usage, dict):
+        output_tokens = _safe_int(usage.get("output"))
+    if output_tokens is None and isinstance(usage, dict):
+        output_tokens = _safe_int(usage.get("tokens_out"))
+
+    total_tokens = _safe_int(usage.get("total_tokens")) if isinstance(usage, dict) else None
+    if total_tokens is None and isinstance(usage, dict):
+        total_tokens = _safe_int(usage.get("total"))
+    if total_tokens is None and isinstance(usage, dict):
+        total_tokens = _safe_int(usage.get("tokens_total"))
+    if total_tokens is None and input_tokens is not None and output_tokens is not None:
+        total_tokens = max(0, input_tokens + output_tokens)
+
+    return {
+        "input": input_tokens,
+        "output": output_tokens,
+        "total": total_tokens,
+    }
+
+
+def _resolve_attempt_metrics(
+    row: SolverOutputAttempt,
+    *,
+    message_telemetry: Optional[Dict[str, Any]] = None,
+    message_structured: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    prompt_meta = row.prompt_meta if isinstance(row.prompt_meta, dict) else {}
+    validation_json = row.validation_json if isinstance(row.validation_json, dict) else {}
+    runtime_meta = validation_json.get("runtime_meta") if isinstance(validation_json.get("runtime_meta"), dict) else {}
+    llm_raw = row.llm_raw_response if isinstance(row.llm_raw_response, dict) else {}
+    message_telemetry = message_telemetry if isinstance(message_telemetry, dict) else {}
+    message_structured = message_structured if isinstance(message_structured, dict) else {}
+    structured_runtime_meta = message_structured.get("runtime_meta") if isinstance(message_structured.get("runtime_meta"), dict) else {}
+    structured_telemetry = message_structured.get("telemetry") if isinstance(message_structured.get("telemetry"), dict) else {}
+    if not structured_telemetry and isinstance(message_structured.get("_telemetry"), dict):
+        structured_telemetry = message_structured.get("_telemetry")
+
+    provider_model = (row.provider_model or "").strip()
+    provider_from_pair = None
+    model_from_pair = None
+    if ":" in provider_model:
+        provider_from_pair, model_from_pair = provider_model.split(":", 1)
+        provider_from_pair = provider_from_pair.strip() or None
+        model_from_pair = model_from_pair.strip() or None
+
+    provider = _first_non_empty_str(
+        row.provider,
+        provider_from_pair,
+        message_telemetry.get("provider"),
+        structured_telemetry.get("provider"),
+        runtime_meta.get("provider"),
+        structured_runtime_meta.get("provider"),
+        prompt_meta.get("provider"),
+        llm_raw.get("provider"),
+    ) or "openai"
+    model = _first_non_empty_str(
+        row.model,
+        model_from_pair,
+        message_telemetry.get("model"),
+        structured_telemetry.get("model"),
+        runtime_meta.get("model"),
+        structured_runtime_meta.get("model"),
+        prompt_meta.get("model"),
+        llm_raw.get("model"),
+    ) or "unknown"
+
+    row_input = max(0, int(row.input_tokens or 0))
+    row_output = max(0, int(row.output_tokens or 0))
+    row_total = max(0, int(row.total_tokens or 0))
+    row_has_usage = any(v > 0 for v in (row_input, row_output, row_total))
+
+    usage_sources = [
+        _extract_usage_like(message_telemetry),
+        _extract_usage_like(structured_telemetry),
+        _extract_usage_like(runtime_meta),
+        _extract_usage_like(structured_runtime_meta),
+        _extract_usage_like(prompt_meta),
+        _extract_usage_like(llm_raw),
+    ]
+    fallback_usage = next(
+        (
+            u for u in usage_sources
+            if (u.get("input") or 0) > 0 or (u.get("output") or 0) > 0 or (u.get("total") or 0) > 0
+        ),
+        {"input": 0, "output": 0, "total": 0},
+    )
+    input_tokens = row_input if row_has_usage else max(0, int(fallback_usage.get("input") or 0))
+    output_tokens = row_output if row_has_usage else max(0, int(fallback_usage.get("output") or 0))
+    total_tokens = row_total if row_has_usage else max(0, int(fallback_usage.get("total") or (input_tokens + output_tokens)))
+    if total_tokens == 0 and (input_tokens > 0 or output_tokens > 0):
+        total_tokens = input_tokens + output_tokens
+
+    latency_ms = _safe_int(row.latency_ms)
+    if latency_ms is None or latency_ms <= 0:
+        latency_ms = (
+            _safe_int(message_telemetry.get("latency_ms_total"))
+            or _safe_int(message_telemetry.get("latency_ms_openai"))
+            or _safe_int(message_telemetry.get("latency_ms"))
+            or _safe_int(structured_telemetry.get("latency_ms_total"))
+            or _safe_int(structured_telemetry.get("latency_ms_openai"))
+            or _safe_int(structured_telemetry.get("latency_ms"))
+            or _safe_int(runtime_meta.get("latency_ms_total"))
+            or _safe_int(runtime_meta.get("latency_ms_openai"))
+            or _safe_int(runtime_meta.get("latency_ms"))
+            or _safe_int(structured_runtime_meta.get("latency_ms_total"))
+            or _safe_int(structured_runtime_meta.get("latency_ms_openai"))
+            or _safe_int(structured_runtime_meta.get("latency_ms"))
+            or _safe_int(prompt_meta.get("latency_ms_total"))
+            or _safe_int(llm_raw.get("latency_ms"))
+            or None
+        )
+
+    return {
+        "provider": provider,
+        "model": model,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "total_tokens": total_tokens,
+        "latency_ms": latency_ms,
+    }
+
+
+def _serialize_llm_usage_row(
+    row: LlmUsageLedger,
+    user_id: Optional[int] = None,
+    user_email: Optional[str] = None,
+    solve_problem_preview: Optional[str] = None,
+    request_summary: Optional[Dict[str, Any]] = None,
+) -> AdminLlmUsageLedgerItem:
     return AdminLlmUsageLedgerItem(
         id=int(row.id or 0),
         solve_session_id=row.solve_session_id,
         followup_turn_id=row.followup_turn_id,
         user_id=user_id,
+        user_email=user_email,
+        session_id=None,
+        message_id=None,
         provider=row.provider,
         model=row.model,
         request_id=row.request_id,
+        output_format=None,
+        prompt_id=None,
+        prompt_version=None,
+        attempt_id=None,
+        attempt_number=None,
+        status=None,
+        char_count=None,
+        error_message=None,
+        source_record="llmusageledger",
+        chat_session_title=None,
+        chat_message_preview=None,
+        solve_problem_preview=solve_problem_preview,
+        request_summary=request_summary,
         system_prompt_tokens=row.system_prompt_tokens,
         input_tokens=row.input_tokens,
         output_tokens=row.output_tokens,
@@ -10624,20 +11064,49 @@ def _serialize_llm_usage_row(row: LlmUsageLedger, user_id: Optional[int] = None)
     )
 
 
-def _serialize_solver_attempt_as_llm_usage(row: SolverOutputAttempt) -> AdminLlmUsageLedgerItem:
+def _serialize_solver_attempt_as_llm_usage(
+    row: SolverOutputAttempt,
+    user_email: Optional[str] = None,
+    message_telemetry: Optional[Dict[str, Any]] = None,
+    message_structured: Optional[Dict[str, Any]] = None,
+    chat_session_title: Optional[str] = None,
+    chat_message_preview: Optional[str] = None,
+    request_summary: Optional[Dict[str, Any]] = None,
+) -> AdminLlmUsageLedgerItem:
+    metrics = _resolve_attempt_metrics(
+        row,
+        message_telemetry=message_telemetry,
+        message_structured=message_structured,
+    )
     return AdminLlmUsageLedgerItem(
         id=int(row.id or 0),
         solve_session_id=None,
         followup_turn_id=None,
         user_id=row.user_id,
-        provider=(row.provider or "openai"),
-        model=(row.model or "unknown"),
+        user_email=user_email,
+        session_id=row.session_id,
+        message_id=row.message_id,
+        provider=metrics["provider"],
+        model=metrics["model"],
         request_id=row.request_id,
+        output_format=row.output_format,
+        prompt_id=row.prompt_id,
+        prompt_version=row.prompt_version,
+        attempt_id=row.attempt_id,
+        attempt_number=row.attempt_number,
+        status=row.status,
+        char_count=row.char_count,
+        error_message=row.error_message,
+        source_record="solver_attempt_fallback",
+        chat_session_title=chat_session_title,
+        chat_message_preview=chat_message_preview,
+        solve_problem_preview=None,
+        request_summary=request_summary,
         system_prompt_tokens=0,
-        input_tokens=max(0, int(row.input_tokens or 0)),
-        output_tokens=max(0, int(row.output_tokens or 0)),
-        total_tokens=max(0, int(row.total_tokens or 0)),
-        latency_ms=row.latency_ms,
+        input_tokens=metrics["input_tokens"],
+        output_tokens=metrics["output_tokens"],
+        total_tokens=metrics["total_tokens"],
+        latency_ms=metrics["latency_ms"],
         created_at=row.created_at.isoformat() if row.created_at else "",
     )
 
@@ -10669,6 +11138,65 @@ def _serialize_solver_attempt_as_trace(row: SolverOutputAttempt) -> Dict[str, An
         "logged_at": row.created_at.isoformat() if row.created_at else None,
         "source": "solver_attempt_fallback",
     }
+
+
+def _build_request_summary_map(db: Session, request_ids: set[str]) -> Dict[str, Dict[str, Any]]:
+    out: Dict[str, Dict[str, Any]] = {}
+    if not request_ids:
+        return out
+    usage_rows = db.exec(select(UsageLedgerV2).where(UsageLedgerV2.request_id.in_(request_ids))).all()
+    for row in usage_rows:
+        rid = str(row.request_id or "").strip()
+        if not rid:
+            continue
+        bucket = out.setdefault(
+            rid,
+            {
+                "question_count": 0,
+                "question_ids": [],
+                "billed_credits_total": 0.0,
+                "tiers": [],
+                "actions": [],
+                "billing_entries_count": 0,
+                "billing_credits_total": 0.0,
+                "provider_cost_usd_total": 0.0,
+            },
+        )
+        bucket["question_count"] += 1
+        qid = str(row.question_id or "").strip()
+        if qid and qid not in bucket["question_ids"]:
+            bucket["question_ids"].append(qid)
+        bucket["billed_credits_total"] += float(row.total_cost or 0)
+        tier_val = str(row.tier or "").strip()
+        if tier_val and tier_val not in bucket["tiers"]:
+            bucket["tiers"].append(tier_val)
+        action_val = str(row.action or "").strip()
+        if action_val and action_val not in bucket["actions"]:
+            bucket["actions"].append(action_val)
+
+    billing_rows = db.exec(select(BillingLedger).where(BillingLedger.request_id.in_(request_ids))).all()
+    for row in billing_rows:
+        rid = str(row.request_id or "").strip()
+        if not rid:
+            continue
+        bucket = out.setdefault(
+            rid,
+            {
+                "question_count": 0,
+                "question_ids": [],
+                "billed_credits_total": 0.0,
+                "tiers": [],
+                "actions": [],
+                "billing_entries_count": 0,
+                "billing_credits_total": 0.0,
+                "provider_cost_usd_total": 0.0,
+            },
+        )
+        bucket["billing_entries_count"] += 1
+        bucket["billing_credits_total"] += float(row.credits_charged or 0)
+        bucket["provider_cost_usd_total"] += float(row.provider_cost_usd or 0)
+
+    return out
 
 
 def _serialize_solver_output_attempt(
@@ -10804,17 +11332,40 @@ async def admin_list_llm_usage_ledger(
 
     rows = db.exec(query.order_by(LlmUsageLedger.created_at.desc()).offset(offset).limit(limit)).all()
     total = len(db.exec(query).all())
+    request_ids_for_summary = {
+        str(r.request_id).strip()
+        for r in rows
+        if isinstance(r.request_id, str) and str(r.request_id).strip()
+    }
+    request_summary_map = _build_request_summary_map(db, request_ids_for_summary)
 
     session_id_set = {r.solve_session_id for r in rows}
     session_map: Dict[int, SolveSession] = {}
     if session_id_set:
         sessions = db.exec(select(SolveSession).where(SolveSession.id.in_(session_id_set))).all()
         session_map = {int(s.id): s for s in sessions if s.id is not None}
+    user_id_set = {s.user_id for s in session_map.values() if s.user_id is not None}
+    user_email_map: Dict[int, str] = {}
+    if user_id_set:
+        users = db.exec(select(User).where(User.id.in_(user_id_set))).all()
+        user_email_map = {int(u.id): u.email for u in users if u.id is not None}
 
     items = []
     for row in rows:
         session_rec = session_map.get(row.solve_session_id)
-        items.append(_serialize_llm_usage_row(row, user_id=session_rec.user_id if session_rec else None))
+        session_user_id = session_rec.user_id if session_rec else None
+        session_user_email = user_email_map.get(session_user_id) if session_user_id is not None else None
+        solve_problem_preview = _truncate_text((session_rec.problem_text or "").replace("\n", " "), 180) if session_rec else None
+        req_summary = request_summary_map.get(str(row.request_id).strip()) if isinstance(row.request_id, str) else None
+        items.append(
+            _serialize_llm_usage_row(
+                row,
+                user_id=session_user_id,
+                user_email=session_user_email,
+                solve_problem_preview=solve_problem_preview,
+                request_summary=req_summary,
+            )
+        )
 
     if items:
         return AdminLlmUsageLedgerListResponse(total=total, items=items, source="llmusageledger")
@@ -10838,11 +11389,138 @@ async def admin_list_llm_usage_ledger(
         attempt_query.order_by(SolverOutputAttempt.created_at.desc()).offset(offset).limit(limit)
     ).all()
     fallback_total = len(db.exec(attempt_query).all())
-    fallback_items = [_serialize_solver_attempt_as_llm_usage(row) for row in fallback_rows]
+    fallback_request_ids = {
+        str(r.request_id).strip()
+        for r in fallback_rows
+        if isinstance(r.request_id, str) and str(r.request_id).strip()
+    }
+    fallback_request_summary_map = _build_request_summary_map(db, fallback_request_ids)
+    fallback_message_ids = {r.message_id for r in fallback_rows if r.message_id is not None}
+    message_map: Dict[int, ChatMessage] = {}
+    if fallback_message_ids:
+        messages = db.exec(select(ChatMessage).where(ChatMessage.id.in_(fallback_message_ids))).all()
+        message_map = {int(m.id): m for m in messages if m.id is not None}
+    fallback_session_ids = {r.session_id for r in fallback_rows if r.session_id is not None}
+    fallback_session_map: Dict[int, ChatSession] = {}
+    if fallback_session_ids:
+        fallback_sessions = db.exec(select(ChatSession).where(ChatSession.id.in_(fallback_session_ids))).all()
+        fallback_session_map = {int(s.id): s for s in fallback_sessions if s.id is not None}
+    fallback_user_ids = {r.user_id for r in fallback_rows if r.user_id is not None}
+    fallback_email_map: Dict[int, str] = {}
+    if fallback_user_ids:
+        fallback_users = db.exec(select(User).where(User.id.in_(fallback_user_ids))).all()
+        fallback_email_map = {int(u.id): u.email for u in fallback_users if u.id is not None}
+    fallback_items = [
+        _serialize_solver_attempt_as_llm_usage(
+            row,
+            user_email=fallback_email_map.get(row.user_id) if row.user_id is not None else None,
+            message_telemetry=(
+                message_map[row.message_id].telemetry
+                if row.message_id is not None and row.message_id in message_map and isinstance(message_map[row.message_id].telemetry, dict)
+                else None
+            ),
+            message_structured=(
+                message_map[row.message_id].structured_data
+                if row.message_id is not None and row.message_id in message_map and isinstance(message_map[row.message_id].structured_data, dict)
+                else None
+            ),
+            chat_session_title=(
+                fallback_session_map[row.session_id].title
+                if row.session_id is not None and row.session_id in fallback_session_map
+                else None
+            ),
+            chat_message_preview=(
+                _truncate_text((message_map[row.message_id].content or "").replace("\n", " "), 180)
+                if row.message_id is not None and row.message_id in message_map
+                else None
+            ),
+            request_summary=(
+                fallback_request_summary_map.get(str(row.request_id).strip())
+                if isinstance(row.request_id, str)
+                else None
+            ),
+        )
+        for row in fallback_rows
+    ]
+
+    if fallback_items:
+        return AdminLlmUsageLedgerListResponse(
+            total=fallback_total,
+            items=fallback_items,
+            source="solver_attempt_fallback",
+        )
+
+    # Second fallback: derive usage rows from credits usage ledger when
+    # llmusageledger and solveroutputattempt both lack the request trail.
+    usage_query = select(UsageLedgerV2)
+    if request_id:
+        usage_query = usage_query.where(UsageLedgerV2.request_id.contains(request_id.strip()))
+    if user_id is not None:
+        usage_query = usage_query.where(UsageLedgerV2.user_id == user_id)
+    usage_rows = db.exec(
+        usage_query.order_by(UsageLedgerV2.created_at.desc()).offset(offset).limit(limit)
+    ).all()
+    usage_total = len(db.exec(usage_query).all())
+    usage_request_ids = {
+        str(r.request_id).strip()
+        for r in usage_rows
+        if isinstance(r.request_id, str) and str(r.request_id).strip()
+    }
+    usage_request_summary_map = _build_request_summary_map(db, usage_request_ids)
+    usage_user_ids = {r.user_id for r in usage_rows if r.user_id is not None}
+    usage_user_email_map: Dict[int, str] = {}
+    if usage_user_ids:
+        usage_users = db.exec(select(User).where(User.id.in_(usage_user_ids))).all()
+        usage_user_email_map = {int(u.id): u.email for u in usage_users if u.id is not None}
+    usage_items: List[AdminLlmUsageLedgerItem] = []
+    for idx, row in enumerate(usage_rows):
+        usage_items.append(
+            AdminLlmUsageLedgerItem(
+                id=-(offset + idx + 1),
+                solve_session_id=None,
+                followup_turn_id=None,
+                user_id=row.user_id,
+                user_email=usage_user_email_map.get(row.user_id) if row.user_id is not None else None,
+                session_id=None,
+                message_id=None,
+                provider="unknown",
+                model="unknown",
+                request_id=row.request_id,
+                output_format="batch",
+                prompt_id=str((row.pricing_snapshot or {}).get("binding_id") or ""),
+                prompt_version=None,
+                attempt_id=row.attempt_id,
+                attempt_number=row.question_index,
+                status=row.outcome,
+                char_count=None,
+                error_message=None,
+                source_record="usage_ledger_fallback",
+                chat_session_title=None,
+                chat_message_preview=None,
+                solve_problem_preview=None,
+                request_summary=(
+                    usage_request_summary_map.get(str(row.request_id).strip())
+                    if isinstance(row.request_id, str)
+                    else None
+                ),
+                system_prompt_tokens=0,
+                input_tokens=0,
+                output_tokens=0,
+                total_tokens=0,
+                latency_ms=None,
+                created_at=row.created_at.isoformat() if row.created_at else "",
+            )
+        )
+    if usage_items:
+        return AdminLlmUsageLedgerListResponse(
+            total=usage_total,
+            items=usage_items,
+            source="usage_ledger_fallback",
+        )
 
     return AdminLlmUsageLedgerListResponse(
         total=fallback_total,
-        items=fallback_items,
+        items=[],
         source="solver_attempt_fallback",
     )
 
@@ -10857,7 +11535,12 @@ async def admin_get_llm_usage_ledger_entry(
     if not row:
         raise HTTPException(status_code=404, detail="LLM usage entry not found")
     session_rec = db.get(SolveSession, row.solve_session_id)
-    return _serialize_llm_usage_row(row, user_id=session_rec.user_id if session_rec else None)
+    user_rec = db.get(User, session_rec.user_id) if session_rec and session_rec.user_id is not None else None
+    return _serialize_llm_usage_row(
+        row,
+        user_id=session_rec.user_id if session_rec else None,
+        user_email=user_rec.email if user_rec else None,
+    )
 
 
 @api_router.post("/admin/observability/llm-usage", response_model=AdminLlmUsageLedgerItem)
@@ -10872,6 +11555,7 @@ async def admin_create_llm_usage_ledger_entry(
     solve_session = db.get(SolveSession, body.solve_session_id)
     if not solve_session:
         raise HTTPException(status_code=404, detail="Solve session not found")
+    solve_user = db.get(User, solve_session.user_id) if solve_session.user_id is not None else None
     if body.followup_turn_id is not None:
         turn = db.get(FollowupChatTurn, body.followup_turn_id)
         if not turn:
@@ -10903,13 +11587,21 @@ async def admin_create_llm_usage_ledger_entry(
         entity_type="LLM_USAGE_LEDGER",
         entity_id=str(row.id),
         before_json=None,
-        after_json=_serialize_llm_usage_row(row, user_id=solve_session.user_id).model_dump(),
+        after_json=_serialize_llm_usage_row(
+            row,
+            user_id=solve_session.user_id,
+            user_email=solve_user.email if solve_user else None,
+        ).model_dump(),
         reason=body.reason.strip(),
         request=request,
     )
     db.commit()
     db.refresh(row)
-    return _serialize_llm_usage_row(row, user_id=solve_session.user_id)
+    return _serialize_llm_usage_row(
+        row,
+        user_id=solve_session.user_id,
+        user_email=solve_user.email if solve_user else None,
+    )
 
 
 @api_router.patch("/admin/observability/llm-usage/{entry_id}", response_model=AdminLlmUsageLedgerItem)
@@ -10926,7 +11618,12 @@ async def admin_update_llm_usage_ledger_entry(
     if not row:
         raise HTTPException(status_code=404, detail="LLM usage entry not found")
     session_rec = db.get(SolveSession, row.solve_session_id)
-    before = _serialize_llm_usage_row(row, user_id=session_rec.user_id if session_rec else None).model_dump()
+    session_user = db.get(User, session_rec.user_id) if session_rec and session_rec.user_id is not None else None
+    before = _serialize_llm_usage_row(
+        row,
+        user_id=session_rec.user_id if session_rec else None,
+        user_email=session_user.email if session_user else None,
+    ).model_dump()
 
     if body.provider is not None:
         row.provider = body.provider.strip()
@@ -10949,7 +11646,11 @@ async def admin_update_llm_usage_ledger_entry(
 
     db.add(row)
     db.flush()
-    after = _serialize_llm_usage_row(row, user_id=session_rec.user_id if session_rec else None).model_dump()
+    after = _serialize_llm_usage_row(
+        row,
+        user_id=session_rec.user_id if session_rec else None,
+        user_email=session_user.email if session_user else None,
+    ).model_dump()
     audit_log_service.log_action(
         session=db,
         admin_user_id=admin.id or 0,
@@ -10963,7 +11664,11 @@ async def admin_update_llm_usage_ledger_entry(
     )
     db.commit()
     db.refresh(row)
-    return _serialize_llm_usage_row(row, user_id=session_rec.user_id if session_rec else None)
+    return _serialize_llm_usage_row(
+        row,
+        user_id=session_rec.user_id if session_rec else None,
+        user_email=session_user.email if session_user else None,
+    )
 
 
 @api_router.delete("/admin/observability/llm-usage/{entry_id}")
@@ -10980,7 +11685,12 @@ async def admin_delete_llm_usage_ledger_entry(
     if not row:
         raise HTTPException(status_code=404, detail="LLM usage entry not found")
     session_rec = db.get(SolveSession, row.solve_session_id)
-    before = _serialize_llm_usage_row(row, user_id=session_rec.user_id if session_rec else None).model_dump()
+    session_user = db.get(User, session_rec.user_id) if session_rec and session_rec.user_id is not None else None
+    before = _serialize_llm_usage_row(
+        row,
+        user_id=session_rec.user_id if session_rec else None,
+        user_email=session_user.email if session_user else None,
+    ).model_dump()
     audit_log_service.log_action(
         session=db,
         admin_user_id=admin.id or 0,
@@ -10995,6 +11705,555 @@ async def admin_delete_llm_usage_ledger_entry(
     db.delete(row)
     db.commit()
     return {"status": "ok", "deleted_id": entry_id}
+
+
+class AdminChatBillingQuestionChargeItem(BaseModel):
+    ledger_id: str
+    hold_id: Optional[str] = None
+    attempt_id: Optional[str] = None
+    question_id: Optional[str] = None
+    question_index: Optional[int] = None
+    action: str
+    tier: str
+    outcome: str
+    total_cost: float
+    created_at: str
+
+
+class AdminChatBillingRecord(BaseModel):
+    session_id: int
+    message_id: int
+    role: str
+    created_at: str
+    user_id: int
+    user_email: str
+    request_id: Optional[str] = None
+    content_preview: str
+    question_count: int = 0
+    charge_mode: str = "none"  # none | single | batch
+    credits_charged_total: float = 0.0
+    credits_source: str = "none"  # usage_ledger | billingledger | none
+    provider_cost_usd_total: float = 0.0
+    provider_cost_source: str = "none"  # billingledger | requestevent | estimated | none
+    provider: Optional[str] = None
+    model: Optional[str] = None
+    input_tokens_total: int = 0
+    output_tokens_total: int = 0
+    total_tokens: int = 0
+    latency_ms: Optional[int] = None
+    billing_entries_count: int = 0
+    usage_entries_count: int = 0
+    ledger_entries_total_count: int = 0
+    billing_statuses: List[str] = Field(default_factory=list)
+    per_question_total_credits: float = 0.0
+    per_question_charges: List[AdminChatBillingQuestionChargeItem] = Field(default_factory=list)
+
+
+class AdminChatBillingListResponse(BaseModel):
+    total: int
+    limit: int
+    offset: int
+    items: List[AdminChatBillingRecord]
+
+
+def _extract_chat_message_request_id(message: ChatMessage) -> Optional[str]:
+    telemetry = message.telemetry if isinstance(message.telemetry, dict) else {}
+    structured = message.structured_data if isinstance(message.structured_data, dict) else {}
+    nested_telemetry = structured.get("telemetry") if isinstance(structured.get("telemetry"), dict) else {}
+    nested_legacy_telemetry = structured.get("_telemetry") if isinstance(structured.get("_telemetry"), dict) else {}
+    candidates = [
+        telemetry.get("request_id"),
+        nested_telemetry.get("request_id"),
+        nested_legacy_telemetry.get("request_id"),
+        structured.get("request_id"),
+    ]
+    for candidate in candidates:
+        if isinstance(candidate, str) and candidate.strip():
+            return candidate.strip()
+    return None
+
+
+def _extract_chat_message_question_count(message: ChatMessage) -> int:
+    structured = message.structured_data if isinstance(message.structured_data, dict) else {}
+    if isinstance(structured.get("solutions"), list):
+        return len(structured.get("solutions") or [])
+    if isinstance(structured.get("items"), list):
+        return len(structured.get("items") or [])
+    return 0
+
+
+def _extract_chat_message_telemetry(message: ChatMessage) -> Dict[str, Any]:
+    telemetry = message.telemetry if isinstance(message.telemetry, dict) else {}
+    structured = message.structured_data if isinstance(message.structured_data, dict) else {}
+    nested_telemetry = structured.get("telemetry") if isinstance(structured.get("telemetry"), dict) else {}
+    nested_legacy_telemetry = structured.get("_telemetry") if isinstance(structured.get("_telemetry"), dict) else {}
+    runtime_meta = structured.get("runtime_meta") if isinstance(structured.get("runtime_meta"), dict) else {}
+    out: Dict[str, Any] = {}
+    for source in [telemetry, nested_telemetry, nested_legacy_telemetry, runtime_meta]:
+        for key, value in source.items():
+            if key not in out or out.get(key) in (None, "", 0):
+                out[key] = value
+    return out
+
+
+@api_router.get("/admin/observability/chat-billing", response_model=AdminChatBillingListResponse)
+async def admin_list_chat_billing_records(
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    user_query: Optional[str] = Query(None, description="User id or email fragment"),
+    session_id: Optional[int] = Query(None),
+    request_id: Optional[str] = Query(None),
+    role: Optional[str] = Query(None, description="assistant | user | system"),
+    db: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
+    message_query = (
+        select(ChatMessage, ChatSession, User)
+        .join(ChatSession, ChatSession.id == ChatMessage.session_id)
+        .join(User, User.id == ChatSession.user_id)
+    )
+    count_query = (
+        select(func.count(ChatMessage.id))
+        .select_from(ChatMessage)
+        .join(ChatSession, ChatSession.id == ChatMessage.session_id)
+        .join(User, User.id == ChatSession.user_id)
+    )
+
+    if role:
+        role_norm = role.strip().lower()
+        message_query = message_query.where(ChatMessage.role == role_norm)
+        count_query = count_query.where(ChatMessage.role == role_norm)
+    else:
+        message_query = message_query.where(ChatMessage.role == "assistant")
+        count_query = count_query.where(ChatMessage.role == "assistant")
+
+    if session_id is not None:
+        message_query = message_query.where(ChatSession.id == session_id)
+        count_query = count_query.where(ChatSession.id == session_id)
+
+    if user_query and user_query.strip():
+        uq = user_query.strip()
+        if uq.isdigit():
+            uid = int(uq)
+            message_query = message_query.where(User.id == uid)
+            count_query = count_query.where(User.id == uid)
+        else:
+            message_query = message_query.where(User.email.ilike(f"%{uq}%"))
+            count_query = count_query.where(User.email.ilike(f"%{uq}%"))
+
+    rows = db.exec(
+        message_query
+        .order_by(ChatMessage.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    ).all()
+    total = int(db.exec(count_query).one() or 0)
+
+    request_ids = set()
+    for message, _session, _user in rows:
+        req_id = _extract_chat_message_request_id(message)
+        if req_id:
+            request_ids.add(req_id)
+    if request_id and request_id.strip():
+        request_ids.add(request_id.strip())
+
+    billing_by_request: Dict[str, List[BillingLedger]] = {}
+    usage_by_request: Dict[str, List[UsageLedgerV2]] = {}
+    request_event_by_request: Dict[str, RequestEvent] = {}
+    attempt_by_request: Dict[str, SolverOutputAttempt] = {}
+    if request_ids:
+        billing_rows = db.exec(
+            select(BillingLedger).where(BillingLedger.request_id.in_(request_ids))
+        ).all()
+        for entry in billing_rows:
+            rid = (entry.request_id or "").strip()
+            if not rid:
+                continue
+            billing_by_request.setdefault(rid, []).append(entry)
+
+        usage_rows = db.exec(
+            select(UsageLedgerV2).where(UsageLedgerV2.request_id.in_(request_ids))
+        ).all()
+        for entry in usage_rows:
+            rid = (entry.request_id or "").strip()
+            if not rid:
+                continue
+            usage_by_request.setdefault(rid, []).append(entry)
+
+        event_rows = db.exec(
+            select(RequestEvent)
+            .where(RequestEvent.request_id.in_(request_ids))
+            .order_by(RequestEvent.created_at.desc())
+        ).all()
+        for event in event_rows:
+            rid = (event.request_id or "").strip()
+            if not rid or rid in request_event_by_request:
+                continue
+            request_event_by_request[rid] = event
+
+        attempt_rows = db.exec(
+            select(SolverOutputAttempt)
+            .where(SolverOutputAttempt.request_id.in_(request_ids))
+            .order_by(SolverOutputAttempt.created_at.desc())
+        ).all()
+        for attempt in attempt_rows:
+            rid = (attempt.request_id or "").strip()
+            if not rid or rid in attempt_by_request:
+                continue
+            attempt_by_request[rid] = attempt
+
+    records: List[AdminChatBillingRecord] = []
+    request_id_filter = request_id.strip() if isinstance(request_id, str) else None
+    for message, chat_session, user in rows:
+        msg_request_id = _extract_chat_message_request_id(message)
+        if request_id_filter and msg_request_id != request_id_filter:
+            continue
+
+        billing_entries = billing_by_request.get(msg_request_id or "", []) if msg_request_id else []
+        usage_entries = usage_by_request.get(msg_request_id or "", []) if msg_request_id else []
+        request_event = request_event_by_request.get(msg_request_id or "") if msg_request_id else None
+        attempt_entry = attempt_by_request.get(msg_request_id or "") if msg_request_id else None
+        message_telemetry = _extract_chat_message_telemetry(message)
+
+        billing_credits_total = 0.0
+        provider_cost_total = 0.0
+        statuses: List[str] = []
+        for entry in billing_entries:
+            credits_value = float(entry.credits_charged or 0)
+            provider_cost = float(entry.provider_cost_usd or 0)
+            billing_credits_total += credits_value
+            provider_cost_total += provider_cost
+            status_value = (entry.status or "").strip()
+            if status_value and status_value not in statuses:
+                statuses.append(status_value)
+
+        question_items: List[AdminChatBillingQuestionChargeItem] = []
+        per_question_total = 0.0
+        usage_entries_sorted = sorted(
+            usage_entries,
+            key=lambda item: (
+                item.question_index if item.question_index is not None else 10_000,
+                item.created_at,
+            ),
+        )
+        for usage_entry in usage_entries_sorted:
+            q_cost = float(usage_entry.total_cost or 0)
+            per_question_total += q_cost
+            question_items.append(
+                AdminChatBillingQuestionChargeItem(
+                    ledger_id=usage_entry.ledger_id,
+                    hold_id=usage_entry.hold_id,
+                    attempt_id=usage_entry.attempt_id,
+                    question_id=usage_entry.question_id,
+                    question_index=usage_entry.question_index,
+                    action=usage_entry.action,
+                    tier=usage_entry.tier,
+                    outcome=usage_entry.outcome,
+                    total_cost=q_cost,
+                    created_at=usage_entry.created_at.isoformat() if usage_entry.created_at else "",
+                )
+            )
+
+        credits_charged_total = 0.0
+        credits_source = "none"
+        if per_question_total > 0:
+            credits_charged_total = per_question_total
+            credits_source = "usage_ledger"
+        elif billing_credits_total > 0:
+            credits_charged_total = billing_credits_total
+            credits_source = "billingledger"
+
+        provider_cost_source = "none"
+        if provider_cost_total > 0:
+            provider_cost_source = "billingledger"
+        elif request_event and float(request_event.cost_usd or 0) > 0:
+            provider_cost_total = float(request_event.cost_usd or 0)
+            provider_cost_source = "requestevent"
+
+        provider = _first_non_empty_str(
+            request_event.provider if request_event else None,
+            attempt_entry.provider if attempt_entry else None,
+            message_telemetry.get("provider"),
+        )
+        model = _first_non_empty_str(
+            request_event.model if request_event else None,
+            attempt_entry.model if attempt_entry else None,
+            message_telemetry.get("model"),
+        )
+        input_tokens = (
+            _safe_int(request_event.tokens_in) if request_event else None
+        )
+        output_tokens = (
+            _safe_int(request_event.tokens_out) if request_event else None
+        )
+        total_tokens = (
+            _safe_int(request_event.tokens_total) if request_event else None
+        )
+        if input_tokens is None and attempt_entry is not None:
+            input_tokens = _safe_int(attempt_entry.input_tokens)
+        if output_tokens is None and attempt_entry is not None:
+            output_tokens = _safe_int(attempt_entry.output_tokens)
+        if total_tokens is None and attempt_entry is not None:
+            total_tokens = _safe_int(attempt_entry.total_tokens)
+        if input_tokens is None:
+            input_tokens = _safe_int(message_telemetry.get("input_tokens")) or _safe_int(message_telemetry.get("tokens_in"))
+        if output_tokens is None:
+            output_tokens = _safe_int(message_telemetry.get("output_tokens")) or _safe_int(message_telemetry.get("tokens_out"))
+        if total_tokens is None:
+            total_tokens = _safe_int(message_telemetry.get("total_tokens")) or _safe_int(message_telemetry.get("tokens_total"))
+        if total_tokens is None and input_tokens is not None and output_tokens is not None:
+            total_tokens = input_tokens + output_tokens
+
+        latency_ms: Optional[int] = (
+            _safe_int(request_event.latency_ms) if request_event else None
+        )
+        if latency_ms is None and attempt_entry is not None:
+            latency_ms = _safe_int(attempt_entry.latency_ms)
+        if latency_ms is None:
+            latency_ms = (
+                _safe_int(message_telemetry.get("latency_ms_total"))
+                or _safe_int(message_telemetry.get("latency_ms_openai"))
+                or _safe_int(message_telemetry.get("latency_ms"))
+                or None
+            )
+
+        if provider_cost_source == "none" and total_tokens and total_tokens > 0:
+            model_for_cost = model or ""
+            provider_cost_total = float(
+                _calc_cost(
+                    total_tokens,
+                    model_for_cost,
+                    input_tokens,
+                    output_tokens,
+                ) or 0.0
+            )
+            if provider_cost_total > 0:
+                provider_cost_source = "estimated"
+
+        question_count = _extract_chat_message_question_count(message)
+        if question_count <= 0 and question_items:
+            question_count = len(question_items)
+        charge_mode = "none"
+        if question_count > 1 or len(question_items) > 1:
+            charge_mode = "batch"
+        elif question_count == 1 or len(question_items) == 1:
+            charge_mode = "single"
+
+        records.append(
+            AdminChatBillingRecord(
+                session_id=int(chat_session.id or 0),
+                message_id=int(message.id or 0),
+                role=message.role,
+                created_at=message.created_at.isoformat() if message.created_at else "",
+                user_id=int(user.id or 0),
+                user_email=user.email,
+                request_id=msg_request_id,
+                content_preview=_truncate_text((message.content or "").replace("\n", " "), 220),
+                question_count=question_count,
+                charge_mode=charge_mode,
+                credits_charged_total=credits_charged_total,
+                credits_source=credits_source,
+                provider_cost_usd_total=provider_cost_total,
+                provider_cost_source=provider_cost_source,
+                provider=provider,
+                model=model,
+                input_tokens_total=max(0, int(input_tokens or 0)),
+                output_tokens_total=max(0, int(output_tokens or 0)),
+                total_tokens=max(0, int(total_tokens or 0)),
+                latency_ms=latency_ms,
+                billing_entries_count=len(billing_entries),
+                usage_entries_count=len(usage_entries),
+                ledger_entries_total_count=len(billing_entries) + len(usage_entries),
+                billing_statuses=statuses,
+                per_question_total_credits=per_question_total,
+                per_question_charges=question_items,
+            )
+        )
+
+    # Include usage-ledger-only requests even when no chatmessage row exists,
+    # so the default dashboard view never hides charged requests.
+    include_usage_fallback = (not role) or (str(role).strip().lower() == "assistant")
+    if include_usage_fallback and not request_id_filter:
+        request_ids_in_records = {
+            str(r.request_id).strip()
+            for r in records
+            if isinstance(r.request_id, str) and str(r.request_id).strip()
+        }
+        usage_recent_rows = db.exec(
+            select(UsageLedgerV2).order_by(UsageLedgerV2.created_at.desc()).limit(max(limit * 8, 500))
+        ).all()
+        usage_by_request_recent: Dict[str, List[UsageLedgerV2]] = {}
+        for usage_row in usage_recent_rows:
+            rid = str(usage_row.request_id or "").strip()
+            if not rid:
+                continue
+            usage_by_request_recent.setdefault(rid, []).append(usage_row)
+
+        for rid, usage_entries in usage_by_request_recent.items():
+            if rid in request_ids_in_records:
+                continue
+            first_entry = usage_entries[0]
+            usage_user = db.get(User, first_entry.user_id) if first_entry.user_id is not None else None
+            question_items: List[AdminChatBillingQuestionChargeItem] = []
+            usage_total = 0.0
+            usage_entries_sorted = sorted(
+                usage_entries,
+                key=lambda item: (
+                    item.question_index if item.question_index is not None else 10_000,
+                    item.created_at,
+                ),
+            )
+            for usage_entry in usage_entries_sorted:
+                q_cost = float(usage_entry.total_cost or 0)
+                usage_total += q_cost
+                question_items.append(
+                AdminChatBillingQuestionChargeItem(
+                    ledger_id=usage_entry.ledger_id,
+                    hold_id=usage_entry.hold_id,
+                    attempt_id=usage_entry.attempt_id,
+                    question_id=usage_entry.question_id,
+                    question_index=usage_entry.question_index,
+                    action=usage_entry.action,
+                        tier=usage_entry.tier,
+                        outcome=usage_entry.outcome,
+                        total_cost=q_cost,
+                        created_at=usage_entry.created_at.isoformat() if usage_entry.created_at else "",
+                    )
+                )
+
+            fallback_attempt_id = next(
+                (str(item.attempt_id).strip() for item in usage_entries_sorted if str(item.attempt_id or "").strip()),
+                "",
+            )
+            fallback_hold_id = next(
+                (str(item.hold_id).strip() for item in usage_entries_sorted if str(item.hold_id or "").strip()),
+                "",
+            )
+            question_labels = [str(item.question_id or f"q{item.question_index or '?'}") for item in usage_entries_sorted[:6]]
+            labels_preview = ", ".join(question_labels)
+            records.append(
+                AdminChatBillingRecord(
+                    session_id=0,
+                    message_id=0,
+                    role="assistant",
+                    created_at=first_entry.created_at.isoformat() if first_entry.created_at else "",
+                    user_id=int(first_entry.user_id or 0),
+                    user_email=usage_user.email if usage_user else "unknown",
+                    request_id=rid,
+                    content_preview=(
+                        "No chatmessage row found; rendered from usage_ledger fallback. "
+                        f"attempt_id={fallback_attempt_id or 'n/a'} "
+                        f"hold_id={fallback_hold_id or 'n/a'} "
+                        f"questions=[{labels_preview}]"
+                    ),
+                    question_count=len(question_items),
+                    charge_mode="batch" if len(question_items) > 1 else "single",
+                    credits_charged_total=usage_total,
+                    credits_source="usage_ledger",
+                    provider_cost_usd_total=0.0,
+                    provider_cost_source="none",
+                    provider=None,
+                    model=None,
+                    input_tokens_total=0,
+                    output_tokens_total=0,
+                    total_tokens=0,
+                    latency_ms=None,
+                    billing_entries_count=0,
+                    usage_entries_count=len(question_items),
+                    ledger_entries_total_count=len(question_items),
+                    billing_statuses=[],
+                    per_question_total_credits=usage_total,
+                    per_question_charges=question_items,
+                )
+            )
+            request_ids_in_records.add(rid)
+
+        records.sort(key=lambda row: row.created_at, reverse=True)
+        if len(records) > limit:
+            records = records[:limit]
+
+    filtered_total = len(records) if not request_id_filter else len(records)
+    if request_id_filter and not records:
+        usage_entries = db.exec(
+            select(UsageLedgerV2)
+            .where(UsageLedgerV2.request_id == request_id_filter)
+            .order_by(UsageLedgerV2.question_index.asc(), UsageLedgerV2.created_at.asc())
+        ).all()
+        if usage_entries:
+            first_entry = usage_entries[0]
+            usage_user = db.get(User, first_entry.user_id) if first_entry.user_id is not None else None
+            question_items: List[AdminChatBillingQuestionChargeItem] = []
+            usage_total = 0.0
+            for usage_entry in usage_entries:
+                q_cost = float(usage_entry.total_cost or 0)
+                usage_total += q_cost
+                question_items.append(
+                    AdminChatBillingQuestionChargeItem(
+                        ledger_id=usage_entry.ledger_id,
+                        hold_id=usage_entry.hold_id,
+                        attempt_id=usage_entry.attempt_id,
+                        question_id=usage_entry.question_id,
+                        question_index=usage_entry.question_index,
+                        action=usage_entry.action,
+                        tier=usage_entry.tier,
+                        outcome=usage_entry.outcome,
+                        total_cost=q_cost,
+                        created_at=usage_entry.created_at.isoformat() if usage_entry.created_at else "",
+                    )
+                )
+            fallback_attempt_id = next(
+                (str(item.attempt_id).strip() for item in usage_entries if str(item.attempt_id or "").strip()),
+                "",
+            )
+            fallback_hold_id = next(
+                (str(item.hold_id).strip() for item in usage_entries if str(item.hold_id or "").strip()),
+                "",
+            )
+            question_labels = [str(item.question_id or f"q{item.question_index or '?'}") for item in usage_entries[:6]]
+            labels_preview = ", ".join(question_labels)
+            records.append(
+                AdminChatBillingRecord(
+                    session_id=0,
+                    message_id=0,
+                    role="system",
+                    created_at=first_entry.created_at.isoformat() if first_entry.created_at else "",
+                    user_id=int(first_entry.user_id or 0),
+                    user_email=usage_user.email if usage_user else "unknown",
+                    request_id=request_id_filter,
+                    content_preview=(
+                        "No chatmessage row found; rendered from usage_ledger fallback. "
+                        f"attempt_id={fallback_attempt_id or 'n/a'} "
+                        f"hold_id={fallback_hold_id or 'n/a'} "
+                        f"questions=[{labels_preview}]"
+                    ),
+                    question_count=len(question_items),
+                    charge_mode="batch" if len(question_items) > 1 else "single",
+                    credits_charged_total=usage_total,
+                    credits_source="usage_ledger",
+                    provider_cost_usd_total=0.0,
+                    provider_cost_source="none",
+                    provider=None,
+                    model=None,
+                    input_tokens_total=0,
+                    output_tokens_total=0,
+                    total_tokens=0,
+                    latency_ms=None,
+                    billing_entries_count=0,
+                    usage_entries_count=len(question_items),
+                    ledger_entries_total_count=len(question_items),
+                    billing_statuses=[],
+                    per_question_total_credits=usage_total,
+                    per_question_charges=question_items,
+                )
+            )
+            filtered_total = len(records)
+
+    return AdminChatBillingListResponse(
+        total=filtered_total,
+        limit=limit,
+        offset=offset,
+        items=records,
+    )
 
 
 class AdminCanonicalProblemItem(BaseModel):
@@ -11805,6 +13064,8 @@ async def admin_get_quotas(db: Session = Depends(get_session), admin: User = Dep
     tier_default_daily_caps = {
         "free": 5.0,
         "short": 5.0,
+        "short_steps": 5.0,
+        "final": 5.0,
         "standard": 50.0,
         "research": 200.0,
     }
@@ -12421,7 +13682,12 @@ class PromptRegistryTestRequest(BaseModel):
 def _parse_tier(value: Optional[str]) -> Optional[PromptTierEnum]:
     if value is None:
         return None
-    return PromptTierEnum(value.upper())
+    raw = str(value).strip().upper()
+    if raw in {"THREE_STEP", "FREE"}:
+        raw = "SHORT_STEPS"
+    elif raw in {"SHORT"}:
+        raw = "FINAL"
+    return PromptTierEnum(raw)
 
 def _parse_mode(value: str) -> PromptModeEnum:
     return PromptModeEnum(value.upper())
@@ -12430,14 +13696,19 @@ def _parse_role(value: str) -> PromptRoleEnum:
     return PromptRoleEnum(value.upper())
 
 
+def _is_production_env() -> bool:
+    return os.environ.get("APP_ENV", "").strip().upper() in {"PROD", "PRODUCTION"}
+
+
 def _enforce_allowed_prompt_id(prompt_id: str) -> None:
-    if prompt_id not in ALLOWED_PROMPT_IDS:
+    if _is_production_env() and prompt_id not in ALLOWED_PROMPT_IDS:
         raise HTTPException(status_code=400, detail=f"prompt_id not allowed in production: {prompt_id}")
 
 
 def _enforce_allowed_schema_id(schema_id: str) -> None:
-    if schema_id not in ALLOWED_SCHEMA_IDS:
-        raise HTTPException(status_code=400, detail=f"schema_id not allowed in production: {schema_id}")
+    # Schema registry is intentionally open for admin-managed schema evolution
+    # across all environments (DEV/TEST/PROD).
+    return
 
 @api_router.get("/admin/prompt-registry/prompts", response_model=List[RegistryPromptItem])
 async def admin_list_prompt_registry_prompts(
@@ -12465,7 +13736,7 @@ admin: User = Depends(get_admin_user)):
                 latest_by_id[row.prompt_id] = row
         rows = sorted(latest_by_id.values(), key=lambda item: item.prompt_id)
 
-    filtered = [row for row in rows if row.prompt_id in ALLOWED_PROMPT_IDS]
+    filtered = [row for row in rows if row.prompt_id in ALLOWED_PROMPT_IDS] if _is_production_env() else rows
     return [
         RegistryPromptItem(
             prompt_id=row.prompt_id,
@@ -12590,7 +13861,7 @@ admin: User = Depends(get_admin_user)):
                 latest_by_id[row.schema_id] = row
         rows = sorted(latest_by_id.values(), key=lambda item: item.schema_id)
 
-    filtered = [row for row in rows if row.schema_id in ALLOWED_SCHEMA_IDS]
+    filtered = [row for row in rows if row.schema_id in ALLOWED_SCHEMA_IDS] if _is_production_env() else rows
     return [
         RegistrySchemaItem(
             schema_id=row.schema_id,
@@ -12674,14 +13945,19 @@ admin: User = Depends(get_admin_user)):
 
 @api_router.get("/admin/prompt-registry/bindings", response_model=List[RegistryBindingItem])
 async def admin_list_prompt_registry_bindings(db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
-    rows = db.exec(
+    statement = (
         select(PromptBinding)
         .where(PromptBinding.mode == PromptModeEnum.SOLVE)
-        .where(PromptBinding.global_system_prompt_id.in_(ALLOWED_PROMPT_IDS))
-        .where(PromptBinding.developer_prompt_id.in_(ALLOWED_PROMPT_IDS))
-        .where(PromptBinding.output_schema_id.in_(ALLOWED_SCHEMA_IDS))
         .order_by(PromptBinding.updated_at.desc())
-    ).all()
+    )
+    if _is_production_env():
+        statement = (
+            statement
+            .where(PromptBinding.global_system_prompt_id.in_(ALLOWED_PROMPT_IDS))
+            .where(PromptBinding.developer_prompt_id.in_(ALLOWED_PROMPT_IDS))
+            .where(PromptBinding.output_schema_id.in_(ALLOWED_SCHEMA_IDS))
+        )
+    rows = db.exec(statement).all()
     return [
         RegistryBindingItem(
             id=row.id,
@@ -12737,7 +14013,7 @@ async def admin_activate_prompt_registry_binding(req: BindingActivateRequest, db
     _enforce_allowed_prompt_id(req.global_system_prompt_id)
     _enforce_allowed_prompt_id(req.developer_prompt_id)
     _enforce_allowed_schema_id(req.output_schema_id)
-    if _parse_mode(req.mode) != PromptModeEnum.SOLVE:
+    if _is_production_env() and _parse_mode(req.mode) != PromptModeEnum.SOLVE:
         raise HTTPException(status_code=400, detail="Only SOLVE mode bindings are allowed in production.")
     try:
         entry = prompt_registry_service.activate_binding(

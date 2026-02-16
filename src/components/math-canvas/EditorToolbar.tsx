@@ -118,16 +118,10 @@ export default function EditorToolbar({
     const selected = input.value.slice(start, end);
     const fallbackSelected = selected || "text";
 
-    const setWrapped = (prefix: string, suffix: string) => {
-      const next = `${prefix}${fallbackSelected}${suffix}`;
-      input.setRangeText(next, start, end, "end");
-      const cursor = start + next.length;
-      input.setSelectionRange(cursor, cursor);
-    };
-
-    if (label === "bold") setWrapped("**", "**");
-    else if (label === "italic") setWrapped("*", "*");
-    else if (label === "bulleted list") {
+    if (label === "bold" || label === "italic") {
+      // Plain input/textarea fields cannot render rich text formatting.
+      return false;
+    } else if (label === "bulleted list") {
       const block = selected || input.value.slice(start);
       const lines = block.split("\n").map((line) => (line.trim() ? `- ${line}` : line)).join("\n");
       input.setRangeText(lines, start, end, "end");
@@ -193,6 +187,10 @@ export default function EditorToolbar({
 
   const runRichCommand = (label: string, command: (editor: Editor) => boolean) => {
     if (!activeEditor || !activeEditor.isEditable) {
+      if (label === "bold" || label === "italic") {
+        onNotice?.(`"${label[0].toUpperCase()}${label.slice(1)}" works only in rich text fields.`);
+        return;
+      }
       if (applyToFocusedInput(label)) return;
       const map: Record<string, string> = {
         bold: "bold",

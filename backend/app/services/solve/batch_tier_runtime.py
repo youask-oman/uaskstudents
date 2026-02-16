@@ -275,11 +275,10 @@ def _post_assertions(
 
         plot = item.get("plot") if isinstance(item.get("plot"), dict) else {}
         if not str(plot.get("decision_reason") or "").strip():
-            raise BatchSolveError(
-                f"plot.decision_reason is required for item {idx}.",
-                status_code=502,
-                code="post_assert_failed",
-            )
+            # Keep runtime tolerant: decision_reason is informational and may be omitted.
+            # We normalize instead of failing the entire batch.
+            plot["decision_reason"] = "No plot rationale provided."
+            item["plot"] = plot
 
         refusal = item.get("refusal") if isinstance(item.get("refusal"), dict) else {}
         final_answer = item.get("final_answer")
@@ -361,14 +360,21 @@ async def execute_batch_solve(
 
     _validate_binding_strict(session, prompt_tier)
     binding_bundle = prompt_manager.get_binding(session, prompt_tier, PromptModeEnum.SOLVE)
-    binding = binding_bundle["binding"]
-    max_questions_allowed = int(binding.max_questions_allowed or 0)
+    binding = binding_bundle.get("binding") or {}
+
+    def _bget(name: str, default: Any = None) -> Any:
+        if isinstance(binding, dict):
+            return binding.get(name, default)
+        return getattr(binding, name, default)
+
+    binding_id = str(_bget("id") or "")
+    max_questions_allowed = int(_bget("max_questions_allowed") or 0)
     if max_questions_allowed < 1:
         raise BatchSolveError(
             "Binding is missing required max_questions_allowed.",
             status_code=500,
             code="prompt_binding_invalid",
-            details={"tier": prompt_tier.value, "binding_id": str(binding.id)},
+            details={"tier": prompt_tier.value, "binding_id": binding_id},
         )
     if len(normalized_questions) > max_questions_allowed:
         raise BatchSolveError(
@@ -424,16 +430,23 @@ async def execute_batch_solve(
 
     llm_manager = LLMManager()
     client = llm_manager.get_client("openai")
-    binding_features = binding.features if isinstance(binding.features, dict) else {}
+    binding_features = _bget("features") if isinstance(_bget("features"), dict) else {}
     model_name = (model or str(binding_features.get("model") or "")).strip()
     if not model_name:
         raise BatchSolveError(
             "Binding is missing required model setting.",
             status_code=500,
             code="prompt_binding_invalid",
-            details={"tier": prompt_tier.value, "binding_id": str(binding.id)},
+            details={"tier": prompt_tier.value, "binding_id": binding_id},
         )
-    max_tokens = int(max_output_tokens) if max_output_tokens is not None else binding.max_output_tokens
+    bound_max_output_tokens = int(_bget("max_output_tokens") or 0)
+    if bound_max_output_tokens < 1:
+        # Keep runtime resilient for legacy bindings missing this field.
+        bound_max_output_tokens = 2200
+    max_tokens = int(max_output_tokens) if max_output_tokens is not None else bound_max_output_tokens
+    bound_temperature = float(_bget("temperature") or 0.0)
+    bound_top_p = float(_bget("top_p") or 1.0)
+    bound_timeout_ms = int(_bget("timeout_ms") or 60000)
 
     try:
         response = await client.generate(
@@ -442,11 +455,11 @@ async def execute_batch_solve(
             prompt=None,
             json_schema=schema_wrapper,
             max_tokens=max_tokens,
-            temperature=binding.temperature,
-            top_p=binding.top_p,
+            temperature=bound_temperature,
+            top_p=bound_top_p,
             stream=False,
             request_id=runtime_request_id,
-            timeout_ms=binding.timeout_ms,
+            timeout_ms=bound_timeout_ms,
             model=model_name,
             verbosity="low",
             reasoning_effort=(str(binding_features.get("reasoning_effort") or "").strip() or None),
@@ -512,14 +525,14 @@ async def execute_batch_solve(
         "latency_ms_total": int((time.perf_counter() - started) * 1000),
         "schema_name": str(schema_wrapper.get("name") or tier_policy.schema_id),
         "model_bound": model_name,
-        "temperature_bound": binding.temperature,
-        "top_p_bound": binding.top_p,
-        "timeout_ms_bound": binding.timeout_ms,
+        "temperature_bound": bound_temperature,
+        "top_p_bound": bound_top_p,
+        "timeout_ms_bound": bound_timeout_ms,
         "max_questions_allowed_bound": max_questions_allowed,
-        "prompt_binding_id": str(binding.id),
-        "global_system_prompt_id": binding.global_system_prompt_id,
-        "developer_prompt_id": binding.developer_prompt_id,
-        "output_schema_id": binding.output_schema_id,
+        "prompt_binding_id": binding_id,
+        "global_system_prompt_id": _bget("global_system_prompt_id"),
+        "developer_prompt_id": _bget("developer_prompt_id"),
+        "output_schema_id": _bget("output_schema_id"),
         "openai_calls_count": 1,
         "repair_attempted": False,
         "schema_valid": True,

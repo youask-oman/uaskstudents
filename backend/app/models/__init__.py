@@ -29,7 +29,7 @@ class User(SQLModel, table=True):
     solving_mode: str = Field(default="Full Solution") # Full Solution, Hint Ladder, Socratic
 
     # Subscription & Quotas
-    subscription_tier: str = Field(default="standard") # free, short, standard, research
+    subscription_tier: str = Field(default="standard") # short_steps, final, standard, research
     subscription_status: str = Field(default="active") # active, cancelled, expired, past_due
     subscription_expiry: Optional[datetime] = None
     
@@ -103,7 +103,7 @@ class ChatSession(SQLModel, table=True):
     # Tier & Goal Tracking
     learning_mode: Optional[str] = Field(default="solve") # solve, study
     requested_mode: Optional[str] = Field(default="minimal") # minimal, detailed
-    solve_tier: Optional[str] = Field(default="free") # free, standard
+    solve_tier: Optional[str] = Field(default="short_steps") # short_steps, final, standard, research
 
     user: Optional[User] = Relationship(back_populates="sessions")
     messages: List["ChatMessage"] = Relationship(back_populates="session")
@@ -766,10 +766,13 @@ class SystemConfigVersion(SQLModel, table=True):
 # --- Prompt & Schema Registry (DB-backed) ---
 
 class PromptTierEnum(str, Enum):
-    FREE = "FREE"
+    SHORT_STEPS = "SHORT_STEPS"
+    FINAL = "FINAL"
     STANDARD = "STANDARD"
     RESEARCH = "RESEARCH"
-    SHORT = "SHORT"
+    # Backward-compat aliases (legacy labels)
+    FREE = "SHORT_STEPS"
+    SHORT = "FINAL"
 
 class PromptModeEnum(str, Enum):
     SOLVE = "SOLVE"

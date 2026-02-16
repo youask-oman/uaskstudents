@@ -28,7 +28,7 @@ import {
 type SnapSolveV2Props = {
     onUseText: (text: string) => void;
     onSolveText: (text: string) => void;
-    tier?: "FREE" | "STANDARD" | "RESEARCH" | "SHORT";
+    tier?: "SHORT_STEPS" | "STANDARD" | "RESEARCH" | "FINAL";
     requestedMode?: "minimal" | "detailed";
 };
 
@@ -136,7 +136,7 @@ const MAX_EDGE = 2000;
 const JPEG_QUALITY = 0.83;
 const TOKENS_PER_CREDIT = 2000;
 
-export default function SnapSolveV2({ onUseText, onSolveText, tier = "FREE", requestedMode = "minimal" }: SnapSolveV2Props) {
+export default function SnapSolveV2({ onUseText, onSolveText, tier = "SHORT_STEPS", requestedMode = "minimal" }: SnapSolveV2Props) {
     const [file, setFile] = React.useState<File | null>(null);
     const [fileType, setFileType] = React.useState<"image" | "pdf" | null>(null);
     const [imageSrc, setImageSrc] = React.useState<string | null>(null);

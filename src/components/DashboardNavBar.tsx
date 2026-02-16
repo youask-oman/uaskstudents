@@ -33,7 +33,7 @@ export default function DashboardNavBar() {
     const [userEmail, setUserEmail] = useState("");
     const [userRole, setUserRole] = useState("student");
     const [userAvatar, setUserAvatar] = useState("");
-    const [userTier, setUserTier] = useState("free");
+    const [userTier, setUserTier] = useState("short_steps");
     const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
 
     const router = useRouter();
@@ -51,7 +51,7 @@ export default function DashboardNavBar() {
             setUserName(storedUser?.full_name || localStorage.getItem("user_name") || "Guest");
             setUserEmail(storedUser?.email || "");
             setUserRole(storedUser?.role || "student");
-            setUserTier("free");
+            setUserTier("short_steps");
             setUserAvatar(storedUser?.avatar_url || localStorage.getItem("user_avatar") || "");
         };
 
@@ -60,7 +60,7 @@ export default function DashboardNavBar() {
             try {
                 const summary = await fetchWalletSummary();
                 setWalletSummary(summary);
-                setUserTier(summary.effective_tier || "FREE");
+                setUserTier(summary.effective_tier || "SHORT_STEPS");
             } catch (error) {
                 console.warn("Failed to load wallet for navbar:", error);
             }

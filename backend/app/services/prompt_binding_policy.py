@@ -16,14 +16,15 @@ ALLOWED_PROMPT_IDS: List[str] = [
 
 ALLOWED_SCHEMA_IDS: List[str] = [
     "solve_batch_final_v2",
+    "solve_batch_final_min_v1",
     "solve_batch_free_v2",
     "solve_batch_standard_v2",
     "solve_batch_research_v2",
 ]
 
 ALLOWED_SOLVE_TIERS: List[PromptTierEnum] = [
-    PromptTierEnum.SHORT,      # FINAL
-    PromptTierEnum.FREE,
+    PromptTierEnum.FINAL,
+    PromptTierEnum.SHORT_STEPS,
     PromptTierEnum.STANDARD,
     PromptTierEnum.RESEARCH,
 ]
@@ -46,7 +47,7 @@ class SolveTierPolicy:
 
 SOLVE_TIER_POLICY: Dict[str, SolveTierPolicy] = {
     "FINAL": SolveTierPolicy(
-        prompt_tier=PromptTierEnum.SHORT,
+        prompt_tier=PromptTierEnum.FINAL,
         external_tier="FINAL",
         developer_prompt_id="solve_dev_final_v2",
         schema_id="solve_batch_final_v2",
@@ -58,9 +59,9 @@ SOLVE_TIER_POLICY: Dict[str, SolveTierPolicy] = {
         solve_cost_voice=2,
         verify_cost=1,
     ),
-    "FREE": SolveTierPolicy(
-        prompt_tier=PromptTierEnum.FREE,
-        external_tier="FREE",
+    "SHORT_STEPS": SolveTierPolicy(
+        prompt_tier=PromptTierEnum.SHORT_STEPS,
+        external_tier="SHORT_STEPS",
         developer_prompt_id="solve_dev_free_v2",
         schema_id="solve_batch_free_v2",
         max_questions=5,
@@ -108,9 +109,11 @@ def normalize_external_tier(raw_tier: str | None) -> str:
     value = (raw_tier or "").strip().upper()
     if value in {"FINAL", "SHORT"}:
         return "FINAL"
-    if value in {"FREE", "STANDARD", "RESEARCH"}:
+    if value in {"SHORT_STEPS", "FREE", "THREE_STEP"}:
+        return "SHORT_STEPS"
+    if value in {"STANDARD", "RESEARCH"}:
         return value
-    return "FREE"
+    return "SHORT_STEPS"
 
 
 def build_features(allow_research: bool) -> dict:
@@ -138,14 +141,14 @@ def build_multipliers(policy: SolveTierPolicy) -> dict:
         "version": 1,
         "credits": {
             "solve": {
-                "free": {"text": 1, "snap_image": 2, "snap_pdf": 3, "voice": 2},
-                "short": {"text": 1, "snap_image": 2, "snap_pdf": 3, "voice": 2},
+                "short_steps": {"text": 1, "snap_image": 2, "snap_pdf": 3, "voice": 2},
+                "final": {"text": 1, "snap_image": 2, "snap_pdf": 3, "voice": 2},
                 "standard": {"text": 2, "snap_image": 3, "snap_pdf": 4, "voice": 3},
                 "research": {"text": 4, "snap_image": 5, "snap_pdf": 6, "voice": 5},
             },
             "verify": {
-                "free": 1,
-                "short": 1,
+                "short_steps": 1,
+                "final": 1,
                 "standard": 1,
                 "research": 2,
             },
@@ -155,4 +158,3 @@ def build_multipliers(policy: SolveTierPolicy) -> dict:
             "_active_tier_verify": policy.verify_cost,
         },
     }
-

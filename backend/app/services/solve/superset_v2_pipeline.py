@@ -69,7 +69,7 @@ class SolveV2Config:
 
 
 DEFAULT_TIER_POLICY = {
-    "FREE": {"min_steps": 0, "max_steps": 4, "max_tokens": 2000, "narrator": False},
+    "SHORT_STEPS": {"min_steps": 0, "max_steps": 4, "max_tokens": 2000, "narrator": False},
     "FINAL": {"min_steps": 0, "max_steps": 2, "max_tokens": 2500, "narrator": False},
     "STANDARD": {"min_steps": 6, "max_steps": 12, "max_tokens": 5000, "narrator": True},
     "RESEARCH": {"min_steps": 6, "max_steps": 20, "max_tokens": 8000, "narrator": True},
@@ -181,7 +181,7 @@ def _tier_to_v2(raw_tier: Optional[str]) -> str:
         return "STANDARD"
     if value in {"short", "final", "final_only"}:
         return "FINAL"
-    return "FREE"
+    return "SHORT_STEPS"
 
 
 def _mode_to_v2(problem_text: str) -> str:

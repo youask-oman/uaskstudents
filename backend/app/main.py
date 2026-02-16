@@ -211,9 +211,30 @@ async def log_requests(request: Request, call_next):
 
 @app.middleware("http")
 async def enforce_terms_acceptance(request: Request, call_next):
+    async def _safe_call_next():
+        try:
+            return await call_next(request)
+        except RuntimeError as exc:
+            if "No response returned." in str(exc):
+                logging.getLogger("app").exception(
+                    "terms_acceptance_no_response path=%s method=%s",
+                    request.url.path,
+                    request.method,
+                )
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "error": {
+                            "code": "internal_error",
+                            "message": "Request failed before a response was produced.",
+                        }
+                    },
+                )
+            raise
+
     path = request.url.path or ""
     if not path.startswith("/api/"):
-        return await call_next(request)
+        return await _safe_call_next()
 
     # Allow auth + public/legal endpoints and health checks through.
     allow_prefixes = (
@@ -225,20 +246,21 @@ async def enforce_terms_acceptance(request: Request, call_next):
         "/ready",
     )
     if any(path.startswith(prefix) for prefix in allow_prefixes):
-        return await call_next(request)
+        return await _safe_call_next()
 
     auth = request.headers.get("Authorization") or ""
     if not auth.startswith("Bearer "):
-        return await call_next(request)
+        return await _safe_call_next()
 
     token = auth.replace("Bearer ", "").strip()
+    email = None
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email = payload.get("sub")
         if not email:
-            return await call_next(request)
+            return await _safe_call_next()
     except JWTError:
-        return await call_next(request)
+        return await _safe_call_next()
 
     from app.database import engine
     from app.models import User
@@ -246,32 +268,28 @@ async def enforce_terms_acceptance(request: Request, call_next):
     try:
         with Session(engine) as session:
             user = session.exec(select(User).where(User.email == email)).first()
-            if not user:
-                return await call_next(request)
-            # Admin/staff users must be able to access admin/legal operations
-            # even if terms acceptance is pending, to avoid management deadlocks.
-            if user.role in {"admin", "superadmin", "devops", "support", "finance"}:
-                return await call_next(request)
-            required, required_version = get_terms_requirement_status(session, user_id=user.id)
-            if required:
-                return JSONResponse(
-                    status_code=428,
-                    content={
-                        "error": {
-                            "code": "terms_acceptance_required",
-                            "message": "You must accept the latest Terms of Service before continuing.",
-                            "details": {
-                                "document_key": "terms_of_service",
-                                "document_version": required_version,
-                            },
-                        }
-                    },
-                )
+            if user and user.role not in {"admin", "superadmin", "devops", "support", "finance"}:
+                required, required_version = get_terms_requirement_status(session, user_id=user.id)
+                if required:
+                    return JSONResponse(
+                        status_code=428,
+                        content={
+                            "error": {
+                                "code": "terms_acceptance_required",
+                                "message": "You must accept the latest Terms of Service before continuing.",
+                                "details": {
+                                    "document_key": "terms_of_service",
+                                    "document_version": required_version,
+                                },
+                            }
+                        },
+                    )
     except Exception:
         # Fail open to avoid breaking production traffic on policy-check errors.
-        return await call_next(request)
+        # Continue to downstream handler once.
+        logging.getLogger("app").exception("terms_acceptance_middleware_error")
 
-    return await call_next(request)
+    return await _safe_call_next()
 
 @app.on_event("startup")
 def on_startup():

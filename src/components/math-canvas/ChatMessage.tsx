@@ -25,7 +25,6 @@ const normalizePromptPreview = (value: string): string => {
     .replace(/\r?\n/g, " ")
     .replace(/\\,/g, " ")
     .replace(/\\left|\\right/g, "")
-    .replace(/[{}]/g, "")
     .replace(/\s+/g, " ")
     .trim();
 };

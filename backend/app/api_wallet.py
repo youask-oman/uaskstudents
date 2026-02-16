@@ -104,7 +104,7 @@ def _effective_tier(entitlements: Dict[str, object], active_programs: List[str],
         return "RESEARCH"
     if active_programs:
         return "STANDARD"
-    return "FREE"
+    return "SHORT_STEPS"
 
 
 def _lot_source_label(lot: CreditLot, program_map: Dict[int, CreditProgramDefinition]) -> str:
@@ -187,16 +187,18 @@ def update_wallet_tier(
     session: Session = Depends(get_session),
 ):
     raw = (body.tier or "").strip().lower()
-    accepted = {"free", "short", "standard", "research", "three_step"}
+    accepted = {"short_steps", "final", "free", "short", "standard", "research", "three_step"}
     if raw not in accepted:
-        raise HTTPException(status_code=422, detail="Invalid tier. Allowed: free|short|standard|research")
+        raise HTTPException(status_code=422, detail="Invalid tier. Allowed: short_steps|final|standard|research")
 
-    tier_slug = "free" if raw == "three_step" else raw
-    normalized = normalize_tier_slug(tier_slug)
-    if normalized == "family_standard":
-        persisted = "short"
+    if raw in {"three_step", "free"}:
+        tier_slug = "short_steps"
+    elif raw == "short":
+        tier_slug = "final"
     else:
-        persisted = normalized
+        tier_slug = raw
+    normalized = normalize_tier_slug(tier_slug)
+    persisted = normalized
 
     user.subscription_tier = persisted
     session.add(user)

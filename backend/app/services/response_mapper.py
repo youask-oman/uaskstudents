@@ -215,8 +215,8 @@ def _infer_detected_tasks_from_text(problem_text: str) -> List[str]:
 def _apply_tier_compactness(data: Dict[str, Any]) -> None:
     tier = str(data.get("tier") or "").upper()
     caps = {
-        "FREE": {"steps": 6, "exp": 180, "latex": 3},
-        "SHORT": {"steps": 2, "exp": 180, "latex": 3},
+        "SHORT_STEPS": {"steps": 6, "exp": 180, "latex": 3},
+        "FINAL": {"steps": 2, "exp": 180, "latex": 3},
         "STANDARD": {"steps": 8, "exp": 260, "latex": 5},
         "RESEARCH": {"steps": 12, "exp": 380, "latex": 6},
     }

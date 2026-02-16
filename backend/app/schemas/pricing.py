@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import Dict, Optional
 
 # --- Multipliers Schema ---
@@ -12,17 +12,41 @@ class TierPricingConfig(BaseModel):
 
 class SolveCreditsConfig(BaseModel):
     """Credit costs for the 'solve' action across different tiers."""
-    free: TierPricingConfig = Field(default_factory=lambda: TierPricingConfig(text=1, snap_image=2, snap_pdf=3, voice=2))
-    short: TierPricingConfig = Field(default_factory=lambda: TierPricingConfig(text=1, snap_image=2, snap_pdf=3, voice=2))
+    short_steps: TierPricingConfig = Field(default_factory=lambda: TierPricingConfig(text=1, snap_image=2, snap_pdf=3, voice=2))
+    final: TierPricingConfig = Field(default_factory=lambda: TierPricingConfig(text=1, snap_image=2, snap_pdf=3, voice=2))
     standard: TierPricingConfig = Field(default_factory=lambda: TierPricingConfig(text=2, snap_image=3, snap_pdf=4, voice=3))
     research: TierPricingConfig = Field(default_factory=lambda: TierPricingConfig(text=4, snap_image=5, snap_pdf=6, voice=5))
 
+    @model_validator(mode="before")
+    @classmethod
+    def _ingest_legacy_keys(cls, raw):
+        if not isinstance(raw, dict):
+            return raw
+        data = dict(raw)
+        if "short_steps" not in data and "free" in data:
+            data["short_steps"] = data["free"]
+        if "final" not in data and "short" in data:
+            data["final"] = data["short"]
+        return data
+
 class VerifyCreditsConfig(BaseModel):
     """Credit costs for the 'verify' action."""
-    free: int = 1
-    short: int = 1
+    short_steps: int = 1
+    final: int = 1
     standard: int = 1
     research: int = 2
+
+    @model_validator(mode="before")
+    @classmethod
+    def _ingest_legacy_keys(cls, raw):
+        if not isinstance(raw, dict):
+            return raw
+        data = dict(raw)
+        if "short_steps" not in data and "free" in data:
+            data["short_steps"] = data["free"]
+        if "final" not in data and "short" in data:
+            data["final"] = data["short"]
+        return data
 
 class CreditsConfig(BaseModel):
     """Root container for all credit pricing."""

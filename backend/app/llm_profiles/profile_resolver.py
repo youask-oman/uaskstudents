@@ -70,7 +70,7 @@ class ProfileResolver:
         """
         try:
             # Normalize tier and mode
-            tier_slug = (force_tier or "FREE").upper()
+            tier_slug = (force_tier or "SHORT_STEPS").upper()
             
             # Use resolve_binding_payload to validate and get binding
             # logic from prompt_registry_service handles validation of tier/mode existence

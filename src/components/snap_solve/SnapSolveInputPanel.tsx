@@ -80,7 +80,7 @@ const PDF_DOCUMENT_ENABLED = process.env.NEXT_PUBLIC_SNAP_SOLVE_PDF_DOCUMENT_EXT
 
 type SnapSolveInputPanelProps = {
     onResolveText?: (text: string, featureOverrides?: Record<string, unknown>) => Promise<void> | void;
-    tier?: "FREE" | "STANDARD" | "RESEARCH" | "SHORT";
+    tier?: "SHORT_STEPS" | "STANDARD" | "RESEARCH" | "FINAL";
     requestedMode?: "minimal" | "detailed";
 };
 
@@ -281,24 +281,24 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
     );
     const resolveEnabled = isSubmitEnabled && (!requiresOcrReview || ocrReviewed);
 
-    const resolveSolveTier = React.useCallback((): "free" | "standard" | "research" | "short" => {
+    const resolveSolveTier = React.useCallback((): "short_steps" | "standard" | "research" | "final" => {
         const propTier = (tier || "").toLowerCase();
-        if (propTier === "free" || propTier === "standard" || propTier === "research" || propTier === "short") {
-            return propTier;
+        if (propTier === "short_steps" || propTier === "standard" || propTier === "research" || propTier === "final") {
+            return propTier as "short_steps" | "standard" | "research" | "final";
         }
         if (typeof window !== "undefined") {
             const storedTier = (window.localStorage.getItem("selected_solve_tier") || "").toLowerCase();
-            if (storedTier === "free" || storedTier === "standard" || storedTier === "research" || storedTier === "short") {
-                return storedTier;
+            if (storedTier === "short_steps" || storedTier === "standard" || storedTier === "research" || storedTier === "final") {
+                return storedTier as "short_steps" | "standard" | "research" | "final";
             }
         }
-        return "free";
+        return "short_steps";
     }, [tier]);
 
     const resolveSolveMode = React.useCallback(
-        (effectiveTier: "free" | "standard" | "research" | "short"): "minimal" | "detailed" => {
+        (effectiveTier: "short_steps" | "standard" | "research" | "final"): "minimal" | "detailed" => {
             if (requestedMode === "minimal" || requestedMode === "detailed") return requestedMode;
-            return (effectiveTier === "free" || effectiveTier === "short") ? "minimal" : "detailed";
+            return (effectiveTier === "short_steps" || effectiveTier === "final") ? "minimal" : "detailed";
         },
         [requestedMode],
     );

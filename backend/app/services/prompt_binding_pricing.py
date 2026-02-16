@@ -7,27 +7,27 @@ from sqlmodel import Session, select
 from app.models import PromptBinding, PromptModeEnum, PromptTierEnum
 from app.schemas.pricing import PlanFeatures, PlanMultipliers
 
-TierKey = Literal["free", "short", "standard", "research"]
+TierKey = Literal["short_steps", "final", "standard", "research"]
 
 
 def normalize_tier_key(raw_tier: Optional[str]) -> TierKey:
     value = (raw_tier or "").strip().lower()
-    if value in {"three_step", "free"}:
-        return "free"
+    if value in {"three_step", "free", "short_steps"}:
+        return "short_steps"
     if value in {"short", "final"}:
-        return "short"
+        return "final"
     if value in {"research"}:
         return "research"
     if value in {"standard"}:
         return "standard"
-    return "free"
+    return "short_steps"
 
 
 def _tier_to_enum(tier_key: TierKey) -> PromptTierEnum:
-    if tier_key == "free":
-        return PromptTierEnum.FREE
-    if tier_key == "short":
-        return PromptTierEnum.SHORT
+    if tier_key == "short_steps":
+        return PromptTierEnum.SHORT_STEPS
+    if tier_key == "final":
+        return PromptTierEnum.FINAL
     if tier_key == "research":
         return PromptTierEnum.RESEARCH
     return PromptTierEnum.STANDARD
@@ -71,6 +71,10 @@ def resolve_solve_base_cost(
     tier_key = normalize_tier_key(raw_tier)
     _, multipliers, _ = resolve_binding_pricing(session, raw_tier)
     tier_config = getattr(multipliers.credits.solve, tier_key, None)
+    if tier_config is None and tier_key == "short_steps":
+        tier_config = getattr(multipliers.credits.solve, "free", None)
+    if tier_config is None and tier_key == "final":
+        tier_config = getattr(multipliers.credits.solve, "short", None)
     if tier_config is None:
         raise ValueError(f"Missing tier pricing configuration for tier={tier_key}")
 

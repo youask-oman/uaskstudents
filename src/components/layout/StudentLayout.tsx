@@ -234,7 +234,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                             <span className="text-sm font-semibold text-white truncate">{user?.full_name || "Student"}</span>
                             <div className="flex items-center gap-1.5">
                                 <span className="bg-primary/20 text-primary text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
-                                    {walletSummary?.effective_tier || "FREE"}
+                                    {walletSummary?.effective_tier || "SHORT_STEPS"}
                                 </span>
                                 <span className="text-slate-500 text-[11px] truncate">
                                     {walletSummary ? `${walletSummary.computed_balance.toFixed(2)} credits` : "Wallet loading..."}

@@ -94,12 +94,26 @@ export const SolveBatchItemSchema = z.object({
       reason: z.string().nullable().optional(),
     })
     .optional(),
-  final_answer: z.string().nullable().optional(),
+  final_answer: z
+    .union([
+      z.string(),
+      z.object({
+        answer_text: z.string().optional(),
+        answer_latex: z.string().nullable().optional(),
+        answer: z.string().optional(),
+        latex: z.string().optional(),
+        text: z.string().optional(),
+        value: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
+      }).passthrough(),
+      z.null(),
+    ])
+    .optional(),
 });
 
 export const SolveBatchResponseSchema = z.object({
   request_id: z.string().optional(),
   attempt_id: z.string().optional(),
+  session_id: z.union([z.number(), z.string()]).optional(),
   items: z.array(SolveBatchItemSchema),
 });
 

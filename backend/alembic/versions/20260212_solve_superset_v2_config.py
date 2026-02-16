@@ -22,7 +22,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 DEFAULT_TIER_POLICY_JSON = (
-    '{"FREE":{"min_steps":0,"max_steps":4,"max_tokens":2000,"narrator":false},'
+    '{"SHORT_STEPS":{"min_steps":0,"max_steps":4,"max_tokens":2000,"narrator":false},'
     '"FINAL":{"min_steps":0,"max_steps":2,"max_tokens":2500,"narrator":false},'
     '"STANDARD":{"min_steps":6,"max_steps":12,"max_tokens":5000,"narrator":true},'
     '"RESEARCH":{"min_steps":6,"max_steps":20,"max_tokens":8000,"narrator":true}}'

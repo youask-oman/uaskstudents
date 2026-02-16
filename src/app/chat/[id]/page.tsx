@@ -116,31 +116,76 @@ const getSavedPaperVersions = (messages: SessionMessage[]): SavedPaperVersion[] 
 
 const heuristicallyWrapMath = (text: string): string => {
   if (!text) return "";
+  const normalized = text
+    .replace(/\\\\\(/g, "\\(")
+    .replace(/\\\\\)/g, "\\)")
+    .replace(/\\\\\[/g, "\\[")
+    .replace(/\\\\\]/g, "\\]");
   // If already has delimiters, leave it alone
-  if (text.includes("\\(") || text.includes("\\[") || text.includes("$")) return text;
+  if (normalized.includes("\\(") || normalized.includes("\\[") || normalized.includes("$")) return normalized;
 
   // Pattern: "Solve for x, 2x + 7 = 19"
-  const solveMatch = text.match(/^(Solve for\s+)([a-zA-Z])([,:]?\s*)(.+)$/i);
+  const solveMatch = normalized.match(/^(Solve for\s+)([a-zA-Z])([,:]?\s*)(.+)$/i);
   if (solveMatch) {
     return `${solveMatch[1]}\\(${solveMatch[2]}\\)${solveMatch[3]}\\(${solveMatch[4].trim()}\\)`;
   }
 
   // Pattern: "Evaluate [math]"
-  const evalMatch = text.match(/^(Evaluate|Simplify|Factor|Expand|Solve)([:\s]+)(.+)$/i);
+  const evalMatch = normalized.match(/^(Evaluate|Simplify|Factor|Expand|Solve)([:\s]+)(.+)$/i);
   if (evalMatch) {
     return `${evalMatch[1]}${evalMatch[2]}\\(${evalMatch[3].trim()}\\)`;
   }
 
+  // Pattern: "Find the inverse of f(x) = (x-1)/(x+2)"
+  const inverseMatch = normalized.match(/^(Find\s+the\s+inverse\s+of\s+)(.+)$/i);
+  if (inverseMatch) {
+    return `${inverseMatch[1]}\\(${inverseMatch[2].trim()}\\)`;
+  }
+
+  // Generic inline equation inside prose.
+  const inlineEquation = /([A-Za-z][A-Za-z0-9_]*\([^)]*\)\s*=\s*[^,.;\n]+|[A-Za-z][A-Za-z0-9_]*\s*=\s*[^,.;\n]+)/;
+  if (inlineEquation.test(normalized)) {
+    return normalized.replace(inlineEquation, (expr) => `\\(${expr.trim()}\\)`);
+  }
+
   // If it's just an equation like "y = mx + b" with no words
-  if (/^[0-9a-zA-Z\s+\-*/^=().,]+$/.test(text) && /[=<>]=?/.test(text)) {
+  if (/^[0-9a-zA-Z\s+\-*/^=().,]+$/.test(normalized) && /[=<>]=?/.test(normalized)) {
     // Check if it has too many words
-    const words = text.split(/\s+/).filter(w => /[a-zA-Z]{2,}/.test(w));
+    const words = normalized.split(/\s+/).filter(w => /[a-zA-Z]{2,}/.test(w));
     if (words.length <= 1) {
-      return `\\(${text}\\)`;
+      return `\\(${normalized}\\)`;
     }
   }
 
-  return text;
+  return normalized;
+};
+
+const extractRecognitionLatex = (text: string): string => {
+  const normalized = (text || "")
+    .trim()
+    .replace(/\\\\\(/g, "\\(")
+    .replace(/\\\\\)/g, "\\)")
+    .replace(/\\\\\[/g, "\\[")
+    .replace(/\\\\\]/g, "\\]");
+  if (!normalized) return "";
+
+  const inlineDelimited = normalized.match(/\\\((.+?)\\\)/);
+  if (inlineDelimited?.[1]) return inlineDelimited[1].trim();
+  const blockDelimited = normalized.match(/\\\[(.+?)\\\]/);
+  if (blockDelimited?.[1]) return blockDelimited[1].trim();
+  const dollarDelimited = normalized.match(/\$(.+?)\$/);
+  if (dollarDelimited?.[1]) return dollarDelimited[1].trim();
+
+  const inverseMatch = normalized.match(/^(?:Find\s+the\s+inverse\s+of\s+|inverse\s+)(.+)$/i);
+  if (inverseMatch?.[1]) return inverseMatch[1].trim();
+
+  const solveMatch = normalized.match(/^(?:Solve\s+for\s+[a-zA-Z]\s*[,:]?\s*)(.+)$/i);
+  if (solveMatch?.[1]) return solveMatch[1].trim();
+
+  const eqMatch = normalized.match(/([A-Za-z][A-Za-z0-9_]*\([^)]*\)\s*=\s*[^,.;\n]+|[A-Za-z][A-Za-z0-9_]*\s*=\s*[^,.;\n]+)/);
+  if (eqMatch?.[1]) return eqMatch[1].trim();
+
+  return normalized;
 };
 
 const buildInitialPages = (
@@ -168,12 +213,13 @@ const buildInitialPages = (
   const validSessionTitle = sessionTitle && sessionTitle !== "Untitled Session" ? sessionTitle : undefined;
   const rawProblemStatement = validSessionTitle || layoutTitle || solution?.recognizedLatex || userText || "";
   const problemStatement = heuristicallyWrapMath(rawProblemStatement);
+  const recognitionLatex = extractRecognitionLatex(problemStatement || rawProblemStatement);
 
-  if (solution && problemStatement) {
+  if (solution && recognitionLatex) {
     blocks.push({
       id: "recognized-block",
       type: "recognition",
-      latex: problemStatement,
+      latex: recognitionLatex,
       badge: "AI recognized",
     });
   }
@@ -415,7 +461,20 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
 
       try {
         const response = await fetch(`/api/v1/sessions/${id}`);
-        if (!response.ok) throw new Error("Failed to load session");
+        if (!response.ok) {
+          let detail = "";
+          try {
+            const body = await response.json();
+            detail =
+              (typeof body?.detail === "string" && body.detail) ||
+              (typeof body?.error?.message === "string" && body.error.message) ||
+              "";
+          } catch {
+            detail = "";
+          }
+          const suffix = detail ? `: ${detail}` : "";
+          throw new Error(`Failed to load session${suffix}`);
+        }
         const payload = (await response.json()) as ChatSessionPayload;
         setSession(payload);
       } catch (error) {

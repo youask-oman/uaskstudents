@@ -154,7 +154,7 @@ class EstimateAddons(BaseModel):
     plot: bool = False
 
 class CreditsEstimateRequest(BaseModel):
-    tier: str # three_step, short, standard, research
+    tier: str # short_steps, final, standard, research (legacy free/short accepted)
     mode: str = "SOLVE" # SOLVE, VERIFY, etc.
     input_type: str = "text" # text, ocr_image, ocr_pdf, voice
     asset_type: str = "none"
@@ -242,7 +242,7 @@ def _encode_cursor(created_at: datetime, entity_id: str) -> str:
 
 
 # --- Logic ---
-def _normalize_tier_key(raw_tier: str) -> Literal["free", "short", "standard", "research"]:
+def _normalize_tier_key(raw_tier: str) -> Literal["short_steps", "final", "standard", "research"]:
     return normalize_tier_key(raw_tier)
 
 

@@ -156,15 +156,20 @@ function stableHash(value: string): number {
 
 function toneForBinding(binding: Pick<Binding, "id" | "tier" | "mode"> | null | undefined) {
     if (!binding) return bindingTones[0];
-    const key = `${binding.id}|${binding.tier}|${binding.mode}`;
+    const normalizedTier = String(binding.tier || "").trim().toUpperCase();
+    if (normalizedTier === "STANDARD") return bindingTones[0];
+    if (normalizedTier === "RESEARCH") return bindingTones[4];
+    if (normalizedTier === "FINAL") return bindingTones[6];
+    if (normalizedTier === "SHORT_STEPS") return bindingTones[5];
+    const key = `${binding.id}|${binding.mode}`;
     return bindingTones[stableHash(key) % bindingTones.length];
 }
 
-function tierKey(tier: string): "free" | "standard" | "research" | "short" {
+function tierKey(tier: string): "short_steps" | "standard" | "research" | "final" {
     const t = (tier || "").toUpperCase();
-    if (t === "FREE") return "free";
+    if (t === "SHORT_STEPS") return "short_steps";
     if (t === "RESEARCH") return "research";
-    if (t === "SHORT") return "short";
+    if (t === "FINAL") return "final";
     return "standard";
 }
 
@@ -540,10 +545,10 @@ export default function PromptBindingsPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <Field label="Tier">
                                 <select value={draft.tier} onChange={(e) => updateDraft("tier", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100">
-                                    <option value="FREE">FREE</option>
+                                    <option value="SHORT_STEPS">SHORT_STEPS</option>
                                     <option value="STANDARD">STANDARD</option>
                                     <option value="RESEARCH">RESEARCH</option>
-                                    <option value="SHORT">SHORT</option>
+                                    <option value="FINAL">FINAL</option>
                                 </select>
                             </Field>
                             <Field label="Mode">

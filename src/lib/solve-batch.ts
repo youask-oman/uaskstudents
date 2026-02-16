@@ -1,5 +1,5 @@
 export type SolveBatchMode = "free_minimal" | "final_only" | "standard_detailed" | "research_detailed";
-export type SolveBatchTier = "FREE" | "SHORT" | "STANDARD" | "RESEARCH";
+export type SolveBatchTier = "SHORT_STEPS" | "FINAL" | "STANDARD" | "RESEARCH";
 
 export type SolveBatchQuestion = {
     question_id: string;
@@ -21,7 +21,7 @@ export const SOLVE_BATCH_CAPS: Record<SolveBatchMode, number> = {
 
 export function resolveSolveBatchMode(tier: string, requestedMode?: string): SolveBatchMode {
     const t = String(tier || "").trim().toUpperCase();
-    if (t === "SHORT" || t === "FINAL" || t === "FINAL_ONLY") return "final_only";
+    if (t === "FINAL" || t === "SHORT" || t === "FINAL_ONLY") return "final_only";
     if (t === "RESEARCH") return "research_detailed";
     if (t === "STANDARD") return "standard_detailed";
 
@@ -34,8 +34,8 @@ export function resolveSolveBatchTier(tier: string): SolveBatchTier {
     const t = String(tier || "").trim().toUpperCase();
     if (t === "RESEARCH") return "RESEARCH";
     if (t === "STANDARD") return "STANDARD";
-    if (t === "SHORT" || t === "FINAL") return "SHORT";
-    return "FREE";
+    if (t === "FINAL" || t === "SHORT") return "FINAL";
+    return "SHORT_STEPS";
 }
 
 export function getSolveBatchCap(mode: SolveBatchMode): number {

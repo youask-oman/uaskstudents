@@ -8,6 +8,7 @@ from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
 
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from app.models import (
@@ -57,19 +58,21 @@ class ReserveResult:
 def _normalize_tier(tier: str) -> str:
     raw = str(tier or "").strip().upper()
     if raw in {"FINAL", "SHORT"}:
-        return "SHORT"
-    if raw == "FREE":
-        return "FREE"
+        return "FINAL"
+    if raw in {"FREE", "SHORT_STEPS", "THREE_STEP"}:
+        return "SHORT_STEPS"
     if raw == "STANDARD":
         return "STANDARD"
     if raw == "RESEARCH":
         return "RESEARCH"
-    return "FREE"
+    return "SHORT_STEPS"
 
 
 def _pricing_key_for_tier(tier: str) -> str:
-    if tier == "SHORT":
-        return "short"
+    if tier == "FINAL":
+        return "final"
+    if tier == "SHORT_STEPS":
+        return "short_steps"
     return tier.lower()
 
 
@@ -144,14 +147,18 @@ def _costs_from_binding(binding: PromptBinding, tier: str) -> Dict[str, Decimal]
     tier_cfg = solve.get(key) or {}
     verify_map = credits.get("verify") or {}
     attempt_map = credits.get("attempt_fee") or {}
+    if not tier_cfg and key == "short_steps":
+        tier_cfg = solve.get("free") or {}
+    if not tier_cfg and key == "final":
+        tier_cfg = solve.get("short") or {}
     return {
         "text": Decimal(str(tier_cfg.get("text") or 0)),
         "snap_image": Decimal(str(tier_cfg.get("snap_image") or 0)),
         "snap_pdf": Decimal(str(tier_cfg.get("snap_pdf") or 0)),
         "voice": Decimal(str(tier_cfg.get("voice") or 0)),
-        "verify_addon": Decimal(str(verify_map.get(key) or 0)),
+        "verify_addon": Decimal(str(verify_map.get(key) or verify_map.get("free" if key == "short_steps" else ("short" if key == "final" else key)) or 0)),
         "plot_addon": Decimal(str(credits.get("plot_trigger") or 0)),
-        "attempt_fee": Decimal(str(attempt_map.get(key) or 0)),
+        "attempt_fee": Decimal(str(attempt_map.get(key) or attempt_map.get("free" if key == "short_steps" else ("short" if key == "final" else key)) or 0)),
     }
 
 
@@ -246,7 +253,7 @@ class CreditBillingService:
             .where(CreditHoldV2.idempotency_key == idem_key)
             .order_by(CreditHoldV2.created_at.desc())
         ).first()
-        if existing and existing.status in {"active", "settled"}:
+        if existing:
             item_costs = _build_item_costs(
                 questions_json=questions_json,
                 costs=_costs_from_binding(binding, norm_tier),
@@ -323,7 +330,27 @@ class CreditBillingService:
             expires_at=datetime.utcnow() + timedelta(minutes=HOLD_TTL_MINUTES),
         )
         session.add(hold)
-        session.flush()
+        try:
+            session.flush()
+        except IntegrityError:
+            session.rollback()
+            existing_after_conflict = session.exec(
+                select(CreditHoldV2)
+                .where(CreditHoldV2.user_id == user_id)
+                .where(CreditHoldV2.idempotency_key == idem_key)
+                .order_by(CreditHoldV2.created_at.desc())
+            ).first()
+            if existing_after_conflict:
+                return ReserveResult(
+                    hold_id=existing_after_conflict.hold_id,
+                    idempotency_key=idem_key,
+                    amount_reserved=Decimal(str(existing_after_conflict.amount_reserved or amount_reserved)),
+                    item_costs=item_costs,
+                    pricing_snapshot=self._pricing_snapshot(binding, norm_tier, modality, verify_requested, plot_requested),
+                    reused=True,
+                    hold_status=existing_after_conflict.status,
+                )
+            raise
 
         for lot, amount in allocations:
             session.add(

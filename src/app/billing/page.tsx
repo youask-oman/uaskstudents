@@ -39,10 +39,27 @@ export default function BillingPage() {
     const [loading, setLoading] = useState(true);
     const [openingInvoiceId, setOpeningInvoiceId] = useState<number | null>(null);
 
+    const redirectToLogin = () => {
+        if (typeof window === "undefined") return;
+        window.location.href = `/login?redirect=${encodeURIComponent("/billing")}`;
+    };
+
+    const isAuthError = (error: unknown): boolean => {
+        if (!(error instanceof Error)) return false;
+        const message = error.message.toLowerCase();
+        return (
+            message.includes("log in") ||
+            message.includes("login") ||
+            message.includes("unauthorized") ||
+            message.includes("missing token") ||
+            message.includes("forbidden")
+        );
+    };
+
     const handleOpenInvoice = async (invoiceId: number) => {
         const token = localStorage.getItem("token");
         if (!token) {
-            window.location.href = "/login?redirect=/billing";
+            redirectToLogin();
             return;
         }
         setOpeningInvoiceId(invoiceId);
@@ -78,6 +95,11 @@ export default function BillingPage() {
 
     useEffect(() => {
         const loadData = async () => {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                redirectToLogin();
+                return;
+            }
             try {
                 const [summary, lotResp, ledgerResp, programResp] = await Promise.all([
                     fetchWalletSummary(),
@@ -90,24 +112,38 @@ export default function BillingPage() {
                 setLedger(ledgerResp.items || []);
                 setPrograms(programResp.items || []);
             } catch (error) {
+                if (isAuthError(error)) {
+                    redirectToLogin();
+                    return;
+                }
                 pushToast({
                     type: "error",
                     title: "Failed to load wallet",
-                    message: error instanceof Error ? error.message : "Unexpected error",
+                    message:
+                        error instanceof Error
+                            ? error.message
+                            : "We couldn't load your wallet right now. Please try again.",
                 });
             }
 
             try {
-                const token = localStorage.getItem("token");
                 const res = await fetch(`${API_BASE_URL}/api/v1/billing/invoices`, {
                     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
                 });
                 if (!res.ok) {
                     const err = await parseApiError(res);
+                    if (
+                        err.status === 401 ||
+                        err.status === 403 ||
+                        (err.code || "").toLowerCase() === "auth_required"
+                    ) {
+                        redirectToLogin();
+                        return;
+                    }
                     pushToast({
                         type: "error",
                         title: "Failed to load invoices",
-                        message: err.message,
+                        message: err.message || "Unable to load invoice history right now.",
                         requestId: err.requestId,
                     });
                 } else {
@@ -115,10 +151,17 @@ export default function BillingPage() {
                     setInvoices(Array.isArray(data) ? data : []);
                 }
             } catch (error) {
+                if (isAuthError(error)) {
+                    redirectToLogin();
+                    return;
+                }
                 pushToast({
                     type: "error",
                     title: "Failed to load invoices",
-                    message: error instanceof Error ? error.message : "Unexpected error",
+                    message:
+                        error instanceof Error
+                            ? error.message
+                            : "We couldn't load your invoices right now. Please try again.",
                 });
             } finally {
                 setLoading(false);

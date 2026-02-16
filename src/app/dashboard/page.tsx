@@ -20,6 +20,7 @@ import {
 interface ChatSession {
     id: number;
     attempt_id?: string | null;
+    request_id?: string | null;
     title: string;
     subject?: string;
     topic?: string;
@@ -29,6 +30,15 @@ interface ChatSession {
     input?: string;
     created_at: string;
     is_saved?: boolean;
+    credits_charged_total?: number;
+    credits_balance_after?: number | null;
+    per_question_charges?: Array<{
+        question_id?: string | null;
+        question_index?: number | null;
+        credits_charged?: number;
+        balance_after?: number | null;
+        created_at?: string | null;
+    }>;
     telemetry?: {
         latency_ms_total: number;
         total_tokens: number;
@@ -153,15 +163,14 @@ function DashboardContent() {
 
         const fetchData = async () => {
             try {
+                let fetchedHistory: ChatSession[] = [];
                 // Fetch History (ALL sessions)
                 const historyRes = await fetch(`/api/v1/history?user_id=${userId}&saved_only=false`);
                 if (historyRes.ok) {
                     const data = await historyRes.json();
-                    setHistory(data);
+                    fetchedHistory = Array.isArray(data) ? data : [];
+                    setHistory(fetchedHistory);
                 }
-
-                const tokenUsageRes = await fetch(`/api/v1/user/token-usage?user_id=${userId}`);
-                const tokenUsage = tokenUsageRes.ok ? await tokenUsageRes.json() : null;
 
                 // Fetch Profile Stats
                 const profileRes = await fetch(`/api/v1/user/profile?user_id=${userId}`);
@@ -172,9 +181,10 @@ function DashboardContent() {
                     const usage = profile.usage ?? { questions_count: 0, scans_count: 0 };
                     const problemsValue = usage.questions_count.toString();
                     const scansValue = usage.scans_count.toString();
-                    const tokenValue = typeof tokenUsage?.tokens_used === "number"
-                        ? tokenUsage.tokens_used.toLocaleString()
-                        : "n/a";
+                    const creditsUsedTotal = fetchedHistory.reduce(
+                        (sum, row) => sum + Number(row.credits_charged_total || 0),
+                        0,
+                    );
                     setStats([
                         {
                             label: "Problems Solved",
@@ -184,11 +194,11 @@ function DashboardContent() {
                             trend: "Total"
                         },
                         {
-                            label: "Token Usage",
-                            value: tokenValue,
+                            label: "Credits Used",
+                            value: creditsUsedTotal.toFixed(2),
                             icon: "offline_bolt",
                             color: "amber",
-                            trend: "Monthly"
+                            trend: "Total"
                         },
                         {
                             label: "Scans",
@@ -371,7 +381,7 @@ function DashboardContent() {
                                     <p className="text-xs text-slate-500">Computed balance and active tier</p>
                                 </div>
                                 <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full bg-primary/10 text-primary">
-                                    {walletSummary?.effective_tier || "FREE"}
+                                    {walletSummary?.effective_tier || "SHORT_STEPS"}
                                 </span>
                             </div>
                             <div className="text-3xl font-black">
@@ -387,8 +397,8 @@ function DashboardContent() {
                                     disabled={tierSaving || walletLoading}
                                     className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm font-semibold"
                                 >
-                                    <option value="FREE">Final Answer</option>
-                                    <option value="SHORT">Short</option>
+                                    <option value="SHORT_STEPS">Short Steps</option>
+                                    <option value="FINAL">Final Answer</option>
                                     <option value="STANDARD">Standard</option>
                                     <option value="RESEARCH">Research</option>
                                 </select>
@@ -602,9 +612,10 @@ function DashboardContent() {
                                                         />
                                                     </div>
                                                 </div>
-                                                <div className="px-6 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 grid grid-cols-[2fr_1fr_0.8fr] gap-4">
+                                                <div className="px-6 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 grid grid-cols-[2fr_1fr_1.2fr_0.8fr] gap-4">
                                                     <div>Input</div>
                                                     <div>Topic</div>
+                                                    <div>Billing</div>
                                                     <div className="text-right">Date</div>
                                                 </div>
                                                 {pagedHistory.map((session) => (
@@ -613,7 +624,7 @@ function DashboardContent() {
                                                         onClick={() => router.push(`/chat/${session.id}`)}
                                                         className="p-4 flex items-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group px-6"
                                                     >
-                                                        <div className="grid grid-cols-[2fr_1fr_0.8fr] gap-4 items-center w-full">
+                                                        <div className="grid grid-cols-[2fr_1fr_1.2fr_0.8fr] gap-4 items-center w-full">
                                                             <div className="flex items-center gap-3 min-w-0">
                                                                 <div className="w-9 h-9 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 group-hover:bg-primary/10 group-hover:text-primary transition-colors flex-shrink-0">
                                                                     <span className="material-symbols-outlined">
@@ -654,6 +665,36 @@ function DashboardContent() {
                                                                         </span>
                                                                     )}
                                                                 </div>
+                                                            </div>
+
+                                                            <div className="text-[11px] text-slate-600 dark:text-slate-300 space-y-1">
+                                                                <div className="font-semibold">
+                                                                    Charged:{" "}
+                                                                    <span className="text-rose-600 dark:text-rose-400">
+                                                                        -{Number(session.credits_charged_total || 0).toFixed(2)} cr
+                                                                    </span>
+                                                                </div>
+                                                                {typeof session.credits_balance_after === "number" && (
+                                                                    <div>
+                                                                        Left after:{" "}
+                                                                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                                                            {Number(session.credits_balance_after || 0).toFixed(2)} cr
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+                                                                {Array.isArray(session.per_question_charges) && session.per_question_charges.length > 1 && (
+                                                                    <div className="text-[10px] text-slate-500 dark:text-slate-400 space-y-0.5">
+                                                                        {session.per_question_charges.slice(0, 3).map((item, idx) => (
+                                                                            <div key={`${session.id}:q:${idx}`}>
+                                                                                {(item.question_id || `q${item.question_index ?? idx + 1}`)}: -{Number(item.credits_charged || 0).toFixed(2)}
+                                                                                {typeof item.balance_after === "number" ? ` -> ${Number(item.balance_after || 0).toFixed(2)}` : ""}
+                                                                            </div>
+                                                                        ))}
+                                                                        {session.per_question_charges.length > 3 && (
+                                                                            <div>+{session.per_question_charges.length - 3} more</div>
+                                                                        )}
+                                                                    </div>
+                                                                )}
                                                             </div>
 
                                                             <div className="text-xs text-slate-500 text-right">

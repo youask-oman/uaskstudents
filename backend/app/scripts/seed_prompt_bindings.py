@@ -13,9 +13,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 DEFAULTS = [
-    # --- FREE TIER ---
+    # --- SHORT_STEPS TIER ---
     {
-        "tier": PromptTierEnum.FREE,
+        "tier": PromptTierEnum.SHORT_STEPS,
         "mode": PromptModeEnum.SOLVE,
         "max_output_tokens": 600,
         "max_input_tokens": 1200,
@@ -29,7 +29,7 @@ DEFAULTS = [
         "max_steps": 2,
     },
     {
-        "tier": PromptTierEnum.FREE,
+        "tier": PromptTierEnum.SHORT_STEPS,
         "mode": PromptModeEnum.PLOT_TRIGGER,
         "max_output_tokens": 500,
         "max_input_tokens": 1200,
@@ -46,7 +46,7 @@ DEFAULTS = [
         "output_schema_id": "youask_plot_trigger_v1",
     },
     {
-        "tier": PromptTierEnum.FREE,
+        "tier": PromptTierEnum.SHORT_STEPS,
         "mode": PromptModeEnum.PLOT_SPEC,
         "max_output_tokens": 1400,
         "max_input_tokens": 1600,

@@ -66,6 +66,41 @@ const hasSameDraftContent = (draft: StepRow, payload: RichTextCommitPayload): bo
   (draft.explanationRichHtml || "") === (payload.richTextHtml || "") &&
   normalizedJson(draft.explanationRichJson) === normalizedJson(payload.richTextJson);
 
+const looksLikeMathExpression = (value: string): boolean => {
+  const text = (value || "").trim();
+  if (!text) return false;
+  if (text.includes("\\(") || text.includes("\\[") || text.includes("$$")) return true;
+  if (/\\[a-zA-Z]+/.test(text)) return true;
+  const hasMathOps = /[=^_<>+\-*/]/.test(text);
+  const words = (text.match(/[A-Za-z]{3,}/g) || []).length;
+  return hasMathOps && words <= 2;
+};
+
+const normalizeValueLabel = (value: string): string => (value || "").replace(/_/g, " ").trim();
+
+const wrapProblemMath = (value: string): string => {
+  const text = (value || "")
+    .trim()
+    .replace(/\\\\\(/g, "\\(")
+    .replace(/\\\\\)/g, "\\)")
+    .replace(/\\\\\[/g, "\\[")
+    .replace(/\\\\\]/g, "\\]");
+  if (!text) return "";
+  if (text.includes("\\(") || text.includes("\\[") || text.includes("$")) return text;
+
+  const inverseMatch = text.match(/^(Find\s+the\s+inverse\s+of\s+)(.+)$/i);
+  if (inverseMatch) {
+    return `${inverseMatch[1]}\\(${inverseMatch[2].trim()}\\)`;
+  }
+
+  const inlineEquation = /([A-Za-z][A-Za-z0-9_]*\([^)]*\)\s*=\s*[^,.;\n]+|[A-Za-z][A-Za-z0-9_]*\s*=\s*[^,.;\n]+)/;
+  if (inlineEquation.test(text)) {
+    return text.replace(inlineEquation, (expr) => `\\(${expr.trim()}\\)`);
+  }
+
+  return text;
+};
+
 /* Section row component for consistent alignment */
 const SectionRow: React.FC<{ label: string; id: string; style?: React.CSSProperties; children: React.ReactNode }> = ({ label, id, style, children }) => (
   <div className={styles.stepRow} id={id} style={style}>
@@ -263,7 +298,7 @@ export default function SolutionStepsBlock({
           ) : (
             <>
               <div style={{ whiteSpace: "pre-wrap", fontSize: 13, color: "var(--text-main)", lineHeight: 1.6 }}>
-                <MathRenderer content={normalizedProblem || originalProblem || ""} mode="prose" />
+                <MathRenderer content={wrapProblemMath(normalizedProblem || originalProblem || "")} mode="prose" />
               </div>
               {editable && !exportMode && (
                 <div className={styles.blockActions} style={{ marginTop: 8 }}>
@@ -554,7 +589,7 @@ export default function SolutionStepsBlock({
                   Summary
                 </div>
                 <div style={{ fontSize: 14, color: "#0f172a", fontWeight: 700, lineHeight: 1.7 }}>
-                  <MathRenderer content={displayAnswerText} mode="prose" />
+                  <MathRenderer content={displayAnswerText} mode={looksLikeMathExpression(displayAnswerText) ? "inline" : "prose"} />
                 </div>
               </div>
             )}
@@ -598,8 +633,12 @@ export default function SolutionStepsBlock({
                 <div style={{ display: "grid", gap: 12 }}>
                   {displayValues.map((val, idx) => (
                     <div key={idx} style={{ background: "transparent", border: "1px solid #dbe3ee", borderRadius: 8, padding: 12 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 6, textTransform: "capitalize" }}>
-                        {val.label.replace(/_/g, " ")}
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 6 }}>
+                        {looksLikeMathExpression(normalizeValueLabel(val.label)) ? (
+                          <MathRenderer content={normalizeValueLabel(val.label)} mode="inline" />
+                        ) : (
+                          normalizeValueLabel(val.label)
+                        )}
                       </div>
                       {val.value_latex ? (
                         <div style={{ fontSize: 14, color: "#0f172a", fontWeight: 700 }}>

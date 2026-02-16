@@ -1,0 +1,1608 @@
+[
+  {
+    "class": "ChatEditCopy",
+    "table": "chateditcopy",
+    "class_hits": 0,
+    "table_hits": 0,
+    "total_hits": 0,
+    "class_files": [],
+    "table_files": []
+  },
+  {
+    "class": "ChatNote",
+    "table": "chatnote",
+    "class_hits": 0,
+    "table_hits": 0,
+    "total_hits": 0,
+    "class_files": [],
+    "table_files": []
+  },
+  {
+    "class": "SchoolImportRun",
+    "table": "schoolimportrun",
+    "class_hits": 0,
+    "table_hits": 0,
+    "total_hits": 0,
+    "class_files": [],
+    "table_files": []
+  },
+  {
+    "class": "SeedRegistry",
+    "table": "seed_registry",
+    "class_hits": 0,
+    "table_hits": 0,
+    "total_hits": 0,
+    "class_files": [],
+    "table_files": []
+  },
+  {
+    "class": "CreditPack",
+    "table": "credit_packs",
+    "class_hits": 4,
+    "table_hits": 0,
+    "total_hits": 4,
+    "class_files": [
+      "backend\\app\\admin_billing\\billing_packs.py",
+      "src\\components\\PricingSection.tsx"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "InvoiceSequence",
+    "table": "invoicesequence",
+    "class_hits": 4,
+    "table_hits": 0,
+    "total_hits": 4,
+    "class_files": [
+      "backend\\app\\services\\invoice_service.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "OcrCache",
+    "table": "ocrcache",
+    "class_hits": 4,
+    "table_hits": 0,
+    "total_hits": 4,
+    "class_files": [
+      "backend\\app\\api.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "VoiceConfirmation",
+    "table": "voiceconfirmation",
+    "class_hits": 4,
+    "table_hits": 0,
+    "total_hits": 4,
+    "class_files": [
+      "backend\\app\\api.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "OCRConfirmation",
+    "table": "ocrconfirmation",
+    "class_hits": 5,
+    "table_hits": 0,
+    "total_hits": 5,
+    "class_files": [
+      "backend\\app\\api.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "ProviderPricingAuditEvent",
+    "table": "providerpricingauditevent",
+    "class_hits": 5,
+    "table_hits": 0,
+    "total_hits": 5,
+    "class_files": [
+      "backend\\app\\api_admin_payments_config.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "CreditHoldAllocationV2",
+    "table": "credit_hold_allocations",
+    "class_hits": 6,
+    "table_hits": 0,
+    "total_hits": 6,
+    "class_files": [
+      "backend\\app\\api_admin_credits.py",
+      "backend\\app\\services\\credit_billing_service.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "FollowupChatTurn",
+    "table": "followupchatturn",
+    "class_hits": 6,
+    "table_hits": 0,
+    "total_hits": 6,
+    "class_files": [
+      "backend\\app\\api.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "VoiceJob",
+    "table": "voicejob",
+    "class_hits": 7,
+    "table_hits": 0,
+    "total_hits": 7,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\services\\voice\\voice_service.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "ChatEditNoteV2",
+    "table": "chateditnotev2",
+    "class_hits": 8,
+    "table_hits": 0,
+    "total_hits": 8,
+    "class_files": [
+      "backend\\app\\api.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "VoiceAudio",
+    "table": "voiceaudio",
+    "class_hits": 8,
+    "table_hits": 0,
+    "total_hits": 8,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\services\\voice\\voice_service.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "DeviceSignupLog",
+    "table": "devicesignuplog",
+    "class_hits": 8,
+    "table_hits": 1,
+    "total_hits": 9,
+    "class_files": [
+      "backend\\app\\api.py"
+    ],
+    "table_files": [
+      "backend\\app\\api.py"
+    ]
+  },
+  {
+    "class": "OCRAuditEvent",
+    "table": "ocrauditevent",
+    "class_hits": 9,
+    "table_hits": 0,
+    "total_hits": 9,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\services\\ocr\\audit_log_service.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "OCRQuestion",
+    "table": "ocrquestion",
+    "class_hits": 9,
+    "table_hits": 0,
+    "total_hits": 9,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\worker.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "OCRArtifact",
+    "table": "ocrartifact",
+    "class_hits": 10,
+    "table_hits": 0,
+    "total_hits": 10,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\worker.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "OCRChoice",
+    "table": "ocrchoice",
+    "class_hits": 10,
+    "table_hits": 0,
+    "total_hits": 10,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\worker.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "OcrExtractionCache",
+    "table": "ocrextractioncache",
+    "class_hits": 10,
+    "table_hits": 0,
+    "total_hits": 10,
+    "class_files": [
+      "backend\\app\\api.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "ReconciliationFinding",
+    "table": "reconciliationfinding",
+    "class_hits": 10,
+    "table_hits": 0,
+    "total_hits": 10,
+    "class_files": [
+      "backend\\app\\api_admin_health.py",
+      "backend\\app\\api_admin_payments.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "UserQuotaOverride",
+    "table": "userquotaoverride",
+    "class_hits": 9,
+    "table_hits": 1,
+    "total_hits": 10,
+    "class_files": [
+      "backend\\app\\api.py"
+    ],
+    "table_files": [
+      "backend\\app\\api.py"
+    ]
+  },
+  {
+    "class": "VoiceArtifact",
+    "table": "voiceartifact",
+    "class_hits": 11,
+    "table_hits": 0,
+    "total_hits": 11,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\services\\voice\\voice_service.py",
+      "src\\app\\solve\\page.tsx"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "VoiceSession",
+    "table": "voicesession",
+    "class_hits": 10,
+    "table_hits": 1,
+    "total_hits": 11,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\services\\voice\\voice_service.py"
+    ],
+    "table_files": [
+      "backend\\app\\api.py"
+    ]
+  },
+  {
+    "class": "ChatEditCopyV2",
+    "table": "chateditcopyv2",
+    "class_hits": 12,
+    "table_hits": 0,
+    "total_hits": 12,
+    "class_files": [
+      "backend\\app\\api.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "AdminNote",
+    "table": "adminnote",
+    "class_hits": 13,
+    "table_hits": 0,
+    "total_hits": 13,
+    "class_files": [
+      "backend\\app\\api.py",
+      "src\\app\\admin\\users\\[id]\\page.tsx"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "OCRFigure",
+    "table": "ocrfigure",
+    "class_hits": 13,
+    "table_hits": 0,
+    "total_hits": 13,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\worker.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "PromoCode",
+    "table": "promocode",
+    "class_hits": 14,
+    "table_hits": 0,
+    "total_hits": 14,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\api_admin.py",
+      "src\\app\\admin\\promo-codes\\page.tsx"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "ReconciliationRecord",
+    "table": "reconciliationrecord",
+    "class_hits": 14,
+    "table_hits": 1,
+    "total_hits": 15,
+    "class_files": [
+      "backend\\app\\admin_billing\\billing_health.py",
+      "backend\\app\\jobs\\nightly_reconciliation.py"
+    ],
+    "table_files": [
+      "backend\\app\\api.py"
+    ]
+  },
+  {
+    "class": "SolveSession",
+    "table": "solvesession",
+    "class_hits": 14,
+    "table_hits": 1,
+    "total_hits": 15,
+    "class_files": [
+      "backend\\app\\api.py"
+    ],
+    "table_files": [
+      "backend\\app\\api.py"
+    ]
+  },
+  {
+    "class": "CreditProgramGrantLog",
+    "table": "creditprogramgrantlog",
+    "class_hits": 16,
+    "table_hits": 1,
+    "total_hits": 17,
+    "class_files": [
+      "backend\\app\\admin_billing\\billing_programs.py",
+      "backend\\app\\admin_billing\\billing_wallet.py",
+      "backend\\app\\scripts\\migrate_subscriptions_to_programs.py",
+      "backend\\app\\services\\credit_program_service.py"
+    ],
+    "table_files": [
+      "backend\\app\\api.py"
+    ]
+  },
+  {
+    "class": "SolutionShare",
+    "table": "solution_shares",
+    "class_hits": 17,
+    "table_hits": 0,
+    "total_hits": 17,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\services\\share_service.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "UserSavedSolution",
+    "table": "usersavedsolution",
+    "class_hits": 17,
+    "table_hits": 0,
+    "total_hits": 17,
+    "class_files": [
+      "backend\\app\\api.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "InvoiceLineItem",
+    "table": "invoicelineitem",
+    "class_hits": 19,
+    "table_hits": 0,
+    "total_hits": 19,
+    "class_files": [
+      "backend\\app\\admin_billing\\billing_invoices.py",
+      "backend\\app\\api_admin_payments.py",
+      "backend\\app\\api_billing.py",
+      "backend\\app\\services\\invoice_service.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "SubscriptionPeriod",
+    "table": "subscriptionperiod",
+    "class_hits": 20,
+    "table_hits": 0,
+    "total_hits": 20,
+    "class_files": [
+      "backend\\app\\api_admin_payments.py",
+      "backend\\app\\jobs\\expire_subscription_grants_job.py",
+      "backend\\app\\jobs\\grant_subscription_credits_job.py",
+      "backend\\app\\services\\stripe_webhook_processor.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "SubscriptionBillingLink",
+    "table": "subscriptionbillinglink",
+    "class_hits": 22,
+    "table_hits": 0,
+    "total_hits": 22,
+    "class_files": [
+      "backend\\app\\api_admin_payments.py",
+      "backend\\app\\jobs\\stripe_reconciliation_job.py",
+      "backend\\app\\services\\invoice_service.py",
+      "backend\\app\\services\\stripe_webhook_processor.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "LegalAcceptance",
+    "table": "legal_acceptances",
+    "class_hits": 23,
+    "table_hits": 0,
+    "total_hits": 23,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\api_admin.py",
+      "backend\\app\\services\\legal_service.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "QuestionIdentityCache",
+    "table": "question_identity_cache",
+    "class_hits": 22,
+    "table_hits": 1,
+    "total_hits": 23,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\services\\solve\\question_identity_service.py"
+    ],
+    "table_files": [
+      "src\\app\\admin\\cache\\question-identity\\page.tsx"
+    ]
+  },
+  {
+    "class": "LlmUsageLedger",
+    "table": "llmusageledger",
+    "class_hits": 15,
+    "table_hits": 11,
+    "total_hits": 26,
+    "class_files": [
+      "backend\\app\\api.py"
+    ],
+    "table_files": [
+      "backend\\app\\api.py",
+      "src\\app\\admin\\observability\\llm-usage\\page.tsx"
+    ]
+  },
+  {
+    "class": "StripeEvent",
+    "table": "stripeevent",
+    "class_hits": 26,
+    "table_hits": 0,
+    "total_hits": 26,
+    "class_files": [
+      "backend\\app\\api_admin_health.py",
+      "backend\\app\\api_admin_payments.py",
+      "backend\\app\\api_stripe.py",
+      "backend\\app\\services\\stripe_webhook_processor.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "SystemConfigVersion",
+    "table": "systemconfigversion",
+    "class_hits": 28,
+    "table_hits": 0,
+    "total_hits": 28,
+    "class_files": [
+      "backend\\app\\api_admin.py",
+      "backend\\app\\api_admin_ocr_config.py",
+      "backend\\app\\api_admin_payments_config.py",
+      "backend\\app\\services\\admin_config_service.py",
+      "backend\\app\\services\\pricing_service.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "CreditLotConsumption",
+    "table": "creditlotconsumption",
+    "class_hits": 29,
+    "table_hits": 1,
+    "total_hits": 30,
+    "class_files": [
+      "backend\\app\\admin_billing\\billing_wallet.py",
+      "backend\\app\\api.py",
+      "backend\\app\\api_admin_payments.py",
+      "backend\\app\\services\\billing_ledger_service_v2.py",
+      "backend\\app\\services\\credit_lot_allocator.py"
+    ],
+    "table_files": [
+      "backend\\app\\api.py"
+    ]
+  },
+  {
+    "class": "StripePriceMap",
+    "table": "stripepricemap",
+    "class_hits": 30,
+    "table_hits": 0,
+    "total_hits": 30,
+    "class_files": [
+      "backend\\app\\api_admin_credits.py",
+      "backend\\app\\api_admin_payments.py",
+      "backend\\app\\api_admin_payments_config.py",
+      "backend\\app\\api_topups.py",
+      "backend\\app\\bg_routers\\credits_router.py",
+      "backend\\app\\services\\stripe_service.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "AdminAuditLog",
+    "table": "adminauditlog",
+    "class_hits": 31,
+    "table_hits": 0,
+    "total_hits": 31,
+    "class_files": [
+      "backend\\app\\admin_billing\\billing_flags.py",
+      "backend\\app\\admin_billing\\billing_pricing.py",
+      "backend\\app\\admin_billing\\billing_wallet.py",
+      "backend\\app\\api_admin_payments_config.py",
+      "backend\\app\\services\\audit_log_service.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "CreditTransfer",
+    "table": "credit_transfers",
+    "class_hits": 31,
+    "table_hits": 0,
+    "total_hits": 31,
+    "class_files": [
+      "backend\\app\\bg_routers\\credits_router.py",
+      "backend\\app\\services\\credit_transfer_service.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "UsageLog",
+    "table": "usagelog",
+    "class_hits": 30,
+    "table_hits": 2,
+    "total_hits": 32,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\database.py",
+      "backend\\app\\tasks\\whatsapp_tasks.py"
+    ],
+    "table_files": [
+      "backend\\app\\api.py"
+    ]
+  },
+  {
+    "class": "SystemErrorEntry",
+    "table": "systemerrorentry",
+    "class_hits": 38,
+    "table_hits": 0,
+    "total_hits": 38,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\api_admin_health.py",
+      "backend\\app\\jobs\\stripe_reconciliation_job.py",
+      "backend\\app\\services\\error_service.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "CanonicalSolution",
+    "table": "canonicalsolution",
+    "class_hits": 38,
+    "table_hits": 1,
+    "total_hits": 39,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\services\\solve\\cache_service.py",
+      "src\\app\\admin\\cache\\canonical\\page.tsx"
+    ],
+    "table_files": [
+      "src\\app\\admin\\cache\\canonical\\page.tsx"
+    ]
+  },
+  {
+    "class": "SystemConfig",
+    "table": "systemconfig",
+    "class_hits": 40,
+    "table_hits": 0,
+    "total_hits": 40,
+    "class_files": [
+      "backend\\app\\admin_billing\\billing_pricing.py",
+      "backend\\app\\api.py",
+      "backend\\app\\api_admin_payments_config.py",
+      "backend\\app\\services\\admin_config_service.py",
+      "backend\\app\\services\\credit_transfer_config.py",
+      "backend\\app\\services\\pricing_service.py",
+      "backend\\app\\services\\solve\\superset_v2_pipeline.py",
+      "backend\\app\\services\\token_policy.py",
+      "backend\\app\\tools\\openai_debug_harness.py",
+      "src\\app\\admin\\system-config\\page.tsx",
+      "src\\components\\admin\\SystemConfigPanel.tsx"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "OCRJob",
+    "table": "ocrjob",
+    "class_hits": 41,
+    "table_hits": 1,
+    "total_hits": 42,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\database.py",
+      "backend\\app\\jobs\\release_ocr_holds_job.py",
+      "backend\\app\\services\\admin\\analytics_service.py",
+      "backend\\app\\worker.py"
+    ],
+    "table_files": [
+      "backend\\app\\api.py"
+    ]
+  },
+  {
+    "class": "CreditProgramDefinition",
+    "table": "creditprogramdefinition",
+    "class_hits": 43,
+    "table_hits": 0,
+    "total_hits": 43,
+    "class_files": [
+      "backend\\app\\admin_billing\\billing_programs.py",
+      "backend\\app\\admin_billing\\billing_wallet.py",
+      "backend\\app\\api_wallet.py",
+      "backend\\app\\jobs\\monthly_grant_scheduler.py",
+      "backend\\app\\scripts\\migrate_subscriptions_to_programs.py",
+      "backend\\app\\services\\credit_program_service.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "RequestEvent",
+    "table": "requestevent",
+    "class_hits": 40,
+    "table_hits": 3,
+    "total_hits": 43,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\api_admin_payments.py",
+      "backend\\app\\services\\admin\\analytics_service.py",
+      "backend\\app\\services\\billing_service.py",
+      "backend\\app\\services\\cost_estimation_service.py"
+    ],
+    "table_files": [
+      "backend\\app\\api.py"
+    ]
+  },
+  {
+    "class": "LegalDocument",
+    "table": "legal_documents",
+    "class_hits": 47,
+    "table_hits": 0,
+    "total_hits": 47,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\api_admin.py",
+      "backend\\app\\services\\legal_service.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "ProviderModelPricing",
+    "table": "providermodelpricing",
+    "class_hits": 47,
+    "table_hits": 0,
+    "total_hits": 47,
+    "class_files": [
+      "backend\\app\\admin_billing\\billing_pricing.py",
+      "backend\\app\\api_admin_payments_config.py",
+      "backend\\app\\services\\provider_pricing_service.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "Notification",
+    "table": "notifications",
+    "class_hits": 32,
+    "table_hits": 16,
+    "total_hits": 48,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\bg_routers\\notifications_router.py",
+      "backend\\app\\services\\notification_service.py"
+    ],
+    "table_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\bg_routers\\notifications_router.py",
+      "src\\app\\admin\\config\\credit_transfer\\page.tsx",
+      "src\\components\\solve\\TransferAndNotificationsPanel.tsx",
+      "src\\lib\\notifications.ts"
+    ]
+  },
+  {
+    "class": "TopUpProduct",
+    "table": "topupproduct",
+    "class_hits": 48,
+    "table_hits": 0,
+    "total_hits": 48,
+    "class_files": [
+      "backend\\app\\admin_billing\\billing_packs.py",
+      "backend\\app\\api_admin_credits.py",
+      "backend\\app\\api_admin_payments.py",
+      "backend\\app\\api_admin_payments_config.py",
+      "backend\\app\\api_stripe.py",
+      "backend\\app\\bg_routers\\credits_router.py",
+      "backend\\app\\services\\top_up_service.py",
+      "src\\app\\admin\\billing\\topup-products\\page.tsx",
+      "src\\app\\billing\\payment\\page.tsx",
+      "src\\app\\billing\\success\\page.tsx"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "TopUpOrder",
+    "table": "topuporder",
+    "class_hits": 50,
+    "table_hits": 0,
+    "total_hits": 50,
+    "class_files": [
+      "backend\\app\\api_admin_payments.py",
+      "backend\\app\\api_topups.py",
+      "backend\\app\\jobs\\stripe_reconciliation_job.py",
+      "backend\\app\\services\\invoice_service.py",
+      "backend\\app\\services\\stripe_webhook_processor.py",
+      "backend\\app\\services\\top_up_service.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "UsageLedger",
+    "table": "usageledger",
+    "class_hits": 50,
+    "table_hits": 0,
+    "total_hits": 50,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\api_admin_payments.py",
+      "backend\\app\\jobs\\expire_subscription_grants_job.py",
+      "backend\\app\\jobs\\grant_subscription_credits_job.py",
+      "backend\\app\\services\\admin\\analytics_service.py",
+      "backend\\app\\services\\billing_ledger_service_v2.py",
+      "backend\\app\\services\\billing_service.py",
+      "backend\\app\\services\\credit_wallet_service.py",
+      "backend\\app\\services\\subscription_service.py",
+      "backend\\app\\services\\top_up_service.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "CreditLotV2",
+    "table": "credit_lots",
+    "class_hits": 47,
+    "table_hits": 4,
+    "total_hits": 51,
+    "class_files": [
+      "backend\\app\\api_admin_credits.py",
+      "backend\\app\\bg_routers\\credits_router.py",
+      "backend\\app\\services\\credit_billing_service.py"
+    ],
+    "table_files": [
+      "backend\\app\\api.py",
+      "src\\app\\admin\\users\\[id]\\page.tsx"
+    ]
+  },
+  {
+    "class": "CanonicalProblem",
+    "table": "canonicalproblem",
+    "class_hits": 57,
+    "table_hits": 1,
+    "total_hits": 58,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\api_admin_content.py",
+      "backend\\app\\services\\solve\\cache_service.py",
+      "src\\app\\admin\\cache\\canonical\\page.tsx"
+    ],
+    "table_files": [
+      "src\\app\\admin\\cache\\canonical\\page.tsx"
+    ]
+  },
+  {
+    "class": "CreditHoldV2",
+    "table": "credit_holds",
+    "class_hits": 68,
+    "table_hits": 0,
+    "total_hits": 68,
+    "class_files": [
+      "backend\\app\\api_admin_credits.py",
+      "backend\\app\\bg_routers\\credits_router.py",
+      "backend\\app\\services\\credit_billing_service.py"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "UsageLedgerV2",
+    "table": "usage_ledger",
+    "class_hits": 55,
+    "table_hits": 15,
+    "total_hits": 70,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\api_admin_credits.py",
+      "backend\\app\\bg_routers\\credits_router.py",
+      "backend\\app\\services\\credit_billing_service.py"
+    ],
+    "table_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\api_admin_payments.py",
+      "src\\app\\admin\\billing\\chat-billing\\page.tsx",
+      "src\\app\\admin\\users\\[id]\\page.tsx"
+    ]
+  },
+  {
+    "class": "ChatSession",
+    "table": "chatsession",
+    "class_hits": 76,
+    "table_hits": 1,
+    "total_hits": 77,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\bg_routers\\local_router.py",
+      "backend\\app\\database.py",
+      "backend\\app\\scripts\\dump_session_86.py",
+      "backend\\app\\services\\share_service.py",
+      "backend\\app\\tasks\\whatsapp_tasks.py",
+      "src\\app\\dashboard\\page.tsx",
+      "src\\app\\solve\\page.tsx"
+    ],
+    "table_files": [
+      "backend\\app\\api.py"
+    ]
+  },
+  {
+    "class": "CreditHold",
+    "table": "credithold",
+    "class_hits": 81,
+    "table_hits": 0,
+    "total_hits": 81,
+    "class_files": [
+      "backend\\app\\admin_billing\\billing_health.py",
+      "backend\\app\\admin_billing\\billing_holds.py",
+      "backend\\app\\admin_billing\\billing_wallet.py",
+      "backend\\app\\api.py",
+      "backend\\app\\api_admin_health.py",
+      "backend\\app\\api_admin_payments.py",
+      "backend\\app\\jobs\\nightly_reconciliation.py",
+      "backend\\app\\services\\billing_ledger_service_v2.py",
+      "backend\\app\\services\\billing_service.py",
+      "src\\app\\admin\\billing\\holds\\page.tsx"
+    ],
+    "table_files": []
+  },
+  {
+    "class": "CreditProgramEnrollment",
+    "table": "creditprogramenrollment",
+    "class_hits": 84,
+    "table_hits": 1,
+    "total_hits": 85,
+    "class_files": [
+      "backend\\app\\admin_billing\\billing_programs.py",
+      "backend\\app\\admin_billing\\billing_wallet.py",
+      "backend\\app\\api.py",
+      "backend\\app\\api_wallet.py",
+      "backend\\app\\jobs\\monthly_grant_scheduler.py",
+      "backend\\app\\scripts\\migrate_subscriptions_to_programs.py",
+      "backend\\app\\services\\credit_program_service.py"
+    ],
+    "table_files": [
+      "backend\\app\\api.py"
+    ]
+  },
+  {
+    "class": "ChatMessage",
+    "table": "chatmessage",
+    "class_hits": 82,
+    "table_hits": 4,
+    "total_hits": 86,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\bg_routers\\local_router.py",
+      "backend\\app\\database.py",
+      "backend\\app\\scripts\\dump_session_86.py",
+      "backend\\app\\services\\share_service.py",
+      "backend\\app\\tasks\\whatsapp_tasks.py",
+      "src\\components\\math-canvas\\ChatMessage.tsx",
+      "src\\components\\math-canvas\\RightTutorChat.tsx"
+    ],
+    "table_files": [
+      "backend\\app\\api.py",
+      "src\\app\\admin\\billing\\chat-billing\\page.tsx"
+    ]
+  },
+  {
+    "class": "Upload",
+    "table": "upload",
+    "class_hits": 27,
+    "table_hits": 73,
+    "total_hits": 100,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\services\\ocr\\crop_service.py",
+      "backend\\app\\services\\ocr\\upload_service.py",
+      "backend\\app\\services\\vision copy.py",
+      "backend\\app\\services\\vision.py",
+      "src\\app\\admin\\users\\[id]\\page.tsx",
+      "src\\app\\solve\\page.tsx",
+      "src\\components\\snap\\SnapSolveUploader.tsx",
+      "src\\components\\snap\\SnapSolveV2.tsx",
+      "src\\components\\snap_solve\\SnapSolveInputPanel.tsx"
+    ],
+    "table_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\bg_routers\\local_router.py",
+      "backend\\app\\bg_routers\\voice_router.py",
+      "backend\\app\\schemas\\find_error_local_schemas.py",
+      "backend\\app\\services\\ocr\\crop_service.py",
+      "backend\\app\\services\\ocr\\upload_service.py",
+      "backend\\app\\services\\whatsapp\\whatsapp_service.py",
+      "backend\\app\\services\\whatsapp\\whatsapp_state.py",
+      "src\\app\\admin\\whatsapp-monitor\\page.tsx",
+      "src\\components\\snap_solve\\SnapSolveInputPanel.tsx",
+      "src\\components\\snap_solve\\__tests__\\SnapSolveInputPanel.pdf.test.tsx",
+      "src\\components\\snap_solve\\__tests__\\SnapSolveInputPanel.test.tsx"
+    ]
+  },
+  {
+    "class": "SolverOutputAttempt",
+    "table": "solveroutputattempt",
+    "class_hits": 99,
+    "table_hits": 2,
+    "total_hits": 101,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\services\\billing_service.py",
+      "backend\\app\\services\\graph\\asset_service.py",
+      "backend\\app\\services\\share_service.py",
+      "backend\\app\\services\\solve\\superset_v2_pipeline.py",
+      "backend\\app\\services\\solver_v3.py",
+      "backend\\app\\tasks\\graph_tasks.py"
+    ],
+    "table_files": [
+      "backend\\app\\api.py"
+    ]
+  },
+  {
+    "class": "Payment",
+    "table": "payment",
+    "class_hits": 54,
+    "table_hits": 50,
+    "total_hits": 104,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\api_admin_payments.py",
+      "backend\\app\\api_admin_payments_config.py",
+      "backend\\app\\jobs\\stripe_reconciliation_job.py",
+      "backend\\app\\services\\billing_exceptions.py",
+      "backend\\app\\services\\invoice_service.py",
+      "backend\\app\\services\\privacy_policy_generator.py",
+      "backend\\app\\services\\stripe_webhook_processor.py",
+      "backend\\app\\services\\top_up_service.py",
+      "src\\app\\admin\\billing\\refunds\\page.tsx",
+      "src\\app\\admin\\users\\[id]\\page.tsx",
+      "src\\app\\adminpayments\\page.tsx",
+      "src\\app\\adminpayments\\topups\\page.tsx",
+      "src\\app\\billing\\success\\page.tsx"
+    ],
+    "table_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\api_admin_payments.py",
+      "backend\\app\\api_admin_payments_config.py",
+      "backend\\app\\api_stripe.py",
+      "backend\\app\\api_topups.py",
+      "backend\\app\\jobs\\stripe_reconciliation_job.py",
+      "backend\\app\\services\\billing_exceptions.py",
+      "backend\\app\\services\\invoice_service.py",
+      "backend\\app\\services\\privacy_policy_generator.py",
+      "backend\\app\\services\\refund_service.py",
+      "backend\\app\\services\\stripe_service.py",
+      "backend\\app\\services\\stripe_webhook_processor.py",
+      "backend\\app\\services\\top_up_service.py",
+      "src\\app\\adminpayments\\page.tsx",
+      "src\\app\\adminpayments\\topups\\page.tsx",
+      "src\\app\\billing\\page.tsx",
+      "src\\app\\billing\\payment\\page.tsx",
+      "src\\app\\billing\\success\\page.tsx",
+      "src\\app\\dashboard\\page.tsx"
+    ]
+  },
+  {
+    "class": "JsonSchemaEntry",
+    "table": "json_schemas",
+    "class_hits": 113,
+    "table_hits": 4,
+    "total_hits": 117,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\prompts\\db_loader.py",
+      "backend\\app\\scripts\\audit_schemas.py",
+      "backend\\app\\scripts\\dump_schemas.py",
+      "backend\\app\\scripts\\seed_json_schemas.py",
+      "backend\\app\\services\\ocr\\ocr_config_service.py",
+      "backend\\app\\services\\ocr\\ocr_runtime_config_service.py",
+      "backend\\app\\services\\plot_pipeline_service.py",
+      "backend\\app\\services\\prompt_manager.py",
+      "backend\\app\\services\\prompt_registry_service.py",
+      "backend\\app\\services\\solve\\superset_v2_pipeline.py",
+      "backend\\app\\services\\solve_text_pipeline.py",
+      "backend\\app\\tools\\audit_bindings_schemas.py",
+      "backend\\app\\tools\\fix_db_state.py",
+      "backend\\app\\tools\\verify_production_e2e.py"
+    ],
+    "table_files": [
+      "backend\\app\\api_admin_ocr_config.py",
+      "backend\\app\\prompts\\registry.py",
+      "backend\\app\\services\\prompt_registry_service.py",
+      "src\\app\\admin\\ocr-configuration\\page.tsx"
+    ]
+  },
+  {
+    "class": "BillingLedger",
+    "table": "billingledger",
+    "class_hits": 119,
+    "table_hits": 6,
+    "total_hits": 125,
+    "class_files": [
+      "backend\\app\\admin_billing\\billing_health.py",
+      "backend\\app\\admin_billing\\billing_ledger.py",
+      "backend\\app\\admin_billing\\billing_refunds.py",
+      "backend\\app\\admin_billing\\billing_wallet.py",
+      "backend\\app\\api.py",
+      "backend\\app\\api_admin.py",
+      "backend\\app\\api_admin_payments.py",
+      "backend\\app\\api_wallet.py",
+      "backend\\app\\bg_routers\\credits_router.py",
+      "backend\\app\\services\\billing_ledger_service_v2.py",
+      "backend\\app\\services\\billing_service.py",
+      "backend\\app\\services\\credit_transfer_service.py",
+      "backend\\app\\services\\credit_wallet_service.py",
+      "backend\\app\\services\\stripe_webhook_processor.py",
+      "backend\\app\\services\\top_up_service.py"
+    ],
+    "table_files": [
+      "backend\\app\\api.py",
+      "src\\app\\admin\\billing\\chat-billing\\page.tsx"
+    ]
+  },
+  {
+    "class": "PromptBinding",
+    "table": "prompt_bindings",
+    "class_hits": 142,
+    "table_hits": 6,
+    "total_hits": 148,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\api_admin_credits.py",
+      "backend\\app\\prompts\\db_loader.py",
+      "backend\\app\\scripts\\audit_schemas.py",
+      "backend\\app\\scripts\\seed_prompt_bindings.py",
+      "backend\\app\\scripts\\verify_production_e2e.py",
+      "backend\\app\\services\\credit_billing_service.py",
+      "backend\\app\\services\\plot_pipeline_service.py",
+      "backend\\app\\services\\prompt_binding_pricing.py",
+      "backend\\app\\services\\prompt_manager.py",
+      "backend\\app\\services\\prompt_registry_service.py",
+      "backend\\app\\services\\solve\\batch_tier_runtime.py",
+      "backend\\app\\services\\solve_text_pipeline.py",
+      "backend\\app\\tools\\audit_bindings_schemas.py",
+      "backend\\app\\tools\\fix_binding_pointer.py",
+      "backend\\app\\tools\\fix_db_state.py",
+      "backend\\app\\tools\\verify_production_e2e.py"
+    ],
+    "table_files": [
+      "backend\\app\\api_admin_credits.py",
+      "backend\\app\\bg_routers\\credits_router.py",
+      "backend\\app\\prompts\\registry.py",
+      "backend\\app\\tools\\audit_bindings_schemas.py",
+      "src\\app\\admin\\prompt-bindings\\page.tsx"
+    ]
+  },
+  {
+    "class": "CreditLot",
+    "table": "creditlot",
+    "class_hits": 148,
+    "table_hits": 1,
+    "total_hits": 149,
+    "class_files": [
+      "backend\\app\\admin_billing\\billing_refunds.py",
+      "backend\\app\\admin_billing\\billing_wallet.py",
+      "backend\\app\\api.py",
+      "backend\\app\\api_admin.py",
+      "backend\\app\\api_admin_payments.py",
+      "backend\\app\\api_wallet.py",
+      "backend\\app\\jobs\\expire_subscription_grants_job.py",
+      "backend\\app\\jobs\\grant_subscription_credits_job.py",
+      "backend\\app\\jobs\\nightly_reconciliation.py",
+      "backend\\app\\scripts\\migrate_subscriptions_to_programs.py",
+      "backend\\app\\services\\billing_ledger_service_v2.py",
+      "backend\\app\\services\\credit_lot_allocator.py",
+      "backend\\app\\services\\credit_program_service.py",
+      "backend\\app\\services\\credit_transfer_service.py",
+      "backend\\app\\services\\credit_wallet_service.py",
+      "backend\\app\\services\\refund_service.py",
+      "backend\\app\\services\\stripe_webhook_processor.py",
+      "backend\\app\\services\\top_up_service.py",
+      "src\\app\\admin\\billing\\users\\[userId]\\wallet\\page.tsx",
+      "src\\app\\adminpayments\\page.tsx"
+    ],
+    "table_files": [
+      "backend\\app\\api.py"
+    ]
+  },
+  {
+    "class": "School",
+    "table": "school",
+    "class_hits": 69,
+    "table_hits": 81,
+    "total_hits": 150,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\scripts\\import_schools.py",
+      "backend\\app\\services\\school_import_service.py",
+      "backend\\app\\services\\school_migration_service.py",
+      "src\\app\\admin\\users\\[id]\\page.tsx",
+      "src\\app\\admin\\users\\page.tsx",
+      "src\\app\\onboarding\\page.tsx",
+      "src\\app\\profile\\page.tsx",
+      "src\\app\\signup\\page.tsx",
+      "src\\app\\solve\\page.tsx"
+    ],
+    "table_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\scripts\\import_schools.py",
+      "backend\\app\\services\\context_normalizer.py",
+      "backend\\app\\services\\response_mapper.py",
+      "backend\\app\\services\\school_migration_service.py",
+      "src\\app\\admin\\data\\page.tsx",
+      "src\\app\\admin\\users\\[id]\\page.tsx",
+      "src\\app\\dashboard\\page.tsx",
+      "src\\app\\onboarding\\page.tsx",
+      "src\\app\\profile\\page.tsx",
+      "src\\app\\signup\\page.tsx",
+      "src\\app\\solve\\page.tsx",
+      "src\\components\\math-canvas\\LeftNotebookSidebar.tsx",
+      "src\\components\\workspace\\StepsTab.tsx"
+    ]
+  },
+  {
+    "class": "PromptTemplateEntry",
+    "table": "prompt_templates",
+    "class_hits": 164,
+    "table_hits": 5,
+    "total_hits": 169,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\prompts\\db_loader.py",
+      "backend\\app\\services\\ocr\\ocr_config_service.py",
+      "backend\\app\\services\\ocr\\ocr_runtime_config_service.py",
+      "backend\\app\\services\\plot_pipeline_service.py",
+      "backend\\app\\services\\prompt_manager.py",
+      "backend\\app\\services\\prompt_registry_service.py",
+      "backend\\app\\services\\solve\\superset_v2_pipeline.py",
+      "backend\\app\\services\\solve_text_pipeline.py",
+      "backend\\app\\tools\\debug_research_template.py",
+      "backend\\app\\tools\\debug_templates.py",
+      "backend\\app\\tools\\fix_binding_pointer.py",
+      "backend\\app\\tools\\fix_db_state.py",
+      "backend\\app\\utils.py",
+      "backend\\app\\utils\\__init__.py"
+    ],
+    "table_files": [
+      "backend\\app\\api_admin_ocr_config.py",
+      "backend\\app\\prompts\\registry.py",
+      "backend\\app\\utils.py",
+      "backend\\app\\utils\\__init__.py",
+      "src\\app\\admin\\ocr-configuration\\page.tsx"
+    ]
+  },
+  {
+    "class": "Crop",
+    "table": "crop",
+    "class_hits": 29,
+    "table_hits": 142,
+    "total_hits": 171,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\bg_routers\\local_router.py",
+      "backend\\app\\bg_routers\\snap_solve_pdf.py",
+      "backend\\app\\services\\ocr\\crop_service.py",
+      "backend\\app\\services\\ocr\\ocr_router_service.py",
+      "backend\\app\\services\\ocr\\upload_service.py",
+      "backend\\app\\worker.py",
+      "src\\app\\admin\\users\\[id]\\page.tsx",
+      "src\\app\\solve\\page.tsx",
+      "src\\components\\snap_solve\\SnapSolveInputPanel.tsx",
+      "src\\components\\snap_solve\\__tests__\\SnapSolveInputPanel.pdf.test.tsx"
+    ],
+    "table_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\bg_routers\\local_router.py",
+      "backend\\app\\bg_routers\\snap_solve_pdf.py",
+      "backend\\app\\bg_routers\\voice_router.py",
+      "backend\\app\\schemas\\find_error_local_schemas.py",
+      "backend\\app\\schemas\\pricing.py",
+      "backend\\app\\services\\ocr\\crop_service.py",
+      "backend\\app\\services\\ocr\\ocr_router_service.py",
+      "backend\\app\\services\\ocr\\ocr_service.py",
+      "backend\\app\\services\\vision copy.py",
+      "backend\\app\\services\\vision.py",
+      "backend\\app\\services\\voice\\voice_service.py",
+      "backend\\app\\tasks\\whatsapp_tasks.py",
+      "backend\\app\\tools\\openai_debug_harness.py",
+      "backend\\app\\worker.py",
+      "src\\components\\snap\\CropWorkspace.tsx",
+      "src\\components\\snap\\SnapSolveV2.tsx",
+      "src\\components\\snap\\snapSolveUtils.ts",
+      "src\\components\\snap_solve\\SnapSolveInputPanel.tsx",
+      "src\\components\\snap_solve\\__tests__\\SnapSolveInputPanel.pdf.test.tsx",
+      "src\\components\\snap_solve\\pdf\\PdfCropViewer.tsx"
+    ]
+  },
+  {
+    "class": "Invoice",
+    "table": "invoice",
+    "class_hits": 73,
+    "table_hits": 108,
+    "total_hits": 181,
+    "class_files": [
+      "backend\\app\\admin_billing\\billing_invoices.py",
+      "backend\\app\\api_admin_payments.py",
+      "backend\\app\\api_billing.py",
+      "backend\\app\\services\\invoice_service.py",
+      "backend\\app\\services\\stripe_webhook_processor.py",
+      "backend\\app\\services\\top_up_service.py",
+      "src\\app\\admin\\billing\\invoices\\page.tsx",
+      "src\\app\\adminpayments\\config\\page.tsx",
+      "src\\app\\adminpayments\\page.tsx",
+      "src\\app\\billing\\page.tsx"
+    ],
+    "table_files": [
+      "backend\\app\\admin_billing\\billing_invoices.py",
+      "backend\\app\\api_admin_health.py",
+      "backend\\app\\api_admin_payments.py",
+      "backend\\app\\api_billing.py",
+      "backend\\app\\services\\invoice_service.py",
+      "backend\\app\\services\\privacy_policy_generator.py",
+      "backend\\app\\services\\stripe_webhook_processor.py",
+      "backend\\app\\services\\top_up_service.py",
+      "src\\app\\admin\\billing\\invoices\\page.tsx",
+      "src\\app\\adminpayments\\config\\page.tsx",
+      "src\\app\\adminpayments\\page.tsx",
+      "src\\app\\billing\\page.tsx"
+    ]
+  },
+  {
+    "class": "Subscription",
+    "table": "subscription",
+    "class_hits": 91,
+    "table_hits": 185,
+    "total_hits": 276,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\api_admin_payments.py",
+      "backend\\app\\bg_routers\\credits_router.py",
+      "backend\\app\\jobs\\expire_subscription_grants_job.py",
+      "backend\\app\\jobs\\grant_subscription_credits_job.py",
+      "backend\\app\\jobs\\stripe_reconciliation_job.py",
+      "backend\\app\\scripts\\migrate_subscriptions_to_programs.py",
+      "backend\\app\\services\\billing_ledger_service_v2.py",
+      "backend\\app\\services\\credit_lot_allocator.py",
+      "backend\\app\\services\\credit_wallet_service.py",
+      "backend\\app\\services\\invoice_service.py",
+      "backend\\app\\services\\stripe_service.py",
+      "backend\\app\\services\\stripe_webhook_processor.py",
+      "backend\\app\\services\\subscription_service.py",
+      "backend\\app\\services\\top_up_service.py",
+      "backend\\app\\tasks\\subscription_tasks.py",
+      "src\\app\\admin\\users\\[id]\\page.tsx",
+      "src\\lib\\subscription.ts"
+    ],
+    "table_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\api_admin_payments.py",
+      "backend\\app\\bg_routers\\credits_router.py",
+      "backend\\app\\bg_routers\\plot_router.py",
+      "backend\\app\\jobs\\expire_subscription_grants_job.py",
+      "backend\\app\\jobs\\grant_subscription_credits_job.py",
+      "backend\\app\\scripts\\migrate_subscriptions_to_programs.py",
+      "backend\\app\\services\\billing_ledger_service_v2.py",
+      "backend\\app\\services\\credit_lot_allocator.py",
+      "backend\\app\\services\\credit_wallet_service.py",
+      "backend\\app\\services\\ocr\\ocr_router_service.py",
+      "backend\\app\\services\\plot_pipeline_service.py",
+      "backend\\app\\services\\share_service.py",
+      "backend\\app\\services\\stripe_service.py",
+      "backend\\app\\services\\stripe_webhook_processor.py",
+      "backend\\app\\services\\subscription_service.py",
+      "backend\\app\\services\\top_up_service.py",
+      "backend\\app\\tools\\fix_db_state.py",
+      "src\\app\\admin\\billing\\legacy\\page.tsx",
+      "src\\app\\admin\\users\\[id]\\page.tsx",
+      "src\\app\\admin\\users\\page.tsx",
+      "src\\lib\\subscription.ts"
+    ]
+  },
+  {
+    "class": "Plan",
+    "table": "plan",
+    "class_hits": 69,
+    "table_hits": 254,
+    "total_hits": 323,
+    "class_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\api_admin_payments_config.py",
+      "backend\\app\\jobs\\grant_subscription_credits_job.py",
+      "backend\\app\\scripts\\migrate_subscriptions_to_programs.py",
+      "backend\\app\\scripts\\verify_production_e2e.py",
+      "backend\\app\\services\\subscription_service.py",
+      "backend\\app\\services\\tier_utils.py",
+      "src\\app\\admin\\quotas\\page.tsx",
+      "src\\app\\admin\\users\\[id]\\page.tsx",
+      "src\\app\\admin\\users\\page.tsx",
+      "src\\app\\adminpayments\\config\\page.tsx",
+      "src\\components\\workspace\\WorkspaceLayout.tsx"
+    ],
+    "table_files": [
+      "backend\\app\\api.py",
+      "backend\\app\\api_admin_payments.py",
+      "backend\\app\\bg_routers\\plot_router.py",
+      "backend\\app\\jobs\\grant_subscription_credits_job.py",
+      "backend\\app\\schemas\\pricing.py",
+      "backend\\app\\scripts\\migrate_subscriptions_to_programs.py",
+      "backend\\app\\scripts\\seed_json_schemas.py",
+      "backend\\app\\services\\credit_lot_allocator.py",
+      "backend\\app\\services\\credit_wallet_service.py",
+      "backend\\app\\services\\plot_pipeline_service.py",
+      "backend\\app\\services\\share_service.py",
+      "backend\\app\\services\\solver_stub.py",
+      "backend\\app\\services\\subscription_service.py",
+      "backend\\app\\services\\tier_utils.py",
+      "backend\\app\\services\\validation_v3.py",
+      "backend\\app\\services\\visualization\\decision_engine.py",
+      "backend\\app\\services\\visualization\\plot_renderer.py",
+      "src\\app\\admin\\billing\\programs\\page.tsx",
+      "src\\app\\admin\\quotas\\page.tsx",
+      "src\\app\\admin\\users\\[id]\\page.tsx",
+      "src\\app\\admin\\users\\page.tsx",
+      "src\\app\\adminpayments\\config\\page.tsx",
+      "src\\components\\snap\\SnapSolveV2.tsx",
+      "src\\lib\\api.ts",
+      "src\\lib\\subscription.ts"
+    ]
+  },
+  {
+    "class": "User",
+    "table": "user",
+    "class_hits": 763,
+    "table_hits": 1201,
+    "total_hits": 1964,
+    "class_files": [
+      "backend\\app\\admin_billing\\billing_flags.py",
+      "backend\\app\\admin_billing\\billing_health.py",
+      "backend\\app\\admin_billing\\billing_holds.py",
+      "backend\\app\\admin_billing\\billing_invoices.py",
+      "backend\\app\\admin_billing\\billing_ledger.py",
+      "backend\\app\\admin_billing\\billing_packs.py",
+      "backend\\app\\admin_billing\\billing_pricing.py",
+      "backend\\app\\admin_billing\\billing_programs.py",
+      "backend\\app\\admin_billing\\billing_refunds.py",
+      "backend\\app\\admin_billing\\billing_wallet.py",
+      "backend\\app\\admin_billing\\deps.py",
+      "backend\\app\\api.py",
+      "backend\\app\\api_admin.py",
+      "backend\\app\\api_admin_content.py",
+      "backend\\app\\api_admin_credits.py",
+      "backend\\app\\api_admin_health.py",
+      "backend\\app\\api_admin_ocr_config.py",
+      "backend\\app\\api_admin_payments.py",
+      "backend\\app\\api_admin_payments_config.py",
+      "backend\\app\\api_billing.py",
+      "backend\\app\\api_stripe.py",
+      "backend\\app\\api_topups.py",
+      "backend\\app\\api_wallet.py",
+      "backend\\app\\bg_routers\\credits_router.py",
+      "backend\\app\\bg_routers\\local_router.py",
+      "backend\\app\\bg_routers\\notifications_router.py",
+      "backend\\app\\bg_routers\\plot_router.py",
+      "backend\\app\\database.py",
+      "backend\\app\\jobs\\grant_subscription_credits_job.py",
+      "backend\\app\\jobs\\nightly_reconciliation.py",
+      "backend\\app\\llm_profiles\\profile_resolver.py",
+      "backend\\app\\main.py",
+      "backend\\app\\scripts\\migrate_subscriptions_to_programs.py",
+      "backend\\app\\scripts\\verify_production_e2e.py",
+      "backend\\app\\services\\admin\\analytics_service.py",
+      "backend\\app\\services\\admin_config_service.py",
+      "backend\\app\\services\\billing_feature_flags.py",
+      "backend\\app\\services\\billing_ledger_service_v2.py",
+      "backend\\app\\services\\billing_service.py",
+      "backend\\app\\services\\credit_lot_allocator.py",
+      "backend\\app\\services\\credit_program_service.py",
+      "backend\\app\\services\\credit_transfer_service.py",
+      "backend\\app\\services\\credit_wallet_service.py",
+      "backend\\app\\services\\intent.py",
+      "backend\\app\\services\\ocr\\ocr_router_service.py",
+      "backend\\app\\services\\plot_pipeline_service.py",
+      "backend\\app\\services\\refund_service.py",
+      "backend\\app\\services\\solve\\superset_v2_pipeline.py",
+      "backend\\app\\services\\solve_text_pipeline.py",
+      "backend\\app\\services\\solver_v3.py",
+      "backend\\app\\services\\stripe_webhook_processor.py",
+      "backend\\app\\services\\subscription_service.py",
+      "backend\\app\\services\\tier_utils.py",
+      "backend\\app\\services\\top_up_service.py",
+      "backend\\app\\services\\vision copy.py",
+      "backend\\app\\services\\visualization\\decision_engine.py",
+      "backend\\app\\services\\voice\\voice_service.py",
+      "backend\\app\\tasks\\whatsapp_tasks.py",
+      "backend\\app\\tools\\fix_db_state.py",
+      "backend\\app\\tools\\openai_debug_harness.py",
+      "backend\\app\\tools\\verify_production_e2e.py",
+      "backend\\app\\worker.py",
+      "src\\app\\admin\\billing\\chat-billing\\page.tsx",
+      "src\\app\\admin\\billing\\enrollments\\page.tsx",
+      "src\\app\\admin\\billing\\health\\page.tsx",
+      "src\\app\\admin\\billing\\holds\\page.tsx",
+      "src\\app\\admin\\billing\\inspector\\page.tsx",
+      "src\\app\\admin\\billing\\invoices\\page.tsx",
+      "src\\app\\admin\\billing\\ledger\\page.tsx",
+      "src\\app\\admin\\billing\\programs\\enrollments\\page.tsx",
+      "src\\app\\admin\\billing\\refunds\\page.tsx",
+      "src\\app\\admin\\billing\\users\\[userId]\\wallet\\page.tsx",
+      "src\\app\\admin\\cache\\question-identity\\page.tsx",
+      "src\\app\\admin\\dashboard\\page.tsx",
+      "src\\app\\admin\\layout.tsx",
+      "src\\app\\admin\\logs\\page.tsx",
+      "src\\app\\admin\\observability\\llm-usage\\page.tsx",
+      "src\\app\\admin\\quotas\\page.tsx",
+      "src\\app\\admin\\users\\[id]\\page.tsx",
+      "src\\app\\admin\\users\\page.tsx",
+      "src\\app\\adminpayments\\layout.tsx",
+      "src\\app\\adminpayments\\page.tsx",
+      "src\\app\\adminpayments\\topups\\page.tsx",
+      "src\\app\\profile\\page.tsx",
+      "src\\components\\DashboardNavBar.tsx",
+      "src\\components\\TopNavBar.tsx",
+      "src\\components\\layout\\StudentLayout.tsx",
+      "src\\components\\math-canvas\\PaperPage.tsx",
+      "src\\lib\\mock-response.ts"
+    ],
+    "table_files": [
+      "backend\\app\\admin_billing\\billing_health.py",
+      "backend\\app\\admin_billing\\billing_holds.py",
+      "backend\\app\\admin_billing\\billing_invoices.py",
+      "backend\\app\\admin_billing\\billing_ledger.py",
+      "backend\\app\\admin_billing\\billing_pricing.py",
+      "backend\\app\\admin_billing\\billing_programs.py",
+      "backend\\app\\admin_billing\\billing_refunds.py",
+      "backend\\app\\admin_billing\\billing_wallet.py",
+      "backend\\app\\admin_billing\\deps.py",
+      "backend\\app\\api.py",
+      "backend\\app\\api_admin.py",
+      "backend\\app\\api_admin_credits.py",
+      "backend\\app\\api_admin_health.py",
+      "backend\\app\\api_admin_payments.py",
+      "backend\\app\\api_admin_payments_config.py",
+      "backend\\app\\api_billing.py",
+      "backend\\app\\api_stripe.py",
+      "backend\\app\\api_topups.py",
+      "backend\\app\\api_wallet.py",
+      "backend\\app\\bg_routers\\credits_router.py",
+      "backend\\app\\bg_routers\\local_router.py",
+      "backend\\app\\bg_routers\\notifications_router.py",
+      "backend\\app\\bg_routers\\snap_solve_pdf.py",
+      "backend\\app\\jobs\\monthly_grant_scheduler.py",
+      "backend\\app\\jobs\\nightly_reconciliation.py",
+      "backend\\app\\llm_profiles\\profile_resolver.py",
+      "backend\\app\\main.py",
+      "backend\\app\\scripts\\migrate_subscriptions_to_programs.py",
+      "backend\\app\\scripts\\seed_json_schemas.py",
+      "backend\\app\\scripts\\verify_production_e2e.py",
+      "backend\\app\\services\\audit_log_service.py",
+      "backend\\app\\services\\billing_exceptions.py",
+      "backend\\app\\services\\billing_feature_flags.py",
+      "backend\\app\\services\\billing_ledger_service_v2.py",
+      "backend\\app\\services\\billing_metrics.py",
+      "backend\\app\\services\\context_normalizer.py",
+      "backend\\app\\services\\credit_program_service.py",
+      "backend\\app\\services\\credit_transfer_service.py",
+      "backend\\app\\services\\credit_wallet_service.py",
+      "backend\\app\\services\\intent.py",
+      "backend\\app\\services\\invoice_service.py",
+      "backend\\app\\services\\llm\\clients.py",
+      "backend\\app\\services\\math\\error_localizer.py",
+      "backend\\app\\services\\mode_execution_service.py",
+      "backend\\app\\services\\ocr\\ocr_router_service.py",
+      "backend\\app\\services\\ocr\\ocr_service.py",
+      "backend\\app\\services\\ocr\\post_process_service.py",
+      "backend\\app\\services\\plot_integration.py",
+      "backend\\app\\services\\plot_pipeline_service.py",
+      "backend\\app\\services\\refund_service.py",
+      "backend\\app\\services\\school_migration_service.py",
+      "backend\\app\\services\\solve\\batch_tier_runtime.py",
+      "backend\\app\\services\\solve\\cache_service.py",
+      "backend\\app\\services\\solve\\superset_v2_pipeline.py",
+      "backend\\app\\services\\solve_text_pipeline.py",
+      "backend\\app\\services\\solver.py",
+      "backend\\app\\services\\solver_v3.py",
+      "backend\\app\\services\\stripe_webhook_processor.py",
+      "backend\\app\\services\\subscription_service.py",
+      "backend\\app\\services\\tier_utils.py",
+      "backend\\app\\services\\top_up_service.py",
+      "backend\\app\\services\\vision copy.py",
+      "backend\\app\\services\\vision.py",
+      "backend\\app\\services\\visualization\\decision_engine.py",
+      "backend\\app\\services\\voice\\voice_service.py",
+      "backend\\app\\services\\whatsapp\\whatsapp_service.py",
+      "backend\\app\\storage\\debug\\openai\\20260125_134902_solve_cc5bb3d8\\request_sanitized.json",
+      "backend\\app\\storage\\debug\\openai\\20260125_135021_solve_f6907926\\request_sanitized.json",
+      "backend\\app\\storage\\debug\\openai\\20260125_140836_solve_b666e07f\\request_sanitized.json",
+      "backend\\app\\storage\\debug\\openai\\20260125_140836_solve_b666e07f\\response_raw.json",
+      "backend\\app\\tasks\\whatsapp_tasks.py",
+      "backend\\app\\tools\\fix_db_state.py",
+      "backend\\app\\tools\\openai_debug_harness.py",
+      "backend\\app\\utils\\structured_output_builder.py",
+      "backend\\app\\utils\\token_utils.py",
+      "src\\app\\admin\\billing\\chat-billing\\page.tsx",
+      "src\\app\\admin\\billing\\enrollments\\page.tsx",
+      "src\\app\\admin\\billing\\health\\page.tsx",
+      "src\\app\\admin\\billing\\inspector\\page.tsx",
+      "src\\app\\admin\\billing\\programs\\page.tsx",
+      "src\\app\\admin\\billing\\refunds\\page.tsx",
+      "src\\app\\admin\\billing\\users\\[userId]\\wallet\\page.tsx",
+      "src\\app\\admin\\dashboard\\page.tsx",
+      "src\\app\\admin\\legal\\privacy\\page.tsx",
+      "src\\app\\admin\\logs\\page.tsx",
+      "src\\app\\admin\\prompt-bindings\\page.tsx",
+      "src\\app\\admin\\quotas\\page.tsx",
+      "src\\app\\admin\\solver-attempts\\page.tsx",
+      "src\\app\\admin\\users\\[id]\\page.tsx",
+      "src\\app\\admin\\users\\page.tsx",
+      "src\\app\\chat\\[id]\\page.tsx",
+      "src\\app\\dashboard\\page.tsx",
+      "src\\app\\login\\page.tsx",
+      "src\\app\\onboarding\\page.tsx",
+      "src\\app\\profile\\page.tsx",
+      "src\\app\\share\\[token]\\ShareReadonlyClient.tsx",
+      "src\\app\\signup\\page.tsx",
+      "src\\app\\solve\\page.tsx",
+      "src\\components\\DashboardNavBar.tsx",
+      "src\\components\\InputStatus.tsx",
+      "src\\components\\SplitModal.tsx",
+      "src\\components\\TermsAcceptanceGate.tsx",
+      "src\\components\\ThemeToggle.tsx",
+      "src\\components\\TopNavBar.tsx",
+      "src\\components\\layout\\StudentLayout.tsx",
+      "src\\components\\math-canvas\\ChatMessage.tsx",
+      "src\\components\\math-canvas\\RightTutorChat.tsx",
+      "src\\components\\math-canvas\\normalizer.ts",
+      "src\\components\\math-canvas\\types.ts",
+      "src\\components\\snap\\SnapSolveV2.tsx",
+      "src\\components\\snap_solve\\SnapSolveInputPanel.tsx",
+      "src\\components\\workspace\\ContextualChatPanel.tsx",
+      "src\\lib\\mock-batch-session.ts",
+      "src\\lib\\multiQuestionDetector.ts",
+      "src\\lib\\tokenEstimator.ts"
+    ]
+  }
+]

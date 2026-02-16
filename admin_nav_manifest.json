@@ -279,6 +279,16 @@
     },
     {
       "type": "link",
+      "label": "Chat Billing",
+      "href": "/admin/billing/chat-billing",
+      "icon": "stacked_line_chart",
+      "page_title": "Chat Billing Intelligence",
+      "api_checks": [
+        "/api/v1/admin/observability/chat-billing"
+      ]
+    },
+    {
+      "type": "link",
       "label": "Refund Center",
       "href": "/admin/billing/refunds",
       "icon": "currency_exchange",

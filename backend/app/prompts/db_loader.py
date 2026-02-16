@@ -82,11 +82,13 @@ def _session_scope(session: Optional[Session] = None):
 
 
 def _resolve_tier(tier: str) -> PromptTierEnum:
-    slug = (tier or "free").strip().lower()
+    slug = (tier or "short_steps").strip().lower()
     if "research" in slug or slug in {"family_standard", "enterprise", "family"}:
         return PromptTierEnum.RESEARCH
-    if slug == "free":
-        return PromptTierEnum.FREE
+    if slug in {"final", "short"}:
+        return PromptTierEnum.FINAL
+    if slug in {"short_steps", "free", "three_step"}:
+        return PromptTierEnum.SHORT_STEPS
     return PromptTierEnum.STANDARD
 
 

@@ -25,8 +25,8 @@ class SubscriptionService:
             free_mults = PlanMultipliers(
                 credits=CreditsConfig(
                     solve=SolveCreditsConfig(
-                        free=TierPricingConfig(text=5, snap_image=5, snap_pdf=5, voice=5),
-                        short=TierPricingConfig(text=7, snap_image=7, snap_pdf=7, voice=7),
+                        short_steps=TierPricingConfig(text=5, snap_image=5, snap_pdf=5, voice=5),
+                        final=TierPricingConfig(text=7, snap_image=7, snap_pdf=7, voice=7),
                         standard=TierPricingConfig(text=10, snap_image=10, snap_pdf=10, voice=10),
                         research=TierPricingConfig(text=25, snap_image=25, snap_pdf=25, voice=25)
                     )
@@ -50,9 +50,9 @@ class SubscriptionService:
             student_mults = PlanMultipliers(
                 credits=CreditsConfig(
                     solve=SolveCreditsConfig(
-                        # Free Tier usage for Students
-                        free=TierPricingConfig(text=5, snap_image=5, snap_pdf=5, voice=5),
-                        short=TierPricingConfig(text=7, snap_image=7, snap_pdf=7, voice=7),
+                        # Short-steps/final usage for Students
+                        short_steps=TierPricingConfig(text=5, snap_image=5, snap_pdf=5, voice=5),
+                        final=TierPricingConfig(text=7, snap_image=7, snap_pdf=7, voice=7),
                         standard=TierPricingConfig(text=10, snap_image=10, snap_pdf=10, voice=10),
                         research=TierPricingConfig(text=25, snap_image=25, snap_pdf=25, voice=25)
                     )
@@ -151,14 +151,14 @@ class SubscriptionService:
     def calculate_cost(self, plan: Plan, tier: str, source_type: str = "text") -> float:
         """
         Calculate cost for a solve action based on Tier and Source Type.
-        tier: "free", "short", "standard", "research"
+        tier: "short_steps", "final", "standard", "research"
         source_type: "text", "snap_image", "snap_pdf", "voice"
         """
         tier_key = (tier or "").strip().lower()
-        if tier_key in {"three_step", "free"}:
-            tier_key = "free"
-        elif tier_key in {"family_standard", "family", "short"}:
-            tier_key = "short"
+        if tier_key in {"three_step", "free", "short_steps"}:
+            tier_key = "short_steps"
+        elif tier_key in {"family_standard", "family", "short", "final"}:
+            tier_key = "final"
         elif tier_key in {"student_standard", "pro", "premium", "standard"}:
             tier_key = "standard"
         elif tier_key in {"research", "enterprise"}:
@@ -216,7 +216,7 @@ class SubscriptionService:
         """
         Check if user can perform action and debit credits.
         action_request: {
-            "tier": "free" | "standard" | "research" (optional, derived from mode if missing),
+            "tier": "short_steps" | "final" | "standard" | "research" (optional, derived from mode if missing),
             "mode": "minimal" | "detailed" | "research" (frontend mode),
             "has_ocr": bool,
             "has_voice": bool,
@@ -264,13 +264,13 @@ class SubscriptionService:
             elif mode == "research":
                 tier = "research"
             else:
-                tier = "three_step"
+                tier = "short_steps"
         else:
             raw_tier = str(tier).lower()
-            if raw_tier in {"free", "three_step"}:
-                tier = "three_step"
-            elif raw_tier in {"short"}:
-                tier = "short"
+            if raw_tier in {"free", "three_step", "short_steps"}:
+                tier = "short_steps"
+            elif raw_tier in {"short", "final"}:
+                tier = "final"
             elif raw_tier in {"standard"}:
                 tier = "standard"
             elif raw_tier in {"research"}:
@@ -290,8 +290,8 @@ class SubscriptionService:
                 source = "text"
 
         # 3. Check Gates
-        if tier == "research" and not feats.allow_research:
-            return {"allowed": False, "reason": "Research tier not included in your plan", "error_code": "TIER_NOT_ALLOWED"}
+            if tier == "research" and not feats.allow_research:
+                return {"allowed": False, "reason": "Research tier not included in your plan", "error_code": "TIER_NOT_ALLOWED"}
             
         if tier == "standard":
              # Implicit gate?

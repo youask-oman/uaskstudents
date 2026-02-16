@@ -17,11 +17,11 @@ export type WalletSummary = {
     expiring_soon_credits: number;
     expiring_soon_lots: number;
     entitlements: Record<string, unknown>;
-    effective_tier: "FREE" | "SHORT" | "STANDARD" | "RESEARCH";
+    effective_tier: "SHORT_STEPS" | "FINAL" | "STANDARD" | "RESEARCH";
     active_programs: string[];
 };
 
-export type WalletTier = "FREE" | "SHORT" | "STANDARD" | "RESEARCH";
+export type WalletTier = "SHORT_STEPS" | "FINAL" | "STANDARD" | "RESEARCH";
 
 export type WalletLot = {
     id: number;
@@ -270,12 +270,13 @@ export type CreditsEstimateResponse = {
     pricing_version_token_config?: number;
 };
 
-export type SolveTier = "FREE" | "STANDARD" | "RESEARCH" | "SHORT";
+export type SolveTier = "SHORT_STEPS" | "STANDARD" | "RESEARCH" | "FINAL";
 export type SolveInputType = "text" | "snap" | "voice";
 export type SolveAssetType = "none" | "image" | "pdf";
 
 function mapTierToApi(tier: SolveTier): string {
-    if (tier === "FREE") return "free";
+    if (tier === "SHORT_STEPS") return "short_steps";
+    if (tier === "FINAL") return "final";
     return tier.toLowerCase();
 }
 

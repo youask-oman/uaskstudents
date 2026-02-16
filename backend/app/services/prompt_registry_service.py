@@ -246,9 +246,9 @@ class PromptRegistryService:
             return PromptTierEnum.RESEARCH
         if "standard" in slug or "family" in slug or "pro" in slug:
             return PromptTierEnum.STANDARD
-        if "short" in slug:
-            return PromptTierEnum.SHORT
-        return PromptTierEnum.FREE
+        if "final" in slug or "short" in slug:
+            return PromptTierEnum.FINAL
+        return PromptTierEnum.SHORT_STEPS
 
     def _resolve_mode(self, mode: str) -> PromptModeEnum:
         mode = (mode or "solve").lower()

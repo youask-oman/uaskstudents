@@ -40,14 +40,14 @@ MODE_CONFIG: Dict[str, SolveModeConfig] = {
     "free_minimal": SolveModeConfig(
         cap=10,
         schema_names=["solve_free_minimal_v1_openai", "solve_free_minimal_v1"],
-        binding_tier="FREE",
+        binding_tier="SHORT_STEPS",
         solver_mode="minimal",
         batch_supported=True,
     ),
     "final_only": SolveModeConfig(
         cap=10,
         schema_names=["solve_final_answer_v1_openai", "solve_final_answer_v1"],
-        binding_tier="SHORT",
+        binding_tier="FINAL",
         solver_mode="minimal",
         batch_supported=True,
     ),
@@ -114,9 +114,9 @@ def _parse_tier_enum(raw_tier: str) -> PromptTierEnum:
         return PromptTierEnum.RESEARCH
     if normalized in {"STANDARD", "STUDENT_STANDARD", "PRO", "PREMIUM", "FAMILY", "FAMILY_STANDARD"}:
         return PromptTierEnum.STANDARD
-    if normalized in {"SHORT", "FINAL_ONLY"}:
-        return PromptTierEnum.SHORT
-    return PromptTierEnum.FREE
+    if normalized in {"SHORT", "FINAL", "FINAL_ONLY"}:
+        return PromptTierEnum.FINAL
+    return PromptTierEnum.SHORT_STEPS
 
 
 def _find_schema_entry(session: Session, schema_names: List[str]) -> JsonSchemaEntry:

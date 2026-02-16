@@ -143,7 +143,26 @@ interface DebugAttemptDetails {
     };
 }
 
-const ALL_SOLVE_TIERS: SolveTier[] = ["FREE", "SHORT", "STANDARD", "RESEARCH"];
+const ALL_SOLVE_TIERS: SolveTier[] = ["SHORT_STEPS", "FINAL", "STANDARD", "RESEARCH"];
+
+const formatBatchFinalAnswer = (value: unknown): string => {
+    if (typeof value === "string") return value;
+    if (!value || typeof value !== "object") return "";
+    const obj = value as Record<string, unknown>;
+    const candidates = [
+        obj.answer_text,
+        obj.answer_latex,
+        obj.answer,
+        obj.text,
+        obj.latex,
+        obj.value,
+    ];
+    for (const candidate of candidates) {
+        if (typeof candidate === "string" && candidate.trim()) return candidate;
+        if (typeof candidate === "number" || typeof candidate === "boolean") return String(candidate);
+    }
+    return "";
+};
 
 const normalizeLanguageCode = (value: string): string => {
     const raw = (value || "").trim().toLowerCase();
@@ -482,11 +501,15 @@ export default function DashboardPage() {
     const { pushToast } = useToast();
     const useSnapSolveUploadPanelV2 = process.env.NEXT_PUBLIC_SNAP_SOLVE_UPLOAD_PANEL_V2 !== "false";
     const devToolsEnabled = process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_ENABLE_DEV_TOOLS === "true";
-    const mapTierToApi = (tier: SolveTier) => (tier === "FREE" ? "free" : tier.toLowerCase());
+    const mapTierToApi = (tier: SolveTier) => {
+        if (tier === "SHORT_STEPS") return "short_steps";
+        if (tier === "FINAL") return "final";
+        return tier.toLowerCase();
+    };
     const normalizeTierLabel = (tier?: string) => {
         const raw = (tier || "").trim().toLowerCase();
-        if (raw === "three_step" || raw === "free") return "FREE";
-        if (raw === "short") return "SHORT";
+        if (raw === "three_step" || raw === "free" || raw === "short_steps") return "SHORT_STEPS";
+        if (raw === "short" || raw === "final") return "FINAL";
         if (raw === "standard" || raw === "student_standard") return "STANDARD";
         if (raw === "research" || raw === "enterprise") return "RESEARCH";
         return tier || "-";
@@ -546,8 +569,8 @@ export default function DashboardPage() {
         allow_plot: true,
     });
     const [tierEstimateByTier, setTierEstimateByTier] = useState<Record<SolveTier, number>>({
-        FREE: 0,
-        SHORT: 0,
+        SHORT_STEPS: 0,
+        FINAL: 0,
         STANDARD: 0,
         RESEARCH: 0,
     });
@@ -831,6 +854,7 @@ export default function DashboardPage() {
     // Tier-Aware Solve State
     const selectedGoal = 'solve';
     const [selectedSolveTier, setSelectedSolveTier] = useState<SolveTier>("STANDARD");
+    const isPlotLockedByTier = selectedSolveTier === "FINAL";
     const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
     const [walletPrograms, setWalletPrograms] = useState<WalletProgramEnrollment[]>([]);
     const [walletLoaded, setWalletLoaded] = useState(false);
@@ -947,7 +971,7 @@ export default function DashboardPage() {
 
     useEffect(() => {
         const stored = typeof window !== "undefined" ? localStorage.getItem("uask.solveTier") : null;
-        if (stored === "FREE" || stored === "STANDARD" || stored === "RESEARCH" || stored === "SHORT") {
+        if (stored === "SHORT_STEPS" || stored === "STANDARD" || stored === "RESEARCH" || stored === "FINAL") {
             setSelectedSolveTier(stored);
         }
     }, []);
@@ -956,7 +980,7 @@ export default function DashboardPage() {
         if (!walletReady) return;
         const stored = typeof window !== "undefined" ? localStorage.getItem("uask.solveTier") : null;
         const defaultTier: SolveTier =
-            stored === "FREE" || stored === "STANDARD" || stored === "RESEARCH" || stored === "SHORT"
+            stored === "SHORT_STEPS" || stored === "STANDARD" || stored === "RESEARCH" || stored === "FINAL"
                 ? stored
                 : "STANDARD";
         setSelectedSolveTier(defaultTier);
@@ -994,8 +1018,8 @@ export default function DashboardPage() {
             );
             if (!active) return;
             const next: Record<SolveTier, number> = {
-                FREE: 0,
-                SHORT: 0,
+                SHORT_STEPS: 0,
+                FINAL: 0,
                 STANDARD: 0,
                 RESEARCH: 0,
             };
@@ -1013,10 +1037,10 @@ export default function DashboardPage() {
         const selectedTierBlockedByCredits = !canAffordTier(selectedSolveTier);
         if (!selectedTierBlockedByCredits) return;
 
-        const fallbackOrder: SolveTier[] = ["STANDARD", "SHORT", "FREE", "RESEARCH"];
+        const fallbackOrder: SolveTier[] = ["STANDARD", "FINAL", "SHORT_STEPS", "RESEARCH"];
         const fallback = fallbackOrder.find((tier) => {
             return canAffordTier(tier);
-        }) || "FREE";
+        }) || "SHORT_STEPS";
         setSelectedSolveTier(fallback);
         if (typeof window !== "undefined") {
             localStorage.setItem("uask.solveTier", fallback);
@@ -1038,7 +1062,7 @@ export default function DashboardPage() {
                         ocr: activeTab === "snap",
                         voice: activeTab === "voice",
                         verify: false,
-                        plot: tierFeatureGates.allow_plot && graphMode !== "off",
+                        plot: !isPlotLockedByTier && tierFeatureGates.allow_plot && graphMode !== "off",
                     },
                 });
                 setEstimate(response);
@@ -1047,12 +1071,18 @@ export default function DashboardPage() {
             }
         };
         void runEstimate();
-    }, [tokenPolicyReady, selectedSolveTier, activeTab, estimatedQuestionCount, graphMode, tierFeatureGates.allow_plot]);
+    }, [tokenPolicyReady, selectedSolveTier, activeTab, estimatedQuestionCount, graphMode, tierFeatureGates.allow_plot, isPlotLockedByTier]);
+
+    useEffect(() => {
+        if (isPlotLockedByTier && graphMode !== "off") {
+            setGraphMode("off");
+        }
+    }, [isPlotLockedByTier, graphMode]);
 
     useEffect(() => {
         const userId = localStorage.getItem("user_id");
         if (!userId) return;
-        const requestedMode = (selectedSolveTier === "FREE" || selectedSolveTier === "SHORT") ? "minimal" : "detailed";
+        const requestedMode = (selectedSolveTier === "SHORT_STEPS" || selectedSolveTier === "FINAL") ? "minimal" : "detailed";
         void fetchSolveRuntimeMeta(userId, selectedSolveTier, requestedMode)
             .then((runtimeMeta) => {
                 const gates = {
@@ -1060,7 +1090,7 @@ export default function DashboardPage() {
                     allow_plot: runtimeMeta.features?.allow_plot ?? true,
                 };
                 setTierFeatureGates(gates);
-                if (!gates.allow_plot && graphMode !== "off") {
+                if ((isPlotLockedByTier || !gates.allow_plot) && graphMode !== "off") {
                     setGraphMode("off");
                 }
             })
@@ -1068,7 +1098,7 @@ export default function DashboardPage() {
                 // Keep last known gates on fetch failure.
             });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedSolveTier, graphMode]);
+    }, [selectedSolveTier, graphMode, isPlotLockedByTier]);
 
     useEffect(() => {
         const userId = localStorage.getItem("user_id");
@@ -1402,7 +1432,7 @@ export default function DashboardPage() {
     const handleDebugRuntimeMeta = async () => {
         if (isSolving) return;
         const userId = localStorage.getItem("user_id") || "1";
-        const requestedMode = (selectedSolveTier === "FREE" || selectedSolveTier === "SHORT") ? "minimal" : "detailed";
+        const requestedMode = (selectedSolveTier === "SHORT_STEPS" || selectedSolveTier === "FINAL") ? "minimal" : "detailed";
 
         setRuntimeDebugLoading(true);
         setRuntimeDebugError(null);
@@ -1427,7 +1457,7 @@ export default function DashboardPage() {
     const handleSolveTextBatch = async (questionsToSolve: string[]) => {
         if (isSolving) return;
         const userId = localStorage.getItem("user_id") || "1";
-        const requestedMode = (selectedSolveTier === "FREE" || selectedSolveTier === "SHORT") ? "minimal" : "detailed";
+        const requestedMode = (selectedSolveTier === "SHORT_STEPS" || selectedSolveTier === "FINAL") ? "minimal" : "detailed";
         const batchMode = resolveSolveBatchMode(selectedSolveTier, requestedMode);
         const batchTier = resolveSolveBatchTier(selectedSolveTier);
         const cap = maxQuestionsAllowed ?? getSolveBatchCap(batchMode);
@@ -1505,7 +1535,7 @@ export default function DashboardPage() {
                 body: JSON.stringify({
                     tier: selectedSolveTier,
                     mode: "SOLVE",
-                    graph_mode: tierFeatureGates.allow_plot ? graphMode.toUpperCase() : "OFF",
+                    graph_mode: (isPlotLockedByTier || !tierFeatureGates.allow_plot) ? "OFF" : graphMode.toUpperCase(),
                     domain_mode: "reals",
                     preferred_response_language: "English",
                     questions_json: payload.questions.map((q, idx) => ({
@@ -1562,6 +1592,10 @@ export default function DashboardPage() {
                 title: "Batch solve complete",
                 message: `Solved ${trimmedQuestions.length} question(s) in one request.`,
             });
+            const batchSessionId = parsed.session_id != null ? String(parsed.session_id) : "";
+            if (batchSessionId) {
+                setTimeout(() => router.push(`/edit/${batchSessionId}`), 350);
+            }
         } catch (err) {
             pushToast({
                 type: "error",
@@ -1654,7 +1688,7 @@ export default function DashboardPage() {
 
         try {
             const streamCandidates = ["/api/v1/solve_v3_stream"];
-            const requestedMode = (selectedSolveTier === "FREE" || selectedSolveTier === "SHORT") ? "minimal" : "detailed";
+            const requestedMode = (selectedSolveTier === "SHORT_STEPS" || selectedSolveTier === "FINAL") ? "minimal" : "detailed";
             const idempotencyKey = (devToolsEnabled && reuseIdempotencyKey && lastIdempotencyKey)
                 ? lastIdempotencyKey
                 : createIdempotencyKey();
@@ -1678,7 +1712,7 @@ export default function DashboardPage() {
             const features = {
                 ocr_used: activeTab === 'snap',
                 voice_used: activeTab === 'voice',
-                plot_requested: tierFeatureGates.allow_plot && graphMode !== 'off',
+                plot_requested: !isPlotLockedByTier && tierFeatureGates.allow_plot && graphMode !== 'off',
                 ...(activeTab === 'snap' ? ocrMetadata : {}),
                 ...(activeTab === 'voice' ? voiceFeatures : {}),
                 ...featureOverrideFeatures,
@@ -1706,7 +1740,7 @@ export default function DashboardPage() {
                                 region_state_province: userProfile?.region_state_province || undefined
                             },
                             features_used: features,
-                            graph_mode: tierFeatureGates.allow_plot ? graphMode : "off",
+                            graph_mode: (isPlotLockedByTier || !tierFeatureGates.allow_plot) ? "off" : graphMode,
                             attach_to_step_id: attachToStepId,
                             force_validity: mathValidityConfirmed,
                             idempotency_key: idempotencyKey,
@@ -1982,18 +2016,18 @@ export default function DashboardPage() {
                                     <SegmentedControl
                                         options={[
                                             {
-                                                value: "FREE",
-                                                label: "Final Answer",
+                                                value: "SHORT_STEPS",
+                                                label: "Short Steps",
                                                 icon: "bolt",
-                                                disabled: !canAffordTier("FREE"),
-                                                tooltip: !canAffordTier("FREE") ? `Need ${Number(tierEstimateByTier.FREE || 0).toFixed(2)} credits.` : undefined,
+                                                disabled: !canAffordTier("SHORT_STEPS"),
+                                                tooltip: !canAffordTier("SHORT_STEPS") ? `Need ${Number(tierEstimateByTier.SHORT_STEPS || 0).toFixed(2)} credits.` : undefined,
                                             },
                                             {
-                                                value: "SHORT",
-                                                label: "Short",
+                                                value: "FINAL",
+                                                label: "Final Answer",
                                                 icon: "bolt",
-                                                disabled: !canAffordTier("SHORT"),
-                                                tooltip: !canAffordTier("SHORT") ? `Need ${Number(tierEstimateByTier.SHORT || 0).toFixed(2)} credits.` : undefined,
+                                                disabled: !canAffordTier("FINAL"),
+                                                tooltip: !canAffordTier("FINAL") ? `Need ${Number(tierEstimateByTier.FINAL || 0).toFixed(2)} credits.` : undefined,
                                             },
                                             {
                                                 value: "STANDARD",
@@ -2014,7 +2048,7 @@ export default function DashboardPage() {
                                         ]}
                                         value={selectedSolveTier}
                                         onChange={(v) => {
-                                            if (v === "FREE" || v === "STANDARD" || v === "RESEARCH" || v === "SHORT") {
+                                            if (v === "SHORT_STEPS" || v === "STANDARD" || v === "RESEARCH" || v === "FINAL") {
                                                 setSelectedSolveTier(v as SolveTier);
                                                 if (typeof window !== "undefined") {
                                                     localStorage.setItem("uask.solveTier", v);
@@ -2059,13 +2093,13 @@ export default function DashboardPage() {
                                             key={mode}
                                             type="button"
                                             onClick={() => {
-                                                if (!tierFeatureGates.allow_plot && mode !== "off") return;
+                                                if ((isPlotLockedByTier || !tierFeatureGates.allow_plot) && mode !== "off") return;
                                                 setGraphMode(mode);
                                             }}
-                                            disabled={!tierFeatureGates.allow_plot && mode !== "off"}
+                                            disabled={(isPlotLockedByTier || !tierFeatureGates.allow_plot) && mode !== "off"}
                                             className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all ${graphMode === mode
                                                 ? "bg-white dark:bg-slate-600 text-primary shadow-md scale-105"
-                                                : !tierFeatureGates.allow_plot && mode !== "off"
+                                                : (isPlotLockedByTier || !tierFeatureGates.allow_plot) && mode !== "off"
                                                     ? "text-slate-300 dark:text-slate-600 cursor-not-allowed"
                                                     : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
                                                 }`}
@@ -2075,9 +2109,9 @@ export default function DashboardPage() {
                                     ))}
                                 </div>
                             </div>
-                            {!tierFeatureGates.allow_plot && (
+                            {(isPlotLockedByTier || !tierFeatureGates.allow_plot) && (
                                 <p className="text-xs text-slate-500 dark:text-slate-400 text-right">
-                                    Plot mode is disabled by feature gates for this tier.
+                                    Plot mode is forced OFF for Final Answer tier and disabled when feature gates block plots.
                                 </p>
                             )}
                         </div>
@@ -2185,7 +2219,7 @@ export default function DashboardPage() {
                                         {useSnapSolveUploadPanelV2 ? (
                                             <SnapSolveInputPanel
                                                 tier={selectedSolveTier}
-                                                requestedMode={(selectedSolveTier === "FREE" || selectedSolveTier === "SHORT") ? "minimal" : "detailed"}
+                                                requestedMode={(selectedSolveTier === "SHORT_STEPS" || selectedSolveTier === "FINAL") ? "minimal" : "detailed"}
                                                 onResolveText={(text, featureOverrides) => {
                                                     setQuery(text);
                                                     setMathValidityConfirmed(false);
@@ -2983,7 +3017,7 @@ export default function DashboardPage() {
                                             </div>
                                         ) : (
                                             <div className="text-sm text-slate-800 dark:text-slate-100 whitespace-pre-wrap">
-                                                {item.final_answer || "No final answer returned."}
+                                                {formatBatchFinalAnswer(item.final_answer) || "No final answer returned."}
                                             </div>
                                         )}
                                     </div>

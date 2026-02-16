@@ -57,7 +57,20 @@ class PromptManager:
             raise PromptRegistryError("Binding references missing prompt or schema entries.")
 
         result = {
-            "binding": binding,
+            "binding": {
+                "id": str(binding.id),
+                "tier": binding.tier.value if binding.tier else None,
+                "mode": binding.mode.value if binding.mode else None,
+                "global_system_prompt_id": binding.global_system_prompt_id,
+                "developer_prompt_id": binding.developer_prompt_id,
+                "output_schema_id": binding.output_schema_id,
+                "temperature": float(binding.temperature if binding.temperature is not None else 0.2),
+                "top_p": float(binding.top_p if binding.top_p is not None else 1.0),
+                "max_output_tokens": int(binding.max_output_tokens or 0),
+                "timeout_ms": int(binding.timeout_ms or 60000),
+                "max_questions_allowed": int(binding.max_questions_allowed or 0),
+                "features": binding.features if isinstance(binding.features, dict) else {},
+            },
             "global_system_prompt": global_prompt.content,
             "developer_prompt": developer_prompt.content,
             "schema": schema_entry.content,
@@ -81,4 +94,3 @@ class PromptManager:
 
 
 prompt_manager = PromptManager()
-

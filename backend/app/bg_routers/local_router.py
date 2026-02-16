@@ -29,7 +29,7 @@ MAX_UPLOAD_BYTES = int(os.getenv("SNAP_SOLVE_MAX_UPLOAD_BYTES", str(10 * 1024 * 
 MAX_IMAGE_DIM = int(os.getenv("SNAP_SOLVE_MAX_IMAGE_DIM", "2000"))
 ALLOWED_IMAGE_MIME = {"image/png", "image/jpeg", "image/webp"}
 ALLOWED_UPLOAD_MIME = ALLOWED_IMAGE_MIME | {"application/pdf"}
-_TIER_ORDER = {"free": 0, "short": 1, "standard": 2, "research": 3}
+_TIER_ORDER = {"short_steps": 0, "final": 1, "standard": 2, "research": 3}
 
 class BBox(BaseModel):
     x: confloat(ge=0.0, le=1.0)
@@ -89,11 +89,13 @@ def _normalize_tier_slug(value: Optional[str]) -> str:
     raw = (value or "").strip().lower()
     if raw in {"research", "enterprise"}:
         return "research"
-    if raw in {"family", "family_standard", "short"}:
-        return "short"
+    if raw in {"family", "family_standard", "short", "final"}:
+        return "final"
     if raw in {"standard", "student_standard", "pro", "premium"}:
         return "standard"
-    return "free"
+    if raw in {"three_step", "free", "short_steps"}:
+        return "short_steps"
+    return "short_steps"
 
 
 def _clamp_requested_tier(requested_tier: Optional[str], entitled_tier: str) -> str:
@@ -108,7 +110,7 @@ def _resolve_requested_mode(requested_mode: Optional[str], effective_tier: str) 
     mode = (requested_mode or "").strip().lower()
     if mode in {"minimal", "detailed"}:
         return mode
-    return "minimal" if _normalize_tier_slug(effective_tier) in {"free", "short"} else "detailed"
+    return "minimal" if _normalize_tier_slug(effective_tier) in {"short_steps", "final"} else "detailed"
 
 
 def _resolve_fastapi_default(value: Any) -> Any:
@@ -275,7 +277,7 @@ def _map_legacy_mode_to_text_pipeline_mode(effective_tier_slug: str, effective_r
     mode = (effective_requested_mode or "").strip().lower()
     if tier == "research":
         return "research_detailed"
-    if tier == "short":
+    if tier == "final":
         return "final_only"
     if tier == "standard":
         return "standard_detailed" if mode == "detailed" else "free_minimal"
@@ -324,7 +326,7 @@ async def solve_text_batch(
 
     try:
         tier_slug = _normalize_tier_slug(body.tier)
-        tier_external = "FINAL" if tier_slug == "short" else tier_slug.upper()
+        tier_external = "FINAL" if tier_slug == "final" else ("SHORT_STEPS" if tier_slug == "short_steps" else tier_slug.upper())
         questions_json = [
             {
                 "question_id": q.question_id,
@@ -367,7 +369,7 @@ async def solve_text_batch(
             is_saved=False,
             learning_mode="solve",
             requested_mode="minimal" if body.requested_mode in {"free_minimal", "final_only"} else "detailed",
-            solve_tier=(body.tier or "FREE").lower(),
+            solve_tier=(body.tier or "short_steps").lower(),
         )
         session.add(new_chat)
         session.commit()
@@ -608,7 +610,7 @@ async def solve_from_image_or_sketch(
     resolved_user_id_form = _resolve_fastapi_default(user_id_form)
     resolved_user_id_query = _resolve_fastapi_default(user_id)
     resolved_user_id = resolved_user_id_query if resolved_user_id_query is not None else resolved_user_id_form
-    entitled_tier_slug = "free"
+    entitled_tier_slug = "short_steps"
     if resolved_user_id:
         user_obj = session.get(User, resolved_user_id)
         if user_obj:
