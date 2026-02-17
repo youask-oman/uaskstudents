@@ -1,0 +1,38 @@
+{
+  "error": {
+    "code": "http_error",
+    "message": "OpenAI returned invalid JSON payload.",
+    "request_id": null,
+    "details": {
+      "code": "invalid_openai_json",
+      "message": "OpenAI returned invalid JSON payload.",
+      "request_id": "484be787-07bb-47fe-862d-8a027a77154d",
+      "attempt_id": "b11dee21-f75e-4190-a519-781ac0b6c1a3",
+      "details": {
+        "error": "Unterminated string starting at: line 1 column 9012 (char 9011)",
+        "provider_status": {
+          "status": "incomplete",
+          "finish_reason": "unknown",
+          "incomplete_reason": "max_output_tokens"
+        },
+        "raw_preview": "{\"schema_version\":\"prod_v2\",\"tier\":\"FINAL\",\"language\":{\"preferred_response_language\":\"English\",\"response_language\":\"English\",\"user_language\":\"English\"},\"runtime\":{\"request_id\":\"484be787-07bb-47fe-862d-8a027a77154d\",\"attempt_id\":\"b11dee21-f75e-4190-a519-781ac0b6c1a3\",\"preferred_response_language\":\"English\",\"default_mode\":\"GENERAL\",\"default_graph_mode\":\"OFF\",\"default_domain_mode\":\"reals\",\"allow_auto_split\":true,\"max_questions_allowed\":15,\"max_tasks_per_question\":6},\"items\":[{\"question_id\":\"q1\",\"question_index\":1,\"mode\":\"SOLVE\",\"problem\":{\"original_text\":\"A ball is thrown straight up from a balcony 20 m above the ground with initial velocity 18 m/s. Its height is h(t)=20+18t-4.9t^2 (meters). How long after launch does it hit the ground?\\n\\nChoices\\n(A) 3.10 s\\n(B) 4.55 s\\n(C) 5.90 s\\n(D) 6.75 s\\n(E) 2.25 s\",\"normalized_text\":\"Find t>0 such that 20+18t-4.9t^2=0.\",\"detected_tasks\":[\"solve\",\"equation\"],\"extra\":[]},\"classification\":{\"difficulty\":\"easy\",\"domain\":\"calculus\",\"grade_band\":\"college_intro\",\"topic\":\"kinematics\"},\"steps\":[],\"final_answer\":{\"answer_latex\":\"t=\\\\frac{18+\\\\sqrt{324-4( -4.9)(20)}}{2(4.9)}\",\"answer_text\":\"4.55 s\",\"units\":\"s\",\"values\":[{\"label\":\"t\",\"value\":\"4.55\",\"value...<truncated>"
+      }
+    }
+  },
+  "detail": {
+    "code": "invalid_openai_json",
+    "message": "OpenAI returned invalid JSON payload.",
+    "request_id": "484be787-07bb-47fe-862d-8a027a77154d",
+    "attempt_id": "b11dee21-f75e-4190-a519-781ac0b6c1a3",
+    "details": {
+      "error": "Unterminated string starting at: line 1 column 9012 (char 9011)",
+      "provider_status": {
+        "status": "incomplete",
+        "finish_reason": "unknown",
+        "incomplete_reason": "max_output_tokens"
+      },
+      "raw_preview": "{\"schema_version\":\"prod_v2\",\"tier\":\"FINAL\",\"language\":{\"preferred_response_language\":\"English\",\"response_language\":\"English\",\"user_language\":\"English\"},\"runtime\":{\"request_id\":\"484be787-07bb-47fe-862d-8a027a77154d\",\"attempt_id\":\"b11dee21-f75e-4190-a519-781ac0b6c1a3\",\"preferred_response_language\":\"English\",\"default_mode\":\"GENERAL\",\"default_graph_mode\":\"OFF\",\"default_domain_mode\":\"reals\",\"allow_auto_split\":true,\"max_questions_allowed\":15,\"max_tasks_per_question\":6},\"items\":[{\"question_id\":\"q1\",\"question_index\":1,\"mode\":\"SOLVE\",\"problem\":{\"original_text\":\"A ball is thrown straight up from a balcony 20 m above the ground with initial velocity 18 m/s. Its height is h(t)=20+18t-4.9t^2 (meters). How long after launch does it hit the ground?\\n\\nChoices\\n(A) 3.10 s\\n(B) 4.55 s\\n(C) 5.90 s\\n(D) 6.75 s\\n(E) 2.25 s\",\"normalized_text\":\"Find t>0 such that 20+18t-4.9t^2=0.\",\"detected_tasks\":[\"solve\",\"equation\"],\"extra\":[]},\"classification\":{\"difficulty\":\"easy\",\"domain\":\"calculus\",\"grade_band\":\"college_intro\",\"topic\":\"kinematics\"},\"steps\":[],\"final_answer\":{\"answer_latex\":\"t=\\\\frac{18+\\\\sqrt{324-4( -4.9)(20)}}{2(4.9)}\",\"answer_text\":\"4.55 s\",\"units\":\"s\",\"values\":[{\"label\":\"t\",\"value\":\"4.55\",\"value...<truncated>"
+    }
+  },
+  "request_id": null
+}

@@ -31,9 +31,11 @@ from openai import AsyncOpenAI
 # Configuration
 # -----------------------------
 
-MODEL_NAME = os.environ.get("OPENAI_MODEL_DEFAULT")
+MODEL_NAME = (os.environ.get("OPENAI_MODEL_DEFAULT") or "").strip()
 if not MODEL_NAME:
     raise RuntimeError("OPENAI_MODEL_DEFAULT is required")
+if MODEL_NAME != "gpt-5-mini":
+    raise RuntimeError(f"OPENAI_MODEL_DEFAULT must be 'gpt-5-mini', got '{MODEL_NAME}'")
 MAX_TOKENS = 500
 TEMPERATURE = 0
 

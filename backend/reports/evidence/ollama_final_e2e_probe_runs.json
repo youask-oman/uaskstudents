@@ -1,0 +1,34 @@
+[
+    {
+        "question":  "Question (Final answer only)\nState the Pythagorean theorem.\nFinal answer: ____",
+        "status":  "error",
+        "provider":  null,
+        "model":  null,
+        "local_short":  null,
+        "answer":  null,
+        "refusal":  null,
+        "request_id":  null,
+        "error":  ""
+    },
+    {
+        "question":  "Question (Final answer only)\nCompute 2+2.\nFinal answer: ____",
+        "status":  "error",
+        "provider":  null,
+        "model":  null,
+        "local_short":  null,
+        "answer":  null,
+        "refusal":  null,
+        "request_id":  null,
+        "error":  ""
+    },
+    {
+        "question":  "Question (Final answer only)\nFind derivative of x^2.\nFinal answer: ____",
+        "status":  "ok",
+        "provider":  "local",
+        "model":  "sympy-numpy-local",
+        "local_short":  true,
+        "answer":  "2*x",
+        "refusal":  null,
+        "request_id":  "ce278a83-9e9d-4594-9843-0e87f8654c02"
+    }
+]

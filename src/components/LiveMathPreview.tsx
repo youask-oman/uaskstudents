@@ -2,6 +2,7 @@
 
 import React from "react";
 import MathRenderer from "./math/MathJaxRenderer";
+import { normalizeProseMath } from "./math/mathNormalize";
 
 interface LiveMathPreviewProps {
     /** The LaTeX or math content to render */
@@ -12,7 +13,8 @@ interface LiveMathPreviewProps {
 
 export default function LiveMathPreview({ content, hideIfEmpty = true }: LiveMathPreviewProps) {
     if (hideIfEmpty && !content.trim()) return null;
-    const blocks = content
+    const normalized = normalizeProseMath(content || "");
+    const blocks = normalized
         .split(/\n{2,}/)
         .map((part) => part.trim())
         .filter((part) => part.length > 0);
@@ -34,10 +36,10 @@ export default function LiveMathPreview({ content, hideIfEmpty = true }: LiveMat
 
             {/* Content Area */}
             <div className="p-8 min-h-[120px] bg-yellow-50 dark:bg-slate-900">
-                <div className="text-xl text-red-600 dark:text-red-400 leading-relaxed space-y-5">
-                    {(blocks.length > 1 ? blocks : [content]).map((block, index) => (
+                <div className="text-xl text-slate-800 dark:text-slate-200 leading-relaxed space-y-5">
+                    {(blocks.length > 1 ? blocks : [normalized]).map((block, index) => (
                         <div data-testid="live-math-preview-block" key={`${index}-${block.slice(0, 24)}`} className="overflow-x-auto">
-                            <MathRenderer content={block} mode="block" />
+                            <MathRenderer content={block} mode="prose" />
                         </div>
                     ))}
                 </div>

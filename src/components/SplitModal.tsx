@@ -14,6 +14,8 @@ interface SplitModalProps {
     isOpen: boolean;
     /** Close handler */
     onClose: () => void;
+    /** Dismiss handler for top-right X button */
+    onDismiss?: () => void;
     /** Original input text */
     /** Suggested split questions */
     splits: string[];
@@ -28,6 +30,7 @@ interface SplitModalProps {
 export default function SplitModal({
     isOpen,
     onClose,
+    onDismiss,
     splits,
     onSelectQuestion,
     onConfirmSingleQuestion,
@@ -71,7 +74,7 @@ export default function SplitModal({
                         </div>
                     </div>
                     <button
-                        onClick={onClose}
+                        onClick={onDismiss || onClose}
                         className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
                     >
                         <span className="material-symbols-outlined text-slate-500">close</span>

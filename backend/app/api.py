@@ -1967,7 +1967,16 @@ class LatexResponse(BaseModel):
 # OCR Subsystem Endpoints
 # ------------------------------------------------------------------
 
-OCR_V5_MODEL = os.getenv("OCR_V5_MODEL") or os.environ.get("OPENAI_MODEL_DEFAULT")
+def _require_gpt5mini_model() -> str:
+    model = (os.getenv("OPENAI_MODEL_DEFAULT") or "").strip()
+    if not model:
+        return "gpt-5-mini"
+    if model != "gpt-5-mini":
+        raise RuntimeError(f"OPENAI_MODEL_DEFAULT must be 'gpt-5-mini', got '{model}'")
+    return model
+
+
+OCR_V5_MODEL = _require_gpt5mini_model()
 OCR_V5_MAX_MB = int(os.getenv("OCR_V5_MAX_MB", "10"))
 
 OCR_CONFIDENCE_THRESHOLD = float(os.getenv("OCR_CONFIDENCE_THRESHOLD", "0.65"))
@@ -2003,7 +2012,7 @@ OCR_V5_SCHEMA = {
 # Snap & Solve v2 - Extract Questions
 # ------------------------------------------------------------------
 
-EXTRACT_MODEL = os.getenv("EXTRACT_MODEL") or os.environ.get("OPENAI_MODEL_DEFAULT")
+EXTRACT_MODEL = _require_gpt5mini_model()
 EXTRACT_MAX_MB = int(os.getenv("EXTRACT_MAX_MB", "10"))
 EXTRACT_CACHE_REV = os.getenv("EXTRACT_CACHE_REV", "2026-02-03-pix2txt-latex-normalize-v3")
 
@@ -4796,6 +4805,24 @@ async def solve_problem(
     final_prompt = base_query
     if context_info:
         final_prompt = f"{base_query}\n\n{context_info}"
+
+    # Mandatory local symbolic + numeric gate for every solve request.
+    from app.services.solve.sympy_numpy_gate import run_mandatory_sympy_numpy_gate
+    try:
+        gate_report = run_mandatory_sympy_numpy_gate(base_query or final_prompt)
+        print(
+            "[SOLVE_SYMPY_NUMPY_GATE] "
+            + json.dumps(
+                {
+                    "request_id": req_id,
+                    "attempt_id": attempt_id,
+                    **gate_report.as_dict(),
+                },
+                ensure_ascii=False,
+            )
+        )
+    except Exception as gate_exc:
+        raise HTTPException(status_code=500, detail=f"Mandatory SymPy/NumPy gate failed: {gate_exc}")
     
     # 2. Deduplication (Canonical Solution Lookup)
     problem_hash = body.problem_hash
@@ -6603,6 +6630,44 @@ async def solve_v3_stream_endpoint(
             r"^\s*(write|state|derive|prove|show|compute|evaluate|justify|expand|find|verify|interpret|deduce|normalize|combine|define|determine|substitute|solve|describe|identify|report|list|use|parametrize)\b",
             re_mod.I,
         )
+        task_verb_re = re_mod.compile(
+            r"\b("
+            r"solve|find|determine|compute|evaluate|derive|state|report|identify|list|"
+            r"rewrite|express|factor|simplify|expand|transform|"
+            r"verify|check|confirm|justify|prove|"
+            r"format|arrange|order|standardize|interpret"
+            r")\b",
+            re_mod.I,
+        )
+
+        verb_to_class = {
+            "solve": "SOLVE",
+            "find": "SOLVE",
+            "determine": "SOLVE",
+            "compute": "SOLVE",
+            "evaluate": "SOLVE",
+            "derive": "SOLVE",
+            "state": "SOLVE",
+            "report": "SOLVE",
+            "identify": "SOLVE",
+            "list": "SOLVE",
+            "rewrite": "TRANSFORM",
+            "express": "TRANSFORM",
+            "factor": "TRANSFORM",
+            "simplify": "TRANSFORM",
+            "expand": "TRANSFORM",
+            "transform": "TRANSFORM",
+            "verify": "VERIFY",
+            "check": "VERIFY",
+            "confirm": "VERIFY",
+            "justify": "VERIFY",
+            "prove": "VERIFY",
+            "format": "FORMAT",
+            "arrange": "FORMAT",
+            "order": "FORMAT",
+            "standardize": "FORMAT",
+            "interpret": "FORMAT",
+        }
 
         anchor_idx = -1
         for idx, ln in enumerate(lines):
@@ -6665,6 +6730,65 @@ async def solve_v3_stream_endpoint(
         q_lines = [ln.strip() for ln in lines if ln.strip().endswith("?")]
         if len(q_lines) >= 2:
             return q_lines
+
+        # Step A/B/C fallback for paragraph-style multi-task prompts:
+        # - A: split into candidate segments and keep those with task verbs
+        # - B: normalize matched verb -> canonical class
+        # - C: derive cheap object/scope keys, then dedupe by (class, object, scope)
+        sentence_segments = [seg.strip() for seg in re_mod.split(r"(?<=[.?!;])\s+", src) if seg.strip()]
+        if sentence_segments:
+            preamble = sentence_segments[0]
+            candidate_segments = sentence_segments[1:] if len(sentence_segments) > 1 else sentence_segments
+
+            def _canonical_class(segment: str) -> str:
+                match = task_verb_re.search(segment or "")
+                if not match:
+                    return "OTHER"
+                return verb_to_class.get(match.group(1).lower(), "OTHER")
+
+            def _object_key(segment: str) -> str:
+                s = str(segment or "")
+                lower = s.lower()
+                m = re_mod.search(r"\bfor\s+([a-zA-Z][a-zA-Z0-9_]*)\b", s)
+                if m:
+                    return m.group(1).lower()
+                if "sin(" in lower:
+                    return "sin"
+                if "cos(" in lower:
+                    return "cos"
+                if "tan(" in lower:
+                    return "tan"
+                if re_mod.search(r"\bsolutions?\b|\broots?\b", lower):
+                    return "solutions"
+                if "marginal density" in lower:
+                    return "marginal_density"
+                if "conditional density" in lower:
+                    return "conditional_density"
+                if "cov(" in lower or "covariance" in lower:
+                    return "covariance"
+                if "corr(" in lower or "correlation" in lower:
+                    return "correlation"
+                return "general"
+
+            def _scope_key(segment: str) -> str:
+                lower = str(segment or "").lower()
+                if re_mod.search(r"\b[a-z]\s*in\s*\[", lower) or ("[0,2" in lower and ("pi" in lower or "π" in lower)):
+                    return "domain_restricted"
+                return "default"
+
+            deduped: List[str] = []
+            seen_keys: set[str] = set()
+            for seg in candidate_segments:
+                if not task_verb_re.search(seg):
+                    continue
+                key = f"{_canonical_class(seg)}|{_object_key(seg)}|{_scope_key(seg)}"
+                if key in seen_keys:
+                    continue
+                seen_keys.add(key)
+                deduped.append(seg)
+
+            if len(deduped) >= 2:
+                return [f"{preamble} {task}".strip() for task in deduped]
 
         return [src]
 
@@ -10237,7 +10361,8 @@ Questions remaining: {turns_remaining}/10"""
     try:
         start_time_pts = time.time()
         mgr = get_llm_manager()
-        client = mgr.get_client("openai")
+        provider = mgr.primary_provider
+        client = mgr.get_client(provider)
         
         # Prepare messages
         messages = [
@@ -13524,6 +13649,24 @@ async def admin_apply_quota_override(req: QuotaOverrideRequest, db: Session = De
 async def admin_list_system_config(session: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     """Admin only: fetch the entire system configuration table."""
     rows = session.exec(select(SystemConfig)).all()
+    row_map = {str(row.key): row for row in rows}
+    defaults: Dict[str, Dict[str, str]] = {
+        "SOLVE_LOCAL_SYMPY_NUMPY_ENABLED": {
+            "value": "true",
+            "description": "Enable local SymPy/NumPy solve path before LLM fallback (FINAL/SHORT tiers).",
+        },
+    }
+    for key, meta in defaults.items():
+        if key not in row_map:
+            session.add(
+                SystemConfig(
+                    key=key,
+                    value=str(meta.get("value") or ""),
+                    description=str(meta.get("description") or ""),
+                )
+            )
+    session.commit()
+    rows = session.exec(select(SystemConfig)).all()
     return [SystemConfigEntry(key=row.key, value=row.value, description=row.description) for row in rows]
 
 
@@ -14017,8 +14160,12 @@ def _is_production_env() -> bool:
     return os.environ.get("APP_ENV", "").strip().upper() in {"PROD", "PRODUCTION"}
 
 
+def _enforce_prompt_registry_allowlist() -> bool:
+    return os.environ.get("PROMPT_REGISTRY_ENFORCE_ALLOWLIST", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _enforce_allowed_prompt_id(prompt_id: str) -> None:
-    if _is_production_env() and prompt_id not in ALLOWED_PROMPT_IDS:
+    if _is_production_env() and _enforce_prompt_registry_allowlist() and prompt_id not in ALLOWED_PROMPT_IDS:
         raise HTTPException(status_code=400, detail=f"prompt_id not allowed in production: {prompt_id}")
 
 
@@ -14053,7 +14200,7 @@ admin: User = Depends(get_admin_user)):
                 latest_by_id[row.prompt_id] = row
         rows = sorted(latest_by_id.values(), key=lambda item: item.prompt_id)
 
-    filtered = [row for row in rows if row.prompt_id in ALLOWED_PROMPT_IDS] if _is_production_env() else rows
+    filtered = [row for row in rows if row.prompt_id in ALLOWED_PROMPT_IDS] if (_is_production_env() and _enforce_prompt_registry_allowlist()) else rows
     return [
         RegistryPromptItem(
             prompt_id=row.prompt_id,
@@ -14178,7 +14325,7 @@ admin: User = Depends(get_admin_user)):
                 latest_by_id[row.schema_id] = row
         rows = sorted(latest_by_id.values(), key=lambda item: item.schema_id)
 
-    filtered = [row for row in rows if row.schema_id in ALLOWED_SCHEMA_IDS] if _is_production_env() else rows
+    filtered = [row for row in rows if row.schema_id in ALLOWED_SCHEMA_IDS] if (_is_production_env() and _enforce_prompt_registry_allowlist()) else rows
     return [
         RegistrySchemaItem(
             schema_id=row.schema_id,
@@ -14267,7 +14414,7 @@ async def admin_list_prompt_registry_bindings(db: Session = Depends(get_session)
         .where(PromptBinding.mode == PromptModeEnum.SOLVE)
         .order_by(PromptBinding.updated_at.desc())
     )
-    if _is_production_env():
+    if _is_production_env() and _enforce_prompt_registry_allowlist():
         statement = (
             statement
             .where(PromptBinding.global_system_prompt_id.in_(ALLOWED_PROMPT_IDS))

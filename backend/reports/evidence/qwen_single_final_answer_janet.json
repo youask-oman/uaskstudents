@@ -1,0 +1,55 @@
+{
+  "generated_at_utc": "2026-02-17T03:06:03.365791Z",
+  "input_style": "chat_history_reference_with_strict_single_final_override",
+  "model": "qwen25-math7b:latest",
+  "provider": "ollama",
+  "request_messages": [
+    {
+      "role": "system",
+      "content": "Return exactly one final answer token in LaTeX \\boxed{...}. No steps, no explanation, no extra text."
+    },
+    {
+      "role": "user",
+      "content": "Janet?s ducks lay 16 eggs per day. She eats three for breakfast every morning and bakes muffins for her friends every day with four. She sells the remainder at the farmers' market daily for $2 per fresh duck egg. How much in dollars does she make every day at the farmers' market?"
+    }
+  ],
+  "response": {
+    "content": "To determine how much Janet makes every day at the farmers' market, we need",
+    "provider": "ollama",
+    "model": "qwen25-math7b:latest",
+    "usage": {
+      "input": 120,
+      "output": 16,
+      "total": 136,
+      "cached": null,
+      "prompt_eval_duration": 243369200,
+      "eval_duration": 380829200,
+      "total_duration": 716543900,
+      "load_duration": 81976800
+    },
+    "status": {
+      "status": "completed",
+      "finish_reason": "length",
+      "done": true
+    },
+    "payload": {
+      "base_url": "http://localhost:11434",
+      "full_input_prompt": "[SYSTEM]\nReturn exactly one final answer token in LaTeX \\boxed{...}. No steps, no explanation, no extra text.\n\n[SYSTEM]\nReturn exactly one final answer token in LaTeX \\boxed{...}. No steps, no explanation, no extra text.\n\n[USER]\nJanet?s ducks lay 16 eggs per day. She eats three for breakfast every morning and bakes muffins for her friends every day with four. She sells the remainder at the farmers' market daily for $2 per fresh duck egg. How much in dollars does she make every day at the farmers' market?",
+      "ollama_metrics": {
+        "total_duration": 716543900,
+        "load_duration": 81976800,
+        "prompt_eval_count": 120,
+        "prompt_eval_duration": 243369200,
+        "eval_count": 16,
+        "eval_duration": 380829200
+      },
+      "options": {
+        "temperature": 0.0,
+        "num_ctx": 4096,
+        "num_predict": 16
+      }
+    },
+    "attempts": 1,
+    "latency_ms": 1183
+  }
+}

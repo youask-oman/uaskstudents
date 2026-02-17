@@ -28,11 +28,10 @@ class OcrRuntimeConfig:
     solve_credit: int = 3
 
     def resolved_openai_model(self) -> str:
-        return (
-            self.openai_model
-            or (os.getenv("VLM_MODEL_OPENA_AI_OCR") or "").strip()
-            or "gpt-5-mini"
-        )
+        model = (os.getenv("OPENAI_MODEL_DEFAULT") or "").strip() or "gpt-5-mini"
+        if model != "gpt-5-mini":
+            raise RuntimeError(f"OPENAI_MODEL_DEFAULT must be 'gpt-5-mini', got '{model}'")
+        return model
 
 
 def _coerce_bool(value: Any, default: bool) -> bool:
@@ -110,4 +109,3 @@ def list_active_prompt_entries(session: Session) -> List[PromptTemplateEntry]:
 
 def list_active_schema_entries(session: Session) -> List[JsonSchemaEntry]:
     return session.exec(select(JsonSchemaEntry).where(JsonSchemaEntry.is_active == True)).all()
-

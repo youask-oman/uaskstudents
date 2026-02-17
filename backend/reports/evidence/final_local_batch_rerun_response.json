@@ -1,0 +1,6004 @@
+{
+  "ok": true,
+  "results": [
+    {
+      "question_id": "q1",
+      "ok": true,
+      "solve_response_json": {
+        "question_id": "q1",
+        "question_index": 1,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "A ball is thrown straight up from a balcony 20 m above the ground with initial velocity 18 m/s. Its height is h(t)=20+18t-4.9t^2 (meters). How long after launch does it hit the ground?\n\nChoices\n(A) 3.10 s\n(B) 4.55 s\n(C) 5.90 s\n(D) 6.75 s\n(E) 2.25 s",
+          "normalized_text": "A ball is thrown straight up from a balcony 20 m above the ground with initial velocity 18 m/s. Its height is h(t)=20+18t-4.9t^2 (meters). How long after launch does it hit the ground?\n\nChoices\n(A) 3.10 s\n(B) 4.55 s\n(C) 5.90 s\n(D) 6.75 s\n(E) 2.25 s",
+          "detected_tasks": [
+            "equation",
+            "evaluate",
+            "calculus"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "calculus",
+          "topic": "projectile_motion_time",
+          "difficulty": "easy"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "4.56716084903258"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "4.56716084903258",
+          "answer_latex": "4.56716084903258",
+          "values": [
+            {
+              "label": "value",
+              "value": "4.56716084903258",
+              "value_latex": "4.56716084903258"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.93,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      "error": null,
+      "telemetry": {
+        "request_id": "ea355df4-556f-4a7d-99a8-165069c6be1a",
+        "attempt_id": "51856aec-349a-419b-bdb3-d3fd23024b0a",
+        "tier": "FINAL",
+        "questions_count": 15,
+        "allow_auto_split_effective": true,
+        "model": "sympy-numpy-local",
+        "provider": "local",
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "latency_ms_openai": 0,
+        "latency_ms_total": 735,
+        "schema_name": "solve_batch_final_prod_v2",
+        "model_bound": "sympy-numpy-local",
+        "temperature_bound": 0,
+        "top_p_bound": 1,
+        "timeout_ms_bound": 0,
+        "max_questions_allowed_bound": 15,
+        "prompt_binding_id": "f09e50d8-93eb-4141-914a-01b41b1ee51e",
+        "global_system_prompt_id": "global_system_prompt_batch_v1",
+        "developer_prompt_id": "solve_dev_final_merged_v2",
+        "output_schema_id": "solve_batch_final_prod_v2",
+        "openai_calls_count": 0,
+        "repair_attempted": false,
+        "schema_valid": true,
+        "sympy_numpy_reports": [
+          {
+            "question_id": "q1",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 11,
+            "solved_equations": 0,
+            "differentiated": 11,
+            "integrated": 11,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q2",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 2,
+            "solved_equations": 1,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 1,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q3",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q4",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 4,
+            "integrated": 4,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q5",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 12,
+            "solved_equations": 0,
+            "differentiated": 9,
+            "integrated": 9,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q6",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 4,
+            "solved_equations": 2,
+            "differentiated": 2,
+            "integrated": 2,
+            "equivalence_checks": 2,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q7",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q8",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q9",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q10",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q11",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q12",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q13",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q14",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q15",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          }
+        ],
+        "sympy_used": true,
+        "numpy_used": true,
+        "final_local_short_circuit": true,
+        "billing_settlement": {
+          "hold_id": "83f71b28-63b9-49fe-878a-b61e8b86e34d",
+          "amount_reserved": 30.0,
+          "amount_settled": 30.0,
+          "amount_released": 0.0,
+          "status": "settled"
+        }
+      },
+      "credits_reserved": 2.0,
+      "credits_final": 2.0,
+      "credits_refunded": 0.0
+    },
+    {
+      "question_id": "q2",
+      "ok": true,
+      "solve_response_json": {
+        "question_id": "q2",
+        "question_index": 2,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "Solve for x on 0 ? x < 2?:\n2 sin^2(x) - 3 sin(x) + 1 = 0.\n\nChoices\n(A) {?/6, 5?/6}\n(B) {?/6, 5?/6, 7?/6, 11?/6}\n(C) {?/2, 3?/2}\n(D) {0, ?}\n(E) {?/3, 2?/3, 4?/3, 5?/3}",
+          "normalized_text": "Solve for x on 0 ? x < 2?:\n2 sin^2(x) - 3 sin(x) + 1 = 0.\n\nChoices\n(A) {?/6, 5?/6}\n(B) {?/6, 5?/6, 7?/6, 11?/6}\n(C) {?/2, 3?/2}\n(D) {0, ?}\n(E) {?/3, 2?/3, 4?/3, 5?/3}",
+          "detected_tasks": [
+            "equation",
+            "trigonometry",
+            "evaluate"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "calculus",
+          "topic": "trig_equation",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "(pi/6, 5*pi/6, pi/2)"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "(pi/6, 5*pi/6, pi/2)",
+          "answer_latex": "(pi/6, 5*pi/6, pi/2)",
+          "values": [
+            {
+              "label": "value",
+              "value": "(pi/6, 5*pi/6, pi/2)",
+              "value_latex": "(pi/6, 5*pi/6, pi/2)"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.93,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      "error": null,
+      "telemetry": {
+        "request_id": "ea355df4-556f-4a7d-99a8-165069c6be1a",
+        "attempt_id": "51856aec-349a-419b-bdb3-d3fd23024b0a",
+        "tier": "FINAL",
+        "questions_count": 15,
+        "allow_auto_split_effective": true,
+        "model": "sympy-numpy-local",
+        "provider": "local",
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "latency_ms_openai": 0,
+        "latency_ms_total": 735,
+        "schema_name": "solve_batch_final_prod_v2",
+        "model_bound": "sympy-numpy-local",
+        "temperature_bound": 0,
+        "top_p_bound": 1,
+        "timeout_ms_bound": 0,
+        "max_questions_allowed_bound": 15,
+        "prompt_binding_id": "f09e50d8-93eb-4141-914a-01b41b1ee51e",
+        "global_system_prompt_id": "global_system_prompt_batch_v1",
+        "developer_prompt_id": "solve_dev_final_merged_v2",
+        "output_schema_id": "solve_batch_final_prod_v2",
+        "openai_calls_count": 0,
+        "repair_attempted": false,
+        "schema_valid": true,
+        "sympy_numpy_reports": [
+          {
+            "question_id": "q1",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 11,
+            "solved_equations": 0,
+            "differentiated": 11,
+            "integrated": 11,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q2",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 2,
+            "solved_equations": 1,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 1,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q3",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q4",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 4,
+            "integrated": 4,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q5",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 12,
+            "solved_equations": 0,
+            "differentiated": 9,
+            "integrated": 9,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q6",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 4,
+            "solved_equations": 2,
+            "differentiated": 2,
+            "integrated": 2,
+            "equivalence_checks": 2,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q7",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q8",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q9",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q10",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q11",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q12",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q13",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q14",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q15",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          }
+        ],
+        "sympy_used": true,
+        "numpy_used": true,
+        "final_local_short_circuit": true,
+        "billing_settlement": {
+          "hold_id": "83f71b28-63b9-49fe-878a-b61e8b86e34d",
+          "amount_reserved": 30.0,
+          "amount_settled": 30.0,
+          "amount_released": 0.0,
+          "status": "settled"
+        }
+      },
+      "credits_reserved": 2.0,
+      "credits_final": 2.0,
+      "credits_refunded": 0.0
+    },
+    {
+      "question_id": "q3",
+      "ok": true,
+      "solve_response_json": {
+        "question_id": "q3",
+        "question_index": 3,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "A company?s revenue is R(x)=120x-0.8x^2 (in thousands of dollars) where x is thousands of units sold. How many units maximize revenue?\n\nChoices\n(A) 50,000\n(B) 60,000\n(C) 70,000\n(D) 75,000\n(E) 80,000",
+          "normalized_text": "A company?s revenue is R(x)=120x-0.8x^2 (in thousands of dollars) where x is thousands of units sold. How many units maximize revenue?\n\nChoices\n(A) 50,000\n(B) 60,000\n(C) 70,000\n(D) 75,000\n(E) 80,000",
+          "detected_tasks": [
+            "evaluate",
+            "calculus"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "optimization",
+          "topic": "quadratic_maximum",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "75000"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "75000",
+          "answer_latex": "75000",
+          "values": [
+            {
+              "label": "value",
+              "value": "75000",
+              "value_latex": "75000"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.93,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      "error": null,
+      "telemetry": {
+        "request_id": "ea355df4-556f-4a7d-99a8-165069c6be1a",
+        "attempt_id": "51856aec-349a-419b-bdb3-d3fd23024b0a",
+        "tier": "FINAL",
+        "questions_count": 15,
+        "allow_auto_split_effective": true,
+        "model": "sympy-numpy-local",
+        "provider": "local",
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "latency_ms_openai": 0,
+        "latency_ms_total": 735,
+        "schema_name": "solve_batch_final_prod_v2",
+        "model_bound": "sympy-numpy-local",
+        "temperature_bound": 0,
+        "top_p_bound": 1,
+        "timeout_ms_bound": 0,
+        "max_questions_allowed_bound": 15,
+        "prompt_binding_id": "f09e50d8-93eb-4141-914a-01b41b1ee51e",
+        "global_system_prompt_id": "global_system_prompt_batch_v1",
+        "developer_prompt_id": "solve_dev_final_merged_v2",
+        "output_schema_id": "solve_batch_final_prod_v2",
+        "openai_calls_count": 0,
+        "repair_attempted": false,
+        "schema_valid": true,
+        "sympy_numpy_reports": [
+          {
+            "question_id": "q1",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 11,
+            "solved_equations": 0,
+            "differentiated": 11,
+            "integrated": 11,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q2",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 2,
+            "solved_equations": 1,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 1,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q3",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q4",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 4,
+            "integrated": 4,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q5",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 12,
+            "solved_equations": 0,
+            "differentiated": 9,
+            "integrated": 9,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q6",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 4,
+            "solved_equations": 2,
+            "differentiated": 2,
+            "integrated": 2,
+            "equivalence_checks": 2,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q7",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q8",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q9",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q10",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q11",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q12",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q13",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q14",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q15",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          }
+        ],
+        "sympy_used": true,
+        "numpy_used": true,
+        "final_local_short_circuit": true,
+        "billing_settlement": {
+          "hold_id": "83f71b28-63b9-49fe-878a-b61e8b86e34d",
+          "amount_reserved": 30.0,
+          "amount_settled": 30.0,
+          "amount_released": 0.0,
+          "status": "settled"
+        }
+      },
+      "credits_reserved": 2.0,
+      "credits_final": 2.0,
+      "credits_refunded": 0.0
+    },
+    {
+      "question_id": "q4",
+      "ok": true,
+      "solve_response_json": {
+        "question_id": "q4",
+        "question_index": 4,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "Evaluate the limit:\nlim_{x?0} (sin(5x) - 5x) / x^3.\n\nChoices\n(A) 0\n(B) -125/6\n(C) -25/6\n(D) 125/6\n(E) 25/6",
+          "normalized_text": "Evaluate the limit:\nlim_{x?0} (sin(5x) - 5x) / x^3.\n\nChoices\n(A) 0\n(B) -125/6\n(C) -25/6\n(D) 125/6\n(E) 25/6",
+          "detected_tasks": [
+            "evaluate",
+            "calculus"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "calculus",
+          "topic": "limit_expansion",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "- \\frac{125}{6}"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "Choice B: -125/6",
+          "answer_latex": "- \\frac{125}{6}",
+          "values": [
+            {
+              "label": "choice",
+              "value": "B",
+              "value_latex": "B"
+            },
+            {
+              "label": "value",
+              "value": "-125/6",
+              "value_latex": "- \\frac{125}{6}"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.98,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      "error": null,
+      "telemetry": {
+        "request_id": "ea355df4-556f-4a7d-99a8-165069c6be1a",
+        "attempt_id": "51856aec-349a-419b-bdb3-d3fd23024b0a",
+        "tier": "FINAL",
+        "questions_count": 15,
+        "allow_auto_split_effective": true,
+        "model": "sympy-numpy-local",
+        "provider": "local",
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "latency_ms_openai": 0,
+        "latency_ms_total": 735,
+        "schema_name": "solve_batch_final_prod_v2",
+        "model_bound": "sympy-numpy-local",
+        "temperature_bound": 0,
+        "top_p_bound": 1,
+        "timeout_ms_bound": 0,
+        "max_questions_allowed_bound": 15,
+        "prompt_binding_id": "f09e50d8-93eb-4141-914a-01b41b1ee51e",
+        "global_system_prompt_id": "global_system_prompt_batch_v1",
+        "developer_prompt_id": "solve_dev_final_merged_v2",
+        "output_schema_id": "solve_batch_final_prod_v2",
+        "openai_calls_count": 0,
+        "repair_attempted": false,
+        "schema_valid": true,
+        "sympy_numpy_reports": [
+          {
+            "question_id": "q1",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 11,
+            "solved_equations": 0,
+            "differentiated": 11,
+            "integrated": 11,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q2",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 2,
+            "solved_equations": 1,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 1,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q3",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q4",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 4,
+            "integrated": 4,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q5",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 12,
+            "solved_equations": 0,
+            "differentiated": 9,
+            "integrated": 9,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q6",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 4,
+            "solved_equations": 2,
+            "differentiated": 2,
+            "integrated": 2,
+            "equivalence_checks": 2,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q7",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q8",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q9",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q10",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q11",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q12",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q13",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q14",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q15",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          }
+        ],
+        "sympy_used": true,
+        "numpy_used": true,
+        "final_local_short_circuit": true,
+        "billing_settlement": {
+          "hold_id": "83f71b28-63b9-49fe-878a-b61e8b86e34d",
+          "amount_reserved": 30.0,
+          "amount_settled": 30.0,
+          "amount_released": 0.0,
+          "status": "settled"
+        }
+      },
+      "credits_reserved": 2.0,
+      "credits_final": 2.0,
+      "credits_refunded": 0.0
+    },
+    {
+      "question_id": "q5",
+      "ok": true,
+      "solve_response_json": {
+        "question_id": "q5",
+        "question_index": 5,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "A ladder 10 m long leans against a wall. The bottom slides away from the wall at 0.8 m/s. When the bottom is 6 m from the wall, how fast is the top sliding down?\n\nChoices\n(A) 0.48 m/s\n(B) 0.60 m/s\n(C) 0.80 m/s\n(D) 1.20 m/s\n(E) 1.60 m/s",
+          "normalized_text": "A ladder 10 m long leans against a wall. The bottom slides away from the wall at 0.8 m/s. When the bottom is 6 m from the wall, how fast is the top sliding down?\n\nChoices\n(A) 0.48 m/s\n(B) 0.60 m/s\n(C) 0.80 m/s\n(D) 1.20 m/s\n(E) 1.60 m/s",
+          "detected_tasks": [
+            "calculus",
+            "evaluate",
+            "derivation"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "calculus",
+          "topic": "related_rates",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "\\frac{3}{5}"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "3/5",
+          "answer_latex": "\\frac{3}{5}",
+          "values": [
+            {
+              "label": "value",
+              "value": "3/5",
+              "value_latex": "\\frac{3}{5}"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.93,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      "error": null,
+      "telemetry": {
+        "request_id": "ea355df4-556f-4a7d-99a8-165069c6be1a",
+        "attempt_id": "51856aec-349a-419b-bdb3-d3fd23024b0a",
+        "tier": "FINAL",
+        "questions_count": 15,
+        "allow_auto_split_effective": true,
+        "model": "sympy-numpy-local",
+        "provider": "local",
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "latency_ms_openai": 0,
+        "latency_ms_total": 735,
+        "schema_name": "solve_batch_final_prod_v2",
+        "model_bound": "sympy-numpy-local",
+        "temperature_bound": 0,
+        "top_p_bound": 1,
+        "timeout_ms_bound": 0,
+        "max_questions_allowed_bound": 15,
+        "prompt_binding_id": "f09e50d8-93eb-4141-914a-01b41b1ee51e",
+        "global_system_prompt_id": "global_system_prompt_batch_v1",
+        "developer_prompt_id": "solve_dev_final_merged_v2",
+        "output_schema_id": "solve_batch_final_prod_v2",
+        "openai_calls_count": 0,
+        "repair_attempted": false,
+        "schema_valid": true,
+        "sympy_numpy_reports": [
+          {
+            "question_id": "q1",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 11,
+            "solved_equations": 0,
+            "differentiated": 11,
+            "integrated": 11,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q2",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 2,
+            "solved_equations": 1,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 1,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q3",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q4",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 4,
+            "integrated": 4,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q5",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 12,
+            "solved_equations": 0,
+            "differentiated": 9,
+            "integrated": 9,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q6",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 4,
+            "solved_equations": 2,
+            "differentiated": 2,
+            "integrated": 2,
+            "equivalence_checks": 2,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q7",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q8",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q9",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q10",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q11",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q12",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q13",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q14",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q15",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          }
+        ],
+        "sympy_used": true,
+        "numpy_used": true,
+        "final_local_short_circuit": true,
+        "billing_settlement": {
+          "hold_id": "83f71b28-63b9-49fe-878a-b61e8b86e34d",
+          "amount_reserved": 30.0,
+          "amount_settled": 30.0,
+          "amount_released": 0.0,
+          "status": "settled"
+        }
+      },
+      "credits_reserved": 2.0,
+      "credits_final": 2.0,
+      "credits_refunded": 0.0
+    },
+    {
+      "question_id": "q6",
+      "ok": true,
+      "solve_response_json": {
+        "question_id": "q6",
+        "question_index": 6,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "Solve the system:\n2x + 3y = 7\nx - 2y = 4\n\nChoices\n(A) (x,y) = (2,1)\n(B) (x,y) = (1,2)\n(C) (x,y) = (3,1/3)\n(D) (x,y) = (4,-1/2)\n(E) (x,y) = (5,-1)",
+          "normalized_text": "Solve the system:\n2x + 3y = 7\nx - 2y = 4\n\nChoices\n(A) (x,y) = (2,1)\n(B) (x,y) = (1,2)\n(C) (x,y) = (3,1/3)\n(D) (x,y) = (4,-1/2)\n(E) (x,y) = (5,-1)",
+          "detected_tasks": [
+            "system",
+            "equation",
+            "evaluate"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "algebra",
+          "topic": "linear_system",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "(26/7, -1/7)"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "(26/7, -1/7)",
+          "answer_latex": "(26/7, -1/7)",
+          "values": [
+            {
+              "label": "value",
+              "value": "(26/7, -1/7)",
+              "value_latex": "(26/7, -1/7)"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.93,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      "error": null,
+      "telemetry": {
+        "request_id": "ea355df4-556f-4a7d-99a8-165069c6be1a",
+        "attempt_id": "51856aec-349a-419b-bdb3-d3fd23024b0a",
+        "tier": "FINAL",
+        "questions_count": 15,
+        "allow_auto_split_effective": true,
+        "model": "sympy-numpy-local",
+        "provider": "local",
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "latency_ms_openai": 0,
+        "latency_ms_total": 735,
+        "schema_name": "solve_batch_final_prod_v2",
+        "model_bound": "sympy-numpy-local",
+        "temperature_bound": 0,
+        "top_p_bound": 1,
+        "timeout_ms_bound": 0,
+        "max_questions_allowed_bound": 15,
+        "prompt_binding_id": "f09e50d8-93eb-4141-914a-01b41b1ee51e",
+        "global_system_prompt_id": "global_system_prompt_batch_v1",
+        "developer_prompt_id": "solve_dev_final_merged_v2",
+        "output_schema_id": "solve_batch_final_prod_v2",
+        "openai_calls_count": 0,
+        "repair_attempted": false,
+        "schema_valid": true,
+        "sympy_numpy_reports": [
+          {
+            "question_id": "q1",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 11,
+            "solved_equations": 0,
+            "differentiated": 11,
+            "integrated": 11,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q2",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 2,
+            "solved_equations": 1,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 1,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q3",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q4",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 4,
+            "integrated": 4,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q5",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 12,
+            "solved_equations": 0,
+            "differentiated": 9,
+            "integrated": 9,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q6",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 4,
+            "solved_equations": 2,
+            "differentiated": 2,
+            "integrated": 2,
+            "equivalence_checks": 2,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q7",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q8",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q9",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q10",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q11",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q12",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q13",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q14",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q15",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          }
+        ],
+        "sympy_used": true,
+        "numpy_used": true,
+        "final_local_short_circuit": true,
+        "billing_settlement": {
+          "hold_id": "83f71b28-63b9-49fe-878a-b61e8b86e34d",
+          "amount_reserved": 30.0,
+          "amount_settled": 30.0,
+          "amount_released": 0.0,
+          "status": "settled"
+        }
+      },
+      "credits_reserved": 2.0,
+      "credits_final": 2.0,
+      "credits_refunded": 0.0
+    },
+    {
+      "question_id": "q7",
+      "ok": true,
+      "solve_response_json": {
+        "question_id": "q7",
+        "question_index": 7,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "A car?s value V(t) after t years follows V(t)=24000(0.85)^t. After how many years is the car worth half its original value (to the nearest tenth)?\n\nChoices\n(A) 3.6\n(B) 4.3\n(C) 4.8\n(D) 5.6\n(E) 6.1",
+          "normalized_text": "A car?s value V(t) after t years follows V(t)=24000(0.85)^t. After how many years is the car worth half its original value (to the nearest tenth)?\n\nChoices\n(A) 3.6\n(B) 4.3\n(C) 4.8\n(D) 5.6\n(E) 6.1",
+          "detected_tasks": [
+            "evaluate",
+            "equation"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "algebra",
+          "topic": "exponential_decay",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "4.2650242818"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "4.26502428180",
+          "answer_latex": "4.2650242818",
+          "values": [
+            {
+              "label": "value",
+              "value": "4.26502428180",
+              "value_latex": "4.2650242818"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.93,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      "error": null,
+      "telemetry": {
+        "request_id": "ea355df4-556f-4a7d-99a8-165069c6be1a",
+        "attempt_id": "51856aec-349a-419b-bdb3-d3fd23024b0a",
+        "tier": "FINAL",
+        "questions_count": 15,
+        "allow_auto_split_effective": true,
+        "model": "sympy-numpy-local",
+        "provider": "local",
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "latency_ms_openai": 0,
+        "latency_ms_total": 735,
+        "schema_name": "solve_batch_final_prod_v2",
+        "model_bound": "sympy-numpy-local",
+        "temperature_bound": 0,
+        "top_p_bound": 1,
+        "timeout_ms_bound": 0,
+        "max_questions_allowed_bound": 15,
+        "prompt_binding_id": "f09e50d8-93eb-4141-914a-01b41b1ee51e",
+        "global_system_prompt_id": "global_system_prompt_batch_v1",
+        "developer_prompt_id": "solve_dev_final_merged_v2",
+        "output_schema_id": "solve_batch_final_prod_v2",
+        "openai_calls_count": 0,
+        "repair_attempted": false,
+        "schema_valid": true,
+        "sympy_numpy_reports": [
+          {
+            "question_id": "q1",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 11,
+            "solved_equations": 0,
+            "differentiated": 11,
+            "integrated": 11,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q2",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 2,
+            "solved_equations": 1,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 1,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q3",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q4",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 4,
+            "integrated": 4,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q5",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 12,
+            "solved_equations": 0,
+            "differentiated": 9,
+            "integrated": 9,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q6",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 4,
+            "solved_equations": 2,
+            "differentiated": 2,
+            "integrated": 2,
+            "equivalence_checks": 2,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q7",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q8",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q9",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q10",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q11",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q12",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q13",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q14",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q15",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          }
+        ],
+        "sympy_used": true,
+        "numpy_used": true,
+        "final_local_short_circuit": true,
+        "billing_settlement": {
+          "hold_id": "83f71b28-63b9-49fe-878a-b61e8b86e34d",
+          "amount_reserved": 30.0,
+          "amount_settled": 30.0,
+          "amount_released": 0.0,
+          "status": "settled"
+        }
+      },
+      "credits_reserved": 2.0,
+      "credits_final": 2.0,
+      "credits_refunded": 0.0
+    },
+    {
+      "question_id": "q8",
+      "ok": true,
+      "solve_response_json": {
+        "question_id": "q8",
+        "question_index": 8,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "Find the exact value:\n?_0^1 (3x^2) / (1 + x^3) dx.\n\nChoices\n(A) ln(2)\n(B) ln(4)\n(C) 1/2 ln(2)\n(D) 2\n(E) 1",
+          "normalized_text": "Find the exact value:\n?_0^1 (3x^2) / (1 + x^3) dx.\n\nChoices\n(A) ln(2)\n(B) ln(4)\n(C) 1/2 ln(2)\n(D) 2\n(E) 1",
+          "detected_tasks": [
+            "evaluate",
+            "calculus"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "calculus",
+          "topic": "u_substitution",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "\\log{\\left(2 \\right)}"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "log(2)",
+          "answer_latex": "\\log{\\left(2 \\right)}",
+          "values": [
+            {
+              "label": "value",
+              "value": "log(2)",
+              "value_latex": "\\log{\\left(2 \\right)}"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.93,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      "error": null,
+      "telemetry": {
+        "request_id": "ea355df4-556f-4a7d-99a8-165069c6be1a",
+        "attempt_id": "51856aec-349a-419b-bdb3-d3fd23024b0a",
+        "tier": "FINAL",
+        "questions_count": 15,
+        "allow_auto_split_effective": true,
+        "model": "sympy-numpy-local",
+        "provider": "local",
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "latency_ms_openai": 0,
+        "latency_ms_total": 735,
+        "schema_name": "solve_batch_final_prod_v2",
+        "model_bound": "sympy-numpy-local",
+        "temperature_bound": 0,
+        "top_p_bound": 1,
+        "timeout_ms_bound": 0,
+        "max_questions_allowed_bound": 15,
+        "prompt_binding_id": "f09e50d8-93eb-4141-914a-01b41b1ee51e",
+        "global_system_prompt_id": "global_system_prompt_batch_v1",
+        "developer_prompt_id": "solve_dev_final_merged_v2",
+        "output_schema_id": "solve_batch_final_prod_v2",
+        "openai_calls_count": 0,
+        "repair_attempted": false,
+        "schema_valid": true,
+        "sympy_numpy_reports": [
+          {
+            "question_id": "q1",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 11,
+            "solved_equations": 0,
+            "differentiated": 11,
+            "integrated": 11,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q2",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 2,
+            "solved_equations": 1,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 1,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q3",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q4",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 4,
+            "integrated": 4,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q5",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 12,
+            "solved_equations": 0,
+            "differentiated": 9,
+            "integrated": 9,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q6",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 4,
+            "solved_equations": 2,
+            "differentiated": 2,
+            "integrated": 2,
+            "equivalence_checks": 2,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q7",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q8",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q9",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q10",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q11",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q12",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q13",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q14",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q15",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          }
+        ],
+        "sympy_used": true,
+        "numpy_used": true,
+        "final_local_short_circuit": true,
+        "billing_settlement": {
+          "hold_id": "83f71b28-63b9-49fe-878a-b61e8b86e34d",
+          "amount_reserved": 30.0,
+          "amount_settled": 30.0,
+          "amount_released": 0.0,
+          "status": "settled"
+        }
+      },
+      "credits_reserved": 2.0,
+      "credits_final": 2.0,
+      "credits_refunded": 0.0
+    },
+    {
+      "question_id": "q9",
+      "ok": true,
+      "solve_response_json": {
+        "question_id": "q9",
+        "question_index": 9,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "A rectangle is formed by fencing three sides of a field next to a river (no fence needed along the river). If 120 m of fencing is available, what maximum area can be enclosed?\n\nChoices\n(A) 900 m^2\n(B) 1200 m^2\n(C) 1500 m^2\n(D) 1800 m^2\n(E) 2400 m^2",
+          "normalized_text": "A rectangle is formed by fencing three sides of a field next to a river (no fence needed along the river). If 120 m of fencing is available, what maximum area can be enclosed?\n\nChoices\n(A) 900 m^2\n(B) 1200 m^2\n(C) 1500 m^2\n(D) 1800 m^2\n(E) 2400 m^2",
+          "detected_tasks": [
+            "evaluate",
+            "geometry"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "optimization",
+          "topic": "fencing_max_area",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "1800"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "1800",
+          "answer_latex": "1800",
+          "values": [
+            {
+              "label": "value",
+              "value": "1800",
+              "value_latex": "1800"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.93,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      "error": null,
+      "telemetry": {
+        "request_id": "ea355df4-556f-4a7d-99a8-165069c6be1a",
+        "attempt_id": "51856aec-349a-419b-bdb3-d3fd23024b0a",
+        "tier": "FINAL",
+        "questions_count": 15,
+        "allow_auto_split_effective": true,
+        "model": "sympy-numpy-local",
+        "provider": "local",
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "latency_ms_openai": 0,
+        "latency_ms_total": 735,
+        "schema_name": "solve_batch_final_prod_v2",
+        "model_bound": "sympy-numpy-local",
+        "temperature_bound": 0,
+        "top_p_bound": 1,
+        "timeout_ms_bound": 0,
+        "max_questions_allowed_bound": 15,
+        "prompt_binding_id": "f09e50d8-93eb-4141-914a-01b41b1ee51e",
+        "global_system_prompt_id": "global_system_prompt_batch_v1",
+        "developer_prompt_id": "solve_dev_final_merged_v2",
+        "output_schema_id": "solve_batch_final_prod_v2",
+        "openai_calls_count": 0,
+        "repair_attempted": false,
+        "schema_valid": true,
+        "sympy_numpy_reports": [
+          {
+            "question_id": "q1",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 11,
+            "solved_equations": 0,
+            "differentiated": 11,
+            "integrated": 11,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q2",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 2,
+            "solved_equations": 1,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 1,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q3",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q4",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 4,
+            "integrated": 4,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q5",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 12,
+            "solved_equations": 0,
+            "differentiated": 9,
+            "integrated": 9,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q6",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 4,
+            "solved_equations": 2,
+            "differentiated": 2,
+            "integrated": 2,
+            "equivalence_checks": 2,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q7",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q8",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q9",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q10",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q11",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q12",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q13",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q14",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q15",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          }
+        ],
+        "sympy_used": true,
+        "numpy_used": true,
+        "final_local_short_circuit": true,
+        "billing_settlement": {
+          "hold_id": "83f71b28-63b9-49fe-878a-b61e8b86e34d",
+          "amount_reserved": 30.0,
+          "amount_settled": 30.0,
+          "amount_released": 0.0,
+          "status": "settled"
+        }
+      },
+      "credits_reserved": 2.0,
+      "credits_final": 2.0,
+      "credits_refunded": 0.0
+    },
+    {
+      "question_id": "q10",
+      "ok": true,
+      "solve_response_json": {
+        "question_id": "q10",
+        "question_index": 10,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "Find the sum of the infinite geometric series:\n5 - 3 + 1.8 - 1.08 + ...\n\nChoices\n(A) 2\n(B) 2.5\n(C) 3\n(D) 3.125\n(E) 3.5",
+          "normalized_text": "Find the sum of the infinite geometric series:\n5 - 3 + 1.8 - 1.08 + ...\n\nChoices\n(A) 2\n(B) 2.5\n(C) 3\n(D) 3.125\n(E) 3.5",
+          "detected_tasks": [
+            "evaluate"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "algebra",
+          "topic": "geometric_series",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "\\frac{25}{8}"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "Choice D: 25/8",
+          "answer_latex": "\\frac{25}{8}",
+          "values": [
+            {
+              "label": "choice",
+              "value": "D",
+              "value_latex": "D"
+            },
+            {
+              "label": "value",
+              "value": "25/8",
+              "value_latex": "\\frac{25}{8}"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.98,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      "error": null,
+      "telemetry": {
+        "request_id": "ea355df4-556f-4a7d-99a8-165069c6be1a",
+        "attempt_id": "51856aec-349a-419b-bdb3-d3fd23024b0a",
+        "tier": "FINAL",
+        "questions_count": 15,
+        "allow_auto_split_effective": true,
+        "model": "sympy-numpy-local",
+        "provider": "local",
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "latency_ms_openai": 0,
+        "latency_ms_total": 735,
+        "schema_name": "solve_batch_final_prod_v2",
+        "model_bound": "sympy-numpy-local",
+        "temperature_bound": 0,
+        "top_p_bound": 1,
+        "timeout_ms_bound": 0,
+        "max_questions_allowed_bound": 15,
+        "prompt_binding_id": "f09e50d8-93eb-4141-914a-01b41b1ee51e",
+        "global_system_prompt_id": "global_system_prompt_batch_v1",
+        "developer_prompt_id": "solve_dev_final_merged_v2",
+        "output_schema_id": "solve_batch_final_prod_v2",
+        "openai_calls_count": 0,
+        "repair_attempted": false,
+        "schema_valid": true,
+        "sympy_numpy_reports": [
+          {
+            "question_id": "q1",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 11,
+            "solved_equations": 0,
+            "differentiated": 11,
+            "integrated": 11,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q2",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 2,
+            "solved_equations": 1,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 1,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q3",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q4",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 4,
+            "integrated": 4,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q5",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 12,
+            "solved_equations": 0,
+            "differentiated": 9,
+            "integrated": 9,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q6",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 4,
+            "solved_equations": 2,
+            "differentiated": 2,
+            "integrated": 2,
+            "equivalence_checks": 2,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q7",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q8",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q9",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q10",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q11",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q12",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q13",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q14",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q15",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          }
+        ],
+        "sympy_used": true,
+        "numpy_used": true,
+        "final_local_short_circuit": true,
+        "billing_settlement": {
+          "hold_id": "83f71b28-63b9-49fe-878a-b61e8b86e34d",
+          "amount_reserved": 30.0,
+          "amount_settled": 30.0,
+          "amount_released": 0.0,
+          "status": "settled"
+        }
+      },
+      "credits_reserved": 2.0,
+      "credits_final": 2.0,
+      "credits_refunded": 0.0
+    },
+    {
+      "question_id": "q11",
+      "ok": true,
+      "solve_response_json": {
+        "question_id": "q11",
+        "question_index": 11,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "A particle moves along a line with velocity v(t)=t^2-4t+3 (m/s). What is the total distance traveled on 0 ? t ? 4?\n\nChoices\n(A) 4/3\n(B) 8/3\n(C) 10/3\n(D) 14/3\n(E) 16/3",
+          "normalized_text": "A particle moves along a line with velocity v(t)=t^2-4t+3 (m/s). What is the total distance traveled on 0 ? t ? 4?\n\nChoices\n(A) 4/3\n(B) 8/3\n(C) 10/3\n(D) 14/3\n(E) 16/3",
+          "detected_tasks": [
+            "evaluate",
+            "calculus"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "calculus",
+          "topic": "total_distance",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "4"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "4",
+          "answer_latex": "4",
+          "values": [
+            {
+              "label": "value",
+              "value": "4",
+              "value_latex": "4"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.93,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      "error": null,
+      "telemetry": {
+        "request_id": "ea355df4-556f-4a7d-99a8-165069c6be1a",
+        "attempt_id": "51856aec-349a-419b-bdb3-d3fd23024b0a",
+        "tier": "FINAL",
+        "questions_count": 15,
+        "allow_auto_split_effective": true,
+        "model": "sympy-numpy-local",
+        "provider": "local",
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "latency_ms_openai": 0,
+        "latency_ms_total": 735,
+        "schema_name": "solve_batch_final_prod_v2",
+        "model_bound": "sympy-numpy-local",
+        "temperature_bound": 0,
+        "top_p_bound": 1,
+        "timeout_ms_bound": 0,
+        "max_questions_allowed_bound": 15,
+        "prompt_binding_id": "f09e50d8-93eb-4141-914a-01b41b1ee51e",
+        "global_system_prompt_id": "global_system_prompt_batch_v1",
+        "developer_prompt_id": "solve_dev_final_merged_v2",
+        "output_schema_id": "solve_batch_final_prod_v2",
+        "openai_calls_count": 0,
+        "repair_attempted": false,
+        "schema_valid": true,
+        "sympy_numpy_reports": [
+          {
+            "question_id": "q1",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 11,
+            "solved_equations": 0,
+            "differentiated": 11,
+            "integrated": 11,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q2",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 2,
+            "solved_equations": 1,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 1,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q3",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q4",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 4,
+            "integrated": 4,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q5",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 12,
+            "solved_equations": 0,
+            "differentiated": 9,
+            "integrated": 9,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q6",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 4,
+            "solved_equations": 2,
+            "differentiated": 2,
+            "integrated": 2,
+            "equivalence_checks": 2,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q7",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q8",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q9",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q10",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q11",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q12",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q13",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q14",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q15",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          }
+        ],
+        "sympy_used": true,
+        "numpy_used": true,
+        "final_local_short_circuit": true,
+        "billing_settlement": {
+          "hold_id": "83f71b28-63b9-49fe-878a-b61e8b86e34d",
+          "amount_reserved": 30.0,
+          "amount_settled": 30.0,
+          "amount_released": 0.0,
+          "status": "settled"
+        }
+      },
+      "credits_reserved": 2.0,
+      "credits_final": 2.0,
+      "credits_refunded": 0.0
+    },
+    {
+      "question_id": "q12",
+      "ok": true,
+      "solve_response_json": {
+        "question_id": "q12",
+        "question_index": 12,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "A triangle has sides 7, 8, 9. Find its area.\n\nChoices\n(A) 12?5\n(B) 18?2\n(C) 12?6\n(D) 26?3\n(E) 20?3",
+          "normalized_text": "A triangle has sides 7, 8, 9. Find its area.\n\nChoices\n(A) 12?5\n(B) 18?2\n(C) 12?6\n(D) 26?3\n(E) 20?3",
+          "detected_tasks": [
+            "geometry",
+            "evaluate"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "geometry",
+          "topic": "heron_formula",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "12 \\sqrt{5}"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "12*sqrt(5)",
+          "answer_latex": "12 \\sqrt{5}",
+          "values": [
+            {
+              "label": "value",
+              "value": "12*sqrt(5)",
+              "value_latex": "12 \\sqrt{5}"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.93,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      "error": null,
+      "telemetry": {
+        "request_id": "ea355df4-556f-4a7d-99a8-165069c6be1a",
+        "attempt_id": "51856aec-349a-419b-bdb3-d3fd23024b0a",
+        "tier": "FINAL",
+        "questions_count": 15,
+        "allow_auto_split_effective": true,
+        "model": "sympy-numpy-local",
+        "provider": "local",
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "latency_ms_openai": 0,
+        "latency_ms_total": 735,
+        "schema_name": "solve_batch_final_prod_v2",
+        "model_bound": "sympy-numpy-local",
+        "temperature_bound": 0,
+        "top_p_bound": 1,
+        "timeout_ms_bound": 0,
+        "max_questions_allowed_bound": 15,
+        "prompt_binding_id": "f09e50d8-93eb-4141-914a-01b41b1ee51e",
+        "global_system_prompt_id": "global_system_prompt_batch_v1",
+        "developer_prompt_id": "solve_dev_final_merged_v2",
+        "output_schema_id": "solve_batch_final_prod_v2",
+        "openai_calls_count": 0,
+        "repair_attempted": false,
+        "schema_valid": true,
+        "sympy_numpy_reports": [
+          {
+            "question_id": "q1",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 11,
+            "solved_equations": 0,
+            "differentiated": 11,
+            "integrated": 11,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q2",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 2,
+            "solved_equations": 1,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 1,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q3",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q4",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 4,
+            "integrated": 4,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q5",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 12,
+            "solved_equations": 0,
+            "differentiated": 9,
+            "integrated": 9,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q6",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 4,
+            "solved_equations": 2,
+            "differentiated": 2,
+            "integrated": 2,
+            "equivalence_checks": 2,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q7",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q8",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q9",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q10",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q11",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q12",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q13",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q14",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q15",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          }
+        ],
+        "sympy_used": true,
+        "numpy_used": true,
+        "final_local_short_circuit": true,
+        "billing_settlement": {
+          "hold_id": "83f71b28-63b9-49fe-878a-b61e8b86e34d",
+          "amount_reserved": 30.0,
+          "amount_settled": 30.0,
+          "amount_released": 0.0,
+          "status": "settled"
+        }
+      },
+      "credits_reserved": 2.0,
+      "credits_final": 2.0,
+      "credits_refunded": 0.0
+    },
+    {
+      "question_id": "q13",
+      "ok": true,
+      "solve_response_json": {
+        "question_id": "q13",
+        "question_index": 13,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "Find all real solutions:\n|2x - 5| = x + 1.\n\nChoices\n(A) {2}\n(B) {4}\n(C) {2, 4}\n(D) {1, 3}\n(E) No real solutions",
+          "normalized_text": "Find all real solutions:\n|2x - 5| = x + 1.\n\nChoices\n(A) {2}\n(B) {4}\n(C) {2, 4}\n(D) {1, 3}\n(E) No real solutions",
+          "detected_tasks": [
+            "equation",
+            "evaluate"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "algebra",
+          "topic": "absolute_value_equation",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "(4/3, 6)"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "(4/3, 6)",
+          "answer_latex": "(4/3, 6)",
+          "values": [
+            {
+              "label": "value",
+              "value": "(4/3, 6)",
+              "value_latex": "(4/3, 6)"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.93,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      "error": null,
+      "telemetry": {
+        "request_id": "ea355df4-556f-4a7d-99a8-165069c6be1a",
+        "attempt_id": "51856aec-349a-419b-bdb3-d3fd23024b0a",
+        "tier": "FINAL",
+        "questions_count": 15,
+        "allow_auto_split_effective": true,
+        "model": "sympy-numpy-local",
+        "provider": "local",
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "latency_ms_openai": 0,
+        "latency_ms_total": 735,
+        "schema_name": "solve_batch_final_prod_v2",
+        "model_bound": "sympy-numpy-local",
+        "temperature_bound": 0,
+        "top_p_bound": 1,
+        "timeout_ms_bound": 0,
+        "max_questions_allowed_bound": 15,
+        "prompt_binding_id": "f09e50d8-93eb-4141-914a-01b41b1ee51e",
+        "global_system_prompt_id": "global_system_prompt_batch_v1",
+        "developer_prompt_id": "solve_dev_final_merged_v2",
+        "output_schema_id": "solve_batch_final_prod_v2",
+        "openai_calls_count": 0,
+        "repair_attempted": false,
+        "schema_valid": true,
+        "sympy_numpy_reports": [
+          {
+            "question_id": "q1",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 11,
+            "solved_equations": 0,
+            "differentiated": 11,
+            "integrated": 11,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q2",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 2,
+            "solved_equations": 1,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 1,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q3",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q4",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 4,
+            "integrated": 4,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q5",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 12,
+            "solved_equations": 0,
+            "differentiated": 9,
+            "integrated": 9,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q6",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 4,
+            "solved_equations": 2,
+            "differentiated": 2,
+            "integrated": 2,
+            "equivalence_checks": 2,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q7",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q8",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q9",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q10",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q11",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q12",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q13",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q14",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q15",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          }
+        ],
+        "sympy_used": true,
+        "numpy_used": true,
+        "final_local_short_circuit": true,
+        "billing_settlement": {
+          "hold_id": "83f71b28-63b9-49fe-878a-b61e8b86e34d",
+          "amount_reserved": 30.0,
+          "amount_settled": 30.0,
+          "amount_released": 0.0,
+          "status": "settled"
+        }
+      },
+      "credits_reserved": 2.0,
+      "credits_final": 2.0,
+      "credits_refunded": 0.0
+    },
+    {
+      "question_id": "q14",
+      "ok": true,
+      "solve_response_json": {
+        "question_id": "q14",
+        "question_index": 14,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "In how many ways can 4 students be chosen from 12 students?\n\nChoices\n(A) 220\n(B) 330\n(C) 440\n(D) 495\n(E) 792",
+          "normalized_text": "In how many ways can 4 students be chosen from 12 students?\n\nChoices\n(A) 220\n(B) 330\n(C) 440\n(D) 495\n(E) 792",
+          "detected_tasks": [
+            "evaluate"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "discrete_math",
+          "topic": "combinations",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "495"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "Choice D: 495",
+          "answer_latex": "495",
+          "values": [
+            {
+              "label": "choice",
+              "value": "D",
+              "value_latex": "D"
+            },
+            {
+              "label": "value",
+              "value": "495",
+              "value_latex": "495"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.98,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      "error": null,
+      "telemetry": {
+        "request_id": "ea355df4-556f-4a7d-99a8-165069c6be1a",
+        "attempt_id": "51856aec-349a-419b-bdb3-d3fd23024b0a",
+        "tier": "FINAL",
+        "questions_count": 15,
+        "allow_auto_split_effective": true,
+        "model": "sympy-numpy-local",
+        "provider": "local",
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "latency_ms_openai": 0,
+        "latency_ms_total": 735,
+        "schema_name": "solve_batch_final_prod_v2",
+        "model_bound": "sympy-numpy-local",
+        "temperature_bound": 0,
+        "top_p_bound": 1,
+        "timeout_ms_bound": 0,
+        "max_questions_allowed_bound": 15,
+        "prompt_binding_id": "f09e50d8-93eb-4141-914a-01b41b1ee51e",
+        "global_system_prompt_id": "global_system_prompt_batch_v1",
+        "developer_prompt_id": "solve_dev_final_merged_v2",
+        "output_schema_id": "solve_batch_final_prod_v2",
+        "openai_calls_count": 0,
+        "repair_attempted": false,
+        "schema_valid": true,
+        "sympy_numpy_reports": [
+          {
+            "question_id": "q1",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 11,
+            "solved_equations": 0,
+            "differentiated": 11,
+            "integrated": 11,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q2",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 2,
+            "solved_equations": 1,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 1,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q3",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q4",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 4,
+            "integrated": 4,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q5",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 12,
+            "solved_equations": 0,
+            "differentiated": 9,
+            "integrated": 9,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q6",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 4,
+            "solved_equations": 2,
+            "differentiated": 2,
+            "integrated": 2,
+            "equivalence_checks": 2,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q7",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q8",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q9",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q10",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q11",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q12",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q13",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q14",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q15",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          }
+        ],
+        "sympy_used": true,
+        "numpy_used": true,
+        "final_local_short_circuit": true,
+        "billing_settlement": {
+          "hold_id": "83f71b28-63b9-49fe-878a-b61e8b86e34d",
+          "amount_reserved": 30.0,
+          "amount_settled": 30.0,
+          "amount_released": 0.0,
+          "status": "settled"
+        }
+      },
+      "credits_reserved": 2.0,
+      "credits_final": 2.0,
+      "credits_refunded": 0.0
+    },
+    {
+      "question_id": "q15",
+      "ok": true,
+      "solve_response_json": {
+        "question_id": "q15",
+        "question_index": 15,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "A box contains 5 red and 7 blue balls. Two balls are drawn without replacement. What is P(both are red)?\n\nChoices\n(A) 5/12\n(B) 5/22\n(C) 10/132\n(D) 20/132\n(E) 10/66",
+          "normalized_text": "A box contains 5 red and 7 blue balls. Two balls are drawn without replacement. What is P(both are red)?\n\nChoices\n(A) 5/12\n(B) 5/22\n(C) 10/132\n(D) 20/132\n(E) 10/66",
+          "detected_tasks": [
+            "probability",
+            "evaluate",
+            "statistics"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "probability",
+          "topic": "without_replacement_probability",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "\\frac{5}{33}"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "Choice D: 5/33",
+          "answer_latex": "\\frac{5}{33}",
+          "values": [
+            {
+              "label": "choice",
+              "value": "D",
+              "value_latex": "D"
+            },
+            {
+              "label": "value",
+              "value": "5/33",
+              "value_latex": "\\frac{5}{33}"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.98,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      "error": null,
+      "telemetry": {
+        "request_id": "ea355df4-556f-4a7d-99a8-165069c6be1a",
+        "attempt_id": "51856aec-349a-419b-bdb3-d3fd23024b0a",
+        "tier": "FINAL",
+        "questions_count": 15,
+        "allow_auto_split_effective": true,
+        "model": "sympy-numpy-local",
+        "provider": "local",
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "latency_ms_openai": 0,
+        "latency_ms_total": 735,
+        "schema_name": "solve_batch_final_prod_v2",
+        "model_bound": "sympy-numpy-local",
+        "temperature_bound": 0,
+        "top_p_bound": 1,
+        "timeout_ms_bound": 0,
+        "max_questions_allowed_bound": 15,
+        "prompt_binding_id": "f09e50d8-93eb-4141-914a-01b41b1ee51e",
+        "global_system_prompt_id": "global_system_prompt_batch_v1",
+        "developer_prompt_id": "solve_dev_final_merged_v2",
+        "output_schema_id": "solve_batch_final_prod_v2",
+        "openai_calls_count": 0,
+        "repair_attempted": false,
+        "schema_valid": true,
+        "sympy_numpy_reports": [
+          {
+            "question_id": "q1",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 11,
+            "solved_equations": 0,
+            "differentiated": 11,
+            "integrated": 11,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q2",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 2,
+            "solved_equations": 1,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 1,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q3",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q4",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 4,
+            "integrated": 4,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q5",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 12,
+            "solved_equations": 0,
+            "differentiated": 9,
+            "integrated": 9,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q6",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 4,
+            "solved_equations": 2,
+            "differentiated": 2,
+            "integrated": 2,
+            "equivalence_checks": 2,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q7",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q8",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q9",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q10",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 10,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q11",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q12",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q13",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 1,
+            "integrated": 1,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q14",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          },
+          {
+            "question_id": "q15",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 5,
+            "solved_equations": 0,
+            "differentiated": 5,
+            "integrated": 5,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          }
+        ],
+        "sympy_used": true,
+        "numpy_used": true,
+        "final_local_short_circuit": true,
+        "billing_settlement": {
+          "hold_id": "83f71b28-63b9-49fe-878a-b61e8b86e34d",
+          "amount_reserved": 30.0,
+          "amount_settled": 30.0,
+          "amount_released": 0.0,
+          "status": "settled"
+        }
+      },
+      "credits_reserved": 2.0,
+      "credits_final": 2.0,
+      "credits_refunded": 0.0
+    }
+  ],
+  "request_id": "ea355df4-556f-4a7d-99a8-165069c6be1a",
+  "attempt_id": "51856aec-349a-419b-bdb3-d3fd23024b0a",
+  "session_id": 16,
+  "tier": "FINAL",
+  "language": {
+    "user_language": "English",
+    "preferred_response_language": "English",
+    "response_language": "English"
+  },
+  "items": [
+    {
+      "question_id": "q1",
+      "question_index": 1,
+      "mode": "SOLVE",
+      "problem": {
+        "original_text": "A ball is thrown straight up from a balcony 20 m above the ground with initial velocity 18 m/s. Its height is h(t)=20+18t-4.9t^2 (meters). How long after launch does it hit the ground?\n\nChoices\n(A) 3.10 s\n(B) 4.55 s\n(C) 5.90 s\n(D) 6.75 s\n(E) 2.25 s",
+        "normalized_text": "A ball is thrown straight up from a balcony 20 m above the ground with initial velocity 18 m/s. Its height is h(t)=20+18t-4.9t^2 (meters). How long after launch does it hit the ground?\n\nChoices\n(A) 3.10 s\n(B) 4.55 s\n(C) 5.90 s\n(D) 6.75 s\n(E) 2.25 s",
+        "detected_tasks": [
+          "equation",
+          "evaluate",
+          "calculus"
+        ],
+        "extra": []
+      },
+      "classification": {
+        "grade_band": "undergraduate_upper",
+        "domain": "calculus",
+        "topic": "projectile_motion_time",
+        "difficulty": "easy"
+      },
+      "steps": [
+        {
+          "index": 1,
+          "title": "Local Result",
+          "explanation": "Computed using SymPy with NumPy numerical checks.",
+          "math_latex": [
+            "4.56716084903258"
+          ]
+        }
+      ],
+      "final_answer": {
+        "answer_text": "4.56716084903258",
+        "answer_latex": "4.56716084903258",
+        "values": [
+          {
+            "label": "value",
+            "value": "4.56716084903258",
+            "value_latex": "4.56716084903258"
+          }
+        ],
+        "units": null,
+        "kind": "solution",
+        "target": null
+      },
+      "refusal": {
+        "is_refusal": false,
+        "reason": null,
+        "safe_next_step": null
+      },
+      "quality": {
+        "confidence": 0.93,
+        "common_mistakes": []
+      },
+      "plot": {
+        "decision_reason": "No plot rationale provided."
+      }
+    },
+    {
+      "question_id": "q2",
+      "question_index": 2,
+      "mode": "SOLVE",
+      "problem": {
+        "original_text": "Solve for x on 0 ? x < 2?:\n2 sin^2(x) - 3 sin(x) + 1 = 0.\n\nChoices\n(A) {?/6, 5?/6}\n(B) {?/6, 5?/6, 7?/6, 11?/6}\n(C) {?/2, 3?/2}\n(D) {0, ?}\n(E) {?/3, 2?/3, 4?/3, 5?/3}",
+        "normalized_text": "Solve for x on 0 ? x < 2?:\n2 sin^2(x) - 3 sin(x) + 1 = 0.\n\nChoices\n(A) {?/6, 5?/6}\n(B) {?/6, 5?/6, 7?/6, 11?/6}\n(C) {?/2, 3?/2}\n(D) {0, ?}\n(E) {?/3, 2?/3, 4?/3, 5?/3}",
+        "detected_tasks": [
+          "equation",
+          "trigonometry",
+          "evaluate"
+        ],
+        "extra": []
+      },
+      "classification": {
+        "grade_band": "undergraduate_upper",
+        "domain": "calculus",
+        "topic": "trig_equation",
+        "difficulty": "hard"
+      },
+      "steps": [
+        {
+          "index": 1,
+          "title": "Local Result",
+          "explanation": "Computed using SymPy with NumPy numerical checks.",
+          "math_latex": [
+            "(pi/6, 5*pi/6, pi/2)"
+          ]
+        }
+      ],
+      "final_answer": {
+        "answer_text": "(pi/6, 5*pi/6, pi/2)",
+        "answer_latex": "(pi/6, 5*pi/6, pi/2)",
+        "values": [
+          {
+            "label": "value",
+            "value": "(pi/6, 5*pi/6, pi/2)",
+            "value_latex": "(pi/6, 5*pi/6, pi/2)"
+          }
+        ],
+        "units": null,
+        "kind": "solution",
+        "target": null
+      },
+      "refusal": {
+        "is_refusal": false,
+        "reason": null,
+        "safe_next_step": null
+      },
+      "quality": {
+        "confidence": 0.93,
+        "common_mistakes": []
+      },
+      "plot": {
+        "decision_reason": "No plot rationale provided."
+      }
+    },
+    {
+      "question_id": "q3",
+      "question_index": 3,
+      "mode": "SOLVE",
+      "problem": {
+        "original_text": "A company?s revenue is R(x)=120x-0.8x^2 (in thousands of dollars) where x is thousands of units sold. How many units maximize revenue?\n\nChoices\n(A) 50,000\n(B) 60,000\n(C) 70,000\n(D) 75,000\n(E) 80,000",
+        "normalized_text": "A company?s revenue is R(x)=120x-0.8x^2 (in thousands of dollars) where x is thousands of units sold. How many units maximize revenue?\n\nChoices\n(A) 50,000\n(B) 60,000\n(C) 70,000\n(D) 75,000\n(E) 80,000",
+        "detected_tasks": [
+          "evaluate",
+          "calculus"
+        ],
+        "extra": []
+      },
+      "classification": {
+        "grade_band": "undergraduate_upper",
+        "domain": "optimization",
+        "topic": "quadratic_maximum",
+        "difficulty": "hard"
+      },
+      "steps": [
+        {
+          "index": 1,
+          "title": "Local Result",
+          "explanation": "Computed using SymPy with NumPy numerical checks.",
+          "math_latex": [
+            "75000"
+          ]
+        }
+      ],
+      "final_answer": {
+        "answer_text": "75000",
+        "answer_latex": "75000",
+        "values": [
+          {
+            "label": "value",
+            "value": "75000",
+            "value_latex": "75000"
+          }
+        ],
+        "units": null,
+        "kind": "solution",
+        "target": null
+      },
+      "refusal": {
+        "is_refusal": false,
+        "reason": null,
+        "safe_next_step": null
+      },
+      "quality": {
+        "confidence": 0.93,
+        "common_mistakes": []
+      },
+      "plot": {
+        "decision_reason": "No plot rationale provided."
+      }
+    },
+    {
+      "question_id": "q4",
+      "question_index": 4,
+      "mode": "SOLVE",
+      "problem": {
+        "original_text": "Evaluate the limit:\nlim_{x?0} (sin(5x) - 5x) / x^3.\n\nChoices\n(A) 0\n(B) -125/6\n(C) -25/6\n(D) 125/6\n(E) 25/6",
+        "normalized_text": "Evaluate the limit:\nlim_{x?0} (sin(5x) - 5x) / x^3.\n\nChoices\n(A) 0\n(B) -125/6\n(C) -25/6\n(D) 125/6\n(E) 25/6",
+        "detected_tasks": [
+          "evaluate",
+          "calculus"
+        ],
+        "extra": []
+      },
+      "classification": {
+        "grade_band": "undergraduate_upper",
+        "domain": "calculus",
+        "topic": "limit_expansion",
+        "difficulty": "hard"
+      },
+      "steps": [
+        {
+          "index": 1,
+          "title": "Local Result",
+          "explanation": "Computed using SymPy with NumPy numerical checks.",
+          "math_latex": [
+            "- \\frac{125}{6}"
+          ]
+        }
+      ],
+      "final_answer": {
+        "answer_text": "Choice B: -125/6",
+        "answer_latex": "- \\frac{125}{6}",
+        "values": [
+          {
+            "label": "choice",
+            "value": "B",
+            "value_latex": "B"
+          },
+          {
+            "label": "value",
+            "value": "-125/6",
+            "value_latex": "- \\frac{125}{6}"
+          }
+        ],
+        "units": null,
+        "kind": "solution",
+        "target": null
+      },
+      "refusal": {
+        "is_refusal": false,
+        "reason": null,
+        "safe_next_step": null
+      },
+      "quality": {
+        "confidence": 0.98,
+        "common_mistakes": []
+      },
+      "plot": {
+        "decision_reason": "No plot rationale provided."
+      }
+    },
+    {
+      "question_id": "q5",
+      "question_index": 5,
+      "mode": "SOLVE",
+      "problem": {
+        "original_text": "A ladder 10 m long leans against a wall. The bottom slides away from the wall at 0.8 m/s. When the bottom is 6 m from the wall, how fast is the top sliding down?\n\nChoices\n(A) 0.48 m/s\n(B) 0.60 m/s\n(C) 0.80 m/s\n(D) 1.20 m/s\n(E) 1.60 m/s",
+        "normalized_text": "A ladder 10 m long leans against a wall. The bottom slides away from the wall at 0.8 m/s. When the bottom is 6 m from the wall, how fast is the top sliding down?\n\nChoices\n(A) 0.48 m/s\n(B) 0.60 m/s\n(C) 0.80 m/s\n(D) 1.20 m/s\n(E) 1.60 m/s",
+        "detected_tasks": [
+          "calculus",
+          "evaluate",
+          "derivation"
+        ],
+        "extra": []
+      },
+      "classification": {
+        "grade_band": "undergraduate_upper",
+        "domain": "calculus",
+        "topic": "related_rates",
+        "difficulty": "hard"
+      },
+      "steps": [
+        {
+          "index": 1,
+          "title": "Local Result",
+          "explanation": "Computed using SymPy with NumPy numerical checks.",
+          "math_latex": [
+            "\\frac{3}{5}"
+          ]
+        }
+      ],
+      "final_answer": {
+        "answer_text": "3/5",
+        "answer_latex": "\\frac{3}{5}",
+        "values": [
+          {
+            "label": "value",
+            "value": "3/5",
+            "value_latex": "\\frac{3}{5}"
+          }
+        ],
+        "units": null,
+        "kind": "solution",
+        "target": null
+      },
+      "refusal": {
+        "is_refusal": false,
+        "reason": null,
+        "safe_next_step": null
+      },
+      "quality": {
+        "confidence": 0.93,
+        "common_mistakes": []
+      },
+      "plot": {
+        "decision_reason": "No plot rationale provided."
+      }
+    },
+    {
+      "question_id": "q6",
+      "question_index": 6,
+      "mode": "SOLVE",
+      "problem": {
+        "original_text": "Solve the system:\n2x + 3y = 7\nx - 2y = 4\n\nChoices\n(A) (x,y) = (2,1)\n(B) (x,y) = (1,2)\n(C) (x,y) = (3,1/3)\n(D) (x,y) = (4,-1/2)\n(E) (x,y) = (5,-1)",
+        "normalized_text": "Solve the system:\n2x + 3y = 7\nx - 2y = 4\n\nChoices\n(A) (x,y) = (2,1)\n(B) (x,y) = (1,2)\n(C) (x,y) = (3,1/3)\n(D) (x,y) = (4,-1/2)\n(E) (x,y) = (5,-1)",
+        "detected_tasks": [
+          "system",
+          "equation",
+          "evaluate"
+        ],
+        "extra": []
+      },
+      "classification": {
+        "grade_band": "undergraduate_upper",
+        "domain": "algebra",
+        "topic": "linear_system",
+        "difficulty": "hard"
+      },
+      "steps": [
+        {
+          "index": 1,
+          "title": "Local Result",
+          "explanation": "Computed using SymPy with NumPy numerical checks.",
+          "math_latex": [
+            "(26/7, -1/7)"
+          ]
+        }
+      ],
+      "final_answer": {
+        "answer_text": "(26/7, -1/7)",
+        "answer_latex": "(26/7, -1/7)",
+        "values": [
+          {
+            "label": "value",
+            "value": "(26/7, -1/7)",
+            "value_latex": "(26/7, -1/7)"
+          }
+        ],
+        "units": null,
+        "kind": "solution",
+        "target": null
+      },
+      "refusal": {
+        "is_refusal": false,
+        "reason": null,
+        "safe_next_step": null
+      },
+      "quality": {
+        "confidence": 0.93,
+        "common_mistakes": []
+      },
+      "plot": {
+        "decision_reason": "No plot rationale provided."
+      }
+    },
+    {
+      "question_id": "q7",
+      "question_index": 7,
+      "mode": "SOLVE",
+      "problem": {
+        "original_text": "A car?s value V(t) after t years follows V(t)=24000(0.85)^t. After how many years is the car worth half its original value (to the nearest tenth)?\n\nChoices\n(A) 3.6\n(B) 4.3\n(C) 4.8\n(D) 5.6\n(E) 6.1",
+        "normalized_text": "A car?s value V(t) after t years follows V(t)=24000(0.85)^t. After how many years is the car worth half its original value (to the nearest tenth)?\n\nChoices\n(A) 3.6\n(B) 4.3\n(C) 4.8\n(D) 5.6\n(E) 6.1",
+        "detected_tasks": [
+          "evaluate",
+          "equation"
+        ],
+        "extra": []
+      },
+      "classification": {
+        "grade_band": "undergraduate_upper",
+        "domain": "algebra",
+        "topic": "exponential_decay",
+        "difficulty": "hard"
+      },
+      "steps": [
+        {
+          "index": 1,
+          "title": "Local Result",
+          "explanation": "Computed using SymPy with NumPy numerical checks.",
+          "math_latex": [
+            "4.2650242818"
+          ]
+        }
+      ],
+      "final_answer": {
+        "answer_text": "4.26502428180",
+        "answer_latex": "4.2650242818",
+        "values": [
+          {
+            "label": "value",
+            "value": "4.26502428180",
+            "value_latex": "4.2650242818"
+          }
+        ],
+        "units": null,
+        "kind": "solution",
+        "target": null
+      },
+      "refusal": {
+        "is_refusal": false,
+        "reason": null,
+        "safe_next_step": null
+      },
+      "quality": {
+        "confidence": 0.93,
+        "common_mistakes": []
+      },
+      "plot": {
+        "decision_reason": "No plot rationale provided."
+      }
+    },
+    {
+      "question_id": "q8",
+      "question_index": 8,
+      "mode": "SOLVE",
+      "problem": {
+        "original_text": "Find the exact value:\n?_0^1 (3x^2) / (1 + x^3) dx.\n\nChoices\n(A) ln(2)\n(B) ln(4)\n(C) 1/2 ln(2)\n(D) 2\n(E) 1",
+        "normalized_text": "Find the exact value:\n?_0^1 (3x^2) / (1 + x^3) dx.\n\nChoices\n(A) ln(2)\n(B) ln(4)\n(C) 1/2 ln(2)\n(D) 2\n(E) 1",
+        "detected_tasks": [
+          "evaluate",
+          "calculus"
+        ],
+        "extra": []
+      },
+      "classification": {
+        "grade_band": "undergraduate_upper",
+        "domain": "calculus",
+        "topic": "u_substitution",
+        "difficulty": "hard"
+      },
+      "steps": [
+        {
+          "index": 1,
+          "title": "Local Result",
+          "explanation": "Computed using SymPy with NumPy numerical checks.",
+          "math_latex": [
+            "\\log{\\left(2 \\right)}"
+          ]
+        }
+      ],
+      "final_answer": {
+        "answer_text": "log(2)",
+        "answer_latex": "\\log{\\left(2 \\right)}",
+        "values": [
+          {
+            "label": "value",
+            "value": "log(2)",
+            "value_latex": "\\log{\\left(2 \\right)}"
+          }
+        ],
+        "units": null,
+        "kind": "solution",
+        "target": null
+      },
+      "refusal": {
+        "is_refusal": false,
+        "reason": null,
+        "safe_next_step": null
+      },
+      "quality": {
+        "confidence": 0.93,
+        "common_mistakes": []
+      },
+      "plot": {
+        "decision_reason": "No plot rationale provided."
+      }
+    },
+    {
+      "question_id": "q9",
+      "question_index": 9,
+      "mode": "SOLVE",
+      "problem": {
+        "original_text": "A rectangle is formed by fencing three sides of a field next to a river (no fence needed along the river). If 120 m of fencing is available, what maximum area can be enclosed?\n\nChoices\n(A) 900 m^2\n(B) 1200 m^2\n(C) 1500 m^2\n(D) 1800 m^2\n(E) 2400 m^2",
+        "normalized_text": "A rectangle is formed by fencing three sides of a field next to a river (no fence needed along the river). If 120 m of fencing is available, what maximum area can be enclosed?\n\nChoices\n(A) 900 m^2\n(B) 1200 m^2\n(C) 1500 m^2\n(D) 1800 m^2\n(E) 2400 m^2",
+        "detected_tasks": [
+          "evaluate",
+          "geometry"
+        ],
+        "extra": []
+      },
+      "classification": {
+        "grade_band": "undergraduate_upper",
+        "domain": "optimization",
+        "topic": "fencing_max_area",
+        "difficulty": "hard"
+      },
+      "steps": [
+        {
+          "index": 1,
+          "title": "Local Result",
+          "explanation": "Computed using SymPy with NumPy numerical checks.",
+          "math_latex": [
+            "1800"
+          ]
+        }
+      ],
+      "final_answer": {
+        "answer_text": "1800",
+        "answer_latex": "1800",
+        "values": [
+          {
+            "label": "value",
+            "value": "1800",
+            "value_latex": "1800"
+          }
+        ],
+        "units": null,
+        "kind": "solution",
+        "target": null
+      },
+      "refusal": {
+        "is_refusal": false,
+        "reason": null,
+        "safe_next_step": null
+      },
+      "quality": {
+        "confidence": 0.93,
+        "common_mistakes": []
+      },
+      "plot": {
+        "decision_reason": "No plot rationale provided."
+      }
+    },
+    {
+      "question_id": "q10",
+      "question_index": 10,
+      "mode": "SOLVE",
+      "problem": {
+        "original_text": "Find the sum of the infinite geometric series:\n5 - 3 + 1.8 - 1.08 + ...\n\nChoices\n(A) 2\n(B) 2.5\n(C) 3\n(D) 3.125\n(E) 3.5",
+        "normalized_text": "Find the sum of the infinite geometric series:\n5 - 3 + 1.8 - 1.08 + ...\n\nChoices\n(A) 2\n(B) 2.5\n(C) 3\n(D) 3.125\n(E) 3.5",
+        "detected_tasks": [
+          "evaluate"
+        ],
+        "extra": []
+      },
+      "classification": {
+        "grade_band": "undergraduate_upper",
+        "domain": "algebra",
+        "topic": "geometric_series",
+        "difficulty": "hard"
+      },
+      "steps": [
+        {
+          "index": 1,
+          "title": "Local Result",
+          "explanation": "Computed using SymPy with NumPy numerical checks.",
+          "math_latex": [
+            "\\frac{25}{8}"
+          ]
+        }
+      ],
+      "final_answer": {
+        "answer_text": "Choice D: 25/8",
+        "answer_latex": "\\frac{25}{8}",
+        "values": [
+          {
+            "label": "choice",
+            "value": "D",
+            "value_latex": "D"
+          },
+          {
+            "label": "value",
+            "value": "25/8",
+            "value_latex": "\\frac{25}{8}"
+          }
+        ],
+        "units": null,
+        "kind": "solution",
+        "target": null
+      },
+      "refusal": {
+        "is_refusal": false,
+        "reason": null,
+        "safe_next_step": null
+      },
+      "quality": {
+        "confidence": 0.98,
+        "common_mistakes": []
+      },
+      "plot": {
+        "decision_reason": "No plot rationale provided."
+      }
+    },
+    {
+      "question_id": "q11",
+      "question_index": 11,
+      "mode": "SOLVE",
+      "problem": {
+        "original_text": "A particle moves along a line with velocity v(t)=t^2-4t+3 (m/s). What is the total distance traveled on 0 ? t ? 4?\n\nChoices\n(A) 4/3\n(B) 8/3\n(C) 10/3\n(D) 14/3\n(E) 16/3",
+        "normalized_text": "A particle moves along a line with velocity v(t)=t^2-4t+3 (m/s). What is the total distance traveled on 0 ? t ? 4?\n\nChoices\n(A) 4/3\n(B) 8/3\n(C) 10/3\n(D) 14/3\n(E) 16/3",
+        "detected_tasks": [
+          "evaluate",
+          "calculus"
+        ],
+        "extra": []
+      },
+      "classification": {
+        "grade_band": "undergraduate_upper",
+        "domain": "calculus",
+        "topic": "total_distance",
+        "difficulty": "hard"
+      },
+      "steps": [
+        {
+          "index": 1,
+          "title": "Local Result",
+          "explanation": "Computed using SymPy with NumPy numerical checks.",
+          "math_latex": [
+            "4"
+          ]
+        }
+      ],
+      "final_answer": {
+        "answer_text": "4",
+        "answer_latex": "4",
+        "values": [
+          {
+            "label": "value",
+            "value": "4",
+            "value_latex": "4"
+          }
+        ],
+        "units": null,
+        "kind": "solution",
+        "target": null
+      },
+      "refusal": {
+        "is_refusal": false,
+        "reason": null,
+        "safe_next_step": null
+      },
+      "quality": {
+        "confidence": 0.93,
+        "common_mistakes": []
+      },
+      "plot": {
+        "decision_reason": "No plot rationale provided."
+      }
+    },
+    {
+      "question_id": "q12",
+      "question_index": 12,
+      "mode": "SOLVE",
+      "problem": {
+        "original_text": "A triangle has sides 7, 8, 9. Find its area.\n\nChoices\n(A) 12?5\n(B) 18?2\n(C) 12?6\n(D) 26?3\n(E) 20?3",
+        "normalized_text": "A triangle has sides 7, 8, 9. Find its area.\n\nChoices\n(A) 12?5\n(B) 18?2\n(C) 12?6\n(D) 26?3\n(E) 20?3",
+        "detected_tasks": [
+          "geometry",
+          "evaluate"
+        ],
+        "extra": []
+      },
+      "classification": {
+        "grade_band": "undergraduate_upper",
+        "domain": "geometry",
+        "topic": "heron_formula",
+        "difficulty": "hard"
+      },
+      "steps": [
+        {
+          "index": 1,
+          "title": "Local Result",
+          "explanation": "Computed using SymPy with NumPy numerical checks.",
+          "math_latex": [
+            "12 \\sqrt{5}"
+          ]
+        }
+      ],
+      "final_answer": {
+        "answer_text": "12*sqrt(5)",
+        "answer_latex": "12 \\sqrt{5}",
+        "values": [
+          {
+            "label": "value",
+            "value": "12*sqrt(5)",
+            "value_latex": "12 \\sqrt{5}"
+          }
+        ],
+        "units": null,
+        "kind": "solution",
+        "target": null
+      },
+      "refusal": {
+        "is_refusal": false,
+        "reason": null,
+        "safe_next_step": null
+      },
+      "quality": {
+        "confidence": 0.93,
+        "common_mistakes": []
+      },
+      "plot": {
+        "decision_reason": "No plot rationale provided."
+      }
+    },
+    {
+      "question_id": "q13",
+      "question_index": 13,
+      "mode": "SOLVE",
+      "problem": {
+        "original_text": "Find all real solutions:\n|2x - 5| = x + 1.\n\nChoices\n(A) {2}\n(B) {4}\n(C) {2, 4}\n(D) {1, 3}\n(E) No real solutions",
+        "normalized_text": "Find all real solutions:\n|2x - 5| = x + 1.\n\nChoices\n(A) {2}\n(B) {4}\n(C) {2, 4}\n(D) {1, 3}\n(E) No real solutions",
+        "detected_tasks": [
+          "equation",
+          "evaluate"
+        ],
+        "extra": []
+      },
+      "classification": {
+        "grade_band": "undergraduate_upper",
+        "domain": "algebra",
+        "topic": "absolute_value_equation",
+        "difficulty": "hard"
+      },
+      "steps": [
+        {
+          "index": 1,
+          "title": "Local Result",
+          "explanation": "Computed using SymPy with NumPy numerical checks.",
+          "math_latex": [
+            "(4/3, 6)"
+          ]
+        }
+      ],
+      "final_answer": {
+        "answer_text": "(4/3, 6)",
+        "answer_latex": "(4/3, 6)",
+        "values": [
+          {
+            "label": "value",
+            "value": "(4/3, 6)",
+            "value_latex": "(4/3, 6)"
+          }
+        ],
+        "units": null,
+        "kind": "solution",
+        "target": null
+      },
+      "refusal": {
+        "is_refusal": false,
+        "reason": null,
+        "safe_next_step": null
+      },
+      "quality": {
+        "confidence": 0.93,
+        "common_mistakes": []
+      },
+      "plot": {
+        "decision_reason": "No plot rationale provided."
+      }
+    },
+    {
+      "question_id": "q14",
+      "question_index": 14,
+      "mode": "SOLVE",
+      "problem": {
+        "original_text": "In how many ways can 4 students be chosen from 12 students?\n\nChoices\n(A) 220\n(B) 330\n(C) 440\n(D) 495\n(E) 792",
+        "normalized_text": "In how many ways can 4 students be chosen from 12 students?\n\nChoices\n(A) 220\n(B) 330\n(C) 440\n(D) 495\n(E) 792",
+        "detected_tasks": [
+          "evaluate"
+        ],
+        "extra": []
+      },
+      "classification": {
+        "grade_band": "undergraduate_upper",
+        "domain": "discrete_math",
+        "topic": "combinations",
+        "difficulty": "hard"
+      },
+      "steps": [
+        {
+          "index": 1,
+          "title": "Local Result",
+          "explanation": "Computed using SymPy with NumPy numerical checks.",
+          "math_latex": [
+            "495"
+          ]
+        }
+      ],
+      "final_answer": {
+        "answer_text": "Choice D: 495",
+        "answer_latex": "495",
+        "values": [
+          {
+            "label": "choice",
+            "value": "D",
+            "value_latex": "D"
+          },
+          {
+            "label": "value",
+            "value": "495",
+            "value_latex": "495"
+          }
+        ],
+        "units": null,
+        "kind": "solution",
+        "target": null
+      },
+      "refusal": {
+        "is_refusal": false,
+        "reason": null,
+        "safe_next_step": null
+      },
+      "quality": {
+        "confidence": 0.98,
+        "common_mistakes": []
+      },
+      "plot": {
+        "decision_reason": "No plot rationale provided."
+      }
+    },
+    {
+      "question_id": "q15",
+      "question_index": 15,
+      "mode": "SOLVE",
+      "problem": {
+        "original_text": "A box contains 5 red and 7 blue balls. Two balls are drawn without replacement. What is P(both are red)?\n\nChoices\n(A) 5/12\n(B) 5/22\n(C) 10/132\n(D) 20/132\n(E) 10/66",
+        "normalized_text": "A box contains 5 red and 7 blue balls. Two balls are drawn without replacement. What is P(both are red)?\n\nChoices\n(A) 5/12\n(B) 5/22\n(C) 10/132\n(D) 20/132\n(E) 10/66",
+        "detected_tasks": [
+          "probability",
+          "evaluate",
+          "statistics"
+        ],
+        "extra": []
+      },
+      "classification": {
+        "grade_band": "undergraduate_upper",
+        "domain": "probability",
+        "topic": "without_replacement_probability",
+        "difficulty": "hard"
+      },
+      "steps": [
+        {
+          "index": 1,
+          "title": "Local Result",
+          "explanation": "Computed using SymPy with NumPy numerical checks.",
+          "math_latex": [
+            "\\frac{5}{33}"
+          ]
+        }
+      ],
+      "final_answer": {
+        "answer_text": "Choice D: 5/33",
+        "answer_latex": "\\frac{5}{33}",
+        "values": [
+          {
+            "label": "choice",
+            "value": "D",
+            "value_latex": "D"
+          },
+          {
+            "label": "value",
+            "value": "5/33",
+            "value_latex": "\\frac{5}{33}"
+          }
+        ],
+        "units": null,
+        "kind": "solution",
+        "target": null
+      },
+      "refusal": {
+        "is_refusal": false,
+        "reason": null,
+        "safe_next_step": null
+      },
+      "quality": {
+        "confidence": 0.98,
+        "common_mistakes": []
+      },
+      "plot": {
+        "decision_reason": "No plot rationale provided."
+      }
+    }
+  ],
+  "payload": {
+    "schema_version": "prod_v2",
+    "tier": "FINAL",
+    "language": {
+      "user_language": "English",
+      "preferred_response_language": "English",
+      "response_language": "English"
+    },
+    "runtime": {
+      "request_id": "ea355df4-556f-4a7d-99a8-165069c6be1a",
+      "attempt_id": "51856aec-349a-419b-bdb3-d3fd23024b0a",
+      "preferred_response_language": "English",
+      "default_mode": "GENERAL",
+      "default_graph_mode": "OFF",
+      "default_domain_mode": "reals",
+      "allow_auto_split": true,
+      "max_questions_allowed": 15,
+      "max_tasks_per_question": 6
+    },
+    "items": [
+      {
+        "question_id": "q1",
+        "question_index": 1,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "A ball is thrown straight up from a balcony 20 m above the ground with initial velocity 18 m/s. Its height is h(t)=20+18t-4.9t^2 (meters). How long after launch does it hit the ground?\n\nChoices\n(A) 3.10 s\n(B) 4.55 s\n(C) 5.90 s\n(D) 6.75 s\n(E) 2.25 s",
+          "normalized_text": "A ball is thrown straight up from a balcony 20 m above the ground with initial velocity 18 m/s. Its height is h(t)=20+18t-4.9t^2 (meters). How long after launch does it hit the ground?\n\nChoices\n(A) 3.10 s\n(B) 4.55 s\n(C) 5.90 s\n(D) 6.75 s\n(E) 2.25 s",
+          "detected_tasks": [
+            "equation",
+            "evaluate",
+            "calculus"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "calculus",
+          "topic": "projectile_motion_time",
+          "difficulty": "easy"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "4.56716084903258"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "4.56716084903258",
+          "answer_latex": "4.56716084903258",
+          "values": [
+            {
+              "label": "value",
+              "value": "4.56716084903258",
+              "value_latex": "4.56716084903258"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.93,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      {
+        "question_id": "q2",
+        "question_index": 2,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "Solve for x on 0 ? x < 2?:\n2 sin^2(x) - 3 sin(x) + 1 = 0.\n\nChoices\n(A) {?/6, 5?/6}\n(B) {?/6, 5?/6, 7?/6, 11?/6}\n(C) {?/2, 3?/2}\n(D) {0, ?}\n(E) {?/3, 2?/3, 4?/3, 5?/3}",
+          "normalized_text": "Solve for x on 0 ? x < 2?:\n2 sin^2(x) - 3 sin(x) + 1 = 0.\n\nChoices\n(A) {?/6, 5?/6}\n(B) {?/6, 5?/6, 7?/6, 11?/6}\n(C) {?/2, 3?/2}\n(D) {0, ?}\n(E) {?/3, 2?/3, 4?/3, 5?/3}",
+          "detected_tasks": [
+            "equation",
+            "trigonometry",
+            "evaluate"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "calculus",
+          "topic": "trig_equation",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "(pi/6, 5*pi/6, pi/2)"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "(pi/6, 5*pi/6, pi/2)",
+          "answer_latex": "(pi/6, 5*pi/6, pi/2)",
+          "values": [
+            {
+              "label": "value",
+              "value": "(pi/6, 5*pi/6, pi/2)",
+              "value_latex": "(pi/6, 5*pi/6, pi/2)"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.93,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      {
+        "question_id": "q3",
+        "question_index": 3,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "A company?s revenue is R(x)=120x-0.8x^2 (in thousands of dollars) where x is thousands of units sold. How many units maximize revenue?\n\nChoices\n(A) 50,000\n(B) 60,000\n(C) 70,000\n(D) 75,000\n(E) 80,000",
+          "normalized_text": "A company?s revenue is R(x)=120x-0.8x^2 (in thousands of dollars) where x is thousands of units sold. How many units maximize revenue?\n\nChoices\n(A) 50,000\n(B) 60,000\n(C) 70,000\n(D) 75,000\n(E) 80,000",
+          "detected_tasks": [
+            "evaluate",
+            "calculus"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "optimization",
+          "topic": "quadratic_maximum",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "75000"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "75000",
+          "answer_latex": "75000",
+          "values": [
+            {
+              "label": "value",
+              "value": "75000",
+              "value_latex": "75000"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.93,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      {
+        "question_id": "q4",
+        "question_index": 4,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "Evaluate the limit:\nlim_{x?0} (sin(5x) - 5x) / x^3.\n\nChoices\n(A) 0\n(B) -125/6\n(C) -25/6\n(D) 125/6\n(E) 25/6",
+          "normalized_text": "Evaluate the limit:\nlim_{x?0} (sin(5x) - 5x) / x^3.\n\nChoices\n(A) 0\n(B) -125/6\n(C) -25/6\n(D) 125/6\n(E) 25/6",
+          "detected_tasks": [
+            "evaluate",
+            "calculus"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "calculus",
+          "topic": "limit_expansion",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "- \\frac{125}{6}"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "Choice B: -125/6",
+          "answer_latex": "- \\frac{125}{6}",
+          "values": [
+            {
+              "label": "choice",
+              "value": "B",
+              "value_latex": "B"
+            },
+            {
+              "label": "value",
+              "value": "-125/6",
+              "value_latex": "- \\frac{125}{6}"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.98,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      {
+        "question_id": "q5",
+        "question_index": 5,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "A ladder 10 m long leans against a wall. The bottom slides away from the wall at 0.8 m/s. When the bottom is 6 m from the wall, how fast is the top sliding down?\n\nChoices\n(A) 0.48 m/s\n(B) 0.60 m/s\n(C) 0.80 m/s\n(D) 1.20 m/s\n(E) 1.60 m/s",
+          "normalized_text": "A ladder 10 m long leans against a wall. The bottom slides away from the wall at 0.8 m/s. When the bottom is 6 m from the wall, how fast is the top sliding down?\n\nChoices\n(A) 0.48 m/s\n(B) 0.60 m/s\n(C) 0.80 m/s\n(D) 1.20 m/s\n(E) 1.60 m/s",
+          "detected_tasks": [
+            "calculus",
+            "evaluate",
+            "derivation"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "calculus",
+          "topic": "related_rates",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "\\frac{3}{5}"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "3/5",
+          "answer_latex": "\\frac{3}{5}",
+          "values": [
+            {
+              "label": "value",
+              "value": "3/5",
+              "value_latex": "\\frac{3}{5}"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.93,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      {
+        "question_id": "q6",
+        "question_index": 6,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "Solve the system:\n2x + 3y = 7\nx - 2y = 4\n\nChoices\n(A) (x,y) = (2,1)\n(B) (x,y) = (1,2)\n(C) (x,y) = (3,1/3)\n(D) (x,y) = (4,-1/2)\n(E) (x,y) = (5,-1)",
+          "normalized_text": "Solve the system:\n2x + 3y = 7\nx - 2y = 4\n\nChoices\n(A) (x,y) = (2,1)\n(B) (x,y) = (1,2)\n(C) (x,y) = (3,1/3)\n(D) (x,y) = (4,-1/2)\n(E) (x,y) = (5,-1)",
+          "detected_tasks": [
+            "system",
+            "equation",
+            "evaluate"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "algebra",
+          "topic": "linear_system",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "(26/7, -1/7)"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "(26/7, -1/7)",
+          "answer_latex": "(26/7, -1/7)",
+          "values": [
+            {
+              "label": "value",
+              "value": "(26/7, -1/7)",
+              "value_latex": "(26/7, -1/7)"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.93,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      {
+        "question_id": "q7",
+        "question_index": 7,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "A car?s value V(t) after t years follows V(t)=24000(0.85)^t. After how many years is the car worth half its original value (to the nearest tenth)?\n\nChoices\n(A) 3.6\n(B) 4.3\n(C) 4.8\n(D) 5.6\n(E) 6.1",
+          "normalized_text": "A car?s value V(t) after t years follows V(t)=24000(0.85)^t. After how many years is the car worth half its original value (to the nearest tenth)?\n\nChoices\n(A) 3.6\n(B) 4.3\n(C) 4.8\n(D) 5.6\n(E) 6.1",
+          "detected_tasks": [
+            "evaluate",
+            "equation"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "algebra",
+          "topic": "exponential_decay",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "4.2650242818"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "4.26502428180",
+          "answer_latex": "4.2650242818",
+          "values": [
+            {
+              "label": "value",
+              "value": "4.26502428180",
+              "value_latex": "4.2650242818"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.93,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      {
+        "question_id": "q8",
+        "question_index": 8,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "Find the exact value:\n?_0^1 (3x^2) / (1 + x^3) dx.\n\nChoices\n(A) ln(2)\n(B) ln(4)\n(C) 1/2 ln(2)\n(D) 2\n(E) 1",
+          "normalized_text": "Find the exact value:\n?_0^1 (3x^2) / (1 + x^3) dx.\n\nChoices\n(A) ln(2)\n(B) ln(4)\n(C) 1/2 ln(2)\n(D) 2\n(E) 1",
+          "detected_tasks": [
+            "evaluate",
+            "calculus"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "calculus",
+          "topic": "u_substitution",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "\\log{\\left(2 \\right)}"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "log(2)",
+          "answer_latex": "\\log{\\left(2 \\right)}",
+          "values": [
+            {
+              "label": "value",
+              "value": "log(2)",
+              "value_latex": "\\log{\\left(2 \\right)}"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.93,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      {
+        "question_id": "q9",
+        "question_index": 9,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "A rectangle is formed by fencing three sides of a field next to a river (no fence needed along the river). If 120 m of fencing is available, what maximum area can be enclosed?\n\nChoices\n(A) 900 m^2\n(B) 1200 m^2\n(C) 1500 m^2\n(D) 1800 m^2\n(E) 2400 m^2",
+          "normalized_text": "A rectangle is formed by fencing three sides of a field next to a river (no fence needed along the river). If 120 m of fencing is available, what maximum area can be enclosed?\n\nChoices\n(A) 900 m^2\n(B) 1200 m^2\n(C) 1500 m^2\n(D) 1800 m^2\n(E) 2400 m^2",
+          "detected_tasks": [
+            "evaluate",
+            "geometry"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "optimization",
+          "topic": "fencing_max_area",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "1800"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "1800",
+          "answer_latex": "1800",
+          "values": [
+            {
+              "label": "value",
+              "value": "1800",
+              "value_latex": "1800"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.93,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      {
+        "question_id": "q10",
+        "question_index": 10,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "Find the sum of the infinite geometric series:\n5 - 3 + 1.8 - 1.08 + ...\n\nChoices\n(A) 2\n(B) 2.5\n(C) 3\n(D) 3.125\n(E) 3.5",
+          "normalized_text": "Find the sum of the infinite geometric series:\n5 - 3 + 1.8 - 1.08 + ...\n\nChoices\n(A) 2\n(B) 2.5\n(C) 3\n(D) 3.125\n(E) 3.5",
+          "detected_tasks": [
+            "evaluate"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "algebra",
+          "topic": "geometric_series",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "\\frac{25}{8}"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "Choice D: 25/8",
+          "answer_latex": "\\frac{25}{8}",
+          "values": [
+            {
+              "label": "choice",
+              "value": "D",
+              "value_latex": "D"
+            },
+            {
+              "label": "value",
+              "value": "25/8",
+              "value_latex": "\\frac{25}{8}"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.98,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      {
+        "question_id": "q11",
+        "question_index": 11,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "A particle moves along a line with velocity v(t)=t^2-4t+3 (m/s). What is the total distance traveled on 0 ? t ? 4?\n\nChoices\n(A) 4/3\n(B) 8/3\n(C) 10/3\n(D) 14/3\n(E) 16/3",
+          "normalized_text": "A particle moves along a line with velocity v(t)=t^2-4t+3 (m/s). What is the total distance traveled on 0 ? t ? 4?\n\nChoices\n(A) 4/3\n(B) 8/3\n(C) 10/3\n(D) 14/3\n(E) 16/3",
+          "detected_tasks": [
+            "evaluate",
+            "calculus"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "calculus",
+          "topic": "total_distance",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "4"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "4",
+          "answer_latex": "4",
+          "values": [
+            {
+              "label": "value",
+              "value": "4",
+              "value_latex": "4"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.93,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      {
+        "question_id": "q12",
+        "question_index": 12,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "A triangle has sides 7, 8, 9. Find its area.\n\nChoices\n(A) 12?5\n(B) 18?2\n(C) 12?6\n(D) 26?3\n(E) 20?3",
+          "normalized_text": "A triangle has sides 7, 8, 9. Find its area.\n\nChoices\n(A) 12?5\n(B) 18?2\n(C) 12?6\n(D) 26?3\n(E) 20?3",
+          "detected_tasks": [
+            "geometry",
+            "evaluate"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "geometry",
+          "topic": "heron_formula",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "12 \\sqrt{5}"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "12*sqrt(5)",
+          "answer_latex": "12 \\sqrt{5}",
+          "values": [
+            {
+              "label": "value",
+              "value": "12*sqrt(5)",
+              "value_latex": "12 \\sqrt{5}"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.93,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      {
+        "question_id": "q13",
+        "question_index": 13,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "Find all real solutions:\n|2x - 5| = x + 1.\n\nChoices\n(A) {2}\n(B) {4}\n(C) {2, 4}\n(D) {1, 3}\n(E) No real solutions",
+          "normalized_text": "Find all real solutions:\n|2x - 5| = x + 1.\n\nChoices\n(A) {2}\n(B) {4}\n(C) {2, 4}\n(D) {1, 3}\n(E) No real solutions",
+          "detected_tasks": [
+            "equation",
+            "evaluate"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "algebra",
+          "topic": "absolute_value_equation",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "(4/3, 6)"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "(4/3, 6)",
+          "answer_latex": "(4/3, 6)",
+          "values": [
+            {
+              "label": "value",
+              "value": "(4/3, 6)",
+              "value_latex": "(4/3, 6)"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.93,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      {
+        "question_id": "q14",
+        "question_index": 14,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "In how many ways can 4 students be chosen from 12 students?\n\nChoices\n(A) 220\n(B) 330\n(C) 440\n(D) 495\n(E) 792",
+          "normalized_text": "In how many ways can 4 students be chosen from 12 students?\n\nChoices\n(A) 220\n(B) 330\n(C) 440\n(D) 495\n(E) 792",
+          "detected_tasks": [
+            "evaluate"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "discrete_math",
+          "topic": "combinations",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "495"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "Choice D: 495",
+          "answer_latex": "495",
+          "values": [
+            {
+              "label": "choice",
+              "value": "D",
+              "value_latex": "D"
+            },
+            {
+              "label": "value",
+              "value": "495",
+              "value_latex": "495"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.98,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      },
+      {
+        "question_id": "q15",
+        "question_index": 15,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "A box contains 5 red and 7 blue balls. Two balls are drawn without replacement. What is P(both are red)?\n\nChoices\n(A) 5/12\n(B) 5/22\n(C) 10/132\n(D) 20/132\n(E) 10/66",
+          "normalized_text": "A box contains 5 red and 7 blue balls. Two balls are drawn without replacement. What is P(both are red)?\n\nChoices\n(A) 5/12\n(B) 5/22\n(C) 10/132\n(D) 20/132\n(E) 10/66",
+          "detected_tasks": [
+            "probability",
+            "evaluate",
+            "statistics"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "undergraduate_upper",
+          "domain": "probability",
+          "topic": "without_replacement_probability",
+          "difficulty": "hard"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Local Result",
+            "explanation": "Computed using SymPy with NumPy numerical checks.",
+            "math_latex": [
+              "\\frac{5}{33}"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "Choice D: 5/33",
+          "answer_latex": "\\frac{5}{33}",
+          "values": [
+            {
+              "label": "choice",
+              "value": "D",
+              "value_latex": "D"
+            },
+            {
+              "label": "value",
+              "value": "5/33",
+              "value_latex": "\\frac{5}{33}"
+            }
+          ],
+          "units": null,
+          "kind": "solution",
+          "target": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.98,
+          "common_mistakes": []
+        },
+        "plot": {
+          "decision_reason": "No plot rationale provided."
+        }
+      }
+    ]
+  },
+  "telemetry": {
+    "request_id": "ea355df4-556f-4a7d-99a8-165069c6be1a",
+    "attempt_id": "51856aec-349a-419b-bdb3-d3fd23024b0a",
+    "tier": "FINAL",
+    "questions_count": 15,
+    "allow_auto_split_effective": true,
+    "model": "sympy-numpy-local",
+    "provider": "local",
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "total_tokens": 0,
+    "latency_ms_openai": 0,
+    "latency_ms_total": 735,
+    "schema_name": "solve_batch_final_prod_v2",
+    "model_bound": "sympy-numpy-local",
+    "temperature_bound": 0,
+    "top_p_bound": 1,
+    "timeout_ms_bound": 0,
+    "max_questions_allowed_bound": 15,
+    "prompt_binding_id": "f09e50d8-93eb-4141-914a-01b41b1ee51e",
+    "global_system_prompt_id": "global_system_prompt_batch_v1",
+    "developer_prompt_id": "solve_dev_final_merged_v2",
+    "output_schema_id": "solve_batch_final_prod_v2",
+    "openai_calls_count": 0,
+    "repair_attempted": false,
+    "schema_valid": true,
+    "sympy_numpy_reports": [
+      {
+        "question_id": "q1",
+        "sympy_used": true,
+        "numpy_used": true,
+        "parsed_expressions": 11,
+        "solved_equations": 0,
+        "differentiated": 11,
+        "integrated": 11,
+        "equivalence_checks": 0,
+        "numpy_finite_ratio": 1.0
+      },
+      {
+        "question_id": "q2",
+        "sympy_used": true,
+        "numpy_used": true,
+        "parsed_expressions": 2,
+        "solved_equations": 1,
+        "differentiated": 1,
+        "integrated": 1,
+        "equivalence_checks": 1,
+        "numpy_finite_ratio": 1.0
+      },
+      {
+        "question_id": "q3",
+        "sympy_used": true,
+        "numpy_used": true,
+        "parsed_expressions": 1,
+        "solved_equations": 0,
+        "differentiated": 1,
+        "integrated": 1,
+        "equivalence_checks": 0,
+        "numpy_finite_ratio": 1.0
+      },
+      {
+        "question_id": "q4",
+        "sympy_used": true,
+        "numpy_used": true,
+        "parsed_expressions": 5,
+        "solved_equations": 0,
+        "differentiated": 4,
+        "integrated": 4,
+        "equivalence_checks": 0,
+        "numpy_finite_ratio": 1.0
+      },
+      {
+        "question_id": "q5",
+        "sympy_used": true,
+        "numpy_used": true,
+        "parsed_expressions": 12,
+        "solved_equations": 0,
+        "differentiated": 9,
+        "integrated": 9,
+        "equivalence_checks": 0,
+        "numpy_finite_ratio": 1.0
+      },
+      {
+        "question_id": "q6",
+        "sympy_used": true,
+        "numpy_used": true,
+        "parsed_expressions": 4,
+        "solved_equations": 2,
+        "differentiated": 2,
+        "integrated": 2,
+        "equivalence_checks": 2,
+        "numpy_finite_ratio": 1.0
+      },
+      {
+        "question_id": "q7",
+        "sympy_used": true,
+        "numpy_used": true,
+        "parsed_expressions": 10,
+        "solved_equations": 0,
+        "differentiated": 5,
+        "integrated": 5,
+        "equivalence_checks": 0,
+        "numpy_finite_ratio": 1.0
+      },
+      {
+        "question_id": "q8",
+        "sympy_used": true,
+        "numpy_used": true,
+        "parsed_expressions": 5,
+        "solved_equations": 0,
+        "differentiated": 5,
+        "integrated": 5,
+        "equivalence_checks": 0,
+        "numpy_finite_ratio": 1.0
+      },
+      {
+        "question_id": "q9",
+        "sympy_used": true,
+        "numpy_used": true,
+        "parsed_expressions": 5,
+        "solved_equations": 0,
+        "differentiated": 5,
+        "integrated": 5,
+        "equivalence_checks": 0,
+        "numpy_finite_ratio": 1.0
+      },
+      {
+        "question_id": "q10",
+        "sympy_used": true,
+        "numpy_used": true,
+        "parsed_expressions": 10,
+        "solved_equations": 0,
+        "differentiated": 5,
+        "integrated": 5,
+        "equivalence_checks": 0,
+        "numpy_finite_ratio": 1.0
+      },
+      {
+        "question_id": "q11",
+        "sympy_used": true,
+        "numpy_used": true,
+        "parsed_expressions": 5,
+        "solved_equations": 0,
+        "differentiated": 5,
+        "integrated": 5,
+        "equivalence_checks": 0,
+        "numpy_finite_ratio": 1.0
+      },
+      {
+        "question_id": "q12",
+        "sympy_used": true,
+        "numpy_used": true,
+        "parsed_expressions": 1,
+        "solved_equations": 0,
+        "differentiated": 1,
+        "integrated": 1,
+        "equivalence_checks": 0,
+        "numpy_finite_ratio": 1.0
+      },
+      {
+        "question_id": "q13",
+        "sympy_used": true,
+        "numpy_used": true,
+        "parsed_expressions": 1,
+        "solved_equations": 0,
+        "differentiated": 1,
+        "integrated": 1,
+        "equivalence_checks": 0,
+        "numpy_finite_ratio": 1.0
+      },
+      {
+        "question_id": "q14",
+        "sympy_used": true,
+        "numpy_used": true,
+        "parsed_expressions": 5,
+        "solved_equations": 0,
+        "differentiated": 5,
+        "integrated": 5,
+        "equivalence_checks": 0,
+        "numpy_finite_ratio": 1.0
+      },
+      {
+        "question_id": "q15",
+        "sympy_used": true,
+        "numpy_used": true,
+        "parsed_expressions": 5,
+        "solved_equations": 0,
+        "differentiated": 5,
+        "integrated": 5,
+        "equivalence_checks": 0,
+        "numpy_finite_ratio": 1.0
+      }
+    ],
+    "sympy_used": true,
+    "numpy_used": true,
+    "final_local_short_circuit": true
+  }
+}

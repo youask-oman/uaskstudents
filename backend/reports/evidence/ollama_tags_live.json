@@ -1,0 +1,21 @@
+{
+    "models":  [
+                   {
+                       "name":  "qwen25-math7b:latest",
+                       "model":  "qwen25-math7b:latest",
+                       "modified_at":  "2026-02-16T18:18:15.300863-08:00",
+                       "size":  6518182887,
+                       "digest":  "909666ec42a6f9777f9bf042b05e6a0e29a211fd831328af63019b13d5bca575",
+                       "details":  {
+                                       "parent_model":  "",
+                                       "format":  "gguf",
+                                       "family":  "qwen2",
+                                       "families":  [
+                                                        "qwen2"
+                                                    ],
+                                       "parameter_size":  "7.6B",
+                                       "quantization_level":  "Q6_K"
+                                   }
+                   }
+               ]
+}

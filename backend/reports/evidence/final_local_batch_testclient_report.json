@@ -1,0 +1,15 @@
+{
+  "status_code": 502,
+  "session_id": null,
+  "request_id": null,
+  "attempt_id": null,
+  "items_count": 0,
+  "openai_calls_count": null,
+  "provider": null,
+  "model": null,
+  "db_sessions_before": 12,
+  "db_sessions_after": 12,
+  "db_session_saved": false,
+  "db_session_message_count": 0,
+  "chat_final_url": null
+}

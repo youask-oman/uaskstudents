@@ -53,3 +53,14 @@ These are OFF by default and must be explicitly enabled:
 - `WHATSAPP_SOLVER_V3_ENABLED=false`
 - `WHATSAPP_INTERNAL_KEY=`
 - `WHATSAPP_INTERNAL_PORT=8791`
+
+## LLM Provider Configuration
+
+- `LLM_PROVIDER=openai|ollama`
+- `OLLAMA_BASE_URL=http://localhost:11434`
+- `OLLAMA_MODEL=qwen25-math7b:latest`
+- `OLLAMA_TIMEOUT_SECONDS=60`
+- `OLLAMA_CONNECT_TIMEOUT_SECONDS=5`
+- `OLLAMA_MAX_TOKENS=` (optional)
+- `OLLAMA_TEMPERATURE=0.2`
+- `OLLAMA_NUM_CTX=4096`

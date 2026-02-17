@@ -1,0 +1,28 @@
+{
+  "error": {
+    "code": "http_error",
+    "message": "Mandatory SymPy/NumPy gate failed.",
+    "request_id": null,
+    "details": {
+      "code": "sympy_numpy_gate_failed",
+      "message": "Mandatory SymPy/NumPy gate failed.",
+      "request_id": "30c488a2-368f-4f31-a06f-54578bfec566",
+      "attempt_id": "a98703cd-aea1-4fa0-828a-fb563375e35d",
+      "details": {
+        "question_id": "q1",
+        "error": "Cannot convert expression to float"
+      }
+    }
+  },
+  "detail": {
+    "code": "sympy_numpy_gate_failed",
+    "message": "Mandatory SymPy/NumPy gate failed.",
+    "request_id": "30c488a2-368f-4f31-a06f-54578bfec566",
+    "attempt_id": "a98703cd-aea1-4fa0-828a-fb563375e35d",
+    "details": {
+      "question_id": "q1",
+      "error": "Cannot convert expression to float"
+    }
+  },
+  "request_id": null
+}

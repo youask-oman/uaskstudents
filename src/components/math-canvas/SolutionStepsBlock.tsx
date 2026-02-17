@@ -24,6 +24,7 @@ interface SolutionStepsBlockProps {
   sectionId?: string;
   editable?: boolean;
   exportMode?: boolean;
+  hideStepLabels?: boolean;
   onActiveTextEditorChange?: (editor: Editor | null, elementId: string | null) => void;
   onChange?: (next: {
     steps: StepRow[];
@@ -138,10 +139,10 @@ const wrapProblemMath = (value: string): string => {
 };
 
 /* Section row component for consistent alignment */
-const SectionRow: React.FC<{ label: string; id: string; style?: React.CSSProperties; children: React.ReactNode }> = ({ label, id, style, children }) => (
+const SectionRow: React.FC<{ label: string; id: string; style?: React.CSSProperties; children: React.ReactNode; hideLabel?: boolean }> = ({ label, id, style, children, hideLabel }) => (
   <div className={styles.stepRow} id={id} style={style}>
-    <span className={styles.stepLabel}>{label}</span>
-    <div className={styles.stepValue}>{children}</div>
+    {!hideLabel ? <span className={styles.stepLabel}>{label}</span> : null}
+    <div className={styles.stepValue} style={hideLabel ? { gridColumn: "1 / -1" } : undefined}>{children}</div>
   </div>
 );
 
@@ -159,6 +160,7 @@ export default function SolutionStepsBlock({
   sectionId = "steps-block",
   editable = false,
   exportMode = false,
+  hideStepLabels = false,
   onActiveTextEditorChange,
   onChange,
 }: SolutionStepsBlockProps) {
@@ -276,7 +278,7 @@ export default function SolutionStepsBlock({
     <div className={styles.stepsBlock} ref={rootRef}>
       {/* Domain Constraints */}
       {Array.isArray(domainConstraints) && domainConstraints.length > 0 && (
-        <SectionRow label="DOMAIN" id={`${sectionId}-domain`}>
+        <SectionRow label="DOMAIN" id={`${sectionId}-domain`} hideLabel={hideStepLabels}>
           <div style={{ fontWeight: 700, marginBottom: 8 }}>Domain constraints:</div>
           {domainConstraints.map((constraint, index) => (
             <div key={`${sectionId}-domain-${index}`} style={{ marginBottom: index < domainConstraints.length - 1 ? 6 : 0 }}>
@@ -288,7 +290,7 @@ export default function SolutionStepsBlock({
 
       {/* Problem Statement Section */}
       {(originalProblem || normalizedProblem) && (
-        <SectionRow label="PROBLEM" id={`${sectionId}-problem`}>
+        <SectionRow label="PROBLEM" id={`${sectionId}-problem`} hideLabel={hideStepLabels}>
           {editingProblem ? (
             <div className={styles.inlineEditWrap}>
               <div style={{ marginBottom: 12 }}>
@@ -348,7 +350,7 @@ export default function SolutionStepsBlock({
 
       {/* Assumptions Section */}
       {Array.isArray(assumptions) && assumptions.length > 0 && (
-        <SectionRow label="ASSUMPTIONS" id={`${sectionId}-assumptions`}>
+        <SectionRow label="ASSUMPTIONS" id={`${sectionId}-assumptions`} hideLabel={hideStepLabels}>
           {editingAssumptions ? (
             <div className={styles.inlineEditWrap}>
               {assumptionsDraft.map((assumption, index) => (
@@ -420,8 +422,8 @@ export default function SolutionStepsBlock({
       {/* Steps */}
       {steps.map((step, index) => (
         <div key={`${sectionId}-step-${index}`} className={styles.stepRow} id={`${sectionId}-step-${index + 1}`}>
-          <span className={styles.stepLabel}>STEP {step.k || index + 1}</span>
-          <div className={styles.stepValue}>
+          {!hideStepLabels ? <span className={styles.stepLabel}>STEP {step.k || index + 1}</span> : null}
+          <div className={styles.stepValue} style={hideStepLabels ? { gridColumn: "1 / -1" } : undefined}>
             {editingStepIndex !== index ? (
               <span className={styles.stepTitleTag}>
                 {step.titleRichHtml ? (
@@ -562,7 +564,7 @@ export default function SolutionStepsBlock({
       ))}
 
       {/* Final Answer Section */}
-      <SectionRow label="FINAL ANSWER" id={`${sectionId}-final-answer`}>
+      <SectionRow label="FINAL ANSWER" id={`${sectionId}-final-answer`} hideLabel={false}>
         {editingResult ? (
           <div className={styles.inlineEditWrap}>
             <div style={{ marginBottom: 12 }}>
@@ -621,9 +623,11 @@ export default function SolutionStepsBlock({
             {/* Answer Text */}
             {displayAnswerText && (
               <div style={{ marginBottom: displayAnswerLatex || displayValues.length > 0 ? 16 : 0 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 8, letterSpacing: "0.05em" }}>
-                  Summary
-                </div>
+                {!hideStepLabels ? (
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 8, letterSpacing: "0.05em" }}>
+                    Summary
+                  </div>
+                ) : null}
                 <div style={{ fontSize: 14, color: "#0f172a", fontWeight: 700, lineHeight: 1.7 }}>
                   <MathRenderer content={displayAnswerText} mode={looksLikeMathExpression(displayAnswerText) ? "inline" : "prose"} />
                 </div>
@@ -633,9 +637,11 @@ export default function SolutionStepsBlock({
             {/* Answer LaTeX - with deterministic line breaking */}
             {displayAnswerLatex && shouldRenderAsProse(displayAnswerLatex) ? (
               <div className={styles.finalAnswerMathContainer} style={{ marginBottom: displayValues.length > 0 ? 16 : 0 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 8, letterSpacing: "0.05em" }}>
-                  Result
-                </div>
+                {!hideStepLabels ? (
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 8, letterSpacing: "0.05em" }}>
+                    Result
+                  </div>
+                ) : null}
                 <div className={styles.finalAnswerTextBlock}>
                   <MathRenderer content={displayAnswerLatex} mode="prose" />
                 </div>
@@ -644,9 +650,11 @@ export default function SolutionStepsBlock({
               const blocks = parseLatexToBlocks(displayAnswerLatex);
               return (
                 <div className={styles.finalAnswerMathContainer} style={{ marginBottom: displayValues.length > 0 ? 16 : 0 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 8, letterSpacing: "0.05em" }}>
-                    Result
-                  </div>
+                  {!hideStepLabels ? (
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 8, letterSpacing: "0.05em" }}>
+                      Result
+                    </div>
+                  ) : null}
                   <div className={styles.finalAnswerMathContent}>
                     {blocks.map((block, idx) => (
                       block.kind === "math" ? (
@@ -730,7 +738,7 @@ export default function SolutionStepsBlock({
 
       {/* Verification */}
       {Array.isArray(verificationChecks) && verificationChecks.length > 0 && (
-        <SectionRow label="VERIFY" id={`${sectionId}-verification`}>
+        <SectionRow label="VERIFY" id={`${sectionId}-verification`} hideLabel={hideStepLabels}>
           <div style={{ fontWeight: 700, marginBottom: 8 }}>Verification:</div>
           {verificationChecks.map((check, index) => (
             <div key={`${check.checkId}-${index}`} style={{ marginBottom: index < verificationChecks.length - 1 ? 8 : 0 }}>
@@ -748,7 +756,7 @@ export default function SolutionStepsBlock({
 
       {/* Common Mistakes */}
       {Array.isArray(commonMistakes) && commonMistakes.length > 0 && (
-        <SectionRow label="MISTAKES" id={`${sectionId}-mistakes`} style={{ borderLeft: "3px solid #f59e0b", background: "#fffbeb" }}>
+        <SectionRow label="MISTAKES" id={`${sectionId}-mistakes`} hideLabel={hideStepLabels} style={{ borderLeft: "3px solid #f59e0b", background: "#fffbeb" }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: "#b45309", marginBottom: 8, textTransform: "uppercase" }}>Common Mistakes to Avoid</div>
           <ul style={{ margin: 0, paddingLeft: 20, listStyleType: "disc", fontSize: 13, color: "#92400e", lineHeight: 1.6 }}>
             {commonMistakes.map((mistake, index) => (

@@ -1,0 +1,11 @@
+{
+    "access_token":  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkB1YXNrLmFpIiwiZXhwIjoxNzczODkzNjg4fQ.B_mRKW8yxS7nMZN1pV-RAb1DaT4LqRx4hEp7ZS7NGv4",
+    "token_type":  "bearer",
+    "user_id":  1,
+    "full_name":  "Loai",
+    "role":  "superadmin",
+    "avatar_url":  null,
+    "session_token":  "74a0ef13-11e6-4899-88f4-265afde06b51",
+    "terms_acceptance_required":  false,
+    "required_terms_version":  "seed-v1"
+}

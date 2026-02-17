@@ -414,9 +414,11 @@ class VlmEngine(OCREngine):
     # Cons: Requires API key, costs per image, data sent to cloud
     
     def __init__(self):
-        self.model = os.getenv("VLM_MODEL_OCR") or os.getenv("OPENAI_MODEL_DEFAULT")
+        self.model = (os.getenv("OPENAI_MODEL_DEFAULT") or "").strip()
         if not self.model:
-            raise RuntimeError("VLM_MODEL_OCR or OPENAI_MODEL_DEFAULT is required")
+            raise RuntimeError("OPENAI_MODEL_DEFAULT is required")
+        if self.model != "gpt-5-mini":
+            raise RuntimeError(f"OPENAI_MODEL_DEFAULT must be 'gpt-5-mini', got '{self.model}'")
 
     @property
     def engine_name(self) -> str:

@@ -1,0 +1,430 @@
+{
+  "total": 1000,
+  "solved": 435,
+  "failed": 565,
+  "solve_rate": 0.435,
+  "sample_failed": [
+    {
+      "item": 1,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Multiple-choice) Find the sum of the infinite geometric series: 4 + 8/3 + 16/9 + ... Choices (A) 9 (B) 8 (C) 11 (D) 12 (E) 16"
+    },
+    {
+      "item": 4,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (2x^1)/(1 + x^2) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 5,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Let Z ~ N(0,1). Approximate P(|Z| \u2264 1.0). Choices (A) 0.7127 (B) 0.6527 (C) 0.7827 (D) 0.6827 (E) 0.7427"
+    },
+    {
+      "item": 6,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Evaluate the contour integral: \u222e_|z|=1 1/((z--0.14)(z-1.56)) dz Choices (A) 2\u03c0i\u00b7-0.088 (B) 2\u03c0i\u00b7-0.588 (C) 2\u03c0i\u00b70.412 (D) 2\u03c0i\u00b7-1.088 (E) 2\u03c0i\u00b7-0."
+    },
+    {
+      "item": 9,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Final answer only) Let A be the 3\u00d73 matrix with a on the diagonal and b on every off-diagonal entry, where a=4 and b=1. Find the eigenvalues of A (with multipl"
+    },
+    {
+      "item": 11,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: G11 Question (Multiple-choice) A circle has radius 4. What is the area of the sector with central angle 180\u00b0? (Answer in terms of \u03c0) Choices (A) 28/3\u03c0 (B) 20/3\u03c0 (C) 16\u03c0 (D) "
+    },
+    {
+      "item": 12,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Final answer only) Let A be the 3\u00d73 matrix with a on the diagonal and b on every off-diagonal entry, where a=5 and b=3. Find the eigenvalues of A (with multipl"
+    },
+    {
+      "item": 13,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (6x^5)/(1 + x^6) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 14,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Evaluate the contour integral: \u222e_|z|=3 1/((z-0.97)(z-4.42)) dz Choices (A) 2\u03c0i\u00b7-0.540 (B) 2\u03c0i\u00b70.210 (C) 2\u03c0i\u00b7-0.790 (D) 2\u03c0i\u00b7-0.040 (E) 2\u03c0i\u00b7-0.2"
+    },
+    {
+      "item": 16,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Multiple-choice) Find the sum of the infinite geometric series: 5 + 10/3 + 20/9 + ... Choices (A) 9 (B) 21 (C) 13 (D) 15 (E) 11"
+    },
+    {
+      "item": 18,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Let Z ~ N(0,1). Approximate P(|Z| \u2264 1.5). Choices (A) 0.9664 (B) 0.8364 (C) 0.9264 (D) 0.8664 (E) 0.8964"
+    },
+    {
+      "item": 22,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (5x^4)/(1 + x^5) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 24,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: G11 Question (Multiple-choice) A circle has radius 15. What is the area of the sector with central angle 180\u00b0? (Answer in terms of \u03c0) Choices (A) 525/4\u03c0 (B) 375/4\u03c0 (C) 225\u03c0 "
+    },
+    {
+      "item": 25,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Evaluate the contour integral: \u222e_|z|=4 1/((z--0.07)(z-5.48)) dz Choices (A) 2\u03c0i\u00b70.820 (B) 2\u03c0i\u00b7-1.180 (C) 2\u03c0i\u00b70.070 (D) 2\u03c0i\u00b7-0.680 (E) 2\u03c0i\u00b7-0.1"
+    },
+    {
+      "item": 27,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Let Z ~ N(0,1). Approximate P(|Z| \u2264 1.0). Choices (A) 0.7127 (B) 0.7427 (C) 0.6827 (D) 0.5827 (E) 0.6527"
+    },
+    {
+      "item": 28,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Evaluate the contour integral: \u222e_|z|=2 1/((z--0.23)(z-3.91)) dz Choices (A) 2\u03c0i\u00b7-0.492 (B) 2\u03c0i\u00b70.258 (C) 2\u03c0i\u00b7-0.742 (D) 2\u03c0i\u00b7-1.242 (E) 2\u03c0i\u00b7-0."
+    },
+    {
+      "item": 29,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Let Z ~ N(0,1). Approximate P(|Z| \u2264 1.0). Choices (A) 0.7827 (B) 0.6827 (C) 0.6527 (D) 0.6227 (E) 0.7127"
+    },
+    {
+      "item": 31,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Final answer only) Let A be the 3\u00d73 matrix with a on the diagonal and b on every off-diagonal entry, where a=6 and b=2. Find the eigenvalues of A (with multipl"
+    },
+    {
+      "item": 32,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Evaluate the contour integral: \u222e_|z|=3 1/((z--1.38)(z-3.86)) dz Choices (A) 2\u03c0i\u00b7-0.191 (B) 2\u03c0i\u00b7-0.441 (C) 2\u03c0i\u00b7-0.691 (D) 2\u03c0i\u00b70.309 (E) 2\u03c0i\u00b70.8"
+    },
+    {
+      "item": 34,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (2x^1)/(1 + x^2) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 35,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: G11 Question (Multiple-choice) A circle has radius 5. What is the area of the sector with central angle 150\u00b0? (Answer in terms of \u03c0) Choices (A) 25/2\u03c0 (B) 125/12\u03c0 (C) 25/3\u03c0 "
+    },
+    {
+      "item": 37,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (6x^5)/(1 + x^6) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 38,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Evaluate the contour integral: \u222e_|z|=2 1/((z-0.92)(z-2.44)) dz Choices (A) 2\u03c0i\u00b7-0.158 (B) 2\u03c0i\u00b7-0.408 (C) 2\u03c0i\u00b7-0.658 (D) 2\u03c0i\u00b7-0.908 (E) 2\u03c0i\u00b70.3"
+    },
+    {
+      "item": 39,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Multiple-choice) Find the sum of the infinite geometric series: 4 + 8/3 + 16/9 + ... Choices (A) 11 (B) 13 (C) 12 (D) 14 (E) 15"
+    },
+    {
+      "item": 40,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (4x^3)/(1 + x^4) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 41,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (2x^1)/(1 + x^2) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 44,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Multiple-choice) Find the sum of the infinite geometric series: 1 + -1/2 + 1/4 + ... Choices (A) -7/3 (B) -16/3 (C) 14/3 (D) 2/3 (E) -4/3"
+    },
+    {
+      "item": 45,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Multiple-choice) Find the sum of the infinite geometric series: 9 + 27/4 + 81/16 + ... Choices (A) 40 (B) 42 (C) 36 (D) 38 (E) 37"
+    },
+    {
+      "item": 46,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (6x^5)/(1 + x^6) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 47,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (4x^3)/(1 + x^4) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 49,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Final answer only) Let A be the 3\u00d73 matrix with a on the diagonal and b on every off-diagonal entry, where a=2 and b=2. Find the eigenvalues of A (with multipl"
+    },
+    {
+      "item": 50,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (3x^2)/(1 + x^3) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 51,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Evaluate the contour integral: \u222e_|z|=2 1/((z--1.14)(z-2.79)) dz Choices (A) 2\u03c0i\u00b7-0.254 (B) 2\u03c0i\u00b7-0.754 (C) 2\u03c0i\u00b70.246 (D) 2\u03c0i\u00b7-0.004 (E) 2\u03c0i\u00b7-1."
+    },
+    {
+      "item": 54,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Final answer only) Let A be the 3\u00d73 matrix with a on the diagonal and b on every off-diagonal entry, where a=5 and b=3. Find the eigenvalues of A (with multipl"
+    },
+    {
+      "item": 55,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: G11 Question (Multiple-choice) A circle has radius 15. What is the area of the sector with central angle 180\u00b0? (Answer in terms of \u03c0) Choices (A) 525/4\u03c0 (B) 225/2\u03c0 (C) 375/4"
+    },
+    {
+      "item": 56,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: G11 Question (Multiple-choice) A circle has radius 6. What is the area of the sector with central angle 60\u00b0? (Answer in terms of \u03c0) Choices (A) 9\u03c0 (B) 6\u03c0 (C) 12\u03c0 (D) 6\u03c0+4 (E"
+    },
+    {
+      "item": 57,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: G11 Question (Multiple-choice) A circle has radius 14. What is the area of the sector with central angle 45\u00b0? (Answer in terms of \u03c0) Choices (A) 49\u03c0 (B) 49/6\u03c0 (C) 539/45\u03c0 (D"
+    },
+    {
+      "item": 61,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Final answer only) Let A be the 3\u00d73 matrix with a on the diagonal and b on every off-diagonal entry, where a=6 and b=0. Find the eigenvalues of A (with multipl"
+    },
+    {
+      "item": 62,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Evaluate the contour integral: \u222e_|z|=4 1/((z--1.75)(z-6.28)) dz Choices (A) 2\u03c0i\u00b7-0.125 (B) 2\u03c0i\u00b7-0.375 (C) 2\u03c0i\u00b7-0.625 (D) 2\u03c0i\u00b70.125 (E) 2\u03c0i\u00b7-1."
+    },
+    {
+      "item": 64,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Final answer only) Let A be the 3\u00d73 matrix with a on the diagonal and b on every off-diagonal entry, where a=6 and b=0. Find the eigenvalues of A (with multipl"
+    }
+  ],
+  "sample_solved": [
+    {
+      "item": 2,
+      "ok": true,
+      "topic": "equation_solve",
+      "answer": "Choice B: 7",
+      "preview": "Level: G11 Question (Multiple-choice) Solve for x: 9x - 6 = 7x + 8 Choices (A) 3 (B) 7 (C) 11 (D) 5 (E) 1"
+    },
+    {
+      "item": 3,
+      "ok": true,
+      "topic": "equation_solve",
+      "answer": "(-8, 2)",
+      "preview": "Level: G11 Question (Final answer only) Solve the quadratic equation (give all real solutions): 1x^2 + 6x - 16 = 0 Final answer: ____"
+    },
+    {
+      "item": 7,
+      "ok": true,
+      "topic": "equation_solve",
+      "answer": "(2.0*x**3*(1 - x) + 10.0)/(e*f*t*x)",
+      "preview": "Level: College Question (Multiple-choice) Let f(x) = -2x^4 + 2x^3 + 0x^2 + 0x + 10. Compute f'(2). Choices (A) -48 (B) -52 (C) -44 (D) -38 (E) -40"
+    },
+    {
+      "item": 8,
+      "ok": true,
+      "topic": "equation_solve",
+      "answer": "(5, 10)",
+      "preview": "Level: G11 Question (Final answer only) Solve the quadratic equation (give all real solutions): 3x^2 - 45x + 150 = 0 Final answer: ____"
+    },
+    {
+      "item": 10,
+      "ok": true,
+      "topic": "equation_solve",
+      "answer": "(2, 8)",
+      "preview": "Level: G11 Question (Final answer only) Solve the quadratic equation (give all real solutions): 2x^2 - 20x + 32 = 0 Final answer: ____"
+    },
+    {
+      "item": 15,
+      "ok": true,
+      "topic": "geometric_series_sum",
+      "answer": "Choice D: 27/5",
+      "preview": "Level: College Question (Multiple-choice) Find the sum of the infinite geometric series: 9 + -6 + 4 + ... Choices (A) 32/5 (B) 37/5 (C) 12/5 (D) 27/5 (E) 17/5"
+    },
+    {
+      "item": 17,
+      "ok": true,
+      "topic": "equation_solve",
+      "answer": "(-2, 6)",
+      "preview": "Level: G11 Question (Final answer only) Solve the quadratic equation (give all real solutions): 3x^2 - 12x - 36 = 0 Final answer: ____"
+    },
+    {
+      "item": 19,
+      "ok": true,
+      "topic": "equation_solve",
+      "answer": "Choice D: 12",
+      "preview": "Level: G11 Question (Multiple-choice) Solve for x: 4x - 16 = 1x + 20 Choices (A) 6 (B) 7 (C) 18 (D) 12 (E) 9"
+    },
+    {
+      "item": 20,
+      "ok": true,
+      "topic": "equation_solve",
+      "answer": "(-6, 7)",
+      "preview": "Level: G11 Question (Final answer only) Solve the quadratic equation (give all real solutions): 3x^2 - 3x - 126 = 0 Final answer: ____"
+    },
+    {
+      "item": 21,
+      "ok": true,
+      "topic": "equation_solve",
+      "answer": "(-7, -4)",
+      "preview": "Level: G11 Question (Final answer only) Solve the quadratic equation (give all real solutions): 1x^2 + 11x + 28 = 0 Final answer: ____"
+    },
+    {
+      "item": 23,
+      "ok": true,
+      "topic": "equation_solve",
+      "answer": "(x*(-3.0*x**3 + x**2 + 5.0*x + 2.0) - 7.0)/(e*f*t*x)",
+      "preview": "Level: College Question (Multiple-choice) Let f(x) = -3x^4 + 1x^3 + 5x^2 + 2x - 7. Compute f'(-1). Choices (A) 7 (B) 19 (C) -1 (D) 3 (E) 13"
+    },
+    {
+      "item": 26,
+      "ok": true,
+      "topic": "equation_solve",
+      "answer": "(-4, -1)",
+      "preview": "Level: G11 Question (Final answer only) Solve the quadratic equation (give all real solutions): 1x^2 + 5x + 4 = 0 Final answer: ____"
+    },
+    {
+      "item": 30,
+      "ok": true,
+      "topic": "equation_solve",
+      "answer": "Choice C: -16/5",
+      "preview": "Level: G11 Question (Multiple-choice) Solve for x: 9x + 12 = 4x - 4 Choices (A) -41/5 (B) -36/5 (C) -16/5 (D) -31/5 (E) -21/5"
+    },
+    {
+      "item": 33,
+      "ok": true,
+      "topic": "equation_solve",
+      "answer": "(-9, -2)",
+      "preview": "Level: G11 Question (Final answer only) Solve the quadratic equation (give all real solutions): 1x^2 + 11x + 18 = 0 Final answer: ____"
+    },
+    {
+      "item": 36,
+      "ok": true,
+      "topic": "equation_solve",
+      "answer": "Choice E: -6",
+      "preview": "Level: G11 Question (Multiple-choice) Solve for x: 6x - 11 = 9x + 7 Choices (A) -10 (B) -8 (C) -7 (D) -12 (E) -6"
+    },
+    {
+      "item": 42,
+      "ok": true,
+      "topic": "equation_solve",
+      "answer": "(-2, 8)",
+      "preview": "Level: G11 Question (Final answer only) Solve the quadratic equation (give all real solutions): 1x^2 - 6x - 16 = 0 Final answer: ____"
+    },
+    {
+      "item": 43,
+      "ok": true,
+      "topic": "equation_solve",
+      "answer": "(0, 3)",
+      "preview": "Level: G11 Question (Final answer only) Solve the quadratic equation (give all real solutions): 1x^2 - 3x + 0 = 0 Final answer: ____"
+    },
+    {
+      "item": 48,
+      "ok": true,
+      "topic": "equation_solve",
+      "answer": "4",
+      "preview": "Level: G11 Question (Final answer only) Solve the quadratic equation (give all real solutions): 3x^2 - 24x + 48 = 0 Final answer: ____"
+    },
+    {
+      "item": 52,
+      "ok": true,
+      "topic": "equation_solve",
+      "answer": "(x*(2.0*x**3 - 5.0*x**2 + 6.0*x - 5.0) + 3.0)/(e*f*t*x)",
+      "preview": "Level: College Question (Multiple-choice) Let f(x) = 2x^4 - 5x^3 + 6x^2 - 5x + 3. Compute f'(-1). Choices (A) -32 (B) -34 (C) -40 (D) -46 (E) -52"
+    },
+    {
+      "item": 53,
+      "ok": true,
+      "topic": "equation_solve",
+      "answer": "(4, 9)",
+      "preview": "Level: G11 Question (Final answer only) Solve the quadratic equation (give all real solutions): 3x^2 - 39x + 108 = 0 Final answer: ____"
+    }
+  ]
+}

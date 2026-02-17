@@ -24,6 +24,8 @@ from app.services.plot_integration import apply_graph_mode_override, format_plot
 from app.services.runtime_audit import emit_runtime_audit
 from app.services.solve.cache_service import cache_service
 from app.services.solve.canonicalization_service import canonicalization_service
+from app.services.solve.local_final_solver import try_solve_final_with_sympy_numpy
+from app.services.solve.sympy_numpy_gate import run_mandatory_sympy_numpy_gate
 from app.services.solve.verification_gate import verify_solve_result
 from app.services.solver_v3 import get_solver_v3
 from app.utils.schema_deref import deref_json_schema, validate_no_refs
@@ -795,6 +797,191 @@ def _numeric_verify_equation(problem_text: str, candidate_values: List[str]) -> 
         return {"verified": False, "final_solutions": [], "dropped_candidates": []}
 
 
+def _try_local_final_equation_solution(
+    *,
+    base: Dict[str, Any],
+    problem_text: str,
+    verification_problem_text: str,
+    request_id: str,
+    attempt_id: str,
+    timing_ms: Dict[str, int],
+) -> Optional[Dict[str, Any]]:
+    """
+    FINAL-tier local short-circuit:
+    Return a complete payload only when symbolic solve is high-confidence and complete.
+    Otherwise return None to continue with normal OpenAI flow.
+    """
+    expr_text = str(verification_problem_text or "").strip()
+    try:
+        gate = run_mandatory_sympy_numpy_gate(problem_text)
+        if not gate.sympy_used or not gate.numpy_used:
+            return None
+        if float(gate.numpy_finite_ratio or 0.0) < 0.70:
+            return None
+
+        # Generic FINAL local short-circuit for supported problem families
+        # (MCQ/final-answer, not only single-equation forms).
+        generic_local = try_solve_final_with_sympy_numpy(problem_text)
+        if generic_local is not None and float(generic_local.confidence) >= 0.90:
+            payload = copy.deepcopy(base)
+            payload["steps"] = [
+                {
+                    "index": 1,
+                    "title": "Local Result",
+                    "explanation": "Computed using SymPy with NumPy numerical checks.",
+                    "math_latex": [str(generic_local.answer_latex)] if generic_local.answer_latex else [],
+                    "rules_used": [],
+                    "plots_used": [],
+                    "checks": [],
+                    "notes": None,
+                }
+            ]
+            if not isinstance(payload.get("steps"), list):
+                payload["steps"] = []
+            payload["steps"] = payload["steps"][:1]
+            payload["problem"]["detected_tasks"] = generic_local.detected_tasks[:8] if generic_local.detected_tasks else ["solve"]
+            payload["classification"]["domain"] = generic_local.classification_domain
+            payload["classification"]["topic"] = generic_local.classification_topic
+            payload["classification"]["difficulty"] = generic_local.classification_difficulty
+            payload["final_answer"] = {
+                "answer_text": generic_local.answer_text,
+                "answer_latex": generic_local.answer_latex,
+                "values": generic_local.values,
+                "units": None,
+            }
+            payload["verification"] = {
+                "verified": True,
+                "verification_method": "symbolic",
+                "unverified_reason": None,
+                "assumptions_used": [],
+                "candidate_solutions": [_solution_item(v.get("value")) for v in (generic_local.values or []) if isinstance(v, dict)],
+                "dropped_candidates": [],
+                "final_solutions": [_solution_item(v.get("value")) for v in (generic_local.values or []) if isinstance(v, dict)],
+                "verification_meta": {
+                    "symbolic_parse": True,
+                    "duration_ms": 0,
+                    "candidates_checked": len(generic_local.values or []),
+                    "timed_out": False,
+                    "route": "local_sympy_numpy",
+                    "numpy_finite_ratio": float(generic_local.numpy_finite_ratio or 0.0),
+                    "equivalence_checks": int(gate.equivalence_checks or 0),
+                },
+            }
+            payload["quality"] = {
+                "confidence": float(generic_local.confidence),
+                "common_mistakes": [],
+            }
+            payload["visuals"]["should_visualize"] = False
+            payload["visuals"]["decision_reason"] = "Local FINAL short-circuit (SymPy/NumPy) produced verified final answer."
+            payload["runtime_meta"] = _default_runtime_meta(
+                request_id,
+                attempt_id,
+                "local_sympy_numpy",
+                "sympy-numpy-local",
+                timing_ms,
+            )
+            payload["runtime_meta"]["input_tokens"] = 0
+            payload["runtime_meta"]["output_tokens"] = 0
+            payload["runtime_meta"]["total_tokens"] = 0
+            payload["runtime_meta"]["finish_reason"] = "local_short_circuit"
+            payload["runtime_meta"]["latency_ms_openai"] = 0
+            payload["runtime_meta"]["sympy_numpy_gate"] = gate.as_dict()
+            return payload
+
+        # Equation-specific fallback path for generic cases not supported above.
+        if "=" not in expr_text or expr_text.count("=") != 1:
+            return None
+
+        from sympy import Eq, Symbol, simplify, solve, sympify
+
+        def _sympy_ready(expr: str) -> str:
+            out = expr
+            out = re.sub(r"(\d)([A-Za-z])", r"\1*\2", out)
+            out = re.sub(r"([A-Za-z])(\d)", r"\1*\2", out)
+            out = re.sub(r"([A-Za-z0-9\)])\(", r"\1*(", out)
+            out = re.sub(r"\)\s*([A-Za-z0-9])", r")*\1", out)
+            return out
+
+        left, right = expr_text.split("=", 1)
+        lhs = sympify(_sympy_ready(left.strip().replace("^", "**")))
+        rhs = sympify(_sympy_ready(right.strip().replace("^", "**")))
+        delta_expr = simplify(lhs - rhs)
+        symbols = sorted((lhs.free_symbols | rhs.free_symbols), key=lambda s: s.name)
+        if len(symbols) != 1:
+            return None
+        target: Symbol = symbols[0]
+
+        solved = solve(Eq(lhs, rhs), target, dict=False)
+        if solved is None:
+            return None
+        if not isinstance(solved, list):
+            solved = [solved]
+        solved = [str(v) for v in solved if str(v).strip()]
+        solved = list(dict.fromkeys(solved))
+        if not solved:
+            return None
+        if len(solved) > 12:
+            return None
+
+        numeric = _numeric_verify_equation(expr_text, solved)
+        if not numeric.get("verified"):
+            return None
+        final_solutions = [str(v) for v in (numeric.get("final_solutions") or []) if str(v).strip()]
+        if not final_solutions:
+            return None
+
+        payload = copy.deepcopy(base)
+        answer_text = ", ".join(final_solutions)
+        payload["steps"] = []
+        payload["steps"] = payload["steps"][:1]
+        payload["final_answer"] = {
+            "answer_text": answer_text,
+            "answer_latex": answer_text,
+            "values": [{"label": "solution", "value": v, "value_latex": v} for v in final_solutions],
+            "units": None,
+        }
+        payload["verification"] = {
+            "verified": True,
+            "verification_method": "symbolic",
+            "unverified_reason": None,
+            "assumptions_used": [],
+            "candidate_solutions": [_solution_item(v) for v in solved],
+            "dropped_candidates": [],
+            "final_solutions": [_solution_item(v) for v in final_solutions],
+            "verification_meta": {
+                "symbolic_parse": True,
+                "duration_ms": 0,
+                "candidates_checked": len(solved),
+                "timed_out": False,
+                "route": "local_sympy_numpy",
+                "numpy_finite_ratio": float(gate.numpy_finite_ratio or 0.0),
+                "equivalence_checks": int(gate.equivalence_checks or 0),
+            },
+        }
+        payload["quality"] = {
+            "confidence": 0.98,
+            "common_mistakes": [],
+        }
+        payload["visuals"]["should_visualize"] = False
+        payload["visuals"]["decision_reason"] = "Local FINAL short-circuit (SymPy/NumPy) produced verified final answer."
+        payload["runtime_meta"] = _default_runtime_meta(
+            request_id,
+            attempt_id,
+            "local_sympy_numpy",
+            "sympy-numpy-local",
+            timing_ms,
+        )
+        payload["runtime_meta"]["input_tokens"] = 0
+        payload["runtime_meta"]["output_tokens"] = 0
+        payload["runtime_meta"]["total_tokens"] = 0
+        payload["runtime_meta"]["finish_reason"] = "local_short_circuit"
+        payload["runtime_meta"]["latency_ms_openai"] = 0
+        payload["runtime_meta"]["sympy_numpy_gate"] = gate.as_dict()
+        return payload
+    except Exception:
+        return None
+
+
 def _apply_verification(data: Dict[str, Any], *, problem_text: str, request_id: str, route: str) -> Dict[str, Any]:
     candidate_values = _candidate_strings(data)
     verification_meta = verify_solve_result(
@@ -1258,20 +1445,140 @@ async def run_solve_v3_superset_v2(
             payload["timing_ms"] = payload["runtime_meta"]["timing_ms"]
             return payload
 
-        t_openai = time.perf_counter()
-        parsed, tokens, status_info, model_used, raw, _ = await asyncio.wait_for(
-            solver._call_llm_with_schema(
+        # FINAL-only local short-circuit:
+        # If SymPy/NumPy can produce a complete, verified final answer with high confidence,
+        # return immediately and skip OpenAI call.
+        if tier == "FINAL":
+            t_local = time.perf_counter()
+            local_payload = _try_local_final_equation_solution(
+                base=base,
                 problem_text=problem_text,
-                context=json.dumps(developer_runtime, ensure_ascii=True),
-                system_prompt=system_prompt.content,
-                developer_prompt=orchestrator_prompt.content,
-                json_schema_config=llm_schema_wrapper,
-                max_output_tokens=max_tokens,
-                requested_mode=requested_mode,
+                verification_problem_text=verification_problem_text,
                 request_id=request_id,
-            ),
-            timeout=max(3, config.openai_timeout_ms // 1000),
-        )
+                attempt_id=attempt_id,
+                timing_ms=timing_ms,
+            )
+            if local_payload is not None:
+                route = "local_sympy_numpy"
+                timing_ms["verify"] = int((time.perf_counter() - t_local) * 1000)
+                timing_ms["total"] = int((time.perf_counter() - start_total) * 1000)
+                local_payload["runtime_meta"]["timing_ms"] = {
+                    "parse": timing_ms.get("parse", 0),
+                    "canonicalize": timing_ms.get("canonicalize", 0),
+                    "openai": 0,
+                    "verify": timing_ms.get("verify", 0),
+                    "total": timing_ms.get("total", 0),
+                }
+                local_payload["timing_ms"] = local_payload["runtime_meta"]["timing_ms"]
+
+                errors = list(schema_validator.iter_errors(local_payload))
+                if errors:
+                    raise SolveV2PipelineError(
+                        code="schema_invalid_local_short_circuit",
+                        message="Local FINAL short-circuit output failed schema validation.",
+                        status_code=503,
+                        details={"errors": [e.message for e in errors[:10]]},
+                    )
+
+                emit_runtime_audit(
+                    component="solve_v3_stage_local_final_short_circuit",
+                    started_at=t_local,
+                    request_id=request_id,
+                    route=route,
+                    sympy_used=True,
+                    numpy_used=True,
+                    result="ok",
+                    extra={"attempt_id": attempt_id, "tier": tier},
+                )
+
+                attempt.status = "success"
+                attempt.validation_json = local_payload
+                attempt.raw_solution_text = json.dumps(local_payload, ensure_ascii=False)
+                attempt.extracted_answer = str((local_payload.get("final_answer") or {}).get("answer_text") or "")
+                attempt.input_tokens = 0
+                attempt.output_tokens = 0
+                attempt.total_tokens = 0
+                attempt.latency_ms = int(timing_ms["total"])
+                attempt.prompt_meta = {
+                    **(attempt.prompt_meta or {}),
+                    "route": route,
+                    "timing_ms": timing_ms,
+                    "assumptions_detected": assumptions if isinstance(assumptions, dict) else {},
+                    "short_circuit": True,
+                    "graph_mode": graph_mode,
+                }
+                session.add(attempt)
+                session.commit()
+
+                local_payload["request_id"] = request_id
+                local_payload["attempt_id"] = attempt_id
+                local_payload["verified"] = bool((local_payload.get("verification") or {}).get("verified"))
+                local_payload["verification_method"] = (local_payload.get("verification") or {}).get("verification_method")
+                local_payload["assumptions_used"] = (local_payload.get("verification") or {}).get("assumptions_used") or []
+                local_payload["dropped_candidates"] = (local_payload.get("verification") or {}).get("dropped_candidates") or []
+                local_payload["final_solutions"] = (local_payload.get("verification") or {}).get("final_solutions") or []
+                return local_payload
+            allow_fallback = os.environ.get("FINAL_TIER_ALLOW_OPENAI_FALLBACK", "").strip().lower() in {"1", "true", "yes", "on"}
+            local_only_raw = os.environ.get("FINAL_TIER_LOCAL_ONLY", "").strip().lower()
+            final_local_only = (not allow_fallback) and (local_only_raw not in {"0", "false", "no", "off"})
+            if final_local_only:
+                raise SolveV2PipelineError(
+                    code="final_local_only_unsatisfied",
+                    message="FINAL local-only mode is enabled and local SymPy/NumPy solve was not complete.",
+                    status_code=422,
+                    details={"tier": tier, "openai_fallback_blocked": True},
+                )
+
+        provider_name = (solver.client_manager.primary_provider or "openai").strip().lower()
+        timeout_seconds = max(3, config.openai_timeout_ms // 1000)
+
+        async def _call_primary(
+            *,
+            reasoning_style: Optional[str] = None,
+            request_suffix: str = "",
+        ):
+            dev_prompt = orchestrator_prompt.content
+            if provider_name == "ollama" and reasoning_style == "cot":
+                dev_prompt = (
+                    "Please reason step by step, and put your final answer within \\boxed{}.\n\n"
+                    + dev_prompt
+                )
+            elif provider_name == "ollama" and reasoning_style == "tir":
+                dev_prompt = (
+                    "Please integrate natural language reasoning with programs to solve the problem above, and put your final answer within \\boxed{}.\n\n"
+                    + dev_prompt
+                )
+            return await asyncio.wait_for(
+                solver._call_llm_with_schema(
+                    problem_text=problem_text,
+                    context=json.dumps(developer_runtime, ensure_ascii=True),
+                    system_prompt=system_prompt.content,
+                    developer_prompt=dev_prompt,
+                    json_schema_config=llm_schema_wrapper,
+                    max_output_tokens=max_tokens,
+                    requested_mode=requested_mode,
+                    request_id=f"{request_id}{request_suffix}",
+                    provider=provider_name,
+                ),
+                timeout=timeout_seconds,
+            )
+
+        t_openai = time.perf_counter()
+        parsed = tokens = status_info = model_used = raw = None
+        _build_ms = 0
+        if provider_name == "ollama" and tier == "FINAL":
+            try:
+                parsed, tokens, status_info, model_used, raw, _build_ms = await _call_primary(
+                    reasoning_style="cot",
+                    request_suffix=":cot",
+                )
+            except Exception:
+                parsed, tokens, status_info, model_used, raw, _build_ms = await _call_primary(
+                    reasoning_style="tir",
+                    request_suffix=":tir",
+                )
+        else:
+            parsed, tokens, status_info, model_used, raw, _build_ms = await _call_primary()
         timing_ms["openai"] = int((time.perf_counter() - t_openai) * 1000)
         emit_runtime_audit(
             component="solve_v3_stage_openai",
@@ -1281,7 +1588,7 @@ async def run_solve_v3_superset_v2(
             result="ok",
             extra={
                 "attempt_id": attempt_id,
-                "provider": "openai",
+                "provider": provider_name,
                 "model": model_used,
                 "input_tokens": int(tokens.get("input") or 0),
                 "output_tokens": int(tokens.get("output") or 0),
@@ -1313,8 +1620,9 @@ async def run_solve_v3_superset_v2(
                     max_output_tokens=max_tokens,
                     requested_mode=requested_mode,
                     request_id=request_id,
+                    provider=provider_name,
                 ),
-                timeout=max(3, config.openai_timeout_ms // 1000),
+                timeout=timeout_seconds,
             )
             ok2, validation_msg2, validated2, _issues2, _ = solver._check_status_and_validate(
                 repaired_data,
@@ -1587,7 +1895,7 @@ async def run_solve_v3_superset_v2(
                 )
 
         timing_ms["total"] = int((time.perf_counter() - start_total) * 1000)
-        payload["runtime_meta"] = _default_runtime_meta(request_id, attempt_id, "openai", model_used, timing_ms)
+        payload["runtime_meta"] = _default_runtime_meta(request_id, attempt_id, provider_name, model_used, timing_ms)
         payload["runtime_meta"]["input_tokens"] = int(tokens.get("input") or 0)
         payload["runtime_meta"]["output_tokens"] = int(tokens.get("output") or 0)
         payload["runtime_meta"]["total_tokens"] = int(tokens.get("total") or 0)

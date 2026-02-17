@@ -6,6 +6,8 @@ import time
 from dataclasses import dataclass
 from typing import Any, AsyncIterator, Dict, List, Optional
 
+import httpx
+
 from app.utils.structured_output_builder import build_openai_structured_output, log_openai_request_trace
 from app.utils.schema_wrapper_validator import validate_schema_wrapper, SchemaWrapperCorruptError
 
@@ -213,6 +215,7 @@ class OpenAIClient:
             reset_seconds=int((os.environ.get("OPENAI_BREAKER_RESET_SECONDS") or "30").strip()),
         )
         self._last_error_details: Optional[Dict[str, Any]] = None
+        self._required_model = "gpt-5-mini"
 
     @property
     def client(self):
@@ -284,6 +287,11 @@ class OpenAIClient:
             )
 
         model_name = (model or self.default_model).strip()
+        if model_name != self._required_model:
+            raise LLMProviderError(
+                f"Model override rejected. Expected {self._required_model}, got {model_name}.",
+                provider="openai",
+            )
         start = time.perf_counter()
         if messages is None:
             messages = []
@@ -465,6 +473,294 @@ class OpenAIClient:
             usage=usage,
             status=status_info,
             payload=payload,
+            attempts=1,
+            latency_ms=latency_ms,
+        )
+
+    async def generate_stream(
+        self,
+        *,
+        messages: Optional[List[Dict[str, Any]]],
+        system_prompt: Optional[str],
+        prompt: Optional[str],
+        json_schema: Optional[Dict[str, Any]],
+        max_tokens: Optional[int],
+        temperature: Optional[float],
+        top_p: Optional[float] = None,
+        request_id: Optional[str] = None,
+        timeout_ms: Optional[int] = None,
+        model: Optional[str] = None,
+        verbosity: Optional[str] = None,
+        reasoning_effort: Optional[str] = None,
+    ) -> AsyncIterator[LLMStreamResponse]:
+        response = await self.generate(
+            messages=messages,
+            system_prompt=system_prompt,
+            prompt=prompt,
+            json_schema=json_schema,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            stream=False,
+            request_id=request_id,
+            timeout_ms=timeout_ms,
+            model=model,
+            verbosity=verbosity,
+            reasoning_effort=reasoning_effort,
+        )
+        yield LLMStreamResponse(
+            content=response.content,
+            provider=response.provider,
+            model=response.model,
+            usage=response.usage,
+            status=response.status,
+            latency_ms=response.latency_ms,
+            done=True,
+        )
+
+
+class OllamaClient:
+    def __init__(
+        self,
+        *,
+        base_url: str,
+        default_model: str,
+        timeout_seconds: int,
+        connect_timeout_seconds: int,
+        default_temperature: Optional[float] = 0.2,
+        default_num_ctx: Optional[int] = 4096,
+        default_max_tokens: Optional[int] = None,
+        http_client_factory: Optional[Any] = None,
+    ):
+        self.base_url = (base_url or "http://localhost:11434").rstrip("/")
+        self.default_model = (default_model or "").strip()
+        self.timeout_seconds = max(1, int(timeout_seconds or 60))
+        self.connect_timeout_seconds = max(1, int(connect_timeout_seconds or 5))
+        self.default_temperature = default_temperature
+        self.default_num_ctx = default_num_ctx
+        self.default_max_tokens = default_max_tokens
+        self._http_client_factory = http_client_factory
+
+    def _build_prompt(
+        self,
+        *,
+        messages: Optional[List[Dict[str, Any]]],
+        system_prompt: Optional[str],
+        prompt: Optional[str],
+        json_schema: Optional[Dict[str, Any]],
+    ) -> str:
+        if prompt:
+            prompt_text = str(prompt)
+        else:
+            chunks: List[str] = []
+            if system_prompt:
+                chunks.append(f"[SYSTEM]\n{system_prompt}")
+            for msg in messages or []:
+                role = str(msg.get("role") or "user").upper()
+                content = msg.get("content", "")
+                if isinstance(content, list):
+                    text_parts: List[str] = []
+                    for part in content:
+                        if isinstance(part, dict) and part.get("type") in {"text", "input_text"}:
+                            text_parts.append(str(part.get("text") or ""))
+                    content_text = "\n".join([p for p in text_parts if p])
+                else:
+                    content_text = str(content)
+                chunks.append(f"[{role}]\n{content_text}")
+            prompt_text = "\n\n".join([c for c in chunks if c.strip()])
+
+        if json_schema:
+            schema_payload = json.dumps(json_schema, ensure_ascii=True)
+            prompt_text = (
+                f"{prompt_text}\n\n"
+                "Return ONLY valid JSON that matches this schema exactly:\n"
+                f"{schema_payload}"
+            )
+        return prompt_text.strip()
+
+    async def generate(
+        self,
+        *,
+        messages: Optional[List[Dict[str, Any]]],
+        system_prompt: Optional[str],
+        prompt: Optional[str],
+        json_schema: Optional[Dict[str, Any]],
+        max_tokens: Optional[int],
+        temperature: Optional[float],
+        top_p: Optional[float] = None,
+        stream: bool = False,
+        request_id: Optional[str] = None,
+        timeout_ms: Optional[int] = None,
+        model: Optional[str] = None,
+        verbosity: Optional[str] = None,
+        reasoning_effort: Optional[str] = None,
+    ) -> LLMResponse:
+        del stream, top_p, verbosity, reasoning_effort
+
+        model_name = (model or self.default_model).strip()
+        if not model_name:
+            raise LLMProviderError("OLLAMA_MODEL not configured.", provider="ollama")
+
+        prompt_text = self._build_prompt(
+            messages=messages,
+            system_prompt=system_prompt,
+            prompt=prompt,
+            json_schema=json_schema,
+        )
+        if not prompt_text:
+            raise LLMProviderError("Ollama prompt is empty.", provider="ollama")
+
+        options: Dict[str, Any] = {}
+        effective_temp = self.default_temperature if temperature is None else temperature
+        if effective_temp is not None:
+            options["temperature"] = float(effective_temp)
+        if self.default_num_ctx:
+            options["num_ctx"] = int(self.default_num_ctx)
+        effective_max_tokens = max_tokens if max_tokens is not None else self.default_max_tokens
+        if effective_max_tokens is not None:
+            options["num_predict"] = int(effective_max_tokens)
+
+        payload: Dict[str, Any] = {
+            "model": model_name,
+            "prompt": prompt_text,
+            "stream": False,
+        }
+        if options:
+            payload["options"] = options
+
+        timeout = httpx.Timeout(
+            timeout=max(1.0, float(timeout_ms) / 1000.0) if timeout_ms else float(self.timeout_seconds),
+            connect=float(self.connect_timeout_seconds),
+        )
+
+        start = time.perf_counter()
+        _log_llm(
+            "request",
+            {
+                "request_id": request_id,
+                "provider": "ollama",
+                "model": model_name,
+                "base_url": self.base_url,
+                "prompt": _sanitize_prompt_preview(prompt_text),
+                "input_length": len(prompt_text),
+            },
+        )
+
+        try:
+            if self._http_client_factory:
+                client_ctx = self._http_client_factory(timeout=timeout)
+            else:
+                client_ctx = httpx.AsyncClient(timeout=timeout)
+
+            async with client_ctx as client:
+                resp = await client.post(f"{self.base_url}/api/generate", json=payload)
+        except httpx.ConnectError as exc:
+            raise LLMProviderError(
+                "Ollama base URL unreachable.",
+                provider="ollama",
+                status_code=503,
+                is_transient=True,
+                details={"base_url": self.base_url, "error": str(exc)},
+            ) from exc
+        except httpx.TimeoutException as exc:
+            raise LLMProviderError(
+                "Ollama request timed out.",
+                provider="ollama",
+                status_code=504,
+                is_transient=True,
+                details={"base_url": self.base_url, "timeout_seconds": self.timeout_seconds, "error": str(exc)},
+            ) from exc
+        except Exception as exc:
+            raise LLMProviderError(
+                f"Ollama request failed: {str(exc).strip() or repr(exc)}",
+                provider="ollama",
+                status_code=503,
+                is_transient=True,
+                details={"base_url": self.base_url},
+            ) from exc
+
+        if resp.status_code >= 400:
+            body_preview = (resp.text or "")[:300]
+            details = {"base_url": self.base_url, "status_code": resp.status_code, "body": body_preview}
+            if resp.status_code == 404:
+                message = f"Ollama model '{model_name}' not found."
+            else:
+                message = f"Ollama HTTP error status={resp.status_code}."
+            raise LLMProviderError(
+                message,
+                provider="ollama",
+                status_code=resp.status_code,
+                is_transient=resp.status_code >= 500,
+                details=details,
+            )
+
+        try:
+            data = resp.json()
+        except Exception as exc:
+            raise LLMProviderError(
+                "Ollama returned non-JSON response.",
+                provider="ollama",
+                status_code=502,
+                details={"base_url": self.base_url, "body_preview": (resp.text or "")[:300]},
+            ) from exc
+
+        content = str(data.get("response") or "").strip()
+        if not content:
+            raise LLMProviderError(
+                "Ollama returned empty response text.",
+                provider="ollama",
+                status_code=502,
+                details={"base_url": self.base_url, "payload_keys": sorted(list(data.keys()))[:20]},
+            )
+
+        usage = {
+            "input": int(data.get("prompt_eval_count") or 0),
+            "output": int(data.get("eval_count") or 0),
+            "total": int((data.get("prompt_eval_count") or 0) + (data.get("eval_count") or 0)),
+            "cached": None,
+            "prompt_eval_duration": data.get("prompt_eval_duration"),
+            "eval_duration": data.get("eval_duration"),
+            "total_duration": data.get("total_duration"),
+            "load_duration": data.get("load_duration"),
+        }
+        status = {
+            "status": "completed",
+            "finish_reason": data.get("done_reason") or ("stop" if data.get("done") else "unknown"),
+            "done": bool(data.get("done")),
+        }
+
+        latency_ms = int((time.perf_counter() - start) * 1000)
+        _log_llm(
+            "response",
+            {
+                "request_id": request_id,
+                "provider": "ollama",
+                "model": model_name,
+                "latency_ms": latency_ms,
+                "output_length": len(content),
+                "status": status,
+            },
+        )
+
+        return LLMResponse(
+            content=content,
+            provider="ollama",
+            model=model_name,
+            usage=usage,
+            status=status,
+            payload={
+                "base_url": self.base_url,
+                "full_input_prompt": prompt_text,
+                "ollama_metrics": {
+                    "total_duration": data.get("total_duration"),
+                    "load_duration": data.get("load_duration"),
+                    "prompt_eval_count": data.get("prompt_eval_count"),
+                    "prompt_eval_duration": data.get("prompt_eval_duration"),
+                    "eval_count": data.get("eval_count"),
+                    "eval_duration": data.get("eval_duration"),
+                },
+                "options": options,
+            },
             attempts=1,
             latency_ms=latency_ms,
         )

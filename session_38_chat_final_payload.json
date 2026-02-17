@@ -1,0 +1,289 @@
+﻿{
+    "id":  38,
+    "attempt_id":  null,
+    "title":  "Solve the initial value problem:\ndy/dx = -0.7y,   y(0)=3\nGive y(x) in closed for...",
+    "subject":  "Math",
+    "is_saved":  true,
+    "created_at":  "2026-02-17T04:30:55.637400",
+    "messages":  [
+                     {
+                         "role":  "user",
+                         "content":  "Batch Solve Request\n- (q1) Solve the initial value problem:\ndy/dx = -0.7y,   y(0)=3\nGive y(x) in closed form.\nFinal answer: ____\n\n=== Item 93 ===\nLevel: College\n- (q2) Evaluate exactly:\nâ«_0^1 (5x^4)/(1 + x^5) dx\n(Provide a simplified exact value.)\nFinal answer: ____\n\n=== Item 94 ===\nLevel: G11\n- (q3) Solve the quadratic equation (give all real solutions):\n1x^2 + 5x - 14 = 0\nFinal answer: ____\n\n=== Item 95 ===\nLevel: College\n- (q4) Evaluate exactly:\nâ«_0^1 (2x^1)/(1 + x^2) dx\n(Provide a simplified exact value.)\nFinal answer: ____",
+                         "media_url":  null,
+                         "structured_data":  null,
+                         "created_at":  "2026-02-17T04:30:55.643753",
+                         "model_used":  null,
+                         "tokens_used":  0,
+                         "input_tokens":  null,
+                         "output_tokens":  null,
+                         "telemetry":  null
+                     },
+                     {
+                         "role":  "assistant",
+                         "content":  "Batch solve complete for 4 question(s).",
+                         "media_url":  null,
+                         "structured_data":  {
+                                                 "mode":  "batch_text_solve",
+                                                 "solutions":  [
+                                                                   {
+                                                                       "question_id":  "q1",
+                                                                       "question_index":  1,
+                                                                       "mode":  "SOLVE",
+                                                                       "problem":  {
+                                                                                       "original_text":  "Solve the initial value problem:\ndy/dx = -0.7y,   y(0)=3\nGive y(x) in closed form.\nFinal answer: ____\n\n=== Item 93 ===\nLevel: College",
+                                                                                       "normalized_text":  "Solve dy/dx = -0.7 y with y(0)=3; give y(x).",
+                                                                                       "detected_tasks":  [
+                                                                                                              "solve",
+                                                                                                              "derivation"
+                                                                                                          ],
+                                                                                       "extra":  [
+
+                                                                                                 ]
+                                                                                   },
+                                                                       "classification":  {
+                                                                                              "difficulty":  "easy",
+                                                                                              "domain":  "calculus",
+                                                                                              "grade_band":  "college_intro",
+                                                                                              "topic":  "first-order ODE"
+                                                                                          },
+                                                                       "steps":  [
+
+                                                                                 ],
+                                                                       "final_answer":  {
+                                                                                            "answer_latex":  "3 e^{-0.7 x}",
+                                                                                            "answer_text":  "y(x)=3 e^{-0.7 x}",
+                                                                                            "units":  null,
+                                                                                            "values":  [
+                                                                                                           {
+                                                                                                               "label":  "y(x)",
+                                                                                                               "value":  "3 e^{-0.7 x}",
+                                                                                                               "value_latex":  "3 e^{-0.7 x}"
+                                                                                                           }
+                                                                                                       ],
+                                                                                            "kind":  "solution",
+                                                                                            "target":  "y(x)"
+                                                                                        },
+                                                                       "refusal":  {
+                                                                                       "is_refusal":  false,
+                                                                                       "reason":  null,
+                                                                                       "safe_next_step":  null
+                                                                                   },
+                                                                       "quality":  {
+                                                                                       "confidence":  0.92,
+                                                                                       "common_mistakes":  [
+
+                                                                                                           ]
+                                                                                   },
+                                                                       "plot":  {
+                                                                                    "decision_reason":  "No plot rationale provided."
+                                                                                }
+                                                                   },
+                                                                   {
+                                                                       "question_id":  "q2",
+                                                                       "question_index":  2,
+                                                                       "mode":  "SOLVE",
+                                                                       "problem":  {
+                                                                                       "original_text":  "Evaluate exactly:\nâ«_0^1 (5x^4)/(1 + x^5) dx\n(Provide a simplified exact value.)\nFinal answer: ____\n\n=== Item 94 ===\nLevel: G11",
+                                                                                       "normalized_text":  "Evaluate integral from 0 to1 of 5 x^4/(1+x^5) dx exactly.",
+                                                                                       "detected_tasks":  [
+                                                                                                              "evaluate",
+                                                                                                              "calculus"
+                                                                                                          ],
+                                                                                       "extra":  [
+
+                                                                                                 ]
+                                                                                   },
+                                                                       "classification":  {
+                                                                                              "difficulty":  "easy",
+                                                                                              "domain":  "calculus",
+                                                                                              "grade_band":  "grades_11_12",
+                                                                                              "topic":  "definite integral"
+                                                                                          },
+                                                                       "steps":  [
+
+                                                                                 ],
+                                                                       "final_answer":  {
+                                                                                            "answer_latex":  "\\ln(2)",
+                                                                                            "answer_text":  "ln(2)",
+                                                                                            "units":  null,
+                                                                                            "values":  [
+                                                                                                           {
+                                                                                                               "label":  "integral",
+                                                                                                               "value":  "ln(2)",
+                                                                                                               "value_latex":  "\\ln(2)"
+                                                                                                           }
+                                                                                                       ],
+                                                                                            "kind":  "evaluation",
+                                                                                            "target":  "\\int_0^1 \\frac{5x^4}{1+x^5}\\,dx"
+                                                                                        },
+                                                                       "refusal":  {
+                                                                                       "is_refusal":  false,
+                                                                                       "reason":  null,
+                                                                                       "safe_next_step":  null
+                                                                                   },
+                                                                       "quality":  {
+                                                                                       "confidence":  0.95,
+                                                                                       "common_mistakes":  [
+
+                                                                                                           ]
+                                                                                   },
+                                                                       "plot":  {
+                                                                                    "decision_reason":  "No plot rationale provided."
+                                                                                }
+                                                                   },
+                                                                   {
+                                                                       "question_id":  "q3",
+                                                                       "question_index":  3,
+                                                                       "mode":  "SOLVE",
+                                                                       "problem":  {
+                                                                                       "original_text":  "Solve the quadratic equation (give all real solutions):\n1x^2 + 5x - 14 = 0\nFinal answer: ____\n\n=== Item 95 ===\nLevel: College",
+                                                                                       "normalized_text":  "Solve x^2+5x-14=0 for real x.",
+                                                                                       "detected_tasks":  [
+                                                                                                              "solve",
+                                                                                                              "equation"
+                                                                                                          ],
+                                                                                       "extra":  [
+
+                                                                                                 ]
+                                                                                   },
+                                                                       "classification":  {
+                                                                                              "difficulty":  "easy",
+                                                                                              "domain":  "algebra",
+                                                                                              "grade_band":  "college_intro",
+                                                                                              "topic":  "quadratic equation"
+                                                                                          },
+                                                                       "steps":  [
+
+                                                                                 ],
+                                                                       "final_answer":  {
+                                                                                            "answer_latex":  "2,-7",
+                                                                                            "answer_text":  "x=2 or x=-7",
+                                                                                            "units":  null,
+                                                                                            "values":  [
+                                                                                                           {
+                                                                                                               "label":  "solutions",
+                                                                                                               "value":  "2, -7",
+                                                                                                               "value_latex":  "2,-7"
+                                                                                                           }
+                                                                                                       ],
+                                                                                            "kind":  "solution",
+                                                                                            "target":  "x"
+                                                                                        },
+                                                                       "refusal":  {
+                                                                                       "is_refusal":  false,
+                                                                                       "reason":  null,
+                                                                                       "safe_next_step":  null
+                                                                                   },
+                                                                       "quality":  {
+                                                                                       "confidence":  0.96,
+                                                                                       "common_mistakes":  [
+
+                                                                                                           ]
+                                                                                   },
+                                                                       "plot":  {
+                                                                                    "decision_reason":  "No plot rationale provided."
+                                                                                }
+                                                                   },
+                                                                   {
+                                                                       "question_id":  "q4",
+                                                                       "question_index":  4,
+                                                                       "mode":  "SOLVE",
+                                                                       "problem":  {
+                                                                                       "original_text":  "Evaluate exactly:\nâ«_0^1 (2x^1)/(1 + x^2) dx\n(Provide a simplified exact value.)\nFinal answer: ____",
+                                                                                       "normalized_text":  "Evaluate integral from 0 to1 of 2x/(1+x^2) dx exactly.",
+                                                                                       "detected_tasks":  [
+                                                                                                              "evaluate",
+                                                                                                              "calculus"
+                                                                                                          ],
+                                                                                       "extra":  [
+
+                                                                                                 ]
+                                                                                   },
+                                                                       "classification":  {
+                                                                                              "difficulty":  "easy",
+                                                                                              "domain":  "calculus",
+                                                                                              "grade_band":  "grades_11_12",
+                                                                                              "topic":  "definite integral"
+                                                                                          },
+                                                                       "steps":  [
+
+                                                                                 ],
+                                                                       "final_answer":  {
+                                                                                            "answer_latex":  "\\ln(2)",
+                                                                                            "answer_text":  "ln(2)",
+                                                                                            "units":  null,
+                                                                                            "values":  [
+                                                                                                           {
+                                                                                                               "label":  "integral",
+                                                                                                               "value":  "ln(2)",
+                                                                                                               "value_latex":  "\\ln(2)"
+                                                                                                           }
+                                                                                                       ],
+                                                                                            "kind":  "evaluation",
+                                                                                            "target":  "\\int_0^1 \\frac{2x}{1+x^2}\\,dx"
+                                                                                        },
+                                                                       "refusal":  {
+                                                                                       "is_refusal":  false,
+                                                                                       "reason":  null,
+                                                                                       "safe_next_step":  null
+                                                                                   },
+                                                                       "quality":  {
+                                                                                       "confidence":  0.95,
+                                                                                       "common_mistakes":  [
+
+                                                                                                           ]
+                                                                                   },
+                                                                       "plot":  {
+                                                                                    "decision_reason":  "No plot rationale provided."
+                                                                                }
+                                                                   }
+                                                               ],
+                                                 "request_id":  "d0100845-5a8f-4bb8-948d-1dc67113f91f",
+                                                 "attempt_id":  "71a83276-8517-485a-b403-e3397cb8976e",
+                                                 "tier":  "FINAL"
+                                             },
+                         "created_at":  "2026-02-17T04:30:55.644347",
+                         "model_used":  null,
+                         "tokens_used":  0,
+                         "input_tokens":  4451,
+                         "output_tokens":  1121,
+                         "telemetry":  {
+                                           "request_id":  "d0100845-5a8f-4bb8-948d-1dc67113f91f",
+                                           "attempt_id":  "71a83276-8517-485a-b403-e3397cb8976e",
+                                           "tier":  "FINAL",
+                                           "questions_count":  4,
+                                           "allow_auto_split_effective":  true,
+                                           "model":  "gpt-5-mini",
+                                           "provider":  "openai",
+                                           "input_tokens":  4451,
+                                           "output_tokens":  1121,
+                                           "total_tokens":  5572,
+                                           "latency_ms_openai":  10566,
+                                           "latency_ms_total":  37791,
+                                           "schema_name":  "solve_batch_final_prod_v2",
+                                           "model_bound":  "gpt-5-mini",
+                                           "temperature_bound":  0.1,
+                                           "top_p_bound":  1.0,
+                                           "timeout_ms_bound":  60000,
+                                           "max_questions_allowed_bound":  15,
+                                           "prompt_binding_id":  "f09e50d8-93eb-4141-914a-01b41b1ee51e",
+                                           "global_system_prompt_id":  "global_system_prompt_batch_v1",
+                                           "developer_prompt_id":  "solve_dev_final_merged_v2",
+                                           "output_schema_id":  "solve_batch_final_prod_v2",
+                                           "openai_calls_count":  1,
+                                           "repair_attempted":  false,
+                                           "schema_valid":  true,
+                                           "sympy_numpy_reports":  [
+
+                                                                   ],
+                                           "sympy_used":  false,
+                                           "numpy_used":  false,
+                                           "local_sympy_numpy_enabled":  false,
+                                           "provider_chain":  [
+                                                                  "ollama",
+                                                                  "openai"
+                                                              ]
+                                       }
+                     }
+                 ]
+}

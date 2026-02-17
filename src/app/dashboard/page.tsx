@@ -40,9 +40,13 @@ interface ChatSession {
         created_at?: string | null;
     }>;
     telemetry?: {
-        latency_ms_total: number;
-        total_tokens: number;
-        model: string;
+        latency_ms_total?: number;
+        total_tokens?: number;
+        model?: string;
+        tier_effective?: string;
+        effective_tier?: string;
+        tier_requested?: string;
+        tier?: string;
     };
 }
 
@@ -93,6 +97,18 @@ function DashboardContent() {
     const [walletError, setWalletError] = useState<string | null>(null);
     const [solveAsTier, setSolveAsTier] = useState<WalletTier>("STANDARD");
     const [tierSaving, setTierSaving] = useState(false);
+    const resolveHistorySessionRoute = (session: ChatSession) => {
+        const telemetry = session?.telemetry;
+        const rawTier =
+            telemetry?.tier_effective ||
+            telemetry?.effective_tier ||
+            telemetry?.tier_requested ||
+            telemetry?.tier ||
+            "";
+        return String(rawTier).trim().toUpperCase() === "FINAL"
+            ? `/chat_final/${session.id}`
+            : `/chat/${session.id}`;
+    };
 
     useEffect(() => {
         if (tabParam && ['history', 'bookmarked'].includes(tabParam)) {
@@ -335,7 +351,7 @@ function DashboardContent() {
                                 </button>
                                 {history.length > 0 && (
                                     <button
-                                        onClick={() => router.push(`/chat/${history[0].id}`)}
+                                        onClick={() => router.push(resolveHistorySessionRoute(history[0]))}
                                         className="bg-amber-600/20 text-slate-800 border border-amber-600/30 px-6 py-3 rounded-lg font-bold text-sm shadow-sm hover:bg-amber-600/30 transition-all flex items-center gap-2"
                                     >
                                         <span className="material-symbols-outlined text-sm">history</span>
@@ -621,7 +637,7 @@ function DashboardContent() {
                                                 {pagedHistory.map((session) => (
                                                     <div
                                                         key={session.id}
-                                                        onClick={() => router.push(`/chat/${session.id}`)}
+                                                        onClick={() => router.push(resolveHistorySessionRoute(session))}
                                                         className="p-4 flex items-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group px-6"
                                                     >
                                                         <div className="grid grid-cols-[2fr_1fr_1.2fr_0.8fr] gap-4 items-center w-full">
@@ -753,7 +769,7 @@ function DashboardContent() {
                                             history.filter(h => h.is_saved && h.title !== "Debug Seeded Session").map((session) => (
                                                 <div
                                                     key={session.id}
-                                                    onClick={() => router.push(`/chat/${session.id}`)}
+                                                    onClick={() => router.push(resolveHistorySessionRoute(session))}
                                                     className="p-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group px-6"
                                                 >
                                                     <div className="w-10 h-10 rounded bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-500">

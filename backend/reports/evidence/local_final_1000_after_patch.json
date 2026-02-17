@@ -1,0 +1,428 @@
+{
+  "total": 1000,
+  "solved": 572,
+  "failed": 428,
+  "solve_rate": 0.572,
+  "sample_failed": [
+    {
+      "item": 4,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (2x^1)/(1 + x^2) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 5,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Let Z ~ N(0,1). Approximate P(|Z| \u2264 1.0). Choices (A) 0.7127 (B) 0.6527 (C) 0.7827 (D) 0.6827 (E) 0.7427"
+    },
+    {
+      "item": 6,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Evaluate the contour integral: \u222e_|z|=1 1/((z--0.14)(z-1.56)) dz Choices (A) 2\u03c0i\u00b7-0.088 (B) 2\u03c0i\u00b7-0.588 (C) 2\u03c0i\u00b70.412 (D) 2\u03c0i\u00b7-1.088 (E) 2\u03c0i\u00b7-0.838"
+    },
+    {
+      "item": 9,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Final answer only) Let A be the 3\u00d73 matrix with a on the diagonal and b on every off-diagonal entry, where a=4 and b=1. Find the eigenvalues of A (with multiplicities). Final answ"
+    },
+    {
+      "item": 12,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Final answer only) Let A be the 3\u00d73 matrix with a on the diagonal and b on every off-diagonal entry, where a=5 and b=3. Find the eigenvalues of A (with multiplicities). Final answ"
+    },
+    {
+      "item": 13,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (6x^5)/(1 + x^6) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 14,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Evaluate the contour integral: \u222e_|z|=3 1/((z-0.97)(z-4.42)) dz Choices (A) 2\u03c0i\u00b7-0.540 (B) 2\u03c0i\u00b70.210 (C) 2\u03c0i\u00b7-0.790 (D) 2\u03c0i\u00b7-0.040 (E) 2\u03c0i\u00b7-0.290"
+    },
+    {
+      "item": 18,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Let Z ~ N(0,1). Approximate P(|Z| \u2264 1.5). Choices (A) 0.9664 (B) 0.8364 (C) 0.9264 (D) 0.8664 (E) 0.8964"
+    },
+    {
+      "item": 22,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (5x^4)/(1 + x^5) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 25,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Evaluate the contour integral: \u222e_|z|=4 1/((z--0.07)(z-5.48)) dz Choices (A) 2\u03c0i\u00b70.820 (B) 2\u03c0i\u00b7-1.180 (C) 2\u03c0i\u00b70.070 (D) 2\u03c0i\u00b7-0.680 (E) 2\u03c0i\u00b7-0.180"
+    },
+    {
+      "item": 27,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Let Z ~ N(0,1). Approximate P(|Z| \u2264 1.0). Choices (A) 0.7127 (B) 0.7427 (C) 0.6827 (D) 0.5827 (E) 0.6527"
+    },
+    {
+      "item": 28,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Evaluate the contour integral: \u222e_|z|=2 1/((z--0.23)(z-3.91)) dz Choices (A) 2\u03c0i\u00b7-0.492 (B) 2\u03c0i\u00b70.258 (C) 2\u03c0i\u00b7-0.742 (D) 2\u03c0i\u00b7-1.242 (E) 2\u03c0i\u00b7-0.242"
+    },
+    {
+      "item": 29,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Let Z ~ N(0,1). Approximate P(|Z| \u2264 1.0). Choices (A) 0.7827 (B) 0.6827 (C) 0.6527 (D) 0.6227 (E) 0.7127"
+    },
+    {
+      "item": 31,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Final answer only) Let A be the 3\u00d73 matrix with a on the diagonal and b on every off-diagonal entry, where a=6 and b=2. Find the eigenvalues of A (with multiplicities). Final answ"
+    },
+    {
+      "item": 32,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Evaluate the contour integral: \u222e_|z|=3 1/((z--1.38)(z-3.86)) dz Choices (A) 2\u03c0i\u00b7-0.191 (B) 2\u03c0i\u00b7-0.441 (C) 2\u03c0i\u00b7-0.691 (D) 2\u03c0i\u00b70.309 (E) 2\u03c0i\u00b70.809"
+    },
+    {
+      "item": 34,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (2x^1)/(1 + x^2) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 37,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (6x^5)/(1 + x^6) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 38,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Evaluate the contour integral: \u222e_|z|=2 1/((z-0.92)(z-2.44)) dz Choices (A) 2\u03c0i\u00b7-0.158 (B) 2\u03c0i\u00b7-0.408 (C) 2\u03c0i\u00b7-0.658 (D) 2\u03c0i\u00b7-0.908 (E) 2\u03c0i\u00b70.342"
+    },
+    {
+      "item": 40,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (4x^3)/(1 + x^4) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 41,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (2x^1)/(1 + x^2) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 44,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Multiple-choice) Find the sum of the infinite geometric series: 1 + -1/2 + 1/4 + ... Choices (A) -7/3 (B) -16/3 (C) 14/3 (D) 2/3 (E) -4/3"
+    },
+    {
+      "item": 46,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (6x^5)/(1 + x^6) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 47,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (4x^3)/(1 + x^4) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 49,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Final answer only) Let A be the 3\u00d73 matrix with a on the diagonal and b on every off-diagonal entry, where a=2 and b=2. Find the eigenvalues of A (with multiplicities). Final answ"
+    },
+    {
+      "item": 50,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (3x^2)/(1 + x^3) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 51,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Evaluate the contour integral: \u222e_|z|=2 1/((z--1.14)(z-2.79)) dz Choices (A) 2\u03c0i\u00b7-0.254 (B) 2\u03c0i\u00b7-0.754 (C) 2\u03c0i\u00b70.246 (D) 2\u03c0i\u00b7-0.004 (E) 2\u03c0i\u00b7-1.254"
+    },
+    {
+      "item": 54,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Final answer only) Let A be the 3\u00d73 matrix with a on the diagonal and b on every off-diagonal entry, where a=5 and b=3. Find the eigenvalues of A (with multiplicities). Final answ"
+    },
+    {
+      "item": 61,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Final answer only) Let A be the 3\u00d73 matrix with a on the diagonal and b on every off-diagonal entry, where a=6 and b=0. Find the eigenvalues of A (with multiplicities). Final answ"
+    },
+    {
+      "item": 62,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Evaluate the contour integral: \u222e_|z|=4 1/((z--1.75)(z-6.28)) dz Choices (A) 2\u03c0i\u00b7-0.125 (B) 2\u03c0i\u00b7-0.375 (C) 2\u03c0i\u00b7-0.625 (D) 2\u03c0i\u00b70.125 (E) 2\u03c0i\u00b7-1.125"
+    },
+    {
+      "item": 64,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Final answer only) Let A be the 3\u00d73 matrix with a on the diagonal and b on every off-diagonal entry, where a=6 and b=0. Find the eigenvalues of A (with multiplicities). Final answ"
+    },
+    {
+      "item": 65,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Final answer only) Let A be the 3\u00d73 matrix with a on the diagonal and b on every off-diagonal entry, where a=2 and b=0. Find the eigenvalues of A (with multiplicities). Final answ"
+    },
+    {
+      "item": 66,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Evaluate the contour integral: \u222e_|z|=1 1/((z-0.15)(z-1.39)) dz Choices (A) 2\u03c0i\u00b7-0.556 (B) 2\u03c0i\u00b7-1.306 (C) 2\u03c0i\u00b7-0.806 (D) 2\u03c0i\u00b70.194 (E) 2\u03c0i\u00b7-1.806"
+    },
+    {
+      "item": 67,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Let Z ~ N(0,1). Approximate P(|Z| \u2264 1.0). Choices (A) 0.7427 (B) 0.6827 (C) 0.5827 (D) 0.7127 (E) 0.6527"
+    },
+    {
+      "item": 69,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Let Z ~ N(0,1). Approximate P(|Z| \u2264 1.5). Choices (A) 0.8664 (B) 0.9264 (C) 0.8064 (D) 0.8964 (E) 0.9664"
+    },
+    {
+      "item": 70,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (3x^2)/(1 + x^3) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 71,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Let Z ~ N(0,1). Approximate P(|Z| \u2264 1.5). Choices (A) 0.8964 (B) 0.9664 (C) 0.8064 (D) 0.9264 (E) 0.8664"
+    },
+    {
+      "item": 72,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (4x^3)/(1 + x^4) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 75,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (2x^1)/(1 + x^2) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 77,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (5x^4)/(1 + x^5) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 86,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Let Z ~ N(0,1). Approximate P(|Z| \u2264 1.0). Choices (A) 0.7127 (B) 0.6227 (C) 0.7827 (D) 0.6827 (E) 0.7427"
+    },
+    {
+      "item": 91,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Let Z ~ N(0,1). Approximate P(|Z| \u2264 2.0). Choices (A) 0.8945 (B) 0.9545 (C) 0.9845 (D) 0.8545 (E) 1.0545"
+    },
+    {
+      "item": 93,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (5x^4)/(1 + x^5) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 95,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (2x^1)/(1 + x^2) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 98,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Final answer only) Let A be the 3\u00d73 matrix with a on the diagonal and b on every off-diagonal entry, where a=6 and b=3. Find the eigenvalues of A (with multiplicities). Final answ"
+    },
+    {
+      "item": 100,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (5x^4)/(1 + x^5) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 101,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Let Z ~ N(0,1). Approximate P(|Z| \u2264 2.0). Choices (A) 0.9845 (B) 1.0545 (C) 0.9545 (D) 0.8945 (E) 0.9245"
+    },
+    {
+      "item": 104,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (4x^3)/(1 + x^4) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 105,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Let Z ~ N(0,1). Approximate P(|Z| \u2264 1.0). Choices (A) 0.5827 (B) 0.6827 (C) 0.7127 (D) 0.7827 (E) 0.6527"
+    },
+    {
+      "item": 113,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (5x^4)/(1 + x^5) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 115,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Evaluate the contour integral: \u222e_|z|=4 1/((z-0.35)(z-6.64)) dz Choices (A) 2\u03c0i\u00b70.841 (B) 2\u03c0i\u00b70.341 (C) 2\u03c0i\u00b7-0.159 (D) 2\u03c0i\u00b7-0.409 (E) 2\u03c0i\u00b7-1.159"
+    },
+    {
+      "item": 117,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Evaluate the contour integral: \u222e_|z|=3 1/((z-0.64)(z-5.33)) dz Choices (A) 2\u03c0i\u00b7-1.213 (B) 2\u03c0i\u00b7-0.463 (C) 2\u03c0i\u00b70.787 (D) 2\u03c0i\u00b7-0.713 (E) 2\u03c0i\u00b7-0.213"
+    },
+    {
+      "item": 122,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Final answer only) Let A be the 3\u00d73 matrix with a on the diagonal and b on every off-diagonal entry, where a=6 and b=2. Find the eigenvalues of A (with multiplicities). Final answ"
+    },
+    {
+      "item": 123,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Evaluate the contour integral: \u222e_|z|=4 1/((z-1.97)(z-5.77)) dz Choices (A) 2\u03c0i\u00b7-0.763 (B) 2\u03c0i\u00b70.237 (C) 2\u03c0i\u00b7-0.013 (D) 2\u03c0i\u00b7-1.263 (E) 2\u03c0i\u00b7-0.263"
+    },
+    {
+      "item": 125,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Let Z ~ N(0,1). Approximate P(|Z| \u2264 2.0). Choices (A) 0.9545 (B) 1.0145 (C) 0.8545 (D) 0.9845 (E) 0.9245"
+    },
+    {
+      "item": 126,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Final answer only) Let A be the 3\u00d73 matrix with a on the diagonal and b on every off-diagonal entry, where a=4 and b=2. Find the eigenvalues of A (with multiplicities). Final answ"
+    },
+    {
+      "item": 129,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: Uni Question (Multiple-choice) Let Z ~ N(0,1). Approximate P(|Z| \u2264 1.0). Choices (A) 0.6227 (B) 0.7427 (C) 0.6527 (D) 0.5827 (E) 0.6827"
+    },
+    {
+      "item": 131,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (5x^4)/(1 + x^5) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 134,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (6x^5)/(1 + x^6) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 138,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (4x^3)/(1 + x^4) dx (Provide a simplified exact value.) Final answer: ____"
+    },
+    {
+      "item": 139,
+      "ok": false,
+      "topic": null,
+      "answer": null,
+      "preview": "Level: College Question (Final answer only) Evaluate exactly: \u222b_0^1 (6x^5)/(1 + x^6) dx (Provide a simplified exact value.) Final answer: ____"
+    }
+  ]
+}

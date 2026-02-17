@@ -1,0 +1,425 @@
+{
+    "ok":  true,
+    "results":  [
+                    {
+                        "question_id":  "q1",
+                        "ok":  true,
+                        "solve_response_json":  {
+                                                    "assumptions":  [
+
+                                                                    ],
+                                                    "clarification":  {
+                                                                          "needs_clarification":  false,
+                                                                          "note":  null,
+                                                                          "questions":  [
+
+                                                                                        ]
+                                                                      },
+                                                    "classification":  {
+                                                                           "difficulty":  "very_easy",
+                                                                           "domain":  "calculus",
+                                                                           "grade_band":  "grades_9_10",
+                                                                           "topic":  "derivative of polynomial"
+                                                                       },
+                                                    "final_answer":  {
+                                                                         "answer_latex":  "2x",
+                                                                         "answer_text":  "2x",
+                                                                         "units":  null,
+                                                                         "values":  [
+                                                                                        {
+                                                                                            "label":  "derivative",
+                                                                                            "value":  "2x",
+                                                                                            "value_latex":  "2x"
+                                                                                        }
+                                                                                    ]
+                                                                     },
+                                                    "mode":  "SOLVE",
+                                                    "plot":  {
+                                                                 "decision_reason":  "No plot needed for a simple derivative",
+                                                                 "recipe":  {
+                                                                                "axis_labels":  {
+                                                                                                    "x":  null,
+                                                                                                    "y":  null
+                                                                                                },
+                                                                                "domain":  {
+                                                                                               "x_max":  null,
+                                                                                               "x_min":  null,
+                                                                                               "y_max":  null,
+                                                                                               "y_min":  null
+                                                                                           },
+                                                                                "expressions":  [
+                                                                                                    "2*x"
+                                                                                                ],
+                                                                                "key_points":  [
+
+                                                                                               ],
+                                                                                "plot_intent":  "function_2d",
+                                                                                "sampling":  {
+                                                                                                 "n_points":  50
+                                                                                             },
+                                                                                "symbols":  [
+                                                                                                "x"
+                                                                                            ]
+                                                                            },
+                                                                 "should_visualize":  false
+                                                             },
+                                                    "problem":  {
+                                                                    "detected_tasks":  [
+                                                                                           "solve",
+                                                                                           "derivation",
+                                                                                           "derivation"
+                                                                                       ],
+                                                                    "extra":  [
+
+                                                                              ],
+                                                                    "normalized_text":  "Find derivative of x^2",
+                                                                    "original_text":  "Question (Final answer only)`nFind derivative of x^2.`nFinal answer: ____"
+                                                                },
+                                                    "quality":  {
+                                                                    "common_mistakes":  [
+
+                                                                                        ],
+                                                                    "confidence":  0.95
+                                                                },
+                                                    "question_id":  "q1",
+                                                    "question_index":  1,
+                                                    "refusal":  {
+                                                                    "is_refusal":  false,
+                                                                    "reason":  null,
+                                                                    "safe_next_step":  null
+                                                                },
+                                                    "steps":  [
+                                                                  {
+                                                                      "explanation":  "Use the power rule: d/dx x^n = n x^{n-1}.",
+                                                                      "index":  1,
+                                                                      "math_latex":  [
+                                                                                         "d/dx x^n = n x^{n-1}"
+                                                                                     ],
+                                                                      "title":  "Apply power rule"
+                                                                  },
+                                                                  {
+                                                                      "explanation":  "Set n=2 to get d/dx x^2 = 2x^{1} = 2x.",
+                                                                      "index":  2,
+                                                                      "math_latex":  [
+                                                                                         "d/dx x^2 = 2x"
+                                                                                     ],
+                                                                      "title":  "Compute result"
+                                                                  }
+                                                              ]
+                                                },
+                        "error":  null,
+                        "telemetry":  {
+                                          "request_id":  "a4fb3349-6446-4ea8-ac56-6006b04bc20a",
+                                          "attempt_id":  "1cbd57c0-6e24-4420-b8ec-fce65cb96c4a",
+                                          "tier":  "SHORT_STEPS",
+                                          "questions_count":  1,
+                                          "allow_auto_split_effective":  false,
+                                          "model":  "gpt-5-mini",
+                                          "provider":  "openai",
+                                          "input_tokens":  3428,
+                                          "output_tokens":  1127,
+                                          "total_tokens":  4555,
+                                          "latency_ms_openai":  9429,
+                                          "latency_ms_total":  80449,
+                                          "schema_name":  "solve_batch_free_v2",
+                                          "model_bound":  "gpt-5-mini",
+                                          "temperature_bound":  0.1,
+                                          "top_p_bound":  1.0,
+                                          "timeout_ms_bound":  60000,
+                                          "max_questions_allowed_bound":  5,
+                                          "prompt_binding_id":  "5460b7aa-7733-4f61-bac5-456c83234baa",
+                                          "global_system_prompt_id":  "global_system_prompt_batch_v1",
+                                          "developer_prompt_id":  "solve_dev_free_v2",
+                                          "output_schema_id":  "solve_batch_free_v2",
+                                          "openai_calls_count":  1,
+                                          "repair_attempted":  false,
+                                          "schema_valid":  true,
+                                          "sympy_numpy_reports":  [
+
+                                                                  ],
+                                          "sympy_used":  false,
+                                          "numpy_used":  false,
+                                          "local_sympy_numpy_enabled":  false,
+                                          "provider_chain":  [
+                                                                 "ollama",
+                                                                 "openai"
+                                                             ],
+                                          "billing_settlement":  {
+                                                                     "hold_id":  "83fd9452-6565-432d-a702-6b81d82c2558",
+                                                                     "amount_reserved":  5.0,
+                                                                     "amount_settled":  5.0,
+                                                                     "amount_released":  0.0,
+                                                                     "status":  "settled"
+                                                                 }
+                                      },
+                        "credits_reserved":  5.0,
+                        "credits_final":  5.0,
+                        "credits_refunded":  0.0
+                    }
+                ],
+    "request_id":  "a4fb3349-6446-4ea8-ac56-6006b04bc20a",
+    "attempt_id":  "1cbd57c0-6e24-4420-b8ec-fce65cb96c4a",
+    "session_id":  37,
+    "tier":  "FREE",
+    "language":  {
+                     "preferred_response_language":  "English",
+                     "response_language":  "English",
+                     "user_language":  "English"
+                 },
+    "items":  [
+                  {
+                      "assumptions":  [
+
+                                      ],
+                      "clarification":  {
+                                            "needs_clarification":  false,
+                                            "note":  null,
+                                            "questions":  [
+
+                                                          ]
+                                        },
+                      "classification":  {
+                                             "difficulty":  "very_easy",
+                                             "domain":  "calculus",
+                                             "grade_band":  "grades_9_10",
+                                             "topic":  "derivative of polynomial"
+                                         },
+                      "final_answer":  {
+                                           "answer_latex":  "2x",
+                                           "answer_text":  "2x",
+                                           "units":  null,
+                                           "values":  [
+                                                          {
+                                                              "label":  "derivative",
+                                                              "value":  "2x",
+                                                              "value_latex":  "2x"
+                                                          }
+                                                      ]
+                                       },
+                      "mode":  "SOLVE",
+                      "plot":  {
+                                   "decision_reason":  "No plot needed for a simple derivative",
+                                   "recipe":  {
+                                                  "axis_labels":  {
+                                                                      "x":  null,
+                                                                      "y":  null
+                                                                  },
+                                                  "domain":  {
+                                                                 "x_max":  null,
+                                                                 "x_min":  null,
+                                                                 "y_max":  null,
+                                                                 "y_min":  null
+                                                             },
+                                                  "expressions":  [
+                                                                      "2*x"
+                                                                  ],
+                                                  "key_points":  [
+
+                                                                 ],
+                                                  "plot_intent":  "function_2d",
+                                                  "sampling":  {
+                                                                   "n_points":  50
+                                                               },
+                                                  "symbols":  [
+                                                                  "x"
+                                                              ]
+                                              },
+                                   "should_visualize":  false
+                               },
+                      "problem":  {
+                                      "detected_tasks":  [
+                                                             "solve",
+                                                             "derivation",
+                                                             "derivation"
+                                                         ],
+                                      "extra":  [
+
+                                                ],
+                                      "normalized_text":  "Find derivative of x^2",
+                                      "original_text":  "Question (Final answer only)`nFind derivative of x^2.`nFinal answer: ____"
+                                  },
+                      "quality":  {
+                                      "common_mistakes":  [
+
+                                                          ],
+                                      "confidence":  0.95
+                                  },
+                      "question_id":  "q1",
+                      "question_index":  1,
+                      "refusal":  {
+                                      "is_refusal":  false,
+                                      "reason":  null,
+                                      "safe_next_step":  null
+                                  },
+                      "steps":  [
+                                    {
+                                        "explanation":  "Use the power rule: d/dx x^n = n x^{n-1}.",
+                                        "index":  1,
+                                        "math_latex":  [
+                                                           "d/dx x^n = n x^{n-1}"
+                                                       ],
+                                        "title":  "Apply power rule"
+                                    },
+                                    {
+                                        "explanation":  "Set n=2 to get d/dx x^2 = 2x^{1} = 2x.",
+                                        "index":  2,
+                                        "math_latex":  [
+                                                           "d/dx x^2 = 2x"
+                                                       ],
+                                        "title":  "Compute result"
+                                    }
+                                ]
+                  }
+              ],
+    "payload":  {
+                    "items":  [
+                                  {
+                                      "assumptions":  [
+
+                                                      ],
+                                      "clarification":  {
+                                                            "needs_clarification":  false,
+                                                            "note":  null,
+                                                            "questions":  [
+
+                                                                          ]
+                                                        },
+                                      "classification":  {
+                                                             "difficulty":  "very_easy",
+                                                             "domain":  "calculus",
+                                                             "grade_band":  "grades_9_10",
+                                                             "topic":  "derivative of polynomial"
+                                                         },
+                                      "final_answer":  {
+                                                           "answer_latex":  "2x",
+                                                           "answer_text":  "2x",
+                                                           "units":  null,
+                                                           "values":  [
+                                                                          {
+                                                                              "label":  "derivative",
+                                                                              "value":  "2x",
+                                                                              "value_latex":  "2x"
+                                                                          }
+                                                                      ]
+                                                       },
+                                      "mode":  "SOLVE",
+                                      "plot":  {
+                                                   "decision_reason":  "No plot needed for a simple derivative",
+                                                   "recipe":  {
+                                                                  "axis_labels":  {
+                                                                                      "x":  null,
+                                                                                      "y":  null
+                                                                                  },
+                                                                  "domain":  {
+                                                                                 "x_max":  null,
+                                                                                 "x_min":  null,
+                                                                                 "y_max":  null,
+                                                                                 "y_min":  null
+                                                                             },
+                                                                  "expressions":  [
+                                                                                      "2*x"
+                                                                                  ],
+                                                                  "key_points":  [
+
+                                                                                 ],
+                                                                  "plot_intent":  "function_2d",
+                                                                  "sampling":  {
+                                                                                   "n_points":  50
+                                                                               },
+                                                                  "symbols":  [
+                                                                                  "x"
+                                                                              ]
+                                                              },
+                                                   "should_visualize":  false
+                                               },
+                                      "problem":  {
+                                                      "detected_tasks":  [
+                                                                             "solve",
+                                                                             "derivation",
+                                                                             "derivation"
+                                                                         ],
+                                                      "extra":  [
+
+                                                                ],
+                                                      "normalized_text":  "Find derivative of x^2",
+                                                      "original_text":  "Question (Final answer only)`nFind derivative of x^2.`nFinal answer: ____"
+                                                  },
+                                      "quality":  {
+                                                      "common_mistakes":  [
+
+                                                                          ],
+                                                      "confidence":  0.95
+                                                  },
+                                      "question_id":  "q1",
+                                      "question_index":  1,
+                                      "refusal":  {
+                                                      "is_refusal":  false,
+                                                      "reason":  null,
+                                                      "safe_next_step":  null
+                                                  },
+                                      "steps":  [
+                                                    {
+                                                        "explanation":  "Use the power rule: d/dx x^n = n x^{n-1}.",
+                                                        "index":  1,
+                                                        "math_latex":  [
+                                                                           "d/dx x^n = n x^{n-1}"
+                                                                       ],
+                                                        "title":  "Apply power rule"
+                                                    },
+                                                    {
+                                                        "explanation":  "Set n=2 to get d/dx x^2 = 2x^{1} = 2x.",
+                                                        "index":  2,
+                                                        "math_latex":  [
+                                                                           "d/dx x^2 = 2x"
+                                                                       ],
+                                                        "title":  "Compute result"
+                                                    }
+                                                ]
+                                  }
+                              ],
+                    "language":  {
+                                     "preferred_response_language":  "English",
+                                     "response_language":  "English",
+                                     "user_language":  "English"
+                                 },
+                    "schema_version":  "v2",
+                    "tier":  "FREE"
+                },
+    "telemetry":  {
+                      "request_id":  "a4fb3349-6446-4ea8-ac56-6006b04bc20a",
+                      "attempt_id":  "1cbd57c0-6e24-4420-b8ec-fce65cb96c4a",
+                      "tier":  "SHORT_STEPS",
+                      "questions_count":  1,
+                      "allow_auto_split_effective":  false,
+                      "model":  "gpt-5-mini",
+                      "provider":  "openai",
+                      "input_tokens":  3428,
+                      "output_tokens":  1127,
+                      "total_tokens":  4555,
+                      "latency_ms_openai":  9429,
+                      "latency_ms_total":  80449,
+                      "schema_name":  "solve_batch_free_v2",
+                      "model_bound":  "gpt-5-mini",
+                      "temperature_bound":  0.1,
+                      "top_p_bound":  1.0,
+                      "timeout_ms_bound":  60000,
+                      "max_questions_allowed_bound":  5,
+                      "prompt_binding_id":  "5460b7aa-7733-4f61-bac5-456c83234baa",
+                      "global_system_prompt_id":  "global_system_prompt_batch_v1",
+                      "developer_prompt_id":  "solve_dev_free_v2",
+                      "output_schema_id":  "solve_batch_free_v2",
+                      "openai_calls_count":  1,
+                      "repair_attempted":  false,
+                      "schema_valid":  true,
+                      "sympy_numpy_reports":  [
+
+                                              ],
+                      "sympy_used":  false,
+                      "numpy_used":  false,
+                      "local_sympy_numpy_enabled":  false,
+                      "provider_chain":  [
+                                             "ollama",
+                                             "openai"
+                                         ]
+                  }
+}

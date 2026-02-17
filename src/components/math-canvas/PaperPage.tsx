@@ -32,6 +32,7 @@ interface PaperPageProps {
   exportMode?: boolean;
   viewMode?: "edit" | "student_report";
   isNew?: boolean;
+  hideStepLabels?: boolean;
 }
 
 interface Point {
@@ -357,6 +358,7 @@ export default function PaperPage({
   exportMode = false,
   viewMode = "edit",
   isNew = false,
+  hideStepLabels = false,
 }: PaperPageProps) {
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -765,7 +767,7 @@ export default function PaperPage({
       onClick={onActivate}
     >
       <div className={styles.paperPageHeader}>
-        <span className={styles.paperChapterTitle}>Chapter 3: Quadratic Functions</span>
+        <span className={styles.paperChapterTitle}>Uask.ai Solver</span>
         <span className={styles.paperVersionBadge}>v2.1</span>
       </div>
 
@@ -831,7 +833,12 @@ export default function PaperPage({
                       </div>
                     </div>
                   ) : (
-                    <RecognitionBox latex={block.latex} exportMode={exportMode} badgeLabel={block.badge} />
+                    <RecognitionBox
+                      latex={block.latex}
+                      exportMode={exportMode}
+                      badgeLabel={block.badge}
+                      plainStyle={hideStepLabels}
+                    />
                   )}
                 </div>
               );
@@ -865,6 +872,7 @@ export default function PaperPage({
                     sectionId={block.id}
                     exportMode={exportMode}
                     editable={viewMode === "edit"}
+                    hideStepLabels={hideStepLabels}
                     onActiveTextEditorChange={onActiveTextEditorChange}
                     onChange={(next) =>
                       onUpdateBlock(block.id, (current) =>

@@ -31,6 +31,7 @@ interface CanvasWorkspaceProps {
   state: CanvasDocumentState;
   dispatch: React.Dispatch<DocumentAction>;
   viewMode?: "edit" | "student_report";
+  hideStepLabels?: boolean;
 }
 
 interface MathEditorTarget {
@@ -57,6 +58,7 @@ export default function CanvasWorkspace({
   state,
   dispatch,
   viewMode = "edit",
+  hideStepLabels = false,
 }: CanvasWorkspaceProps) {
   const [latexEditorTarget, setLatexEditorTarget] = useState<MathEditorTarget | null>(null);
   const [graphEditorOpen, setGraphEditorOpen] = useState(false);
@@ -822,6 +824,7 @@ export default function CanvasWorkspace({
             onDeleteBlock={(blockId) => dispatch({ type: "DELETE_BLOCK", pageId: page.id, blockId })}
             viewMode={viewMode}
             isNew={page.id === newPageId}
+            hideStepLabels={hideStepLabels}
           />
         ))}
       </div>

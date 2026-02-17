@@ -1,0 +1,319 @@
+{
+    "ok":  true,
+    "results":  [
+                    {
+                        "question_id":  "q1",
+                        "ok":  true,
+                        "solve_response_json":  {
+                                                    "question_id":  "q1",
+                                                    "question_index":  1,
+                                                    "mode":  "SOLVE",
+                                                    "problem":  {
+                                                                    "original_text":  "Question (Final answer only)`nFind derivative of x^2.`nFinal answer: ____",
+                                                                    "normalized_text":  "Compute d/dx of x^2.",
+                                                                    "detected_tasks":  [
+                                                                                           "derivation",
+                                                                                           "derivation",
+                                                                                           "simplify"
+                                                                                       ],
+                                                                    "extra":  [
+                                                                                  {
+                                                                                      "k":  "source",
+                                                                                      "v":  "user"
+                                                                                  }
+                                                                              ]
+                                                                },
+                                                    "classification":  {
+                                                                           "difficulty":  "very_easy",
+                                                                           "domain":  "calculus",
+                                                                           "grade_band":  "college_intro",
+                                                                           "topic":  "derivative"
+                                                                       },
+                                                    "steps":  [
+                                                                  {
+                                                                      "index":  1,
+                                                                      "title":  "Result",
+                                                                      "explanation":  "Power rule: d/dx x^n = n x^{n-1}.",
+                                                                      "math_latex":  [
+                                                                                         "\\frac{d}{dx}x^2=2x"
+                                                                                     ]
+                                                                  }
+                                                              ],
+                                                    "final_answer":  {
+                                                                         "answer_latex":  "2x",
+                                                                         "answer_text":  "2x",
+                                                                         "units":  null,
+                                                                         "values":  [
+                                                                                        {
+                                                                                            "label":  "derivative",
+                                                                                            "value":  "2x",
+                                                                                            "value_latex":  "2x"
+                                                                                        }
+                                                                                    ],
+                                                                         "kind":  "solution",
+                                                                         "target":  "d/dx x^2"
+                                                                     },
+                                                    "refusal":  {
+                                                                    "is_refusal":  false,
+                                                                    "reason":  null,
+                                                                    "safe_next_step":  null
+                                                                },
+                                                    "quality":  {
+                                                                    "confidence":  0.89,
+                                                                    "common_mistakes":  [
+
+                                                                                        ]
+                                                                },
+                                                    "plot":  {
+                                                                 "decision_reason":  "No plot rationale provided."
+                                                             }
+                                                },
+                        "error":  null,
+                        "telemetry":  {
+                                          "request_id":  "46555e77-11d8-4d8e-b822-6bbd2e897383",
+                                          "attempt_id":  "a7a253fa-6f55-46f5-bb97-8838ce296940",
+                                          "tier":  "FINAL",
+                                          "questions_count":  1,
+                                          "allow_auto_split_effective":  false,
+                                          "model":  "gpt-5-mini",
+                                          "provider":  "openai",
+                                          "input_tokens":  4184,
+                                          "output_tokens":  403,
+                                          "total_tokens":  4587,
+                                          "latency_ms_openai":  5644,
+                                          "latency_ms_total":  23248,
+                                          "schema_name":  "solve_batch_final_prod_v2",
+                                          "model_bound":  "gpt-5-mini",
+                                          "temperature_bound":  0.1,
+                                          "top_p_bound":  1.0,
+                                          "timeout_ms_bound":  60000,
+                                          "max_questions_allowed_bound":  15,
+                                          "prompt_binding_id":  "f09e50d8-93eb-4141-914a-01b41b1ee51e",
+                                          "global_system_prompt_id":  "global_system_prompt_batch_v1",
+                                          "developer_prompt_id":  "solve_dev_final_merged_v2",
+                                          "output_schema_id":  "solve_batch_final_prod_v2",
+                                          "openai_calls_count":  1,
+                                          "repair_attempted":  false,
+                                          "schema_valid":  true,
+                                          "sympy_numpy_reports":  [
+
+                                                                  ],
+                                          "sympy_used":  false,
+                                          "numpy_used":  false,
+                                          "local_sympy_numpy_enabled":  false,
+                                          "provider_chain":  [
+                                                                 "ollama",
+                                                                 "openai"
+                                                             ],
+                                          "billing_settlement":  {
+                                                                     "hold_id":  "7a0c6f24-f6c5-4867-953b-5f2018b7e3a1",
+                                                                     "amount_reserved":  2.0,
+                                                                     "amount_settled":  2.0,
+                                                                     "amount_released":  0.0,
+                                                                     "status":  "settled"
+                                                                 }
+                                      },
+                        "credits_reserved":  2.0,
+                        "credits_final":  2.0,
+                        "credits_refunded":  0.0
+                    }
+                ],
+    "request_id":  "46555e77-11d8-4d8e-b822-6bbd2e897383",
+    "attempt_id":  "a7a253fa-6f55-46f5-bb97-8838ce296940",
+    "session_id":  36,
+    "tier":  "FINAL",
+    "language":  {
+                     "preferred_response_language":  "English",
+                     "response_language":  "English",
+                     "user_language":  "English"
+                 },
+    "items":  [
+                  {
+                      "question_id":  "q1",
+                      "question_index":  1,
+                      "mode":  "SOLVE",
+                      "problem":  {
+                                      "original_text":  "Question (Final answer only)`nFind derivative of x^2.`nFinal answer: ____",
+                                      "normalized_text":  "Compute d/dx of x^2.",
+                                      "detected_tasks":  [
+                                                             "derivation",
+                                                             "derivation",
+                                                             "simplify"
+                                                         ],
+                                      "extra":  [
+                                                    {
+                                                        "k":  "source",
+                                                        "v":  "user"
+                                                    }
+                                                ]
+                                  },
+                      "classification":  {
+                                             "difficulty":  "very_easy",
+                                             "domain":  "calculus",
+                                             "grade_band":  "college_intro",
+                                             "topic":  "derivative"
+                                         },
+                      "steps":  [
+                                    {
+                                        "index":  1,
+                                        "title":  "Result",
+                                        "explanation":  "Power rule: d/dx x^n = n x^{n-1}.",
+                                        "math_latex":  [
+                                                           "\\frac{d}{dx}x^2=2x"
+                                                       ]
+                                    }
+                                ],
+                      "final_answer":  {
+                                           "answer_latex":  "2x",
+                                           "answer_text":  "2x",
+                                           "units":  null,
+                                           "values":  [
+                                                          {
+                                                              "label":  "derivative",
+                                                              "value":  "2x",
+                                                              "value_latex":  "2x"
+                                                          }
+                                                      ],
+                                           "kind":  "solution",
+                                           "target":  "d/dx x^2"
+                                       },
+                      "refusal":  {
+                                      "is_refusal":  false,
+                                      "reason":  null,
+                                      "safe_next_step":  null
+                                  },
+                      "quality":  {
+                                      "confidence":  0.89,
+                                      "common_mistakes":  [
+
+                                                          ]
+                                  },
+                      "plot":  {
+                                   "decision_reason":  "No plot rationale provided."
+                               }
+                  }
+              ],
+    "payload":  {
+                    "schema_version":  "prod_v2",
+                    "tier":  "FINAL",
+                    "language":  {
+                                     "preferred_response_language":  "English",
+                                     "response_language":  "English",
+                                     "user_language":  "English"
+                                 },
+                    "runtime":  {
+                                    "request_id":  "46555e77-11d8-4d8e-b822-6bbd2e897383",
+                                    "attempt_id":  "a7a253fa-6f55-46f5-bb97-8838ce296940",
+                                    "preferred_response_language":  "English",
+                                    "default_mode":  "GENERAL",
+                                    "default_graph_mode":  "OFF",
+                                    "default_domain_mode":  "reals",
+                                    "allow_auto_split":  false,
+                                    "max_questions_allowed":  15,
+                                    "max_tasks_per_question":  6
+                                },
+                    "items":  [
+                                  {
+                                      "question_id":  "q1",
+                                      "question_index":  1,
+                                      "mode":  "SOLVE",
+                                      "problem":  {
+                                                      "original_text":  "Question (Final answer only)`nFind derivative of x^2.`nFinal answer: ____",
+                                                      "normalized_text":  "Compute d/dx of x^2.",
+                                                      "detected_tasks":  [
+                                                                             "derivation",
+                                                                             "derivation",
+                                                                             "simplify"
+                                                                         ],
+                                                      "extra":  [
+                                                                    {
+                                                                        "k":  "source",
+                                                                        "v":  "user"
+                                                                    }
+                                                                ]
+                                                  },
+                                      "classification":  {
+                                                             "difficulty":  "very_easy",
+                                                             "domain":  "calculus",
+                                                             "grade_band":  "college_intro",
+                                                             "topic":  "derivative"
+                                                         },
+                                      "steps":  [
+                                                    {
+                                                        "index":  1,
+                                                        "title":  "Result",
+                                                        "explanation":  "Power rule: d/dx x^n = n x^{n-1}.",
+                                                        "math_latex":  [
+                                                                           "\\frac{d}{dx}x^2=2x"
+                                                                       ]
+                                                    }
+                                                ],
+                                      "final_answer":  {
+                                                           "answer_latex":  "2x",
+                                                           "answer_text":  "2x",
+                                                           "units":  null,
+                                                           "values":  [
+                                                                          {
+                                                                              "label":  "derivative",
+                                                                              "value":  "2x",
+                                                                              "value_latex":  "2x"
+                                                                          }
+                                                                      ],
+                                                           "kind":  "solution",
+                                                           "target":  "d/dx x^2"
+                                                       },
+                                      "refusal":  {
+                                                      "is_refusal":  false,
+                                                      "reason":  null,
+                                                      "safe_next_step":  null
+                                                  },
+                                      "quality":  {
+                                                      "confidence":  0.89,
+                                                      "common_mistakes":  [
+
+                                                                          ]
+                                                  },
+                                      "plot":  {
+                                                   "decision_reason":  "No plot rationale provided."
+                                               }
+                                  }
+                              ]
+                },
+    "telemetry":  {
+                      "request_id":  "46555e77-11d8-4d8e-b822-6bbd2e897383",
+                      "attempt_id":  "a7a253fa-6f55-46f5-bb97-8838ce296940",
+                      "tier":  "FINAL",
+                      "questions_count":  1,
+                      "allow_auto_split_effective":  false,
+                      "model":  "gpt-5-mini",
+                      "provider":  "openai",
+                      "input_tokens":  4184,
+                      "output_tokens":  403,
+                      "total_tokens":  4587,
+                      "latency_ms_openai":  5644,
+                      "latency_ms_total":  23248,
+                      "schema_name":  "solve_batch_final_prod_v2",
+                      "model_bound":  "gpt-5-mini",
+                      "temperature_bound":  0.1,
+                      "top_p_bound":  1.0,
+                      "timeout_ms_bound":  60000,
+                      "max_questions_allowed_bound":  15,
+                      "prompt_binding_id":  "f09e50d8-93eb-4141-914a-01b41b1ee51e",
+                      "global_system_prompt_id":  "global_system_prompt_batch_v1",
+                      "developer_prompt_id":  "solve_dev_final_merged_v2",
+                      "output_schema_id":  "solve_batch_final_prod_v2",
+                      "openai_calls_count":  1,
+                      "repair_attempted":  false,
+                      "schema_valid":  true,
+                      "sympy_numpy_reports":  [
+
+                                              ],
+                      "sympy_used":  false,
+                      "numpy_used":  false,
+                      "local_sympy_numpy_enabled":  false,
+                      "provider_chain":  [
+                                             "ollama",
+                                             "openai"
+                                         ]
+                  }
+}

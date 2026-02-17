@@ -44,6 +44,53 @@ export default function AdminPromptRegistryPage() {
         return h;
     };
 
+    const stringifyUnknown = (value: unknown): string => {
+        if (typeof value === "string") return value;
+        if (value == null) return "";
+        try {
+            const asJson = JSON.stringify(value);
+            return asJson.length > 600 ? `${asJson.slice(0, 600)}...` : asJson;
+        } catch {
+            return String(value);
+        }
+    };
+
+    const extractResponseError = async (res: Response): Promise<string> => {
+        const contentType = res.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+            const payload = await res.json().catch(() => null);
+            const detail =
+                payload?.detail ??
+                payload?.error?.message ??
+                payload?.message ??
+                payload?.error ??
+                payload;
+            return stringifyUnknown(detail);
+        }
+        const text = await res.text().catch(() => "");
+        return text.trim();
+    };
+
+    const formatHttpError = async (operation: string, endpoint: string, res: Response): Promise<string> => {
+        const detail = await extractResponseError(res);
+        const requestId = res.headers.get("x-request-id") || res.headers.get("x-trace-id");
+        const pieces = [
+            `${operation} failed (${res.status}${res.statusText ? ` ${res.statusText}` : ""})`,
+            detail ? `backend: ${detail}` : "",
+            requestId ? `request_id: ${requestId}` : "",
+            `endpoint: ${endpoint}`,
+        ].filter(Boolean);
+        return pieces.join(" | ");
+    };
+
+    const formatNetworkError = (operation: string, endpoint: string, err: unknown): string => {
+        const message = err instanceof Error ? err.message : String(err);
+        const hint = message.toLowerCase().includes("failed to fetch")
+            ? "Network/CORS/connectivity issue reaching API."
+            : "Network request failed.";
+        return `${operation} failed | ${hint} ${message} | endpoint: ${endpoint}`;
+    };
+
     const loadPromptVersions = async (promptId: string, signal?: AbortSignal) => {
         const res = await fetch(
             `${baseUrl}/api/v1/admin/prompt-registry/prompts/${encodeURIComponent(promptId)}/versions`,
@@ -211,20 +258,25 @@ export default function AdminPromptRegistryPage() {
         try {
             setError(null);
             const tierValue = newPrompt.tier === "NONE" ? null : newPrompt.tier;
-            const res = await fetch(`${baseUrl}/api/v1/admin/prompt-registry/prompts/${encodeURIComponent(promptId)}/update`, {
-                method: "POST",
-                headers: headers(true),
-                body: JSON.stringify({
-                    content: newPrompt.content,
-                    tier: tierValue,
-                    mode: newPrompt.mode,
-                    role: newPrompt.role,
-                    updated_by: localStorage.getItem("user_name") || "admin",
-                }),
-            });
+            const endpoint = `${baseUrl}/api/v1/admin/prompt-registry/prompts/${encodeURIComponent(promptId)}/update`;
+            let res: Response;
+            try {
+                res = await fetch(endpoint, {
+                    method: "POST",
+                    headers: headers(true),
+                    body: JSON.stringify({
+                        content: newPrompt.content,
+                        tier: tierValue,
+                        mode: newPrompt.mode,
+                        role: newPrompt.role,
+                        updated_by: localStorage.getItem("user_name") || "admin",
+                    }),
+                });
+            } catch (fetchErr) {
+                throw new Error(formatNetworkError("Create prompt", endpoint, fetchErr));
+            }
             if (!res.ok) {
-                const payload = await res.json().catch(() => null);
-                throw new Error(payload?.detail || "Create failed");
+                throw new Error(await formatHttpError("Create prompt", endpoint, res));
             }
 
             const data: PromptEntry = await res.json();

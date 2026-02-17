@@ -1,0 +1,264 @@
+{
+    "ok":  true,
+    "results":  [
+                    {
+                        "question_id":  "q1",
+                        "ok":  true,
+                        "solve_response_json":  {
+                                                    "question_id":  "q1",
+                                                    "question_index":  1,
+                                                    "mode":  "SOLVE",
+                                                    "problem":  {
+                                                                    "original_text":  "Question (Final answer only)\nProve that there are infinitely many prime numbers.\nFinal answer: ____",
+                                                                    "normalized_text":  "Question (Final answer only)\nProve that there are infinitely many prime numbers.\nFinal answer: ____",
+                                                                    "detected_tasks":  [
+                                                                                           "other"
+                                                                                       ],
+                                                                    "extra":  [
+
+                                                                              ]
+                                                                },
+                                                    "classification":  {
+                                                                           "grade_band":  "undergraduate_upper",
+                                                                           "domain":  "other",
+                                                                           "topic":  "local verification fallback",
+                                                                           "difficulty":  "medium"
+                                                                       },
+                                                    "steps":  [
+
+                                                              ],
+                                                    "final_answer":  null,
+                                                    "refusal":  {
+                                                                    "is_refusal":  true,
+                                                                    "reason":  "local_solver_no_high_confidence_result",
+                                                                    "safe_next_step":  "Try a simpler formulation or allow OpenAI fallback for unresolved FINAL items."
+                                                                },
+                                                    "quality":  {
+                                                                    "confidence":  0.45,
+                                                                    "common_mistakes":  [
+
+                                                                                        ]
+                                                                },
+                                                    "plot":  {
+                                                                 "decision_reason":  "No plot rationale provided.",
+                                                                 "should_visualize":  false,
+                                                                 "recipe":  null
+                                                             }
+                                                },
+                        "error":  null,
+                        "telemetry":  {
+                                          "request_id":  "81a69924-4866-4191-baf1-51b07b2f9c4b",
+                                          "attempt_id":  "ec4bccc2-0202-471b-b07f-9de53cabfdb8",
+                                          "tier":  "FINAL",
+                                          "questions_count":  1,
+                                          "allow_auto_split_effective":  false,
+                                          "model":  "sympy-numpy-local",
+                                          "provider":  "local",
+                                          "input_tokens":  0,
+                                          "output_tokens":  0,
+                                          "total_tokens":  0,
+                                          "latency_ms_openai":  0,
+                                          "latency_ms_total":  11,
+                                          "schema_name":  "solve_batch_final_prod_v2",
+                                          "model_bound":  "sympy-numpy-local",
+                                          "temperature_bound":  0,
+                                          "top_p_bound":  1,
+                                          "timeout_ms_bound":  0,
+                                          "max_questions_allowed_bound":  15,
+                                          "prompt_binding_id":  "f09e50d8-93eb-4141-914a-01b41b1ee51e",
+                                          "global_system_prompt_id":  "global_system_prompt_batch_v1",
+                                          "developer_prompt_id":  "solve_dev_final_merged_v2",
+                                          "output_schema_id":  "solve_batch_final_prod_v2",
+                                          "openai_calls_count":  0,
+                                          "repair_attempted":  false,
+                                          "schema_valid":  true,
+                                          "sympy_numpy_reports":  [
+                                                                      {
+                                                                          "question_id":  "q1",
+                                                                          "sympy_used":  true,
+                                                                          "numpy_used":  true,
+                                                                          "parsed_expressions":  1,
+                                                                          "solved_equations":  0,
+                                                                          "differentiated":  1,
+                                                                          "integrated":  1,
+                                                                          "equivalence_checks":  0,
+                                                                          "numpy_finite_ratio":  1.0
+                                                                      }
+                                                                  ],
+                                          "sympy_used":  true,
+                                          "numpy_used":  true,
+                                          "final_local_short_circuit":  true,
+                                          "partial_local_refusals":  true,
+                                          "billing_settlement":  {
+                                                                     "hold_id":  "d1f5110e-fcef-464b-8ba7-3ed1131d0a43",
+                                                                     "amount_reserved":  2.0,
+                                                                     "amount_settled":  1.0,
+                                                                     "amount_released":  1.0,
+                                                                     "status":  "settled"
+                                                                 }
+                                      },
+                        "credits_reserved":  2.0,
+                        "credits_final":  1.0,
+                        "credits_refunded":  1.0
+                    }
+                ],
+    "request_id":  "81a69924-4866-4191-baf1-51b07b2f9c4b",
+    "attempt_id":  "ec4bccc2-0202-471b-b07f-9de53cabfdb8",
+    "session_id":  32,
+    "tier":  "FINAL",
+    "language":  {
+                     "user_language":  "English",
+                     "preferred_response_language":  "English",
+                     "response_language":  "English"
+                 },
+    "items":  [
+                  {
+                      "question_id":  "q1",
+                      "question_index":  1,
+                      "mode":  "SOLVE",
+                      "problem":  {
+                                      "original_text":  "Question (Final answer only)\nProve that there are infinitely many prime numbers.\nFinal answer: ____",
+                                      "normalized_text":  "Question (Final answer only)\nProve that there are infinitely many prime numbers.\nFinal answer: ____",
+                                      "detected_tasks":  [
+                                                             "other"
+                                                         ],
+                                      "extra":  [
+
+                                                ]
+                                  },
+                      "classification":  {
+                                             "grade_band":  "undergraduate_upper",
+                                             "domain":  "other",
+                                             "topic":  "local verification fallback",
+                                             "difficulty":  "medium"
+                                         },
+                      "steps":  [
+
+                                ],
+                      "final_answer":  null,
+                      "refusal":  {
+                                      "is_refusal":  true,
+                                      "reason":  "local_solver_no_high_confidence_result",
+                                      "safe_next_step":  "Try a simpler formulation or allow OpenAI fallback for unresolved FINAL items."
+                                  },
+                      "quality":  {
+                                      "confidence":  0.45,
+                                      "common_mistakes":  [
+
+                                                          ]
+                                  },
+                      "plot":  {
+                                   "decision_reason":  "No plot rationale provided.",
+                                   "should_visualize":  false,
+                                   "recipe":  null
+                               }
+                  }
+              ],
+    "payload":  {
+                    "schema_version":  "prod_v2",
+                    "tier":  "FINAL",
+                    "language":  {
+                                     "user_language":  "English",
+                                     "preferred_response_language":  "English",
+                                     "response_language":  "English"
+                                 },
+                    "runtime":  {
+                                    "request_id":  "81a69924-4866-4191-baf1-51b07b2f9c4b",
+                                    "attempt_id":  "ec4bccc2-0202-471b-b07f-9de53cabfdb8",
+                                    "preferred_response_language":  "English",
+                                    "default_mode":  "GENERAL",
+                                    "default_graph_mode":  "OFF",
+                                    "default_domain_mode":  "reals",
+                                    "allow_auto_split":  false,
+                                    "max_questions_allowed":  15,
+                                    "max_tasks_per_question":  6
+                                },
+                    "items":  [
+                                  {
+                                      "question_id":  "q1",
+                                      "question_index":  1,
+                                      "mode":  "SOLVE",
+                                      "problem":  {
+                                                      "original_text":  "Question (Final answer only)\nProve that there are infinitely many prime numbers.\nFinal answer: ____",
+                                                      "normalized_text":  "Question (Final answer only)\nProve that there are infinitely many prime numbers.\nFinal answer: ____",
+                                                      "detected_tasks":  [
+                                                                             "other"
+                                                                         ],
+                                                      "extra":  [
+
+                                                                ]
+                                                  },
+                                      "classification":  {
+                                                             "grade_band":  "undergraduate_upper",
+                                                             "domain":  "other",
+                                                             "topic":  "local verification fallback",
+                                                             "difficulty":  "medium"
+                                                         },
+                                      "steps":  [
+
+                                                ],
+                                      "final_answer":  null,
+                                      "refusal":  {
+                                                      "is_refusal":  true,
+                                                      "reason":  "local_solver_no_high_confidence_result",
+                                                      "safe_next_step":  "Try a simpler formulation or allow OpenAI fallback for unresolved FINAL items."
+                                                  },
+                                      "quality":  {
+                                                      "confidence":  0.45,
+                                                      "common_mistakes":  [
+
+                                                                          ]
+                                                  },
+                                      "plot":  {
+                                                   "decision_reason":  "No plot rationale provided.",
+                                                   "should_visualize":  false,
+                                                   "recipe":  null
+                                               }
+                                  }
+                              ]
+                },
+    "telemetry":  {
+                      "request_id":  "81a69924-4866-4191-baf1-51b07b2f9c4b",
+                      "attempt_id":  "ec4bccc2-0202-471b-b07f-9de53cabfdb8",
+                      "tier":  "FINAL",
+                      "questions_count":  1,
+                      "allow_auto_split_effective":  false,
+                      "model":  "sympy-numpy-local",
+                      "provider":  "local",
+                      "input_tokens":  0,
+                      "output_tokens":  0,
+                      "total_tokens":  0,
+                      "latency_ms_openai":  0,
+                      "latency_ms_total":  11,
+                      "schema_name":  "solve_batch_final_prod_v2",
+                      "model_bound":  "sympy-numpy-local",
+                      "temperature_bound":  0,
+                      "top_p_bound":  1,
+                      "timeout_ms_bound":  0,
+                      "max_questions_allowed_bound":  15,
+                      "prompt_binding_id":  "f09e50d8-93eb-4141-914a-01b41b1ee51e",
+                      "global_system_prompt_id":  "global_system_prompt_batch_v1",
+                      "developer_prompt_id":  "solve_dev_final_merged_v2",
+                      "output_schema_id":  "solve_batch_final_prod_v2",
+                      "openai_calls_count":  0,
+                      "repair_attempted":  false,
+                      "schema_valid":  true,
+                      "sympy_numpy_reports":  [
+                                                  {
+                                                      "question_id":  "q1",
+                                                      "sympy_used":  true,
+                                                      "numpy_used":  true,
+                                                      "parsed_expressions":  1,
+                                                      "solved_equations":  0,
+                                                      "differentiated":  1,
+                                                      "integrated":  1,
+                                                      "equivalence_checks":  0,
+                                                      "numpy_finite_ratio":  1.0
+                                                  }
+                                              ],
+                      "sympy_used":  true,
+                      "numpy_used":  true,
+                      "final_local_short_circuit":  true,
+                      "partial_local_refusals":  true
+                  }
+}

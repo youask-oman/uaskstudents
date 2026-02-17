@@ -1,0 +1,10049 @@
+=== Item 1 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+4 + 8/3 + 16/9 + ...
+
+Choices
+(A) 9
+(B) 8
+(C) 11
+(D) 12
+(E) 16
+
+=== Item 2 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+9x - 6 = 7x + 8
+
+Choices
+(A) 3
+(B) 7
+(C) 11
+(D) 5
+(E) 1
+
+=== Item 3 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 6x - 16 = 0
+Final answer: ____
+
+=== Item 4 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (2x^1)/(1 + x^2) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 5 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.7127
+(B) 0.6527
+(C) 0.7827
+(D) 0.6827
+(E) 0.7427
+
+=== Item 6 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=1 1/((z--0.14)(z-1.56)) dz
+
+Choices
+(A) 2πi·-0.088
+(B) 2πi·-0.588
+(C) 2πi·0.412
+(D) 2πi·-1.088
+(E) 2πi·-0.838
+
+=== Item 7 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -2x^4 + 2x^3 + 0x^2 + 0x + 10.
+Compute f'(2).
+
+Choices
+(A) -48
+(B) -52
+(C) -44
+(D) -38
+(E) -40
+
+=== Item 8 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 45x + 150 = 0
+Final answer: ____
+
+=== Item 9 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=4 and b=1.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 10 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 - 20x + 32 = 0
+Final answer: ____
+
+=== Item 11 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 4. What is the area of the sector with central angle 180°? (Answer in terms of π)
+
+Choices
+(A) 28/3π
+(B) 20/3π
+(C) 16π
+(D) 4π
+(E) 8π
+
+=== Item 12 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=5 and b=3.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 13 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 14 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=3 1/((z-0.97)(z-4.42)) dz
+
+Choices
+(A) 2πi·-0.540
+(B) 2πi·0.210
+(C) 2πi·-0.790
+(D) 2πi·-0.040
+(E) 2πi·-0.290
+
+=== Item 15 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+9 + -6 + 4 + ...
+
+Choices
+(A) 32/5
+(B) 37/5
+(C) 12/5
+(D) 27/5
+(E) 17/5
+
+=== Item 16 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+5 + 10/3 + 20/9 + ...
+
+Choices
+(A) 9
+(B) 21
+(C) 13
+(D) 15
+(E) 11
+
+=== Item 17 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 12x - 36 = 0
+Final answer: ____
+
+=== Item 18 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.9664
+(B) 0.8364
+(C) 0.9264
+(D) 0.8664
+(E) 0.8964
+
+=== Item 19 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+4x - 16 = 1x + 20
+
+Choices
+(A) 6
+(B) 7
+(C) 18
+(D) 12
+(E) 9
+
+=== Item 20 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 3x - 126 = 0
+Final answer: ____
+
+=== Item 21 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 11x + 28 = 0
+Final answer: ____
+
+=== Item 22 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 23 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -3x^4 + 1x^3 + 5x^2 + 2x - 7.
+Compute f'(-1).
+
+Choices
+(A) 7
+(B) 19
+(C) -1
+(D) 3
+(E) 13
+
+=== Item 24 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 15. What is the area of the sector with central angle 180°? (Answer in terms of π)
+
+Choices
+(A) 525/4π
+(B) 375/4π
+(C) 225π
+(D) 225/2π
+(E) 225/4π
+
+=== Item 25 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z--0.07)(z-5.48)) dz
+
+Choices
+(A) 2πi·0.820
+(B) 2πi·-1.180
+(C) 2πi·0.070
+(D) 2πi·-0.680
+(E) 2πi·-0.180
+
+=== Item 26 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 5x + 4 = 0
+Final answer: ____
+
+=== Item 27 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.7127
+(B) 0.7427
+(C) 0.6827
+(D) 0.5827
+(E) 0.6527
+
+=== Item 28 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=2 1/((z--0.23)(z-3.91)) dz
+
+Choices
+(A) 2πi·-0.492
+(B) 2πi·0.258
+(C) 2πi·-0.742
+(D) 2πi·-1.242
+(E) 2πi·-0.242
+
+=== Item 29 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.7827
+(B) 0.6827
+(C) 0.6527
+(D) 0.6227
+(E) 0.7127
+
+=== Item 30 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+9x + 12 = 4x - 4
+
+Choices
+(A) -41/5
+(B) -36/5
+(C) -16/5
+(D) -31/5
+(E) -21/5
+
+=== Item 31 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=6 and b=2.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 32 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=3 1/((z--1.38)(z-3.86)) dz
+
+Choices
+(A) 2πi·-0.191
+(B) 2πi·-0.441
+(C) 2πi·-0.691
+(D) 2πi·0.309
+(E) 2πi·0.809
+
+=== Item 33 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 11x + 18 = 0
+Final answer: ____
+
+=== Item 34 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (2x^1)/(1 + x^2) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 35 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 5. What is the area of the sector with central angle 150°? (Answer in terms of π)
+
+Choices
+(A) 25/2π
+(B) 125/12π
+(C) 25/3π
+(D) 125/24π
+(E) 125/6π
+
+=== Item 36 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+6x - 11 = 9x + 7
+
+Choices
+(A) -10
+(B) -8
+(C) -7
+(D) -12
+(E) -6
+
+=== Item 37 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 38 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=2 1/((z-0.92)(z-2.44)) dz
+
+Choices
+(A) 2πi·-0.158
+(B) 2πi·-0.408
+(C) 2πi·-0.658
+(D) 2πi·-0.908
+(E) 2πi·0.342
+
+=== Item 39 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+4 + 8/3 + 16/9 + ...
+
+Choices
+(A) 11
+(B) 13
+(C) 12
+(D) 14
+(E) 15
+
+=== Item 40 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 41 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (2x^1)/(1 + x^2) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 42 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 6x - 16 = 0
+Final answer: ____
+
+=== Item 43 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 3x + 0 = 0
+Final answer: ____
+
+=== Item 44 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+1 + -1/2 + 1/4 + ...
+
+Choices
+(A) -7/3
+(B) -16/3
+(C) 14/3
+(D) 2/3
+(E) -4/3
+
+=== Item 45 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+9 + 27/4 + 81/16 + ...
+
+Choices
+(A) 40
+(B) 42
+(C) 36
+(D) 38
+(E) 37
+
+=== Item 46 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 47 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 48 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 24x + 48 = 0
+Final answer: ____
+
+=== Item 49 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=2 and b=2.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 50 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 51 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=2 1/((z--1.14)(z-2.79)) dz
+
+Choices
+(A) 2πi·-0.254
+(B) 2πi·-0.754
+(C) 2πi·0.246
+(D) 2πi·-0.004
+(E) 2πi·-1.254
+
+=== Item 52 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 2x^4 - 5x^3 + 6x^2 - 5x + 3.
+Compute f'(-1).
+
+Choices
+(A) -32
+(B) -34
+(C) -40
+(D) -46
+(E) -52
+
+=== Item 53 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 39x + 108 = 0
+Final answer: ____
+
+=== Item 54 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=5 and b=3.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 55 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 15. What is the area of the sector with central angle 180°? (Answer in terms of π)
+
+Choices
+(A) 525/4π
+(B) 225/2π
+(C) 375/4π
+(D) 225π
+(E) 225/4π
+
+=== Item 56 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 6. What is the area of the sector with central angle 60°? (Answer in terms of π)
+
+Choices
+(A) 9π
+(B) 6π
+(C) 12π
+(D) 6π+4
+(E) 3π
+
+=== Item 57 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 14. What is the area of the sector with central angle 45°? (Answer in terms of π)
+
+Choices
+(A) 49π
+(B) 49/6π
+(C) 539/45π
+(D) 49/2π
+(E) 245/6π
+
+=== Item 58 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 + 39x + 108 = 0
+Final answer: ____
+
+=== Item 59 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+8 + 4 + 2 + ...
+
+Choices
+(A) 15
+(B) 16
+(C) 19
+(D) 17
+(E) 18
+
+=== Item 60 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 6x + 0 = 0
+Final answer: ____
+
+=== Item 61 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=6 and b=0.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 62 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z--1.75)(z-6.28)) dz
+
+Choices
+(A) 2πi·-0.125
+(B) 2πi·-0.375
+(C) 2πi·-0.625
+(D) 2πi·0.125
+(E) 2πi·-1.125
+
+=== Item 63 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=3
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 64 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=6 and b=0.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 65 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=2 and b=0.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 66 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=1 1/((z-0.15)(z-1.39)) dz
+
+Choices
+(A) 2πi·-0.556
+(B) 2πi·-1.306
+(C) 2πi·-0.806
+(D) 2πi·0.194
+(E) 2πi·-1.806
+
+=== Item 67 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.7427
+(B) 0.6827
+(C) 0.5827
+(D) 0.7127
+(E) 0.6527
+
+=== Item 68 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+5x + 16 = 2x - 18
+
+Choices
+(A) -31/3
+(B) -37/3
+(C) -16/3
+(D) -25/3
+(E) -34/3
+
+=== Item 69 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.8664
+(B) 0.9264
+(C) 0.8064
+(D) 0.8964
+(E) 0.9664
+
+=== Item 70 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 71 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.8964
+(B) 0.9664
+(C) 0.8064
+(D) 0.9264
+(E) 0.8664
+
+=== Item 72 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 73 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 2x - 24 = 0
+Final answer: ____
+
+=== Item 74 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 12x - 63 = 0
+Final answer: ____
+
+=== Item 75 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (2x^1)/(1 + x^2) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 76 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 14. What is the area of the sector with central angle 45°? (Answer in terms of π)
+
+Choices
+(A) 49/2π
+(B) 49π
+(C) 245/6π
+(D) 539/45π
+(E) 49/6π
+
+=== Item 77 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 78 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 + 22x + 56 = 0
+Final answer: ____
+
+=== Item 79 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+4x - 3 = 8x + 17
+
+Choices
+(A) -7
+(B) -10
+(C) -5
+(D) -1
+(E) -2
+
+=== Item 80 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+5x - 17 = 1x + 15
+
+Choices
+(A) 3
+(B) 10
+(C) 6
+(D) 4
+(E) 8
+
+=== Item 81 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -1x^4 + 2x^3 - 5x^2 - 6x + 2.
+Compute f'(1).
+
+Choices
+(A) -22
+(B) -20
+(C) -14
+(D) -26
+(E) -2
+
+=== Item 82 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 24x + 36 = 0
+Final answer: ____
+
+=== Item 83 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 0.5y,   y(0)=5
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 84 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 2x^4 - 2x^3 - 2x^2 - 6x - 5.
+Compute f'(-1).
+
+Choices
+(A) -10
+(B) -8
+(C) -22
+(D) -24
+(E) -16
+
+=== Item 85 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 14. What is the area of the sector with central angle 60°? (Answer in terms of π)
+
+Choices
+(A) 49π
+(B) 98/3π+4
+(C) 49/3π
+(D) 98/3π
+(E) 196/3π
+
+=== Item 86 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.7127
+(B) 0.6227
+(C) 0.7827
+(D) 0.6827
+(E) 0.7427
+
+=== Item 87 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 2y,   y(0)=4
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 88 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=4
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 89 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 14. What is the area of the sector with central angle 60°? (Answer in terms of π)
+
+Choices
+(A) 49π
+(B) 196/3π
+(C) 98/3π
+(D) 49/3π
+(E) 98/3π+4
+
+=== Item 90 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 12. What is the area of the sector with central angle 30°? (Answer in terms of π)
+
+Choices
+(A) 12π
+(B) 12π+4
+(C) 36π
+(D) 6π
+(E) 24π
+
+=== Item 91 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 2.0).
+
+Choices
+(A) 0.8945
+(B) 0.9545
+(C) 0.9845
+(D) 0.8545
+(E) 1.0545
+
+=== Item 92 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=3
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 93 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 94 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 5x - 14 = 0
+Final answer: ____
+
+=== Item 95 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (2x^1)/(1 + x^2) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 96 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 14x + 40 = 0
+Final answer: ____
+
+=== Item 97 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 10. What is the area of the sector with central angle 150°? (Answer in terms of π)
+
+Choices
+(A) 50π
+(B) 100/3π
+(C) 125/6π
+(D) 125/3π
+(E) 250/3π
+
+=== Item 98 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=6 and b=3.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 99 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 4. What is the area of the sector with central angle 150°? (Answer in terms of π)
+
+Choices
+(A) 20/3π
+(B) 10/3π
+(C) 16/3π
+(D) 40/3π
+(E) 8π
+
+=== Item 100 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 101 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 2.0).
+
+Choices
+(A) 0.9845
+(B) 1.0545
+(C) 0.9545
+(D) 0.8945
+(E) 0.9245
+
+=== Item 102 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 0.5y,   y(0)=1
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 103 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 + 6x - 72 = 0
+Final answer: ____
+
+=== Item 104 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 105 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.5827
+(B) 0.6827
+(C) 0.7127
+(D) 0.7827
+(E) 0.6527
+
+=== Item 106 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 1x^4 + 4x^3 - 1x^2 - 5x + 4.
+Compute f'(-2).
+
+Choices
+(A) 17
+(B) 15
+(C) 21
+(D) 3
+(E) 23
+
+=== Item 107 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 11x + 18 = 0
+Final answer: ____
+
+=== Item 108 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=5
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 109 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+5x - 15 = 4x + 7
+
+Choices
+(A) 24
+(B) 28
+(C) 22
+(D) 27
+(E) 17
+
+=== Item 110 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 8. What is the area of the sector with central angle 60°? (Answer in terms of π)
+
+Choices
+(A) 16/3π
+(B) 32/3π+4
+(C) 32/3π
+(D) 16π
+(E) 64/3π
+
+=== Item 111 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -2x^4 - 4x^3 + 3x^2 + 4x + 9.
+Compute f'(-1).
+
+Choices
+(A) 6
+(B) -6
+(C) 0
+(D) -10
+(E) -12
+
+=== Item 112 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=1
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 113 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 114 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=4
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 115 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z-0.35)(z-6.64)) dz
+
+Choices
+(A) 2πi·0.841
+(B) 2πi·0.341
+(C) 2πi·-0.159
+(D) 2πi·-0.409
+(E) 2πi·-1.159
+
+=== Item 116 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=5
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 117 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=3 1/((z-0.64)(z-5.33)) dz
+
+Choices
+(A) 2πi·-1.213
+(B) 2πi·-0.463
+(C) 2πi·0.787
+(D) 2πi·-0.713
+(E) 2πi·-0.213
+
+=== Item 118 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -1x^4 + 0x^3 + 5x^2 + 5x - 5.
+Compute f'(-1).
+
+Choices
+(A) 1
+(B) -7
+(C) -1
+(D) 7
+(E) -3
+
+=== Item 119 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 0.5y,   y(0)=1
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 120 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 3x^4 - 2x^3 + 4x^2 + 4x + 7.
+Compute f'(0).
+
+Choices
+(A) -8
+(B) 8
+(C) -4
+(D) 4
+(E) -2
+
+=== Item 121 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 0.5y,   y(0)=1
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 122 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=6 and b=2.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 123 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z-1.97)(z-5.77)) dz
+
+Choices
+(A) 2πi·-0.763
+(B) 2πi·0.237
+(C) 2πi·-0.013
+(D) 2πi·-1.263
+(E) 2πi·-0.263
+
+=== Item 124 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 10. What is the area of the sector with central angle 60°? (Answer in terms of π)
+
+Choices
+(A) 25π
+(B) 50/3π
+(C) 25/3π
+(D) 100/3π
+(E) 50/3π+4
+
+=== Item 125 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 2.0).
+
+Choices
+(A) 0.9545
+(B) 1.0145
+(C) 0.8545
+(D) 0.9845
+(E) 0.9245
+
+=== Item 126 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=4 and b=2.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 127 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 3x - 28 = 0
+Final answer: ____
+
+=== Item 128 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 3x^4 + 0x^3 - 3x^2 - 4x + 8.
+Compute f'(-1).
+
+Choices
+(A) -2
+(B) -10
+(C) -14
+(D) -12
+(E) -18
+
+=== Item 129 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.6227
+(B) 0.7427
+(C) 0.6527
+(D) 0.5827
+(E) 0.6827
+
+=== Item 130 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+1 + 2/3 + 4/9 + ...
+
+Choices
+(A) 2
+(B) 4
+(C) -3
+(D) 3
+(E) 0
+
+=== Item 131 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 132 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+8 + 4 + 2 + ...
+
+Choices
+(A) 14
+(B) 10
+(C) 19
+(D) 18
+(E) 16
+
+=== Item 133 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 12. What is the area of the sector with central angle 45°? (Answer in terms of π)
+
+Choices
+(A) 44/5π
+(B) 6π
+(C) 36π
+(D) 30π
+(E) 18π
+
+=== Item 134 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 135 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 3x^4 + 5x^3 + 4x^2 - 2x + 3.
+Compute f'(1).
+
+Choices
+(A) 37
+(B) 33
+(C) 29
+(D) 41
+(E) 35
+
+=== Item 136 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 + 15x - 18 = 0
+Final answer: ____
+
+=== Item 137 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+7x + 3 = 2x - 12
+
+Choices
+(A) 0
+(B) -3
+(C) 1
+(D) -9
+(E) 3
+
+=== Item 138 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 139 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 140 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+4 + 2 + 1 + ...
+
+Choices
+(A) 2
+(B) 8
+(C) 14
+(D) 9
+(E) 12
+
+=== Item 141 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 142 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 9x - 10 = 0
+Final answer: ____
+
+=== Item 143 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=3 and b=0.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 144 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 9. What is the area of the sector with central angle 90°? (Answer in terms of π)
+
+Choices
+(A) 81/4π
+(B) 81/8π
+(C) 81/2π
+(D) 27π
+(E) 27/2π
+
+=== Item 145 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=2 1/((z--0.82)(z-3.39)) dz
+
+Choices
+(A) 2πi·-0.238
+(B) 2πi·0.762
+(C) 2πi·-1.238
+(D) 2πi·-0.738
+(E) 2πi·-0.488
+
+=== Item 146 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -1x^4 + 1x^3 - 5x^2 + 1x + 8.
+Compute f'(1).
+
+Choices
+(A) -2
+(B) -12
+(C) -18
+(D) -10
+(E) -22
+
+=== Item 147 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+5x - 13 = 6x - 20
+
+Choices
+(A) 7
+(B) 11
+(C) 8
+(D) 9
+(E) 3
+
+=== Item 148 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 3. What is the area of the sector with central angle 90°? (Answer in terms of π)
+
+Choices
+(A) 9/8π
+(B) 3π
+(C) 9/2π
+(D) 3/2π
+(E) 9/4π
+
+=== Item 149 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (2x^1)/(1 + x^2) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 150 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 151 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 152 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 2.0).
+
+Choices
+(A) 0.8545
+(B) 0.9845
+(C) 0.9545
+(D) 0.8945
+(E) 1.0145
+
+=== Item 153 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=2 1/((z-0.97)(z-2.96)) dz
+
+Choices
+(A) 2πi·-1.503
+(B) 2πi·-0.003
+(C) 2πi·-0.503
+(D) 2πi·-1.003
+(E) 2πi·0.497
+
+=== Item 154 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 3x^4 + 5x^3 + 1x^2 + 6x + 8.
+Compute f'(2).
+
+Choices
+(A) 158
+(B) 168
+(C) 172
+(D) 166
+(E) 174
+
+=== Item 155 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 156 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 157 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 2x - 80 = 0
+Final answer: ____
+
+=== Item 158 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 159 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+4 + 3 + 9/4 + ...
+
+Choices
+(A) 19
+(B) 10
+(C) 22
+(D) 16
+(E) 13
+
+=== Item 160 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -2x^4 + 2x^3 + 1x^2 + 8x + 6.
+Compute f'(2).
+
+Choices
+(A) -26
+(B) -28
+(C) -34
+(D) -16
+(E) -20
+
+=== Item 161 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=4 and b=0.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 162 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 163 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.7827
+(B) 0.6827
+(C) 0.6227
+(D) 0.7427
+(E) 0.6527
+
+=== Item 164 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 0x - 36 = 0
+Final answer: ____
+
+=== Item 165 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (2x^1)/(1 + x^2) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 166 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -1x^4 + 2x^3 - 3x^2 - 1x - 6.
+Compute f'(-1).
+
+Choices
+(A) 27
+(B) 7
+(C) 13
+(D) 15
+(E) 23
+
+=== Item 167 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.6527
+(B) 0.7827
+(C) 0.6227
+(D) 0.6827
+(E) 0.7427
+
+=== Item 168 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 2.0).
+
+Choices
+(A) 0.8945
+(B) 0.9545
+(C) 1.0545
+(D) 0.9845
+(E) 0.9245
+
+=== Item 169 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 170 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=3 and b=1.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 171 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.8064
+(B) 0.7664
+(C) 0.9664
+(D) 0.9264
+(E) 0.8664
+
+=== Item 172 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.5827
+(B) 0.7127
+(C) 0.6227
+(D) 0.6827
+(E) 0.6527
+
+=== Item 173 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 6. What is the area of the sector with central angle 30°? (Answer in terms of π)
+
+Choices
+(A) 3/2π
+(B) 6π
+(C) 3π+4
+(D) 3π
+(E) 9π
+
+=== Item 174 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=3 1/((z-1.5)(z-4.73)) dz
+
+Choices
+(A) 2πi·-0.060
+(B) 2πi·-0.810
+(C) 2πi·0.190
+(D) 2πi·-0.560
+(E) 2πi·-0.310
+
+=== Item 175 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 4. What is the area of the sector with central angle 180°? (Answer in terms of π)
+
+Choices
+(A) 4π
+(B) 8π
+(C) 16π
+(D) 28/3π
+(E) 20/3π
+
+=== Item 176 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 + 45x + 168 = 0
+Final answer: ____
+
+=== Item 177 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 2x^4 - 3x^3 - 2x^2 + 5x - 10.
+Compute f'(2).
+
+Choices
+(A) 27
+(B) 29
+(C) 17
+(D) 21
+(E) 25
+
+=== Item 178 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 179 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=4 and b=0.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 180 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+3 + 3/2 + 3/4 + ...
+
+Choices
+(A) 6
+(B) 8
+(C) 10
+(D) 12
+(E) 7
+
+=== Item 181 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 2x^4 + 2x^3 - 6x^2 + 1x - 4.
+Compute f'(-2).
+
+Choices
+(A) -15
+(B) -19
+(C) -27
+(D) -13
+(E) -21
+
+=== Item 182 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 8. What is the area of the sector with central angle 180°? (Answer in terms of π)
+
+Choices
+(A) 64π
+(B) 16π
+(C) 112/3π
+(D) 80/3π
+(E) 32π
+
+=== Item 183 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=4
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 184 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 14. What is the area of the sector with central angle 90°? (Answer in terms of π)
+
+Choices
+(A) 98π
+(B) 196/3π
+(C) 49π
+(D) 49/2π
+(E) 98/3π
+
+=== Item 185 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 8. What is the area of the sector with central angle 30°? (Answer in terms of π)
+
+Choices
+(A) 16/3π+4
+(B) 32/3π
+(C) 8/3π
+(D) 16π
+(E) 16/3π
+
+=== Item 186 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 15x + 12 = 0
+Final answer: ____
+
+=== Item 187 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 8x - 20 = 0
+Final answer: ____
+
+=== Item 188 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 1x - 30 = 0
+Final answer: ____
+
+=== Item 189 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 14x + 48 = 0
+Final answer: ____
+
+=== Item 190 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=5
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 191 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 8. What is the area of the sector with central angle 60°? (Answer in terms of π)
+
+Choices
+(A) 16π
+(B) 32/3π+4
+(C) 16/3π
+(D) 32/3π
+(E) 64/3π
+
+=== Item 192 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 193 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+3x + 13 = 8x + 4
+
+Choices
+(A) 9/5
+(B) 29/5
+(C) -16/5
+(D) 24/5
+(E) -1/5
+
+=== Item 194 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=2 and b=1.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 195 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=5 and b=0.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 196 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 2y,   y(0)=5
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 197 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 198 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=2 1/((z-0.7)(z-2.78)) dz
+
+Choices
+(A) 2πi·-0.731
+(B) 2πi·-0.481
+(C) 2πi·-0.231
+(D) 2πi·-1.481
+(E) 2πi·0.519
+
+=== Item 199 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -1x^4 + 1x^3 + 5x^2 + 7x + 6.
+Compute f'(1).
+
+Choices
+(A) 22
+(B) 8
+(C) 20
+(D) 10
+(E) 16
+
+=== Item 200 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+7x - 17 = 9x - 13
+
+Choices
+(A) 3
+(B) -2
+(C) -4
+(D) -6
+(E) 1
+
+=== Item 201 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 202 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 9x - 10 = 0
+Final answer: ____
+
+=== Item 203 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -2x^4 + 5x^3 + 3x^2 + 2x + 8.
+Compute f'(-2).
+
+Choices
+(A) 102
+(B) 114
+(C) 126
+(D) 106
+(E) 116
+
+=== Item 204 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=5 and b=2.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 205 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 206 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=1
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 207 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.8664
+(B) 0.9664
+(C) 0.8064
+(D) 0.8964
+(E) 0.9264
+
+=== Item 208 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=3
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 209 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+4 + -2 + 1 + ...
+
+Choices
+(A) 5/3
+(B) 26/3
+(C) 17/3
+(D) 8/3
+(E) -4/3
+
+=== Item 210 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=3 and b=2.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 211 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=3 and b=3.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 212 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 0.5y,   y(0)=4
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 213 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 + 14x + 24 = 0
+Final answer: ____
+
+=== Item 214 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 57x + 270 = 0
+Final answer: ____
+
+=== Item 215 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+7x - 4 = 3x + 3
+
+Choices
+(A) 31/4
+(B) 3/4
+(C) -17/4
+(D) 11/4
+(E) 7/4
+
+=== Item 216 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 18x + 81 = 0
+Final answer: ____
+
+=== Item 217 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 8. What is the area of the sector with central angle 180°? (Answer in terms of π)
+
+Choices
+(A) 112/3π
+(B) 64π
+(C) 32π
+(D) 16π
+(E) 80/3π
+
+=== Item 218 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (2x^1)/(1 + x^2) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 219 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 10x + 24 = 0
+Final answer: ____
+
+=== Item 220 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+6 + 4 + 8/3 + ...
+
+Choices
+(A) 18
+(B) 20
+(C) 17
+(D) 19
+(E) 22
+
+=== Item 221 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+6 + 3 + 3/2 + ...
+
+Choices
+(A) 14
+(B) 12
+(C) 16
+(D) 11
+(E) 6
+
+=== Item 222 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=6 and b=3.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 223 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+2x - 19 = 4x + 8
+
+Choices
+(A) -27/2
+(B) -17/2
+(C) -25/2
+(D) -35/2
+(E) -29/2
+
+=== Item 224 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=2 1/((z-0.15)(z-4.0)) dz
+
+Choices
+(A) 2πi·-0.260
+(B) 2πi·-0.760
+(C) 2πi·0.240
+(D) 2πi·0.740
+(E) 2πi·-0.010
+
+=== Item 225 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 226 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=3
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 227 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.8064
+(B) 0.8364
+(C) 0.8964
+(D) 0.9264
+(E) 0.8664
+
+=== Item 228 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.6527
+(B) 0.6227
+(C) 0.6827
+(D) 0.7827
+(E) 0.5827
+
+=== Item 229 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=1
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 230 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -3x^4 + 5x^3 + 2x^2 - 1x + 10.
+Compute f'(-1).
+
+Choices
+(A) 10
+(B) 16
+(C) 14
+(D) 22
+(E) 26
+
+=== Item 231 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 13. What is the area of the sector with central angle 90°? (Answer in terms of π)
+
+Choices
+(A) 169/4π
+(B) 169/6π
+(C) 169/8π
+(D) 169/3π
+(E) 169/2π
+
+=== Item 232 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+4x - 18 = 9x - 9
+
+Choices
+(A) -9/5
+(B) 21/5
+(C) -29/5
+(D) -4/5
+(E) -39/5
+
+=== Item 233 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 2.0).
+
+Choices
+(A) 0.8545
+(B) 1.0145
+(C) 0.9545
+(D) 0.8945
+(E) 0.9245
+
+=== Item 234 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 5. What is the area of the sector with central angle 150°? (Answer in terms of π)
+
+Choices
+(A) 25/2π
+(B) 125/12π
+(C) 125/24π
+(D) 25/3π
+(E) 125/6π
+
+=== Item 235 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 4x - 32 = 0
+Final answer: ____
+
+=== Item 236 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 237 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 + 33x + 90 = 0
+Final answer: ____
+
+=== Item 238 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+5x - 5 = 7x + 8
+
+Choices
+(A) -17/2
+(B) -13/2
+(C) -1/2
+(D) -25/2
+(E) -15/2
+
+=== Item 239 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 7. What is the area of the sector with central angle 45°? (Answer in terms of π)
+
+Choices
+(A) 245/24π
+(B) 49/8π
+(C) 539/180π
+(D) 49/24π
+(E) 49/4π
+
+=== Item 240 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 241 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 5. What is the area of the sector with central angle 90°? (Answer in terms of π)
+
+Choices
+(A) 25/4π
+(B) 25/2π
+(C) 25/3π
+(D) 25/6π
+(E) 25/8π
+
+=== Item 242 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=1 1/((z-0.03)(z-1.62)) dz
+
+Choices
+(A) 2πi·-0.129
+(B) 2πi·-0.629
+(C) 2πi·-1.629
+(D) 2πi·-0.879
+(E) 2πi·-0.379
+
+=== Item 243 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 12x - 96 = 0
+Final answer: ____
+
+=== Item 244 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 + 6x - 72 = 0
+Final answer: ____
+
+=== Item 245 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+5 + 5/2 + 5/4 + ...
+
+Choices
+(A) 9
+(B) 11
+(C) 4
+(D) 10
+(E) 12
+
+=== Item 246 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -3x^4 + 2x^3 - 6x^2 + 1x + 3.
+Compute f'(-1).
+
+Choices
+(A) 35
+(B) 31
+(C) 25
+(D) 27
+(E) 33
+
+=== Item 247 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.7127
+(B) 0.7427
+(C) 0.6827
+(D) 0.6527
+(E) 0.6227
+
+=== Item 248 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=2
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 249 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 6x + 8 = 0
+Final answer: ____
+
+=== Item 250 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 7x + 12 = 0
+Final answer: ____
+
+=== Item 251 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 12. What is the area of the sector with central angle 150°? (Answer in terms of π)
+
+Choices
+(A) 120π
+(B) 30π
+(C) 48π
+(D) 72π
+(E) 60π
+
+=== Item 252 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 3x^4 - 5x^3 - 4x^2 + 8x - 1.
+Compute f'(-1).
+
+Choices
+(A) -3
+(B) -11
+(C) -19
+(D) 1
+(E) -9
+
+=== Item 253 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 254 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 2.0).
+
+Choices
+(A) 0.9545
+(B) 0.9845
+(C) 1.0545
+(D) 0.8545
+(E) 0.9245
+
+=== Item 255 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 256 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=3 and b=2.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 257 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.7127
+(B) 0.6827
+(C) 0.7827
+(D) 0.7427
+(E) 0.6527
+
+=== Item 258 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 5x + 4 = 0
+Final answer: ____
+
+=== Item 259 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -1x^4 + 1x^3 + 4x^2 - 7x - 8.
+Compute f'(-1).
+
+Choices
+(A) -12
+(B) -8
+(C) -2
+(D) 0
+(E) 4
+
+=== Item 260 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+8x + 18 = 4x - 7
+
+Choices
+(A) -25/4
+(B) -29/4
+(C) -21/4
+(D) -13/4
+(E) -37/4
+
+=== Item 261 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 + 9x - 84 = 0
+Final answer: ____
+
+=== Item 262 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=4 and b=2.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 263 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -3x^4 - 1x^3 + 2x^2 + 5x - 1.
+Compute f'(-1).
+
+Choices
+(A) 10
+(B) 12
+(C) 22
+(D) 6
+(E) 16
+
+=== Item 264 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 + 2x - 40 = 0
+Final answer: ____
+
+=== Item 265 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 17x + 70 = 0
+Final answer: ____
+
+=== Item 266 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 3x^4 - 5x^3 + 0x^2 - 4x + 10.
+Compute f'(-1).
+
+Choices
+(A) -37
+(B) -31
+(C) -39
+(D) -43
+(E) -19
+
+=== Item 267 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (2x^1)/(1 + x^2) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 268 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 + 8x - 120 = 0
+Final answer: ____
+
+=== Item 269 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 270 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=2 and b=0.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 271 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 1x^4 + 3x^3 - 2x^2 + 3x - 2.
+Compute f'(1).
+
+Choices
+(A) 16
+(B) 12
+(C) 14
+(D) 4
+(E) 8
+
+=== Item 272 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+2x + 4 = 7x + 4
+
+Choices
+(A) -6
+(B) 2
+(C) 4
+(D) 0
+(E) 3
+
+=== Item 273 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 274 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z--1.1)(z-7.76)) dz
+
+Choices
+(A) 2πi·0.887
+(B) 2πi·0.137
+(C) 2πi·-1.113
+(D) 2πi·-0.113
+(E) 2πi·-0.363
+
+=== Item 275 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=4 and b=1.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 276 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 277 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=3 1/((z--1.61)(z-4.65)) dz
+
+Choices
+(A) 2πi·-0.660
+(B) 2πi·0.090
+(C) 2πi·-1.160
+(D) 2πi·-0.410
+(E) 2πi·-0.160
+
+=== Item 278 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 9x - 120 = 0
+Final answer: ____
+
+=== Item 279 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 + 32x + 128 = 0
+Final answer: ____
+
+=== Item 280 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 8. What is the area of the sector with central angle 60°? (Answer in terms of π)
+
+Choices
+(A) 16/3π
+(B) 16π
+(C) 64/3π
+(D) 32/3π+4
+(E) 32/3π
+
+=== Item 281 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 282 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 42x + 147 = 0
+Final answer: ____
+
+=== Item 283 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 11. What is the area of the sector with central angle 30°? (Answer in terms of π)
+
+Choices
+(A) 121/24π
+(B) 121/12π
+(C) 121/6π
+(D) 121/4π
+(E) 121/12π+4
+
+=== Item 284 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 4x - 21 = 0
+Final answer: ____
+
+=== Item 285 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=3 1/((z--0.72)(z-4.78)) dz
+
+Choices
+(A) 2πi·0.318
+(B) 2πi·-0.182
+(C) 2πi·-1.182
+(D) 2πi·-0.682
+(E) 2πi·0.068
+
+=== Item 286 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+4 + -2 + 1 + ...
+
+Choices
+(A) 8/3
+(B) -4/3
+(C) -10/3
+(D) -1/3
+(E) 5/3
+
+=== Item 287 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 0.5y,   y(0)=4
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 288 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.8664
+(B) 0.8064
+(C) 0.9664
+(D) 0.8964
+(E) 0.9264
+
+=== Item 289 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=4 and b=3.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 290 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 1x - 56 = 0
+Final answer: ____
+
+=== Item 291 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 2x^4 + 2x^3 + 5x^2 - 2x + 4.
+Compute f'(0).
+
+Choices
+(A) 10
+(B) -2
+(C) 4
+(D) -10
+(E) 2
+
+=== Item 292 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=5 and b=3.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 293 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 294 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=2 1/((z-0.38)(z-2.97)) dz
+
+Choices
+(A) 2πi·-0.636
+(B) 2πi·-0.386
+(C) 2πi·0.614
+(D) 2πi·0.114
+(E) 2πi·-1.386
+
+=== Item 295 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 12x + 36 = 0
+Final answer: ____
+
+=== Item 296 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 297 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.7127
+(B) 0.6527
+(C) 0.5827
+(D) 0.6227
+(E) 0.6827
+
+=== Item 298 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 299 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (2x^1)/(1 + x^2) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 300 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (2x^1)/(1 + x^2) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 301 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+6x - 10 = 2x - 5
+
+Choices
+(A) 25/4
+(B) 5/4
+(C) 17/4
+(D) 29/4
+(E) -11/4
+
+=== Item 302 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z--0.5)(z-7.16)) dz
+
+Choices
+(A) 2πi·0.119
+(B) 2πi·0.369
+(C) 2πi·0.869
+(D) 2πi·-0.631
+(E) 2πi·-0.131
+
+=== Item 303 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=2 1/((z--0.32)(z-2.72)) dz
+
+Choices
+(A) 2πi·-0.329
+(B) 2πi·-1.329
+(C) 2πi·0.171
+(D) 2πi·-0.079
+(E) 2πi·-0.579
+
+=== Item 304 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 305 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 306 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 4. What is the area of the sector with central angle 45°? (Answer in terms of π)
+
+Choices
+(A) 2π
+(B) 4π
+(C) 44/45π
+(D) 10/3π
+(E) 2/3π
+
+=== Item 307 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+7 + 14/3 + 28/9 + ...
+
+Choices
+(A) 25
+(B) 21
+(C) 20
+(D) 18
+(E) 24
+
+=== Item 308 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 + 27x - 30 = 0
+Final answer: ____
+
+=== Item 309 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 24x + 45 = 0
+Final answer: ____
+
+=== Item 310 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=1
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 311 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+1 + 3/4 + 9/16 + ...
+
+Choices
+(A) 2
+(B) 4
+(C) 8
+(D) 0
+(E) 3
+
+=== Item 312 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 313 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 2.0).
+
+Choices
+(A) 0.8545
+(B) 0.9245
+(C) 0.9545
+(D) 0.9845
+(E) 0.8945
+
+=== Item 314 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 4. What is the area of the sector with central angle 180°? (Answer in terms of π)
+
+Choices
+(A) 8π
+(B) 16π
+(C) 20/3π
+(D) 4π
+(E) 28/3π
+
+=== Item 315 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=6 and b=1.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 316 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=3 1/((z-0.12)(z-5.03)) dz
+
+Choices
+(A) 2πi·-0.704
+(B) 2πi·-0.204
+(C) 2πi·0.296
+(D) 2πi·-0.454
+(E) 2πi·0.796
+
+=== Item 317 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 8x - 20 = 0
+Final answer: ____
+
+=== Item 318 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=2 1/((z-0.51)(z-3.73)) dz
+
+Choices
+(A) 2πi·-0.311
+(B) 2πi·0.689
+(C) 2πi·0.189
+(D) 2πi·-0.061
+(E) 2πi·-1.311
+
+=== Item 319 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 1x^4 + 3x^3 + 5x^2 + 0x + 1.
+Compute f'(1).
+
+Choices
+(A) 27
+(B) 29
+(C) 25
+(D) 11
+(E) 23
+
+=== Item 320 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=5 and b=1.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 321 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 322 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+6 + 3 + 3/2 + ...
+
+Choices
+(A) 18
+(B) 8
+(C) 15
+(D) 6
+(E) 12
+
+=== Item 323 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 - 8x - 120 = 0
+Final answer: ____
+
+=== Item 324 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 - 22x + 20 = 0
+Final answer: ____
+
+=== Item 325 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+7x - 6 = 5x + 7
+
+Choices
+(A) 1/2
+(B) 3/2
+(C) 13/2
+(D) 25/2
+(E) 23/2
+
+=== Item 326 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (2x^1)/(1 + x^2) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 327 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 2.0).
+
+Choices
+(A) 0.8945
+(B) 1.0145
+(C) 0.9845
+(D) 0.9545
+(E) 0.8545
+
+=== Item 328 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 4x - 12 = 0
+Final answer: ____
+
+=== Item 329 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 1x^4 + 4x^3 - 6x^2 - 3x + 4.
+Compute f'(0).
+
+Choices
+(A) -5
+(B) -9
+(C) -3
+(D) -7
+(E) 1
+
+=== Item 330 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 8. What is the area of the sector with central angle 90°? (Answer in terms of π)
+
+Choices
+(A) 8π
+(B) 32π
+(C) 16π
+(D) 64/3π
+(E) 32/3π
+
+=== Item 331 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+1 + 3/4 + 9/16 + ...
+
+Choices
+(A) 2
+(B) 4
+(C) 5
+(D) 8
+(E) 10
+
+=== Item 332 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.7664
+(B) 0.8964
+(C) 0.8064
+(D) 0.8664
+(E) 0.8364
+
+=== Item 333 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=5 and b=3.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 334 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+2 + 1 + 1/2 + ...
+
+Choices
+(A) 0
+(B) 1
+(C) -2
+(D) 4
+(E) 10
+
+=== Item 335 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 336 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 4. What is the area of the sector with central angle 60°? (Answer in terms of π)
+
+Choices
+(A) 4/3π
+(B) 16/3π
+(C) 8/3π+4
+(D) 4π
+(E) 8/3π
+
+=== Item 337 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+7 + 14/3 + 28/9 + ...
+
+Choices
+(A) 15
+(B) 25
+(C) 19
+(D) 17
+(E) 21
+
+=== Item 338 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+1x - 20 = 3x - 10
+
+Choices
+(A) -1
+(B) -5
+(C) -2
+(D) -3
+(E) -6
+
+=== Item 339 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=2 and b=2.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 340 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=4 and b=0.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 341 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 342 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.6527
+(B) 0.5827
+(C) 0.7427
+(D) 0.6827
+(E) 0.7127
+
+=== Item 343 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 4x - 12 = 0
+Final answer: ____
+
+=== Item 344 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.7127
+(B) 0.6527
+(C) 0.6827
+(D) 0.7827
+(E) 0.6227
+
+=== Item 345 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+4x - 18 = 9x + 5
+
+Choices
+(A) -33/5
+(B) -48/5
+(C) -3/5
+(D) -23/5
+(E) -13/5
+
+=== Item 346 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 12. What is the area of the sector with central angle 180°? (Answer in terms of π)
+
+Choices
+(A) 72π
+(B) 36π
+(C) 144π
+(D) 84π
+(E) 60π
+
+=== Item 347 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 348 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=1 1/((z-0.52)(z-1.22)) dz
+
+Choices
+(A) 2πi·-1.929
+(B) 2πi·-0.929
+(C) 2πi·-1.679
+(D) 2πi·-2.429
+(E) 2πi·-1.429
+
+=== Item 349 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 10. What is the area of the sector with central angle 30°? (Answer in terms of π)
+
+Choices
+(A) 25/3π+4
+(B) 25/6π
+(C) 25/3π
+(D) 25π
+(E) 50/3π
+
+=== Item 350 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=1
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 351 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+2 + -4/3 + 8/9 + ...
+
+Choices
+(A) 6/5
+(B) -24/5
+(C) 16/5
+(D) 11/5
+(E) 36/5
+
+=== Item 352 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 0.5y,   y(0)=4
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 353 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+3x - 11 = 2x - 14
+
+Choices
+(A) -4
+(B) -7
+(C) -1
+(D) -3
+(E) 2
+
+=== Item 354 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.9664
+(B) 0.8664
+(C) 0.7664
+(D) 0.8364
+(E) 0.8964
+
+=== Item 355 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 + 22x + 48 = 0
+Final answer: ____
+
+=== Item 356 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+5 + 10/3 + 20/9 + ...
+
+Choices
+(A) 17
+(B) 18
+(C) 15
+(D) 9
+(E) 14
+
+=== Item 357 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+1x - 12 = 4x - 8
+
+Choices
+(A) -1/3
+(B) -7/3
+(C) -19/3
+(D) -10/3
+(E) -4/3
+
+=== Item 358 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=2 and b=2.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 359 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 9x - 120 = 0
+Final answer: ____
+
+=== Item 360 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 2y,   y(0)=4
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 361 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.7827
+(B) 0.7427
+(C) 0.6527
+(D) 0.6827
+(E) 0.6227
+
+=== Item 362 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 363 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+7 + 14/3 + 28/9 + ...
+
+Choices
+(A) 25
+(B) 19
+(C) 23
+(D) 21
+(E) 22
+
+=== Item 364 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 365 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 366 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+5x + 10 = 1x + 13
+
+Choices
+(A) -9/4
+(B) -13/4
+(C) 19/4
+(D) -1/4
+(E) 3/4
+
+=== Item 367 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+7x - 9 = 6x - 9
+
+Choices
+(A) -1
+(B) -3
+(C) 4
+(D) 0
+(E) 5
+
+=== Item 368 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z-0.2)(z-5.36)) dz
+
+Choices
+(A) 2πi·0.806
+(B) 2πi·0.306
+(C) 2πi·-0.194
+(D) 2πi·-1.194
+(E) 2πi·0.056
+
+=== Item 369 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+6x + 0 = 3x - 17
+
+Choices
+(A) -5/3
+(B) -35/3
+(C) -2/3
+(D) -29/3
+(E) -17/3
+
+=== Item 370 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=4 and b=2.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 371 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 15. What is the area of the sector with central angle 150°? (Answer in terms of π)
+
+Choices
+(A) 375/8π
+(B) 225/2π
+(C) 375/4π
+(D) 75π
+(E) 375/2π
+
+=== Item 372 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 7. What is the area of the sector with central angle 150°? (Answer in terms of π)
+
+Choices
+(A) 245/6π
+(B) 245/24π
+(C) 245/12π
+(D) 49/2π
+(E) 49/3π
+
+=== Item 373 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=3 and b=2.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 374 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z--1.72)(z-7.19)) dz
+
+Choices
+(A) 2πi·0.388
+(B) 2πi·-1.112
+(C) 2πi·-0.612
+(D) 2πi·-0.362
+(E) 2πi·-0.112
+
+=== Item 375 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+6x - 14 = 5x - 20
+
+Choices
+(A) -6
+(B) -5
+(C) -1
+(D) -4
+(E) -12
+
+=== Item 376 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 377 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z--2.05)(z-7.51)) dz
+
+Choices
+(A) 2πi·-1.105
+(B) 2πi·0.895
+(C) 2πi·-0.355
+(D) 2πi·-0.605
+(E) 2πi·-0.105
+
+=== Item 378 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=1 1/((z--0.19)(z-1.99)) dz
+
+Choices
+(A) 2πi·-0.709
+(B) 2πi·-1.459
+(C) 2πi·-0.459
+(D) 2πi·0.541
+(E) 2πi·-0.209
+
+=== Item 379 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+7x + 14 = 9x - 4
+
+Choices
+(A) 15
+(B) 7
+(C) 14
+(D) 6
+(E) 9
+
+=== Item 380 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 + 10x - 48 = 0
+Final answer: ____
+
+=== Item 381 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=2 and b=0.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 382 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 + 4x - 70 = 0
+Final answer: ____
+
+=== Item 383 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 0.5y,   y(0)=1
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 384 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 385 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=5 and b=0.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 386 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 5x + 6 = 0
+Final answer: ____
+
+=== Item 387 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+6x + 6 = 9x + 17
+
+Choices
+(A) -11/3
+(B) -20/3
+(C) -2/3
+(D) -29/3
+(E) -8/3
+
+=== Item 388 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+5 + 5/2 + 5/4 + ...
+
+Choices
+(A) 14
+(B) 4
+(C) 10
+(D) 12
+(E) 7
+
+=== Item 389 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z--2.02)(z-6.99)) dz
+
+Choices
+(A) 2πi·-0.361
+(B) 2πi·0.889
+(C) 2πi·-0.611
+(D) 2πi·0.389
+(E) 2πi·-0.111
+
+=== Item 390 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (2x^1)/(1 + x^2) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 391 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=5 and b=1.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 392 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+2x + 14 = 5x + 2
+
+Choices
+(A) 5
+(B) 2
+(C) 4
+(D) 10
+(E) 6
+
+=== Item 393 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 3. What is the area of the sector with central angle 90°? (Answer in terms of π)
+
+Choices
+(A) 9/8π
+(B) 9/2π
+(C) 9/4π
+(D) 3π
+(E) 3/2π
+
+=== Item 394 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=4 and b=2.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 395 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 + 18x + 36 = 0
+Final answer: ____
+
+=== Item 396 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 0.5y,   y(0)=4
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 397 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 1x^4 - 2x^3 + 0x^2 + 7x + 6.
+Compute f'(0).
+
+Choices
+(A) -5
+(B) 19
+(C) 7
+(D) 1
+(E) 15
+
+=== Item 398 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+4x + 9 = 1x - 17
+
+Choices
+(A) -29/3
+(B) -26/3
+(C) -35/3
+(D) -8/3
+(E) -32/3
+
+=== Item 399 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.8064
+(B) 0.8664
+(C) 0.9264
+(D) 0.8964
+(E) 0.9664
+
+=== Item 400 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=4 and b=0.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 401 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 3x^4 - 2x^3 + 4x^2 - 1x - 4.
+Compute f'(0).
+
+Choices
+(A) 3
+(B) 7
+(C) 11
+(D) -13
+(E) -1
+
+=== Item 402 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -1x^4 + 4x^3 + 6x^2 + 1x + 10.
+Compute f'(0).
+
+Choices
+(A) 1
+(B) -3
+(C) 3
+(D) 5
+(E) 13
+
+=== Item 403 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=2 and b=2.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 404 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (2x^1)/(1 + x^2) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 405 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 406 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=2
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 407 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 3x^4 + 4x^3 + 0x^2 + 2x - 6.
+Compute f'(-2).
+
+Choices
+(A) -40
+(B) -46
+(C) -48
+(D) -50
+(E) -38
+
+=== Item 408 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+4 + -8/3 + 16/9 + ...
+
+Choices
+(A) 17/5
+(B) 12/5
+(C) 7/5
+(D) 22/5
+(E) 27/5
+
+=== Item 409 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 410 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+4 + 3 + 9/4 + ...
+
+Choices
+(A) 20
+(B) 16
+(C) 18
+(D) 17
+(E) 13
+
+=== Item 411 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+4 + -8/3 + 16/9 + ...
+
+Choices
+(A) 7/5
+(B) 22/5
+(C) 2/5
+(D) -8/5
+(E) 12/5
+
+=== Item 412 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 413 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z--0.8)(z-7.96)) dz
+
+Choices
+(A) 2πi·0.386
+(B) 2πi·-0.614
+(C) 2πi·-0.114
+(D) 2πi·-0.364
+(E) 2πi·-1.114
+
+=== Item 414 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 1x^4 + 1x^3 + 4x^2 + 5x + 2.
+Compute f'(1).
+
+Choices
+(A) 20
+(B) 8
+(C) 24
+(D) 26
+(E) 32
+
+=== Item 415 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=2 and b=0.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 416 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 2x^4 + 0x^3 - 2x^2 - 4x - 7.
+Compute f'(1).
+
+Choices
+(A) -12
+(B) -6
+(C) 8
+(D) -2
+(E) 0
+
+=== Item 417 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=3
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 418 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=2
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 419 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=3 and b=1.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 420 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=1 1/((z-0.11)(z-1.34)) dz
+
+Choices
+(A) 2πi·-1.063
+(B) 2πi·-0.563
+(C) 2πi·0.187
+(D) 2πi·-0.813
+(E) 2πi·-1.813
+
+=== Item 421 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 2x^4 - 4x^3 + 0x^2 + 6x + 2.
+Compute f'(-2).
+
+Choices
+(A) -100
+(B) -106
+(C) -108
+(D) -104
+(E) -98
+
+=== Item 422 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 12. What is the area of the sector with central angle 120°? (Answer in terms of π)
+
+Choices
+(A) 24π
+(B) 36π
+(C) 48π
+(D) 96π
+(E) 60π
+
+=== Item 423 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 6. What is the area of the sector with central angle 120°? (Answer in terms of π)
+
+Choices
+(A) 6π
+(B) 12π
+(C) 24π
+(D) 9π
+(E) 15π
+
+=== Item 424 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 425 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 5x + 0 = 0
+Final answer: ____
+
+=== Item 426 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+8x - 15 = 3x + 12
+
+Choices
+(A) 27/5
+(B) 12/5
+(C) 2/5
+(D) 57/5
+(E) 17/5
+
+=== Item 427 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+5x + 0 = 6x + 7
+
+Choices
+(A) -2
+(B) -13
+(C) -12
+(D) -1
+(E) -7
+
+=== Item 428 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 + 14x - 16 = 0
+Final answer: ____
+
+=== Item 429 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 6x - 24 = 0
+Final answer: ____
+
+=== Item 430 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=1
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 431 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+2x + 17 = 7x + 10
+
+Choices
+(A) 32/5
+(B) 7/5
+(C) 27/5
+(D) 17/5
+(E) -13/5
+
+=== Item 432 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.9664
+(B) 0.7664
+(C) 0.9264
+(D) 0.8964
+(E) 0.8664
+
+=== Item 433 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 11. What is the area of the sector with central angle 120°? (Answer in terms of π)
+
+Choices
+(A) 121/4π
+(B) 242/3π
+(C) 605/12π
+(D) 121/3π
+(E) 121/6π
+
+=== Item 434 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 435 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=2 1/((z-0.01)(z-3.15)) dz
+
+Choices
+(A) 2πi·-0.318
+(B) 2πi·0.182
+(C) 2πi·-1.318
+(D) 2πi·-0.068
+(E) 2πi·-0.818
+
+=== Item 436 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 9. What is the area of the sector with central angle 180°? (Answer in terms of π)
+
+Choices
+(A) 81π
+(B) 135/4π
+(C) 81/4π
+(D) 81/2π
+(E) 189/4π
+
+=== Item 437 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=5 and b=3.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 438 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 + 15x - 42 = 0
+Final answer: ____
+
+=== Item 439 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+5x + 15 = 9x - 7
+
+Choices
+(A) 9/2
+(B) 21/2
+(C) 15/2
+(D) 11/2
+(E) 23/2
+
+=== Item 440 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 3x - 28 = 0
+Final answer: ____
+
+=== Item 441 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=3 1/((z--0.52)(z-5.12)) dz
+
+Choices
+(A) 2πi·0.323
+(B) 2πi·-0.427
+(C) 2πi·0.823
+(D) 2πi·0.073
+(E) 2πi·-0.177
+
+=== Item 442 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 7x - 18 = 0
+Final answer: ____
+
+=== Item 443 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 + 0x - 32 = 0
+Final answer: ____
+
+=== Item 444 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 18x + 80 = 0
+Final answer: ____
+
+=== Item 445 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=4
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 446 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 12. What is the area of the sector with central angle 90°? (Answer in terms of π)
+
+Choices
+(A) 72π
+(B) 36π
+(C) 24π
+(D) 48π
+(E) 18π
+
+=== Item 447 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z-0.76)(z-6.74)) dz
+
+Choices
+(A) 2πi·-0.167
+(B) 2πi·0.333
+(C) 2πi·0.083
+(D) 2πi·-0.417
+(E) 2πi·-0.667
+
+=== Item 448 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=2
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 449 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 450 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 1x^4 - 1x^3 + 4x^2 + 3x - 6.
+Compute f'(-1).
+
+Choices
+(A) -6
+(B) -4
+(C) -10
+(D) 0
+(E) -12
+
+=== Item 451 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 452 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z--1.7)(z-6.94)) dz
+
+Choices
+(A) 2πi·0.134
+(B) 2πi·0.884
+(C) 2πi·-0.116
+(D) 2πi·-0.616
+(E) 2πi·-0.366
+
+=== Item 453 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 10. What is the area of the sector with central angle 30°? (Answer in terms of π)
+
+Choices
+(A) 25/3π
+(B) 25/6π
+(C) 25π
+(D) 50/3π
+(E) 25/3π+4
+
+=== Item 454 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 12x + 12 = 0
+Final answer: ____
+
+=== Item 455 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=2 and b=2.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 456 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 - 40x + 200 = 0
+Final answer: ____
+
+=== Item 457 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=3 1/((z--0.18)(z-5.96)) dz
+
+Choices
+(A) 2πi·-0.663
+(B) 2πi·0.337
+(C) 2πi·-1.163
+(D) 2πi·-0.163
+(E) 2πi·-0.413
+
+=== Item 458 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 459 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 460 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -2x^4 + 0x^3 + 3x^2 - 7x + 10.
+Compute f'(2).
+
+Choices
+(A) -57
+(B) -71
+(C) -59
+(D) -61
+(E) -53
+
+=== Item 461 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 2.0).
+
+Choices
+(A) 0.9545
+(B) 0.8545
+(C) 0.9845
+(D) 0.8945
+(E) 1.0145
+
+=== Item 462 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 45x + 162 = 0
+Final answer: ____
+
+=== Item 463 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=3 1/((z--0.2)(z-5.77)) dz
+
+Choices
+(A) 2πi·-1.168
+(B) 2πi·0.332
+(C) 2πi·-0.168
+(D) 2πi·-0.668
+(E) 2πi·0.832
+
+=== Item 464 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 21x + 18 = 0
+Final answer: ____
+
+=== Item 465 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 466 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 3x^4 + 3x^3 + 2x^2 - 8x + 10.
+Compute f'(-2).
+
+Choices
+(A) -70
+(B) -72
+(C) -64
+(D) -80
+(E) -76
+
+=== Item 467 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -3x^4 + 2x^3 + 5x^2 + 2x - 9.
+Compute f'(-2).
+
+Choices
+(A) 94
+(B) 96
+(C) 106
+(D) 102
+(E) 90
+
+=== Item 468 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=4
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 469 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+2 + -4/3 + 8/9 + ...
+
+Choices
+(A) -24/5
+(B) 11/5
+(C) 36/5
+(D) -14/5
+(E) 6/5
+
+=== Item 470 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 9x - 12 = 0
+Final answer: ____
+
+=== Item 471 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+3 + -2 + 4/3 + ...
+
+Choices
+(A) -1/5
+(B) 9/5
+(C) 19/5
+(D) -6/5
+(E) 24/5
+
+=== Item 472 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 14x + 49 = 0
+Final answer: ____
+
+=== Item 473 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 11. What is the area of the sector with central angle 120°? (Answer in terms of π)
+
+Choices
+(A) 242/3π
+(B) 605/12π
+(C) 121/6π
+(D) 121/4π
+(E) 121/3π
+
+=== Item 474 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+3x + 19 = 4x - 4
+
+Choices
+(A) 20
+(B) 23
+(C) 18
+(D) 19
+(E) 17
+
+=== Item 475 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 4. What is the area of the sector with central angle 45°? (Answer in terms of π)
+
+Choices
+(A) 2π
+(B) 2/3π
+(C) 10/3π
+(D) 4π
+(E) 44/45π
+
+=== Item 476 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+5x - 8 = 2x + 0
+
+Choices
+(A) 8/3
+(B) 5/3
+(C) 26/3
+(D) 14/3
+(E) 2/3
+
+=== Item 477 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=2 and b=2.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 478 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 7. What is the area of the sector with central angle 180°? (Answer in terms of π)
+
+Choices
+(A) 49/2π
+(B) 49π
+(C) 49/4π
+(D) 343/12π
+(E) 245/12π
+
+=== Item 479 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 0.5y,   y(0)=3
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 480 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 2x^4 + 4x^3 - 5x^2 + 0x - 6.
+Compute f'(2).
+
+Choices
+(A) 88
+(B) 84
+(C) 90
+(D) 94
+(E) 92
+
+=== Item 481 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=2 and b=2.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 482 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 483 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 484 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+6 + -4 + 8/3 + ...
+
+Choices
+(A) 8/5
+(B) 18/5
+(C) 3/5
+(D) -12/5
+(E) 28/5
+
+=== Item 485 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 8. What is the area of the sector with central angle 30°? (Answer in terms of π)
+
+Choices
+(A) 16/3π+4
+(B) 16π
+(C) 16/3π
+(D) 8/3π
+(E) 32/3π
+
+=== Item 486 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+4x + 3 = 9x + 4
+
+Choices
+(A) -31/5
+(B) 9/5
+(C) 19/5
+(D) -1/5
+(E) 29/5
+
+=== Item 487 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=5 and b=3.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 488 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+7 + 14/3 + 28/9 + ...
+
+Choices
+(A) 27
+(B) 21
+(C) 25
+(D) 22
+(E) 23
+
+=== Item 489 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+3 + 2 + 4/3 + ...
+
+Choices
+(A) 13
+(B) 8
+(C) 9
+(D) 15
+(E) 5
+
+=== Item 490 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 1x^4 + 0x^3 + 5x^2 - 5x + 5.
+Compute f'(1).
+
+Choices
+(A) 15
+(B) 5
+(C) 11
+(D) 9
+(E) 3
+
+=== Item 491 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+9x + 16 = 1x - 11
+
+Choices
+(A) -75/8
+(B) -27/8
+(C) -59/8
+(D) -43/8
+(E) 13/8
+
+=== Item 492 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=3 and b=3.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 493 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 494 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 - 6x - 80 = 0
+Final answer: ____
+
+=== Item 495 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 17x + 72 = 0
+Final answer: ____
+
+=== Item 496 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 17x + 70 = 0
+Final answer: ____
+
+=== Item 497 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 498 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 13x + 42 = 0
+Final answer: ____
+
+=== Item 499 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+7x + 6 = 9x + 3
+
+Choices
+(A) 9/2
+(B) 3/2
+(C) -9/2
+(D) -3/2
+(E) 5/2
+
+=== Item 500 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 501 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 2.0).
+
+Choices
+(A) 1.0145
+(B) 0.9245
+(C) 0.9845
+(D) 0.8545
+(E) 0.9545
+
+=== Item 502 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 503 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 1x^4 + 5x^3 + 3x^2 + 0x - 2.
+Compute f'(2).
+
+Choices
+(A) 104
+(B) 106
+(C) 112
+(D) 108
+(E) 102
+
+=== Item 504 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 - 14x - 16 = 0
+Final answer: ____
+
+=== Item 505 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=2 and b=1.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 506 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -2x^4 + 3x^3 + 0x^2 + 2x + 7.
+Compute f'(2).
+
+Choices
+(A) -32
+(B) -38
+(C) -22
+(D) -24
+(E) -26
+
+=== Item 507 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=2 and b=2.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 508 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+7x - 2 = 9x + 18
+
+Choices
+(A) -6
+(B) -8
+(C) -14
+(D) -16
+(E) -10
+
+=== Item 509 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+1x - 5 = 6x - 20
+
+Choices
+(A) 4
+(B) 3
+(C) -1
+(D) 1
+(E) -2
+
+=== Item 510 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 1x^4 - 1x^3 + 5x^2 + 3x + 1.
+Compute f'(0).
+
+Choices
+(A) 15
+(B) 9
+(C) -1
+(D) 3
+(E) 11
+
+=== Item 511 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 1x^4 - 1x^3 - 1x^2 - 5x + 6.
+Compute f'(0).
+
+Choices
+(A) -7
+(B) 3
+(C) -5
+(D) 1
+(E) -9
+
+=== Item 512 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 2y,   y(0)=4
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 513 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 13. What is the area of the sector with central angle 180°? (Answer in terms of π)
+
+Choices
+(A) 169/2π
+(B) 845/12π
+(C) 169π
+(D) 169/4π
+(E) 1183/12π
+
+=== Item 514 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.6527
+(B) 0.7127
+(C) 0.7827
+(D) 0.6827
+(E) 0.5827
+
+=== Item 515 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 516 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 14. What is the area of the sector with central angle 45°? (Answer in terms of π)
+
+Choices
+(A) 49/6π
+(B) 49/2π
+(C) 49π
+(D) 539/45π
+(E) 245/6π
+
+=== Item 517 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 5. What is the area of the sector with central angle 180°? (Answer in terms of π)
+
+Choices
+(A) 125/12π
+(B) 175/12π
+(C) 25π
+(D) 25/4π
+(E) 25/2π
+
+=== Item 518 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+6 + -4 + 8/3 + ...
+
+Choices
+(A) 13/5
+(B) 18/5
+(C) 8/5
+(D) 33/5
+(E) 23/5
+
+=== Item 519 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z--0.1)(z-6.53)) dz
+
+Choices
+(A) 2πi·-0.401
+(B) 2πi·0.849
+(C) 2πi·-0.151
+(D) 2πi·0.099
+(E) 2πi·0.349
+
+=== Item 520 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+4x + 17 = 7x - 14
+
+Choices
+(A) 43/3
+(B) 25/3
+(C) 31/3
+(D) 49/3
+(E) 28/3
+
+=== Item 521 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 522 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+6 + 9/2 + 27/8 + ...
+
+Choices
+(A) 27
+(B) 24
+(C) 23
+(D) 26
+(E) 20
+
+=== Item 523 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=6 and b=3.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 524 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=2 1/((z--0.06)(z-2.42)) dz
+
+Choices
+(A) 2πi·-0.403
+(B) 2πi·-0.903
+(C) 2πi·-0.153
+(D) 2πi·0.597
+(E) 2πi·-0.653
+
+=== Item 525 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 4. What is the area of the sector with central angle 150°? (Answer in terms of π)
+
+Choices
+(A) 16/3π
+(B) 10/3π
+(C) 40/3π
+(D) 20/3π
+(E) 8π
+
+=== Item 526 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+6 + 9/2 + 27/8 + ...
+
+Choices
+(A) 30
+(B) 25
+(C) 21
+(D) 23
+(E) 24
+
+=== Item 527 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=3 1/((z--0.52)(z-5.22)) dz
+
+Choices
+(A) 2πi·-1.174
+(B) 2πi·-0.174
+(C) 2πi·0.076
+(D) 2πi·0.826
+(E) 2πi·-0.674
+
+=== Item 528 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=1
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 529 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 + 0x + 0 = 0
+Final answer: ____
+
+=== Item 530 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=3
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 531 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=2
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 532 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=3 1/((z-1.59)(z-5.28)) dz
+
+Choices
+(A) 2πi·-0.771
+(B) 2πi·-1.271
+(C) 2πi·0.229
+(D) 2πi·-0.021
+(E) 2πi·-0.271
+
+=== Item 533 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+9 + 9/2 + 9/4 + ...
+
+Choices
+(A) 14
+(B) 12
+(C) 18
+(D) 17
+(E) 15
+
+=== Item 534 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=3 and b=1.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 535 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 - 18x + 40 = 0
+Final answer: ____
+
+=== Item 536 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 1x^4 + 4x^3 + 1x^2 + 5x + 6.
+Compute f'(2).
+
+Choices
+(A) 95
+(B) 91
+(C) 101
+(D) 89
+(E) 87
+
+=== Item 537 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 538 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 7. What is the area of the sector with central angle 90°? (Answer in terms of π)
+
+Choices
+(A) 49/2π
+(B) 49/3π
+(C) 49/6π
+(D) 49/4π
+(E) 49/8π
+
+=== Item 539 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 2y,   y(0)=4
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 540 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=3 1/((z--1.12)(z-5.72)) dz
+
+Choices
+(A) 2πi·0.854
+(B) 2πi·0.104
+(C) 2πi·-0.146
+(D) 2πi·-1.146
+(E) 2πi·-0.646
+
+=== Item 541 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 7. What is the area of the sector with central angle 150°? (Answer in terms of π)
+
+Choices
+(A) 245/6π
+(B) 245/12π
+(C) 49/2π
+(D) 49/3π
+(E) 245/24π
+
+=== Item 542 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=3 1/((z--1.4)(z-4.69)) dz
+
+Choices
+(A) 2πi·0.086
+(B) 2πi·-1.164
+(C) 2πi·0.836
+(D) 2πi·-0.164
+(E) 2πi·-0.414
+
+=== Item 543 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=1 1/((z--0.26)(z-1.3)) dz
+
+Choices
+(A) 2πi·-1.641
+(B) 2πi·-1.141
+(C) 2πi·-0.141
+(D) 2πi·-0.641
+(E) 2πi·-0.391
+
+=== Item 544 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 545 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+2 + 4/3 + 8/9 + ...
+
+Choices
+(A) 0
+(B) 5
+(C) 6
+(D) 8
+(E) 12
+
+=== Item 546 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 2y,   y(0)=1
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 547 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.8964
+(B) 0.7664
+(C) 0.9664
+(D) 0.8064
+(E) 0.8664
+
+=== Item 548 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=1
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 549 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.8064
+(B) 0.8364
+(C) 0.8964
+(D) 0.9664
+(E) 0.8664
+
+=== Item 550 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 551 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.7827
+(B) 0.6827
+(C) 0.7127
+(D) 0.5827
+(E) 0.6527
+
+=== Item 552 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 9x + 0 = 0
+Final answer: ____
+
+=== Item 553 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+3x - 6 = 8x + 0
+
+Choices
+(A) -11/5
+(B) 4/5
+(C) 19/5
+(D) -6/5
+(E) 9/5
+
+=== Item 554 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+1 + -1/2 + 1/4 + ...
+
+Choices
+(A) 20/3
+(B) 2/3
+(C) 14/3
+(D) 11/3
+(E) -1/3
+
+=== Item 555 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 556 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=2 1/((z--0.12)(z-3.71)) dz
+
+Choices
+(A) 2πi·0.239
+(B) 2πi·-0.261
+(C) 2πi·-0.511
+(D) 2πi·-0.011
+(E) 2πi·-1.261
+
+=== Item 557 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=4 and b=0.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 558 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 559 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.8964
+(B) 0.8364
+(C) 0.7664
+(D) 0.8664
+(E) 0.9664
+
+=== Item 560 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+2x - 8 = 8x - 14
+
+Choices
+(A) 2
+(B) -5
+(C) 1
+(D) 5
+(E) 3
+
+=== Item 561 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+4x - 15 = 8x + 9
+
+Choices
+(A) -1
+(B) -6
+(C) -3
+(D) -12
+(E) -7
+
+=== Item 562 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=2 and b=2.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 563 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+2x + 14 = 4x + 4
+
+Choices
+(A) 5
+(B) 8
+(C) 11
+(D) 2
+(E) 10
+
+=== Item 564 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=1
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 565 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 11. What is the area of the sector with central angle 60°? (Answer in terms of π)
+
+Choices
+(A) 121/6π
+(B) 121/12π
+(C) 121/6π+4
+(D) 121/3π
+(E) 121/4π
+
+=== Item 566 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 567 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=5
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 568 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 569 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 2y,   y(0)=1
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 570 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=3 1/((z--1.78)(z-5.96)) dz
+
+Choices
+(A) 2πi·-1.129
+(B) 2πi·0.371
+(C) 2πi·-0.129
+(D) 2πi·-0.629
+(E) 2πi·-0.379
+
+=== Item 571 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -1x^4 + 0x^3 + 3x^2 - 1x - 3.
+Compute f'(0).
+
+Choices
+(A) 3
+(B) 11
+(C) -9
+(D) -1
+(E) -3
+
+=== Item 572 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 2.0).
+
+Choices
+(A) 0.8545
+(B) 1.0545
+(C) 0.9245
+(D) 0.9545
+(E) 1.0145
+
+=== Item 573 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 8. What is the area of the sector with central angle 180°? (Answer in terms of π)
+
+Choices
+(A) 112/3π
+(B) 80/3π
+(C) 32π
+(D) 16π
+(E) 64π
+
+=== Item 574 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.7427
+(B) 0.6827
+(C) 0.5827
+(D) 0.6527
+(E) 0.6227
+
+=== Item 575 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 17x + 72 = 0
+Final answer: ____
+
+=== Item 576 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 + 24x + 72 = 0
+Final answer: ____
+
+=== Item 577 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 7. What is the area of the sector with central angle 30°? (Answer in terms of π)
+
+Choices
+(A) 49/6π
+(B) 49/12π
+(C) 49/4π
+(D) 49/12π+4
+(E) 49/24π
+
+=== Item 578 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=5 and b=3.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 579 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -2x^4 - 4x^3 - 2x^2 + 5x + 0.
+Compute f'(2).
+
+Choices
+(A) -111
+(B) -123
+(C) -115
+(D) -119
+(E) -103
+
+=== Item 580 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+3 + 9/4 + 27/16 + ...
+
+Choices
+(A) 15
+(B) 9
+(C) 10
+(D) 18
+(E) 12
+
+=== Item 581 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+1x + 19 = 4x - 11
+
+Choices
+(A) 5
+(B) 10
+(C) 8
+(D) 9
+(E) 4
+
+=== Item 582 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+9x + 15 = 5x + 10
+
+Choices
+(A) -21/4
+(B) -29/4
+(C) 11/4
+(D) -5/4
+(E) -1/4
+
+=== Item 583 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 3. What is the area of the sector with central angle 90°? (Answer in terms of π)
+
+Choices
+(A) 9/2π
+(B) 3/2π
+(C) 3π
+(D) 9/8π
+(E) 9/4π
+
+=== Item 584 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (2x^1)/(1 + x^2) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 585 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 8x + 12 = 0
+Final answer: ____
+
+=== Item 586 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=3 and b=1.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 587 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (2x^1)/(1 + x^2) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 588 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 7x + 10 = 0
+Final answer: ____
+
+=== Item 589 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 9x - 10 = 0
+Final answer: ____
+
+=== Item 590 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=4 and b=3.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 591 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.7127
+(B) 0.7427
+(C) 0.6527
+(D) 0.6827
+(E) 0.6227
+
+=== Item 592 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+4 + -8/3 + 16/9 + ...
+
+Choices
+(A) -3/5
+(B) 12/5
+(C) 27/5
+(D) 7/5
+(E) 22/5
+
+=== Item 593 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+3x + 13 = 5x - 12
+
+Choices
+(A) 27/2
+(B) 33/2
+(C) 35/2
+(D) 25/2
+(E) 17/2
+
+=== Item 594 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+6x + 6 = 7x - 1
+
+Choices
+(A) 3
+(B) 12
+(C) 5
+(D) 7
+(E) 9
+
+=== Item 595 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 6x - 27 = 0
+Final answer: ____
+
+=== Item 596 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=5 and b=1.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 597 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 598 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=2
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 599 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 15. What is the area of the sector with central angle 30°? (Answer in terms of π)
+
+Choices
+(A) 75/2π
+(B) 75/4π+4
+(C) 75/4π
+(D) 75/8π
+(E) 225/4π
+
+=== Item 600 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z-1.76)(z-6.37)) dz
+
+Choices
+(A) 2πi·0.283
+(B) 2πi·-0.467
+(C) 2πi·0.033
+(D) 2πi·-0.217
+(E) 2πi·-0.717
+
+=== Item 601 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=6 and b=0.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 602 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 1x^4 + 3x^3 + 0x^2 - 7x + 7.
+Compute f'(1).
+
+Choices
+(A) 6
+(B) -6
+(C) 14
+(D) 0
+(E) 2
+
+=== Item 603 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 604 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 2.0).
+
+Choices
+(A) 0.9545
+(B) 0.8545
+(C) 1.0145
+(D) 0.9845
+(E) 1.0545
+
+=== Item 605 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+8x + 9 = 4x - 15
+
+Choices
+(A) -10
+(B) -8
+(C) -7
+(D) -11
+(E) -6
+
+=== Item 606 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+9 + -6 + 4 + ...
+
+Choices
+(A) -3/5
+(B) 27/5
+(C) 47/5
+(D) 37/5
+(E) 12/5
+
+=== Item 607 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+1x - 1 = 7x - 1
+
+Choices
+(A) -2
+(B) 2
+(C) -4
+(D) 6
+(E) 0
+
+=== Item 608 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 609 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 610 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z--0.22)(z-6.21)) dz
+
+Choices
+(A) 2πi·0.344
+(B) 2πi·-0.156
+(C) 2πi·-1.156
+(D) 2πi·0.844
+(E) 2πi·0.094
+
+=== Item 611 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+6x - 11 = 1x - 18
+
+Choices
+(A) 18/5
+(B) -17/5
+(C) 23/5
+(D) -7/5
+(E) 13/5
+
+=== Item 612 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 2x^4 - 1x^3 + 3x^2 - 3x + 4.
+Compute f'(2).
+
+Choices
+(A) 61
+(B) 53
+(C) 63
+(D) 65
+(E) 49
+
+=== Item 613 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=4 and b=3.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 614 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 9x + 18 = 0
+Final answer: ____
+
+=== Item 615 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=1 1/((z--0.02)(z-1.75)) dz
+
+Choices
+(A) 2πi·-0.565
+(B) 2πi·0.435
+(C) 2πi·-0.315
+(D) 2πi·-0.065
+(E) 2πi·-0.815
+
+=== Item 616 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=2
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 617 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.6227
+(B) 0.7427
+(C) 0.7827
+(D) 0.5827
+(E) 0.6827
+
+=== Item 618 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 619 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=2 1/((z-0.46)(z-2.81)) dz
+
+Choices
+(A) 2πi·-1.426
+(B) 2πi·0.074
+(C) 2πi·-0.426
+(D) 2πi·-0.676
+(E) 2πi·-0.176
+
+=== Item 620 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 2y,   y(0)=2
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 621 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 4x - 45 = 0
+Final answer: ____
+
+=== Item 622 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 623 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=6 and b=2.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 624 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 625 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (2x^1)/(1 + x^2) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 626 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=4 and b=3.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 627 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+3 + -2 + 4/3 + ...
+
+Choices
+(A) 14/5
+(B) 24/5
+(C) -11/5
+(D) 4/5
+(E) 9/5
+
+=== Item 628 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+8 + 6 + 9/2 + ...
+
+Choices
+(A) 30
+(B) 31
+(C) 28
+(D) 36
+(E) 32
+
+=== Item 629 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=5 and b=1.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 630 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 6x + 0 = 0
+Final answer: ____
+
+=== Item 631 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=1 1/((z--0.05)(z-1.77)) dz
+
+Choices
+(A) 2πi·0.451
+(B) 2πi·-1.549
+(C) 2πi·-0.049
+(D) 2πi·-1.049
+(E) 2πi·-0.549
+
+=== Item 632 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.6827
+(B) 0.6527
+(C) 0.6227
+(D) 0.7127
+(E) 0.7427
+
+=== Item 633 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 634 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 1x - 90 = 0
+Final answer: ____
+
+=== Item 635 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 + 16x + 24 = 0
+Final answer: ____
+
+=== Item 636 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -1x^4 + 4x^3 - 1x^2 + 6x - 9.
+Compute f'(-1).
+
+Choices
+(A) 30
+(B) 12
+(C) 32
+(D) 24
+(E) 36
+
+=== Item 637 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 638 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+8x - 15 = 3x + 9
+
+Choices
+(A) 49/5
+(B) 34/5
+(C) 24/5
+(D) -1/5
+(E) 14/5
+
+=== Item 639 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=2
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 640 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=4
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 641 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 18x + 15 = 0
+Final answer: ____
+
+=== Item 642 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=5
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 643 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 11. What is the area of the sector with central angle 150°? (Answer in terms of π)
+
+Choices
+(A) 605/24π
+(B) 121/2π
+(C) 605/6π
+(D) 121/3π
+(E) 605/12π
+
+=== Item 644 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 645 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 9. What is the area of the sector with central angle 30°? (Answer in terms of π)
+
+Choices
+(A) 27/4π
+(B) 27/8π
+(C) 27/4π+4
+(D) 27/2π
+(E) 81/4π
+
+=== Item 646 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=2
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 647 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+2 + -4/3 + 8/9 + ...
+
+Choices
+(A) 21/5
+(B) 36/5
+(C) 1/5
+(D) 11/5
+(E) 6/5
+
+=== Item 648 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z--0.83)(z-6.86)) dz
+
+Choices
+(A) 2πi·-1.130
+(B) 2πi·0.870
+(C) 2πi·-0.630
+(D) 2πi·-0.130
+(E) 2πi·0.370
+
+=== Item 649 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 650 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 2x^4 + 0x^3 - 2x^2 + 1x + 3.
+Compute f'(0).
+
+Choices
+(A) 5
+(B) 7
+(C) 1
+(D) -11
+(E) -7
+
+=== Item 651 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=3 1/((z--1.41)(z-4.28)) dz
+
+Choices
+(A) 2πi·-0.176
+(B) 2πi·-1.176
+(C) 2πi·-0.676
+(D) 2πi·0.074
+(E) 2πi·-0.426
+
+=== Item 652 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=5
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 653 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 5. What is the area of the sector with central angle 45°? (Answer in terms of π)
+
+Choices
+(A) 25/8π
+(B) 25/24π
+(C) 125/24π
+(D) 25/4π
+(E) 55/36π
+
+=== Item 654 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+1x - 19 = 2x - 11
+
+Choices
+(A) -12
+(B) -7
+(C) -6
+(D) -2
+(E) -8
+
+=== Item 655 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=5 and b=3.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 656 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 657 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 13x + 40 = 0
+Final answer: ____
+
+=== Item 658 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 0.5y,   y(0)=1
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 659 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 2y,   y(0)=5
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 660 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 2x^4 + 3x^3 + 6x^2 + 0x + 4.
+Compute f'(2).
+
+Choices
+(A) 130
+(B) 116
+(C) 132
+(D) 124
+(E) 136
+
+=== Item 661 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 662 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 663 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 664 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 3x - 270 = 0
+Final answer: ____
+
+=== Item 665 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+1 + 3/4 + 9/16 + ...
+
+Choices
+(A) 1
+(B) 3
+(C) 7
+(D) 0
+(E) 4
+
+=== Item 666 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (2x^1)/(1 + x^2) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 667 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z--0.63)(z-5.36)) dz
+
+Choices
+(A) 2πi·-0.667
+(B) 2πi·0.083
+(C) 2πi·0.833
+(D) 2πi·-0.167
+(E) 2πi·-1.167
+
+=== Item 668 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.8664
+(B) 0.9664
+(C) 0.8064
+(D) 0.8364
+(E) 0.8964
+
+=== Item 669 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 + 42x + 135 = 0
+Final answer: ____
+
+=== Item 670 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 671 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 + 24x + 36 = 0
+Final answer: ____
+
+=== Item 672 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 6x + 0 = 0
+Final answer: ____
+
+=== Item 673 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 - 38x + 180 = 0
+Final answer: ____
+
+=== Item 674 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 24x - 60 = 0
+Final answer: ____
+
+=== Item 675 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 1x^4 + 0x^3 + 4x^2 - 3x + 0.
+Compute f'(2).
+
+Choices
+(A) 33
+(B) 53
+(C) 57
+(D) 45
+(E) 37
+
+=== Item 676 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=4 and b=2.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 677 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+1x + 18 = 4x + 20
+
+Choices
+(A) -14/3
+(B) 16/3
+(C) -2/3
+(D) -17/3
+(E) 13/3
+
+=== Item 678 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 - 28x + 80 = 0
+Final answer: ____
+
+=== Item 679 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=1
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 680 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 9. What is the area of the sector with central angle 60°? (Answer in terms of π)
+
+Choices
+(A) 27π
+(B) 27/2π+4
+(C) 81/4π
+(D) 27/4π
+(E) 27/2π
+
+=== Item 681 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 682 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 683 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 684 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (2x^1)/(1 + x^2) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 685 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 15. What is the area of the sector with central angle 90°? (Answer in terms of π)
+
+Choices
+(A) 75π
+(B) 75/2π
+(C) 225/8π
+(D) 225/2π
+(E) 225/4π
+
+=== Item 686 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=3
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 687 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.7664
+(B) 0.9664
+(C) 0.8364
+(D) 0.8664
+(E) 0.8964
+
+=== Item 688 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 1x - 2 = 0
+Final answer: ____
+
+=== Item 689 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+9 + 27/4 + 81/16 + ...
+
+Choices
+(A) 35
+(B) 36
+(C) 39
+(D) 37
+(E) 32
+
+=== Item 690 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 2.0).
+
+Choices
+(A) 0.9845
+(B) 0.8945
+(C) 0.8545
+(D) 0.9245
+(E) 0.9545
+
+=== Item 691 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+4x + 4 = 8x - 16
+
+Choices
+(A) 8
+(B) 10
+(C) 5
+(D) 3
+(E) 7
+
+=== Item 692 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 5x - 14 = 0
+Final answer: ____
+
+=== Item 693 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=6 and b=1.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 694 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z-0.74)(z-6.31)) dz
+
+Choices
+(A) 2πi·-0.430
+(B) 2πi·-1.180
+(C) 2πi·-0.680
+(D) 2πi·-0.180
+(E) 2πi·0.320
+
+=== Item 695 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 2.0).
+
+Choices
+(A) 0.8945
+(B) 0.9845
+(C) 1.0145
+(D) 0.8545
+(E) 0.9545
+
+=== Item 696 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 8. What is the area of the sector with central angle 180°? (Answer in terms of π)
+
+Choices
+(A) 112/3π
+(B) 16π
+(C) 32π
+(D) 80/3π
+(E) 64π
+
+=== Item 697 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+3x - 16 = 6x - 13
+
+Choices
+(A) 4
+(B) -1
+(C) 0
+(D) -3
+(E) -5
+
+=== Item 698 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=1 1/((z-0.35)(z-1.71)) dz
+
+Choices
+(A) 2πi·-0.485
+(B) 2πi·-1.235
+(C) 2πi·-1.735
+(D) 2πi·-0.235
+(E) 2πi·-0.735
+
+=== Item 699 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=2
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 700 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 0x - 9 = 0
+Final answer: ____
+
+=== Item 701 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 2x^4 + 2x^3 + 3x^2 - 6x + 10.
+Compute f'(0).
+
+Choices
+(A) -18
+(B) -2
+(C) -6
+(D) -8
+(E) -4
+
+=== Item 702 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+4 + 3 + 9/4 + ...
+
+Choices
+(A) 14
+(B) 16
+(C) 18
+(D) 12
+(E) 10
+
+=== Item 703 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+6x - 7 = 5x + 7
+
+Choices
+(A) 12
+(B) 18
+(C) 13
+(D) 16
+(E) 14
+
+=== Item 704 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=1 1/((z--0.02)(z-1.29)) dz
+
+Choices
+(A) 2πi·0.237
+(B) 2πi·-1.013
+(C) 2πi·-0.763
+(D) 2πi·-0.513
+(E) 2πi·-1.263
+
+=== Item 705 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+7x + 4 = 4x - 6
+
+Choices
+(A) -25/3
+(B) -4/3
+(C) 5/3
+(D) 2/3
+(E) -10/3
+
+=== Item 706 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=5 and b=2.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 707 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 7. What is the area of the sector with central angle 45°? (Answer in terms of π)
+
+Choices
+(A) 49/4π
+(B) 539/180π
+(C) 49/8π
+(D) 245/24π
+(E) 49/24π
+
+=== Item 708 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 10. What is the area of the sector with central angle 90°? (Answer in terms of π)
+
+Choices
+(A) 50π
+(B) 25/2π
+(C) 25π
+(D) 50/3π
+(E) 100/3π
+
+=== Item 709 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -3x^4 + 1x^3 + 2x^2 + 7x - 4.
+Compute f'(2).
+
+Choices
+(A) -57
+(B) -81
+(C) -69
+(D) -63
+(E) -71
+
+=== Item 710 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 1x^4 - 5x^3 + 0x^2 - 7x - 9.
+Compute f'(1).
+
+Choices
+(A) -10
+(B) -18
+(C) -30
+(D) -20
+(E) -14
+
+=== Item 711 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 1x^4 - 5x^3 + 5x^2 + 5x - 4.
+Compute f'(-1).
+
+Choices
+(A) -28
+(B) -26
+(C) -22
+(D) -12
+(E) -24
+
+=== Item 712 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 8x + 16 = 0
+Final answer: ____
+
+=== Item 713 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=4 and b=3.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 714 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z-1.89)(z-5.87)) dz
+
+Choices
+(A) 2πi·-0.001
+(B) 2πi·-0.251
+(C) 2πi·-0.501
+(D) 2πi·-1.251
+(E) 2πi·-0.751
+
+=== Item 715 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 716 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=2 and b=3.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 717 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+6 + 4 + 8/3 + ...
+
+Choices
+(A) 16
+(B) 18
+(C) 24
+(D) 22
+(E) 14
+
+=== Item 718 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -1x^4 + 0x^3 - 2x^2 + 8x + 3.
+Compute f'(0).
+
+Choices
+(A) -4
+(B) 8
+(C) 0
+(D) 2
+(E) 10
+
+=== Item 719 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 720 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 1x^4 - 4x^3 - 5x^2 + 4x - 5.
+Compute f'(0).
+
+Choices
+(A) 16
+(B) 10
+(C) -2
+(D) -4
+(E) 4
+
+=== Item 721 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.8964
+(B) 0.8664
+(C) 0.9664
+(D) 0.8064
+(E) 0.9264
+
+=== Item 722 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+4x + 1 = 9x + 6
+
+Choices
+(A) -1
+(B) -2
+(C) 3
+(D) 4
+(E) 1
+
+=== Item 723 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 724 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 + 30x + 108 = 0
+Final answer: ____
+
+=== Item 725 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+9x - 9 = 5x - 9
+
+Choices
+(A) 5
+(B) 4
+(C) -4
+(D) 0
+(E) 6
+
+=== Item 726 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 727 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 8. What is the area of the sector with central angle 45°? (Answer in terms of π)
+
+Choices
+(A) 40/3π
+(B) 8π
+(C) 176/45π
+(D) 16π
+(E) 8/3π
+
+=== Item 728 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 1x^4 + 2x^3 + 6x^2 - 4x + 4.
+Compute f'(0).
+
+Choices
+(A) 2
+(B) -4
+(C) -10
+(D) -2
+(E) -16
+
+=== Item 729 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 2y,   y(0)=4
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 730 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=3 1/((z--1.71)(z-5.08)) dz
+
+Choices
+(A) 2πi·-0.647
+(B) 2πi·-0.397
+(C) 2πi·-1.147
+(D) 2πi·-0.147
+(E) 2πi·0.103
+
+=== Item 731 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+4 + 2 + 1 + ...
+
+Choices
+(A) 12
+(B) 4
+(C) 9
+(D) 11
+(E) 8
+
+=== Item 732 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 9. What is the area of the sector with central angle 45°? (Answer in terms of π)
+
+Choices
+(A) 81/8π
+(B) 99/20π
+(C) 135/8π
+(D) 27/8π
+(E) 81/4π
+
+=== Item 733 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 3x - 4 = 0
+Final answer: ____
+
+=== Item 734 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 3x - 4 = 0
+Final answer: ____
+
+=== Item 735 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=5
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 736 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -1x^4 + 2x^3 + 2x^2 + 2x - 8.
+Compute f'(2).
+
+Choices
+(A) -2
+(B) 6
+(C) 2
+(D) -10
+(E) -6
+
+=== Item 737 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=2 1/((z-0.8)(z-2.86)) dz
+
+Choices
+(A) 2πi·-0.485
+(B) 2πi·-0.235
+(C) 2πi·0.515
+(D) 2πi·-0.735
+(E) 2πi·-1.485
+
+=== Item 738 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+5x - 13 = 8x - 2
+
+Choices
+(A) -5/3
+(B) -23/3
+(C) -8/3
+(D) -20/3
+(E) -11/3
+
+=== Item 739 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 2.0).
+
+Choices
+(A) 1.0145
+(B) 0.8945
+(C) 0.9845
+(D) 0.9545
+(E) 1.0545
+
+=== Item 740 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=2 1/((z--0.43)(z-3.81)) dz
+
+Choices
+(A) 2πi·-0.236
+(B) 2πi·0.764
+(C) 2πi·-0.736
+(D) 2πi·-1.236
+(E) 2πi·-0.486
+
+=== Item 741 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 2x - 24 = 0
+Final answer: ____
+
+=== Item 742 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.9264
+(B) 0.9664
+(C) 0.8964
+(D) 0.8664
+(E) 0.8364
+
+=== Item 743 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=3 1/((z--0.46)(z-4.76)) dz
+
+Choices
+(A) 2πi·-1.192
+(B) 2πi·-0.692
+(C) 2πi·-0.192
+(D) 2πi·0.058
+(E) 2πi·-0.442
+
+=== Item 744 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 3x^4 - 3x^3 - 6x^2 + 7x + 1.
+Compute f'(0).
+
+Choices
+(A) 13
+(B) 9
+(C) 7
+(D) 1
+(E) 5
+
+=== Item 745 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+3x - 1 = 4x - 12
+
+Choices
+(A) 7
+(B) 8
+(C) 6
+(D) 12
+(E) 11
+
+=== Item 746 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=1 1/((z--0.56)(z-1.73)) dz
+
+Choices
+(A) 2πi·0.563
+(B) 2πi·0.063
+(C) 2πi·-0.187
+(D) 2πi·-0.437
+(E) 2πi·-1.437
+
+=== Item 747 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 1x^4 - 2x^3 + 3x^2 - 2x - 5.
+Compute f'(0).
+
+Choices
+(A) -8
+(B) -2
+(C) -14
+(D) 2
+(E) -10
+
+=== Item 748 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=1 1/((z-0.38)(z-1.81)) dz
+
+Choices
+(A) 2πi·-0.449
+(B) 2πi·0.301
+(C) 2πi·-1.199
+(D) 2πi·-0.699
+(E) 2πi·-0.199
+
+=== Item 749 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=4
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 750 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=3 1/((z-1.73)(z-4.62)) dz
+
+Choices
+(A) 2πi·-1.346
+(B) 2πi·-0.096
+(C) 2πi·0.154
+(D) 2πi·-0.346
+(E) 2πi·-0.846
+
+=== Item 751 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 752 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -1x^4 + 2x^3 - 5x^2 + 4x - 1.
+Compute f'(1).
+
+Choices
+(A) -4
+(B) -6
+(C) 8
+(D) 2
+(E) -12
+
+=== Item 753 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 13. What is the area of the sector with central angle 60°? (Answer in terms of π)
+
+Choices
+(A) 169/3π
+(B) 169/6π+4
+(C) 169/12π
+(D) 169/6π
+(E) 169/4π
+
+=== Item 754 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 2y,   y(0)=1
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 755 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 + 26x + 80 = 0
+Final answer: ____
+
+=== Item 756 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=6 and b=3.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 757 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 - 12x - 32 = 0
+Final answer: ____
+
+=== Item 758 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=5
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 759 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=4
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 760 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 2x - 15 = 0
+Final answer: ____
+
+=== Item 761 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+8x - 9 = 1x + 4
+
+Choices
+(A) -15/7
+(B) 41/7
+(C) 6/7
+(D) 13/7
+(E) 48/7
+
+=== Item 762 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 2.0).
+
+Choices
+(A) 1.0145
+(B) 0.9845
+(C) 0.9245
+(D) 0.9545
+(E) 1.0545
+
+=== Item 763 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.8964
+(B) 0.8364
+(C) 0.9264
+(D) 0.8064
+(E) 0.8664
+
+=== Item 764 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.9664
+(B) 0.8064
+(C) 0.8364
+(D) 0.8964
+(E) 0.8664
+
+=== Item 765 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 1x^4 - 1x^3 + 1x^2 + 4x + 9.
+Compute f'(0).
+
+Choices
+(A) 6
+(B) 2
+(C) -8
+(D) 4
+(E) 10
+
+=== Item 766 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+7 + 7/2 + 7/4 + ...
+
+Choices
+(A) 16
+(B) 18
+(C) 12
+(D) 14
+(E) 15
+
+=== Item 767 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 9x + 8 = 0
+Final answer: ____
+
+=== Item 768 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 3. What is the area of the sector with central angle 90°? (Answer in terms of π)
+
+Choices
+(A) 3/2π
+(B) 9/4π
+(C) 3π
+(D) 9/8π
+(E) 9/2π
+
+=== Item 769 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.9264
+(B) 0.8964
+(C) 0.9664
+(D) 0.8364
+(E) 0.8664
+
+=== Item 770 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 - 16x - 18 = 0
+Final answer: ____
+
+=== Item 771 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 2.0).
+
+Choices
+(A) 0.8945
+(B) 0.9845
+(C) 0.8545
+(D) 0.9545
+(E) 1.0145
+
+=== Item 772 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=3 1/((z--0.82)(z-4.96)) dz
+
+Choices
+(A) 2πi·0.827
+(B) 2πi·0.327
+(C) 2πi·-1.173
+(D) 2πi·-0.173
+(E) 2πi·0.077
+
+=== Item 773 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 774 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 21x - 54 = 0
+Final answer: ____
+
+=== Item 775 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=2 1/((z-0.18)(z-2.74)) dz
+
+Choices
+(A) 2πi·0.609
+(B) 2πi·-0.391
+(C) 2πi·-0.141
+(D) 2πi·-0.641
+(E) 2πi·0.109
+
+=== Item 776 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 777 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 3x + 0 = 0
+Final answer: ____
+
+=== Item 778 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 779 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 780 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+1x - 1 = 4x + 9
+
+Choices
+(A) -1/3
+(B) -7/3
+(C) 2/3
+(D) -4/3
+(E) -10/3
+
+=== Item 781 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 2x - 35 = 0
+Final answer: ____
+
+=== Item 782 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=2 and b=0.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 783 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 4x + 3 = 0
+Final answer: ____
+
+=== Item 784 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -3x^4 + 4x^3 + 5x^2 + 8x - 7.
+Compute f'(2).
+
+Choices
+(A) -22
+(B) -24
+(C) -12
+(D) -8
+(E) -20
+
+=== Item 785 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=2
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 786 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=1 1/((z--0.39)(z-1.98)) dz
+
+Choices
+(A) 2πi·0.078
+(B) 2πi·-0.172
+(C) 2πi·0.578
+(D) 2πi·-0.672
+(E) 2πi·-0.422
+
+=== Item 787 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 2.0).
+
+Choices
+(A) 0.9545
+(B) 0.8945
+(C) 1.0145
+(D) 1.0545
+(E) 0.9845
+
+=== Item 788 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=1 1/((z-0.23)(z-1.83)) dz
+
+Choices
+(A) 2πi·-1.125
+(B) 2πi·-0.375
+(C) 2πi·0.375
+(D) 2πi·-0.625
+(E) 2πi·-0.875
+
+=== Item 789 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=5 and b=2.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 790 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 6. What is the area of the sector with central angle 180°? (Answer in terms of π)
+
+Choices
+(A) 18π
+(B) 9π
+(C) 15π
+(D) 36π
+(E) 21π
+
+=== Item 791 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=4 and b=0.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 792 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=3
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 793 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=3 1/((z-0.02)(z-4.44)) dz
+
+Choices
+(A) 2πi·0.274
+(B) 2πi·-0.476
+(C) 2πi·0.774
+(D) 2πi·-0.726
+(E) 2πi·-0.226
+
+=== Item 794 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 1x^4 - 2x^3 + 4x^2 + 1x + 0.
+Compute f'(2).
+
+Choices
+(A) 25
+(B) 19
+(C) 37
+(D) 17
+(E) 33
+
+=== Item 795 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=2
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 796 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 + 36x + 96 = 0
+Final answer: ____
+
+=== Item 797 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 798 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+2x - 8 = 8x - 4
+
+Choices
+(A) -2/3
+(B) 16/3
+(C) -14/3
+(D) -20/3
+(E) 1/3
+
+=== Item 799 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 1x - 56 = 0
+Final answer: ____
+
+=== Item 800 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=1
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 801 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+5x + 4 = 8x - 12
+
+Choices
+(A) 31/3
+(B) 16/3
+(C) 28/3
+(D) 19/3
+(E) 7/3
+
+=== Item 802 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -1x^4 - 1x^3 - 3x^2 + 6x - 3.
+Compute f'(0).
+
+Choices
+(A) 6
+(B) 12
+(C) -6
+(D) 18
+(E) -2
+
+=== Item 803 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 0.5y,   y(0)=1
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 804 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+6x + 10 = 4x + 2
+
+Choices
+(A) -10
+(B) 0
+(C) 2
+(D) 1
+(E) -4
+
+=== Item 805 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 1x - 42 = 0
+Final answer: ____
+
+=== Item 806 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 807 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 808 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 + 18x + 28 = 0
+Final answer: ____
+
+=== Item 809 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 7. What is the area of the sector with central angle 150°? (Answer in terms of π)
+
+Choices
+(A) 245/12π
+(B) 245/24π
+(C) 49/2π
+(D) 245/6π
+(E) 49/3π
+
+=== Item 810 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 811 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=5
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 812 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=3 and b=1.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 813 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+8x - 10 = 5x + 9
+
+Choices
+(A) 19/3
+(B) 22/3
+(C) 1/3
+(D) 4/3
+(E) 25/3
+
+=== Item 814 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -3x^4 + 0x^3 - 5x^2 - 2x - 1.
+Compute f'(-1).
+
+Choices
+(A) 18
+(B) 20
+(C) 28
+(D) 14
+(E) 26
+
+=== Item 815 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+2 + 4/3 + 8/9 + ...
+
+Choices
+(A) 7
+(B) 0
+(C) 9
+(D) 6
+(E) 2
+
+=== Item 816 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+3 + 3/2 + 3/4 + ...
+
+Choices
+(A) 4
+(B) 10
+(C) 2
+(D) 6
+(E) 9
+
+=== Item 817 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 818 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 8. What is the area of the sector with central angle 180°? (Answer in terms of π)
+
+Choices
+(A) 64π
+(B) 112/3π
+(C) 80/3π
+(D) 16π
+(E) 32π
+
+=== Item 819 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 1x - 6 = 0
+Final answer: ____
+
+=== Item 820 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+7x - 11 = 5x - 13
+
+Choices
+(A) 1
+(B) -1
+(C) 0
+(D) -3
+(E) 5
+
+=== Item 821 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.9664
+(B) 0.8964
+(C) 0.8664
+(D) 0.8364
+(E) 0.9264
+
+=== Item 822 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 2.0).
+
+Choices
+(A) 0.9845
+(B) 0.9545
+(C) 0.9245
+(D) 1.0145
+(E) 0.8545
+
+=== Item 823 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+9 + -6 + 4 + ...
+
+Choices
+(A) 22/5
+(B) 17/5
+(C) 7/5
+(D) 42/5
+(E) 27/5
+
+=== Item 824 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=6 and b=3.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 825 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+1x - 14 = 9x + 12
+
+Choices
+(A) -13/4
+(B) -33/4
+(C) -9/4
+(D) 11/4
+(E) -5/4
+
+=== Item 826 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 2x^4 + 5x^3 + 1x^2 - 3x - 5.
+Compute f'(1).
+
+Choices
+(A) 22
+(B) 10
+(C) 26
+(D) 24
+(E) 14
+
+=== Item 827 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 0.5y,   y(0)=2
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 828 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 13. What is the area of the sector with central angle 30°? (Answer in terms of π)
+
+Choices
+(A) 169/4π
+(B) 169/6π
+(C) 169/12π+4
+(D) 169/12π
+(E) 169/24π
+
+=== Item 829 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 10. What is the area of the sector with central angle 150°? (Answer in terms of π)
+
+Choices
+(A) 125/3π
+(B) 100/3π
+(C) 50π
+(D) 125/6π
+(E) 250/3π
+
+=== Item 830 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 2y,   y(0)=2
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 831 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+1x - 19 = 4x - 7
+
+Choices
+(A) 1
+(B) -7
+(C) -4
+(D) -2
+(E) -8
+
+=== Item 832 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.9664
+(B) 0.8664
+(C) 0.7664
+(D) 0.9264
+(E) 0.8064
+
+=== Item 833 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=3 1/((z-0.25)(z-5.6)) dz
+
+Choices
+(A) 2πi·-0.187
+(B) 2πi·-0.437
+(C) 2πi·-1.187
+(D) 2πi·0.063
+(E) 2πi·0.813
+
+=== Item 834 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 42x + 144 = 0
+Final answer: ____
+
+=== Item 835 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+7x + 15 = 6x - 16
+
+Choices
+(A) -29
+(B) -33
+(C) -26
+(D) -30
+(E) -31
+
+=== Item 836 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 837 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 8. What is the area of the sector with central angle 90°? (Answer in terms of π)
+
+Choices
+(A) 16π
+(B) 32π
+(C) 32/3π
+(D) 8π
+(E) 64/3π
+
+=== Item 838 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=4 and b=3.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 839 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=5
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 840 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 5. What is the area of the sector with central angle 45°? (Answer in terms of π)
+
+Choices
+(A) 25/8π
+(B) 25/4π
+(C) 25/24π
+(D) 55/36π
+(E) 125/24π
+
+=== Item 841 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 4x + 3 = 0
+Final answer: ____
+
+=== Item 842 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+5 + 15/4 + 45/16 + ...
+
+Choices
+(A) 14
+(B) 22
+(C) 17
+(D) 26
+(E) 20
+
+=== Item 843 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 1x^4 - 1x^3 - 1x^2 + 3x - 9.
+Compute f'(2).
+
+Choices
+(A) 13
+(B) 21
+(C) 17
+(D) 11
+(E) 19
+
+=== Item 844 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=1 1/((z--0.4)(z-1.29)) dz
+
+Choices
+(A) 2πi·-0.592
+(B) 2πi·-1.092
+(C) 2πi·-0.092
+(D) 2πi·0.408
+(E) 2πi·-0.842
+
+=== Item 845 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=3 1/((z--0.6)(z-3.93)) dz
+
+Choices
+(A) 2πi·-0.221
+(B) 2πi·0.029
+(C) 2πi·-1.221
+(D) 2πi·0.279
+(E) 2πi·-0.721
+
+=== Item 846 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+6 + -3 + 3/2 + ...
+
+Choices
+(A) 5
+(B) 2
+(C) 4
+(D) 1
+(E) 6
+
+=== Item 847 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=5
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 848 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=5 and b=1.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 849 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=3 1/((z--0.67)(z-5.96)) dz
+
+Choices
+(A) 2πi·-1.151
+(B) 2πi·0.849
+(C) 2πi·0.099
+(D) 2πi·-0.651
+(E) 2πi·-0.151
+
+=== Item 850 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=5
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 851 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 2y,   y(0)=3
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 852 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.8364
+(B) 0.9664
+(C) 0.8664
+(D) 0.8964
+(E) 0.8064
+
+=== Item 853 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 + 0x - 72 = 0
+Final answer: ____
+
+=== Item 854 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 5x - 50 = 0
+Final answer: ____
+
+=== Item 855 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 2x - 3 = 0
+Final answer: ____
+
+=== Item 856 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 0.5y,   y(0)=1
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 857 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 7. What is the area of the sector with central angle 120°? (Answer in terms of π)
+
+Choices
+(A) 49/4π
+(B) 49/6π
+(C) 245/12π
+(D) 98/3π
+(E) 49/3π
+
+=== Item 858 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.9264
+(B) 0.9664
+(C) 0.8664
+(D) 0.8364
+(E) 0.8064
+
+=== Item 859 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+8 + 4 + 2 + ...
+
+Choices
+(A) 18
+(B) 20
+(C) 13
+(D) 10
+(E) 16
+
+=== Item 860 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 861 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 0.5y,   y(0)=5
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 862 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 863 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=3 and b=1.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 864 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 865 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z--0.13)(z-7.19)) dz
+
+Choices
+(A) 2πi·-0.387
+(B) 2πi·0.363
+(C) 2πi·0.863
+(D) 2πi·-0.137
+(E) 2πi·-1.137
+
+=== Item 866 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -3x^4 + 0x^3 - 2x^2 + 3x - 1.
+Compute f'(0).
+
+Choices
+(A) -9
+(B) 9
+(C) 3
+(D) -3
+(E) -5
+
+=== Item 867 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z--2.39)(z-6.55)) dz
+
+Choices
+(A) 2πi·-0.112
+(B) 2πi·-1.112
+(C) 2πi·0.138
+(D) 2πi·0.888
+(E) 2πi·-0.612
+
+=== Item 868 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=2
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 869 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 870 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 54x + 243 = 0
+Final answer: ____
+
+=== Item 871 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 872 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 2x - 80 = 0
+Final answer: ____
+
+=== Item 873 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=6 and b=0.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 874 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+8x - 19 = 9x - 13
+
+Choices
+(A) -12
+(B) -10
+(C) -6
+(D) -1
+(E) -3
+
+=== Item 875 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 + 3x - 216 = 0
+Final answer: ____
+
+=== Item 876 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.8364
+(B) 0.8664
+(C) 0.8064
+(D) 0.7664
+(E) 0.8964
+
+=== Item 877 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+5x - 9 = 3x - 4
+
+Choices
+(A) 1/2
+(B) 7/2
+(C) -3/2
+(D) 5/2
+(E) -5/2
+
+=== Item 878 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 9. What is the area of the sector with central angle 30°? (Answer in terms of π)
+
+Choices
+(A) 27/4π
+(B) 27/4π+4
+(C) 27/8π
+(D) 27/2π
+(E) 81/4π
+
+=== Item 879 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+4x + 12 = 8x + 12
+
+Choices
+(A) 0
+(B) 1
+(C) -6
+(D) -2
+(E) -5
+
+=== Item 880 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 13. What is the area of the sector with central angle 45°? (Answer in terms of π)
+
+Choices
+(A) 845/24π
+(B) 1859/180π
+(C) 169/4π
+(D) 169/24π
+(E) 169/8π
+
+=== Item 881 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 12. What is the area of the sector with central angle 90°? (Answer in terms of π)
+
+Choices
+(A) 48π
+(B) 18π
+(C) 24π
+(D) 36π
+(E) 72π
+
+=== Item 882 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 2.0).
+
+Choices
+(A) 1.0545
+(B) 0.8945
+(C) 0.9245
+(D) 0.9545
+(E) 0.9845
+
+=== Item 883 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=2 and b=0.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 884 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 0.5y,   y(0)=4
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 885 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.6227
+(B) 0.7827
+(C) 0.7427
+(D) 0.5827
+(E) 0.6827
+
+=== Item 886 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=5
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 887 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 888 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=3
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 889 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (2x^1)/(1 + x^2) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 890 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z--2.38)(z-4.83)) dz
+
+Choices
+(A) 2πi·-0.639
+(B) 2πi·0.361
+(C) 2πi·0.111
+(D) 2πi·-0.139
+(E) 2πi·0.861
+
+=== Item 891 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 892 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=2
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 893 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z--0.62)(z-5.42)) dz
+
+Choices
+(A) 2πi·0.334
+(B) 2πi·0.834
+(C) 2πi·-0.166
+(D) 2πi·-1.166
+(E) 2πi·-0.666
+
+=== Item 894 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z-2.24)(z-4.92)) dz
+
+Choices
+(A) 2πi·0.127
+(B) 2πi·-1.373
+(C) 2πi·-0.373
+(D) 2πi·-0.873
+(E) 2πi·-0.123
+
+=== Item 895 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 896 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+3x - 12 = 2x - 4
+
+Choices
+(A) 11
+(B) 6
+(C) 5
+(D) 8
+(E) 12
+
+=== Item 897 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=5 and b=0.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 898 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=3
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 899 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 7x + 6 = 0
+Final answer: ____
+
+=== Item 900 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=3 1/((z-1.51)(z-4.88)) dz
+
+Choices
+(A) 2πi·-0.547
+(B) 2πi·-0.047
+(C) 2πi·0.203
+(D) 2πi·-0.297
+(E) 2πi·-1.297
+
+=== Item 901 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.6227
+(B) 0.7427
+(C) 0.7127
+(D) 0.6827
+(E) 0.7827
+
+=== Item 902 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 - 36x + 160 = 0
+Final answer: ____
+
+=== Item 903 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z--1.26)(z-5.89)) dz
+
+Choices
+(A) 2πi·-0.390
+(B) 2πi·-1.140
+(C) 2πi·-0.140
+(D) 2πi·-0.640
+(E) 2πi·0.860
+
+=== Item 904 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -3x^4 + 1x^3 - 1x^2 - 6x - 6.
+Compute f'(-2).
+
+Choices
+(A) 112
+(B) 94
+(C) 118
+(D) 106
+(E) 104
+
+=== Item 905 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 906 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 18x + 81 = 0
+Final answer: ____
+
+=== Item 907 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 908 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 909 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -3x^4 - 5x^3 + 3x^2 - 6x + 8.
+Compute f'(-1).
+
+Choices
+(A) -15
+(B) -3
+(C) -21
+(D) -7
+(E) -17
+
+=== Item 910 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+1x - 1 = 3x + 17
+
+Choices
+(A) -6
+(B) -10
+(C) -9
+(D) -8
+(E) -11
+
+=== Item 911 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 9x - 10 = 0
+Final answer: ____
+
+=== Item 912 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 8. What is the area of the sector with central angle 45°? (Answer in terms of π)
+
+Choices
+(A) 8/3π
+(B) 16π
+(C) 8π
+(D) 176/45π
+(E) 40/3π
+
+=== Item 913 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 - 18x + 0 = 0
+Final answer: ____
+
+=== Item 914 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 915 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 6. What is the area of the sector with central angle 30°? (Answer in terms of π)
+
+Choices
+(A) 9π
+(B) 3π
+(C) 3/2π
+(D) 3π+4
+(E) 6π
+
+=== Item 916 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 2x - 8 = 0
+Final answer: ____
+
+=== Item 917 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.7427
+(B) 0.6527
+(C) 0.7827
+(D) 0.5827
+(E) 0.6827
+
+=== Item 918 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 14x + 40 = 0
+Final answer: ____
+
+=== Item 919 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 14. What is the area of the sector with central angle 45°? (Answer in terms of π)
+
+Choices
+(A) 49π
+(B) 539/45π
+(C) 49/2π
+(D) 245/6π
+(E) 49/6π
+
+=== Item 920 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 + 48x + 180 = 0
+Final answer: ____
+
+=== Item 921 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+4 + 3 + 9/4 + ...
+
+Choices
+(A) 16
+(B) 17
+(C) 18
+(D) 19
+(E) 14
+
+=== Item 922 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=2 1/((z-0.92)(z-2.61)) dz
+
+Choices
+(A) 2πi·-0.592
+(B) 2πi·-1.092
+(C) 2πi·-0.342
+(D) 2πi·-0.842
+(E) 2πi·0.408
+
+=== Item 923 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=2 1/((z-0.85)(z-2.87)) dz
+
+Choices
+(A) 2πi·-0.495
+(B) 2πi·0.505
+(C) 2πi·-1.495
+(D) 2πi·-0.995
+(E) 2πi·-0.745
+
+=== Item 924 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 15. What is the area of the sector with central angle 150°? (Answer in terms of π)
+
+Choices
+(A) 75π
+(B) 225/2π
+(C) 375/2π
+(D) 375/4π
+(E) 375/8π
+
+=== Item 925 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=2
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 926 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 - 20x + 50 = 0
+Final answer: ____
+
+=== Item 927 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -2x^4 - 2x^3 + 1x^2 - 1x + 2.
+Compute f'(-1).
+
+Choices
+(A) 7
+(B) -1
+(C) 11
+(D) 3
+(E) -3
+
+=== Item 928 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 10. What is the area of the sector with central angle 120°? (Answer in terms of π)
+
+Choices
+(A) 200/3π
+(B) 100/3π
+(C) 50/3π
+(D) 125/3π
+(E) 25π
+
+=== Item 929 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 930 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 931 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 1x - 20 = 0
+Final answer: ____
+
+=== Item 932 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 4. What is the area of the sector with central angle 60°? (Answer in terms of π)
+
+Choices
+(A) 4/3π
+(B) 16/3π
+(C) 4π
+(D) 8/3π
+(E) 8/3π+4
+
+=== Item 933 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 3. What is the area of the sector with central angle 120°? (Answer in terms of π)
+
+Choices
+(A) 6π
+(B) 3/2π
+(C) 3π
+(D) 9/4π
+(E) 15/4π
+
+=== Item 934 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 - 6x - 108 = 0
+Final answer: ____
+
+=== Item 935 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 9x + 6 = 0
+Final answer: ____
+
+=== Item 936 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 2.0).
+
+Choices
+(A) 0.8945
+(B) 0.9545
+(C) 0.9845
+(D) 0.8545
+(E) 1.0145
+
+=== Item 937 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 938 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=5 and b=3.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 939 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 5x - 6 = 0
+Final answer: ____
+
+=== Item 940 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 15. What is the area of the sector with central angle 150°? (Answer in terms of π)
+
+Choices
+(A) 375/2π
+(B) 225/2π
+(C) 375/4π
+(D) 375/8π
+(E) 75π
+
+=== Item 941 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 942 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -2x^4 + 0x^3 + 3x^2 + 4x + 2.
+Compute f'(-1).
+
+Choices
+(A) 14
+(B) -2
+(C) 10
+(D) 6
+(E) 18
+
+=== Item 943 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 944 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+8x - 9 = 1x - 8
+
+Choices
+(A) -20/7
+(B) 1/7
+(C) -13/7
+(D) 8/7
+(E) -34/7
+
+=== Item 945 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 946 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 12x + 35 = 0
+Final answer: ____
+
+=== Item 947 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (5x^4)/(1 + x^5) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 948 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=2 1/((z--0.46)(z-3.71)) dz
+
+Choices
+(A) 2πi·0.760
+(B) 2πi·-0.240
+(C) 2πi·-0.740
+(D) 2πi·0.010
+(E) 2πi·-0.490
+
+=== Item 949 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 950 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 4. What is the area of the sector with central angle 180°? (Answer in terms of π)
+
+Choices
+(A) 8π
+(B) 4π
+(C) 20/3π
+(D) 28/3π
+(E) 16π
+
+=== Item 951 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=5
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 952 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 13. What is the area of the sector with central angle 90°? (Answer in terms of π)
+
+Choices
+(A) 169/2π
+(B) 169/4π
+(C) 169/3π
+(D) 169/8π
+(E) 169/6π
+
+=== Item 953 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+8 + -4 + 2 + ...
+
+Choices
+(A) 4/3
+(B) 22/3
+(C) 19/3
+(D) 7/3
+(E) 16/3
+
+=== Item 954 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=3 and b=3.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 955 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+2 + 1 + 1/2 + ...
+
+Choices
+(A) 2
+(B) 6
+(C) 4
+(D) 5
+(E) 8
+
+=== Item 956 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+7 + 21/4 + 63/16 + ...
+
+Choices
+(A) 30
+(B) 34
+(C) 22
+(D) 26
+(E) 28
+
+=== Item 957 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 4x - 32 = 0
+Final answer: ____
+
+=== Item 958 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+3 + -3/2 + 3/4 + ...
+
+Choices
+(A) -1
+(B) 1
+(C) 6
+(D) 4
+(E) 2
+
+=== Item 959 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+2x^2 + 36x + 160 = 0
+Final answer: ____
+
+=== Item 960 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 13x + 36 = 0
+Final answer: ____
+
+=== Item 961 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 1x^4 - 1x^3 + 1x^2 - 7x + 9.
+Compute f'(-2).
+
+Choices
+(A) -59
+(B) -63
+(C) -55
+(D) -67
+(E) -51
+
+=== Item 962 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+6x - 16 = 4x - 6
+
+Choices
+(A) 0
+(B) 9
+(C) 10
+(D) 1
+(E) 5
+
+=== Item 963 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=6 and b=1.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 964 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = 2y,   y(0)=2
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 965 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 + 45x + 150 = 0
+Final answer: ____
+
+=== Item 966 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+4 + -2 + 1 + ...
+
+Choices
+(A) 2/3
+(B) 5/3
+(C) 8/3
+(D) -4/3
+(E) 11/3
+
+=== Item 967 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=1
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 968 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.0).
+
+Choices
+(A) 0.7127
+(B) 0.7827
+(C) 0.6827
+(D) 0.6527
+(E) 0.7427
+
+=== Item 969 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=4 and b=0.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 970 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (6x^5)/(1 + x^6) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 971 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -2x^4 - 5x^3 + 3x^2 - 5x - 1.
+Compute f'(-1).
+
+Choices
+(A) -18
+(B) -26
+(C) -30
+(D) -22
+(E) -14
+
+=== Item 972 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 - 1x - 90 = 0
+Final answer: ____
+
+=== Item 973 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -3y,   y(0)=3
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 974 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 13. What is the area of the sector with central angle 180°? (Answer in terms of π)
+
+Choices
+(A) 169/4π
+(B) 1183/12π
+(C) 169π
+(D) 169/2π
+(E) 845/12π
+
+=== Item 975 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 2x^4 - 2x^3 + 6x^2 - 1x + 9.
+Compute f'(1).
+
+Choices
+(A) 15
+(B) 7
+(C) 21
+(D) 9
+(E) 13
+
+=== Item 976 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=2 1/((z--0.9)(z-2.68)) dz
+
+Choices
+(A) 2πi·-0.529
+(B) 2πi·0.221
+(C) 2πi·-0.779
+(D) 2πi·0.721
+(E) 2πi·-0.279
+
+=== Item 977 ===
+Level: G11
+Question (Multiple-choice)
+Solve for x:
+7x + 18 = 3x - 5
+
+Choices
+(A) -7/4
+(B) -23/4
+(C) -15/4
+(D) 1/4
+(E) -31/4
+
+=== Item 978 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=2
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 979 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 980 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=5 and b=3.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 981 ===
+Level: Uni
+Question (Final answer only)
+Let A be the 3×3 matrix with a on the diagonal and b on every off-diagonal entry, where a=6 and b=1.
+Find the eigenvalues of A (with multiplicities).
+Final answer: ____
+
+=== Item 982 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 9x - 12 = 0
+Final answer: ____
+
+=== Item 983 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 984 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 10x + 24 = 0
+Final answer: ____
+
+=== Item 985 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 - 15x + 18 = 0
+Final answer: ____
+
+=== Item 986 ===
+Level: Uni
+Question (Final answer only)
+Solve the initial value problem:
+dy/dx = -0.7y,   y(0)=3
+Give y(x) in closed form.
+Final answer: ____
+
+=== Item 987 ===
+Level: College
+Question (Multiple-choice)
+Find the sum of the infinite geometric series:
+1 + 1/2 + 1/4 + ...
+
+Choices
+(A) 2
+(B) 4
+(C) 8
+(D) -1
+(E) 0
+
+=== Item 988 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (2x^1)/(1 + x^2) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 989 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 990 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (3x^2)/(1 + x^3) dx
+(Provide a simplified exact value.)
+Final answer: ____
+
+=== Item 991 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 5x + 6 = 0
+Final answer: ____
+
+=== Item 992 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 9. What is the area of the sector with central angle 150°? (Answer in terms of π)
+
+Choices
+(A) 81/2π
+(B) 135/2π
+(C) 27π
+(D) 135/4π
+(E) 135/8π
+
+=== Item 993 ===
+Level: Uni
+Question (Multiple-choice)
+Let Z ~ N(0,1). Approximate P(|Z| ≤ 1.5).
+
+Choices
+(A) 0.9664
+(B) 0.8664
+(C) 0.9264
+(D) 0.8964
+(E) 0.8364
+
+=== Item 994 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+3x^2 + 18x + 24 = 0
+Final answer: ____
+
+=== Item 995 ===
+Level: Uni
+Question (Multiple-choice)
+Evaluate the contour integral:
+∮_|z|=4 1/((z--2.39)(z-5.02)) dz
+
+Choices
+(A) 2πi·0.865
+(B) 2πi·-0.385
+(C) 2πi·-0.135
+(D) 2πi·0.365
+(E) 2πi·0.115
+
+=== Item 996 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = 1x^4 - 3x^3 + 2x^2 - 5x + 4.
+Compute f'(2).
+
+Choices
+(A) -1
+(B) -7
+(C) 11
+(D) -13
+(E) -5
+
+=== Item 997 ===
+Level: College
+Question (Multiple-choice)
+Let f(x) = -3x^4 - 1x^3 - 5x^2 + 4x - 7.
+Compute f'(0).
+
+Choices
+(A) 6
+(B) 4
+(C) 2
+(D) -8
+(E) -4
+
+=== Item 998 ===
+Level: G11
+Question (Final answer only)
+Solve the quadratic equation (give all real solutions):
+1x^2 + 1x - 72 = 0
+Final answer: ____
+
+=== Item 999 ===
+Level: G11
+Question (Multiple-choice)
+A circle has radius 12. What is the area of the sector with central angle 120°? (Answer in terms of π)
+
+Choices
+(A) 48π
+(B) 24π
+(C) 60π
+(D) 96π
+(E) 36π
+
+=== Item 1000 ===
+Level: College
+Question (Final answer only)
+Evaluate exactly:
+∫_0^1 (4x^3)/(1 + x^4) dx
+(Provide a simplified exact value.)
+Final answer: ____

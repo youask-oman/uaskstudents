@@ -430,14 +430,22 @@ def readiness_check():
 async def llm_health_check():
     manager = get_llm_manager()
     openai = await manager.check_openai()
+    ollama = await manager.check_ollama()
     breaker = manager.get_circuit_breaker_state("openai")
+    try:
+        openai_model = get_configured_openai_model()
+    except Exception as exc:
+        openai_model = f"unavailable: {str(exc)}"
+    ollama_model = (os.environ.get("OLLAMA_MODEL") or "qwen25-math7b:latest").strip()
     return {
         "provider": manager.primary_provider,
         "fallback_enabled": manager.fallback_enabled,
         "models": {
-            "openai_default": get_configured_openai_model(),
+            "openai_default": openai_model,
+            "ollama_default": ollama_model,
         },
         "openai": openai,
+        "ollama": ollama,
         "circuit_breaker": breaker,
         "last_error": manager.last_error,
         "timestamp": time.time(),

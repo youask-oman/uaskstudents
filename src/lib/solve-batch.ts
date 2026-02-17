@@ -61,7 +61,11 @@ export function buildSolveBatchPayload(input: BuildSolveBatchPayloadInput): {
     };
 }
 
-export function mapSolveBatchErrorMessage(code?: string, maxAllowed?: number): string {
+export function mapSolveBatchErrorMessage(
+    code?: string,
+    maxAllowed?: number,
+    details?: Record<string, unknown> | null
+): string {
     if (code === "TOO_MANY_QUESTIONS") {
         const cap = typeof maxAllowed === "number" ? maxAllowed : 1;
         return `This mode supports up to ${cap} question(s). Reduce selection.`;
@@ -77,6 +81,26 @@ export function mapSolveBatchErrorMessage(code?: string, maxAllowed?: number): s
     }
     if (code === "SCHEMA_INVALID") {
         return "Response formatting failed. Please retry.";
+    }
+    if (code === "final_local_only_unsatisfied") {
+        const reason = String(details?.reason || "").trim();
+        const qid = String(details?.question_id || "").trim();
+        const solved = Number(details?.items_solved_locally ?? NaN);
+        const total = Number(details?.items_total ?? NaN);
+        const parts: string[] = ["FINAL local-only mode blocked fallback."];
+        if (reason) parts.push(`reason=${reason}`);
+        if (qid) parts.push(`question=${qid}`);
+        if (Number.isFinite(solved) && Number.isFinite(total)) parts.push(`solved=${solved}/${total}`);
+        return parts.join(" ");
+    }
+    if (code === "sympy_numpy_gate_failed") {
+        const qid = String(details?.question_id || "").trim();
+        const err = String(details?.error || "").trim();
+        return `SymPy/NumPy gate failed${qid ? ` at ${qid}` : ""}${err ? `: ${err}` : "."}`;
+    }
+    if (code === "openai_request_failed") {
+        const providerDetails = details?.provider_details ? JSON.stringify(details.provider_details) : "";
+        return `OpenAI request failed${providerDetails ? `: ${providerDetails}` : "."}`;
     }
     return "Solve failed. Please retry.";
 }

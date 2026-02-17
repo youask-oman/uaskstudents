@@ -1109,8 +1109,15 @@
   border: 1px solid #c7def8;
   border-radius: 14px;
   padding: 38px 18px 18px;
-  text-align: center;
+  text-align: left;
   background: linear-gradient(180deg, #f7fbff 0%, var(--latex-bg) 100%);
+}
+
+.recognitionBoxPlain {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 38px 0 0;
 }
 
 .recognizedBadge {

@@ -8,6 +8,7 @@ interface RecognitionBoxProps {
   latex: string;
   exportMode?: boolean;
   badgeLabel?: string;
+  plainStyle?: boolean;
 }
 
 const hasStandaloneMathDelimiters = (text: string): boolean => {
@@ -46,10 +47,15 @@ const shouldRenderAsProse = (value: string): boolean => {
   return false;
 };
 
-export default function RecognitionBox({ latex, exportMode = false, badgeLabel = "AI recognized" }: RecognitionBoxProps) {
+export default function RecognitionBox({
+  latex,
+  exportMode = false,
+  badgeLabel = "AI recognized",
+  plainStyle = false,
+}: RecognitionBoxProps) {
   return (
-    <div className={styles.recognitionBox}>
-      <MathRenderer content={latex} mode={shouldRenderAsProse(latex) ? "prose" : "block"} />
+    <div className={`${styles.recognitionBox} ${plainStyle ? styles.recognitionBoxPlain : ""}`.trim()}>
+      <MathRenderer content={latex} mode="prose" />
       {!exportMode ? (
         <div className={styles.recognizedBadge} data-no-export="true">
           <span className="material-symbols-outlined" style={{ fontSize: 14 }}>

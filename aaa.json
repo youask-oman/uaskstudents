@@ -1,0 +1,128 @@
+{
+  "schema_version": "prod_v2",
+  "tier": "FINAL",
+  "language": {
+    "preferred_response_language": "English",
+    "response_language": "English",
+    "user_language": "English"
+  },
+  "runtime": {
+    "request_id": "e6d716f7-b698-4926-a26d-625cf3bf2428",
+    "attempt_id": "366fe5ce-52f4-4344-b7ac-250133ab438b",
+    "preferred_response_language": "English",
+    "default_mode": "GENERAL",
+    "default_graph_mode": "OFF",
+    "default_domain_mode": "reals",
+    "allow_auto_split": false,
+    "max_questions_allowed": 15,
+    "max_tasks_per_question": 6
+  },
+  "items": [
+    {
+      "question_id": "q1",
+      "question_index": 1,
+      "mode": "SOLVE",
+      "problem": {
+        "original_text": "Let (X,Y) have joint density f(x,y) = 2 on the triangle 0 < y < x < 1, and 0 otherwise. Verify that f is a valid joint density by integrating over its support. Compute the marginal density f_X(x). Compute the marginal density f_Y(y). Compute E[X] and E[Y]. Compute P(Y < 1/4). Compute the conditional density f_{Y|X}(y|x). Compute E[Y|X=x] and simplify. Compute Cov(X,Y). Find the correlation Corr(X,Y) and interpret its sign.",
+        "normalized_text": "Verify joint density normalization; find marginals f_X,f_Y; compute E[X],E[Y]; P(Y<1/4); conditional density f_{Y|X}; E[Y|X=x]; Cov(X,Y); Corr(X,Y) and interpret sign.",
+        "detected_tasks": [
+          "evaluate",
+          "probability",
+          "statistics",
+          "evaluate",
+          "other"
+        ],
+        "extra": []
+      },
+      "classification": {
+        "difficulty": "easy",
+        "domain": "probability",
+        "grade_band": "college_intro",
+        "topic": "joint density marginals correlation"
+      },
+      "steps": [
+        {
+          "index": 1,
+          "title": "Results",
+          "explanation": "Final concise results for each requested quantity.",
+          "math_latex": [
+            "\\int_0^1\\int_0^x 2\\,dy\\,dx=1",
+            "f_X(x)=2x\\mathbf{1}_{0<x<1}",
+            "f_Y(y)=2(1-y)\\mathbf{1}_{0<y<1}",
+            "E[X]=\\tfrac{2}{3}",
+            "E[Y]=\\tfrac{1}{3}",
+            "P(Y<1/4)=\\frac{7}{16}\\\\f_{Y|X}(y|x)=\\frac{2}{x}\\mathbf{1}_{0<y<x<1}\\\\E[Y|X=x]=\\frac{x}{2}\\\\\\operatorname{Cov}(X,Y)=\\frac{1}{72}\\\\\\operatorname{Corr}(X,Y)=\\frac{1}{\\sqrt{5}}\\approx0.4472"
+          ]
+        }
+      ],
+      "final_answer": {
+        "answer_latex": null,
+        "answer_text": "Normalization: ∫_0^1∫_0^x 2 dy dx =1. f_X(x)=2x for 0<x<1, else 0. f_Y(y)=2(1-y) for 0<y<1, else 0. E[X]=2/3. E[Y]=1/3. P(Y<1/4)=7/16. f_{Y|X}(y|x)= (2/x) for 0<y<x<1, else 0. E[Y|X=x]=x/2. Cov(X,Y)=1/72. Corr(X,Y)=1/√5 ≈0.4472 (positive correlation).",
+        "units": null,
+        "values": [
+          {
+            "label": "Normalization",
+            "value": "1",
+            "value_latex": "1"
+          },
+          {
+            "label": "f_X(x)",
+            "value": "2x for 0<x<1, else 0",
+            "value_latex": "2x \\mathbf{1}_{0<x<1}"
+          },
+          {
+            "label": "f_Y(y)",
+            "value": "2(1-y) for 0<y<1, else 0",
+            "value_latex": "2(1-y) \\mathbf{1}_{0<y<1}"
+          },
+          {
+            "label": "E[X]",
+            "value": "2/3",
+            "value_latex": "\\tfrac{2}{3}"
+          },
+          {
+            "label": "E[Y]",
+            "value": "1/3",
+            "value_latex": "\\tfrac{1}{3}"
+          },
+          {
+            "label": "P(Y<1/4)",
+            "value": "7/16",
+            "value_latex": "\\tfrac{7}{16}"
+          },
+          {
+            "label": "f_{Y|X}(y|x)",
+            "value": "2/x for 0<y<x<1, else 0",
+            "value_latex": "\\frac{2}{x} \\mathbf{1}_{0<y<x<1}"
+          },
+          {
+            "label": "E[Y|X=x]",
+            "value": "x/2",
+            "value_latex": "\\tfrac{x}{2}"
+          },
+          {
+            "label": "Cov(X,Y)",
+            "value": "1/72",
+            "value_latex": "\\tfrac{1}{72}"
+          },
+          {
+            "label": "Corr(X,Y)",
+            "value": "1/\\u221A5 ≈ 0.4472",
+            "value_latex": "\\frac{1}{\\sqrt{5}}"
+          }
+        ],
+        "kind": "solution",
+        "target": null
+      },
+      "refusal": {
+        "is_refusal": false,
+        "reason": null,
+        "safe_next_step": null
+      },
+      "quality": {
+        "confidence": 0.86,
+        "common_mistakes": []
+      }
+    }
+  ]
+}

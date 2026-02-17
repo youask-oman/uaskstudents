@@ -1,0 +1,17 @@
+{
+    "graph_mode":  "OFF",
+    "idempotency_key":  "420f8b32-a5c5-4d8b-9a00-eee76ef65ac7",
+    "tier":  "FINAL",
+    "preferred_response_language":  "English",
+    "domain_mode":  "reals",
+    "mode":  "SOLVE",
+    "items":  [
+                  {
+                      "question_text":  "Question (Final answer only)\nProve that there are infinitely many prime numbers.\nFinal answer: ____",
+                      "domain_mode":  "reals",
+                      "question_id":  "q1",
+                      "mode":  "SOLVE",
+                      "graph_mode":  "OFF"
+                  }
+              ]
+}

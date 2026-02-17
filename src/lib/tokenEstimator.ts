@@ -5,7 +5,7 @@
  * Uses heuristics to estimate token count without requiring the actual tokenizer.
  */
 
-import { MATH_HEAVY_THRESHOLDS } from './tokenBudget';
+import { MATH_HEAVY_THRESHOLDS } from "./multiQuestionConfig";
 
 // ============================================================================
 // TYPES

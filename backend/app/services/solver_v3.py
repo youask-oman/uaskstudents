@@ -1409,7 +1409,7 @@ class SolverV3:
 
             "model": self.default_model, # Changed to default_model
 
-            "provider": "openai", # Changed to openai
+            "provider": self.client_manager.primary_provider,
 
             "input_tokens": 0,
 
@@ -1443,7 +1443,7 @@ class SolverV3:
             if attempt_id:
                 emit_attempt_event(attempt_id, request_id, "attempt_created", status="active")
 
-            provider = "openai"
+            provider = self.client_manager.primary_provider
 
             client = self.client_manager.get_client(provider)
 

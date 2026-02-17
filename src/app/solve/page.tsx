@@ -13,7 +13,7 @@ import SnapSolveInputPanel from "@/components/snap_solve/SnapSolveInputPanel";
 
 // Token validation imports
 import { estimateTokens } from "@/lib/tokenEstimator";
-import { detectMultiQuestion, autoSplitQuestions } from "@/lib/multiQuestionDetector";
+import { detectMultiQuestion, autoSplitQuestions, extractSharedContext } from "@/lib/multiQuestionDetector";
 import { TokenBudgetPolicy, willRequestFit } from "@/lib/tokenBudget";
 import InputStatus from "@/components/InputStatus";
 import SplitModal from "@/components/SplitModal";
@@ -51,6 +51,12 @@ interface ChatSession {
     id: number;
     title: string;
     created_at: string;
+    telemetry?: {
+        tier_effective?: string;
+        effective_tier?: string;
+        tier_requested?: string;
+        tier?: string;
+    };
 }
 
 interface ActiveUser {
@@ -533,7 +539,7 @@ export default function DashboardPage() {
     const [lastIdempotencyKey, setLastIdempotencyKey] = useState<string | null>(null);
     const [stayOnSolveResult, setStayOnSolveResult] = useState(false);
     const [debugAttemptDetails, setDebugAttemptDetails] = useState<DebugAttemptDetails | null>(null);
-    const [lastSolveError, setLastSolveError] = useState<{ code?: string; message?: string; request_id?: string } | null>(null);
+    const [lastSolveError, setLastSolveError] = useState<{ code?: string; message?: string; request_id?: string; details?: unknown } | null>(null);
     const [batchSolveResult, setBatchSolveResult] = useState<SolveBatchResponse | null>(null);
 
     const [activeMode, setActiveMode] = useState<ModeId | null>(null);
@@ -855,6 +861,20 @@ export default function DashboardPage() {
     const selectedGoal = 'solve';
     const [selectedSolveTier, setSelectedSolveTier] = useState<SolveTier>("STANDARD");
     const isPlotLockedByTier = selectedSolveTier === "FINAL";
+    const resolveSessionRoute = (sessionId: string | number) =>
+        selectedSolveTier === "FINAL" ? `/chat_final/${sessionId}` : `/chat/${sessionId}`;
+    const resolveHistorySessionRoute = (session: ChatSession) => {
+        const telemetry = session?.telemetry;
+        const rawTier =
+            telemetry?.tier_effective ||
+            telemetry?.effective_tier ||
+            telemetry?.tier_requested ||
+            telemetry?.tier ||
+            "";
+        return String(rawTier).trim().toUpperCase() === "FINAL"
+            ? `/chat_final/${session.id}`
+            : `/chat/${session.id}`;
+    };
     const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
     const [walletPrograms, setWalletPrograms] = useState<WalletProgramEnrollment[]>([]);
     const [walletLoaded, setWalletLoaded] = useState(false);
@@ -1198,7 +1218,7 @@ export default function DashboardPage() {
                         // Already solved
                         localStorage.removeItem("uask.activeAttemptId");
                         localStorage.removeItem("uask.activeQuery");
-                        router.push(`/chat/${data.session_id}`);
+                        router.push(resolveSessionRoute(data.session_id));
                     } else if (data.status === "ambiguous") {
                         setIsClarifying(true);
                         setClarificationMessage(data.error_message || "Clarification needed.");
@@ -1454,7 +1474,14 @@ export default function DashboardPage() {
             .map((question, index) => `${index + 1}) ${question.trim()}`)
             .join("\n\n");
 
-    const handleSolveTextBatch = async (questionsToSolve: string[]) => {
+    const buildConfirmedInputText = (questions: string[], sharedContext?: string): string => {
+        const formattedQuestions = formatQuestionsForInput(questions);
+        const context = (sharedContext || "").trim();
+        if (!context) return formattedQuestions;
+        return `${context}\n\n${formattedQuestions}`.trim();
+    };
+
+    const handleSolveTextBatch = async (questionsToSolve: string[], sharedContext?: string) => {
         if (isSolving) return;
         const userId = localStorage.getItem("user_id") || "1";
         const requestedMode = (selectedSolveTier === "SHORT_STEPS" || selectedSolveTier === "FINAL") ? "minimal" : "detailed";
@@ -1515,10 +1542,23 @@ export default function DashboardPage() {
         }, 1000);
 
         try {
+            const normalizeQuestionForBatch = (q: string): string => {
+                const raw = String(q || "").trim();
+                const ctx = String(sharedContext || "").trim();
+                if (!ctx) return raw;
+                const startsWithQuestionHeader =
+                    /^(?:question\s*\d+\b|q\d+\b|\d+[.)]\s+|part\s*\(?[a-zivx0-9]+\)?\b)/i.test(raw);
+                const contextLooksLikeQuestionHeader =
+                    /(?:\bquestion\s*\d+\b|\bmultiple[-\s]*choice\b|\bfinal answer\b)/i.test(ctx);
+                if (startsWithQuestionHeader || contextLooksLikeQuestionHeader) return raw;
+                if (raw.toLowerCase().startsWith(ctx.toLowerCase())) return raw;
+                return `${ctx} ${raw}`.trim();
+            };
+
             const payload = buildSolveBatchPayload({
                 selectedQuestions: trimmedQuestions.map((text, index) => ({
                     question_id: `q${index + 1}`,
-                    text,
+                    text: normalizeQuestionForBatch(text),
                 })),
                 mode: batchMode,
                 tier: batchTier,
@@ -1548,11 +1588,23 @@ export default function DashboardPage() {
 
             const raw = await response.json().catch(() => ({}));
             if (!response.ok) {
-                const detail = raw?.detail && typeof raw.detail === "object" ? raw.detail : raw;
-                const code = typeof detail?.code === "string" ? detail.code : undefined;
-                const requestId = detail?.request_id || raw?.request_id || undefined;
+                const errorObj = raw?.error && typeof raw.error === "object" ? raw.error : null;
+                const detailObj = raw?.detail && typeof raw.detail === "object" ? raw.detail : null;
+                const detail = detailObj || errorObj || raw;
+                const code =
+                    (typeof detail?.code === "string" ? detail.code : undefined) ||
+                    (typeof errorObj?.code === "string" ? errorObj.code : undefined);
+                const detailPayload =
+                    (detailObj?.details && typeof detailObj.details === "object" ? detailObj.details : null) ||
+                    (errorObj?.details && typeof errorObj.details === "object" ? errorObj.details : null) ||
+                    (detail?.details && typeof detail.details === "object" ? detail.details : null);
+                const requestId =
+                    detail?.request_id ||
+                    errorObj?.request_id ||
+                    raw?.request_id ||
+                    undefined;
                 const maxAllowed = typeof detail?.max_allowed === "number" ? detail.max_allowed : cap;
-                let message = mapSolveBatchErrorMessage(code, maxAllowed);
+                let message = mapSolveBatchErrorMessage(code, maxAllowed, detailPayload);
                 let title = "Batch solve failed";
                 if (response.status === 402) {
                     title = "Insufficient credits";
@@ -1594,7 +1646,10 @@ export default function DashboardPage() {
             });
             const batchSessionId = parsed.session_id != null ? String(parsed.session_id) : "";
             if (batchSessionId) {
-                setTimeout(() => router.push(`/edit/${batchSessionId}`), 350);
+                const target = selectedSolveTier === "FINAL"
+                    ? `/chat_final/${batchSessionId}`
+                    : `/edit/${batchSessionId}`;
+                setTimeout(() => router.push(target), 350);
             }
         } catch (err) {
             pushToast({
@@ -1661,7 +1716,8 @@ export default function DashboardPage() {
             }
 
             if (multiQuestionConfirmed && splitCandidates.length > 1) {
-                await handleSolveTextBatch(splitCandidates);
+                const sharedContext = extractSharedContext(textToSolve);
+                await handleSolveTextBatch(splitCandidates, sharedContext);
                 return;
             }
         }
@@ -1827,7 +1883,7 @@ export default function DashboardPage() {
                                             }
                                         }
                                     } else {
-                                        setTimeout(() => router.push(`/chat/${data.session_id}`), 500);
+                                        setTimeout(() => router.push(resolveSessionRoute(data.session_id)), 500);
                                     }
                                 } else if (data.error?.code === "ambiguous_response") {
                                     localStorage.removeItem("uask.activeAttemptId");
@@ -1839,12 +1895,26 @@ export default function DashboardPage() {
                                     if (data.error?.request_id) {
                                         setStreamingMeta((prev) => ({ ...(prev || {}), request_id: data.error.request_id }));
                                     }
+                                    const details = data.error?.details;
+                                    const providerMessage =
+                                        (typeof details?.message === "string" && details.message) ||
+                                        (typeof details?.provider_details?.message === "string" && details.provider_details.message) ||
+                                        "";
+                                    const requestId = data.error?.request_id;
+                                    const fullMessage = [
+                                        data.error?.message || "Solve failed",
+                                        providerMessage ? `provider: ${providerMessage}` : "",
+                                        requestId ? `request_id: ${requestId}` : "",
+                                    ]
+                                        .filter(Boolean)
+                                        .join(" | ");
                                     setLastSolveError({
                                         code: data.error?.code,
                                         message: data.error?.message,
-                                        request_id: data.error?.request_id,
+                                        request_id: requestId,
+                                        details,
                                     });
-                                    throw new Error(data.error?.message || "Solve failed");
+                                    throw new Error(fullMessage);
                                 }
                             }
                         } catch (e) {
@@ -1895,7 +1965,7 @@ export default function DashboardPage() {
                 setSolveProgress(100);
                 localStorage.removeItem("uask.activeAttemptId");
                 localStorage.removeItem("uask.activeQuery");
-                setTimeout(() => router.push(`/chat/${data.session_id}`), 500);
+                setTimeout(() => router.push(resolveSessionRoute(data.session_id)), 500);
             } else if (data.status === "ambiguous") {
                 setClarificationHistory(prev => [...prev, clarificationResponse]);
                 setClarificationMessage(data.clarifier_question || "Still ambiguous. Please provide more detail.");
@@ -2369,16 +2439,24 @@ export default function DashboardPage() {
                                                         }}
                                                         maxLength={textInputMaxChars || undefined}
                                                         onPaste={(pastedText) => {
+                                                            const effectiveText =
+                                                                textInputMaxChars > 0 && pastedText.length > textInputMaxChars
+                                                                    ? pastedText.slice(0, textInputMaxChars)
+                                                                    : pastedText;
                                                             if (textInputMaxChars > 0 && pastedText.length > textInputMaxChars) {
                                                                 setInputError(`Pasted text was truncated to ${textInputMaxChars} characters.`);
                                                             }
+                                                            // Preserve raw prose/math mixed text by switching to free text mode.
+                                                            setMathModeEnabled(false);
+                                                            setQuery(effectiveText);
                                                             setConfirmedBatchQuestions([]);
                                                             setMultiQuestionConfirmed(false);
                                                             setMathValidityConfirmed(false);
                                                             // Check for multi-question on paste
                                                             const checkResult = detectMultiQuestion(pastedText);
-                                                            if (checkResult.isMultiple && checkResult.confidence !== 'low') {
-                                                                setSuggestedSplits(autoSplitQuestions(pastedText));
+                                                            const autoSplits = autoSplitQuestions(pastedText);
+                                                            if (checkResult.isMultiple || autoSplits.length > 1) {
+                                                                setSuggestedSplits(autoSplits);
                                                                 setTimeout(() => setShowSplitModal(true), 500);
                                                             }
                                                         }}
@@ -2411,8 +2489,9 @@ export default function DashboardPage() {
                                                             setMathValidityConfirmed(false);
                                                             // Check for multi-question on paste
                                                             const checkResult = detectMultiQuestion(pastedText);
-                                                            if (checkResult.isMultiple && checkResult.confidence !== 'low') {
-                                                                setSuggestedSplits(autoSplitQuestions(pastedText));
+                                                            const autoSplits = autoSplitQuestions(pastedText);
+                                                            if (checkResult.isMultiple || autoSplits.length > 1) {
+                                                                setSuggestedSplits(autoSplits);
                                                                 setTimeout(() => setShowSplitModal(true), 500);
                                                             }
                                                         }}
@@ -2923,7 +3002,7 @@ export default function DashboardPage() {
                                     history.slice(0, 3).map((session) => (
                                         <div
                                             key={session.id}
-                                            onClick={() => router.push(`/chat/${session.id}`)}
+                                            onClick={() => router.push(resolveHistorySessionRoute(session))}
                                             className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:border-primary/30 transition-colors cursor-pointer group"
                                         >
                                             <div className="flex items-center gap-2 mb-1">
@@ -3122,6 +3201,7 @@ export default function DashboardPage() {
                                 <div>Credits After: {formatDebugNumber(debugAttemptDetails?.billing?.credits_after)}</div>
                                 <div>Error Code: {lastSolveError?.code ?? "-"}</div>
                                 <div>Error Request ID: {lastSolveError?.request_id ?? "-"}</div>
+                                <div>Error Message: {lastSolveError?.message ?? "-"}</div>
                             </div>
                             <div>
                                 <div>Input Tokens: {streamingTelemetry?.input_tokens ?? "-"}</div>
@@ -3307,15 +3387,37 @@ export default function DashboardPage() {
             <SplitModal
                 isOpen={showSplitModal}
                 onClose={() => setShowSplitModal(false)}
+                onDismiss={() => {
+                    const forceAll = suggestedSplits
+                        .map((q) => q.trim())
+                        .filter((q) => q.length > 0);
+                    if (forceAll.length === 0) {
+                        setShowSplitModal(false);
+                        return;
+                    }
+                    const sharedContext = extractSharedContext(query);
+                    const formatted = buildConfirmedInputText(forceAll, sharedContext);
+                    setConfirmedBatchQuestions(forceAll);
+                    setMultiQuestionConfirmed(true);
+                    setMathValidityConfirmed(false);
+                    setInputError(null);
+                    setMathModeEnabled(false);
+                    setQuery(formatted);
+                    setShowSplitModal(false);
+                }}
                 splits={suggestedSplits}
                 onSelectQuestion={(question) => {
-                    setQuery(question);
+                    const sharedContext = extractSharedContext(query);
+                    const selectedText = buildConfirmedInputText([question], sharedContext);
+                    setMathModeEnabled(false);
+                    setQuery(selectedText);
                     setConfirmedBatchQuestions([]);
                     setMultiQuestionConfirmed(false);
                     setMathValidityConfirmed(false);
                     setShowSplitModal(false);
                 }}
                 onConfirmSingleQuestion={() => {
+                    setMathModeEnabled(false);
                     setConfirmedBatchQuestions([]);
                     setMultiQuestionConfirmed(true);
                     setShowSplitModal(false);
@@ -3325,15 +3427,14 @@ export default function DashboardPage() {
                         .map((q) => q.trim())
                         .filter((q) => q.length > 0);
                     if (picked.length === 0) return;
-                    const formatted = formatQuestionsForInput(picked);
+                    const sharedContext = extractSharedContext(query);
+                    const formatted = buildConfirmedInputText(picked, sharedContext);
                     setConfirmedBatchQuestions(picked);
                     setMultiQuestionConfirmed(true);
                     setMathValidityConfirmed(false);
                     setInputError(null);
+                    setMathModeEnabled(false);
                     setQuery(formatted);
-                    if (mathInputRef.current) {
-                        mathInputRef.current.setValue(formatted);
-                    }
                     setShowSplitModal(false);
                 }}
             />
