@@ -9,6 +9,7 @@ interface RecognitionBoxProps {
   exportMode?: boolean;
   badgeLabel?: string;
   plainStyle?: boolean;
+  finalHandwritten?: boolean;
 }
 
 const hasStandaloneMathDelimiters = (text: string): boolean => {
@@ -52,7 +53,19 @@ export default function RecognitionBox({
   exportMode = false,
   badgeLabel = "AI recognized",
   plainStyle = false,
+  finalHandwritten = false,
 }: RecognitionBoxProps) {
+  if (finalHandwritten) {
+    return (
+      <div className={styles.recognitionBoxFinalHandwritten}>
+        <div className={styles.recognitionMetaFinalHandwritten}>{String(badgeLabel || "PROBLEM").toUpperCase()}</div>
+        <div className={styles.recognitionContentFinalHandwritten}>
+          <MathRenderer content={latex} mode="prose" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`${styles.recognitionBox} ${plainStyle ? styles.recognitionBoxPlain : ""}`.trim()}>
       <MathRenderer content={latex} mode="prose" />

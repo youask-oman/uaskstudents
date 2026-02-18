@@ -1,0 +1,160 @@
+{
+  "model": "qwen25-math7b:latest",
+  "base_url": "http://localhost:11434",
+  "total": 15,
+  "errors": 0,
+  "with_final_answer": 15,
+  "with_short_answer": 15,
+  "results": [
+    {
+      "index": 1,
+      "error": null,
+      "question": "Work to pump water (integrals): A cylindrical tank of radius 2 m is filled with water to a height of 5 m. Water must be ",
+      "raw_has_response": true,
+      "final_refusal": false,
+      "final_answer": "39200\\pi \\, dx \\]",
+      "short_refusal": false,
+      "short_answer": "39200\\pi \\, dx \\]"
+    },
+    {
+      "index": 2,
+      "error": null,
+      "question": "Cooling (differential equation): A metal part at 180?C is placed in a room at 22?C. After 6 minutes, it cools to 120?C. ",
+      "raw_has_response": true,
+      "final_refusal": false,
+      "final_answer": "-6k",
+      "short_refusal": false,
+      "short_answer": "-6k"
+    },
+    {
+      "index": 3,
+      "error": null,
+      "question": "Mixture with leakage (DE + concentration): A tank initially contains 100 L of pure water. Brine with 0.5 kg/L of salt fl",
+      "raw_has_response": true,
+      "final_refusal": false,
+      "final_answer": "\\frac{2S(t)}{100 + t} \\, \\text{",
+      "short_refusal": false,
+      "short_answer": "\\frac{2S(t)}{100 + t} \\, \\text{"
+    },
+    {
+      "index": 4,
+      "error": null,
+      "question": "Loan amortization (geometric series): You borrow $18,000 at 6.6% APR compounded monthly and make equal monthly payments ",
+      "raw_has_response": true,
+      "final_refusal": false,
+      "final_answer": "18000 \\frac{0.0055 \\times 1",
+      "short_refusal": false,
+      "short_answer": "18000 \\frac{0.0055 \\times 1"
+    },
+    {
+      "index": 5,
+      "error": null,
+      "question": "Two investments (systems + exponentials): You invest $12,000 split between an account earning 4.2% compounded monthly an",
+      "raw_has_response": true,
+      "final_refusal": false,
+      "final_answer": "14600 \\]",
+      "short_refusal": false,
+      "short_answer": "14600 \\]"
+    },
+    {
+      "index": 6,
+      "error": null,
+      "question": "Logistic growth (model + solving): A campus app has user growth modeled by P(t)=40000/(1 + A e^(-0.35t)), where t is in ",
+      "raw_has_response": true,
+      "final_refusal": false,
+      "final_answer": "\\frac{40000}{1 + 1",
+      "short_refusal": false,
+      "short_answer": "\\frac{40000}{1 + 1"
+    },
+    {
+      "index": 7,
+      "error": null,
+      "question": "Optimization with constraint (Lagrange multipliers): A manufacturer wants a closed cylindrical can with volume 500 cm^3.",
+      "raw_has_response": true,
+      "final_refusal": false,
+      "final_answer": "\\frac{500}{\\pi r^2} \\]",
+      "short_refusal": false,
+      "short_answer": "\\frac{500}{\\pi r^2} \\]"
+    },
+    {
+      "index": 8,
+      "error": null,
+      "question": "Area between curves (integration): A designer?s arch is bounded by y=2x and y=x^2. Find the area of the region enclosed ",
+      "raw_has_response": true,
+      "final_refusal": false,
+      "final_answer": "Therefore, the points of intersection are \\( (0, 0) \\) and \\( (2, 4) \\).",
+      "short_refusal": false,
+      "short_answer": "Therefore, the points of intersection are \\( (0, 0) \\) and \\( (2, 4) \\)."
+    },
+    {
+      "index": 9,
+      "error": null,
+      "question": "Average value (calculus + interpretation): A car?s speed (m/s) over 0 ? t ? 10 seconds is v(t)=3t - t^2/2. Find the aver",
+      "raw_has_response": true,
+      "final_refusal": false,
+      "final_answer": "3 \\left( \\frac{100}{2} \\right",
+      "short_refusal": false,
+      "short_answer": "3 \\left( \\frac{100}{2} \\right"
+    },
+    {
+      "index": 10,
+      "error": null,
+      "question": "Level: G11. Question (Final answer only) Solve the quadratic equation (give all real solutions): 2x^2 - 36x + 160 = 0. F",
+      "raw_has_response": true,
+      "final_refusal": false,
+      "final_answer": "0\\) are \\(\\boxed{8 \\text{ and } 10}\\).",
+      "short_refusal": false,
+      "short_answer": "0\\) are \\(\\boxed{8 \\text{ and } 10}\\)."
+    },
+    {
+      "index": 11,
+      "error": null,
+      "question": "Item 903 (Uni, Multiple-choice): Evaluate the contour integral: ?_|z|=4 1/((z--1.26)(z-5.89)) dz. Choices: (A) 2?i?-0.39",
+      "raw_has_response": true,
+      "final_refusal": false,
+      "final_answer": "\\lim_{z \\to z_0} (z - z_0)",
+      "short_refusal": false,
+      "short_answer": "\\lim_{z \\to z_0} (z - z_0)"
+    },
+    {
+      "index": 12,
+      "error": null,
+      "question": "Item 904 (College, Multiple-choice): Let f(x) = -3x^4 + 1x^3 - 1x^2 - 6x - 6. Compute f'(-2). Choices: (A) 112 (B) 94 (C",
+      "raw_has_response": true,
+      "final_refusal": false,
+      "final_answer": "-12(-2)^3 + 3(-2)^2 - 2(-2) - 6",
+      "short_refusal": false,
+      "short_answer": "-12(-2)^3 + 3(-2)^2 - 2(-2) - 6"
+    },
+    {
+      "index": 13,
+      "error": null,
+      "question": "Item 905 (College, Final answer only): Evaluate exactly: ?_0^1 (5x^4)/(1 + x^5) dx. Provide a simplified exact value.",
+      "raw_has_response": true,
+      "final_refusal": false,
+      "final_answer": "\\ln 2",
+      "short_refusal": false,
+      "short_answer": "\\ln 2"
+    },
+    {
+      "index": 14,
+      "error": null,
+      "question": "Item 906 (G11, Final answer only): Solve the quadratic equation (give all real solutions): 1x^2 - 18x + 81 = 0.",
+      "raw_has_response": true,
+      "final_refusal": false,
+      "final_answer": "\\frac{-(-18) \\pm \\sqrt{0}}{2 \\cdot 1}",
+      "short_refusal": false,
+      "short_answer": "\\frac{-(-18) \\pm \\sqrt{0}}{2 \\cdot 1}"
+    },
+    {
+      "index": 15,
+      "error": null,
+      "question": "Item 907 (College, Final answer only): Evaluate exactly: ?_0^1 (6x^5)/(1 + x^6) dx. Provide a simplified exact value.",
+      "raw_has_response": true,
+      "final_refusal": false,
+      "final_answer": "\\ln 2",
+      "short_refusal": false,
+      "short_answer": "\\ln 2"
+    }
+  ]
+}

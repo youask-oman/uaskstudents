@@ -25,6 +25,7 @@ interface SolutionStepsBlockProps {
   editable?: boolean;
   exportMode?: boolean;
   hideStepLabels?: boolean;
+  finalHandwritten?: boolean;
   onActiveTextEditorChange?: (editor: Editor | null, elementId: string | null) => void;
   onChange?: (next: {
     steps: StepRow[];
@@ -161,6 +162,7 @@ export default function SolutionStepsBlock({
   editable = false,
   exportMode = false,
   hideStepLabels = false,
+  finalHandwritten = false,
   onActiveTextEditorChange,
   onChange,
 }: SolutionStepsBlockProps) {
@@ -273,6 +275,18 @@ export default function SolutionStepsBlock({
   const displayAnswerText = finalAnswer?.answer_text || "";
   const displayAnswerLatex = finalAnswer?.answer_latex || result || "";
   const displayValues = finalAnswer?.values || [];
+
+  if (finalHandwritten) {
+    return (
+      <div className={styles.stepsBlockFinalHandwritten} ref={rootRef}>
+        <div className={styles.finalDividerFinalHandwritten} />
+        <div className={styles.resultMetaFinalHandwritten}>RESULT</div>
+        <div className={styles.resultContentFinalHandwritten}>
+          <MathRenderer content={displayAnswerLatex || displayAnswerText || result || ""} mode="prose" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.stepsBlock} ref={rootRef}>

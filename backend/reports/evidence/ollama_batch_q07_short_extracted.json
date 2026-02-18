@@ -1,0 +1,73 @@
+{
+  "schema_version": "prod_v2",
+  "tier": "SHORT_STEPS",
+  "language": {
+    "user_language": "English",
+    "preferred_response_language": "English",
+    "response_language": "English"
+  },
+  "runtime": {
+    "request_id": "extract-short-7",
+    "attempt_id": "extract-short-7",
+    "preferred_response_language": "English",
+    "default_mode": "GENERAL",
+    "default_graph_mode": "OFF",
+    "default_domain_mode": "reals",
+    "allow_auto_split": false,
+    "max_questions_allowed": 15,
+    "max_tasks_per_question": 6
+  },
+  "items": [
+    {
+      "question_id": "q1",
+      "question_index": 1,
+      "mode": "SOLVE",
+      "problem": {
+        "original_text": "Optimization with constraint (Lagrange multipliers): A manufacturer wants a closed cylindrical can with volume 500 cm^3. The metal for the top and bottom costs twice as much per cm^2 as the metal for the side. Find the radius and height that minimize cost.",
+        "normalized_text": "Optimization with constraint (Lagrange multipliers): A manufacturer wants a closed cylindrical can with volume 500 cm^3. The metal for the top and bottom costs twice as much per cm^2 as the metal for the side. Find the radius and height that minimize cost.",
+        "detected_tasks": [
+          "solve"
+        ],
+        "extra": []
+      },
+      "classification": {
+        "grade_band": "college_intro",
+        "domain": "other",
+        "topic": "ollama_text_extraction",
+        "difficulty": "medium"
+      },
+      "steps": [
+        {
+          "index": 1,
+          "title": "Short Steps",
+          "explanation": "Let's denote the radius of the cylinder by \\( r \\) and the height by \\( h \\). The volume of the cylinder is given by the formula: \\[ V = \\pi r^2 h \\] We are given that the volume is 500 cm^3, so we have the constraint:",
+          "math_latex": [
+            "\\left( \\frac{5}{\\sqrt[3]{\\pi}}, \\frac{20}{\\sqrt[3]{\\pi}} \\right)"
+          ]
+        }
+      ],
+      "final_answer": {
+        "answer_text": "\\left( \\frac{5}{\\sqrt[3]{\\pi}}, \\frac{20}{\\sqrt[3]{\\pi}} \\right)",
+        "answer_latex": "\\left( \\frac{5}{\\sqrt[3]{\\pi}}, \\frac{20}{\\sqrt[3]{\\pi}} \\right)",
+        "values": [],
+        "units": null,
+        "kind": "solution",
+        "target": null
+      },
+      "refusal": {
+        "is_refusal": false,
+        "reason": null,
+        "safe_next_step": null
+      },
+      "quality": {
+        "confidence": 0.62,
+        "common_mistakes": []
+      },
+      "plot": {
+        "should_visualize": false,
+        "decision_reason": "Local FINAL SymPy/NumPy solver returned final answer.",
+        "recipe": null
+      }
+    }
+  ]
+}

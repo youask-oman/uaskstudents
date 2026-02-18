@@ -1,0 +1,73 @@
+{
+  "schema_version": "prod_v2",
+  "tier": "SHORT_STEPS",
+  "language": {
+    "user_language": "English",
+    "preferred_response_language": "English",
+    "response_language": "English"
+  },
+  "runtime": {
+    "request_id": "extract-short-4",
+    "attempt_id": "extract-short-4",
+    "preferred_response_language": "English",
+    "default_mode": "GENERAL",
+    "default_graph_mode": "OFF",
+    "default_domain_mode": "reals",
+    "allow_auto_split": false,
+    "max_questions_allowed": 15,
+    "max_tasks_per_question": 6
+  },
+  "items": [
+    {
+      "question_id": "q1",
+      "question_index": 1,
+      "mode": "SOLVE",
+      "problem": {
+        "original_text": "Loan amortization (geometric series): You borrow $18,000 at 6.6% APR compounded monthly and make equal monthly payments for 4 years. Find the monthly payment, and then find the remaining balance after 18 payments.",
+        "normalized_text": "Loan amortization (geometric series): You borrow $18,000 at 6.6% APR compounded monthly and make equal monthly payments for 4 years. Find the monthly payment, and then find the remaining balance after 18 payments.",
+        "detected_tasks": [
+          "solve"
+        ],
+        "extra": []
+      },
+      "classification": {
+        "grade_band": "college_intro",
+        "domain": "other",
+        "topic": "ollama_text_extraction",
+        "difficulty": "medium"
+      },
+      "steps": [
+        {
+          "index": 1,
+          "title": "Short Steps",
+          "explanation": "To solve the problem of loan amplitude, we need to use the formula for the monthly payment of an amortized loan, which is given by: \\[ M = P \\frac{r(1+r)^n}{(1+r)^n-1} \\] where: - \\( M \\) is the monthly payment, - \\( P \\) is the principal loan amount ($18,000), - \\( r \\) is the monthly interest rate (6.6% annual interest rate divided by 12 months), - \\( n \\) is the total number of payments (4 years times 12 months per year).",
+          "math_latex": [
+            "11473.20"
+          ]
+        }
+      ],
+      "final_answer": {
+        "answer_text": "11473.20",
+        "answer_latex": "11473.20",
+        "values": [],
+        "units": null,
+        "kind": "solution",
+        "target": null
+      },
+      "refusal": {
+        "is_refusal": false,
+        "reason": null,
+        "safe_next_step": null
+      },
+      "quality": {
+        "confidence": 0.62,
+        "common_mistakes": []
+      },
+      "plot": {
+        "should_visualize": false,
+        "decision_reason": "Local FINAL SymPy/NumPy solver returned final answer.",
+        "recipe": null
+      }
+    }
+  ]
+}

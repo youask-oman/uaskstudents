@@ -1,0 +1,73 @@
+{
+  "schema_version": "prod_v2",
+  "tier": "SHORT_STEPS",
+  "language": {
+    "user_language": "English",
+    "preferred_response_language": "English",
+    "response_language": "English"
+  },
+  "runtime": {
+    "request_id": "extract-short-3",
+    "attempt_id": "extract-short-3",
+    "preferred_response_language": "English",
+    "default_mode": "GENERAL",
+    "default_graph_mode": "OFF",
+    "default_domain_mode": "reals",
+    "allow_auto_split": false,
+    "max_questions_allowed": 15,
+    "max_tasks_per_question": 6
+  },
+  "items": [
+    {
+      "question_id": "q1",
+      "question_index": 1,
+      "mode": "SOLVE",
+      "problem": {
+        "original_text": "Mixture with leakage (DE + concentration): A tank initially contains 100 L of pure water. Brine with 0.5 kg/L of salt flows in at 3 L/min, and the well-mixed solution flows out at 2 L/min (so the volume changes). Find the amount of salt in the tank after 20 minutes.",
+        "normalized_text": "Mixture with leakage (DE + concentration): A tank initially contains 100 L of pure water. Brine with 0.5 kg/L of salt flows in at 3 L/min, and the well-mixed solution flows out at 2 L/min (so the volume changes). Find the amount of salt in the tank after 20 minutes.",
+        "detected_tasks": [
+          "solve"
+        ],
+        "extra": []
+      },
+      "classification": {
+        "grade_band": "college_intro",
+        "domain": "other",
+        "topic": "ollama_text_extraction",
+        "difficulty": "medium"
+      },
+      "steps": [
+        {
+          "index": 1,
+          "title": "Short Steps",
+          "explanation": "To solve the problem, we need to determine the amount of salt in the tank after 20 minutes. Let's denote the amount of salt in the tank at time \\( t \\) by \\( S(t) \\) (in kg). First, we calculate the rate at which salt is entering the tank. The brine flow rate is 3 L/min and the concentration of salt in the brine is 0.5 kg/L. Therefore, the rate at which salt is entering the tank is: \\[ \\text{Rate in} = 3 \\, \\text{L/min} \\times 0.5 \\, \\text{kg/L} = 1.5 \\, \\text{kg/min} \\] Next, we calculate the rate at which salt is leaving the tank. The solution flow rate out of the tank is 2 L/min. The concentration of salt in the tank at any time \\( t \\) is \\( \\frac{S(t)}{V(t)} \\), where \\( V(t) \\) is the volume of the solution in the tank at time \\( t \\). Initially, the tank contains 100 L of pure water, and the volume changes at a rate of \\( 3 \\, \\text{L/min} - 2 \\, \\text{L/min} = 1 \\, \\text{L/min} \\). Therefore, the volume of the solution in the tank at time \\( t \\) is: \\[ V(t) = 100 + t \\] So, the rate at which salt is leaving the tank is: \\[ \\text{Rate out} = 2 \\, \\text{L/min} \\times \\frac{S(t)}{100 + t} = \\frac{2S(t)}{100 + t} \\, \\text{kg/min} \\]",
+          "math_latex": [
+            "1 \\, \\text{L/min} \\). Therefore, the volume of the solution in the tank at time \\( t \\) is:"
+          ]
+        }
+      ],
+      "final_answer": {
+        "answer_text": "1 \\, \\text{L/min} \\). Therefore, the volume of the solution in the tank at time \\( t \\) is:",
+        "answer_latex": "1 \\, \\text{L/min} \\). Therefore, the volume of the solution in the tank at time \\( t \\) is:",
+        "values": [],
+        "units": null,
+        "kind": "solution",
+        "target": null
+      },
+      "refusal": {
+        "is_refusal": false,
+        "reason": null,
+        "safe_next_step": null
+      },
+      "quality": {
+        "confidence": 0.62,
+        "common_mistakes": []
+      },
+      "plot": {
+        "should_visualize": false,
+        "decision_reason": "Local FINAL SymPy/NumPy solver returned final answer.",
+        "recipe": null
+      }
+    }
+  ]
+}

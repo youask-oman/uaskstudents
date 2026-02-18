@@ -1,0 +1,73 @@
+{
+  "schema_version": "prod_v2",
+  "tier": "SHORT_STEPS",
+  "language": {
+    "user_language": "English",
+    "preferred_response_language": "English",
+    "response_language": "English"
+  },
+  "runtime": {
+    "request_id": "extract-short-14",
+    "attempt_id": "extract-short-14",
+    "preferred_response_language": "English",
+    "default_mode": "GENERAL",
+    "default_graph_mode": "OFF",
+    "default_domain_mode": "reals",
+    "allow_auto_split": false,
+    "max_questions_allowed": 15,
+    "max_tasks_per_question": 6
+  },
+  "items": [
+    {
+      "question_id": "q1",
+      "question_index": 1,
+      "mode": "SOLVE",
+      "problem": {
+        "original_text": "Item 906 (G11, Final answer only): Solve the quadratic equation (give all real solutions): 1x^2 - 18x + 81 = 0.",
+        "normalized_text": "Item 906 (G11, Final answer only): Solve the quadratic equation (give all real solutions): 1x^2 - 18x + 81 = 0.",
+        "detected_tasks": [
+          "solve"
+        ],
+        "extra": []
+      },
+      "classification": {
+        "grade_band": "college_intro",
+        "domain": "other",
+        "topic": "ollama_text_extraction",
+        "difficulty": "medium"
+      },
+      "steps": [
+        {
+          "index": 1,
+          "title": "Short Steps",
+          "explanation": "To solve the quadratic equation \\( x^2 - 18x + 81 = 0 \\), we can follow these steps: 1. **Identify the coefficients**: The given quadratic equation is in the standard form \\( ax^2 + bx + c = 0 \\). Here, \\( a = 1 \\), \\( b = -18 \\), and \\( c = 81 \\). 2. **Calculate the discriminant**: The discriminant (\\( \\Delta \\)) of a quadratic equation \\( ax^2 + bx + c = 0 \\) is given by: \\[ \\Delta = b^2 - 4ac \\] Substituting the values of \\( a \\), \\( b \\), and \\( c \\): \\[ \\Delta = (-18)^2 - 4 \\cdot 1 \\cdot 81 \\] Simplify the expression: \\[ \\Delta = 324 - 324 \\] \\[ \\Delta = 0 \\]",
+          "math_latex": [
+            "9"
+          ]
+        }
+      ],
+      "final_answer": {
+        "answer_text": "9",
+        "answer_latex": "9",
+        "values": [],
+        "units": null,
+        "kind": "solution",
+        "target": null
+      },
+      "refusal": {
+        "is_refusal": false,
+        "reason": null,
+        "safe_next_step": null
+      },
+      "quality": {
+        "confidence": 0.62,
+        "common_mistakes": []
+      },
+      "plot": {
+        "should_visualize": false,
+        "decision_reason": "Local FINAL SymPy/NumPy solver returned final answer.",
+        "recipe": null
+      }
+    }
+  ]
+}

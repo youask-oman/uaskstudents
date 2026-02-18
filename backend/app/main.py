@@ -65,7 +65,7 @@ from slowapi.errors import RateLimitExceeded
 from app.api import limiter
 from pathlib import Path
 from app.services.llm import get_llm_manager
-from app.services.llm.manager import get_configured_openai_model
+from app.services.llm.manager import get_configured_openai_model, get_configured_ollama_model
 from app.services.math_render_service import get_math_render_service
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -436,13 +436,15 @@ async def llm_health_check():
         openai_model = get_configured_openai_model()
     except Exception as exc:
         openai_model = f"unavailable: {str(exc)}"
-    ollama_model = (os.environ.get("OLLAMA_MODEL") or "qwen25-math7b:latest").strip()
+    ollama_model = get_configured_ollama_model()
+    ollama_final_model = get_configured_ollama_model("FINAL")
     return {
         "provider": manager.primary_provider,
         "fallback_enabled": manager.fallback_enabled,
         "models": {
             "openai_default": openai_model,
             "ollama_default": ollama_model,
+            "ollama_final": ollama_final_model,
         },
         "openai": openai,
         "ollama": ollama,

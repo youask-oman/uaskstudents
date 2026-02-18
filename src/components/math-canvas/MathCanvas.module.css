@@ -309,7 +309,7 @@
   height: 38px;
   border-radius: 10px;
   border: 1px solid #bfd0e6;
-  background: #ffffff;
+  background: #eef6ff;
   color: #18416b;
   padding: 0 12px;
   font-weight: 700;
@@ -2002,6 +2002,20 @@
   gap: 10px;
 }
 
+.paperSettingsGrid {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(320px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.paperSettingsColumnLeft,
+.paperSettingsColumnRight {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
 .paperSettingsSection {
   display: grid;
   gap: 8px;
@@ -2052,6 +2066,43 @@
   border-color: #0891b2;
   background: rgba(8, 145, 178, 0.1);
   color: #0f766e;
+}
+
+.paperSelect {
+  width: 100%;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid #cfd9e8;
+  background: #ffffff;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 10px;
+}
+
+.paperRangeRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.paperRangeRow input[type="range"] {
+  flex: 1;
+}
+
+.paperRangeValue {
+  min-width: 48px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+}
+
+@media (max-width: 960px) {
+  .paperSettingsGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
 }
 
 .richTextToolbar {
@@ -2748,4 +2799,163 @@
   background: transparent;
   border: 0;
   margin-left: 46px;
+}
+
+/* FINAL-only handwritten paper variant (used by /chat_final) */
+.pagesStackFinalHandwritten {
+  position: relative;
+}
+
+.pagesStackFinalHandwritten :global(.paper) {
+  max-width: 940px;
+}
+
+.paperPageFinalHandwritten {
+  background: #ffffff;
+  background-image: none !important;
+  border: 0;
+  border-radius: 0;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.10);
+  padding: 2.8rem 2.9rem;
+  position: relative;
+}
+
+.paperToneWhite .paperPageFinalHandwritten {
+  background: #ffffff;
+}
+
+.paperToneCream .paperPageFinalHandwritten {
+  background: #fffdf5;
+}
+
+.paperToneSage .paperPageFinalHandwritten {
+  background: #f0f4f1;
+}
+
+.paperToneSky .paperPageFinalHandwritten {
+  background: #f0f7ff;
+}
+
+.paperPageFinalHandwritten::before,
+.paperPageFinalHandwritten::after {
+  content: none;
+}
+
+.paperPageHeaderFinalHandwritten {
+  margin-bottom: 24px;
+}
+
+.paperChapterTitleFinalHandwritten {
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #7f8da0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.paperVersionBadgeFinalHandwritten {
+  background: #f4f4f4;
+  border: 1px solid #ececec;
+  color: #8a96a8;
+  font-size: 12px;
+  font-weight: 700;
+  height: 30px;
+}
+
+.paperPageFinalHandwritten .paperBlocksStack {
+  padding-left: 0;
+}
+
+.pagesStackFinalHandwritten {
+  max-width: 980px;
+  margin: 0 auto;
+  gap: 52px;
+}
+
+.pagesStackFinalHandwritten .paperPageFinalHandwritten {
+  width: min(100%, 860px);
+  margin: 0 auto;
+}
+
+.pagesStackFinalHandwritten .paperBlockWrap {
+  margin-bottom: 0;
+}
+
+.recognitionBoxFinalHandwritten {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.recognitionMetaFinalHandwritten {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  color: #9aa3b2;
+  margin-bottom: 18px;
+  text-transform: uppercase;
+}
+
+.recognitionContentFinalHandwritten {
+  font-family: var(--final-hand-font-family, "Kalam", "Architects Daughter", "Gochi Hand", cursive);
+  font-size: var(--final-hand-font-size, 15px);
+  line-height: 1.28;
+  color: #131313;
+}
+
+.recognitionContentFinalHandwritten :global(mjx-container),
+.recognitionContentFinalHandwritten :global(.katex) {
+  font-size: 1em !important;
+  color: #131313 !important;
+}
+
+.stepsBlockFinalHandwritten {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.finalDividerFinalHandwritten {
+  margin: 10px 0 10px;
+  border-top: 1px dashed #ebedf0;
+}
+
+.resultMetaFinalHandwritten {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  color: #9aa3b2;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.resultContentFinalHandwritten {
+  font-family: var(--final-hand-font-family, "Kalam", "Architects Daughter", "Gochi Hand", cursive);
+  font-size: var(--final-hand-result-font-size, 20px);
+  line-height: 1.25;
+  color: #111111;
+}
+
+.resultContentFinalHandwritten :global(mjx-container),
+.resultContentFinalHandwritten :global(.katex) {
+  font-size: 1em !important;
+  color: #111111 !important;
+}
+
+.pagesStackFinalHandwritten .paperCanvas {
+  display: none;
+}
+
+.pagesStackFinalHandwritten .paperPage {
+  border: 0;
+}
+
+.pagesStackFinalHandwritten .paperPage::before,
+.pagesStackFinalHandwritten .paperPage::after {
+  content: none !important;
+}
+
+.centerColumnFinalHandwritten {
+  background: #f3f3f3 !important;
+  background-image: none !important;
 }

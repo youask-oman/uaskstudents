@@ -24,6 +24,7 @@ interface EditorToolbarProps {
   activeEditor?: Editor | null;
   onNotice?: (message: string) => void;
   onInsertImage?: () => void;
+  disablePrimaryTools?: boolean;
 }
 
 const toolButtons: Array<{ tool: ToolType; icon: string; label: string; accent?: boolean }> = [
@@ -100,6 +101,7 @@ export default function EditorToolbar({
   activeEditor,
   onNotice,
   onInsertImage,
+  disablePrimaryTools = false,
 }: EditorToolbarProps) {
   const getFocusedTextInput = (): HTMLTextAreaElement | HTMLInputElement | null => {
     if (typeof document === "undefined") return null;
@@ -226,10 +228,10 @@ export default function EditorToolbar({
               accent={tool.accent}
               active={tool.tool === activeTool || (tool.tool === "palette" && paletteOpen)}
               onClick={() => onSelectTool(tool.tool)}
+              disabled={disablePrimaryTools}
             />
           </React.Fragment>
         ))}
-
         <span className={styles.divider} />
 
         {/* Rich Text Controls moved here */}

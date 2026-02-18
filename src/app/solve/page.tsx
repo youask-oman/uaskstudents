@@ -862,7 +862,9 @@ export default function DashboardPage() {
     const [selectedSolveTier, setSelectedSolveTier] = useState<SolveTier>("STANDARD");
     const isPlotLockedByTier = selectedSolveTier === "FINAL";
     const resolveSessionRoute = (sessionId: string | number) =>
-        selectedSolveTier === "FINAL" ? `/chat_final/${sessionId}` : `/chat/${sessionId}`;
+        (selectedSolveTier === "FINAL" || selectedSolveTier === "SHORT_STEPS")
+            ? `/chat_final/${sessionId}`
+            : `/chat/${sessionId}`;
     const resolveHistorySessionRoute = (session: ChatSession) => {
         const telemetry = session?.telemetry;
         const rawTier =
@@ -871,7 +873,8 @@ export default function DashboardPage() {
             telemetry?.tier_requested ||
             telemetry?.tier ||
             "";
-        return String(rawTier).trim().toUpperCase() === "FINAL"
+        const normalizedTier = String(rawTier).trim().toUpperCase();
+        return (normalizedTier === "FINAL" || normalizedTier === "SHORT_STEPS")
             ? `/chat_final/${session.id}`
             : `/chat/${session.id}`;
     };
@@ -1646,7 +1649,7 @@ export default function DashboardPage() {
             });
             const batchSessionId = parsed.session_id != null ? String(parsed.session_id) : "";
             if (batchSessionId) {
-                const target = selectedSolveTier === "FINAL"
+                const target = (selectedSolveTier === "FINAL" || selectedSolveTier === "SHORT_STEPS")
                     ? `/chat_final/${batchSessionId}`
                     : `/edit/${batchSessionId}`;
                 setTimeout(() => router.push(target), 350);
@@ -2086,18 +2089,18 @@ export default function DashboardPage() {
                                     <SegmentedControl
                                         options={[
                                             {
-                                                value: "SHORT_STEPS",
-                                                label: "Short Steps",
-                                                icon: "bolt",
-                                                disabled: !canAffordTier("SHORT_STEPS"),
-                                                tooltip: !canAffordTier("SHORT_STEPS") ? `Need ${Number(tierEstimateByTier.SHORT_STEPS || 0).toFixed(2)} credits.` : undefined,
-                                            },
-                                            {
                                                 value: "FINAL",
                                                 label: "Final Answer",
                                                 icon: "bolt",
                                                 disabled: !canAffordTier("FINAL"),
                                                 tooltip: !canAffordTier("FINAL") ? `Need ${Number(tierEstimateByTier.FINAL || 0).toFixed(2)} credits.` : undefined,
+                                            },
+                                            {
+                                                value: "SHORT_STEPS",
+                                                label: "Short Steps",
+                                                icon: "bolt",
+                                                disabled: !canAffordTier("SHORT_STEPS"),
+                                                tooltip: !canAffordTier("SHORT_STEPS") ? `Need ${Number(tierEstimateByTier.SHORT_STEPS || 0).toFixed(2)} credits.` : undefined,
                                             },
                                             {
                                                 value: "STANDARD",

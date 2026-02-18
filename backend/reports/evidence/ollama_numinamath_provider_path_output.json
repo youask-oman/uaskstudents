@@ -1,0 +1,38 @@
+{
+  "provider": "ollama",
+  "model": "NuminaMath.gguf:latest",
+  "content": "{\"final_answer\": \"5\"}",
+  "usage": {
+    "input": 67,
+    "output": 9,
+    "total": 76,
+    "cached": null,
+    "prompt_eval_duration": 338473800,
+    "eval_duration": 203575800,
+    "total_duration": 819632000,
+    "load_duration": 108236300
+  },
+  "status": {
+    "status": "completed",
+    "finish_reason": "stop",
+    "done": true
+  },
+  "payload": {
+    "base_url": "http://localhost:11434",
+    "full_input_prompt": "[USER]\nA vector has components <-3, 4>. What is its magnitude? Return only the final answer.\n\nReturn ONLY valid JSON that matches this schema exactly:\n{\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"final_answer\"], \"properties\": {\"final_answer\": {\"type\": \"string\"}}}",
+    "ollama_metrics": {
+      "total_duration": 819632000,
+      "load_duration": 108236300,
+      "prompt_eval_count": 67,
+      "prompt_eval_duration": 338473800,
+      "eval_count": 9,
+      "eval_duration": 203575800
+    },
+    "options": {
+      "temperature": 0.0,
+      "num_ctx": 4096,
+      "num_predict": 128
+    },
+    "english_only_enforced": false
+  }
+}

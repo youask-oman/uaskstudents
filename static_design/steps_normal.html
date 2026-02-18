@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>MathSolve AI - Structured Insight</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec5b13",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#221610",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans", "sans-serif"],
+                        "math": ["Cambria", "Cochin", "Georgia", "Times", "Times New Roman", "serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .latex-font {
+            font-family: 'Latin Modern Math', 'Cambria Math', 'Times New Roman', serif;
+            font-style: italic;
+        }
+        .step-number::after {
+            content: '';
+            position: absolute;
+            top: 24px;
+            left: 50%;
+            width: 1px;
+            height: calc(100% - 12px);
+            background-color: #e5e7eb;
+            z-index: 0;
+        }
+        .last-step::after {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 transition-colors duration-300">
+<!-- Top Navigation Bar -->
+<header class="sticky top-0 z-50 w-full border-b border-primary/10 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md">
+<div class="max-w-[1200px] mx-auto px-6 h-16 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="bg-primary p-1.5 rounded-lg text-white">
+<span class="material-symbols-outlined text-2xl block">functions</span>
+</div>
+<h1 class="text-xl font-bold tracking-tight text-slate-800 dark:text-white">MathSolve AI</h1>
+</div>
+<!-- Mode Toggle (Segmented Control) -->
+<div class="bg-slate-100 dark:bg-white/5 p-1 rounded-xl flex items-center">
+<button class="px-4 py-1.5 text-sm font-semibold rounded-lg text-slate-500 hover:text-slate-700 transition-all">
+                    Mode A — Speed
+                </button>
+<button class="px-4 py-1.5 text-sm font-semibold rounded-lg bg-white dark:bg-primary shadow-sm text-primary dark:text-white transition-all">
+                    Mode B — Structured
+                </button>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="h-8 w-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center overflow-hidden">
+<span class="material-symbols-outlined text-primary">account_circle</span>
+</div>
+</div>
+</div>
+</header>
+<main class="max-w-[900px] mx-auto px-6 py-12">
+<!-- Batch Header -->
+<div class="mb-10">
+<nav class="flex items-center gap-2 text-sm text-slate-500 mb-4">
+<span>Dashboard</span>
+<span class="material-symbols-outlined text-xs">chevron_right</span>
+<span>Calculus III</span>
+<span class="material-symbols-outlined text-xs">chevron_right</span>
+<span class="text-primary font-medium">Integration Batch #104</span>
+</nav>
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div>
+<h2 class="text-4xl font-black text-slate-900 dark:text-white tracking-tight">Structured Insight View</h2>
+<p class="text-slate-500 dark:text-slate-400 mt-2 text-lg">Batch Results: 3 Problems Solved with detailed logical proofs.</p>
+</div>
+<div class="flex gap-2">
+<button class="flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-white/10 rounded-lg text-sm font-semibold hover:bg-white dark:hover:bg-white/5 transition-colors dark:text-white">
+<span class="material-symbols-outlined text-sm">download</span>
+                        Export PDF
+                    </button>
+<button class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold shadow-lg shadow-primary/20 hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-sm">share</span>
+                        Share Results
+                    </button>
+</div>
+</div>
+</div>
+<!-- Problem Cards Vertical Feed -->
+<div class="space-y-12">
+<!-- Problem 1 Card -->
+<article class="bg-white dark:bg-[#2a1d17] rounded-xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-white/5 overflow-hidden">
+<div class="p-8 border-b border-slate-50 dark:border-white/5">
+<div class="flex items-center gap-3 mb-4">
+<span class="px-2.5 py-1 bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider rounded">Problem 01</span>
+<span class="text-sm font-medium text-slate-400">Quadratic Optimization</span>
+</div>
+<h3 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Problem Statement</h3>
+<div class="p-6 bg-slate-50 dark:bg-white/5 rounded-lg italic latex-font text-lg text-slate-800 dark:text-slate-200 leading-relaxed">
+                        Find the maximum value of the function <span class="font-math">f(x,y) = xy</span> subject to the circular constraint <span class="font-math">g(x,y) = x^2 + y^2 - 1 = 0</span> using the method of Lagrange Multipliers.
+                    </div>
+</div>
+<div class="p-8 space-y-8">
+<h4 class="text-sm font-bold text-slate-400 uppercase tracking-widest">Logical Progression</h4>
+<div class="relative space-y-10">
+<!-- Step 1 -->
+<div class="flex gap-6 relative">
+<div class="step-number flex-shrink-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm relative z-10 shadow-lg shadow-primary/30">1</div>
+<div class="pt-1">
+<h5 class="font-bold text-slate-900 dark:text-white mb-2">Set up the Lagrangian</h5>
+<p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Define the Lagrangian function by combining the objective function and the constraint with the multiplier λ.</p>
+<div class="latex-font text-lg text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-white/5 p-3 rounded-lg inline-block">
+                                    L(x, y, λ) = xy - λ(x^2 + y^2 - 1)
+                                </div>
+</div>
+</div>
+<!-- Step 2 -->
+<div class="flex gap-6 relative">
+<div class="step-number flex-shrink-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm relative z-10 shadow-lg shadow-primary/30">2</div>
+<div class="pt-1">
+<h5 class="font-bold text-slate-900 dark:text-white mb-2">Compute Partial Derivatives</h5>
+<p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Set the gradient of the Lagrangian equal to zero to find the critical points.</p>
+<div class="flex flex-col gap-2">
+<div class="latex-font text-slate-800 dark:text-slate-200">∂L/∂x = y - 2λx = 0</div>
+<div class="latex-font text-slate-800 dark:text-slate-200">∂L/∂y = x - 2λy = 0</div>
+<div class="latex-font text-slate-800 dark:text-slate-200">∂L/∂λ = -(x^2 + y^2 - 1) = 0</div>
+</div>
+</div>
+</div>
+<!-- Step 3 -->
+<div class="flex gap-6 relative">
+<div class="step-number flex-shrink-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm relative z-10 shadow-lg shadow-primary/30">3</div>
+<div class="pt-1">
+<h5 class="font-bold text-slate-900 dark:text-white mb-2">Solve the System</h5>
+<p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">From (1) and (2), we get <span class="latex-font">y = 2λx</span> and <span class="latex-font">x = 2λy</span>. Substituting results in <span class="latex-font">x^2 = y^2</span>.</p>
+<div class="latex-font text-lg text-slate-800 dark:text-slate-200">2x^2 = 1 ⇒ x = ±1/√2, y = ±1/√2</div>
+</div>
+</div>
+<!-- Step 4 -->
+<div class="flex gap-6 relative last-step">
+<div class="step-number flex-shrink-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm relative z-10 shadow-lg shadow-primary/30">4</div>
+<div class="pt-1">
+<h5 class="font-bold text-slate-900 dark:text-white mb-2">Evaluate Critical Points</h5>
+<p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">Substitute critical points into <span class="latex-font">f(x,y)</span> to determine the maximum value.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-primary p-8 text-white">
+<div class="flex items-center justify-between">
+<div>
+<span class="text-xs font-bold uppercase tracking-widest opacity-80">Final Answer</span>
+<div class="text-3xl font-black mt-1 latex-font">f_{max} = 1/2</div>
+</div>
+<div class="bg-white/20 p-3 rounded-xl backdrop-blur-sm">
+<span class="material-symbols-outlined text-3xl">verified</span>
+</div>
+</div>
+</div>
+</article>
+<!-- Problem 2 Card -->
+<article class="bg-white dark:bg-[#2a1d17] rounded-xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-white/5 overflow-hidden">
+<div class="p-8 border-b border-slate-50 dark:border-white/5">
+<div class="flex items-center gap-3 mb-4">
+<span class="px-2.5 py-1 bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider rounded">Problem 02</span>
+<span class="text-sm font-medium text-slate-400">Complex Definite Integral</span>
+</div>
+<h3 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Problem Statement</h3>
+<div class="p-6 bg-slate-50 dark:bg-white/5 rounded-lg italic latex-font text-lg text-slate-800 dark:text-slate-200 leading-relaxed">
+                        Evaluate the integral <span class="font-math">∫[0 to 2] 1/(x^2 + 4) dx</span> using trigonometric substitution.
+                    </div>
+</div>
+<div class="p-8 space-y-8">
+<h4 class="text-sm font-bold text-slate-400 uppercase tracking-widest">Logical Progression</h4>
+<div class="relative space-y-10">
+<!-- Step 1 -->
+<div class="flex gap-6 relative">
+<div class="step-number flex-shrink-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm relative z-10">1</div>
+<div class="pt-1">
+<h5 class="font-bold text-slate-900 dark:text-white mb-2">Trigonometric Substitution</h5>
+<p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Let <span class="latex-font">x = 2 tan(θ)</span>, which implies <span class="latex-font">dx = 2 sec^2(θ) dθ</span>.</p>
+</div>
+</div>
+<!-- Step 2 -->
+<div class="flex gap-6 relative">
+<div class="step-number flex-shrink-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm relative z-10">2</div>
+<div class="pt-1">
+<h5 class="font-bold text-slate-900 dark:text-white mb-2">Change Limits of Integration</h5>
+<p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">When <span class="latex-font">x = 0, θ = 0</span>. When <span class="latex-font">x = 2, tan(θ) = 1</span>, so <span class="latex-font">θ = π/4</span>.</p>
+</div>
+</div>
+<!-- Step 3 -->
+<div class="flex gap-6 relative">
+<div class="step-number flex-shrink-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm relative z-10">3</div>
+<div class="pt-1">
+<h5 class="font-bold text-slate-900 dark:text-white mb-2">Simplify Integrand</h5>
+<p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Substitute terms: <span class="latex-font">∫ (2 sec^2(θ))/(4 tan^2(θ) + 4) dθ = ∫ (2 sec^2(θ))/(4 sec^2(θ)) dθ</span>.</p>
+<div class="latex-font text-lg text-slate-800 dark:text-slate-200">∫[0 to π/4] (1/2) dθ</div>
+</div>
+</div>
+<!-- Step 4 -->
+<div class="flex gap-6 relative last-step">
+<div class="step-number flex-shrink-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm relative z-10">4</div>
+<div class="pt-1">
+<h5 class="font-bold text-slate-900 dark:text-white mb-2">Definite Integration</h5>
+<p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">Evaluate the simple integral at the boundaries.</p>
+<div class="latex-font text-lg text-slate-800 dark:text-slate-200">[(1/2)θ] from 0 to π/4</div>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-primary p-8 text-white">
+<div class="flex items-center justify-between">
+<div>
+<span class="text-xs font-bold uppercase tracking-widest opacity-80">Final Answer</span>
+<div class="text-3xl font-black mt-1 latex-font">π/8</div>
+</div>
+<div class="bg-white/20 p-3 rounded-xl backdrop-blur-sm">
+<span class="material-symbols-outlined text-3xl">verified</span>
+</div>
+</div>
+</div>
+</article>
+<!-- Problem 3 Card -->
+<article class="bg-white dark:bg-[#2a1d17] rounded-xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-white/5 overflow-hidden">
+<div class="p-8 border-b border-slate-50 dark:border-white/5">
+<div class="flex items-center gap-3 mb-4">
+<span class="px-2.5 py-1 bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider rounded">Problem 03</span>
+<span class="text-sm font-medium text-slate-400">Differential Equations</span>
+</div>
+<h3 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Problem Statement</h3>
+<div class="p-6 bg-slate-50 dark:bg-white/5 rounded-lg italic latex-font text-lg text-slate-800 dark:text-slate-200 leading-relaxed">
+                        Solve the second-order linear homogeneous differential equation: <span class="font-math">y'' - 5y' + 6y = 0</span> with initial conditions <span class="font-math">y(0) = 2, y'(0) = 5</span>.
+                    </div>
+</div>
+<div class="p-8 space-y-8">
+<h4 class="text-sm font-bold text-slate-400 uppercase tracking-widest">Logical Progression</h4>
+<div class="relative space-y-10">
+<!-- Step 1 -->
+<div class="flex gap-6 relative">
+<div class="step-number flex-shrink-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm relative z-10">1</div>
+<div class="pt-1">
+<h5 class="font-bold text-slate-900 dark:text-white mb-2">Characteristic Equation</h5>
+<p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Assume a solution of the form <span class="latex-font">y = e^{rt}</span>.</p>
+<div class="latex-font text-lg text-slate-800 dark:text-slate-200">r^2 - 5r + 6 = 0</div>
+</div>
+</div>
+<!-- Step 2 -->
+<div class="flex gap-6 relative">
+<div class="step-number flex-shrink-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm relative z-10">2</div>
+<div class="pt-1">
+<h5 class="font-bold text-slate-900 dark:text-white mb-2">Find Roots and General Solution</h5>
+<p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Factor the quadratic: <span class="latex-font">(r-2)(r-3) = 0</span>. Roots are <span class="latex-font">r_1=2, r_2=3</span>.</p>
+<div class="latex-font text-lg text-slate-800 dark:text-slate-200">y(t) = c_1 e^{2t} + c_2 e^{3t}</div>
+</div>
+</div>
+<!-- Step 3 -->
+<div class="flex gap-6 relative">
+<div class="step-number flex-shrink-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm relative z-10">3</div>
+<div class="pt-1">
+<h5 class="font-bold text-slate-900 dark:text-white mb-2">Apply Initial Conditions</h5>
+<p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Using <span class="latex-font">y(0)=2</span> and <span class="latex-font">y'(0)=5</span> to find coefficients.</p>
+<div class="flex flex-col gap-1">
+<div class="latex-font text-slate-800 dark:text-slate-200">c_1 + c_2 = 2</div>
+<div class="latex-font text-slate-800 dark:text-slate-200">2c_1 + 3c_2 = 5</div>
+</div>
+</div>
+</div>
+<!-- Step 4 -->
+<div class="flex gap-6 relative last-step">
+<div class="step-number flex-shrink-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm relative z-10">4</div>
+<div class="pt-1">
+<h5 class="font-bold text-slate-900 dark:text-white mb-2">Solve for Coefficients</h5>
+<p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">Solving the system yields <span class="latex-font">c_1 = 1, c_2 = 1</span>.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-primary p-8 text-white">
+<div class="flex items-center justify-between">
+<div>
+<span class="text-xs font-bold uppercase tracking-widest opacity-80">Final Answer</span>
+<div class="text-3xl font-black mt-1 latex-font">y(t) = e^{2t} + e^{3t}</div>
+</div>
+<div class="bg-white/20 p-3 rounded-xl backdrop-blur-sm">
+<span class="material-symbols-outlined text-3xl">verified</span>
+</div>
+</div>
+</div>
+</article>
+</div>
+<!-- Footer -->
+<footer class="mt-20 py-10 border-t border-slate-200 dark:border-white/5 flex flex-col md:flex-row items-center justify-between gap-6">
+<div class="flex items-center gap-2 text-slate-400 text-sm">
+<span class="material-symbols-outlined text-sm">copyright</span>
+                2024 MathSolve AI Academy
+            </div>
+<div class="flex gap-6">
+<a class="text-sm font-medium text-slate-500 hover:text-primary transition-colors" href="#">Documentation</a>
+<a class="text-sm font-medium text-slate-500 hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="text-sm font-medium text-slate-500 hover:text-primary transition-colors" href="#">Support</a>
+</div>
+</footer>
+</main>
+<!-- Floating Action Button for Scroll to Top -->
+<button class="fixed bottom-8 right-8 w-12 h-12 bg-white dark:bg-[#2a1d17] border border-slate-100 dark:border-white/10 rounded-full shadow-lg flex items-center justify-center text-slate-500 hover:text-primary transition-all hover:-translate-y-1">
+<span class="material-symbols-outlined">arrow_upward</span>
+</button>
+</body></html>

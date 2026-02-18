@@ -786,12 +786,14 @@ export default function ChatFinalPage({ params }: { params: Promise<{ id: string
           <CanvasWorkspace
             sessionId={String(session.id)}
             attemptId={effectiveAttemptId}
+            solveTier="FINAL"
             onOpenShare={() => setShareModalOpen(true)}
             savedVersions={savedPaperVersions}
             state={documentState}
             dispatch={dispatch}
             viewMode={viewMode}
             hideStepLabels
+            paperVariant="final_handwritten"
           />
         }
         rightSidebar={

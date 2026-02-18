@@ -3,8 +3,10 @@ import json
 import logging
 import os
 import time
+import asyncio
 from dataclasses import dataclass
 from typing import Any, AsyncIterator, Dict, List, Optional
+from urllib.parse import urlparse, urlunparse
 
 import httpx
 
@@ -540,6 +542,33 @@ class OllamaClient:
         self.default_num_ctx = default_num_ctx
         self.default_max_tokens = default_max_tokens
         self._http_client_factory = http_client_factory
+        self.connect_retries = max(0, int((os.environ.get("OLLAMA_CONNECT_RETRIES") or "2").strip()))
+        self.retry_backoff_ms = max(0, int((os.environ.get("OLLAMA_RETRY_BACKOFF_MS") or "250").strip()))
+
+    def _candidate_base_urls(self) -> List[str]:
+        parsed = urlparse(self.base_url)
+        host = (parsed.hostname or "").lower()
+        candidates: List[str] = [self.base_url]
+
+        def _with_host(new_host: str) -> str:
+            netloc = new_host
+            if parsed.port:
+                netloc = f"{new_host}:{parsed.port}"
+            return urlunparse((parsed.scheme or "http", netloc, parsed.path, "", "", "")).rstrip("/")
+
+        if host == "host.docker.internal":
+            candidates.append(_with_host("localhost"))
+            candidates.append(_with_host("127.0.0.1"))
+        elif host in {"localhost", "127.0.0.1"}:
+            candidates.append(_with_host("host.docker.internal"))
+
+        seen: set[str] = set()
+        uniq: List[str] = []
+        for c in candidates:
+            if c not in seen:
+                uniq.append(c)
+                seen.add(c)
+        return uniq
 
     def _build_prompt(
         self,
@@ -553,8 +582,6 @@ class OllamaClient:
             prompt_text = str(prompt)
         else:
             chunks: List[str] = []
-            if system_prompt:
-                chunks.append(f"[SYSTEM]\n{system_prompt}")
             for msg in messages or []:
                 role = str(msg.get("role") or "user").upper()
                 content = msg.get("content", "")
@@ -577,6 +604,30 @@ class OllamaClient:
                 f"{schema_payload}"
             )
         return prompt_text.strip()
+
+    @staticmethod
+    def _extract_ollama_format_schema(json_schema: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        if not isinstance(json_schema, dict):
+            return None
+        # Support internal wrapper form: {"type":"json_schema", "schema": {...}}
+        if json_schema.get("type") == "json_schema" and isinstance(json_schema.get("schema"), dict):
+            return json_schema.get("schema")
+        # Support direct JSON schema body.
+        if isinstance(json_schema.get("properties"), dict) or json_schema.get("type") in {
+            "object",
+            "array",
+            "string",
+            "number",
+            "integer",
+            "boolean",
+            "null",
+        }:
+            return json_schema
+        return None
+
+    @staticmethod
+    def _should_enforce_english(model_name: str) -> bool:
+        return str(model_name or "").strip().lower() == "qwen25-math7b:latest"
 
     async def generate(
         self,
@@ -603,10 +654,17 @@ class OllamaClient:
 
         prompt_text = self._build_prompt(
             messages=messages,
-            system_prompt=system_prompt,
+            system_prompt=None,
             prompt=prompt,
             json_schema=json_schema,
         )
+        system_text = (system_prompt or "").strip()
+        english_only_enforced = self._should_enforce_english(model_name)
+        if english_only_enforced:
+            system_text = (
+                "You must answer in English only. Do not use any other language.\n\n"
+                f"{system_text}"
+            ).strip()
         if not prompt_text:
             raise LLMProviderError("Ollama prompt is empty.", provider="ollama")
 
@@ -625,6 +683,11 @@ class OllamaClient:
             "prompt": prompt_text,
             "stream": False,
         }
+        if system_text:
+            payload["system"] = system_text
+        format_schema = self._extract_ollama_format_schema(json_schema)
+        if format_schema is not None:
+            payload["format"] = format_schema
         if options:
             payload["options"] = options
 
@@ -647,20 +710,55 @@ class OllamaClient:
         )
 
         try:
-            if self._http_client_factory:
-                client_ctx = self._http_client_factory(timeout=timeout)
-            else:
-                client_ctx = httpx.AsyncClient(timeout=timeout)
+            resp = None
+            last_connect_exc: Optional[Exception] = None
+            last_timeout_exc: Optional[Exception] = None
+            candidates = self._candidate_base_urls()
+            tries_per_base = self.connect_retries + 1
 
-            async with client_ctx as client:
-                resp = await client.post(f"{self.base_url}/api/generate", json=payload)
+            for candidate_base in candidates:
+                for attempt_no in range(1, tries_per_base + 1):
+                    try:
+                        if self._http_client_factory:
+                            client_ctx = self._http_client_factory(timeout=timeout)
+                        else:
+                            client_ctx = httpx.AsyncClient(timeout=timeout)
+
+                        async with client_ctx as client:
+                            resp = await client.post(f"{candidate_base}/api/generate", json=payload)
+
+                        if candidate_base != self.base_url:
+                            self.base_url = candidate_base
+                        break
+                    except httpx.ConnectError as exc:
+                        last_connect_exc = exc
+                        if attempt_no < tries_per_base:
+                            await asyncio.sleep(self.retry_backoff_ms / 1000.0)
+                    except httpx.TimeoutException as exc:
+                        last_timeout_exc = exc
+                        if attempt_no < tries_per_base:
+                            await asyncio.sleep(self.retry_backoff_ms / 1000.0)
+                if resp is not None:
+                    break
+
+            if resp is None:
+                if last_connect_exc is not None:
+                    raise last_connect_exc
+                if last_timeout_exc is not None:
+                    raise last_timeout_exc
+                raise RuntimeError("No HTTP response from Ollama.")
         except httpx.ConnectError as exc:
             raise LLMProviderError(
                 "Ollama base URL unreachable.",
                 provider="ollama",
                 status_code=503,
                 is_transient=True,
-                details={"base_url": self.base_url, "error": str(exc)},
+                details={
+                    "base_url": self.base_url,
+                    "candidate_base_urls": self._candidate_base_urls(),
+                    "connect_retries": self.connect_retries,
+                    "error": str(exc),
+                },
             ) from exc
         except httpx.TimeoutException as exc:
             raise LLMProviderError(
@@ -668,7 +766,13 @@ class OllamaClient:
                 provider="ollama",
                 status_code=504,
                 is_transient=True,
-                details={"base_url": self.base_url, "timeout_seconds": self.timeout_seconds, "error": str(exc)},
+                details={
+                    "base_url": self.base_url,
+                    "candidate_base_urls": self._candidate_base_urls(),
+                    "connect_retries": self.connect_retries,
+                    "timeout_seconds": self.timeout_seconds,
+                    "error": str(exc),
+                },
             ) from exc
         except Exception as exc:
             raise LLMProviderError(
@@ -760,6 +864,7 @@ class OllamaClient:
                     "eval_duration": data.get("eval_duration"),
                 },
                 "options": options,
+                "english_only_enforced": english_only_enforced,
             },
             attempts=1,
             latency_ms=latency_ms,
@@ -805,3 +910,4 @@ class OllamaClient:
             latency_ms=response.latency_ms,
             done=True,
         )
+

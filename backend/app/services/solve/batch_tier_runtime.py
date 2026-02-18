@@ -15,7 +15,7 @@ from app.models import (
     PromptTierEnum,
     SystemConfig,
 )
-from app.services.llm.manager import LLMManager
+from app.services.llm.manager import LLMManager, get_configured_ollama_model
 from app.services.llm.clients import LLMProviderError
 from app.services.prompt_manager import prompt_manager
 from app.services.prompt_binding_policy import (
@@ -196,6 +196,11 @@ def _enforce_solve_binding_allowlist() -> bool:
     return os.environ.get("SOLVE_BINDING_ENFORCE_ALLOWLIST", "").strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _allow_openai_fallback_for_ollama_first_tiers() -> bool:
+    # Default OFF: SHORT_STEPS/FINAL should stay Ollama-only unless explicitly enabled.
+    return os.environ.get("ALLOW_OPENAI_FALLBACK_SHORT_FINAL", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _coerce_graph_mode(value: Optional[str]) -> str:
     raw = (value or "").strip().upper()
     if raw in {"OFF", "ON", "AUTO"}:
@@ -246,6 +251,260 @@ def _extract_json_candidate(raw: str) -> Optional[str]:
     if start == -1 or end == -1 or end <= start:
         return None
     return text[start : end + 1].strip()
+
+
+_PLACEHOLDER_RE = re.compile(
+    r"(your\s+final\s+answer\s+here|computed\s+using\s+python|^\s*$|^\s*\.\.\.\s*$|\{formatted_answer\}|\{formatted answer\})",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def _text_extractor_enabled() -> bool:
+    return os.environ.get("OLLAMA_TEXT_EXTRACTOR_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _extract_boxed_answer(text: str) -> Optional[str]:
+    src = str(text or "")
+    key = "\\boxed{"
+    start = src.rfind(key)
+    if start == -1:
+        return None
+    i = start + len(key)
+    depth = 1
+    out: List[str] = []
+    while i < len(src) and depth > 0:
+        ch = src[i]
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                break
+        out.append(ch)
+        i += 1
+    candidate = "".join(out).strip()
+    return candidate or None
+
+
+def _strip_math_wrappers(value: str) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return text
+    wrappers = [
+        (r"^\\\(([\s\S]+)\\\)$", 1),
+        (r"^\\\[([\s\S]+)\\\]$", 1),
+        (r"^\$([\s\S]+)\$$", 1),
+    ]
+    changed = True
+    while changed:
+        changed = False
+        for pattern, group_idx in wrappers:
+            m = re.match(pattern, text)
+            if m:
+                text = m.group(group_idx).strip()
+                changed = True
+    return text
+
+
+def _extract_final_line_answer(text: str) -> Optional[str]:
+    lines = [ln.strip() for ln in str(text or "").splitlines() if ln.strip()]
+    line_noise = re.compile(r"^(choices?|step\s*\d+|item\s*\d+|level)\b", flags=re.IGNORECASE)
+    # Prefer explicit final-answer lines from the end.
+    for ln in reversed(lines):
+        if line_noise.search(ln):
+            continue
+        if re.search(r"\b(final\s*answer|therefore|hence)\b", ln, flags=re.IGNORECASE):
+            rhs = re.split(r"[:=]\s*", ln, maxsplit=1)
+            cand = rhs[-1].strip() if rhs else ln.strip()
+            cand = _strip_math_wrappers(cand)
+            if cand and not _PLACEHOLDER_RE.search(cand):
+                return cand.rstrip(" .")
+    # Fallback: last equation-like line.
+    for ln in reversed(lines):
+        if line_noise.search(ln):
+            continue
+        if "=" in ln:
+            cand = ln.split("=")[-1].strip()
+            cand = _strip_math_wrappers(cand)
+            if cand and not _PLACEHOLDER_RE.search(cand):
+                return cand.rstrip(" .")
+    # Final fallback: last non-noisy line near end.
+    for ln in reversed(lines[-8:]):
+        if line_noise.search(ln):
+            continue
+        cand = _strip_math_wrappers(ln).strip()
+        if cand and not _PLACEHOLDER_RE.search(cand):
+            return cand.rstrip(" .")
+    return None
+
+
+def _is_placeholder_text(value: Any) -> bool:
+    text = str(value or "").strip()
+    if not text:
+        return True
+    if _PLACEHOLDER_RE.search(text):
+        return True
+    lower = text.lower()
+    blocked_fragments = (
+        "your final answer here",
+        "step-by-step reasoning goes here",
+        "placeholder",
+        "tbd",
+        "todo",
+    )
+    return any(fragment in lower for fragment in blocked_fragments)
+
+
+def _extract_steps(text: str, max_steps: int = 6) -> List[str]:
+    parts: List[str] = []
+    chunks = [c.strip() for c in re.split(r"\n\s*\n", str(text or "")) if c.strip()]
+    for chunk in chunks:
+        # Keep only short, meaningful chunks and trim markdown fences/noise.
+        if chunk.startswith("```") or len(chunk) < 3:
+            continue
+        clean = re.sub(r"\s+", " ", chunk).strip()
+        if _PLACEHOLDER_RE.search(clean):
+            continue
+        parts.append(clean)
+        if len(parts) >= max_steps:
+            break
+    return parts
+
+
+def _infer_detected_tasks(question_text: str) -> List[str]:
+    q = str(question_text or "").lower()
+    tags: List[str] = []
+    if any(k in q for k in ("integral", "differentiate", "derivative", "limit")):
+        tags.append("calculus")
+    if any(k in q for k in ("probability", "without replacement", "random", "binomial")):
+        tags.append("probability")
+    if any(k in q for k in ("matrix", "eigen", "det(")):
+        tags.append("linear_algebra")
+    if any(k in q for k in ("contour", "residue", "complex")):
+        tags.append("complex_analysis")
+    if any(k in q for k in ("solve", "find", "compute", "evaluate")):
+        tags.append("solve")
+    if not tags:
+        tags.append("other")
+    # Keep deterministic, unique order.
+    out: List[str] = []
+    for t in tags:
+        if t in ALLOWED_LOCAL_TASKS and t not in out:
+            out.append(t)
+    return out or ["other"]
+
+
+def _extract_ollama_text_payload(
+    *,
+    raw_text: str,
+    questions: List[Dict[str, Any]],
+    tier: str,
+    runtime_request_id: str,
+    runtime_attempt_id: str,
+    runtime_lang: str,
+    runtime_allow_auto_split: bool,
+    max_questions_allowed: int,
+    runtime_max_tasks_per_question: int,
+) -> Dict[str, Any]:
+    boxed = _extract_boxed_answer(raw_text)
+    final_line = _extract_final_line_answer(raw_text)
+    steps = _extract_steps(raw_text, max_steps=6)
+    answer_text_global = (boxed or final_line or "").strip()
+    if _is_placeholder_text(answer_text_global):
+        answer_text_global = ""
+
+    items: List[Dict[str, Any]] = []
+    for idx, q in enumerate(questions, start=1):
+        q_text = str(q.get("question_text") or "")
+        detected_tasks = _infer_detected_tasks(q_text)
+        answer_text = answer_text_global
+
+        item_steps: List[Dict[str, Any]] = []
+        if tier != "FINAL":
+            # Keep short tiers concise with at most one section.
+            math_latex = [answer_text] if answer_text else []
+            item_steps = [
+                {
+                    "index": 1,
+                    "title": "Short Steps",
+                    "explanation": " ".join(steps[:3]) if steps else "Computed from model output.",
+                    "math_latex": math_latex,
+                }
+            ]
+
+        if answer_text:
+            final_answer_obj = {
+                "answer_text": answer_text,
+                "answer_latex": answer_text,
+                "values": [],
+                "units": None,
+                "kind": "solution",
+                "target": None,
+            }
+            refusal_obj = {"is_refusal": False, "reason": None, "safe_next_step": None}
+            confidence = 0.62
+        else:
+            final_answer_obj = {
+                "answer_text": "Model output did not include a concrete final answer.",
+                "answer_latex": None,
+                "values": [],
+                "units": None,
+                "kind": "solution",
+                "target": None,
+            }
+            refusal_obj = {
+                "is_refusal": True,
+                "reason": "missing_final_answer",
+                "safe_next_step": "Retry or enable alternative provider fallback.",
+            }
+            confidence = 0.25
+
+        items.append(
+            {
+                "question_id": q["question_id"],
+                "question_index": idx,
+                "mode": q["mode"],
+                "problem": {
+                    "original_text": q_text,
+                    "normalized_text": q_text[:300],
+                    "detected_tasks": detected_tasks,
+                    "extra": [],
+                },
+                "classification": {
+                    "grade_band": "college_intro",
+                    "domain": "other",
+                    "topic": "ollama_text_extraction",
+                    "difficulty": "medium",
+                },
+                "steps": item_steps,
+                "final_answer": final_answer_obj,
+                "refusal": refusal_obj,
+                "quality": {"confidence": confidence, "common_mistakes": []},
+                "plot": _local_plot_stub(),
+            }
+        )
+
+    return {
+        "schema_version": "prod_v2",
+        "tier": tier,
+        "language": {
+            "user_language": runtime_lang,
+            "preferred_response_language": runtime_lang,
+            "response_language": runtime_lang,
+        },
+        "runtime": {
+            "request_id": runtime_request_id,
+            "attempt_id": runtime_attempt_id,
+            "preferred_response_language": runtime_lang,
+            "default_mode": "GENERAL",
+            "default_graph_mode": "OFF",
+            "default_domain_mode": "reals",
+            "allow_auto_split": bool(runtime_allow_auto_split),
+            "max_questions_allowed": int(max_questions_allowed),
+            "max_tasks_per_question": int(runtime_max_tasks_per_question),
+        },
+        "items": items,
+    }
 
 
 def _json_error_summary(errors: List[Any], limit: int = 10) -> str:
@@ -602,6 +861,60 @@ def _post_assertions(
                 status_code=502,
                 code="post_assert_failed",
             )
+        if not bool(refusal.get("is_refusal")) and isinstance(final_answer, dict):
+            ans_text = str(final_answer.get("answer_text") or "")
+            ans_latex = str(final_answer.get("answer_latex") or "")
+            if _is_placeholder_text(ans_text) and _is_placeholder_text(ans_latex):
+                raise BatchSolveError(
+                    f"final_answer contains placeholder text for item {idx}.",
+                    status_code=502,
+                    code="post_assert_failed",
+                )
+        # Optional simplified schema guard (for local/ollama experiments):
+        # status == OK -> non-empty final_answer
+        # status == ERR -> non-empty error
+        status_val = item.get("status")
+        if status_val is not None:
+            status_text = str(status_val).strip().upper()
+            if status_text not in {"OK", "ERR"}:
+                raise BatchSolveError(
+                    f"status must be one of OK/ERR for item {idx}.",
+                    status_code=502,
+                    code="post_assert_failed",
+                )
+            if status_text == "OK":
+                if isinstance(final_answer, str):
+                    if not final_answer.strip():
+                        raise BatchSolveError(
+                            f"final_answer must be non-empty when status=OK for item {idx}.",
+                            status_code=502,
+                            code="post_assert_failed",
+                        )
+            else:
+                err_text = str(item.get("error") or "").strip()
+                if not err_text:
+                    raise BatchSolveError(
+                        f"error must be non-empty when status=ERR for item {idx}.",
+                        status_code=502,
+                        code="post_assert_failed",
+                    )
+
+        # Optional simplified steps guard: when steps is string-array, enforce non-empty <= 6.
+        steps_val = item.get("steps")
+        if isinstance(steps_val, list) and steps_val and all(isinstance(s, str) for s in steps_val):
+            if len(steps_val) > 6:
+                raise BatchSolveError(
+                    f"steps length must be <= 6 for item {idx}.",
+                    status_code=502,
+                    code="post_assert_failed",
+                )
+            for s_idx, step in enumerate(steps_val, start=1):
+                if not step.strip():
+                    raise BatchSolveError(
+                        f"steps[{s_idx}] must be non-empty for item {idx}.",
+                        status_code=502,
+                        code="post_assert_failed",
+                    )
 
         quality = item.get("quality") if isinstance(item.get("quality"), dict) else {}
         conf = quality.get("confidence")
@@ -1044,8 +1357,13 @@ async def execute_batch_solve(
     llm_manager = LLMManager()
     primary_provider = (llm_manager.primary_provider or "openai").strip().lower()
     provider_candidates: List[str] = [primary_provider]
-    if (not local_sympy_enabled) and external_tier in {"SHORT_STEPS", "FINAL"}:
-        provider_candidates = ["ollama", "openai"]
+    ollama_first_tier = external_tier in {"SHORT_STEPS", "FINAL"}
+    if ollama_first_tier:
+        provider_candidates = ["ollama"]
+        if _allow_openai_fallback_for_ollama_first_tiers():
+            provider_candidates.append("openai")
+    elif (not local_sympy_enabled):
+        provider_candidates = [primary_provider]
     # Preserve order and remove accidental duplicates.
     seen: set[str] = set()
     provider_candidates = [p for p in provider_candidates if not (p in seen or seen.add(p))]
@@ -1053,6 +1371,7 @@ async def execute_batch_solve(
     client = llm_manager.get_client(provider_name)
     binding_features = _bget("features") if isinstance(_bget("features"), dict) else {}
     model_name = (model or str(binding_features.get("model") or "")).strip()
+    ollama_model_name = get_configured_ollama_model(external_tier) if "ollama" in provider_candidates else ""
     if provider_name == "openai" and not model_name:
         raise BatchSolveError(
             "Binding is missing required model setting.",
@@ -1072,20 +1391,31 @@ async def execute_batch_solve(
     async def _call_provider(
         *,
         request_id_suffix: str = "",
-        reasoning_style: Optional[str] = None,
         force_json_only: bool = False,
         repair_context: Optional[str] = None,
     ):
         call_messages = messages
-        if provider_name == "ollama" and reasoning_style in {"cot", "tir"}:
-            style_prompt = (
-                "Please reason step by step, and put your final answer within \\boxed{}."
-                if reasoning_style == "cot"
-                else "Please integrate natural language reasoning with programs to solve the problem above, and put your final answer within \\boxed{}."
+        if provider_name == "ollama" and not force_json_only:
+            tier_system_prompt = (
+                "FINAL tier policy: solve the problem and return only concrete final answers in schema-valid JSON. "
+                "Do not include derivations, intermediate reasoning, or commentary. "
+                "Never output placeholders, templates, or symbolic markers such as "
+                "{formatted answer}, {Value: ...}, ____ , TBD, or similar."
+                if external_tier == "FINAL"
+                else (
+                    "Solve this question."
+                    if external_tier == "SHORT_STEPS"
+                    else (
+                        "Return schema-valid JSON only, with concrete computed values. "
+                        "Do not output placeholders or templates."
+                    )
+                )
             )
+            ollama_reasoning_tail = "Please reason step by step, and put your final answer within \\boxed{}."
+            tier_developer_prompt = f"{developer_prompt}\n\n{ollama_reasoning_tail}"
             call_messages = [
-                {"role": "system", "content": style_prompt},
-                {"role": "developer", "content": developer_prompt},
+                {"role": "system", "content": tier_system_prompt},
+                {"role": "developer", "content": tier_developer_prompt},
                 messages[-1],
             ]
         if force_json_only:
@@ -1127,16 +1457,17 @@ async def execute_batch_solve(
             stream=False,
             request_id=f"{runtime_request_id}{request_id_suffix}",
             timeout_ms=bound_timeout_ms,
-            model=model_name if provider_name == "openai" else None,
+            model=model_name if provider_name == "openai" else ollama_model_name,
             verbosity="low",
             reasoning_effort=(str(binding_features.get("reasoning_effort") or "").strip() or "minimal"),
         )
 
     def _provider_fallback_allowed() -> bool:
-        return (not local_sympy_enabled) and external_tier in {"SHORT_STEPS", "FINAL"}
+        return external_tier in {"SHORT_STEPS", "FINAL"} and _allow_openai_fallback_for_ollama_first_tiers()
 
     async def _parse_validate_response(initial_response: Any) -> Tuple[Dict[str, Any], Any, bool]:
         response_local = initial_response
+        validator = Draft202012Validator(schema_body)
         output_tokens = int((response_local.usage or {}).get("output") or 0)
         repair_attempted_local = False
         if output_tokens == 0:
@@ -1212,6 +1543,27 @@ async def execute_batch_solve(
                         parse_error_local = inner_exc
 
         if payload_local is None:
+            if provider_name == "ollama" and _text_extractor_enabled():
+                extracted_payload = _extract_ollama_text_payload(
+                    raw_text=raw_local,
+                    questions=normalized_questions,
+                    tier=external_tier,
+                    runtime_request_id=runtime_request_id,
+                    runtime_attempt_id=runtime_attempt_id,
+                    runtime_lang=runtime_lang,
+                    runtime_allow_auto_split=runtime_allow_auto_split,
+                    max_questions_allowed=max_questions_allowed,
+                    runtime_max_tasks_per_question=runtime_max_tasks_per_question,
+                )
+                extracted_errors = sorted(validator.iter_errors(extracted_payload), key=lambda e: e.path)
+                if not extracted_errors:
+                    _post_assertions(
+                        extracted_payload,
+                        schema_body=schema_body,
+                        questions=normalized_questions,
+                        tier=external_tier,
+                    )
+                    return extracted_payload, response_local, True
             raise BatchSolveError(
                 "Provider returned invalid JSON payload.",
                 status_code=502,
@@ -1223,7 +1575,6 @@ async def execute_batch_solve(
                 },
             )
 
-        validator = Draft202012Validator(schema_body)
         errors_local = sorted(validator.iter_errors(payload_local), key=lambda e: e.path)
         if errors_local and allow_json_repair_local:
             repair_attempted_local = True
@@ -1275,6 +1626,27 @@ async def execute_batch_solve(
                     ) from inner_exc
             errors_local = sorted(validator.iter_errors(payload_local), key=lambda e: e.path)
         if errors_local:
+            if provider_name == "ollama" and _text_extractor_enabled():
+                extracted_payload = _extract_ollama_text_payload(
+                    raw_text=raw_local,
+                    questions=normalized_questions,
+                    tier=external_tier,
+                    runtime_request_id=runtime_request_id,
+                    runtime_attempt_id=runtime_attempt_id,
+                    runtime_lang=runtime_lang,
+                    runtime_allow_auto_split=runtime_allow_auto_split,
+                    max_questions_allowed=max_questions_allowed,
+                    runtime_max_tasks_per_question=runtime_max_tasks_per_question,
+                )
+                extracted_errors = sorted(validator.iter_errors(extracted_payload), key=lambda e: e.path)
+                if not extracted_errors:
+                    _post_assertions(
+                        extracted_payload,
+                        schema_body=schema_body,
+                        questions=normalized_questions,
+                        tier=external_tier,
+                    )
+                    return extracted_payload, response_local, True
             raise BatchSolveError(
                 "Schema validation failed for provider payload.",
                 status_code=502,
@@ -1286,15 +1658,40 @@ async def execute_batch_solve(
                     ]
                 },
             )
-        _post_assertions(
-            payload_local,
-            schema_body=schema_body,
-            questions=normalized_questions,
-            tier=external_tier,
-        )
+        try:
+            _post_assertions(
+                payload_local,
+                schema_body=schema_body,
+                questions=normalized_questions,
+                tier=external_tier,
+            )
+        except BatchSolveError:
+            if provider_name == "ollama" and _text_extractor_enabled():
+                extracted_payload = _extract_ollama_text_payload(
+                    raw_text=raw_local,
+                    questions=normalized_questions,
+                    tier=external_tier,
+                    runtime_request_id=runtime_request_id,
+                    runtime_attempt_id=runtime_attempt_id,
+                    runtime_lang=runtime_lang,
+                    runtime_allow_auto_split=runtime_allow_auto_split,
+                    max_questions_allowed=max_questions_allowed,
+                    runtime_max_tasks_per_question=runtime_max_tasks_per_question,
+                )
+                extracted_errors = sorted(validator.iter_errors(extracted_payload), key=lambda e: e.path)
+                if not extracted_errors:
+                    _post_assertions(
+                        extracted_payload,
+                        schema_body=schema_body,
+                        questions=normalized_questions,
+                        tier=external_tier,
+                    )
+                    return extracted_payload, response_local, True
+            raise
         return payload_local, response_local, repair_attempted_local
 
     selected_provider = provider_name
+    attempted_providers: List[str] = []
     response = None
     payload: Optional[Dict[str, Any]] = None
     repair_attempted = False
@@ -1302,15 +1699,10 @@ async def execute_batch_solve(
     for idx, candidate in enumerate(provider_candidates):
         provider_name = candidate
         selected_provider = candidate
+        attempted_providers.append(candidate)
         client = llm_manager.get_client(provider_name)
         try:
-            if provider_name == "ollama" and external_tier == "FINAL":
-                try:
-                    response = await _call_provider(request_id_suffix=":cot", reasoning_style="cot")
-                except LLMProviderError:
-                    response = await _call_provider(request_id_suffix=":tir", reasoning_style="tir")
-            else:
-                response = await _call_provider()
+            response = await _call_provider()
             payload, response, repair_attempted = await _parse_validate_response(response)
             last_provider_error = None
             break
@@ -1342,6 +1734,17 @@ async def execute_batch_solve(
             has_more = idx < len(provider_candidates) - 1
             if not (_provider_fallback_allowed() and has_more):
                 raise last_provider_error
+            logger.warning(
+                "Batch solve provider fallback",
+                extra={
+                    "request_id": runtime_request_id,
+                    "attempt_id": runtime_attempt_id,
+                    "tier": external_tier,
+                    "from_provider": provider_name,
+                    "to_provider": provider_candidates[idx + 1] if has_more else None,
+                    "reason_code": getattr(last_provider_error, "code", None),
+                },
+            )
             continue
     if response is None or payload is None:
         if last_provider_error is not None:
@@ -1384,5 +1787,13 @@ async def execute_batch_solve(
         "numpy_used": bool(local_sympy_enabled),
         "local_sympy_numpy_enabled": bool(local_sympy_enabled),
         "provider_chain": provider_candidates,
+        "providers_attempted": attempted_providers,
+        "ollama_attempted": "ollama" in attempted_providers,
+        "ollama_fallback_to_openai": (
+            "ollama" in attempted_providers
+            and "openai" in attempted_providers
+            and (attempted_providers.index("openai") > attempted_providers.index("ollama"))
+            and response.provider == "openai"
+        ),
     }
     return payload, telemetry

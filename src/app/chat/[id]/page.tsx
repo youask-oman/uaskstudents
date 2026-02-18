@@ -39,6 +39,28 @@ interface OutlineItem {
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === "object" ? (value as Record<string, unknown>) : null;
 
+const resolveSessionTier = (messages: SessionMessage[]): string | undefined => {
+  const keys = ["tier_effective", "effective_tier", "tier_requested", "tier"] as const;
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const message = messages[i];
+    const structured = asRecord(message.structured_data);
+    const telemetry = asRecord(message.telemetry);
+    const containers: Array<Record<string, unknown> | null> = [
+      structured,
+      asRecord(structured?.solve_meta),
+      telemetry,
+    ];
+    for (const container of containers) {
+      if (!container) continue;
+      for (const key of keys) {
+        const value = container[key];
+        if (typeof value === "string" && value.trim()) return value.trim().toUpperCase();
+      }
+    }
+  }
+  return undefined;
+};
+
 const isSolvePrimaryAssistantMessage = (message: SessionMessage): boolean => {
   if (message.role !== "assistant") return false;
 
@@ -695,6 +717,11 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     return { input_tokens: input, output_tokens: output, total_tokens: total };
   }, [session?.messages]);
 
+  const effectiveSolveTier = useMemo(
+    () => resolveSessionTier(session?.messages || []),
+    [session?.messages]
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--app-bg)]" dir={layoutDirection}>
@@ -741,6 +768,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
           <CanvasWorkspace
             sessionId={String(session.id)}
             attemptId={effectiveAttemptId}
+            solveTier={effectiveSolveTier}
             onOpenShare={() => setShareModalOpen(true)}
             savedVersions={savedPaperVersions}
             state={documentState}

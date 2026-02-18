@@ -33,6 +33,7 @@ interface PaperPageProps {
   viewMode?: "edit" | "student_report";
   isNew?: boolean;
   hideStepLabels?: boolean;
+  finalHandwritten?: boolean;
 }
 
 interface Point {
@@ -359,6 +360,7 @@ export default function PaperPage({
   viewMode = "edit",
   isNew = false,
   hideStepLabels = false,
+  finalHandwritten = false,
 }: PaperPageProps) {
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -763,13 +765,15 @@ export default function PaperPage({
 
   return (
     <article
-      className={`paper ${styles.paperPage} ${active ? styles.paperPageActive : ""} ${isNew ? styles.paperPageNew : ""} ${getCursorClass()}`.trim()}
+      className={`paper ${styles.paperPage} ${active ? styles.paperPageActive : ""} ${isNew ? styles.paperPageNew : ""} ${finalHandwritten ? styles.paperPageFinalHandwritten : ""} ${getCursorClass()}`.trim()}
       onClick={onActivate}
     >
-      <div className={styles.paperPageHeader}>
-        <span className={styles.paperChapterTitle}>Uask.ai Solver</span>
-        <span className={styles.paperVersionBadge}>v2.1</span>
-      </div>
+      {!finalHandwritten ? (
+        <div className={styles.paperPageHeader}>
+          <span className={styles.paperChapterTitle}>Uask.ai Solver</span>
+          <span className={styles.paperVersionBadge}>v2.1</span>
+        </div>
+      ) : null}
 
       {page.blocks && page.blocks.length > 0 ? (
         <div className={styles.paperBlocksStack}>
@@ -777,7 +781,7 @@ export default function PaperPage({
             if (block.type === "recognition") {
               return (
                 <div key={block.id} id={block.id} className={styles.paperBlockWrap}>
-                  {!exportMode && viewMode === "edit" ? (
+                  {!finalHandwritten && !exportMode && viewMode === "edit" ? (
                     <div className={styles.paperBlockActions} data-no-export="true">
                       <button
                         type="button"
@@ -838,6 +842,7 @@ export default function PaperPage({
                       exportMode={exportMode}
                       badgeLabel={block.badge}
                       plainStyle={hideStepLabels}
+                      finalHandwritten={finalHandwritten}
                     />
                   )}
                 </div>
@@ -846,7 +851,7 @@ export default function PaperPage({
             if (block.type === "steps") {
               return (
                 <div key={block.id} id={block.id} className={styles.paperBlockWrap}>
-                  {!exportMode && viewMode === "edit" ? (
+                  {!finalHandwritten && !exportMode && viewMode === "edit" ? (
                     <div className={styles.paperBlockActions} data-no-export="true">
                       <button
                         type="button"
@@ -873,6 +878,7 @@ export default function PaperPage({
                     exportMode={exportMode}
                     editable={viewMode === "edit"}
                     hideStepLabels={hideStepLabels}
+                    finalHandwritten={finalHandwritten}
                     onActiveTextEditorChange={onActiveTextEditorChange}
                     onChange={(next) =>
                       onUpdateBlock(block.id, (current) =>

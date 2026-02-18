@@ -27,6 +27,18 @@ def get_configured_openai_model() -> str:
     return model
 
 
+def get_configured_ollama_model(tier: Optional[str] = None) -> str:
+    tier_norm = (tier or "").strip().upper()
+    if tier_norm == "FINAL":
+        model = (os.environ.get("OLLAMA_MODEL_FINAL") or "").strip()
+        if model:
+            return model
+    model = (os.environ.get("OLLAMA_MODEL") or "qwen25-math7b:latest").strip()
+    if not model:
+        raise RuntimeError("OLLAMA_MODEL is required")
+    return model
+
+
 class LLMManager:
     def __init__(self):
         configured_provider = (os.environ.get("LLM_PROVIDER") or _default_provider()).strip().lower()
@@ -63,7 +75,7 @@ class LLMManager:
             default_max_tokens = int(default_max_tokens_raw) if default_max_tokens_raw else None
             client = OllamaClient(
                 base_url=(os.environ.get("OLLAMA_BASE_URL") or "http://localhost:11434").strip(),
-                default_model=(os.environ.get("OLLAMA_MODEL") or "qwen25-math7b:latest").strip(),
+                default_model=get_configured_ollama_model(),
                 timeout_seconds=int((os.environ.get("OLLAMA_TIMEOUT_SECONDS") or "60").strip()),
                 connect_timeout_seconds=int((os.environ.get("OLLAMA_CONNECT_TIMEOUT_SECONDS") or "5").strip()),
                 default_temperature=float((os.environ.get("OLLAMA_TEMPERATURE") or "0.2").strip()),
@@ -115,14 +127,17 @@ class LLMManager:
 
     async def check_ollama(self) -> Dict[str, Any]:
         base_url = (os.environ.get("OLLAMA_BASE_URL") or "http://localhost:11434").strip().rstrip("/")
-        model = (os.environ.get("OLLAMA_MODEL") or "qwen25-math7b:latest").strip()
+        model = get_configured_ollama_model()
+        final_model = get_configured_ollama_model("FINAL")
         timeout = float((os.environ.get("OLLAMA_CONNECT_TIMEOUT_SECONDS") or "5").strip())
         result = {
             "configured": bool(base_url and model),
             "base_url": base_url,
             "model": model,
+            "final_model": final_model,
             "ok": False,
             "model_present": False,
+            "final_model_present": False,
         }
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(timeout)) as client:
@@ -134,9 +149,15 @@ class LLMManager:
                 models = payload.get("models") or []
                 names = {str(m.get("name") or "") for m in models if isinstance(m, dict)}
                 result["model_present"] = model in names
-                result["ok"] = result["model_present"]
+                result["final_model_present"] = final_model in names
+                result["ok"] = result["model_present"] and result["final_model_present"]
                 if not result["ok"]:
-                    result["error"] = f"model '{model}' not found"
+                    missing = []
+                    if not result["model_present"]:
+                        missing.append(model)
+                    if not result["final_model_present"]:
+                        missing.append(final_model)
+                    result["error"] = f"model(s) not found: {', '.join(missing)}"
         except Exception as exc:
             result["error"] = str(exc).strip() or repr(exc)
         return result

@@ -25,6 +25,8 @@ async def test_ollama_client_generate_success_with_metrics() -> None:
         assert payload["model"] == "qwen25-math7b:latest"
         assert payload["stream"] is False
         assert "prompt" in payload and payload["prompt"]
+        assert "You are a math engine" in str(payload.get("system") or "")
+        assert payload.get("format") == {"type": "object"}
         return httpx.Response(
             200,
             json={

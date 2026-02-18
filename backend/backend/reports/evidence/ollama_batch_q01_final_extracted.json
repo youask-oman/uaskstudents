@@ -1,0 +1,65 @@
+{
+  "schema_version": "prod_v2",
+  "tier": "FINAL",
+  "language": {
+    "user_language": "English",
+    "preferred_response_language": "English",
+    "response_language": "English"
+  },
+  "runtime": {
+    "request_id": "extract-final-1",
+    "attempt_id": "extract-final-1",
+    "preferred_response_language": "English",
+    "default_mode": "GENERAL",
+    "default_graph_mode": "OFF",
+    "default_domain_mode": "reals",
+    "allow_auto_split": false,
+    "max_questions_allowed": 15,
+    "max_tasks_per_question": 6
+  },
+  "items": [
+    {
+      "question_id": "q1",
+      "question_index": 1,
+      "mode": "SOLVE",
+      "problem": {
+        "original_text": "Work to pump water (integrals): A cylindrical tank of radius 2 m is filled with water to a height of 5 m. Water must be pumped to a spout 1.5 m above the top of the tank. Compute the work required (in joules) assuming water density 1000 kg/m^3 and g=9.8 m/s^2.",
+        "normalized_text": "Work to pump water (integrals): A cylindrical tank of radius 2 m is filled with water to a height of 5 m. Water must be pumped to a spout 1.5 m above the top of the tank. Compute the work required (in joules) assuming water density 1000 kg/m^3 and g=9.8 m/s^2.",
+        "detected_tasks": [
+          "calculus",
+          "solve"
+        ],
+        "extra": []
+      },
+      "classification": {
+        "grade_band": "college_intro",
+        "domain": "other",
+        "topic": "ollama_text_extraction",
+        "difficulty": "medium"
+      },
+      "steps": [],
+      "final_answer": {
+        "answer_text": "39200\\pi \\, dx \\]",
+        "answer_latex": "39200\\pi \\, dx \\]",
+        "values": [],
+        "units": null,
+        "kind": "solution",
+        "target": null
+      },
+      "refusal": {
+        "is_refusal": false,
+        "reason": null,
+        "safe_next_step": null
+      },
+      "quality": {
+        "confidence": 0.62,
+        "common_mistakes": []
+      },
+      "plot": {
+        "should_visualize": false,
+        "decision_reason": "Local FINAL SymPy/NumPy solver returned final answer.",
+        "recipe": null
+      }
+    }
+  ]
+}

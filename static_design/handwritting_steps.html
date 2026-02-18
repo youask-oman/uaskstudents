@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Structured Insight - Math Notebooks</title>
+<!-- Tailwind CSS v3 CDN -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- BEGIN: Google Fonts - Handwriting and Elegant styles -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@500;700&amp;family=EB+Garamond:ital,wght@0,400;0,600;1,400&amp;family=Shadows+Into+Light&amp;display=swap" rel="stylesheet"/>
+<!-- END: Google Fonts -->
+<style data-purpose="notebook-theme">
+    :root {
+      --paper-color: #fcfaf2;
+      --ink-color: #1a2a6c;
+      --annotation-color: #b22222;
+    }
+
+    body {
+      background-color: #e5e7eb;
+      font-family: 'EB Garamond', serif;
+    }
+
+    /* Paper texture effect */
+    .paper-texture {
+      background-color: var(--paper-color);
+      background-image: 
+        radial-gradient(circle at 2px 2px, rgba(0,0,0,0.02) 1px, transparent 0);
+      background-size: 40px 40px;
+      box-shadow: 5px 5px 15px rgba(0,0,0,0.1), inset 0 0 100px rgba(0,0,0,0.02);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Elegant Ink Bleed Effect simulation */
+    .ink-text {
+      color: var(--ink-color);
+      filter: blur(0.2px);
+      text-shadow: 0.5px 0.5px 1px rgba(26, 42, 108, 0.2);
+    }
+
+    .cursive-annotation {
+      font-family: 'Dancing Script', cursive;
+      color: var(--annotation-color);
+      font-size: 1.1rem;
+      transform: rotate(-2deg);
+    }
+
+    /* Hand-drawn timeline connector */
+    .timeline-line {
+      width: 2px;
+      background: rgba(0,0,0,0.2);
+      position: absolute;
+      left: 1.5rem;
+      top: 2rem;
+      bottom: 0;
+      z-index: 0;
+    }
+
+    /* Step marker styling */
+    .step-node {
+      position: relative;
+      z-index: 10;
+      background: var(--paper-color);
+      border: 1px solid rgba(0,0,0,0.1);
+      width: 2rem;
+      height: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      font-family: 'Shadows Into Light', cursive;
+      font-weight: bold;
+    }
+
+    /* Futuristic/Glassy UI overlay elements */
+    .futuristic-border {
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(4px);
+    }
+  </style>
+<style data-purpose="layout-grid">
+    .notebook-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3rem;
+      padding: 3rem 1rem;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
+    .page-sheet {
+      width: 100%;
+      min-height: 600px;
+      border-radius: 2px;
+      padding: 2.5rem;
+      transition: transform 0.3s ease;
+    }
+
+    .page-sheet:hover {
+      transform: translateY(-5px) rotate(0.5deg);
+    }
+  </style>
+</head>
+<body class="p-8">
+<!-- BEGIN: Header Section -->
+<header class="mb-12 text-center" data-purpose="page-header">
+<h1 class="text-4xl font-bold tracking-tight text-slate-800 uppercase mb-2">Structured Insight Batch</h1>
+<div class="h-1 w-24 bg-slate-800 mx-auto mb-4"></div>
+<p class="text-slate-600 italic">Advanced Algorithmic Deconstructions • Academic Desktop View</p>
+</header>
+<!-- END: Header Section -->
+<!-- BEGIN: Main Grid Container -->
+<main class="notebook-container">
+<!-- BEGIN: Notebook Page 1 -->
+<article class="page-sheet paper-texture" data-purpose="math-problem-page">
+<div class="mb-8 border-b border-slate-300 pb-2 flex justify-between items-end">
+<h2 class="text-2xl font-semibold italic opacity-80">Problem #042: Calculus Integration</h2>
+<span class="text-xs font-mono uppercase tracking-widest text-slate-400">Ref: IDX-992-A</span>
+</div>
+<div class="relative space-y-10">
+<div class="timeline-line"></div>
+<!-- Step 1 -->
+<section class="flex gap-6 relative" data-purpose="step-container">
+<div class="step-node shadow-sm">1</div>
+<div class="flex-1">
+<h3 class="text-sm uppercase tracking-widest text-slate-500 mb-1">Observation</h3>
+<p class="ink-text text-xl leading-relaxed italic">
+              Identify the substitution variable \( u = \sin(x) \).
+            </p>
+<div class="cursive-annotation mt-1">
+              "Note the derivative presence in the numerator..."
+            </div>
+</div>
+</section>
+<!-- Step 2 -->
+<section class="flex gap-6 relative" data-purpose="step-container">
+<div class="step-node shadow-sm">2</div>
+<div class="flex-1">
+<h3 class="text-sm uppercase tracking-widest text-slate-500 mb-1">Differential</h3>
+<p class="ink-text text-xl leading-relaxed italic">
+              Compute \( du = \cos(x) dx \). Rewrite the integral.
+            </p>
+<div class="cursive-annotation mt-1">
+              "Keep the limits of integration consistent!"
+            </div>
+</div>
+</section>
+<!-- Step 3 -->
+<section class="flex gap-6 relative" data-purpose="step-container">
+<div class="step-node shadow-sm">3</div>
+<div class="flex-1">
+<h3 class="text-sm uppercase tracking-widest text-slate-500 mb-1">Reduction</h3>
+<p class="ink-text text-xl leading-relaxed italic">
+              \(\int \frac{1}{u^2} du = -\frac{1}{u} + C\)
+            </p>
+<div class="cursive-annotation mt-1">
+              "The power rule applies perfectly here."
+            </div>
+</div>
+</section>
+<!-- Step 4 -->
+<section class="flex gap-6 relative" data-purpose="step-container">
+<div class="step-node shadow-sm">4</div>
+<div class="flex-1">
+<h3 class="text-sm uppercase tracking-widest text-slate-500 mb-1">Final Form</h3>
+<p class="ink-text text-2xl font-bold italic underline decoration-blue-900/30">
+              Result: \( -\csc(x) + C \)
+            </p>
+</div>
+</section>
+</div>
+<!-- Subtle futuristic UI overlay -->
+<div class="absolute bottom-4 right-4 flex gap-2">
+<div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+<div class="w-2 h-2 rounded-full bg-slate-300"></div>
+</div>
+</article>
+<!-- END: Notebook Page 1 -->
+<!-- BEGIN: Notebook Page 2 -->
+<article class="page-sheet paper-texture" data-purpose="math-problem-page">
+<div class="mb-8 border-b border-slate-300 pb-2 flex justify-between items-end">
+<h2 class="text-2xl font-semibold italic opacity-80">Problem #043: Linear Systems</h2>
+<span class="text-xs font-mono uppercase tracking-widest text-slate-400">Ref: IDX-992-B</span>
+</div>
+<div class="relative space-y-10">
+<div class="timeline-line"></div>
+<!-- Step 1 -->
+<section class="flex gap-6 relative" data-purpose="step-container">
+<div class="step-node shadow-sm">1</div>
+<div class="flex-1">
+<h3 class="text-sm uppercase tracking-widest text-slate-500 mb-1">Initialization</h3>
+<p class="ink-text text-xl leading-relaxed italic">
+              Define the augmented matrix \( [A|B] \).
+            </p>
+<div class="cursive-annotation mt-1">
+              "Check for linear independence first."
+            </div>
+</div>
+</section>
+<!-- Step 2 -->
+<section class="flex gap-6 relative" data-purpose="step-container">
+<div class="step-node shadow-sm">2</div>
+<div class="flex-1">
+<h3 class="text-sm uppercase tracking-widest text-slate-500 mb-1">Row Reduction</h3>
+<p class="ink-text text-xl leading-relaxed italic">
+              Apply Gaussian elimination to reach RREF.
+            </p>
+<div class="cursive-annotation mt-1">
+              "Watch for rounding errors in R2..."
+            </div>
+</div>
+</section>
+<!-- Step 3 -->
+<section class="flex gap-6 relative" data-purpose="step-container">
+<div class="step-node shadow-sm">3</div>
+<div class="flex-1">
+<h3 class="text-sm uppercase tracking-widest text-slate-500 mb-1">Decomposition</h3>
+<p class="ink-text text-xl leading-relaxed italic">
+              Solve for \( x_n \) using back-substitution.
+            </p>
+</div>
+</section>
+<!-- Step 4 -->
+<section class="flex gap-6 relative" data-purpose="step-container">
+<div class="step-node shadow-sm">4</div>
+<div class="flex-1">
+<h3 class="text-sm uppercase tracking-widest text-slate-500 mb-1">Convergence</h3>
+<p class="ink-text text-2xl font-bold italic underline decoration-blue-900/30">
+              Unique solution found at \((3, -1, 5)\).
+            </p>
+<div class="cursive-annotation mt-1">
+              "Verified against the original constraints."
+            </div>
+</div>
+</section>
+</div>
+<div class="absolute bottom-4 right-4 flex gap-2">
+<div class="w-2 h-2 rounded-full bg-slate-300"></div>
+<div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+</div>
+</article>
+<!-- END: Notebook Page 2 -->
+<!-- BEGIN: Notebook Page 3 -->
+<article class="page-sheet paper-texture" data-purpose="math-problem-page">
+<div class="mb-8 border-b border-slate-300 pb-2 flex justify-between items-end">
+<h2 class="text-2xl font-semibold italic opacity-80">Problem #044: Probability</h2>
+<span class="text-xs font-mono uppercase tracking-widest text-slate-400">Ref: IDX-993-C</span>
+</div>
+<div class="relative space-y-10">
+<div class="timeline-line"></div>
+<!-- Step 1 -->
+<section class="flex gap-6 relative" data-purpose="step-container">
+<div class="step-node shadow-sm">1</div>
+<div class="flex-1">
+<h3 class="text-sm uppercase tracking-widest text-slate-500 mb-1">Space Definition</h3>
+<p class="ink-text text-xl leading-relaxed italic">
+              Determine the sample space \( \Omega \) where \( n=50 \).
+            </p>
+</div>
+</section>
+<!-- Step 2 -->
+<section class="flex gap-6 relative" data-purpose="step-container">
+<div class="step-node shadow-sm">2</div>
+<div class="flex-1">
+<h3 class="text-sm uppercase tracking-widest text-slate-500 mb-1">Conditioning</h3>
+<p class="ink-text text-xl leading-relaxed italic">
+              Apply Bayes' Theorem for \( P(A|B) \).
+            </p>
+<div class="cursive-annotation mt-1">
+              "Elegant way to reverse dependency."
+            </div>
+</div>
+</section>
+<!-- Step 3 -->
+<section class="flex gap-6 relative" data-purpose="step-container">
+<div class="step-node shadow-sm">3</div>
+<div class="flex-1">
+<h3 class="text-sm uppercase tracking-widest text-slate-500 mb-1">Calculation</h3>
+<p class="ink-text text-xl leading-relaxed italic">
+              Sum the localized densities over the interval.
+            </p>
+</div>
+</section>
+<!-- Step 4 -->
+<section class="flex gap-6 relative" data-purpose="step-container">
+<div class="step-node shadow-sm">4</div>
+<div class="flex-1">
+<h3 class="text-sm uppercase tracking-widest text-slate-500 mb-1">Conclusion</h3>
+<p class="ink-text text-2xl font-bold italic underline decoration-blue-900/30">
+              Probability: 0.8427
+            </p>
+<div class="cursive-annotation mt-1">
+              "Significant within 2 sigma."
+            </div>
+</div>
+</section>
+</div>
+<div class="absolute bottom-4 right-4 flex gap-2">
+<div class="w-2 h-2 rounded-full bg-slate-300"></div>
+<div class="w-2 h-2 rounded-full bg-slate-300"></div>
+<div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+</div>
+</article>
+<!-- END: Notebook Page 3 -->
+</main>
+<!-- END: Main Grid Container -->
+<!-- BEGIN: Footer Branding -->
+<footer class="mt-12 text-center text-slate-400 text-sm">
+<p>© 2024 Insight Batch Processor • All Notebooks Encrypted</p>
+</footer>
+<!-- END: Footer Branding -->
+</body></html>

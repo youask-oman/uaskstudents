@@ -21,7 +21,7 @@ export interface UnifiedMathRendererProps {
 const FALLBACK_STYLE: React.CSSProperties = {
     fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
     fontSize: "0.95em",
-    background: "rgba(15, 23, 42, 0.08)",
+    background: "rgba(148, 163, 184, 0.14)",
     padding: "0.1rem 0.25rem",
     borderRadius: "0.25rem",
 };
@@ -54,6 +54,12 @@ interface RenderResult {
 }
 
 const buildMathKey = (value: string, inline: boolean) => `${inline ? "i" : "b"}::${value}`;
+
+const normalizeLatexForSvgEngine = (value: string) =>
+    String(value || "")
+        .replace(/\\left\s*/g, "")
+        .replace(/\\right\s*/g, "")
+        .trim();
 
 const useMathSvgBatch = (jobs: Array<{ key: string; latex: string; inline: boolean }>, enabled: boolean) => {
     const [renderMap, setRenderMap] = React.useState<Record<string, RenderResult>>({});
@@ -314,7 +320,7 @@ export default function UnifiedMathRenderer({
             const key = buildMathKey(segment.value, inline);
             if (seen.has(key)) continue;
             seen.add(key);
-            collected.push({ key, latex: segment.value, inline });
+            collected.push({ key, latex: normalizeLatexForSvgEngine(segment.value), inline });
         }
         // For direct inline/block mode, always enqueue exact payload key.
         // This prevents fallback when segmenter captures only a subset of bare LaTeX.
@@ -325,7 +331,7 @@ export default function UnifiedMathRenderer({
                 const directKey = buildMathKey(exactValue, inline);
                 if (!seen.has(directKey)) {
                     seen.add(directKey);
-                    collected.push({ key: directKey, latex: exactValue, inline });
+                    collected.push({ key: directKey, latex: normalizeLatexForSvgEngine(exactValue), inline });
                 }
             }
         }

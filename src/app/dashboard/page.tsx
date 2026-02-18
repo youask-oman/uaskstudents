@@ -105,7 +105,8 @@ function DashboardContent() {
             telemetry?.tier_requested ||
             telemetry?.tier ||
             "";
-        return String(rawTier).trim().toUpperCase() === "FINAL"
+        const normalizedTier = String(rawTier).trim().toUpperCase();
+        return (normalizedTier === "FINAL" || normalizedTier === "SHORT_STEPS")
             ? `/chat_final/${session.id}`
             : `/chat/${session.id}`;
     };

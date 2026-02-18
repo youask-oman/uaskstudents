@@ -26,12 +26,14 @@ import styles from "./MathCanvas.module.css";
 interface CanvasWorkspaceProps {
   sessionId: string;
   attemptId?: string | null;
+  solveTier?: string | null;
   onOpenShare?: () => void;
   savedVersions?: SavedPaperVersion[];
   state: CanvasDocumentState;
   dispatch: React.Dispatch<DocumentAction>;
   viewMode?: "edit" | "student_report";
   hideStepLabels?: boolean;
+  paperVariant?: "default" | "final_handwritten";
 }
 
 interface MathEditorTarget {
@@ -41,6 +43,8 @@ interface MathEditorTarget {
 
 type PaperTone = "white" | "cream" | "sage" | "sky";
 type PaperTexture = "blank" | "lined" | "dot";
+type FinalHandFont = "kalam" | "architect" | "gochi" | "inter" | "arial" | "georgia" | "times";
+const PRIMARY_TOOLS = new Set<ToolType>(["text", "math", "shape", "compass", "ruler", "graph", "eraser", "palette"]);
 
 const isInputLikeTarget = (target: EventTarget | null): boolean => {
   if (!(target instanceof HTMLElement)) return false;
@@ -53,12 +57,14 @@ const isInputLikeTarget = (target: EventTarget | null): boolean => {
 export default function CanvasWorkspace({
   sessionId,
   attemptId,
+  solveTier,
   onOpenShare,
   savedVersions = [],
   state,
   dispatch,
   viewMode = "edit",
   hideStepLabels = false,
+  paperVariant = "default",
 }: CanvasWorkspaceProps) {
   const [latexEditorTarget, setLatexEditorTarget] = useState<MathEditorTarget | null>(null);
   const [graphEditorOpen, setGraphEditorOpen] = useState(false);
@@ -66,6 +72,8 @@ export default function CanvasWorkspace({
   const [styleDraft, setStyleDraft] = useState(DEFAULT_ELEMENT_STYLE);
   const [paperTone, setPaperTone] = useState<PaperTone>("cream");
   const [paperTexture, setPaperTexture] = useState<PaperTexture>("lined");
+  const [finalHandFont, setFinalHandFont] = useState<FinalHandFont>("kalam");
+  const [finalHandFontSize, setFinalHandFontSize] = useState<number>(15);
   const [newPageId, setNewPageId] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [savingVersion, setSavingVersion] = useState(false);
@@ -81,6 +89,12 @@ export default function CanvasWorkspace({
   const hasSelection = state.selection.elementIds.length > 0;
   const canExport = useMemo(() => hasExportableSolution(state.pages), [state.pages]);
   const richTextPaletteMode = Boolean(activeTextEditor && activeTextEditor.isEditable);
+  const normalizedTier = String(solveTier || "").trim().toUpperCase();
+  const isFinalTier = normalizedTier === "FINAL";
+  const isShortTier = normalizedTier === "SHORT" || normalizedTier === "SHORT_STEPS";
+  const hideToolbarForTier = isFinalTier;
+  const disablePrimaryTools = false;
+  const showPaperSettingsButton = isFinalTier || isShortTier;
 
   const [selectedVersionKey, setSelectedVersionKey] = useState<string>(() => savedVersions[0]?.key ?? "");
 
@@ -133,6 +147,11 @@ export default function CanvasWorkspace({
 
   const handleSelectTool = useCallback(
     (tool: ToolType) => {
+      if (hideToolbarForTier && PRIMARY_TOOLS.has(tool)) {
+        dispatch({ type: "SET_TOOL", tool: "none" });
+        setPaletteOpen(false);
+        return;
+      }
       dispatch({ type: "SET_TOOL", tool });
       if (tool === "math") {
         setLatexEditorTarget({ initialLatex: "" });
@@ -146,8 +165,15 @@ export default function CanvasWorkspace({
       }
       setPaletteOpen(false);
     },
-    [dispatch]
+    [hideToolbarForTier, dispatch]
   );
+
+  useEffect(() => {
+    if (!hideToolbarForTier) return;
+    if (!PRIMARY_TOOLS.has(state.activeTool)) return;
+    dispatch({ type: "SET_TOOL", tool: "none" });
+    setPaletteOpen(false);
+  }, [hideToolbarForTier, state.activeTool, dispatch]);
 
 
   const handleAddPage = useCallback(() => {
@@ -498,67 +524,144 @@ export default function CanvasWorkspace({
     return styles.paperTextureLined;
   }, [paperTexture]);
 
+  const finalHandFontFamily = useMemo(() => {
+    if (finalHandFont === "architect") return '"Architects Daughter", "Kalam", "Gochi Hand", cursive';
+    if (finalHandFont === "gochi") return '"Gochi Hand", "Kalam", "Architects Daughter", cursive';
+    if (finalHandFont === "arial") return 'Arial, Helvetica, sans-serif';
+    if (finalHandFont === "georgia") return 'Georgia, "Times New Roman", serif';
+    if (finalHandFont === "times") return '"Times New Roman", Times, serif';
+    if (finalHandFont === "inter") return '"Inter", -apple-system, sans-serif';
+    return '"Kalam", "Architects Daughter", "Gochi Hand", cursive';
+  }, [finalHandFont]);
+
+  const finalHandwrittenStyle = useMemo<React.CSSProperties | undefined>(() => {
+    if (paperVariant !== "final_handwritten") return undefined;
+    return {
+      ["--final-hand-font-family" as string]: finalHandFontFamily,
+      ["--final-hand-font-size" as string]: `${finalHandFontSize}px`,
+      ["--final-hand-result-font-size" as string]: `${finalHandFontSize}px`,
+    };
+  }, [paperVariant, finalHandFontFamily, finalHandFontSize]);
+
   return (
-    <section className={`${styles.centerColumn} ${paperTextureClass}`.trim()}>
+    <section className={`${styles.centerColumn} ${paperTextureClass} ${paperVariant === "final_handwritten" ? styles.centerColumnFinalHandwritten : ""}`.trim()}>
       {viewMode === "edit" ? (
         <>
-          <EditorToolbar
-            activeTool={state.activeTool}
-            canUndo={canUndo}
-            canRedo={canRedo}
-            canPaste={canPaste}
-            hasSelection={hasSelection}
-            paletteOpen={paletteOpen}
-            onSelectTool={handleSelectTool}
-            onUndo={() => dispatch({ type: "UNDO" })}
-            onRedo={() => dispatch({ type: "REDO" })}
-            onCut={handleCut}
-            onCopy={handleCopy}
-            onPaste={handlePaste}
-            activeEditor={activeTextEditor}
-            onNotice={(message) => setSaveMessage(message)}
-            onInsertImage={handleInsertImage}
-          />
+          {!hideToolbarForTier ? (
+            <EditorToolbar
+              activeTool={state.activeTool}
+              canUndo={canUndo}
+              canRedo={canRedo}
+              canPaste={canPaste}
+              hasSelection={hasSelection}
+              paletteOpen={paletteOpen}
+              onSelectTool={handleSelectTool}
+              onUndo={() => dispatch({ type: "UNDO" })}
+              onRedo={() => dispatch({ type: "REDO" })}
+              onCut={handleCut}
+              onCopy={handleCopy}
+              onPaste={handlePaste}
+              activeEditor={activeTextEditor}
+              onNotice={(message) => setSaveMessage(message)}
+              onInsertImage={handleInsertImage}
+              disablePrimaryTools={disablePrimaryTools}
+            />
+          ) : null}
+          {showPaperSettingsButton ? (
+            <div className={styles.toolbar} style={{ minHeight: "auto", paddingTop: 0 }}>
+              <div className={styles.toolbarActionsRight}>
+                <button
+                  type="button"
+                  className={styles.secondaryActionButton}
+                  onClick={() => setPaletteOpen((prev) => !prev)}
+                >
+                  Paper settings
+                </button>
+              </div>
+            </div>
+          ) : null}
           {paletteOpen ? (
             <div className={styles.paperSettingsPopover} role="dialog" aria-label="Paper settings">
-              <div className={styles.paperSettingsSection}>
-                <span className={styles.paperSettingsLabel}>Paper Color</span>
-                <div className={styles.paperToneRow}>
-                  {[
-                    { key: "white", color: "#FFFFFF", label: "White" },
-                    { key: "cream", color: "#FFFDF5", label: "Cream" },
-                    { key: "sage", color: "#F0F4F1", label: "Sage" },
-                    { key: "sky", color: "#F0F7FF", label: "Sky" },
-                  ].map((tone) => (
-                    <button
-                      key={tone.key}
-                      type="button"
-                      className={`${styles.paperToneDot} ${paperTone === tone.key ? styles.paperToneDotActive : ""}`.trim()}
-                      style={{ backgroundColor: tone.color }}
-                      onClick={() => setPaperTone(tone.key as PaperTone)}
-                      aria-label={`Set ${tone.label} paper color`}
-                    />
-                  ))}
+              <div className={styles.paperSettingsGrid}>
+                <div className={styles.paperSettingsColumnLeft}>
+                  <div className={styles.paperSettingsSection}>
+                    <span className={styles.paperSettingsLabel}>Paper Color</span>
+                    <div className={styles.paperToneRow}>
+                      {[
+                        { key: "white", color: "#FFFFFF", label: "White" },
+                        { key: "cream", color: "#FFFDF5", label: "Cream" },
+                        { key: "sage", color: "#F0F4F1", label: "Sage" },
+                        { key: "sky", color: "#F0F7FF", label: "Sky" },
+                      ].map((tone) => (
+                        <button
+                          key={tone.key}
+                          type="button"
+                          className={`${styles.paperToneDot} ${paperTone === tone.key ? styles.paperToneDotActive : ""}`.trim()}
+                          style={{ backgroundColor: tone.color }}
+                          onClick={() => setPaperTone(tone.key as PaperTone)}
+                          aria-label={`Set ${tone.label} paper color`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <div className={styles.paperSettingsSection}>
+                    <span className={styles.paperSettingsLabel}>Texture</span>
+                    <div className={styles.paperTextureRow}>
+                      {[
+                        { key: "blank", label: "Blank" },
+                        { key: "lined", label: "Lined" },
+                        { key: "dot", label: "Dot Grid" },
+                      ].map((texture) => (
+                        <button
+                          key={texture.key}
+                          type="button"
+                          className={`${styles.paperTextureChip} ${paperTexture === texture.key ? styles.paperTextureChipActive : ""}`.trim()}
+                          onClick={() => setPaperTexture(texture.key as PaperTexture)}
+                          aria-label={`Set ${texture.label} paper texture`}
+                        >
+                          {texture.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className={styles.paperSettingsSection}>
-                <span className={styles.paperSettingsLabel}>Texture</span>
-                <div className={styles.paperTextureRow}>
-                  {[
-                    { key: "blank", label: "Blank" },
-                    { key: "lined", label: "Lined" },
-                    { key: "dot", label: "Dot Grid" },
-                  ].map((texture) => (
-                    <button
-                      key={texture.key}
-                      type="button"
-                      className={`${styles.paperTextureChip} ${paperTexture === texture.key ? styles.paperTextureChipActive : ""}`.trim()}
-                      onClick={() => setPaperTexture(texture.key as PaperTexture)}
-                      aria-label={`Set ${texture.label} paper texture`}
-                    >
-                      {texture.label}
-                    </button>
-                  ))}
+                <div className={styles.paperSettingsColumnRight}>
+                  {paperVariant === "final_handwritten" ? (
+                    <>
+                      <div className={styles.paperSettingsSection}>
+                        <span className={styles.paperSettingsLabel}>Font</span>
+                        <select
+                          className={styles.paperSelect}
+                          value={finalHandFont}
+                          onChange={(e) => setFinalHandFont(e.target.value as FinalHandFont)}
+                          aria-label="Set handwritten font"
+                        >
+                          <option value="kalam">Kalam</option>
+                          <option value="architect">Architects Daughter</option>
+                          <option value="gochi">Gochi Hand</option>
+                          <option value="inter">Inter</option>
+                          <option value="arial">Arial</option>
+                          <option value="georgia">Georgia</option>
+                          <option value="times">Times New Roman</option>
+                        </select>
+                      </div>
+                      <div className={styles.paperSettingsSection}>
+                        <span className={styles.paperSettingsLabel}>Font Size</span>
+                        <div className={styles.paperRangeRow}>
+                          <input
+                            type="range"
+                            min={12}
+                            max={48}
+                            step={1}
+                            value={finalHandFontSize}
+                            onChange={(e) => setFinalHandFontSize(Number(e.target.value))}
+                            aria-label="Set handwritten font size"
+                          />
+                          <span className={styles.paperRangeValue}>{finalHandFontSize}px</span>
+                        </div>
+                      </div>
+                    </>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -789,7 +892,10 @@ export default function CanvasWorkspace({
         </div>
       ) : null}
 
-      <div className={`${styles.pagesStack} ${paperToneClass}`.trim()}>
+      <div
+        className={`${styles.pagesStack} ${paperToneClass} ${paperVariant === "final_handwritten" ? styles.pagesStackFinalHandwritten : ""}`.trim()}
+        style={finalHandwrittenStyle}
+      >
         {state.pages.map((page) => (
           <PaperPage
             key={page.id}
@@ -825,6 +931,7 @@ export default function CanvasWorkspace({
             viewMode={viewMode}
             isNew={page.id === newPageId}
             hideStepLabels={hideStepLabels}
+            finalHandwritten={paperVariant === "final_handwritten"}
           />
         ))}
       </div>
