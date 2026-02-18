@@ -353,8 +353,12 @@ class MathRenderService:
         self._hit_updates: Dict[str, int] = {}
         self._hit_lock = asyncio.Lock()
         self._flush_task: Optional[asyncio.Task] = None
+        self._disabled = os.environ.get("DISABLE_MATH_RENDER", "").strip().lower() in {"1", "true", "yes"}
+        self._disable_reason: Optional[str] = "disabled_by_env" if self._disabled else None
 
     async def startup(self) -> None:
+        if self._disabled:
+            return
         await self.worker_pool.start()
         if self._flush_task is None:
             self._flush_task = asyncio.create_task(self._flush_hits_loop())
@@ -476,6 +480,33 @@ class MathRenderService:
         for record in request_records:
             unique_by_key.setdefault(record["key"], record)
 
+        if self._disabled:
+            results = [
+                {
+                    "ok": False,
+                    "error": {
+                        "code": "RENDER_DISABLED",
+                        "message": f"Math renderer disabled ({self._disable_reason or 'runtime'}).",
+                    },
+                    "fallback_text": str(record["latex"] or ""),
+                    "cache": "miss",
+                    "key": record["key"],
+                }
+                for record in request_records
+            ]
+            latency_ms = int((time.perf_counter() - started) * 1000)
+            return {
+                "results": results,
+                "stats": {
+                    "requested": len(request_records),
+                    "deduped": len(unique_by_key),
+                    "cache_hits": 0,
+                    "rendered": 0,
+                    "latency_ms": latency_ms,
+                    "worker_restarts": self.worker_pool.restart_count,
+                },
+            }
+
         cache_hits = 0
         rendered = 0
         resolved: Dict[str, Dict[str, Any]] = {}
@@ -506,7 +537,26 @@ class MathRenderService:
                 # Keep worker-side timeout aligned with Python-side wait timeout.
                 "timeout_ms": self.worker_pool.timeout_ms,
             }
-            worker_result = await self.worker_pool.render(payload)
+            try:
+                worker_result = await self.worker_pool.render(payload)
+            except NotImplementedError:
+                # Windows debug runtimes can lack asyncio subprocess support.
+                # Fail open and return fallback text instead of surfacing 500s.
+                self._disabled = True
+                self._disable_reason = "subprocess_not_supported"
+                logger.warning("Disabling math renderer: asyncio subprocess not supported on current runtime")
+                worker_result = {
+                    "ok": False,
+                    "error": {"code": "RENDER_DISABLED", "message": "Renderer disabled (subprocess unsupported)."},
+                    "fallback_text": record["latex"],
+                }
+            except Exception as exc:
+                logger.warning("Math renderer worker failed, using fallback text: %s", exc)
+                worker_result = {
+                    "ok": False,
+                    "error": {"code": "RENDER_FAIL", "message": str(exc)},
+                    "fallback_text": record["latex"],
+                }
             if worker_result.get("ok"):
                 svg_text = str(worker_result.get("svg") or "")
                 if sanitize:

@@ -2959,3 +2959,155 @@
   background: #f3f3f3 !important;
   background-image: none !important;
 }
+
+/* SHORT tier paper variant (based on static_design/steps_normal.html) */
+.centerColumnShortPaper {
+  background: #f8f6f6 !important;
+  background-image: none !important;
+}
+
+.pagesStackShortPaper {
+  max-width: 940px;
+  margin: 0 auto;
+  padding: 28px 20px 56px;
+}
+
+.pagesStackShortPaper .paperPage {
+  margin: 0 auto 24px;
+}
+
+.paperPageShortPaper {
+  width: min(100%, 900px);
+  min-height: 0;
+  padding: 0;
+  border-radius: 12px;
+  border: 1px solid #f1f5f9;
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.paperPageShortPaper::before,
+.paperPageShortPaper::after {
+  content: none !important;
+}
+
+.paperPageShortPaper .paperBlocksStack {
+  padding-left: 0;
+  gap: 0;
+}
+
+.paperPageShortPaper .paperBlockWrap {
+  margin-bottom: 0;
+}
+
+.recognitionBoxShortPaper {
+  padding: 32px;
+  background: #ffffff;
+  border-bottom: 1px solid #f8e6dc;
+}
+
+.recognitionMetaShortPaper {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+}
+
+.recognitionContentShortPaper {
+  font-size: var(--short-paper-font-size, 30px);
+  line-height: 1.5;
+  color: #0f172a;
+  font-family: var(--short-paper-font-family, "Public Sans", "Inter", system-ui, sans-serif);
+}
+
+.recognitionContentShortPaper :global(mjx-container),
+.recognitionContentShortPaper :global(.katex) {
+  font-size: 1em !important;
+}
+
+.paperPageShortPaper .stepsBlock {
+  background: #ffffff;
+  padding: 24px 32px 0;
+  font-family: var(--short-paper-font-family, "Public Sans", "Inter", system-ui, sans-serif);
+  font-size: var(--short-paper-font-size, 16px);
+}
+
+.paperPageShortPaper .stepRow {
+  border-bottom: 1px solid #f1f5f9;
+  padding: 14px 0;
+}
+
+.paperPageShortPaper .stepLabel {
+  background: #fff2e8;
+  color: #ec5b13;
+  border: 1px solid #ffd5bf;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.paperPageShortPaper .stepTitleTag {
+  background: #ffffff;
+  color: #0f172a;
+  border: 0;
+  padding: 0;
+  font-size: 15px;
+}
+
+.paperPageShortPaper .stepsBlock > .stepRow:last-child {
+  margin: 24px -32px 0;
+  padding: 22px 32px 24px;
+  background: #f3f4f6;
+  border-bottom: 0;
+}
+
+.paperPageShortPaper .stepsBlock > .stepRow:last-child .stepLabel {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+  color: #111827;
+}
+
+.paperPageShortPaper .stepsBlock > .stepRow:last-child .stepValue,
+.paperPageShortPaper .stepsBlock > .stepRow:last-child .stepValue * {
+  color: #111827 !important;
+}
+
+.paperPageShortPaper .stepsBlock > .stepRow:last-child .blockActionButton {
+  border-color: #d1d5db;
+  background: #ffffff;
+  color: #111827;
+}
+
+/* Keep short-paper variant responsive to paper color picker */
+.paperToneWhite .paperPageShortPaper {
+  background: #ffffff !important;
+}
+
+.paperToneCream .paperPageShortPaper {
+  background: #fffdf5 !important;
+}
+
+.paperToneSage .paperPageShortPaper {
+  background: #f0f4f1 !important;
+}
+
+.paperToneSky .paperPageShortPaper {
+  background: #f0f7ff !important;
+}
+
+/* Keep short-paper variant responsive to texture picker */
+.paperTextureBlank .paperPageShortPaper {
+  background-image: none !important;
+}
+
+.paperTextureLined .paperPageShortPaper {
+  background-image: linear-gradient(transparent 31px, #dbe3ee 31px) !important;
+  background-size: 100% 32px !important;
+}
+
+.paperTextureDot .paperPageShortPaper {
+  background-image: radial-gradient(circle, rgba(191, 211, 235, 0.95) 1.2px, transparent 1.2px) !important;
+  background-size: 28px 28px !important;
+}

@@ -5,13 +5,15 @@ import type { Editor } from "@tiptap/core";
 import MathRenderer from "@/components/math/MathJaxRenderer";
 import RichTextElementEditor from "./RichTextElementEditor";
 import type { RichTextCommitPayload } from "./RichTextElementEditor";
-import { StepRow, VerificationCheck, FinalAnswer } from "./types";
+import { StepRow, VerificationCheck, FinalAnswer, ShortSection, ShortSourcePayload } from "./types";
 import { parseLatexToBlocks } from "@/lib/final-answer-layout-engine";
 import { useMathOverflowFix } from "@/hooks/useMathOverflowFix";
 import styles from "./MathCanvas.module.css";
 
 interface SolutionStepsBlockProps {
   steps: StepRow[];
+  shortSections?: ShortSection[];
+  shortSource?: ShortSourcePayload;
   result?: string;
   finalAnswer?: FinalAnswer;
   verificationChecks?: VerificationCheck[];
@@ -26,6 +28,7 @@ interface SolutionStepsBlockProps {
   exportMode?: boolean;
   hideStepLabels?: boolean;
   finalHandwritten?: boolean;
+  shortPaper?: boolean;
   onActiveTextEditorChange?: (editor: Editor | null, elementId: string | null) => void;
   onChange?: (next: {
     steps: StepRow[];
@@ -149,6 +152,8 @@ const SectionRow: React.FC<{ label: string; id: string; style?: React.CSSPropert
 
 export default function SolutionStepsBlock({
   steps,
+  shortSections,
+  shortSource,
   result,
   finalAnswer,
   verificationChecks,
@@ -163,6 +168,7 @@ export default function SolutionStepsBlock({
   exportMode = false,
   hideStepLabels = false,
   finalHandwritten = false,
+  shortPaper = false,
   onActiveTextEditorChange,
   onChange,
 }: SolutionStepsBlockProps) {
@@ -275,15 +281,162 @@ export default function SolutionStepsBlock({
   const displayAnswerText = finalAnswer?.answer_text || "";
   const displayAnswerLatex = finalAnswer?.answer_latex || result || "";
   const displayValues = finalAnswer?.values || [];
+  const hasShortSections = shortPaper && Array.isArray(shortSections) && shortSections.length > 0;
+  const hasShortSource = shortPaper && Array.isArray(shortSource?.sections) && shortSource.sections.length > 0;
 
   if (finalHandwritten) {
+    const finalValue = displayAnswerLatex || displayAnswerText || result || "";
+    const finalMode = shouldRenderAsProse(finalValue) ? "prose" : "block";
     return (
       <div className={styles.stepsBlockFinalHandwritten} ref={rootRef}>
         <div className={styles.finalDividerFinalHandwritten} />
         <div className={styles.resultMetaFinalHandwritten}>RESULT</div>
         <div className={styles.resultContentFinalHandwritten}>
-          <MathRenderer content={displayAnswerLatex || displayAnswerText || result || ""} mode="prose" />
+          <MathRenderer content={finalValue} mode={finalMode} />
         </div>
+      </div>
+    );
+  }
+
+  if (hasShortSections) {
+    return (
+      <div className={styles.stepsBlock} ref={rootRef}>
+        {(originalProblem || normalizedProblem) && (
+          <SectionRow label="PROBLEM" id={`${sectionId}-problem`} hideLabel={false}>
+            <div style={{ whiteSpace: "pre-wrap", fontSize: 13, color: "var(--text-main)", lineHeight: 1.6 }}>
+              <MathRenderer content={wrapProblemMath(normalizedProblem || originalProblem || "")} mode="prose" />
+            </div>
+          </SectionRow>
+        )}
+
+        {shortSections.map((section, sectionIndex) => (
+          <SectionRow
+            key={`${sectionId}-section-${sectionIndex}`}
+            label={(section.heading || section.label || `(${sectionIndex + 1})`).toUpperCase()}
+            id={`${sectionId}-section-${sectionIndex}`}
+            hideLabel={false}
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {section.steps.map((step, stepIndex) => (
+                <div key={`${sectionId}-section-${sectionIndex}-step-${stepIndex}`} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>
+                    Step {step.index}
+                  </div>
+                  {Array.isArray(step.blocks) && step.blocks.length > 0 ? (
+                    step.blocks.map((block, blockIndex) => (
+                      <div key={`${sectionId}-section-${sectionIndex}-step-${stepIndex}-block-${blockIndex}`}>
+                        <MathRenderer
+                          content={block.content}
+                          mode={String(block.kind).toLowerCase() === "math" ? "block" : "prose"}
+                        />
+                      </div>
+                    ))
+                  ) : step.raw ? (
+                    <MathRenderer content={step.raw} mode="prose" />
+                  ) : null}
+                </div>
+              ))}
+
+              {section.finalAnswer ? (
+                <div style={{ marginTop: 4 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 6 }}>
+                    Section Final
+                  </div>
+                  <MathRenderer content={section.finalAnswer} mode={shouldRenderAsProse(section.finalAnswer) ? "prose" : "block"} />
+                </div>
+              ) : null}
+            </div>
+          </SectionRow>
+        ))}
+
+        <SectionRow label="RESULT" id={`${sectionId}-final-answer`} hideLabel={false}>
+          {displayAnswerLatex || displayAnswerText ? (
+            <MathRenderer content={displayAnswerLatex || displayAnswerText} mode={shouldRenderAsProse(displayAnswerLatex || displayAnswerText) ? "prose" : "block"} />
+          ) : (
+            <div style={{ fontStyle: "italic", color: "var(--text-muted)" }}>No final answer provided.</div>
+          )}
+        </SectionRow>
+      </div>
+    );
+  }
+
+  if (hasShortSource) {
+    const globalFinal = (shortSource?.global_final_answer || "").trim();
+    return (
+      <div className={styles.stepsBlock} ref={rootRef}>
+        {shortSource.sections.map((section, sectionIndex) => {
+          const label = (section.heading || section.label || `(${sectionIndex + 1})`).toString();
+          const sectionSteps = Array.isArray(section.steps) ? section.steps : [];
+          return (
+            <SectionRow
+              key={`${sectionId}-source-section-${sectionIndex}`}
+              label={label.toUpperCase()}
+              id={`${sectionId}-source-section-${sectionIndex}`}
+              hideLabel={false}
+            >
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {sectionSteps.map((step, stepIndex) => {
+                  const stepBlocks = Array.isArray(step.blocks) ? step.blocks : [];
+                  const stepIndexDisplay = Number.isFinite(Number(step.index)) ? Number(step.index) : stepIndex + 1;
+                  return (
+                    <div key={`${sectionId}-source-section-${sectionIndex}-step-${stepIndex}`} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>
+                        Step {stepIndexDisplay}
+                      </div>
+                      {stepBlocks.length > 0 ? stepBlocks.map((block, blockIndex) => {
+                        const content = String(block?.content || "").trim();
+                        if (!content) return null;
+                        const kind = String(block?.kind || "text").toLowerCase();
+                        if (kind !== "math") {
+                          const lines = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+                          return (
+                            <div key={`${sectionId}-source-section-${sectionIndex}-step-${stepIndex}-block-${blockIndex}`}>
+                              {lines.map((line, lineIndex) => (
+                                <div key={`${sectionId}-source-section-${sectionIndex}-step-${stepIndex}-block-${blockIndex}-line-${lineIndex}`} style={{ whiteSpace: "pre-wrap" }}>
+                                  {line.trim().length === 0 ? "\u00A0" : <MathRenderer content={line} mode="prose" />}
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        }
+                        return (
+                          <div key={`${sectionId}-source-section-${sectionIndex}-step-${stepIndex}-block-${blockIndex}`}>
+                            <MathRenderer content={content} mode="block" />
+                          </div>
+                        );
+                      }) : step.raw ? (
+                        <div>
+                          {String(step.raw).replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").map((line, lineIndex) => (
+                            <div key={`${sectionId}-source-section-${sectionIndex}-step-${stepIndex}-raw-${lineIndex}`} style={{ whiteSpace: "pre-wrap" }}>
+                              {line.trim().length === 0 ? "\u00A0" : <MathRenderer content={line} mode="prose" />}
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+
+                {section.final_answer ? (
+                  <div style={{ marginTop: 4 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 6 }}>
+                      Section Final
+                    </div>
+                    <MathRenderer content={section.final_answer} mode={shouldRenderAsProse(section.final_answer) ? "prose" : "block"} />
+                  </div>
+                ) : null}
+              </div>
+            </SectionRow>
+          );
+        })}
+
+        <SectionRow label="RESULT" id={`${sectionId}-final-answer`} hideLabel={false}>
+          {globalFinal ? (
+            <MathRenderer content={globalFinal} mode={shouldRenderAsProse(globalFinal) ? "prose" : "block"} />
+          ) : (
+            <div style={{ fontStyle: "italic", color: "var(--text-muted)" }}>No final answer provided.</div>
+          )}
+        </SectionRow>
       </div>
     );
   }
@@ -578,7 +731,7 @@ export default function SolutionStepsBlock({
       ))}
 
       {/* Final Answer Section */}
-      <SectionRow label="FINAL ANSWER" id={`${sectionId}-final-answer`} hideLabel={false}>
+      <SectionRow label={shortPaper ? "RESULT" : "FINAL ANSWER"} id={`${sectionId}-final-answer`} hideLabel={false}>
         {editingResult ? (
           <div className={styles.inlineEditWrap}>
             <div style={{ marginBottom: 12 }}>

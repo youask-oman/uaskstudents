@@ -131,6 +131,29 @@ type AnomalyData = {
     ocr_failures?: Array<{ reason?: string; count?: number }>;
 };
 
+type DashboardTab = "analytics" | "ollama_output";
+
+type SolverOutputAttemptListItem = {
+    id: number;
+    request_id: string;
+    user_id?: number | null;
+    output_format?: string | null;
+    provider?: string | null;
+    model?: string | null;
+    latency_ms?: number | null;
+    char_count?: number | null;
+    status?: string | null;
+    created_at: string;
+    output_preview?: string | null;
+};
+
+type SolverOutputAttemptDetail = SolverOutputAttemptListItem & {
+    raw_solution_text: string;
+    extracted_answer?: string | null;
+    error_message?: string | null;
+    validation_json?: Record<string, unknown> | null;
+};
+
 const TrendBars = ({ series, color }: { series: number[]; color: string }) => {
     const max = Math.max(...series, 1);
     return (
@@ -148,6 +171,7 @@ const TrendBars = ({ series, color }: { series: number[]; color: string }) => {
 };
 
 export default function AdminDashboardPage() {
+    const [activeTab, setActiveTab] = useState<DashboardTab>("analytics");
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [routing, setRouting] = useState<RoutingData | null>(null);
     const [solveTraces, setSolveTraces] = useState<SolveTraceEntry[]>([]);
@@ -159,6 +183,11 @@ export default function AdminDashboardPage() {
     const [filters, setFilters] = useState<FilterState>(defaultFilters);
     const [isLoading, setIsLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [ollamaRows, setOllamaRows] = useState<SolverOutputAttemptListItem[]>([]);
+    const [ollamaSelected, setOllamaSelected] = useState<SolverOutputAttemptDetail | null>(null);
+    const [ollamaLoading, setOllamaLoading] = useState(false);
+    const [ollamaDetailLoading, setOllamaDetailLoading] = useState(false);
+    const [ollamaError, setOllamaError] = useState<string | null>(null);
     const baseUrl = API_BASE_URL;
     const router = useRouter();
     const settingsPanelRef = useRef<HTMLDivElement | null>(null);
@@ -210,6 +239,52 @@ export default function AdminDashboardPage() {
         clearSessionData();
         setIsSettingsOpen(false);
         router.push("/login");
+    };
+
+    const getAuthHeaders = (): HeadersInit => {
+        const token = localStorage.getItem("token");
+        return token ? { Authorization: `Bearer ${token}` } : {};
+    };
+
+    const loadOllamaRows = async () => {
+        setOllamaLoading(true);
+        setOllamaError(null);
+        try {
+            const qs = buildQuery({ limit: 500, offset: 0, output_format: "freeform" });
+            const res = await fetchApi(`/api/v1/admin/solver-output-attempts?${qs}`, { headers: getAuthHeaders() });
+            if (!res.ok) {
+                throw new Error("Failed to load Ollama output attempts.");
+            }
+            const data = (await res.json()) as SolverOutputAttemptListItem[];
+            const onlyOllama = (Array.isArray(data) ? data : []).filter(
+                (row) => (row.provider || "").toLowerCase() === "ollama"
+            );
+            setOllamaRows(onlyOllama);
+            if (onlyOllama.length === 0) {
+                setOllamaSelected(null);
+            }
+        } catch (err) {
+            setOllamaError((err as Error).message || "Unable to load Ollama output attempts.");
+        } finally {
+            setOllamaLoading(false);
+        }
+    };
+
+    const loadOllamaDetail = async (attemptId: number) => {
+        setOllamaDetailLoading(true);
+        setOllamaError(null);
+        try {
+            const res = await fetchApi(`/api/v1/admin/solver-output-attempts/${attemptId}`, { headers: getAuthHeaders() });
+            if (!res.ok) {
+                throw new Error("Failed to load Ollama output details.");
+            }
+            const data = (await res.json()) as SolverOutputAttemptDetail;
+            setOllamaSelected(data);
+        } catch (err) {
+            setOllamaError((err as Error).message || "Unable to load Ollama output details.");
+        } finally {
+            setOllamaDetailLoading(false);
+        }
     };
 
 
@@ -273,6 +348,12 @@ export default function AdminDashboardPage() {
         fetchAnalytics();
         return () => controller.abort();
     }, [baseUrl, range, filters]);
+
+    useEffect(() => {
+        if (activeTab !== "ollama_output") return;
+        if (ollamaRows.length > 0 || ollamaLoading) return;
+        void loadOllamaRows();
+    }, [activeTab, ollamaRows.length, ollamaLoading]);
 
     const routingSeries = Array.isArray(routing?.series) ? routing.series : [];
     const maxVolume = routingSeries.length > 0
@@ -374,6 +455,33 @@ export default function AdminDashboardPage() {
             </header>
 
             <div className="p-8 max-w-[1400px] mx-auto w-full flex flex-col gap-8">
+                <section className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-4">
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab("analytics")}
+                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${activeTab === "analytics"
+                                ? "bg-admin-primary text-white"
+                                : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200"
+                                }`}
+                        >
+                            Analytics
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab("ollama_output")}
+                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${activeTab === "ollama_output"
+                                ? "bg-admin-primary text-white"
+                                : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200"
+                                }`}
+                        >
+                            Ollama Output
+                        </button>
+                    </div>
+                </section>
+
+                {activeTab === "analytics" ? (
+                    <>
                 <section className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-5">
                     <h4 className="text-base font-bold text-slate-900 dark:text-white">Legal Quick Access</h4>
                     <p className="text-xs text-slate-500 mt-1">View public legal pages or open admin editors to update/publish.</p>
@@ -733,6 +841,84 @@ export default function AdminDashboardPage() {
                         </div>
                     </div>
                 </section>
+                    </>
+                ) : (
+                    <section className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h4 className="text-base font-bold text-slate-900 dark:text-white">Ollama Raw Output</h4>
+                                <p className="text-sm text-slate-500">Verbatim output saved in solver attempts (`provider=ollama`).</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => void loadOllamaRows()}
+                                className="px-4 py-2 rounded-lg bg-admin-primary text-white text-sm font-semibold hover:bg-admin-primary/90"
+                            >
+                                Refresh
+                            </button>
+                        </div>
+
+                        {ollamaError ? (
+                            <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                                {ollamaError}
+                            </div>
+                        ) : null}
+
+                        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] gap-4">
+                            <div className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
+                                <div className="max-h-[560px] overflow-y-auto divide-y divide-slate-200 dark:divide-slate-800">
+                                    {ollamaLoading ? (
+                                        <div className="p-4 text-sm text-slate-500">Loading Ollama attempts...</div>
+                                    ) : ollamaRows.length === 0 ? (
+                                        <div className="p-4 text-sm text-slate-500">No Ollama attempts found.</div>
+                                    ) : (
+                                        ollamaRows.map((row) => (
+                                            <button
+                                                key={row.id}
+                                                type="button"
+                                                onClick={() => void loadOllamaDetail(row.id)}
+                                                className="w-full text-left p-4 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors"
+                                            >
+                                                <p className="text-xs font-mono text-slate-700 dark:text-slate-200">{row.request_id}</p>
+                                                <p className="text-[11px] text-slate-500 mt-1">
+                                                    id:{row.id} | {row.model || "-"} | {row.status || "-"} | {row.char_count ?? 0} chars
+                                                </p>
+                                                <p className="text-xs text-slate-500 mt-1">{new Date(row.created_at).toLocaleString()}</p>
+                                                <p className="mt-2 text-xs text-slate-600 dark:text-slate-300 line-clamp-2">{row.output_preview || "(empty)"}</p>
+                                            </button>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-3 bg-slate-50 dark:bg-slate-950">
+                                {ollamaDetailLoading ? (
+                                    <div className="text-sm text-slate-500">Loading output detail...</div>
+                                ) : !ollamaSelected ? (
+                                    <div className="text-sm text-slate-500">Select an Ollama attempt to see full raw output.</div>
+                                ) : (
+                                    <div className="flex flex-col gap-3">
+                                        <pre className="text-[11px] whitespace-pre-wrap break-words bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-3">
+{JSON.stringify({
+    id: ollamaSelected.id,
+    request_id: ollamaSelected.request_id,
+    model: ollamaSelected.model,
+    status: ollamaSelected.status,
+    char_count: ollamaSelected.char_count,
+    created_at: ollamaSelected.created_at
+}, null, 2)}
+                                        </pre>
+                                        <textarea
+                                            readOnly
+                                            value={ollamaSelected.raw_solution_text || ""}
+                                            className="w-full min-h-[380px] rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 text-xs font-mono"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </section>
+                )}
 
                 <footer className="mt-auto pt-8 flex items-center justify-between text-slate-500 text-[11px] font-medium border-t border-slate-200 dark:border-slate-800">
                     <div className="flex items-center gap-4">

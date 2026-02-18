@@ -3,6 +3,7 @@ import {
   MathSolutionPayload,
   NormalizedChatMessage,
   SessionMessage,
+  ShortSection,
   StepRow,
   VerificationCheck,
 } from "./types";
@@ -254,20 +255,76 @@ const parseStepsFromObject = (value: unknown): StepRow[] => {
   const stepsContainer = solution ?? obj;
   const stepsLike = Array.isArray(stepsContainer.steps) ? stepsContainer.steps : [];
   const directSteps: StepRow[] = [];
+
+  const extractDisplayMath = (text: string): string | undefined => {
+    const value = String(text || "");
+    const blockMatch = value.match(/\\\[\s*([\s\S]*?)\s*\\\]/);
+    if (blockMatch?.[1]) return blockMatch[1].trim();
+    const inlineMatch = value.match(/\\\(\s*([\s\S]*?)\s*\\\)/);
+    if (inlineMatch?.[1]) return inlineMatch[1].trim();
+    return undefined;
+  };
+
+  const stripBoilerplate = (text: string): string => {
+    let out = String(text || "").trim();
+    out = out.replace(
+      /^to solve the problem,\s*we need to follow these steps:\s*1\.\s*identify the given equation\.\s*2\.\s*solve the equation step by step\.\s*/i,
+      ""
+    );
+    out = out.replace(/^to solve the problem,\s*we need to follow these steps:\s*/i, "");
+    out = out.replace(/^given equation:\s*/i, "");
+    if (/given equation:/i.test(out)) {
+      const parts = out.split(/given equation:/i);
+      out = (parts[parts.length - 1] || "").trim();
+    }
+    return out.trim();
+  };
+
+  const summarizeBoilerplateSteps = (text: string): string | undefined => {
+    const value = String(text || "");
+    const numbered: string[] = [];
+    const matches = value.matchAll(/\b\d+\.\s*([^.\n]+(?:\.[^.\n]+)*)/g);
+    for (const match of matches) {
+      const part = String(match?.[1] || "").trim();
+      if (part) numbered.push(part.replace(/\s+/g, " "));
+    }
+    if (numbered.length === 0) return undefined;
+    return numbered.join(". ");
+  };
+
+  const looksLikeAnswerList = (value: string): boolean => {
+    const text = String(value || "").trim();
+    if (!text) return false;
+    if (/^[+-]?\d+(?:\.\d+)?\s*,\s*[+-]?\d+(?:\.\d+)?(?:\s*,\s*[+-]?\d+(?:\.\d+)?)*$/.test(text)) return true;
+    if (/^[+-]?\d+\s*\/\s*\d+$/.test(text)) return true;
+    return false;
+  };
+
   stepsLike.forEach((step, index) => {
     const entry = asRecord(step);
     if (!entry) return;
     const stepId = Number(entry.step_id);
     const fallbackIndex = Number.isFinite(stepId) && stepId > 0 ? stepId : index + 1;
     const title = asString(entry.title) || `Step ${fallbackIndex}`;
-    const explanation = asString(entry.explanation) || undefined;
+    const rawExplanation = asString(entry.explanation) || "";
+    const extractedMath = extractDisplayMath(rawExplanation);
+    const cleanedExplanationRaw = stripBoilerplate(rawExplanation);
+    const cleanedExplanation = cleanedExplanationRaw
+      .replace(/\\\[\s*[\s\S]*?\s*\\\]/g, " ")
+      .replace(/\\\(\s*[\s\S]*?\s*\\\)/g, " ")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+    const recoveredExplanation = summarizeBoilerplateSteps(rawExplanation);
     const mathRaw = entry.math ?? entry.math_latex;
-    const mathLatex = Array.isArray(mathRaw)
+    let mathLatex = Array.isArray(mathRaw)
       ? mathRaw.map((item) => asString(item) || "").filter(Boolean).join(" \\\\ ")
       : asString(mathRaw) || undefined;
+    if (extractedMath && (!mathLatex || looksLikeAnswerList(mathLatex))) {
+      mathLatex = extractedMath;
+    }
     directSteps.push({
       title,
-      explanation,
+      explanation: cleanedExplanation || recoveredExplanation || undefined,
       mathLatex,
       rulesUsed: asStringArray(entry.rules_used),
       checks: asStringArray(entry.checks),
@@ -522,9 +579,122 @@ const parseFinalAnswerFromObject = (value: unknown): MathSolutionPayload["finalA
   };
 };
 
+const parseSectionedShortPayload = (
+  value: unknown,
+  context?: { questionText?: string; originalProblem?: string }
+): MathSolutionPayload | null => {
+  const obj = asRecord(value);
+  if (!obj) return null;
+  const sectionsRaw = Array.isArray(obj.sections) ? obj.sections : [];
+  if (sectionsRaw.length === 0) return null;
+
+  const shortSections: ShortSection[] = [];
+  const steps: StepRow[] = [];
+
+  sectionsRaw.forEach((sectionLike) => {
+    const section = asRecord(sectionLike);
+    if (!section) return;
+
+    const sectionHeading = asString(section.heading) || asString(section.label) || "Section";
+    const sectionLabel = asString(section.label) || sectionHeading.replace(/[()]/g, "").trim() || "section";
+    const stepRows = Array.isArray(section.steps) ? section.steps : [];
+    const parsedSectionSteps: ShortSection["steps"] = [];
+
+    stepRows.forEach((stepLike, idx) => {
+      const step = asRecord(stepLike);
+      if (!step) return;
+
+      const stepIndexRaw = Number(step.index);
+      const stepIndex = Number.isFinite(stepIndexRaw) && stepIndexRaw > 0 ? stepIndexRaw : idx + 1;
+
+      const blocksRaw = Array.isArray(step.blocks) ? step.blocks : [];
+      const parsedBlocks = blocksRaw
+        .map((blockLike) => {
+          const block = asRecord(blockLike);
+          if (!block) return null;
+          const kind = (asString(block.kind) || "text").trim();
+          const content = (asString(block.content) || "").trim();
+          if (!content) return null;
+          return { kind, content };
+        })
+        .filter((block): block is { kind: string; content: string } => Boolean(block));
+
+      const stepKind = (asString(step.kind) || "work").trim().toLowerCase();
+      const stepRaw = asString(step.raw) || undefined;
+
+      parsedSectionSteps.push({
+        index: stepIndex,
+        kind: stepKind || "work",
+        raw: stepRaw,
+        blocks: parsedBlocks,
+      });
+
+      const textParts = parsedBlocks
+        .filter((b) => b.kind.toLowerCase() !== "math")
+        .map((b) => b.content);
+      const mathParts = parsedBlocks
+        .filter((b) => b.kind.toLowerCase() === "math")
+        .map((b) => b.content);
+      const fallbackRaw = (stepRaw || "").trim();
+
+      steps.push({
+        title: `${sectionHeading} Step ${stepIndex}`,
+        explanation: textParts.length > 0 ? textParts.join(" ").trim() : fallbackRaw || undefined,
+        mathLatex: mathParts.length > 0 ? mathParts.join(" \\\\ ").trim() : undefined,
+      });
+    });
+
+    shortSections.push({
+      label: sectionLabel,
+      heading: sectionHeading,
+      steps: parsedSectionSteps,
+      finalAnswer: asString(section.final_answer) || undefined,
+      incomplete: Boolean(section.incomplete),
+    });
+  });
+
+  const result = cleanAnswerCandidate(asString(obj.global_final_answer) || undefined);
+  const recognized =
+    context?.questionText ||
+    context?.originalProblem ||
+    asString(asRecord(obj.question)?.text) ||
+    asString(asRecord(obj.problem)?.original_text) ||
+    undefined;
+
+  return {
+    steps,
+    shortSections,
+    result,
+    recognizedLatex: recognized,
+    finalAnswer: result
+      ? {
+          answer_text: result,
+          answer_latex: result,
+          values: [],
+        }
+      : undefined,
+    originalProblem: context?.originalProblem || asString(asRecord(obj.problem)?.original_text) || recognized || undefined,
+    normalizedProblem: recognized,
+  };
+};
+
 const parseMathSolutionFromObject = (value: unknown): MathSolutionPayload | null => {
   const obj = asRecord(value);
   if (!obj) return null;
+
+  // Short-tier custom extractor shape: {sections, global_final_answer, ...}
+  const directSectioned = parseSectionedShortPayload(obj);
+  if (directSectioned) return directSectioned;
+
+  // Short-tier wrapper may keep parser output under raw_user_extraction.
+  const rawUserExtraction = asRecord(obj.raw_user_extraction);
+  if (rawUserExtraction) {
+    const nestedSectioned = parseSectionedShortPayload(rawUserExtraction, {
+      questionText: asString(asRecord(obj.question)?.text) || undefined,
+      originalProblem: asString(asRecord(obj.problem)?.original_text) || undefined,
+    });
+    if (nestedSectioned) return nestedSectioned;
+  }
 
   // New solve payload shape stores per-question outputs under `items[]`.
   // Use the first non-refusal item as the primary canvas solution.
@@ -1098,8 +1268,52 @@ export const extractBatchSolutionsFromSessionMessages = (
 
     const mode = asString(structured.mode) || "";
     const solutionsRaw = Array.isArray(structured.solutions) ? structured.solutions : [];
+    const rawUserExtraction = asRecord(structured.raw_user_extraction);
+    const tierRequested = asString(structured.tier_requested) || asString(asRecord(structured.solve_meta)?.tier_requested) || "";
+    const tierEffective = asString(structured.tier_effective) || asString(asRecord(structured.solve_meta)?.tier_effective) || "";
+    const looksShortTier = /SHORT/i.test(tierRequested) || /SHORT/i.test(tierEffective);
+
+    // Prefer full short-tier parser output (sections->steps->blocks) when available.
+    if ((looksShortTier || rawUserExtraction) && rawUserExtraction) {
+      const questionText =
+        asString(asRecord(structured.question)?.text) ||
+        asString(asRecord(structured.problem)?.original_text) ||
+        questionTextMap.q1;
+      const parsedShort = parseMathSolutionFromObject({
+        ...structured,
+        question: asRecord(structured.question) || { text: questionText },
+        problem: asRecord(structured.problem) || { original_text: questionText || "" },
+        sections: rawUserExtraction.sections,
+        global_final_answer: rawUserExtraction.global_final_answer,
+      });
+      if (parsedShort) {
+        return [
+          {
+            questionId: "q1",
+            questionText,
+            solution: parsedShort,
+          },
+        ];
+      }
+    }
+
     if (mode !== "batch_text_solve" && solutionsRaw.length === 0) continue;
-    if (solutionsRaw.length === 0) return [];
+    if (solutionsRaw.length === 0) {
+      const shortDirect = parseMathSolutionFromObject(structured);
+      if (shortDirect) {
+        return [
+          {
+            questionId: "q1",
+            questionText:
+              asString(asRecord(structured.question)?.text) ||
+              asString(asRecord(structured.problem)?.original_text) ||
+              questionTextMap.q1,
+            solution: shortDirect,
+          },
+        ];
+      }
+      return [];
+    }
 
     const parsed = solutionsRaw
       .map((entry) => {

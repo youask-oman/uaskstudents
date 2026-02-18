@@ -80,6 +80,17 @@ app.state.limiter = limiter
 logger = logging.getLogger("app")
 _harden_logging_stream_encodings()
 
+
+async def _start_math_render_safely() -> None:
+    try:
+        await get_math_render_service().startup()
+    except NotImplementedError:
+        logging.warning(
+            "Math render startup skipped: event loop does not support subprocesses on this runtime."
+        )
+    except Exception:
+        logging.exception("Failed to start math render service")
+
 # Global Exception Handlers
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
@@ -390,15 +401,18 @@ def on_startup():
     else:
         logging.info("DISABLE_OPENAI is enabled; skipping LLM manager initialization")
 
-    try:
-        # Start backend-only MathJax worker pool.
+    if os.environ.get("DISABLE_MATH_RENDER", "").lower() in {"1", "true", "yes"}:
+        logging.info("DISABLE_MATH_RENDER is enabled; skipping math render service startup")
+    else:
         try:
-            loop = asyncio.get_running_loop()
-            loop.create_task(get_math_render_service().startup())
-        except RuntimeError:
-            asyncio.run(get_math_render_service().startup())
-    except Exception as e:
-        logging.error("Failed to start math render service: %s", e)
+            # Start backend-only MathJax worker pool.
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(_start_math_render_safely())
+            except RuntimeError:
+                asyncio.run(_start_math_render_safely())
+        except Exception as e:
+            logging.error("Failed to schedule math render service startup: %s", e)
 
 
 @app.on_event("shutdown")

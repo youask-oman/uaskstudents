@@ -1,5 +1,0 @@
-const { detectMultiQuestion, autoSplitQuestions } = require('./tmp_mq_test/multiQuestionDetector.js');
-const input = `Let (X,Y) have joint density f(x,y) = 2 on the triangle 0 < y < x < 1, and 0 otherwise. Verify that f is a valid joint density by integrating over its support. Compute the marginal density f_X(x). Compute the marginal density f_Y(y). Compute E[X] and E[Y]. Compute P(Y < 1/4). Compute the conditional density f_{Y|X}(y|x). Compute E[Y|X=x] and simplify. Compute Cov(X,Y). Find the correlation Corr(X,Y) and interpret its sign.`;
-const detected = detectMultiQuestion(input);
-const splits = autoSplitQuestions(input);
-console.log(JSON.stringify({detected, split_count: splits.length, splits}, null, 2));

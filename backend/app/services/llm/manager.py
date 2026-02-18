@@ -18,11 +18,19 @@ def _default_fallback_enabled() -> bool:
     return False
 
 
+def _env_true(name: str, default: str = "false") -> bool:
+    return (os.environ.get(name) or default).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _openai_compat_mode_enabled() -> bool:
+    return _env_true("OPENAI_COMPAT_MODE")
+
+
 def get_configured_openai_model() -> str:
     model = (os.environ.get("OPENAI_MODEL_DEFAULT") or "").strip()
     if not model:
         raise RuntimeError("OPENAI_MODEL_DEFAULT is required")
-    if model != _REQUIRED_OPENAI_MODEL:
+    if not _openai_compat_mode_enabled() and model != _REQUIRED_OPENAI_MODEL:
         raise RuntimeError(f"OPENAI_MODEL_DEFAULT must be '{_REQUIRED_OPENAI_MODEL}', got '{model}'")
     return model
 
@@ -33,7 +41,7 @@ def get_configured_ollama_model(tier: Optional[str] = None) -> str:
         model = (os.environ.get("OLLAMA_MODEL_FINAL") or "").strip()
         if model:
             return model
-    model = (os.environ.get("OLLAMA_MODEL") or "qwen25-math7b:latest").strip()
+    model = (os.environ.get("OLLAMA_MODEL") or "Qwen2.5-Math-7B-Instruct-Q4_K_M:latest").strip()
     if not model:
         raise RuntimeError("OLLAMA_MODEL is required")
     return model
@@ -64,11 +72,14 @@ class LLMManager:
             return self._clients[provider]
 
         if provider == "openai":
+            compat_mode = _openai_compat_mode_enabled()
             client = OpenAIClient(
                 api_key=os.environ.get("OPENAI_API_KEY"),
                 base_url=os.environ.get("OPENAI_BASE_URL"),
                 timeout_seconds=int((os.environ.get("OPENAI_TIMEOUT_SECONDS") or "60").strip()),
                 default_model=get_configured_openai_model(),
+                allow_non_gpt5_model=compat_mode,
+                allow_missing_api_key=compat_mode,
             )
         else:
             default_max_tokens_raw = (os.environ.get("OLLAMA_MAX_TOKENS") or "").strip()
@@ -99,24 +110,28 @@ class LLMManager:
         api_key = os.environ.get("OPENAI_API_KEY")
         base_url = os.environ.get("OPENAI_BASE_URL") or "https://api.openai.com/v1"
         model = (os.environ.get("OPENAI_MODEL_DEFAULT") or "").strip()
+        compat_mode = _openai_compat_mode_enabled()
         result = {
-            "configured": bool(api_key and model),
+            "configured": bool(model and (api_key or compat_mode)),
             "base_url": base_url,
             "model": model,
+            "compat_mode": compat_mode,
             "ok": False,
         }
-        if not api_key:
+        if not api_key and not compat_mode:
             result["error"] = "OPENAI_API_KEY not configured"
             return result
         if not model:
             result["error"] = "OPENAI_MODEL_DEFAULT not configured"
             return result
-        if model != _REQUIRED_OPENAI_MODEL:
+        if not compat_mode and model != _REQUIRED_OPENAI_MODEL:
             result["error"] = f"OPENAI_MODEL_DEFAULT must be '{_REQUIRED_OPENAI_MODEL}'"
             return result
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(5.0)) as client:
-                headers = {"Authorization": f"Bearer {api_key}"}
+                headers = {}
+                if api_key:
+                    headers["Authorization"] = f"Bearer {api_key}"
                 resp = await client.get(f"{base_url.rstrip('/')}/models", headers=headers)
                 result["ok"] = resp.status_code == 200
                 if not result["ok"]:

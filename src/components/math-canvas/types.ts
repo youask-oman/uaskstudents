@@ -130,6 +130,56 @@ export interface StepRow {
   notes?: string;
 }
 
+export interface ShortSectionBlock {
+  kind: string;
+  content: string;
+}
+
+export interface ShortSectionStep {
+  index: number;
+  kind: string;
+  raw?: string;
+  blocks: ShortSectionBlock[];
+}
+
+export interface ShortSection {
+  label: string;
+  heading: string;
+  steps: ShortSectionStep[];
+  finalAnswer?: string;
+  incomplete?: boolean;
+}
+
+export interface ShortSourceStepBlock {
+  kind?: string;
+  content?: string;
+}
+
+export interface ShortSourceStep {
+  index?: number;
+  kind?: string;
+  blocks?: ShortSourceStepBlock[];
+  raw?: string;
+}
+
+export interface ShortSourceSection {
+  label?: string;
+  heading?: string;
+  steps?: ShortSourceStep[];
+  final_answer?: string;
+  incomplete?: boolean;
+  incomplete_diag?: Record<string, unknown> | null;
+}
+
+export interface ShortSourcePayload {
+  sections: ShortSourceSection[];
+  global_final_answer?: string;
+  warnings?: unknown[];
+  meta?: Record<string, unknown>;
+  question?: string;
+  model?: string;
+}
+
 export interface VerificationCheck {
   checkId: string;
   verdict: "pass" | "warn" | "fail" | "unknown";
@@ -181,6 +231,7 @@ export interface MathSolutionPayload {
   confidence?: number;
   commonMistakes?: string[];
   parseStatus?: "ok" | "partial" | "failed";
+  shortSections?: ShortSection[];
 }
 
 export type NormalizedContentItem =
@@ -214,6 +265,8 @@ export type CanvasBlock =
     plots?: ChartPayload[];
     confidence?: number;
     commonMistakes?: string[];
+    shortSections?: ShortSection[];
+    shortSource?: ShortSourcePayload;
   }
   | { id: string; type: "text"; text: string };
 

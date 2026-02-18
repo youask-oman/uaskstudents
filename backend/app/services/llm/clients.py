@@ -1,4 +1,4 @@
-﻿import hashlib
+import hashlib
 import json
 import logging
 import os
@@ -206,11 +206,15 @@ class OpenAIClient:
         base_url: Optional[str],
         timeout_seconds: int,
         default_model: str,
+        allow_non_gpt5_model: bool = False,
+        allow_missing_api_key: bool = False,
     ):
         self.api_key = api_key
         self.base_url = base_url
         self.timeout_seconds = timeout_seconds
         self.default_model = default_model
+        self.allow_non_gpt5_model = bool(allow_non_gpt5_model)
+        self.allow_missing_api_key = bool(allow_missing_api_key)
         self._client = None
         self._breaker = CircuitBreaker(
             failure_threshold=int((os.environ.get("OPENAI_BREAKER_FAILURE_THRESHOLD") or "3").strip()),
@@ -224,7 +228,8 @@ class OpenAIClient:
         if self._client is None:
             from openai import AsyncOpenAI
 
-            kwargs: Dict[str, Any] = {"api_key": self.api_key, "timeout": self.timeout_seconds}
+            effective_api_key = self.api_key or ("sk-local" if self.allow_missing_api_key else None)
+            kwargs: Dict[str, Any] = {"api_key": effective_api_key, "timeout": self.timeout_seconds}
             if self.base_url:
                 kwargs["base_url"] = self.base_url
             self._client = AsyncOpenAI(**kwargs)
@@ -272,7 +277,7 @@ class OpenAIClient:
         reasoning_effort: Optional[str] = None,
     ) -> LLMResponse:
         del stream
-        if not self.api_key:
+        if not self.api_key and not self.allow_missing_api_key:
             raise LLMProviderError("OPENAI_API_KEY not configured.", provider="openai")
         if not self.default_model and not model:
             raise LLMProviderError("OPENAI_MODEL_DEFAULT not configured.", provider="openai")
@@ -289,7 +294,7 @@ class OpenAIClient:
             )
 
         model_name = (model or self.default_model).strip()
-        if model_name != self._required_model:
+        if not self.allow_non_gpt5_model and model_name != self._required_model:
             raise LLMProviderError(
                 f"Model override rejected. Expected {self._required_model}, got {model_name}.",
                 provider="openai",
@@ -627,7 +632,7 @@ class OllamaClient:
 
     @staticmethod
     def _should_enforce_english(model_name: str) -> bool:
-        return str(model_name or "").strip().lower() == "qwen25-math7b:latest"
+        return str(model_name or "").strip().lower() == "qwen2.5-math-7b-instruct-q4_k_m:latest"
 
     async def generate(
         self,
@@ -652,11 +657,21 @@ class OllamaClient:
         if not model_name:
             raise LLMProviderError("OLLAMA_MODEL not configured.", provider="ollama")
 
+        use_format_schema = (os.environ.get("OLLAMA_USE_FORMAT_SCHEMA") or "true").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+        }
+        include_schema_in_prompt = (
+            os.environ.get("OLLAMA_INCLUDE_SCHEMA_IN_PROMPT") or "false"
+        ).strip().lower() in {"1", "true", "yes"}
+        prompt_schema = json_schema if include_schema_in_prompt else None
+
         prompt_text = self._build_prompt(
             messages=messages,
             system_prompt=None,
             prompt=prompt,
-            json_schema=json_schema,
+            json_schema=prompt_schema,
         )
         system_text = (system_prompt or "").strip()
         english_only_enforced = self._should_enforce_english(model_name)
@@ -685,7 +700,7 @@ class OllamaClient:
         }
         if system_text:
             payload["system"] = system_text
-        format_schema = self._extract_ollama_format_schema(json_schema)
+        format_schema = self._extract_ollama_format_schema(json_schema) if use_format_schema else None
         if format_schema is not None:
             payload["format"] = format_schema
         if options:
@@ -709,15 +724,15 @@ class OllamaClient:
             },
         )
 
-        try:
-            resp = None
-            last_connect_exc: Optional[Exception] = None
-            last_timeout_exc: Optional[Exception] = None
-            candidates = self._candidate_base_urls()
-            tries_per_base = self.connect_retries + 1
+        async def _post_with_retries(request_payload: Dict[str, Any]) -> httpx.Response:
+            resp_local: Optional[httpx.Response] = None
+            last_connect_exc_local: Optional[Exception] = None
+            last_timeout_exc_local: Optional[Exception] = None
+            candidates_local = self._candidate_base_urls()
+            tries_per_base_local = self.connect_retries + 1
 
-            for candidate_base in candidates:
-                for attempt_no in range(1, tries_per_base + 1):
+            for candidate_base in candidates_local:
+                for attempt_no in range(1, tries_per_base_local + 1):
                     try:
                         if self._http_client_factory:
                             client_ctx = self._http_client_factory(timeout=timeout)
@@ -725,28 +740,32 @@ class OllamaClient:
                             client_ctx = httpx.AsyncClient(timeout=timeout)
 
                         async with client_ctx as client:
-                            resp = await client.post(f"{candidate_base}/api/generate", json=payload)
+                            resp_local = await client.post(f"{candidate_base}/api/generate", json=request_payload)
 
                         if candidate_base != self.base_url:
                             self.base_url = candidate_base
                         break
                     except httpx.ConnectError as exc:
-                        last_connect_exc = exc
-                        if attempt_no < tries_per_base:
+                        last_connect_exc_local = exc
+                        if attempt_no < tries_per_base_local:
                             await asyncio.sleep(self.retry_backoff_ms / 1000.0)
                     except httpx.TimeoutException as exc:
-                        last_timeout_exc = exc
-                        if attempt_no < tries_per_base:
+                        last_timeout_exc_local = exc
+                        if attempt_no < tries_per_base_local:
                             await asyncio.sleep(self.retry_backoff_ms / 1000.0)
-                if resp is not None:
+                if resp_local is not None:
                     break
 
-            if resp is None:
-                if last_connect_exc is not None:
-                    raise last_connect_exc
-                if last_timeout_exc is not None:
-                    raise last_timeout_exc
+            if resp_local is None:
+                if last_connect_exc_local is not None:
+                    raise last_connect_exc_local
+                if last_timeout_exc_local is not None:
+                    raise last_timeout_exc_local
                 raise RuntimeError("No HTTP response from Ollama.")
+            return resp_local
+
+        try:
+            resp = await _post_with_retries(payload)
         except httpx.ConnectError as exc:
             raise LLMProviderError(
                 "Ollama base URL unreachable.",
@@ -782,6 +801,40 @@ class OllamaClient:
                 is_transient=True,
                 details={"base_url": self.base_url},
             ) from exc
+
+        if resp.status_code >= 500 and format_schema is not None:
+            body_preview = (resp.text or "")[:500].lower()
+            if "model runner has unexpectedly stopped" in body_preview:
+                safe_payload = dict(payload)
+                safe_payload.pop("format", None)
+                safe_options = dict(options)
+                try:
+                    safe_num_ctx = int((os.environ.get("OLLAMA_SAFE_NUM_CTX") or "2048").strip())
+                except Exception:
+                    safe_num_ctx = 2048
+                if safe_num_ctx > 0:
+                    current_ctx = int(safe_options.get("num_ctx") or safe_num_ctx)
+                    safe_options["num_ctx"] = min(current_ctx, safe_num_ctx)
+                try:
+                    safe_num_predict = int((os.environ.get("OLLAMA_SAFE_NUM_PREDICT") or "1800").strip())
+                except Exception:
+                    safe_num_predict = 1800
+                if safe_num_predict > 0:
+                    current_predict = safe_options.get("num_predict")
+                    if current_predict is None:
+                        safe_options["num_predict"] = safe_num_predict
+                    else:
+                        safe_options["num_predict"] = min(int(current_predict), safe_num_predict)
+                if safe_options:
+                    safe_payload["options"] = safe_options
+                try:
+                    fallback_resp = await _post_with_retries(safe_payload)
+                    if fallback_resp.status_code < 400:
+                        resp = fallback_resp
+                        payload = safe_payload
+                        options = safe_options
+                except Exception:
+                    pass
 
         if resp.status_code >= 400:
             body_preview = (resp.text or "")[:300]

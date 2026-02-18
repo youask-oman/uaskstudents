@@ -34,6 +34,7 @@ interface PaperPageProps {
   isNew?: boolean;
   hideStepLabels?: boolean;
   finalHandwritten?: boolean;
+  shortPaper?: boolean;
 }
 
 interface Point {
@@ -361,6 +362,7 @@ export default function PaperPage({
   isNew = false,
   hideStepLabels = false,
   finalHandwritten = false,
+  shortPaper = false,
 }: PaperPageProps) {
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -765,10 +767,10 @@ export default function PaperPage({
 
   return (
     <article
-      className={`paper ${styles.paperPage} ${active ? styles.paperPageActive : ""} ${isNew ? styles.paperPageNew : ""} ${finalHandwritten ? styles.paperPageFinalHandwritten : ""} ${getCursorClass()}`.trim()}
+      className={`paper ${styles.paperPage} ${active ? styles.paperPageActive : ""} ${isNew ? styles.paperPageNew : ""} ${finalHandwritten ? styles.paperPageFinalHandwritten : ""} ${shortPaper ? styles.paperPageShortPaper : ""} ${getCursorClass()}`.trim()}
       onClick={onActivate}
     >
-      {!finalHandwritten ? (
+      {!finalHandwritten && !shortPaper ? (
         <div className={styles.paperPageHeader}>
           <span className={styles.paperChapterTitle}>Uask.ai Solver</span>
           <span className={styles.paperVersionBadge}>v2.1</span>
@@ -843,6 +845,7 @@ export default function PaperPage({
                       badgeLabel={block.badge}
                       plainStyle={hideStepLabels}
                       finalHandwritten={finalHandwritten}
+                      shortPaper={shortPaper}
                     />
                   )}
                 </div>
@@ -865,6 +868,8 @@ export default function PaperPage({
                   ) : null}
                   <SolutionStepsBlock
                     steps={block.steps}
+                    shortSections={block.shortSections}
+                    shortSource={block.shortSource}
                     result={block.result}
                     finalAnswer={block.finalAnswer}
                     verificationChecks={block.verificationChecks}
@@ -879,6 +884,7 @@ export default function PaperPage({
                     editable={viewMode === "edit"}
                     hideStepLabels={hideStepLabels}
                     finalHandwritten={finalHandwritten}
+                    shortPaper={shortPaper}
                     onActiveTextEditorChange={onActiveTextEditorChange}
                     onChange={(next) =>
                       onUpdateBlock(block.id, (current) =>

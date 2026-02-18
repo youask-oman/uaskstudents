@@ -10,6 +10,7 @@ interface RecognitionBoxProps {
   badgeLabel?: string;
   plainStyle?: boolean;
   finalHandwritten?: boolean;
+  shortPaper?: boolean;
 }
 
 const hasStandaloneMathDelimiters = (text: string): boolean => {
@@ -54,13 +55,25 @@ export default function RecognitionBox({
   badgeLabel = "AI recognized",
   plainStyle = false,
   finalHandwritten = false,
+  shortPaper = false,
 }: RecognitionBoxProps) {
   if (finalHandwritten) {
     return (
       <div className={styles.recognitionBoxFinalHandwritten}>
         <div className={styles.recognitionMetaFinalHandwritten}>{String(badgeLabel || "PROBLEM").toUpperCase()}</div>
         <div className={styles.recognitionContentFinalHandwritten}>
-          <MathRenderer content={latex} mode="prose" />
+          <MathRenderer content={latex} mode={shouldRenderAsProse(latex) ? "prose" : "block"} />
+        </div>
+      </div>
+    );
+  }
+
+  if (shortPaper) {
+    return (
+      <div className={styles.recognitionBoxShortPaper}>
+        <div className={styles.recognitionMetaShortPaper}>{String(badgeLabel || "AI recognized").toUpperCase()}</div>
+        <div className={styles.recognitionContentShortPaper}>
+          <MathRenderer content={latex} mode={shouldRenderAsProse(latex) ? "prose" : "block"} />
         </div>
       </div>
     );

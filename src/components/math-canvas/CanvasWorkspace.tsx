@@ -33,7 +33,7 @@ interface CanvasWorkspaceProps {
   dispatch: React.Dispatch<DocumentAction>;
   viewMode?: "edit" | "student_report";
   hideStepLabels?: boolean;
-  paperVariant?: "default" | "final_handwritten";
+  paperVariant?: "default" | "final_handwritten" | "short_paper";
 }
 
 interface MathEditorTarget {
@@ -534,17 +534,19 @@ export default function CanvasWorkspace({
     return '"Kalam", "Architects Daughter", "Gochi Hand", cursive';
   }, [finalHandFont]);
 
-  const finalHandwrittenStyle = useMemo<React.CSSProperties | undefined>(() => {
-    if (paperVariant !== "final_handwritten") return undefined;
+  const paperTypographyStyle = useMemo<React.CSSProperties | undefined>(() => {
+    if (paperVariant !== "final_handwritten" && paperVariant !== "short_paper") return undefined;
     return {
       ["--final-hand-font-family" as string]: finalHandFontFamily,
       ["--final-hand-font-size" as string]: `${finalHandFontSize}px`,
       ["--final-hand-result-font-size" as string]: `${finalHandFontSize}px`,
+      ["--short-paper-font-family" as string]: finalHandFontFamily,
+      ["--short-paper-font-size" as string]: `${finalHandFontSize}px`,
     };
   }, [paperVariant, finalHandFontFamily, finalHandFontSize]);
 
   return (
-    <section className={`${styles.centerColumn} ${paperTextureClass} ${paperVariant === "final_handwritten" ? styles.centerColumnFinalHandwritten : ""}`.trim()}>
+    <section className={`${styles.centerColumn} ${paperTextureClass} ${paperVariant === "final_handwritten" ? styles.centerColumnFinalHandwritten : ""} ${paperVariant === "short_paper" ? styles.centerColumnShortPaper : ""}`.trim()}>
       {viewMode === "edit" ? (
         <>
           {!hideToolbarForTier ? (
@@ -626,7 +628,7 @@ export default function CanvasWorkspace({
                   </div>
                 </div>
                 <div className={styles.paperSettingsColumnRight}>
-                  {paperVariant === "final_handwritten" ? (
+                  {paperVariant === "final_handwritten" || paperVariant === "short_paper" ? (
                     <>
                       <div className={styles.paperSettingsSection}>
                         <span className={styles.paperSettingsLabel}>Font</span>
@@ -655,7 +657,7 @@ export default function CanvasWorkspace({
                             step={1}
                             value={finalHandFontSize}
                             onChange={(e) => setFinalHandFontSize(Number(e.target.value))}
-                            aria-label="Set handwritten font size"
+                            aria-label="Set paper font size"
                           />
                           <span className={styles.paperRangeValue}>{finalHandFontSize}px</span>
                         </div>
@@ -893,8 +895,8 @@ export default function CanvasWorkspace({
       ) : null}
 
       <div
-        className={`${styles.pagesStack} ${paperToneClass} ${paperVariant === "final_handwritten" ? styles.pagesStackFinalHandwritten : ""}`.trim()}
-        style={finalHandwrittenStyle}
+        className={`${styles.pagesStack} ${paperToneClass} ${paperVariant === "final_handwritten" ? styles.pagesStackFinalHandwritten : ""} ${paperVariant === "short_paper" ? styles.pagesStackShortPaper : ""}`.trim()}
+        style={paperTypographyStyle}
       >
         {state.pages.map((page) => (
           <PaperPage
@@ -932,6 +934,7 @@ export default function CanvasWorkspace({
             isNew={page.id === newPageId}
             hideStepLabels={hideStepLabels}
             finalHandwritten={paperVariant === "final_handwritten"}
+            shortPaper={paperVariant === "short_paper"}
           />
         ))}
       </div>

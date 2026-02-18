@@ -22,7 +22,7 @@ async def test_ollama_client_generate_success_with_metrics() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.path == "/api/generate"
         payload = json.loads(request.content.decode("utf-8"))
-        assert payload["model"] == "qwen25-math7b:latest"
+        assert payload["model"] == "Qwen2.5-Math-7B-Instruct-Q4_K_M:latest"
         assert payload["stream"] is False
         assert "prompt" in payload and payload["prompt"]
         assert "You are a math engine" in str(payload.get("system") or "")
@@ -30,7 +30,7 @@ async def test_ollama_client_generate_success_with_metrics() -> None:
         return httpx.Response(
             200,
             json={
-                "model": "qwen25-math7b:latest",
+                "model": "Qwen2.5-Math-7B-Instruct-Q4_K_M:latest",
                 "response": '{"final_answer":"42"}',
                 "done": True,
                 "done_reason": "stop",
@@ -43,7 +43,7 @@ async def test_ollama_client_generate_success_with_metrics() -> None:
 
     client = OllamaClient(
         base_url="http://localhost:11434",
-        default_model="qwen25-math7b:latest",
+        default_model="Qwen2.5-Math-7B-Instruct-Q4_K_M:latest",
         timeout_seconds=60,
         connect_timeout_seconds=5,
         default_temperature=0.2,
@@ -64,7 +64,7 @@ async def test_ollama_client_generate_success_with_metrics() -> None:
     )
 
     assert resp.provider == "ollama"
-    assert resp.model == "qwen25-math7b:latest"
+    assert resp.model == "Qwen2.5-Math-7B-Instruct-Q4_K_M:latest"
     assert resp.content == '{"final_answer":"42"}'
     assert resp.usage["input"] == 18
     assert resp.usage["output"] == 9
@@ -79,7 +79,7 @@ async def test_ollama_client_model_not_found_error() -> None:
 
     client = OllamaClient(
         base_url="http://localhost:11434",
-        default_model="qwen25-math7b:latest",
+        default_model="Qwen2.5-Math-7B-Instruct-Q4_K_M:latest",
         timeout_seconds=60,
         connect_timeout_seconds=5,
         http_client_factory=_factory_with_transport(httpx.MockTransport(handler)),
@@ -104,7 +104,7 @@ async def test_ollama_client_model_not_found_error() -> None:
 def test_llm_manager_supports_ollama_provider(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LLM_PROVIDER", "ollama")
     monkeypatch.setenv("OLLAMA_BASE_URL", "http://localhost:11434")
-    monkeypatch.setenv("OLLAMA_MODEL", "qwen25-math7b:latest")
+    monkeypatch.setenv("OLLAMA_MODEL", "Qwen2.5-Math-7B-Instruct-Q4_K_M:latest")
     monkeypatch.setenv("OLLAMA_TIMEOUT_SECONDS", "60")
     monkeypatch.setenv("OLLAMA_CONNECT_TIMEOUT_SECONDS", "5")
     monkeypatch.setenv("OLLAMA_TEMPERATURE", "0.2")

@@ -1,9 +1,14 @@
 import json
 import logging
+import math
 import os
 import re
 import time
+import unicodedata
 import uuid
+from datetime import datetime, timezone
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from jsonschema import Draft202012Validator
@@ -26,6 +31,7 @@ from app.services.prompt_binding_policy import (
     normalize_external_tier,
 )
 from app.services.solve.local_final_solver import try_solve_final_with_sympy_numpy
+from app.services.solve.ollama_short_user_extractor import build_short_tier_extraction
 from app.services.solve.sympy_numpy_gate import run_mandatory_sympy_numpy_gate
 
 
@@ -192,6 +198,74 @@ def _read_system_bool_config(
     return _parse_bool_flag(os.environ.get(key), default)
 
 
+def _flatten_messages_for_ollama_prompt(messages: Optional[List[Dict[str, Any]]]) -> str:
+    chunks: List[str] = []
+    for msg in messages or []:
+        role = str((msg or {}).get("role") or "user").upper()
+        content = (msg or {}).get("content", "")
+        if isinstance(content, list):
+            text_parts: List[str] = []
+            for part in content:
+                if isinstance(part, dict) and part.get("type") in {"text", "input_text"}:
+                    text_parts.append(str(part.get("text") or ""))
+            content_text = "\n".join([p for p in text_parts if p])
+        else:
+            content_text = str(content)
+        chunks.append(f"[{role}]\n{content_text}")
+    return "\n\n".join([c for c in chunks if c.strip()]).strip()
+
+
+def _dump_ollama_runtime_prompt_txt(
+    *,
+    runtime_request_id: str,
+    runtime_attempt_id: str,
+    tier: str,
+    model_name: str,
+    request_id_suffix: str,
+    force_json_only: bool,
+    call_messages: Optional[List[Dict[str, Any]]],
+) -> Optional[str]:
+    flag = (os.environ.get("OLLAMA_DUMP_RUNTIME_PROMPT") or "").strip().lower()
+    enabled = (
+        flag in {"1", "true", "yes", "on"}
+        or (flag == "" and str(tier).upper() == "SHORT_STEPS")
+    )
+    if not enabled:
+        return None
+
+    try:
+        dump_dir = Path((os.environ.get("OLLAMA_PROMPT_DUMP_DIR") or ".").strip() or ".")
+        dump_dir.mkdir(parents=True, exist_ok=True)
+        safe_request = re.sub(r"[^a-zA-Z0-9_-]", "_", runtime_request_id or "no_request")
+        safe_suffix = re.sub(r"[^a-zA-Z0-9_-]", "_", request_id_suffix or "")
+        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
+        filename = (
+            f"ollama_runtime_prompt_{safe_request}{safe_suffix}_{ts}.txt"
+            if safe_suffix
+            else f"ollama_runtime_prompt_{safe_request}_{ts}.txt"
+        )
+        out_path = dump_dir / filename
+        prompt_text = _flatten_messages_for_ollama_prompt(call_messages)
+        payload = (
+            f"timestamp_utc: {datetime.now(timezone.utc).isoformat()}\n"
+            f"request_id: {runtime_request_id}\n"
+            f"attempt_id: {runtime_attempt_id}\n"
+            f"tier: {tier}\n"
+            f"provider: ollama\n"
+            f"model: {model_name}\n"
+            f"request_id_suffix: {request_id_suffix}\n"
+            f"force_json_only: {str(force_json_only).lower()}\n"
+            "\n---BEGIN_PROMPT---\n"
+            f"{prompt_text}\n"
+            "---END_PROMPT---\n"
+        )
+        out_path.write_text(payload, encoding="utf-8")
+        return str(out_path)
+    except Exception as exc:
+        logger.warning("Failed to dump Ollama runtime prompt: %s", exc)
+        return None
+
+
 def _enforce_solve_binding_allowlist() -> bool:
     return os.environ.get("SOLVE_BINDING_ENFORCE_ALLOWLIST", "").strip().lower() in {"1", "true", "yes", "on"}
 
@@ -254,13 +328,68 @@ def _extract_json_candidate(raw: str) -> Optional[str]:
 
 
 _PLACEHOLDER_RE = re.compile(
-    r"(your\s+final\s+answer\s+here|computed\s+using\s+python|^\s*$|^\s*\.\.\.\s*$|\{formatted_answer\}|\{formatted answer\})",
+    r"(your\s+final\s+answer\s+here|computed\s+using\s+python|^\s*\.\.\.\s*$|\{formatted_answer\}|\{formatted answer\})",
     re.IGNORECASE | re.MULTILINE,
 )
 
 
 def _text_extractor_enabled() -> bool:
     return os.environ.get("OLLAMA_TEXT_EXTRACTOR_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _clean(s: Optional[str]) -> str:
+    if not s:
+        return ""
+    out = s.replace("\r\n", "\n").replace("\r", "\n")
+    out = re.sub(r"[ \t]+", " ", out)
+    out = re.sub(r"\n{3,}", "\n\n", out)
+    return out.strip()
+
+
+def strip_trailing_bracket_noise(text: str) -> str:
+    lines = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    kept: List[str] = []
+    for ln in lines:
+        if re.fullmatch(r"\s*\]+[\s\]]*", ln):
+            continue
+        kept.append(ln)
+    return "\n".join(kept).strip()
+
+
+def extract_latex_blocks(text: str) -> List[str]:
+    text = _clean(text)
+    blocks: List[str] = []
+    for rx in (
+        re.compile(r"\$\$(.+?)\$\$", re.DOTALL),
+        re.compile(r"\\\[(.+?)\\\]", re.DOTALL),
+        re.compile(r"\\\((.+?)\\\)", re.DOTALL),
+    ):
+        for m in rx.finditer(text):
+            blocks.append(_clean(m.group(1)))
+    seen = set()
+    out: List[str] = []
+    for b in blocks:
+        if b and b not in seen:
+            seen.add(b)
+            out.append(b)
+    return out
+
+
+def strip_latex(text: str) -> str:
+    out = _clean(text)
+    out = re.sub(r"\$\$(.+?)\$\$", "", out, flags=re.DOTALL)
+    out = re.sub(r"\\\[(.+?)\\\]", "", out, flags=re.DOTALL)
+    out = re.sub(r"\\\((.+?)\\\)", "", out, flags=re.DOTALL)
+    return _clean(out)
+
+
+def extract_boxed_numbers(text: str) -> List[float]:
+    vals: List[float] = []
+    for b in re.findall(r"\\boxed\{([^}]*)\}", text):
+        b = _clean(b)
+        if re.fullmatch(r"[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?", b):
+            vals.append(float(b))
+    return vals
 
 
 def _extract_boxed_answer(text: str) -> Optional[str]:
@@ -309,7 +438,6 @@ def _strip_math_wrappers(value: str) -> str:
 def _extract_final_line_answer(text: str) -> Optional[str]:
     lines = [ln.strip() for ln in str(text or "").splitlines() if ln.strip()]
     line_noise = re.compile(r"^(choices?|step\s*\d+|item\s*\d+|level)\b", flags=re.IGNORECASE)
-    # Prefer explicit final-answer lines from the end.
     for ln in reversed(lines):
         if line_noise.search(ln):
             continue
@@ -319,7 +447,6 @@ def _extract_final_line_answer(text: str) -> Optional[str]:
             cand = _strip_math_wrappers(cand)
             if cand and not _PLACEHOLDER_RE.search(cand):
                 return cand.rstrip(" .")
-    # Fallback: last equation-like line.
     for ln in reversed(lines):
         if line_noise.search(ln):
             continue
@@ -328,7 +455,6 @@ def _extract_final_line_answer(text: str) -> Optional[str]:
             cand = _strip_math_wrappers(cand)
             if cand and not _PLACEHOLDER_RE.search(cand):
                 return cand.rstrip(" .")
-    # Final fallback: last non-noisy line near end.
     for ln in reversed(lines[-8:]):
         if line_noise.search(ln):
             continue
@@ -336,6 +462,312 @@ def _extract_final_line_answer(text: str) -> Optional[str]:
         if cand and not _PLACEHOLDER_RE.search(cand):
             return cand.rstrip(" .")
     return None
+
+
+BEGIN_SOLUTION_RE = re.compile(r"\bbegin\s*[_\-\s]*solution\b", re.IGNORECASE)
+END_SOLUTION_RE = re.compile(r"\bend\s*[_\-\s]*solution\b", re.IGNORECASE)
+BEGIN_STEPS_RE = re.compile(r"\bbegin\s*[_\-\s]*steps\b", re.IGNORECASE)
+END_STEPS_RE = re.compile(r"\bend\s*[_\-\s]*steps\b", re.IGNORECASE)
+BEGIN_FINAL_RE = re.compile(r"\bbegin\s*(?:[_\-\s]*|\(\s*)final(?:\s*\))?\b", re.IGNORECASE)
+END_FINAL_RE = re.compile(r"\bend\s*[_\-\s]*final\b", re.IGNORECASE)
+
+
+def _slice_between_markers(text: str, start_re: re.Pattern[str], end_re: re.Pattern[str]) -> str:
+    m1 = start_re.search(text)
+    if not m1:
+        return ""
+    tail = text[m1.end() :]
+    m2 = end_re.search(tail)
+    return tail[: m2.start()].strip() if m2 else tail.strip()
+
+
+def _slice_steps_region(text: str) -> str:
+    m_steps = BEGIN_STEPS_RE.search(text)
+    if not m_steps:
+        return ""
+    tail = text[m_steps.end() :]
+    m_end_steps = END_STEPS_RE.search(tail)
+    m_begin_final = BEGIN_FINAL_RE.search(tail)
+    if m_end_steps and m_begin_final:
+        end_idx = min(m_end_steps.start(), m_begin_final.start())
+    elif m_end_steps:
+        end_idx = m_end_steps.start()
+    elif m_begin_final:
+        end_idx = m_begin_final.start()
+    else:
+        end_idx = len(tail)
+    return tail[:end_idx].strip()
+
+
+def parse_steps_block(steps_block: str) -> List[Dict[str, Any]]:
+    steps_block = _clean(steps_block)
+    if not steps_block:
+        return []
+    chunks = re.findall(r"(?ms)^\s*(\d+)\)\s*(.+?)(?=^\s*\d+\)\s*|\Z)", steps_block)
+    steps: List[Dict[str, Any]] = []
+    for num_s, body in chunks:
+        idx = int(num_s)
+        body = body.strip()
+        latex = extract_latex_blocks(body)
+        explanation = strip_latex(body)
+        steps.append(
+            {
+                "index": idx,
+                "title": f"Step {idx}",
+                "explanation": explanation,
+                "math_latex": latex,
+            }
+        )
+    steps.sort(key=lambda x: int(x["index"]))
+    return steps
+
+
+@dataclass
+class _ParsedBlock:
+    kind: str
+    content: str
+
+
+@dataclass
+class _ParsedStep:
+    index: int
+    kind: str
+    blocks: List[_ParsedBlock]
+    raw: str
+
+
+@dataclass
+class _ParsedSection:
+    label: str
+    heading: str
+    steps: List[_ParsedStep]
+    final_answer: Optional[str]
+    incomplete: bool
+
+
+@dataclass
+class _ParsedResult:
+    sections: List[_ParsedSection]
+    global_final_answer: Optional[str]
+    warnings: List[str]
+
+
+_GARBLED_HEADER_RE = re.compile(r"^\s*\[[^\]]{1,40}\]\s*\n+", re.UNICODE)
+_SECTION_HEAD_RE = re.compile(r"(?m)^\s*\((?P<label>[a-zA-Z0-9]+)\)\s+")
+_MATH_BLOCK_RE = re.compile(r"(?s)(\\\[(?:.*?){1,}?\\\]|\\\((?:.*?){1,}?\\\)|\$\$(?:.*?){1,}?\$\$)")
+_FINAL_CUE_RE = re.compile(r"(?i)\b(final answer|answer|therefore|thus|hence|solution is|we conclude|so,?\s+)\b")
+_CONCLUSION_CUES = (
+    "therefore",
+    "thus",
+    "hence",
+    "so,",
+    "so ",
+    "final answer",
+    "answer:",
+    "solution is",
+    "we get:",
+    "this gives",
+    "conclude",
+)
+_NOTE_CUES = ("note:", "remark:", "warning:", "this is not correct", "incorrect", "however")
+
+
+def _clean_llm_text(text: str) -> str:
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = unicodedata.normalize("NFKC", text)
+    text = _GARBLED_HEADER_RE.sub("", text)
+    text = text.replace("\u200b", "").replace("\ufeff", "")
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n{3,}", "\n\n", text).strip()
+    return text
+
+
+def _split_into_sections(text: str) -> List[Tuple[str, str]]:
+    matches = list(_SECTION_HEAD_RE.finditer(text))
+    if not matches:
+        return [("main", text)]
+    out: List[Tuple[str, str]] = []
+    for i, m in enumerate(matches):
+        label = m.group("label")
+        start = m.start()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        out.append((label, text[start:end].strip()))
+    return out
+
+
+def _split_blocks_preserve_math(text: str) -> List[_ParsedBlock]:
+    blocks: List[_ParsedBlock] = []
+    pos = 0
+    for m in _MATH_BLOCK_RE.finditer(text):
+        if m.start() > pos:
+            chunk = text[pos : m.start()]
+            if chunk.strip():
+                blocks.append(_ParsedBlock(kind="text", content=chunk.strip()))
+        blocks.append(_ParsedBlock(kind="math", content=m.group(1).strip()))
+        pos = m.end()
+    if pos < len(text):
+        tail = text[pos:]
+        if tail.strip():
+            blocks.append(_ParsedBlock(kind="text", content=tail.strip()))
+    return blocks
+
+
+def _classify_step_kind(paragraph: str) -> str:
+    low = str(paragraph or "").lower()
+    if any(cue in low for cue in _NOTE_CUES):
+        return "note"
+    if any(cue in low for cue in _CONCLUSION_CUES):
+        return "conclusion"
+    return "work"
+
+
+def _paragraph_split(text: str) -> List[str]:
+    return [p.strip() for p in re.split(r"\n\s*\n", text or "") if p.strip()]
+
+
+def _looks_incomplete(text: str) -> bool:
+    t = str(text or "")
+    if t.count(r"\[") != t.count(r"\]"):
+        return True
+    if t.count(r"\(") != t.count(r"\)"):
+        return True
+    if t.count("$$") % 2 == 1:
+        return True
+    tail = t.strip()[-20:].lower()
+    if tail.endswith((r"\frac{", r"\sqrt{", r"\left", r"\right", "=")):
+        return True
+    if re.search(r"[A-Za-z]\s*$", t):
+        return True
+    return False
+
+
+def _extract_final_answer(section_text: str) -> Optional[str]:
+    paras = _paragraph_split(section_text)
+    cue_idxs = [i for i, p in enumerate(paras) if _FINAL_CUE_RE.search(p)]
+    candidate_para = paras[cue_idxs[-1]] if cue_idxs else None
+
+    def _last_math_in(text: str) -> Optional[str]:
+        blks = _split_blocks_preserve_math(text)
+        for b in reversed(blks):
+            if b.kind == "math":
+                return b.content
+        return None
+
+    boxed = _extract_boxed_answer(section_text)
+    if boxed:
+        return boxed
+
+    if candidate_para:
+        m = _last_math_in(candidate_para)
+        if m:
+            return m
+        return candidate_para.strip()
+
+    all_blocks = _split_blocks_preserve_math(section_text)
+    for b in reversed(all_blocks):
+        if b.kind == "math":
+            return b.content
+    # Avoid treating arbitrary trailing prose as a final answer.
+    return None
+
+
+def _parse_llm_solution(raw_text: str) -> _ParsedResult:
+    warnings: List[str] = []
+    text = _clean_llm_text(raw_text)
+    raw_sections = _split_into_sections(text)
+    sections: List[_ParsedSection] = []
+
+    for label, sec_text in raw_sections:
+        paras = _paragraph_split(sec_text)
+        steps: List[_ParsedStep] = []
+        for i, p in enumerate(paras, start=1):
+            blocks = _split_blocks_preserve_math(p)
+            steps.append(_ParsedStep(index=i, kind=_classify_step_kind(p), blocks=blocks, raw=p))
+        final_answer = _extract_final_answer(sec_text)
+        incomplete = _looks_incomplete(sec_text)
+        heading = f"({label})" if label != "main" else "main"
+        sections.append(
+            _ParsedSection(
+                label=str(label),
+                heading=heading,
+                steps=steps,
+                final_answer=final_answer,
+                incomplete=incomplete,
+            )
+        )
+
+    global_final: Optional[str] = None
+    for s in reversed(sections):
+        if s.final_answer:
+            global_final = s.final_answer
+            break
+    if any(s.incomplete for s in sections):
+        warnings.append("Model output looks truncated or has unclosed math delimiters in at least one section.")
+
+    return _ParsedResult(sections=sections, global_final_answer=global_final, warnings=warnings)
+
+
+def parse_ollama_math_response(raw_text: str) -> Dict[str, Any]:
+    t = strip_trailing_bracket_noise(raw_text)
+    t = _clean_llm_text(_clean(t))
+
+    # Strict marker parse first.
+    steps_block = _slice_steps_region(t)
+    final_block = _slice_between_markers(t, BEGIN_FINAL_RE, END_FINAL_RE)
+    steps = parse_steps_block(steps_block) if steps_block else []
+
+    # Fallback: parse any freeform output.
+    if not final_block or not steps:
+        parsed = _parse_llm_solution(t)
+        if not steps:
+            step_rows: List[Dict[str, Any]] = []
+            for sec in parsed.sections:
+                if len(step_rows) >= 6:
+                    break
+                sec_text = "\n\n".join([s.raw for s in sec.steps]).strip()
+                explanation = _clean(strip_latex(sec_text))
+                if len(explanation) > 260:
+                    explanation = explanation[:257].rstrip() + "..."
+                math_latex: List[str] = []
+                for st in sec.steps:
+                    for b in st.blocks:
+                        if b.kind == "math":
+                            math_latex.append(_clean(b.content))
+                        if len(math_latex) >= 6:
+                            break
+                    if len(math_latex) >= 6:
+                        break
+                title = sec.heading if sec.heading != "main" else f"Step {len(step_rows) + 1}"
+                step_rows.append(
+                    {
+                        "index": len(step_rows) + 1,
+                        "title": title,
+                        "explanation": explanation or "Computed from model output.",
+                        "math_latex": [m for m in math_latex if m][:6],
+                    }
+                )
+            steps = step_rows
+        if not final_block:
+            final_block = _clean(parsed.global_final_answer or "")
+        if not final_block:
+            final_block = _extract_boxed_answer(t) or (_extract_final_line_answer(t) or "")
+
+    boxed_vals = extract_boxed_numbers(final_block)
+    values = [{"label": f"boxed_{i}", "value": v, "value_latex": None} for i, v in enumerate(boxed_vals, start=1)]
+    answer_text = _clean(strip_latex(final_block))
+    if not answer_text and _clean(final_block):
+        answer_text = _strip_math_wrappers(_clean(final_block))
+    final_answer = {
+        "answer_text": answer_text[:4000],
+        "answer_latex": _clean(final_block),
+        "values": values,
+        "units": None,
+    }
+    return {"steps": steps, "final_answer": final_answer}
+
+
+def _parse_ollama_short_with_user_extractor(raw_text: str) -> Dict[str, Any]:
+    return build_short_tier_extraction(str(raw_text or ""))
 
 
 def _is_placeholder_text(value: Any) -> bool:
@@ -355,20 +787,20 @@ def _is_placeholder_text(value: Any) -> bool:
     return any(fragment in lower for fragment in blocked_fragments)
 
 
-def _extract_steps(text: str, max_steps: int = 6) -> List[str]:
-    parts: List[str] = []
-    chunks = [c.strip() for c in re.split(r"\n\s*\n", str(text or "")) if c.strip()]
-    for chunk in chunks:
-        # Keep only short, meaningful chunks and trim markdown fences/noise.
-        if chunk.startswith("```") or len(chunk) < 3:
-            continue
-        clean = re.sub(r"\s+", " ", chunk).strip()
-        if _PLACEHOLDER_RE.search(clean):
-            continue
-        parts.append(clean)
-        if len(parts) >= max_steps:
-            break
-    return parts
+def _is_substantive_answer_text(value: Any) -> bool:
+    text = str(value or "").strip()
+    if not text:
+        return False
+    if _is_placeholder_text(text):
+        return False
+    lower = text.lower()
+    blocked = (
+        "unsolvable:",
+        "cannot solve",
+        "insufficient information",
+        "model output did not include a concrete final answer",
+    )
+    return not any(token in lower for token in blocked)
 
 
 def _infer_detected_tasks(question_text: str) -> List[str]:
@@ -394,6 +826,78 @@ def _infer_detected_tasks(question_text: str) -> List[str]:
     return out or ["other"]
 
 
+def _extract_first_float(pattern: str, text: str) -> Optional[float]:
+    m = re.search(pattern, text, flags=re.IGNORECASE)
+    if not m:
+        return None
+    try:
+        return float(m.group(1))
+    except Exception:
+        return None
+
+
+def _extract_first_int(pattern: str, text: str) -> Optional[int]:
+    m = re.search(pattern, text, flags=re.IGNORECASE)
+    if not m:
+        return None
+    try:
+        return int(m.group(1))
+    except Exception:
+        return None
+
+
+def _binom_pmf(n: int, k: int, p: float) -> float:
+    if k < 0 or k > n:
+        return 0.0
+    return math.comb(n, k) * (p ** k) * ((1.0 - p) ** (n - k))
+
+
+def _try_binomial_numeric_postcheck(question_text: str) -> Optional[Dict[str, Any]]:
+    q = str(question_text or "")
+    ql = q.lower()
+    if "binomial" not in ql and "sample of" not in ql:
+        return None
+    n = _extract_first_int(r"sample of\s+(\d+)", q)
+    p = _extract_first_float(r"probability[^0-9\-+]*([01](?:\.\d+)?)", q)
+    if n is None or p is None or p < 0.0 or p > 1.0:
+        return None
+
+    at_least_k = _extract_first_int(r"at least\s+(\d+)", q)
+    between_match = re.search(r"between\s+(\d+)\s+and\s+(\d+)\s+inclusive", q, flags=re.IGNORECASE)
+    between_a: Optional[int] = None
+    between_b: Optional[int] = None
+    if between_match:
+        try:
+            between_a = int(between_match.group(1))
+            between_b = int(between_match.group(2))
+        except Exception:
+            between_a = None
+            between_b = None
+
+    parts: List[str] = []
+    values: List[Dict[str, Any]] = []
+    if at_least_k is not None:
+        prob_a = sum(_binom_pmf(n, k, p) for k in range(max(0, at_least_k), n + 1))
+        parts.append(f"(a) P(X >= {at_least_k}) = {prob_a:.6f}")
+        values.append({"label": f"P(X >= {at_least_k})", "value": float(f"{prob_a:.6f}"), "value_latex": None})
+    if between_a is not None and between_b is not None:
+        lo = min(between_a, between_b)
+        hi = max(between_a, between_b)
+        prob_b = sum(_binom_pmf(n, k, p) for k in range(max(0, lo), min(n, hi) + 1))
+        parts.append(f"(b) P({lo} <= X <= {hi}) = {prob_b:.6f}")
+        values.append({"label": f"P({lo} <= X <= {hi})", "value": float(f"{prob_b:.6f}"), "value_latex": None})
+    mean = n * p
+    sd = math.sqrt(n * p * (1.0 - p))
+    parts.append(f"E[X] = {mean:.6f}")
+    parts.append(f"SD[X] = {sd:.6f}")
+    values.append({"label": "E[X]", "value": float(f"{mean:.6f}"), "value_latex": None})
+    values.append({"label": "SD[X]", "value": float(f"{sd:.6f}"), "value_latex": None})
+
+    if not parts:
+        return None
+    return {"answer_text": "; ".join(parts), "values": values}
+
+
 def _extract_ollama_text_payload(
     *,
     raw_text: str,
@@ -406,41 +910,63 @@ def _extract_ollama_text_payload(
     max_questions_allowed: int,
     runtime_max_tasks_per_question: int,
 ) -> Dict[str, Any]:
-    boxed = _extract_boxed_answer(raw_text)
-    final_line = _extract_final_line_answer(raw_text)
-    steps = _extract_steps(raw_text, max_steps=6)
-    answer_text_global = (boxed or final_line or "").strip()
+    tier_upper = str(tier or "").upper()
+    is_prod_v2_tier = tier_upper in {"FINAL", "STANDARD", "RESEARCH"}
+    if tier_upper == "SHORT_STEPS":
+        first_q = questions[0] if questions else {}
+        parsed = build_short_tier_extraction(
+            str(raw_text or ""),
+            question_text=str((first_q or {}).get("question_text") or ""),
+            question_id=str((first_q or {}).get("question_id") or "q1"),
+            mode=str((first_q or {}).get("mode") or "SOLVE"),
+        )
+    else:
+        parsed = parse_ollama_math_response(raw_text)
+    parsed_steps = list(parsed.get("steps") or [])
+    parsed_final = dict(parsed.get("final_answer") or {})
+    answer_text_global = str(parsed_final.get("answer_text") or "").strip()
+    answer_latex_global = str(parsed_final.get("answer_latex") or "").strip()
+    answer_values_global = list(parsed_final.get("values") or [])
     if _is_placeholder_text(answer_text_global):
         answer_text_global = ""
+    if _is_placeholder_text(answer_latex_global):
+        answer_latex_global = ""
 
     items: List[Dict[str, Any]] = []
     for idx, q in enumerate(questions, start=1):
         q_text = str(q.get("question_text") or "")
         detected_tasks = _infer_detected_tasks(q_text)
         answer_text = answer_text_global
+        answer_latex = answer_latex_global or answer_text
+        answer_values: List[Dict[str, Any]] = list(answer_values_global)
 
-        item_steps: List[Dict[str, Any]] = []
-        if tier != "FINAL":
-            # Keep short tiers concise with at most one section.
-            math_latex = [answer_text] if answer_text else []
+        numeric_override = _try_binomial_numeric_postcheck(q_text)
+        if numeric_override is not None:
+            answer_text = str(numeric_override.get("answer_text") or answer_text).strip()
+            answer_latex = answer_text
+            answer_values = list(numeric_override.get("values") or [])
+
+        item_steps: List[Dict[str, Any]] = parsed_steps if tier != "FINAL" else []
+        if tier != "FINAL" and not item_steps and answer_text:
             item_steps = [
                 {
                     "index": 1,
                     "title": "Short Steps",
-                    "explanation": " ".join(steps[:3]) if steps else "Computed from model output.",
-                    "math_latex": math_latex,
+                    "explanation": "Computed from model output.",
+                    "math_latex": [answer_latex] if answer_latex else [],
                 }
             ]
 
         if answer_text:
             final_answer_obj = {
                 "answer_text": answer_text,
-                "answer_latex": answer_text,
-                "values": [],
+                "answer_latex": answer_latex,
+                "values": answer_values,
                 "units": None,
-                "kind": "solution",
-                "target": None,
             }
+            if is_prod_v2_tier:
+                final_answer_obj["kind"] = "solution"
+                final_answer_obj["target"] = None
             refusal_obj = {"is_refusal": False, "reason": None, "safe_next_step": None}
             confidence = 0.62
         else:
@@ -449,9 +975,10 @@ def _extract_ollama_text_payload(
                 "answer_latex": None,
                 "values": [],
                 "units": None,
-                "kind": "solution",
-                "target": None,
             }
+            if is_prod_v2_tier:
+                final_answer_obj["kind"] = "solution"
+                final_answer_obj["target"] = None
             refusal_obj = {
                 "is_refusal": True,
                 "reason": "missing_final_answer",
@@ -459,40 +986,55 @@ def _extract_ollama_text_payload(
             }
             confidence = 0.25
 
-        items.append(
-            {
-                "question_id": q["question_id"],
-                "question_index": idx,
-                "mode": q["mode"],
-                "problem": {
-                    "original_text": q_text,
-                    "normalized_text": q_text[:300],
-                    "detected_tasks": detected_tasks,
-                    "extra": [],
-                },
-                "classification": {
-                    "grade_band": "college_intro",
-                    "domain": "other",
-                    "topic": "ollama_text_extraction",
-                    "difficulty": "medium",
-                },
-                "steps": item_steps,
-                "final_answer": final_answer_obj,
-                "refusal": refusal_obj,
-                "quality": {"confidence": confidence, "common_mistakes": []},
-                "plot": _local_plot_stub(),
+        item_obj: Dict[str, Any] = {
+            "question_id": q["question_id"],
+            "question_index": idx,
+            "mode": q["mode"],
+            "problem": {
+                "original_text": q_text,
+                "normalized_text": q_text[:300],
+                "detected_tasks": detected_tasks,
+                "extra": [],
+            },
+            "classification": {
+                "grade_band": "college_intro",
+                "domain": "other",
+                "topic": "ollama_text_extraction",
+                "difficulty": "medium",
+            },
+            "steps": item_steps,
+            "final_answer": final_answer_obj,
+            "refusal": refusal_obj,
+            "quality": {"confidence": confidence, "common_mistakes": []},
+        }
+        if not is_prod_v2_tier:
+            item_obj["assumptions"] = []
+            item_obj["clarification"] = {
+                "needs_clarification": False,
+                "note": None,
+                "questions": [],
             }
-        )
+            item_obj["plot"] = _local_plot_stub()
+        items.append(item_obj)
 
-    return {
-        "schema_version": "prod_v2",
-        "tier": tier,
+    payload: Dict[str, Any] = {
+        "schema_version": "prod_v2" if is_prod_v2_tier else "v2",
+        "tier": "FREE" if tier_upper == "SHORT_STEPS" else tier_upper,
         "language": {
             "user_language": runtime_lang,
             "preferred_response_language": runtime_lang,
             "response_language": runtime_lang,
         },
-        "runtime": {
+        "items": items,
+    }
+    if tier_upper == "SHORT_STEPS" and parsed.get("raw_user_extraction") is not None:
+        payload["raw_user_extraction"] = parsed.get("raw_user_extraction")
+    if tier_upper == "SHORT_STEPS" and isinstance(parsed.get("question"), dict):
+        payload["question"] = parsed.get("question")
+    if tier_upper == "SHORT_STEPS" and isinstance(parsed.get("problem"), dict):
+        payload["problem"] = parsed.get("problem")
+    if is_prod_v2_tier:
+        payload["runtime"] = {
             "request_id": runtime_request_id,
             "attempt_id": runtime_attempt_id,
             "preferred_response_language": runtime_lang,
@@ -502,9 +1044,8 @@ def _extract_ollama_text_payload(
             "allow_auto_split": bool(runtime_allow_auto_split),
             "max_questions_allowed": int(max_questions_allowed),
             "max_tasks_per_question": int(runtime_max_tasks_per_question),
-        },
-        "items": items,
-    }
+        }
+    return payload
 
 
 def _json_error_summary(errors: List[Any], limit: int = 10) -> str:
@@ -944,7 +1485,7 @@ def _post_assertions(
 def _local_plot_stub() -> Dict[str, Any]:
     return {
         "should_visualize": False,
-        "decision_reason": "Local FINAL SymPy/NumPy solver returned final answer.",
+        "decision_reason": "Plot omitted for compact tier response.",
         "recipe": None,
     }
 
@@ -1372,6 +1913,9 @@ async def execute_batch_solve(
     binding_features = _bget("features") if isinstance(_bget("features"), dict) else {}
     model_name = (model or str(binding_features.get("model") or "")).strip()
     ollama_model_name = get_configured_ollama_model(external_tier) if "ollama" in provider_candidates else ""
+
+    def _ollama_direct_text_mode_active() -> bool:
+        return provider_name == "ollama" and external_tier in {"SHORT_STEPS", "FINAL"}
     if provider_name == "openai" and not model_name:
         raise BatchSolveError(
             "Binding is missing required model setting.",
@@ -1387,6 +1931,9 @@ async def execute_batch_solve(
     bound_temperature = float(_bget("temperature") or 0.0)
     bound_top_p = float(_bget("top_p") or 1.0)
     bound_timeout_ms = int(_bget("timeout_ms") or 60000)
+    provider_raw_text: str = ""
+    provider_raw_payload: Any = None
+    ollama_prompt_dump_files: List[str] = []
 
     async def _call_provider(
         *,
@@ -1396,28 +1943,67 @@ async def execute_batch_solve(
     ):
         call_messages = messages
         if provider_name == "ollama" and not force_json_only:
-            tier_system_prompt = (
-                "FINAL tier policy: solve the problem and return only concrete final answers in schema-valid JSON. "
-                "Do not include derivations, intermediate reasoning, or commentary. "
-                "Never output placeholders, templates, or symbolic markers such as "
-                "{formatted answer}, {Value: ...}, ____ , TBD, or similar."
-                if external_tier == "FINAL"
-                else (
-                    "Solve this question."
-                    if external_tier == "SHORT_STEPS"
+            if _ollama_direct_text_mode_active():
+                tier_system_prompt = (
+                    "You are a math solver.\n\n"
+                    "OUTPUT FORMAT (must follow exactly, plain text only):\n"
+                    "BEGIN_SOLUTION\n"
+                    "BEGIN_STEPS\n"
+                    "1) <short step, may include LaTeX using \\( \\) or \\[ \\]>\n"
+                    "2) <short step>\n"
+                    "3) <short step>\n"
+                    "END_STEPS\n"
+                    "BEGIN_FINAL\n"
+                    "<final results only; if multiple parts, label (a), (b), ...>\n"
+                    "END_FINAL\n"
+                    "END_SOLUTION\n\n"
+                    "Rules:\n"
+                    "- No markdown headings, no code fences, no JSON.\n"
+                    "- Keep steps concise (max 6).\n"
+                    "- Put all final results in BEGIN_FINAL only.\n"
+                    "- If you cannot solve, write in BEGIN_FINAL: UNSOLVABLE: <one-line reason>."
+                )
+                if len(normalized_questions) == 1:
+                    user_question = str((normalized_questions[0] or {}).get("question_text") or "").strip()
+                else:
+                    user_question = "\n".join(
+                        [
+                            f"{idx}. {str((q or {}).get('question_text') or '').strip()}"
+                            for idx, q in enumerate(normalized_questions, start=1)
+                        ]
+                    ).strip()
+                direct_user_prompt = (
+                    "Provide the final computed results clearly. "
+                    "If multiple parts are requested, label them (a), (b), etc.\n\n"
+                    f"Question:\n{user_question}"
+                )
+                call_messages = [
+                    {"role": "system", "content": tier_system_prompt},
+                    {"role": "user", "content": direct_user_prompt},
+                ]
+                tier_developer_prompt = ""
+            else:
+                tier_system_prompt = (
+                    "FINAL tier policy: solve the problem and return only concrete final answers in schema-valid JSON. "
+                    "Do not include derivations, intermediate reasoning, or commentary. "
+                    "Never output placeholders, templates, or symbolic markers such as "
+                    "{formatted answer}, {Value: ...}, ____ , TBD, or similar."
+                    if external_tier == "FINAL"
                     else (
-                        "Return schema-valid JSON only, with concrete computed values. "
-                        "Do not output placeholders or templates."
+                        "Solve this question."
+                        if external_tier == "SHORT_STEPS"
+                        else (
+                            "Return schema-valid JSON only, with concrete computed values. "
+                            "Do not output placeholders or templates."
+                        )
                     )
                 )
-            )
-            ollama_reasoning_tail = "Please reason step by step, and put your final answer within \\boxed{}."
-            tier_developer_prompt = f"{developer_prompt}\n\n{ollama_reasoning_tail}"
-            call_messages = [
-                {"role": "system", "content": tier_system_prompt},
-                {"role": "developer", "content": tier_developer_prompt},
-                messages[-1],
-            ]
+                tier_developer_prompt = developer_prompt
+                call_messages = [
+                    {"role": "system", "content": tier_system_prompt},
+                    {"role": "developer", "content": tier_developer_prompt},
+                    messages[-1],
+                ]
         if force_json_only:
             strict_system = (
                 "Return only one valid JSON object that matches the provided schema. "
@@ -1446,17 +2032,37 @@ async def execute_batch_solve(
                     }
                 )
 
+        # Local Ollama inference can exceed default binding timeouts on long JSON tasks.
+        effective_timeout_ms = bound_timeout_ms
+        if provider_name == "ollama":
+            try:
+                min_ollama_timeout_ms = int((os.environ.get("OLLAMA_MIN_REQUEST_TIMEOUT_MS") or "180000").strip())
+            except Exception:
+                min_ollama_timeout_ms = 180000
+            effective_timeout_ms = max(effective_timeout_ms, max(1000, min_ollama_timeout_ms))
+            dump_path = _dump_ollama_runtime_prompt_txt(
+                runtime_request_id=runtime_request_id,
+                runtime_attempt_id=runtime_attempt_id,
+                tier=external_tier,
+                model_name=(ollama_model_name or model_name or "").strip(),
+                request_id_suffix=request_id_suffix,
+                force_json_only=force_json_only,
+                call_messages=call_messages,
+            )
+            if dump_path:
+                ollama_prompt_dump_files.append(dump_path)
+
         return await client.generate(
             messages=call_messages,
             system_prompt=None,
             prompt=None,
-            json_schema=schema_wrapper,
+            json_schema=None if _ollama_direct_text_mode_active() else schema_wrapper,
             max_tokens=max_tokens,
             temperature=bound_temperature,
             top_p=bound_top_p,
             stream=False,
             request_id=f"{runtime_request_id}{request_id_suffix}",
-            timeout_ms=bound_timeout_ms,
+            timeout_ms=effective_timeout_ms,
             model=model_name if provider_name == "openai" else ollama_model_name,
             verbosity="low",
             reasoning_effort=(str(binding_features.get("reasoning_effort") or "").strip() or "minimal"),
@@ -1466,7 +2072,16 @@ async def execute_batch_solve(
         return external_tier in {"SHORT_STEPS", "FINAL"} and _allow_openai_fallback_for_ollama_first_tiers()
 
     async def _parse_validate_response(initial_response: Any) -> Tuple[Dict[str, Any], Any, bool]:
+        nonlocal provider_raw_text, provider_raw_payload
+
+        def _capture_provider_raw(resp: Any) -> None:
+            nonlocal provider_raw_text, provider_raw_payload
+            content = getattr(resp, "content", None)
+            provider_raw_text = content if isinstance(content, str) else ("" if content is None else str(content))
+            provider_raw_payload = getattr(resp, "payload", None)
+
         response_local = initial_response
+        _capture_provider_raw(response_local)
         validator = Draft202012Validator(schema_body)
         output_tokens = int((response_local.usage or {}).get("output") or 0)
         repair_attempted_local = False
@@ -1474,6 +2089,7 @@ async def execute_batch_solve(
             # One controlled retry for zero-completion responses (common transient failure mode).
             try:
                 response_local = await _call_provider(request_id_suffix=":retry1")
+                _capture_provider_raw(response_local)
             except LLMProviderError as exc:
                 raise BatchSolveError(
                     "Provider retry failed after zero-completion response.",
@@ -1496,6 +2112,64 @@ async def execute_batch_solve(
                     "provider_payload": response_local.payload,
                 },
             )
+
+        if _ollama_direct_text_mode_active():
+            def _extract_payload_from_text(src_text: str) -> Dict[str, Any]:
+                return _extract_ollama_text_payload(
+                    raw_text=src_text,
+                    questions=normalized_questions,
+                    tier=external_tier,
+                    runtime_request_id=runtime_request_id,
+                    runtime_attempt_id=runtime_attempt_id,
+                    runtime_lang=runtime_lang,
+                    runtime_allow_auto_split=runtime_allow_auto_split,
+                    max_questions_allowed=max_questions_allowed,
+                    runtime_max_tasks_per_question=runtime_max_tasks_per_question,
+                )
+
+            def _has_substantive_final_answers(candidate_payload: Dict[str, Any]) -> bool:
+                items = candidate_payload.get("items") or []
+                if not isinstance(items, list) or not items:
+                    return False
+                for item in items:
+                    fa = (item or {}).get("final_answer") or {}
+                    ans_text = str(fa.get("answer_text") or "").strip()
+                    if not _is_substantive_answer_text(ans_text):
+                        return False
+                return True
+
+            extracted_payload = _extract_payload_from_text(raw_local)
+            if not _has_substantive_final_answers(extracted_payload):
+                try:
+                    response_local = await _call_provider(request_id_suffix=":textretry1")
+                    _capture_provider_raw(response_local)
+                    raw_local = (response_local.content or "").strip()
+                    if raw_local:
+                        extracted_payload = _extract_payload_from_text(raw_local)
+                except Exception:
+                    pass
+
+            extracted_errors = sorted(validator.iter_errors(extracted_payload), key=lambda e: e.path)
+            if extracted_errors:
+                raise BatchSolveError(
+                    "Extracted payload failed schema validation.",
+                    status_code=502,
+                    code="schema_validation_failed",
+                    details={
+                        "errors": [
+                            {"path": "$" + "".join([f"[{repr(p)}]" for p in err.path]), "message": err.message}
+                            for err in extracted_errors[:30]
+                        ],
+                        "raw_preview": _preview_text(raw_local),
+                    },
+                )
+            _post_assertions(
+                extracted_payload,
+                schema_body=schema_body,
+                questions=normalized_questions,
+                tier=external_tier,
+            )
+            return extracted_payload, response_local, False
 
         allow_json_repair_local = provider_name == "ollama" and external_tier in {"SHORT_STEPS", "FINAL"}
         payload_local: Optional[Dict[str, Any]] = None
@@ -1521,6 +2195,7 @@ async def execute_batch_solve(
                     force_json_only=True,
                     repair_context=repair_context,
                 )
+                _capture_provider_raw(response_local)
             except LLMProviderError as exc:
                 raise BatchSolveError(
                     "Provider JSON repair retry failed.",
@@ -1586,6 +2261,7 @@ async def execute_batch_solve(
                     force_json_only=True,
                     repair_context=repair_context,
                 )
+                _capture_provider_raw(response_local)
             except LLMProviderError as exc:
                 raise BatchSolveError(
                     "Provider schema-repair retry failed.",
@@ -1795,5 +2471,9 @@ async def execute_batch_solve(
             and (attempted_providers.index("openai") > attempted_providers.index("ollama"))
             and response.provider == "openai"
         ),
+        # Preserve exact provider text for persistence/debug (especially SHORT_STEPS via Ollama).
+        "provider_raw_text": provider_raw_text,
+        "provider_raw_payload": provider_raw_payload,
+        "ollama_prompt_dump_files": ollama_prompt_dump_files,
     }
     return payload, telemetry

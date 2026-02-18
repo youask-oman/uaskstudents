@@ -22,7 +22,7 @@ services:
       API_BACKEND_HOST: 127.0.0.1
       API_BACKEND_PORT: "8000"
       MPLBACKEND: Agg
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
       OLLAMA_TIMEOUT_SECONDS: "180"
       OLLAMA_CONNECT_TIMEOUT_SECONDS: "25"
       OLLAMA_CONNECT_RETRIES: "6"
@@ -84,7 +84,7 @@ services:
       DATABASE_URL: postgresql://uask_user:uask_password@postgres:5432/uask_db
       REDIS_URL: redis://redis:6379/0
       TZ: UTC
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
       OLLAMA_TIMEOUT_SECONDS: "180"
       OLLAMA_CONNECT_TIMEOUT_SECONDS: "25"
       OLLAMA_CONNECT_RETRIES: "6"
@@ -138,7 +138,7 @@ services:
     environment:
       DATABASE_URL: postgresql://uask_user:uask_password@postgres:5432/uask_db
       REDIS_URL: redis://redis:6379/0
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
       OLLAMA_TIMEOUT_SECONDS: "180"
       OLLAMA_CONNECT_TIMEOUT_SECONDS: "25"
       OLLAMA_CONNECT_RETRIES: "6"
@@ -225,7 +225,6 @@ services:
 volumes:
   postgres_data:
   redis_data:
-
   storage_data:
 
 
