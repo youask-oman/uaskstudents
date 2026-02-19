@@ -1097,7 +1097,13 @@ export const normalizeAssistantMessage = (
     items: [],
   };
 
-  const contentText = asString(message.content) || "";
+  const contentText =
+    asString(message.display_markdown) ||
+    asString(message.rendered_content) ||
+    asString(asRecord(message.structured_data)?.display_markdown) ||
+    asString(asRecord(message.structured_data)?.rendered_content) ||
+    asString(message.content) ||
+    "";
   if (role === "user") {
     base.items.push({ type: "text", text: contentText || "(empty message)" });
     return base;

@@ -32,7 +32,7 @@ const renderFallback = (value: string) => (
     </span>
 );
 
-const normalizeInjectedSvg = (svg: string) => {
+export const normalizeInjectedSvg = (svg: string) => {
     if (!svg) return svg;
     // Remove aggressive baseline shifts that can clip standalone SVG in constrained containers.
     return svg
@@ -44,6 +44,29 @@ const normalizeInjectedSvg = (svg: string) => {
                 .filter((part) => part.length > 0 && !part.toLowerCase().startsWith("vertical-align"))
                 .join(";");
             return kept ? ` style="${kept}"` : "";
+        })
+        .replace(/<rect\b([^>]*)\/?>/gi, (match, attrs: string) => {
+            const widthMatch = /\bwidth="([^"]+)"/i.exec(attrs || "");
+            const heightMatch = /\bheight="([^"]+)"/i.exec(attrs || "");
+            const fillMatch = /\bfill="([^"]+)"/i.exec(attrs || "");
+            const classMatch = /\bclass="([^"]+)"/i.exec(attrs || "");
+            const styleMatch = /\bstyle="([^"]+)"/i.exec(attrs || "");
+            const width = Number.parseFloat((widthMatch?.[1] || "").replace(/[^\d.\-]/g, ""));
+            const height = Number.parseFloat((heightMatch?.[1] || "").replace(/[^\d.\-]/g, ""));
+            const fill = String(fillMatch?.[1] || "").trim().toLowerCase();
+            const style = String(styleMatch?.[1] || "").toLowerCase();
+            const className = String(classMatch?.[1] || "").toLowerCase();
+            const isHuge = Number.isFinite(width) && Number.isFinite(height) && width >= 1000 && height >= 180;
+            const fillIsOpaque = !fill || fill === "currentcolor" || fill === "#000" || fill === "#000000" || fill === "black";
+            const styleOpaque =
+                style.includes("fill:currentcolor") ||
+                style.includes("fill:#000") ||
+                style.includes("fill:black");
+            const allowByClass = className.includes("graph") || className.includes("plot") || className.includes("axis");
+            if (isHuge && !allowByClass && (fillIsOpaque || styleOpaque)) {
+                return "";
+            }
+            return match;
         });
 };
 

@@ -1,0 +1,242 @@
+import type { SessionMessage } from "@/components/math-canvas/types";
+
+export type PlaybackSegmentKind = "step_title" | "markdown" | "math" | "final_answer";
+
+export interface PlaybackSegment {
+  kind: PlaybackSegmentKind;
+  text: string;
+}
+
+export interface PlaybackResolution {
+  source:
+    | "solutions_steps"
+    | "message.display_markdown"
+    | "message.rendered_content"
+    | "structured.display_markdown"
+    | "structured.rendered_content"
+    | "structured.response.message.content"
+    | "structured.response.response"
+    | "synthesized_from_sections"
+    | "message.content"
+    | "none";
+  content: string;
+  segments: PlaybackSegment[];
+  questionId?: string;
+}
+
+const asRecord = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+
+const asString = (value: unknown): string =>
+  typeof value === "string"
+    ? value
+    : (typeof value === "number" || typeof value === "boolean" ? String(value) : "");
+
+const PROTOCOL_MARKER_RE =
+  /(?:^|[^A-Za-z0-9_])(?:BEGIN_SOLUTION|BEGIN_STEPS|END_STEPS|BEGIN_FINAL|END_FINAL|END_SOLUTION|begin_solution|begin_steps|end_steps|begin_final|end_final|end\(\s*final\s*\)|end_solution)(?=$|[^A-Za-z0-9_])/gi;
+
+export const stripProtocolMarkers = (value: string): string => {
+  const normalized = (value || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const withoutMarkers = normalized.replace(PROTOCOL_MARKER_RE, (match) => {
+    const first = match[0] || "";
+    return /[A-Za-z0-9_]/.test(first) ? "" : first;
+  });
+  return withoutMarkers
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+};
+
+const sanitizeInline = (value: unknown): string => stripProtocolMarkers(asString(value));
+
+const normalizeMathTokenForCompare = (value: string): string =>
+  stripProtocolMarkers(value)
+    .replace(/\\\(|\\\)|\\\[|\\\]/g, "")
+    .replace(/\$/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+
+const buildSegmentsFromSolutions = (structured: Record<string, unknown>): PlaybackResolution | null => {
+  const solutions = Array.isArray(structured.solutions) ? structured.solutions : [];
+  if (!solutions.length) return null;
+  const segments: PlaybackSegment[] = [];
+
+  const questionNode = asRecord(structured.question);
+  const questions = Array.isArray(structured.questions) ? structured.questions : [];
+  const targetQuestionId =
+    sanitizeInline(questionNode?.question_id) ||
+    sanitizeInline(asRecord(questions[0])?.question_id);
+
+  const solution = (solutions
+    .map((item) => asRecord(item))
+    .find((item) => item && targetQuestionId && sanitizeInline(item.question_id) === targetQuestionId) ||
+    solutions.map((item) => asRecord(item)).find(Boolean)) as Record<string, unknown> | undefined;
+  if (!solution) return null;
+
+  const questionId = sanitizeInline(solution.question_id || targetQuestionId || "q1") || "q1";
+  segments.push({ kind: "markdown", text: `### ${questionId.toUpperCase()} (${questionId})` });
+
+  const steps = Array.isArray(solution.steps) ? solution.steps : [];
+  steps.forEach((rawStep, idx) => {
+    const step = asRecord(rawStep);
+    if (!step) return;
+    const explanation =
+      sanitizeInline(step.explanation) ||
+      sanitizeInline(step.raw) ||
+      sanitizeInline(step.text) ||
+      sanitizeInline(step.work);
+    const explanationNorm = normalizeMathTokenForCompare(explanation);
+    const math = Array.isArray(step.math_latex) ? step.math_latex : [];
+    const uniqueMath = math
+      .map((m) => sanitizeInline(m))
+      .filter(Boolean)
+      .filter((m) => {
+        const token = normalizeMathTokenForCompare(m);
+        if (!token) return false;
+        return !explanationNorm || !explanationNorm.includes(token);
+      });
+
+    if (!explanation && uniqueMath.length === 0) return;
+
+    const stepIndex = Number(step.index);
+    const heading = sanitizeInline(step.title) || `Step ${Number.isFinite(stepIndex) ? stepIndex : idx + 1}`;
+    if (heading) {
+      segments.push({ kind: "step_title", text: heading });
+    }
+    if (explanation) {
+      segments.push({ kind: "markdown", text: explanation });
+    }
+    uniqueMath.forEach((text) => {
+      segments.push({ kind: "math", text });
+    });
+  });
+
+  const finalAnswer = asRecord(solution.final_answer);
+  const finalText =
+    sanitizeInline(finalAnswer?.answer_latex) ||
+    sanitizeInline(finalAnswer?.answer_text) ||
+    sanitizeInline(solution.result);
+  if (finalText) {
+    segments.push({ kind: "final_answer", text: finalText });
+  }
+
+  if (!segments.length) return null;
+  const content = segmentsToMarkdown(segments);
+  return {
+    source: "solutions_steps",
+    content,
+    segments,
+    questionId,
+  };
+};
+
+const synthesizeFromSections = (structured: Record<string, unknown>): string => {
+  const candidate = asRecord(structured.raw_user_extraction) || structured;
+  const sections = Array.isArray(candidate.sections) ? candidate.sections : [];
+  if (!sections.length) return "";
+  const lines: string[] = [];
+  sections.forEach((section, sectionIndex) => {
+    const sectionObj = asRecord(section);
+    if (!sectionObj) return;
+    const heading =
+      sanitizeInline(sectionObj.heading) ||
+      sanitizeInline(sectionObj.label) ||
+      `Section ${sectionIndex + 1}`;
+    if (heading) lines.push(heading);
+    const steps = Array.isArray(sectionObj.steps) ? sectionObj.steps : [];
+    steps.forEach((step, stepIndex) => {
+      const stepObj = asRecord(step);
+      if (!stepObj) return;
+      const rawIndex = Number(stepObj.index);
+      const stepNumber = Number.isFinite(rawIndex) ? rawIndex : stepIndex + 1;
+      lines.push(`Step ${stepNumber}`);
+      const stepBlocks = Array.isArray(stepObj.blocks) ? stepObj.blocks : [];
+      if (stepBlocks.length > 0) {
+        stepBlocks.forEach((block) => {
+          const blockObj = asRecord(block);
+          if (!blockObj) return;
+          const content = sanitizeInline(blockObj.content);
+          if (content) lines.push(content);
+        });
+      } else {
+        const rawStep = sanitizeInline(stepObj.raw);
+        if (rawStep) lines.push(rawStep);
+      }
+    });
+    const sectionFinal = sanitizeInline(sectionObj.final_answer);
+    if (sectionFinal) {
+      lines.push("Section Final");
+      lines.push(sectionFinal);
+    }
+  });
+  return stripProtocolMarkers(lines.filter(Boolean).join("\n\n"));
+};
+
+export const segmentsToMarkdown = (segments: PlaybackSegment[]): string => {
+  const isLikelyLatex = (value: string): boolean => {
+    const text = (value || "").trim();
+    if (!text) return false;
+    if (text.startsWith("\\(") || text.startsWith("\\[") || text.startsWith("$$")) return true;
+    if (text.includes("\\boxed") || /\\[a-zA-Z]+/.test(text)) return true;
+    return false;
+  };
+
+  const lines: string[] = [];
+  segments.forEach((seg) => {
+    const text = stripProtocolMarkers(seg.text);
+    if (!text) return;
+    if (seg.kind === "step_title") {
+      lines.push(`#### ${text}`);
+      lines.push("");
+      return;
+    }
+    if (seg.kind === "math") {
+      const mathBlock = text.startsWith("\\[") || text.startsWith("$$") ? text : `\\[\n${text}\n\\]`;
+      lines.push(mathBlock);
+      lines.push("");
+      return;
+    }
+    if (seg.kind === "final_answer") {
+      const finalText = isLikelyLatex(text) && !text.startsWith("\\(") && !text.startsWith("\\[") && !text.startsWith("$$")
+        ? `\\(${text}\\)`
+        : text;
+      lines.push(`**Final Answer:** ${finalText}`);
+      lines.push("");
+      return;
+    }
+    lines.push(text);
+    lines.push("");
+  });
+  return stripProtocolMarkers(lines.join("\n"));
+};
+
+export const resolvePlaybackFromMessage = (message: SessionMessage): PlaybackResolution => {
+  const structured = asRecord(message?.structured_data) || {};
+  const fromSolutions = buildSegmentsFromSolutions(structured);
+  if (fromSolutions) return fromSolutions;
+
+  const responseNode = asRecord(structured.response);
+  const responseMessage = asRecord(responseNode?.message);
+  const candidates: Array<{ source: PlaybackResolution["source"]; value: string }> = [
+    { source: "message.display_markdown", value: sanitizeInline((message as SessionMessage).display_markdown) },
+    { source: "message.rendered_content", value: sanitizeInline((message as SessionMessage).rendered_content) },
+    { source: "structured.display_markdown", value: sanitizeInline(structured.display_markdown) },
+    { source: "structured.rendered_content", value: sanitizeInline(structured.rendered_content) },
+    { source: "structured.response.message.content", value: sanitizeInline(responseMessage?.content) },
+    { source: "structured.response.response", value: sanitizeInline(responseNode?.response) },
+    { source: "synthesized_from_sections", value: synthesizeFromSections(structured) },
+    { source: "message.content", value: sanitizeInline(message?.content) },
+  ];
+  for (const candidate of candidates) {
+    if (candidate.value) {
+      return {
+        source: candidate.source,
+        content: candidate.value,
+        segments: [{ kind: "markdown", text: candidate.value }],
+      };
+    }
+  }
+  return { source: "none", content: "", segments: [] };
+};

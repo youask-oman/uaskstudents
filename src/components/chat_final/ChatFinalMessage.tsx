@@ -10,11 +10,10 @@ type Props = {
 
 export function ChatFinalMessage({ content }: Props) {
   return (
-    <div className="prose prose-slate max-w-none whitespace-pre-wrap break-words leading-7">
+    <div className="prose prose-slate max-w-none break-words leading-7 whitespace-normal">
       <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
         {content}
       </ReactMarkdown>
     </div>
   );
 }
-

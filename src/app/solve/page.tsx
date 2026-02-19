@@ -1,7 +1,7 @@
 "use client";
 
 import DashboardNavBar from "@/components/DashboardNavBar";
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import type { TimelineStep } from "@/components/solve/ProgressTimeline";
 import { useRouter } from "next/navigation";
 import MathRenderer from "@/components/math/MathJaxRenderer";
@@ -503,6 +503,76 @@ const translateSolveText = (
     return template.replace(/\{(\w+)\}/g, (_, name) => String(vars[name] ?? ""));
 };
 
+type SolveOverlayStageKey = "preparing_engine" | "executing_solver" | "calling_ai_core" | "plotting_coordinates";
+
+type PersistedSolveOverlayState = {
+    attemptId?: string | null;
+    requestId?: string | null;
+    startTimeMs: number;
+    currentStage: SolveOverlayStageKey;
+    streamingActive: boolean;
+    updatedAt: number;
+};
+
+const SOLVE_OVERLAY_STORAGE_KEY = "uask.solveOverlayState.v1";
+const SOLVE_STAGE_ORDER: SolveOverlayStageKey[] = [
+    "preparing_engine",
+    "executing_solver",
+    "calling_ai_core",
+    "plotting_coordinates",
+];
+
+const buildSolvePipelineStages = (): TimelineStep[] => ([
+    { key: "preparing_engine", label: "Preparing Engine", description: "Allocating solver resources.", status: "pending", icon: "memory" },
+    { key: "executing_solver", label: "Executing Solver", description: "Processing symbolic and numeric steps.", status: "pending", icon: "function" },
+    { key: "calling_ai_core", label: "Calling AI Core", description: "Requesting model inference.", status: "pending", icon: "neurology" },
+    { key: "plotting_coordinates", label: "Plotting Coordinates", description: "Finalizing visuals and structured output.", status: "pending", icon: "scatter_plot" },
+]);
+
+const readPersistedSolveOverlayState = (): PersistedSolveOverlayState | null => {
+    if (typeof window === "undefined") return null;
+    try {
+        const raw = localStorage.getItem(SOLVE_OVERLAY_STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as PersistedSolveOverlayState;
+        if (!parsed || typeof parsed.startTimeMs !== "number" || !SOLVE_STAGE_ORDER.includes(parsed.currentStage)) {
+            return null;
+        }
+        return parsed;
+    } catch {
+        return null;
+    }
+};
+
+const writePersistedSolveOverlayState = (state: PersistedSolveOverlayState): void => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(SOLVE_OVERLAY_STORAGE_KEY, JSON.stringify(state));
+};
+
+const clearPersistedSolveOverlayState = (): void => {
+    if (typeof window === "undefined") return;
+    localStorage.removeItem(SOLVE_OVERLAY_STORAGE_KEY);
+};
+
+const mapBackendEventToOverlayStage = (raw: string | undefined | null): SolveOverlayStageKey | null => {
+    if (!raw) return null;
+    const value = raw.trim().toLowerCase();
+    if (!value) return null;
+    if (value.includes("attempt_created") || value.includes("restore") || value.includes("prepare")) {
+        return "preparing_engine";
+    }
+    if (value.includes("execut") || value.includes("solver_start") || value.includes("schema_validate_start")) {
+        return "executing_solver";
+    }
+    if (value.includes("calling_ai_core") || value.includes("ai_core") || value.includes("provider")) {
+        return "calling_ai_core";
+    }
+    if (value.includes("plot") || value.includes("stream") || value.includes("schema_validate_done") || value.includes("schema_repair") || value.includes("complete")) {
+        return "plotting_coordinates";
+    }
+    return null;
+};
+
 export default function DashboardPage() {
     const { pushToast } = useToast();
     const useSnapSolveUploadPanelV2 = process.env.NEXT_PUBLIC_SNAP_SOLVE_UPLOAD_PANEL_V2 !== "false";
@@ -597,8 +667,9 @@ export default function DashboardPage() {
     }, []);
 
     // Streaming Solve States (Part F1)
-    const [streamingContent, setStreamingContent] = useState("");
     const [currentStage, setCurrentStage] = useState("");
+    const [currentStageKey, setCurrentStageKey] = useState<SolveOverlayStageKey>("preparing_engine");
+    const [streamingActive, setStreamingActive] = useState(false);
     const [streamingTelemetry, setStreamingTelemetry] = useState<StreamingTelemetry | null>(null);
     const [streamingMeta, setStreamingMeta] = useState<StreamingRuntimeMeta | null>(null);
     const [runtimeDebugMeta, setRuntimeDebugMeta] = useState<StreamingRuntimeMeta | null>(null);
@@ -617,115 +688,80 @@ export default function DashboardPage() {
     const uiDirection = preferredLanguage === "ar" ? "rtl" : "ltr";
     const t = (key: string, vars?: Record<string, string | number>) => translateSolveText(preferredLanguage, key, vars);
 
-    const [pipelineStages, setPipelineStages] = useState<TimelineStep[]>([
-        { key: "attempt_created", label: t("semanticExtraction"), description: t("parsingMathSymbols"), status: "pending", icon: "barcode_reader" },
-        { key: "calling_ai_core", label: t("neuralReasoning"), description: t("mappingLogicalSteps"), status: "pending", icon: "psychology" },
-        { key: "schema_validate", label: t("strictValidation"), description: t("checkingSchema"), status: "pending", icon: "verified_user" },
-        { key: "completed", label: t("packetDelivery"), description: t("assemblingResponse"), status: "pending", icon: "network_check" },
-    ]);
-    const [rotatingPipelineIndex, setRotatingPipelineIndex] = useState(0);
+    const [pipelineStages, setPipelineStages] = useState<TimelineStep[]>(() => buildSolvePipelineStages());
 
-    useEffect(() => {
-        if (!isSolving) {
-            setRotatingPipelineIndex(0);
-            return;
-        }
-        const intervalId = setInterval(() => {
-            setRotatingPipelineIndex((prev) => (prev + 1) % pipelineStages.length);
-        }, 3000);
-        return () => clearInterval(intervalId);
-    }, [isSolving, pipelineStages.length]);
+    const hydrateOverlayPersistence = useCallback((patch: Partial<PersistedSolveOverlayState>) => {
+        const prev = readPersistedSolveOverlayState();
+        const merged: PersistedSolveOverlayState = {
+            attemptId: patch.attemptId ?? prev?.attemptId ?? activeAttemptId ?? null,
+            requestId: patch.requestId ?? prev?.requestId ?? streamingMeta?.request_id ?? null,
+            startTimeMs: patch.startTimeMs ?? prev?.startTimeMs ?? solveStartTime ?? Date.now(),
+            currentStage: patch.currentStage ?? prev?.currentStage ?? currentStageKey,
+            streamingActive: patch.streamingActive ?? prev?.streamingActive ?? streamingActive,
+            updatedAt: Date.now(),
+        };
+        writePersistedSolveOverlayState(merged);
+    }, [activeAttemptId, currentStageKey, solveStartTime, streamingActive, streamingMeta?.request_id]);
 
-    useEffect(() => {
+    const applyPipelineStage = useCallback((stage: SolveOverlayStageKey, failed = false) => {
+        const activeIdx = SOLVE_STAGE_ORDER.indexOf(stage);
+        setCurrentStageKey(stage);
         setPipelineStages((prev) =>
-            prev.map((stage) => {
-                if (stage.key === "attempt_created") {
-                    return {
-                        ...stage,
-                        label: t("semanticExtraction"),
-                        description: stage.status === "pending" ? t("parsingMathSymbols") : stage.description,
-                    };
-                }
-                if (stage.key === "calling_ai_core") {
-                    return {
-                        ...stage,
-                        label: t("neuralReasoning"),
-                        description: stage.status === "pending" ? t("mappingLogicalSteps") : stage.description,
-                    };
-                }
-                if (stage.key === "schema_validate") {
-                    return {
-                        ...stage,
-                        label: t("strictValidation"),
-                        description: stage.status === "pending" ? t("checkingSchema") : stage.description,
-                    };
-                }
-                if (stage.key === "completed") {
-                    return {
-                        ...stage,
-                        label: t("packetDelivery"),
-                        description: stage.status === "pending" ? t("assemblingResponse") : stage.description,
-                    };
-                }
-                return stage;
+            prev.map((step, idx) => {
+                if (idx < activeIdx) return { ...step, status: "completed" };
+                if (idx === activeIdx) return { ...step, status: failed ? "failed" : "active" };
+                return { ...step, status: "pending" };
             })
         );
-    }, [preferredLanguage]);
+        hydrateOverlayPersistence({ currentStage: stage });
+    }, [hydrateOverlayPersistence]);
+
+    const markPipelineCompleted = useCallback(() => {
+        setPipelineStages((prev) => prev.map((step) => ({ ...step, status: "completed" })));
+        hydrateOverlayPersistence({ currentStage: "plotting_coordinates" });
+    }, [hydrateOverlayPersistence]);
+
+    const resetPipeline = useCallback((stage: SolveOverlayStageKey = "preparing_engine") => {
+        const activeIdx = SOLVE_STAGE_ORDER.indexOf(stage);
+        setCurrentStageKey(stage);
+        setPipelineStages(
+            buildSolvePipelineStages().map((step, idx) => ({
+                ...step,
+                status: idx === activeIdx ? "active" : idx < activeIdx ? "completed" : "pending",
+            }))
+        );
+    }, []);
 
     // SSE / Polling Event Listener
     useEffect(() => {
         if (!activeAttemptId || !isSolving) return;
-        const tr = (key: string, vars?: Record<string, string | number>) =>
-            translateSolveText(preferredLanguage, key, vars);
 
         let eventSource: EventSource | null = null;
         let pollInterval: NodeJS.Timeout | null = null;
         const channel = `/api/v1/attempt/${activeAttemptId}/events`;
 
-        const updateStep = (key: string, status: "pending" | "active" | "completed" | "failed", description?: string) => {
-            setPipelineStages(prev => prev.map(s => {
-                if (s.key === key) return { ...s, status, description: description || s.description };
-                // If this step is completed, make previous steps completed too if they aren't
-                return s;
-            }));
-        };
-
         type BackendEvent = { phase?: string; status?: string; metadata?: Record<string, unknown> };
         const handleBackendEvent = (data: BackendEvent) => {
             const { phase, status, metadata } = data;
 
-            if (phase === "attempt_created") {
-                updateStep("attempt_created", "completed", tr("extractionComplete"));
-                updateStep("calling_ai_core", "active", tr("initializingReasoning"));
-            } else if (phase === "calling_ai_core_start") {
-                updateStep("calling_ai_core", "active", tr("callingProvider", { provider: String(metadata?.provider || "AI") }));
-            } else if (phase === "calling_ai_core_done") {
-                updateStep("calling_ai_core", "completed", tr("reasoningComplete"));
-                updateStep("schema_validate", "active", tr("validatingOutput"));
-            } else if (phase === "schema_validate_start") {
-                updateStep("schema_validate", "active", tr("validatingSchema"));
-            } else if (phase === "schema_validate_done") {
-                if (status === "success") {
-                    updateStep("schema_validate", "completed", tr("validationSuccessful"));
-                    updateStep("completed", "active", tr("streamingResults"));
-                } else {
-                    updateStep("schema_validate", "active", tr("schemaInvalidRepair"));
-                }
-            } else if (phase === "schema_repair_start") {
-                updateStep("schema_validate", "active", tr("attemptingRepair"));
-            } else if (phase === "schema_repair_done") {
-                if (status === "success") {
-                    updateStep("schema_validate", "completed", tr("repairSuccessful"));
-                    updateStep("completed", "active", tr("streamingResults"));
-                } else {
-                    updateStep("schema_validate", "failed", tr("validationFailed"));
-                }
-            } else if (phase === "completed_success") {
-                updateStep("completed", "completed", tr("solveComplete"));
-            } else if (phase === "completed_failure") {
-                updateStep("completed", "failed", tr("solveFailed"));
-            } else if (phase === "clarification_needed") {
-                updateStep("completed", "active", tr("clarificationRequested"));
+            if (phase === "completed_success" || status === "success") {
+                markPipelineCompleted();
+                return;
+            }
+            if (phase === "completed_failure" || status === "failure") {
+                applyPipelineStage(currentStageKey, true);
+                return;
+            }
+            if (phase === "clarification_needed" || status === "ambiguous") {
+                applyPipelineStage("plotting_coordinates");
+                return;
+            }
+            if (phase === "calling_ai_core_start" && metadata?.provider) {
+                setCurrentStage(`Calling AI Core (${String(metadata.provider)})`);
+            }
+            const mapped = mapBackendEventToOverlayStage(phase);
+            if (mapped) {
+                applyPipelineStage(mapped);
             }
         };
 
@@ -752,14 +788,14 @@ export default function DashboardPage() {
                     const res = await fetch(`/api/v1/attempt/${activeAttemptId}`);
                     if (res.ok) {
                         const data = await res.json();
-                        // Map status to stages (simplified polling fallback)
                         if (data.status === "success") {
-                            setPipelineStages(prev => prev.map(s => ({ ...s, status: "completed" })));
+                            markPipelineCompleted();
                             if (pollInterval) clearInterval(pollInterval);
                         } else if (data.status === "failure") {
-                            setPipelineStages(prev => prev.map(s => s.status === "completed" ? s : { ...s, status: "failed" }));
+                            applyPipelineStage(currentStageKey, true);
                             if (pollInterval) clearInterval(pollInterval);
                         } else if (data.status === "ambiguous") {
+                            applyPipelineStage("plotting_coordinates");
                             if (pollInterval) clearInterval(pollInterval);
                         }
                     }
@@ -775,7 +811,7 @@ export default function DashboardPage() {
             eventSource?.close();
             if (pollInterval) clearInterval(pollInterval);
         };
-    }, [activeAttemptId, isSolving, preferredLanguage]);
+    }, [activeAttemptId, applyPipelineStage, currentStageKey, isSolving, markPipelineCompleted]);
 
     const buildRuntimeMetaFromPayload = (payload: unknown, fallbackRequestedMode: string): StreamingRuntimeMeta => {
         const toObject = (value: unknown): Record<string, unknown> =>
@@ -861,10 +897,10 @@ export default function DashboardPage() {
     const selectedGoal = 'solve';
     const [selectedSolveTier, setSelectedSolveTier] = useState<SolveTier>("STANDARD");
     const isPlotLockedByTier = selectedSolveTier === "FINAL";
-    const resolveSessionRoute = (sessionId: string | number) =>
+    const resolveSessionRoute = useCallback((sessionId: string | number) =>
         (selectedSolveTier === "FINAL" || selectedSolveTier === "SHORT_STEPS")
             ? `/chat_final/${sessionId}`
-            : `/chat/${sessionId}`;
+            : `/chat/${sessionId}`, [selectedSolveTier]);
     const resolveHistorySessionRoute = (session: ChatSession) => {
         const telemetry = session?.telemetry;
         const rawTier =
@@ -1207,27 +1243,47 @@ export default function DashboardPage() {
                 console.log("[RESTORE] Found active attempt:", savedAttemptId);
                 setActiveAttemptId(savedAttemptId);
                 if (savedQuery) setQuery(savedQuery);
+                const persisted = readPersistedSolveOverlayState();
 
                 try {
                     setIsSolving(true);
-                    setCurrentStage(t("restoringSession"));
-                    setSolveStartTime(Date.now());
+                    setCurrentStage("Preparing Engine");
+                    setStreamingActive(Boolean(persisted?.streamingActive));
+                    if (persisted?.currentStage) {
+                        applyPipelineStage(persisted.currentStage);
+                    } else {
+                        resetPipeline("preparing_engine");
+                    }
 
                     const res = await fetch(`/api/v1/attempt/${savedAttemptId}`);
                     if (!res.ok) throw new Error("Failed to fetch attempt");
 
                     const data = await res.json();
+                    const createdAtMs = typeof data?.created_at === "string" ? Date.parse(data.created_at) : NaN;
+                    const restoredStartTime =
+                        Number.isFinite(createdAtMs) && createdAtMs > 0
+                            ? createdAtMs
+                            : (persisted?.startTimeMs ?? Date.now());
+                    setSolveStartTime(restoredStartTime);
+                    hydrateOverlayPersistence({
+                        attemptId: savedAttemptId,
+                        requestId: typeof data?.request_id === "string" ? data.request_id : persisted?.requestId,
+                        startTimeMs: restoredStartTime,
+                    });
                     if (data.status === "success" && data.session_id) {
                         // Already solved
                         localStorage.removeItem("uask.activeAttemptId");
                         localStorage.removeItem("uask.activeQuery");
+                        clearPersistedSolveOverlayState();
                         router.push(resolveSessionRoute(data.session_id));
                     } else if (data.status === "ambiguous") {
                         setIsClarifying(true);
                         setClarificationMessage(data.error_message || "Clarification needed.");
+                        applyPipelineStage("plotting_coordinates");
                     } else if (data.status === "failure") {
                         localStorage.removeItem("uask.activeAttemptId");
                         localStorage.removeItem("uask.activeQuery");
+                        clearPersistedSolveOverlayState();
                         pushToast({
                             type: "error",
                             title: "Previous attempt failed",
@@ -1237,14 +1293,22 @@ export default function DashboardPage() {
                         setSolveStartTime(null);
                     } else if (data.status === "pending" || data.status === "processing") {
                         setIsSolving(true);
-                        // SSE listener will take over
+                        const mapped = mapBackendEventToOverlayStage(typeof data?.phase === "string" ? data.phase : "");
+                        if (mapped) {
+                            applyPipelineStage(mapped);
+                        } else if (!persisted?.currentStage) {
+                            applyPipelineStage("executing_solver");
+                        }
                     } else {
                         setIsSolving(false);
                         setSolveStartTime(null);
+                        clearPersistedSolveOverlayState();
                     }
                 } catch (e) {
                     console.error("[RESTORE] Failed:", e);
                     localStorage.removeItem("uask.activeAttemptId");
+                    localStorage.removeItem("uask.activeQuery");
+                    clearPersistedSolveOverlayState();
                     setIsSolving(false);
                     setSolveStartTime(null);
                 }
@@ -1258,7 +1322,7 @@ export default function DashboardPage() {
         restoreAttempt();
         const interval = setInterval(fetchOnline, 30000);
         return () => clearInterval(interval);
-    }, [router, pushToast]);
+    }, [applyPipelineStage, hydrateOverlayPersistence, pushToast, resetPipeline, resolveSessionRoute, router]);
 
     const handleSuggestionClick = (suggestion: Suggestion) => {
         setMathModeEnabled(true);
@@ -1512,23 +1576,22 @@ export default function DashboardPage() {
             return;
         }
 
+        const batchStart = Date.now();
         setIsSolving(true);
-        setSolveStartTime(Date.now());
-        setCurrentStage(t("batchSolving"));
-        setStreamingContent("");
+        setSolveStartTime(batchStart);
+        setCurrentStage("Executing Solver");
+        setCurrentStageKey("executing_solver");
+        setStreamingActive(false);
         setStreamingTelemetry(null);
         setStreamingMeta(null);
         setLastSolveError(null);
         setBatchSolveResult(null);
-        setPipelineStages(prev =>
-            prev.map(step =>
-                step.key === "attempt_created"
-                    ? { ...step, status: "completed", description: t("extractionComplete") }
-                    : step.key === "calling_ai_core"
-                        ? { ...step, status: "active", description: t("solvingProgress", { current: 0, total: trimmedQuestions.length }) }
-                        : { ...step, status: "pending" }
-            )
-        );
+        resetPipeline("executing_solver");
+        hydrateOverlayPersistence({
+            startTimeMs: batchStart,
+            currentStage: "executing_solver",
+            streamingActive: false,
+        });
 
         let stageTick: number | null = null;
         const stageStart = Date.now();
@@ -1537,7 +1600,7 @@ export default function DashboardPage() {
             const estimatedCurrent = Math.min(trimmedQuestions.length, Math.max(1, elapsedSec + 1));
             setPipelineStages(prev =>
                 prev.map(step =>
-                    step.key === "calling_ai_core"
+                    step.key === "executing_solver"
                         ? { ...step, status: "active", description: t("solvingProgress", { current: estimatedCurrent, total: trimmedQuestions.length }) }
                         : step
                 )
@@ -1630,17 +1693,7 @@ export default function DashboardPage() {
             const parsed = SolveBatchResponseSchema.parse(raw);
             setBatchSolveResult(parsed);
 
-            setPipelineStages(prev =>
-                prev.map(step =>
-                    step.key === "calling_ai_core"
-                        ? { ...step, status: "completed", description: t("reasoningComplete") }
-                        : step.key === "schema_validate"
-                            ? { ...step, status: "completed", description: t("validationSuccessful") }
-                            : step.key === "completed"
-                                ? { ...step, status: "completed", description: t("batchPackagedForChat") }
-                                : step
-                )
-            );
+            markPipelineCompleted();
             setShowSplitModal(false);
             pushToast({
                 type: "success",
@@ -1662,6 +1715,7 @@ export default function DashboardPage() {
             });
         } finally {
             if (stageTick !== null) window.clearInterval(stageTick);
+            clearPersistedSolveOverlayState();
             setIsSolving(false);
             setSolveStartTime(null);
         }
@@ -1725,13 +1779,23 @@ export default function DashboardPage() {
             }
         }
 
+        const solveStartedAt = Date.now();
         setIsSolving(true);
-        setStreamingContent("");
-        setCurrentStage(t("initializing"));
+        setCurrentStage("Preparing Engine");
+        setCurrentStageKey("preparing_engine");
+        setStreamingActive(false);
         setStreamingTelemetry(null);
         setStreamingMeta(null);
-        setSolveStartTime(Date.now());
+        setSolveStartTime(solveStartedAt);
         setLastSolveError(null);
+        resetPipeline("preparing_engine");
+        hydrateOverlayPersistence({
+            startTimeMs: solveStartedAt,
+            currentStage: "preparing_engine",
+            streamingActive: false,
+            attemptId: null,
+            requestId: null,
+        });
 
         // Reset Phase 1 Clarification
         setIsClarifying(false);
@@ -1851,18 +1915,30 @@ export default function DashboardPage() {
                                 if (data.attempt_id) {
                                     setActiveAttemptId(data.attempt_id);
                                     localStorage.setItem("uask.activeAttemptId", data.attempt_id);
+                                    localStorage.setItem("uask.activeQuery", textToSolve);
+                                    hydrateOverlayPersistence({
+                                        attemptId: data.attempt_id,
+                                        startTimeMs: solveStartedAt,
+                                    });
                                 }
                                 const parsedMeta = buildRuntimeMetaFromPayload(data, requestedMode);
                                 setStreamingMeta((prev) => ({ ...(prev || {}), ...parsedMeta }));
                                 if (parsedMeta.request_id) {
-                                    localStorage.setItem("uask.activeAttemptId", parsedMeta.request_id);
-                                    localStorage.setItem("uask.activeQuery", textToSolve);
-                                    setActiveAttemptId(parsedMeta.request_id);
+                                    hydrateOverlayPersistence({
+                                        requestId: parsedMeta.request_id,
+                                        startTimeMs: solveStartedAt,
+                                    });
                                 }
                             } else if (currentEvent === "delta") {
-                                setStreamingContent((prev) => prev + data.text);
+                                setStreamingActive(true);
+                                hydrateOverlayPersistence({ streamingActive: true });
                             } else if (currentEvent === "stage") {
-                                setCurrentStage(data.name);
+                                const stageName = typeof data?.name === "string" ? data.name : "";
+                                setCurrentStage(stageName);
+                                const mapped = mapBackendEventToOverlayStage(stageName);
+                                if (mapped) {
+                                    applyPipelineStage(mapped);
+                                }
                             } else if (currentEvent === "telemetry") {
                                 setStreamingTelemetry(data?.telemetry ?? data);
                             } else if (currentEvent === "done") {
@@ -1870,6 +1946,9 @@ export default function DashboardPage() {
                                     setSolveProgress(100);
                                     localStorage.removeItem("uask.activeAttemptId");
                                     localStorage.removeItem("uask.activeQuery");
+                                    clearPersistedSolveOverlayState();
+                                    setStreamingActive(false);
+                                    markPipelineCompleted();
                                     if (devToolsEnabled && stayOnSolveResult) {
                                         if (streamingMeta?.attempt_id) {
                                             try {
@@ -1891,10 +1970,15 @@ export default function DashboardPage() {
                                 } else if (data.error?.code === "ambiguous_response") {
                                     localStorage.removeItem("uask.activeAttemptId");
                                     localStorage.removeItem("uask.activeQuery");
+                                    clearPersistedSolveOverlayState();
+                                    setStreamingActive(false);
                                     throw new Error("Clarification is disabled. Please submit one clear question.");
                                 } else {
                                     localStorage.removeItem("uask.activeAttemptId");
                                     localStorage.removeItem("uask.activeQuery");
+                                    clearPersistedSolveOverlayState();
+                                    setStreamingActive(false);
+                                    applyPipelineStage(currentStageKey, true);
                                     if (data.error?.request_id) {
                                         setStreamingMeta((prev) => ({ ...(prev || {}), request_id: data.error.request_id }));
                                     }
@@ -1928,12 +2012,15 @@ export default function DashboardPage() {
             }
         } catch (err) {
             console.error("[SOLVER_STREAM] Error:", err);
+            clearPersistedSolveOverlayState();
+            setStreamingActive(false);
             pushToast({
                 type: "error",
                 title: "Solve failed",
                 message: (err as Error).message || "Failed to generate solution.",
             });
         } finally {
+            setStreamingActive(false);
             setIsSolving(false);
             setSolveStartTime(null);
         }
@@ -1942,9 +2029,18 @@ export default function DashboardPage() {
     const handleClarify = async () => {
         if (!activeAttemptId || !clarificationResponse.trim() || isSolving) return;
 
+        const clarifyStartedAt = Date.now();
         setIsSolving(true);
-        setSolveStartTime(Date.now());
-        setCurrentStage(t("resolvingAmbiguity"));
+        setSolveStartTime(clarifyStartedAt);
+        setCurrentStage("Calling AI Core");
+        setStreamingActive(false);
+        applyPipelineStage("calling_ai_core");
+        hydrateOverlayPersistence({
+            attemptId: activeAttemptId,
+            startTimeMs: clarifyStartedAt,
+            currentStage: "calling_ai_core",
+            streamingActive: false,
+        });
 
         try {
             const userId = localStorage.getItem("user_id") || "1";
@@ -1968,24 +2064,29 @@ export default function DashboardPage() {
                 setSolveProgress(100);
                 localStorage.removeItem("uask.activeAttemptId");
                 localStorage.removeItem("uask.activeQuery");
+                clearPersistedSolveOverlayState();
                 setTimeout(() => router.push(resolveSessionRoute(data.session_id)), 500);
             } else if (data.status === "ambiguous") {
                 setClarificationHistory(prev => [...prev, clarificationResponse]);
                 setClarificationMessage(data.clarifier_question || "Still ambiguous. Please provide more detail.");
                 setClarificationResponse("");
+                applyPipelineStage("plotting_coordinates");
             } else {
                 localStorage.removeItem("uask.activeAttemptId");
                 localStorage.removeItem("uask.activeQuery");
+                clearPersistedSolveOverlayState();
                 throw new Error(data.error || "Ambiguity resolution failed.");
             }
         } catch (err) {
             console.error("[CLARIFY] Error:", err);
+            clearPersistedSolveOverlayState();
             pushToast({
                 type: "error",
                 title: "Clarification failed",
                 message: (err as Error).message || "Failed to clarify.",
             });
         } finally {
+            setStreamingActive(false);
             setIsSolving(false);
             setSolveStartTime(null);
         }
@@ -3277,109 +3378,97 @@ export default function DashboardPage() {
 
             {
                 isSolving && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-sm animate-in fade-in duration-300">
-                        <div dir={uiDirection} className="relative w-full max-w-4xl p-8 md:p-12 text-white chalkboard-texture chalk-border shadow-2xl overflow-hidden">
-                            {/* Decorative Elements */}
-                            <div className="dust-smudge w-40 h-40 -top-10 -left-10 opacity-30"></div>
-                            <div className="dust-smudge w-64 h-32 bottom-20 right-10 opacity-20"></div>
-                            <div className="absolute top-1/4 right-12 opacity-10 pointer-events-none select-none text-4xl font-sketch">★</div>
-                            <div className="absolute bottom-1/4 left-1/4 opacity-10 pointer-events-none select-none text-6xl font-sketch -rotate-12">∫</div>
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/75 p-6 backdrop-blur-sm animate-in fade-in duration-200">
+                        <div
+                            dir={uiDirection}
+                            role="dialog"
+                            aria-modal="true"
+                            aria-label="Solving Problem Progress"
+                            className="relative w-full max-w-4xl overflow-hidden rounded-[28px] border border-white/30 bg-white/12 p-7 text-white shadow-2xl backdrop-blur-2xl md:p-10"
+                        >
+                            <div className="pointer-events-none absolute inset-0 opacity-35 [background-image:linear-gradient(rgba(255,255,255,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.12)_1px,transparent_1px)] [background-size:22px_22px]" />
+                            <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-sky-300/20 blur-3xl" />
+                            <div className="pointer-events-none absolute -bottom-20 -left-12 h-64 w-64 rounded-full bg-emerald-300/15 blur-3xl" />
 
                             {/* Header */}
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 relative z-10">
-                                <div className="flex items-center gap-5">
-                                    <div className="w-16 h-16 flex items-center justify-center text-white text-3xl font-architects wobbly-chalk rotate-[-2deg]">
-                                        Σ
-                                    </div>
-                                    <div>
-                                        <h1 className="text-3xl md:text-4xl font-architects tracking-wide text-white/90">{t("solvingMathProblem")}</h1>
-                                        <p className="font-hand text-lg opacity-60 tracking-widest mt-1 uppercase">{t("advancedNeuralComputation")}</p>
-                                    </div>
+                                <div>
+                                    <h1 className="text-3xl font-semibold tracking-tight">{t("solvingMathProblem")}</h1>
+                                    <p className="mt-1 text-sm uppercase tracking-[0.18em] text-slate-200/80">{t("advancedNeuralComputation")}</p>
                                 </div>
-                                <div className="text-right font-hand">
-                                    <p className="text-xs uppercase opacity-50 tracking-widest">{t("elapsedTime")}</p>
-                                    <div className="text-5xl font-architects cyan-glow flex items-baseline">
-                                        {formatElapsed(elapsedMs)}<span className="text-xl ml-1">s</span>
-                                    </div>
+                                <div className="text-right">
+                                    <p className="text-[11px] uppercase tracking-[0.2em] text-slate-200/70">{t("elapsedTime")}</p>
+                                    <p className="mt-1 text-4xl font-semibold text-cyan-100">{formatElapsed(elapsedMs)}s</p>
                                 </div>
                             </div>
 
                             {/* Pipeline Grid */}
-                            <div className="mb-12 relative z-10">
-                                <div className="flex items-center gap-2 mb-8 opacity-80">
-                                    <span className="material-symbols-outlined text-2xl">refresh</span>
-                                    <h2 className="font-hand text-xl uppercase tracking-[0.2em]">{t("systemPipelineState")}</h2>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    {(() => {
-                                        const activeIndex = pipelineStages.findIndex(s => s.label === currentStage || s.key === currentStage);
-                                        const visualActiveIndex = isSolving
-                                            ? rotatingPipelineIndex
-                                            : activeIndex;
-                                        return pipelineStages.map((stage, index) => {
-                                            const isCompleted = (visualActiveIndex !== -1 && index < visualActiveIndex) || stage.status === 'completed';
-                                            const effectiveActive = (visualActiveIndex !== -1 && index === visualActiveIndex) || stage.status === 'active';
-
-                                            return (
-                                                <div key={stage.key} className={`flex items-start gap-4 p-5 wobbly-chalk transition-all cursor-default group ${effectiveActive ? 'border-white/70 bg-slate-100/10' : isCompleted ? 'border-white/60 bg-white/5' : 'border-white/20 opacity-60'}`}>
-                                                    <div className={`w-12 h-12 flex items-center justify-center transition-colors ${effectiveActive || isCompleted ? 'text-white' : 'text-white/70'}`}>
-                                                        <span className="material-symbols-outlined text-4xl bg-clip-text">
-                                                            {stage.icon}
-                                                        </span>
-                                                    </div>
-                                                    <div>
-                                                        <h3 className={`font-architects text-xl transition-colors ${effectiveActive || isCompleted ? 'text-white' : 'text-white/90'}`}>
-                                                            {stage.label}
-                                                        </h3>
-                                                        <p className="font-hand text-lg opacity-50">{stage.description}</p>
-                                                    </div>
-                                                    {effectiveActive && <div className="ml-auto w-2 h-2 rounded-full bg-cyan-400 animate-pulse self-center"></div>}
-                                                    {isCompleted && <div className="ml-auto material-symbols-outlined text-emerald-400 self-center">check</div>}
-                                                </div>
-                                            );
-                                        })
-                                    })()}
-                                </div>
+                            <div className="relative z-10 mt-8 grid grid-cols-1 gap-3 md:grid-cols-2">
+                                {pipelineStages.map((stage) => {
+                                    const isCompleted = stage.status === "completed";
+                                    const isActive = stage.status === "active";
+                                    const isPending = stage.status === "pending";
+                                    return (
+                                        <div
+                                            key={stage.key}
+                                            className={[
+                                                "flex items-center gap-3 rounded-2xl border px-4 py-3 transition-all",
+                                                isCompleted ? "border-emerald-300/60 bg-emerald-400/10" : "",
+                                                isActive ? "border-sky-300/70 bg-sky-400/15 shadow-[0_0_26px_rgba(56,189,248,0.35)] motion-safe:animate-pulse" : "",
+                                                isPending ? "border-white/15 bg-white/5 opacity-55" : "",
+                                                stage.status === "failed" ? "border-rose-400/60 bg-rose-500/10 text-rose-200" : "",
+                                            ].join(" ").trim()}
+                                        >
+                                            <span
+                                                className={[
+                                                    "material-symbols-outlined text-[22px]",
+                                                    isCompleted ? "text-emerald-300" : isActive ? "text-sky-200" : "text-slate-300/70",
+                                                ].join(" ")}
+                                            >
+                                                {isCompleted ? "check_circle" : stage.icon}
+                                            </span>
+                                            <div>
+                                                <p className={isCompleted ? "font-semibold text-emerald-100" : isActive ? "font-semibold text-sky-100" : "text-slate-100/80"}>
+                                                    {stage.label}
+                                                </p>
+                                                <p className="text-xs text-slate-200/70">{stage.description}</p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
 
                             {/* Footer / Streaming Status */}
-                            <div className="pt-8 mt-4 border-t border-dashed border-white/20 flex flex-col md:flex-row justify-between items-end gap-6 relative z-10">
-                                <div className="flex items-center gap-6">
-                                    {/* Animated Bars */}
-                                    <div className="flex items-end gap-1.5 h-12">
-                                        {[40, 85, 45, 100, 55, 75, 40].map((h, i) => (
+                            <div className="relative z-10 mt-8 flex flex-col gap-4 border-t border-white/20 pt-5 md:flex-row md:items-end md:justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="flex h-10 items-end gap-1.5">
+                                        {[38, 74, 46, 86, 52, 70, 44].map((h, i) => (
                                             <div
                                                 key={i}
-                                                className="w-1.5 bg-chalk-cyan rounded-sm cyan-bar-glow animate-voice-bar"
-                                                style={{ height: `${h}%`, animationDelay: `${i * 0.1}s` }}
-                                            ></div>
+                                                className={[
+                                                    "w-1.5 rounded-sm bg-cyan-200 transition-opacity",
+                                                    streamingActive ? "opacity-95 motion-safe:animate-voice-bar motion-reduce:animate-none" : "opacity-25",
+                                                ].join(" ")}
+                                                style={{ height: `${h}%`, animationDelay: `${i * 0.08}s` }}
+                                            />
                                         ))}
                                     </div>
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-2.5 h-2.5 bg-chalk-cyan rounded-full cyan-bar-glow animate-pulse"></div>
-                                            <span className="font-hand text-xl font-bold uppercase tracking-widest text-chalk-cyan cyan-glow">{t("streamingActive")}</span>
-                                        </div>
-                                        <p className="font-hand text-sm opacity-50">{t("packetDeliveryRealtime")}</p>
+                                    <div className="flex items-center gap-2">
+                                        <span className={`h-2.5 w-2.5 rounded-full ${streamingActive ? "bg-cyan-300 motion-safe:animate-pulse" : "bg-slate-400"}`} />
+                                        <span className={`text-sm font-semibold uppercase tracking-[0.18em] ${streamingActive ? "text-cyan-100" : "text-slate-300"}`}>
+                                            {streamingActive ? "STREAMING ACTIVE" : "STREAMING IDLE"}
+                                        </span>
                                     </div>
                                 </div>
-                                <div className="text-right space-y-1">
-                                    <p className="font-sketch italic opacity-40 text-lg">{t("solutionGenerationInProgress")}</p>
-                                    <div className="flex flex-col items-end gap-1">
-                                        <p className="font-hand text-sm uppercase opacity-50 tracking-tighter">v4.0.1 Stable • {streamingContent ? t("encryptedStream") : t("secureStream")}</p>
-                                        <button
-                                            onClick={() => setShowRuntimeDebug(true)}
-                                            className="font-hand text-sm font-bold opacity-70 cursor-pointer hover:text-white transition-colors border-b border-dashed border-white/30"
-                                        >
-                                            ▶ {t("debugRuntime")}
-                                        </button>
-                                    </div>
+                                <div className="text-right text-xs text-slate-200/70">
+                                    <div>{currentStage || pipelineStages.find((stage) => stage.status === "active")?.label || "Preparing Engine"}</div>
+                                    <button
+                                        onClick={() => setShowRuntimeDebug(true)}
+                                        className="mt-1 border-b border-dashed border-white/40 text-slate-100 hover:text-white"
+                                    >
+                                        ▶ {t("debugRuntime")}
+                                    </button>
                                 </div>
-                            </div>
-
-                            {/* Corner Icon */}
-                            <div className="absolute top-4 right-4 w-10 h-10 rounded-lg flex items-center justify-center opacity-30 hover:opacity-100 transition-opacity cursor-help">
-                                <span className="material-symbols-outlined text-white">auto_fix_high</span>
                             </div>
                         </div>
                     </div>

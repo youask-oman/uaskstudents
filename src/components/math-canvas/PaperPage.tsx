@@ -870,6 +870,10 @@ export default function PaperPage({
                     steps={block.steps}
                     shortSections={block.shortSections}
                     shortSource={block.shortSource}
+                    playbackMessageId={block.playbackMessageId}
+                    playbackFallbackContent={block.playbackFallbackContent}
+                    playbackSegments={block.playbackSegments}
+                    playbackSource={block.playbackSource}
                     result={block.result}
                     finalAnswer={block.finalAnswer}
                     verificationChecks={block.verificationChecks}

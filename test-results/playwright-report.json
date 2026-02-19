@@ -10,18 +10,14 @@
     "grep": {},
     "grepInvert": null,
     "maxFailures": 0,
-    "metadata": {
-      "actualWorkers": 1
-    },
+    "metadata": {},
     "preserveOutput": "always",
     "projects": [
       {
         "outputDir": "E:/uaskstudents/test-results",
         "repeatEach": 1,
         "retries": 0,
-        "metadata": {
-          "actualWorkers": 1
-        },
+        "metadata": {},
         "id": "chromium",
         "name": "chromium",
         "testDir": "E:/uaskstudents",
@@ -71,255 +67,23 @@
       "timeout": 180000
     }
   },
-  "suites": [
+  "suites": [],
+  "errors": [
     {
-      "title": "tests\\e2e\\frontend_regression_gate.spec.ts",
-      "file": "tests/e2e/frontend_regression_gate.spec.ts",
-      "column": 0,
-      "line": 0,
-      "specs": [],
-      "suites": [
-        {
-          "title": "Frontend Regression Gate",
-          "file": "tests/e2e/frontend_regression_gate.spec.ts",
-          "line": 97,
-          "column": 6,
-          "specs": [
-            {
-              "title": "A) auth flows: login render, invalid, success, persistence, logout",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 180000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 5499,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-02-15T04:40:10.130Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "console-errors.json",
-                          "contentType": "application/json",
-                          "body": "W10="
-                        },
-                        {
-                          "name": "network-events.json",
-                          "contentType": "application/json",
-                          "body": "W10="
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "1d5221d9f0fef09de21b-50078e23ee342f5e591f",
-              "file": "tests/e2e/frontend_regression_gate.spec.ts",
-              "line": 100,
-              "column": 7
-            },
-            {
-              "title": "B) RBAC matrix on admin endpoints and privileged UI controls",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 180000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 4170,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-02-15T04:40:15.711Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "console-errors.json",
-                          "contentType": "application/json",
-                          "body": "W10="
-                        },
-                        {
-                          "name": "network-events.json",
-                          "contentType": "application/json",
-                          "body": "WwogIHsKICAgICJ1cmwiOiAiaHR0cDovL2xvY2FsaG9zdDo5MDAwL2FwaS92MS9hZG1pbi9jcmVkaXRzL2hvbGRzP2xpbWl0PTUwIiwKICAgICJzdGF0dXMiOiAyMDAsCiAgICAibWV0aG9kIjogIkdFVCIKICB9LAogIHsKICAgICJ1cmwiOiAiaHR0cDovL2xvY2FsaG9zdDo5MDAwL2FwaS92MS9hZG1pbi9jcmVkaXRzL292ZXJ2aWV3IiwKICAgICJzdGF0dXMiOiAyMDAsCiAgICAibWV0aG9kIjogIkdFVCIKICB9LAogIHsKICAgICJ1cmwiOiAiaHR0cDovL2xvY2FsaG9zdDo5MDAwL2FwaS92MS9hZG1pbi9jcmVkaXRzL2hvbGRzP2xpbWl0PTUwIiwKICAgICJzdGF0dXMiOiAyMDAsCiAgICAibWV0aG9kIjogIkdFVCIKICB9LAogIHsKICAgICJ1cmwiOiAiaHR0cDovL2xvY2FsaG9zdDo5MDAwL2FwaS92MS9hZG1pbi9jcmVkaXRzL292ZXJ2aWV3IiwKICAgICJzdGF0dXMiOiAyMDAsCiAgICAibWV0aG9kIjogIkdFVCIKICB9LAogIHsKICAgICJ1cmwiOiAiaHR0cDovL2xvY2FsaG9zdDo5MDAwL2FwaS92MS9hZG1pbi9wcm9tcHRfYmluZGluZ3M/c2NvcGU9c29sdmUiLAogICAgInN0YXR1cyI6IDIwMCwKICAgICJtZXRob2QiOiAiR0VUIgogIH0sCiAgewogICAgInVybCI6ICJodHRwOi8vbG9jYWxob3N0OjkwMDAvYXBpL3YxL2FkbWluL3Byb21wdF9iaW5kaW5ncz9zY29wZT1zb2x2ZSIsCiAgICAic3RhdHVzIjogMjAwLAogICAgIm1ldGhvZCI6ICJHRVQiCiAgfQpd"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "1d5221d9f0fef09de21b-403748113e6db2207177",
-              "file": "tests/e2e/frontend_regression_gate.spec.ts",
-              "line": 137,
-              "column": 7
-            },
-            {
-              "title": "C) admin dashboard full sweep: credits tabs, users, overview",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 180000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 4997,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-02-15T04:40:19.888Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "console-errors.json",
-                          "contentType": "application/json",
-                          "body": "W10="
-                        },
-                        {
-                          "name": "network-events.json",
-                          "contentType": "application/json",
-                          "body": "WwogIHsKICAgICJ1cmwiOiAiaHR0cDovL2xvY2FsaG9zdDo5MDAwL2FwaS92MS9hZG1pbi9jcmVkaXRzL2xlZGdlcj9saW1pdD01MCIsCiAgICAic3RhdHVzIjogMjAwLAogICAgIm1ldGhvZCI6ICJHRVQiCiAgfSwKICB7CiAgICAidXJsIjogImh0dHA6Ly9sb2NhbGhvc3Q6OTAwMC9hcGkvdjEvYWRtaW4vY3JlZGl0cy9sZWRnZXI/bGltaXQ9NTAiLAogICAgInN0YXR1cyI6IDIwMCwKICAgICJtZXRob2QiOiAiR0VUIgogIH0KXQ=="
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "1d5221d9f0fef09de21b-c36a2cb557fe18b7eee1",
-              "file": "tests/e2e/frontend_regression_gate.spec.ts",
-              "line": 183,
-              "column": 7
-            },
-            {
-              "title": "D) user dashboard credits/holds/ledger/packs and checkout call",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 180000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 1949,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-02-15T04:40:24.891Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "console-errors.json",
-                          "contentType": "application/json",
-                          "body": "W10="
-                        },
-                        {
-                          "name": "network-events.json",
-                          "contentType": "application/json",
-                          "body": "WwogIHsKICAgICJ1cmwiOiAiaHR0cDovL2xvY2FsaG9zdDo5MDAwL2FwaS92MS9jcmVkaXRzL3BhY2tzIiwKICAgICJzdGF0dXMiOiAyMDAsCiAgICAibWV0aG9kIjogIkdFVCIKICB9LAogIHsKICAgICJ1cmwiOiAiaHR0cDovL2xvY2FsaG9zdDo5MDAwL2FwaS92MS9jcmVkaXRzL2JhbGFuY2UiLAogICAgInN0YXR1cyI6IDIwMCwKICAgICJtZXRob2QiOiAiR0VUIgogIH0KXQ=="
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "1d5221d9f0fef09de21b-6a3f72a58276f64a3678",
-              "file": "tests/e2e/frontend_regression_gate.spec.ts",
-              "line": 218,
-              "column": 7
-            },
-            {
-              "title": "E) solve batch + billing UX paths (success/refusal/insufficient/idempotency/provider-failure)",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 180000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 86088,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-02-15T04:40:26.846Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "console-errors.json",
-                          "contentType": "application/json",
-                          "body": "W10="
-                        },
-                        {
-                          "name": "network-events.json",
-                          "contentType": "application/json",
-                          "body": "W10="
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "1d5221d9f0fef09de21b-a52581bd744df0af157e",
-              "file": "tests/e2e/frontend_regression_gate.spec.ts",
-              "line": 266,
-              "column": 7
-            }
-          ]
-        }
-      ]
+      "message": "Error: Failed credit grant e2e.admin@uask.ai: 500 {\"error\":{\"code\":\"internal_error\",\"message\":\"Internal Server Error\",\"request_id\":null,\"details\":null},\"detail\":\"Internal Server Error\",\"request_id\":null}",
+      "stack": "Error: Failed credit grant e2e.admin@uask.ai: 500 {\"error\":{\"code\":\"internal_error\",\"message\":\"Internal Server Error\",\"request_id\":null,\"details\":null},\"detail\":\"Internal Server Error\",\"request_id\":null}\n    at ensureCredits (E:\\uaskstudents\\tests\\e2e\\global.setup.ts:110:11)\n    at globalSetup (E:\\uaskstudents\\tests\\e2e\\global.setup.ts:184:7)",
+      "location": {
+        "file": "E:\\uaskstudents\\tests\\e2e\\global.setup.ts",
+        "column": 11,
+        "line": 110
+      },
+      "snippet": "\u001b[90m   at \u001b[39mtests\\e2e\\global.setup.ts:110\n\n\u001b[0m \u001b[90m 108 |\u001b[39m   })\u001b[33m;\u001b[39m\n \u001b[90m 109 |\u001b[39m   \u001b[36mif\u001b[39m (\u001b[33m!\u001b[39mgrant\u001b[33m.\u001b[39mok()) {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 110 |\u001b[39m     \u001b[36mthrow\u001b[39m \u001b[36mnew\u001b[39m \u001b[33mError\u001b[39m(\u001b[32m`Failed credit grant ${email}: ${grant.status()} ${await grant.text()}`\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m           \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 111 |\u001b[39m   }\n \u001b[90m 112 |\u001b[39m }\n \u001b[90m 113 |\u001b[39m\u001b[0m"
     }
   ],
-  "errors": [],
   "stats": {
-    "startTime": "2026-02-15T04:40:04.099Z",
-    "duration": 110650.361,
-    "expected": 5,
+    "startTime": "2026-02-19T06:17:06.554Z",
+    "duration": 1332.205,
+    "expected": 0,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0

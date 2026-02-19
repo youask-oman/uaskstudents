@@ -244,6 +244,224 @@ def _extract_final_answer_text_for_solve_session(solution_payload: Dict[str, Any
     return ""
 
 
+def _collapse_inline_whitespace(value: str) -> str:
+    text = str(value or "").replace("\r\n", "\n").replace("\r", "\n")
+    text = re.sub(r"[ \t]*\n[ \t]*", " ", text)
+    text = re.sub(r"[ \t]{2,}", " ", text)
+    return text.strip()
+
+
+def _normalize_markdown_spacing(value: str) -> str:
+    text = str(value or "").replace("\r\n", "\n").replace("\r", "\n")
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
+def _as_display_math_block(value: str) -> str:
+    expr = str(value or "").strip()
+    if not expr:
+        return ""
+    if expr.startswith("\\[") and expr.endswith("\\]"):
+        return expr
+    if expr.startswith("$$") and expr.endswith("$$"):
+        return expr
+    return f"\\[\n{expr}\n\\]"
+
+
+def _extract_batch_answer_text(solution_item: Dict[str, Any]) -> str:
+    final_answer = solution_item.get("final_answer")
+    if isinstance(final_answer, dict):
+        answer_latex = final_answer.get("answer_latex") or final_answer.get("latex")
+        if str(answer_latex or "").strip():
+            return str(answer_latex).strip()
+        answer_text = (
+            final_answer.get("answer_text")
+            or final_answer.get("value")
+            or ""
+        )
+        if str(answer_text or "").strip():
+            return str(answer_text).strip()
+    if isinstance(final_answer, str) and final_answer.strip():
+        return final_answer.strip()
+    raw_result = solution_item.get("result")
+    if isinstance(raw_result, str) and raw_result.strip():
+        return raw_result.strip()
+    return ""
+
+
+def _looks_like_latex_expr(value: str) -> bool:
+    text = str(value or "").strip()
+    if not text:
+        return False
+    if text.startswith("\\(") or text.startswith("\\[") or text.startswith("$$"):
+        return True
+    if "\\boxed" in text:
+        return True
+    return bool(re.search(r"\\[A-Za-z]+", text))
+
+
+def _format_answer_markdown(answer_text: str) -> str:
+    text = str(answer_text or "").strip()
+    if not text:
+        return ""
+    if _looks_like_latex_expr(text) and not (text.startswith("\\(") or text.startswith("\\[") or text.startswith("$$")):
+        return f"\\({text}\\)"
+    return text
+
+
+def _render_batch_display_markdown(
+    questions_json: List[Dict[str, Any]],
+    solutions: List[Dict[str, Any]],
+) -> str:
+    if not questions_json:
+        return ""
+    by_question_id: Dict[str, Dict[str, Any]] = {}
+    for row in solutions:
+        if not isinstance(row, dict):
+            continue
+        qid = str(row.get("question_id") or "").strip()
+        if qid and qid not in by_question_id:
+            by_question_id[qid] = row
+
+    sections: List[str] = []
+    marker_re = re.compile(
+        r"(^|[^A-Za-z0-9_])(?:BEGIN_SOLUTION|BEGIN_STEPS|END_STEPS|BEGIN_FINAL|END_FINAL|END_SOLUTION|begin_solution|begin_steps|end_steps|begin_final|end_final|end\(\s*final\s*\)|end_solution)(?=$|[^A-Za-z0-9_])",
+        re.IGNORECASE,
+    )
+
+    def _strip_markers(value: str) -> str:
+        def _replace(match: re.Match[str]) -> str:
+            prefix = match.group(1) or ""
+            return prefix
+
+        cleaned = marker_re.sub(_replace, str(value or ""))
+        cleaned = re.sub(r"[ \t]+\n", "\n", cleaned)
+        cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+        return cleaned.strip()
+
+    def _math_token(value: str) -> str:
+        token = _strip_markers(value)
+        token = re.sub(r"\\\(|\\\)|\\\[|\\\]|\$", "", token)
+        token = re.sub(r"\s+", " ", token)
+        return token.strip().lower()
+
+    for idx, question in enumerate(questions_json, start=1):
+        qid = str((question or {}).get("question_id") or f"q{idx}").strip() or f"q{idx}"
+        item = by_question_id.get(qid) or {}
+        lines: List[str] = [f"### Q{idx} ({qid})"]
+
+        steps = item.get("steps")
+        if isinstance(steps, list) and steps:
+            lines.extend(["", "**Steps**"])
+            numbered = 0
+            for step in steps:
+                if not isinstance(step, dict):
+                    continue
+                explanation = _strip_markers(_collapse_inline_whitespace(
+                    str(step.get("explanation") or step.get("text") or step.get("work") or "").strip()
+                ))
+                math_latex = step.get("math_latex")
+                rendered_math_blocks: List[str] = []
+                if isinstance(math_latex, list):
+                    explanation_token = _math_token(explanation)
+                    for expr in math_latex:
+                        expr_text = _strip_markers(str(expr or "").strip())
+                        if not expr_text:
+                            continue
+                        expr_token = _math_token(expr_text)
+                        if explanation_token and expr_token and expr_token in explanation_token:
+                            continue
+                        rendered_math_blocks.append(expr_text)
+
+                if not explanation and not rendered_math_blocks:
+                    continue
+                if explanation:
+                    numbered += 1
+                    lines.append(f"{numbered}. {explanation}")
+                if rendered_math_blocks:
+                    for expr_text in rendered_math_blocks:
+                        lines.extend(["", _as_display_math_block(expr_text), ""])
+
+        answer_text = _format_answer_markdown(_extract_batch_answer_text(item))
+        if answer_text:
+            lines.extend(["", f"**Answer:** {answer_text}"])
+        else:
+            lines.extend(["", "**Answer:** Not provided."])
+
+        sections.append(_normalize_markdown_spacing("\n".join(lines)))
+
+    return _normalize_markdown_spacing("\n\n---\n\n".join(section for section in sections if section))
+
+
+def _reconcile_batch_solutions_with_questions(
+    questions_json: List[Dict[str, Any]],
+    payload_items: List[Dict[str, Any]],
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    expected = len(questions_json or [])
+    raw_items = [item for item in (payload_items or []) if isinstance(item, dict)]
+    by_qid: Dict[str, List[Dict[str, Any]]] = {}
+    no_id_items: List[Dict[str, Any]] = []
+    for item in raw_items:
+        qid = str(item.get("question_id") or "").strip()
+        if not qid:
+            no_id_items.append(item)
+            continue
+        by_qid.setdefault(qid, []).append(item)
+
+    reconciled: List[Dict[str, Any]] = []
+    consumed_ids: List[str] = []
+    repaired: List[str] = []
+    missing_ids: List[str] = []
+    for idx, question in enumerate(questions_json or [], start=1):
+        expected_qid = str((question or {}).get("question_id") or f"q{idx}").strip() or f"q{idx}"
+        picked: Optional[Dict[str, Any]] = None
+        bucket = by_qid.get(expected_qid) or []
+        if bucket:
+            picked = bucket.pop(0)
+            if not bucket:
+                by_qid.pop(expected_qid, None)
+        elif no_id_items:
+            picked = no_id_items.pop(0)
+            repaired.append(expected_qid)
+        else:
+            for stray_qid in list(by_qid.keys()):
+                stray_bucket = by_qid.get(stray_qid) or []
+                if stray_bucket:
+                    picked = stray_bucket.pop(0)
+                    if not stray_bucket:
+                        by_qid.pop(stray_qid, None)
+                    repaired.append(expected_qid)
+                    break
+
+        if picked is None:
+            missing_ids.append(expected_qid)
+            continue
+
+        normalized = dict(picked)
+        normalized["question_id"] = expected_qid
+        if str(normalized.get("question_index") or "").strip() == "":
+            normalized["question_index"] = idx
+        reconciled.append(normalized)
+        consumed_ids.append(expected_qid)
+
+    extras = []
+    for qid, bucket in by_qid.items():
+        extras.extend([qid] * len(bucket))
+    if no_id_items:
+        extras.extend(["<missing_question_id>"] * len(no_id_items))
+
+    diagnostics = {
+        "expected_count": expected,
+        "actual_count": len(raw_items),
+        "reconciled_count": len(reconciled),
+        "missing_question_ids": missing_ids,
+        "extra_question_ids": extras,
+        "repaired_question_ids": repaired,
+        "ok": expected > 0 and len(reconciled) == expected and not missing_ids and not extras,
+    }
+    return reconciled, diagnostics
+
+
 def _persist_solve_session_and_llm_usage(
     session: Session,
     *,
@@ -4018,6 +4236,30 @@ async def solve_questions_batch(
                 session.rollback()
         raise
 
+    raw_items = payload.get("items") if isinstance(payload, dict) else []
+    reconciled_items, reconcile_diag = _reconcile_batch_solutions_with_questions(
+        questions_json=questions_json,
+        payload_items=raw_items if isinstance(raw_items, list) else [],
+    )
+    if not reconcile_diag.get("ok"):
+        if reserve_result and reserve_result.hold_id:
+            try:
+                credit_billing_service.release_hold_full(session=session, hold_id=reserve_result.hold_id)
+                session.commit()
+            except Exception:
+                session.rollback()
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "code": "batch_solution_count_mismatch",
+                "message": "Batch solve returned inconsistent solution mapping.",
+                "request_id": request_id,
+                "attempt_id": attempt_id,
+                "details": reconcile_diag,
+            },
+        )
+    payload["items"] = reconciled_items
+
     settlement_summary = None
     if reserve_result:
         try:
@@ -4122,6 +4364,22 @@ async def solve_questions_batch(
         if question_lines:
             user_content = f"{user_content}\n" + "\n".join(question_lines)
         safe_items = jsonable_encoder(payload.get("items") or [])
+        display_markdown = _render_batch_display_markdown(questions_json, safe_items)
+        per_question_final_answers = [
+            {
+                "question_id": str((item or {}).get("question_id") or "").strip(),
+                "answer_text": _extract_batch_answer_text(item or {}),
+            }
+            for item in safe_items
+            if isinstance(item, dict)
+        ]
+        final_answer_preview = " | ".join(
+            f"{entry['question_id']}: {entry['answer_text']}"
+            for entry in per_question_final_answers
+            if entry.get("question_id") and entry.get("answer_text")
+        ).strip()
+        if not final_answer_preview:
+            final_answer_preview = f"Batch solve complete for {len(safe_items)} question(s)."
         safe_telemetry = jsonable_encoder(telemetry if isinstance(telemetry, dict) else {})
         solve_meta = {
             "request_id": str(telemetry.get("request_id") or request_id),
@@ -4145,9 +4403,13 @@ async def solve_questions_batch(
                 if isinstance(payload.get("language"), dict)
                 else (body.preferred_response_language or "English")
             ),
-            "question_count": len(safe_items),
+            "question_count": len(questions_json),
             "questions": jsonable_encoder(questions_json),
             "solutions": safe_items,
+            "display_markdown": display_markdown,
+            "rendered_content": display_markdown,
+            "final_answer": final_answer_preview,
+            "final_answers": per_question_final_answers,
             "request_id": str(telemetry.get("request_id") or request_id),
             "attempt_id": str(telemetry.get("attempt_id") or attempt_id),
             "tier": str(payload.get("tier") or body.tier or "").upper(),
@@ -4173,7 +4435,7 @@ async def solve_questions_batch(
         assistant_msg = ChatMessage(
             session_id=int(chat_session.id),
             role="assistant",
-            content=f"Batch solve complete for {len(payload.get('items') or [])} question(s).",
+            content=display_markdown or final_answer_preview,
             structured_data=assistant_structured,
             telemetry=safe_telemetry if isinstance(safe_telemetry, dict) else None,
             model_used=str((telemetry or {}).get("model") or ""),
@@ -4248,11 +4510,12 @@ async def solve_questions_batch(
             )
             # Fallback write with minimal JSON footprint to avoid losing session visibility.
             session.add(ChatMessage(session_id=int(chat_session.id), role="user", content=user_content))
+            fallback_display_markdown = _render_batch_display_markdown(questions_json, safe_items)
             session.add(
                 ChatMessage(
                     session_id=int(chat_session.id),
                     role="assistant",
-                    content=f"Batch solve complete for {len(safe_items)} question(s).",
+                    content=fallback_display_markdown or f"Batch solve complete for {len(safe_items)} question(s).",
                     structured_data={
                         "mode": "batch_text_solve",
                         "request_id": str(telemetry.get("request_id") or request_id),
@@ -4263,6 +4526,8 @@ async def solve_questions_batch(
                         "questions": jsonable_encoder(questions_json),
                         "solutions": safe_items,
                         "solutions_count": len(safe_items),
+                        "display_markdown": fallback_display_markdown,
+                        "rendered_content": fallback_display_markdown,
                         "hide_from_tutor": True,
                         "question": jsonable_encoder(payload.get("question")) if isinstance(payload.get("question"), dict) else None,
                         "problem": jsonable_encoder(payload.get("problem")) if isinstance(payload.get("problem"), dict) else None,
@@ -7026,6 +7291,27 @@ async def solve_v3_stream_endpoint(
                 max_tasks_per_question=6,
                 max_output_tokens=5000,
             )
+            reconciled_items, reconcile_diag = _reconcile_batch_solutions_with_questions(
+                questions_json=runtime_questions_json,
+                payload_items=payload.get("items") if isinstance(payload.get("items"), list) else [],
+            )
+            if not reconcile_diag.get("ok"):
+                if reserve_result and reserve_result.hold_id:
+                    try:
+                        credit_billing_service.release_hold_full(session=session, hold_id=reserve_result.hold_id)
+                        session.commit()
+                    except Exception:
+                        session.rollback()
+                err = {
+                    "code": "batch_solution_count_mismatch",
+                    "message": "Batch solve returned inconsistent solution mapping.",
+                    "request_id": request_id,
+                    "attempt_id": attempt_id,
+                    "details": reconcile_diag,
+                }
+                yield f"event: done\ndata: {json.dumps({'ok': False, 'error': err})}\n\n"
+                return
+            payload["items"] = reconciled_items
             settlement_summary = None
             if reserve_result:
                 try:
@@ -7088,9 +7374,21 @@ async def solve_v3_stream_endpoint(
                 )
             )
 
-            first_item = (payload.get("items") or [{}])[0]
-            answer_text = str(((first_item.get("final_answer") or {}).get("answer_text")) or "Solution generated.")
             safe_items = jsonable_encoder(payload.get("items") or [])
+            display_markdown = _render_batch_display_markdown(runtime_questions_json, safe_items)
+            per_question_final_answers = [
+                {
+                    "question_id": str((item or {}).get("question_id") or "").strip(),
+                    "answer_text": _extract_batch_answer_text(item or {}),
+                }
+                for item in safe_items
+                if isinstance(item, dict)
+            ]
+            answer_text = " | ".join(
+                f"{entry['question_id']}: {entry['answer_text']}"
+                for entry in per_question_final_answers
+                if entry.get("question_id") and entry.get("answer_text")
+            ).strip() or f"Batch solve complete for {len(safe_items)} question(s)."
             safe_telemetry = jsonable_encoder(telemetry if isinstance(telemetry, dict) else {})
             assistant_structured = {
                 "mode": "batch_text_solve",
@@ -7100,9 +7398,13 @@ async def solve_v3_stream_endpoint(
                     if isinstance(payload.get("language"), dict)
                     else (trusted_ctx.get("preferred_response_language") or "English")
                 ),
-                "question_count": len(safe_items),
+                "question_count": len(runtime_questions_json),
                 "questions": jsonable_encoder(runtime_questions_json),
                 "solutions": safe_items,
+                "display_markdown": display_markdown,
+                "rendered_content": display_markdown,
+                "final_answer": answer_text,
+                "final_answers": per_question_final_answers,
                 "request_id": str(telemetry.get("request_id") or request_id),
                 "attempt_id": str(telemetry.get("attempt_id") or attempt_id),
                 "tier": str(payload.get("tier") or body.tier or "").upper(),
@@ -7136,7 +7438,7 @@ async def solve_v3_stream_endpoint(
             msg = ChatMessage(
                 session_id=int(session_row.id),
                 role="assistant",
-                content=answer_text,
+                content=display_markdown or answer_text,
                 structured_data=assistant_structured,
                 telemetry=telemetry,
                 model_used=telemetry.get("model"),
@@ -9564,6 +9866,8 @@ class ChatMessageSchema(BaseModel):
     id: Optional[int] = None
     role: str
     content: str
+    display_markdown: Optional[str] = None
+    rendered_content: Optional[str] = None
     media_url: Optional[str] = None
     structured_data: Optional[dict] = None
     created_at: str
@@ -9599,20 +9903,138 @@ class ChatFinalPlaybackProgressRequest(BaseModel):
 
 
 def _extract_assistant_content_for_playback(msg: ChatMessage) -> str:
-    content = str(getattr(msg, "content", "") or "")
-    if content.strip():
-        return content
+    protocol_marker_re = re.compile(
+        r"(^|[^A-Za-z0-9_])(?:BEGIN_SOLUTION|BEGIN_STEPS|END_STEPS|BEGIN_FINAL|END_FINAL|END_SOLUTION|begin_solution|begin_steps|end_steps|begin_final|end_final|end\(\s*final\s*\)|end_solution)(?=$|[^A-Za-z0-9_])",
+        re.IGNORECASE,
+    )
+    def _sanitize(value: Any) -> str:
+        text = str(value or "").replace("\r\n", "\n").replace("\r", "\n")
+        def _replace(match: re.Match[str]) -> str:
+            prefix = match.group(1) or ""
+            return prefix
+
+        text = protocol_marker_re.sub(_replace, text)
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        text = re.sub(r"[ \t]{2,}", " ", text)
+        return text.strip()
+
     structured = msg.structured_data if isinstance(msg.structured_data, dict) else {}
+    solutions = structured.get("solutions")
+    if isinstance(solutions, list) and solutions:
+        questions = structured.get("questions") if isinstance(structured.get("questions"), list) else []
+        if not questions:
+            generated_questions: List[Dict[str, Any]] = []
+            for idx, raw_item in enumerate(solutions, start=1):
+                if not isinstance(raw_item, dict):
+                    continue
+                generated_questions.append(
+                    {
+                        "question_id": str(raw_item.get("question_id") or f"q{idx}"),
+                        "question_text": str(raw_item.get("question_text") or f"Question {idx}"),
+                    }
+                )
+            questions = generated_questions
+        # chat_final playback should render the active question path, not a repeated full batch blob.
+        target_qid = ""
+        question_node = structured.get("question")
+        if isinstance(question_node, dict):
+            target_qid = str(question_node.get("question_id") or "").strip()
+        if not target_qid and isinstance(questions, list) and questions:
+            first_q = questions[0] if isinstance(questions[0], dict) else {}
+            target_qid = str((first_q or {}).get("question_id") or "").strip()
+
+        typed_solutions = [item for item in solutions if isinstance(item, dict)]
+        selected_solution: Optional[Dict[str, Any]] = None
+        if target_qid:
+            selected_solution = next(
+                (item for item in typed_solutions if str(item.get("question_id") or "").strip() == target_qid),
+                None,
+            )
+        if selected_solution is None and typed_solutions:
+            selected_solution = typed_solutions[0]
+
+        selected_qid = str((selected_solution or {}).get("question_id") or target_qid or "q1").strip() or "q1"
+        selected_question = next(
+            (
+                q for q in (questions if isinstance(questions, list) else [])
+                if isinstance(q, dict) and str(q.get("question_id") or "").strip() == selected_qid
+            ),
+            {"question_id": selected_qid, "question_text": f"Question {selected_qid}"},
+        )
+        rendered = _render_batch_display_markdown(
+            [selected_question] if isinstance(selected_question, dict) else [],
+            [selected_solution] if isinstance(selected_solution, dict) else [],
+        )
+        rendered = _sanitize(rendered)
+        if rendered:
+            return rendered
+
+    display_markdown = _sanitize(structured.get("display_markdown"))
+    if display_markdown:
+        return display_markdown
+    rendered_content = _sanitize(structured.get("rendered_content"))
+    if rendered_content:
+        return rendered_content
     response_node = structured.get("response")
     if isinstance(response_node, dict):
         nested_msg = response_node.get("message")
         if isinstance(nested_msg, dict):
-            nested_content = str(nested_msg.get("content") or "").strip()
+            nested_content = _sanitize(nested_msg.get("content"))
             if nested_content:
                 return nested_content
-        fallback_response = str(response_node.get("response") or "").strip()
+        fallback_response = _sanitize(response_node.get("response"))
         if fallback_response:
             return fallback_response
+    # Fallback for short-tier structured payloads when canonical response content is absent.
+    # This avoids instant-complete playback when message.content stores only a short summary.
+    raw_extraction = structured.get("raw_user_extraction")
+    candidate = raw_extraction if isinstance(raw_extraction, dict) else structured
+    sections = candidate.get("sections")
+    if isinstance(sections, list) and sections:
+        lines: List[str] = []
+        for idx, section in enumerate(sections, start=1):
+            if not isinstance(section, dict):
+                continue
+            heading = str(section.get("heading") or section.get("label") or f"Section {idx}").strip()
+            if heading:
+                lines.append(heading)
+            steps = section.get("steps")
+            if isinstance(steps, list):
+                for s_idx, step in enumerate(steps, start=1):
+                    if not isinstance(step, dict):
+                        continue
+                    step_no_raw = step.get("index")
+                    try:
+                        step_no = int(step_no_raw)
+                    except Exception:
+                        step_no = s_idx
+                    lines.append(f"Step {step_no}")
+                    blocks = step.get("blocks")
+                    if isinstance(blocks, list) and blocks:
+                        for block in blocks:
+                            if not isinstance(block, dict):
+                                continue
+                            block_content = str(block.get("content") or "").strip()
+                            if block_content:
+                                lines.append(block_content)
+                    else:
+                        raw_step = str(step.get("raw") or "").strip()
+                        if raw_step:
+                            lines.append(raw_step)
+            section_final = str(section.get("final_answer") or "").strip()
+            if section_final:
+                lines.append("Section Final")
+                lines.append(section_final)
+        global_final = str(candidate.get("global_final_answer") or "").strip()
+        if global_final:
+            lines.append("Result")
+            lines.append(global_final)
+        synthesized = _sanitize("\n\n".join(line for line in lines if line))
+        if synthesized:
+            return synthesized
+    content = _sanitize(getattr(msg, "content", ""))
+    if content:
+        return content
     return ""
 
 
@@ -9642,6 +10064,17 @@ def _typing_speed_default_cps() -> int:
     except Exception:
         pass
     return 35
+
+
+def _typing_speed_multiplier() -> float:
+    raw = (os.getenv("CHAT_FINAL_TYPING_SPEED_MULTIPLIER") or "").strip()
+    try:
+        parsed = float(raw)
+        if parsed > 0:
+            return parsed
+    except Exception:
+        pass
+    return 2.0
 
 
 def _typing_payload_from_message_telemetry(msg: ChatMessage) -> Dict[str, Any]:
@@ -9678,6 +10111,8 @@ async def get_chat_final_playback_state(message_id: str, session: Session = Depe
         speed_cps = _typing_speed_default_cps()
     if speed_cps <= 0:
         speed_cps = _typing_speed_default_cps()
+    target_speed = int(max(1, round(_typing_speed_default_cps() * _typing_speed_multiplier())))
+    speed_cps = max(speed_cps, target_speed)
 
     try:
         last_index = int(payload.get("typing_last_index") or 0)
@@ -9694,14 +10129,16 @@ async def get_chat_final_playback_state(message_id: str, session: Session = Depe
         started_at = now
         changed = True
 
-    computed_visible = 0
-    if started_at is not None and not is_complete:
-        elapsed = max(0.0, (now - started_at).total_seconds())
-        computed_visible = int(elapsed * speed_cps)
-    visible_len = max(last_index, computed_visible)
-    if total_chars >= 0:
-        visible_len = min(total_chars, visible_len)
-    if visible_len >= total_chars:
+    # Deterministic resume by persisted cursor: do not auto-jump based on elapsed time.
+    visible_len = max(0, min(total_chars, last_index))
+
+    # Replay-on-refresh for previously completed playback keeps chat_final from dumping full text instantly.
+    if is_complete and total_chars > 0:
+        is_complete = False
+        visible_len = 0
+        started_at = now
+        changed = True
+    elif visible_len >= total_chars and total_chars > 0:
         is_complete = True
 
     new_payload = {
@@ -9758,6 +10195,8 @@ async def update_chat_final_playback_progress(
         speed_cps = _typing_speed_default_cps()
     if speed_cps <= 0:
         speed_cps = _typing_speed_default_cps()
+    target_speed = int(max(1, round(_typing_speed_default_cps() * _typing_speed_multiplier())))
+    speed_cps = max(speed_cps, target_speed)
 
     requested_visible = int(body.visible_len or 0)
     clamped_visible = max(0, min(total_chars, requested_visible))
@@ -9892,6 +10331,16 @@ async def get_session_details(session_id: int, session: Session = Depends(get_se
                 id=msg.id,
                 role=msg.role,
                 content=msg.content,
+                display_markdown=(
+                    str((msg.structured_data or {}).get("display_markdown") or "").strip()
+                    if isinstance(msg.structured_data, dict)
+                    else None
+                ) or None,
+                rendered_content=(
+                    str((msg.structured_data or {}).get("rendered_content") or "").strip()
+                    if isinstance(msg.structured_data, dict)
+                    else None
+                ) or None,
                 media_url=getattr(msg, "media_url", None),
                 structured_data=msg.structured_data,
                 created_at=msg.created_at.isoformat(),

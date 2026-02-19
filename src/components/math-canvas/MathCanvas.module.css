@@ -3033,11 +3033,29 @@
   padding: 24px 32px 0;
   font-family: var(--short-paper-font-family, "Public Sans", "Inter", system-ui, sans-serif);
   font-size: var(--short-paper-font-size, 16px);
+  color: var(--short-paper-text-color, #0f172a);
 }
 
 .paperPageShortPaper .stepRow {
   border-bottom: 1px solid #f1f5f9;
   padding: 14px 0;
+}
+
+.paperPageShortPaper .stepValue {
+  font-size: inherit;
+  color: var(--short-paper-text-color, #0f172a);
+}
+
+.paperPageShortPaper .stepValue * {
+  color: inherit;
+}
+
+.paperPageShortPaper .chatBubbleAssistant {
+  background: rgba(255, 255, 255, 0.66);
+  border: 1px solid rgba(203, 213, 225, 0.7);
+  color: var(--short-paper-text-color, #0f172a);
+  font-family: var(--short-paper-font-family, "Public Sans", "Inter", system-ui, sans-serif);
+  font-size: var(--short-paper-font-size, 16px);
 }
 
 .paperPageShortPaper .stepLabel {

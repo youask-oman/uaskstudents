@@ -2,6 +2,8 @@ export interface SessionMessage {
   id?: string | number;
   role: "user" | "assistant" | string;
   content: unknown;
+  display_markdown?: string | null;
+  rendered_content?: string | null;
   media_url?: string | null;
   structured_data?: Record<string, unknown> | null;
   created_at?: string;
@@ -10,6 +12,11 @@ export interface SessionMessage {
   telemetry?: Record<string, unknown> | null;
   chart?: Record<string, unknown> | null;
   plot?: Record<string, unknown> | null;
+}
+
+export interface PlaybackSegment {
+  kind: "step_title" | "markdown" | "math" | "final_answer";
+  text: string;
 }
 
 export type ToolType =
@@ -267,6 +274,10 @@ export type CanvasBlock =
     commonMistakes?: string[];
     shortSections?: ShortSection[];
     shortSource?: ShortSourcePayload;
+    playbackMessageId?: string;
+    playbackFallbackContent?: string;
+    playbackSegments?: PlaybackSegment[];
+    playbackSource?: string;
   }
   | { id: string; type: "text"; text: string };
 

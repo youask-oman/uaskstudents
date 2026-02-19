@@ -19,6 +19,7 @@ import { CanvasPageData, SavedPaperVersion, SessionMessage, ShortSourcePayload, 
 import { buildInitialDocumentState, createPageId, documentReducer } from "@/components/math-canvas/documentModel";
 import { DEMO_SOLUTION } from "@/lib/mock-response";
 import { DEMO_BATCH_MESSAGES } from "@/lib/mock-batch-session";
+import { resolvePlaybackFromMessage, type PlaybackSegment } from "@/lib/chat_final_playback";
 
 interface ChatSessionPayload {
   id: number | string;
@@ -287,13 +288,35 @@ const extractShortSourcePayload = (messages: SessionMessage[]): ShortSourcePaylo
   return null;
 };
 
+const extractAssistantPlaybackSource = (
+  messages: SessionMessage[]
+): { messageId: string; assistantContent: string; segments: PlaybackSegment[]; source: string } | null => {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const message = messages[i];
+    if (String(message?.role || "").toLowerCase() !== "assistant") continue;
+    const messageIdRaw = message?.id;
+    const messageId = messageIdRaw === undefined || messageIdRaw === null ? "" : String(messageIdRaw).trim();
+    if (!messageId) continue;
+    const resolved = resolvePlaybackFromMessage(message);
+    const assistantContent = (resolved.content || "").trim();
+    if (!assistantContent) continue;
+    return { messageId, assistantContent, segments: resolved.segments, source: resolved.source };
+  }
+  return null;
+};
+
 const buildInitialPages = (
   messages: ReturnType<typeof normalizeSessionMessages>,
   sessionTitle?: string,
-  options?: { shortTier?: boolean; shortSource?: ShortSourcePayload | null }
+  options?: {
+    shortTier?: boolean;
+    shortSource?: ShortSourcePayload | null;
+    shortPlayback?: { messageId: string; assistantContent: string; segments: PlaybackSegment[]; source: string } | null;
+  }
 ): CanvasPageData[] => {
   const isShortTier = Boolean(options?.shortTier);
   const shortSource = options?.shortSource || null;
+  const shortPlayback = options?.shortPlayback || null;
   const solution = extractPrimarySolution(messages);
   const localSympy = isLocalSympySolution(solution);
   const firstPage = createPage();
@@ -352,6 +375,10 @@ const buildInitialPages = (
       normalizedProblem: localSympy ? undefined : solution?.normalizedProblem,
       commonMistakes: isShortTier ? undefined : solution?.commonMistakes,
       autocorrectApplied: isShortTier ? undefined : solution?.autocorrectApplied,
+      playbackMessageId: isShortTier ? shortPlayback?.messageId : undefined,
+      playbackFallbackContent: isShortTier ? shortPlayback?.assistantContent : undefined,
+      playbackSegments: isShortTier ? shortPlayback?.segments : undefined,
+      playbackSource: isShortTier ? shortPlayback?.source : undefined,
     });
   }
 
@@ -622,6 +649,19 @@ export default function ChatFinalPage({ params }: { params: Promise<{ id: string
     () => (solveTier === "SHORT_STEPS" ? extractShortSourcePayload(session?.messages || []) : null),
     [session?.messages, solveTier]
   );
+  const shortPlaybackSource = useMemo(
+    () => (solveTier === "SHORT_STEPS" ? extractAssistantPlaybackSource(session?.messages || []) : null),
+    [session?.messages, solveTier]
+  );
+  useEffect(() => {
+    if (!shortPlaybackSource) return;
+    console.log("[chat_final] playback_source", {
+      messageId: shortPlaybackSource.messageId,
+      source: shortPlaybackSource.source,
+      contentLen: shortPlaybackSource.assistantContent.length,
+      segments: shortPlaybackSource.segments.length,
+    });
+  }, [shortPlaybackSource]);
   const batchSolutions = useMemo(
     () => extractBatchSolutionsFromSessionMessages(session?.messages || []),
     [session?.messages]
@@ -796,19 +836,21 @@ export default function ChatFinalPage({ params }: { params: Promise<{ id: string
   useEffect(() => {
     if (!session) return;
     const latestSavedPages = savedPaperVersions[0]?.pages;
+    const isShortTierSession = solveTier === "SHORT_STEPS";
     const initialPages = latestSavedPages && latestSavedPages.length > 0
       ? latestSavedPages
-      : batchSolutions.length > 0
+      : (!isShortTierSession && batchSolutions.length > 0)
         ? buildBatchInitialPages(batchSolutions)
         : buildInitialPages(normalizedMessages, session.title || "", {
-          shortTier: solveTier === "SHORT_STEPS",
+          shortTier: isShortTierSession,
           shortSource: shortSourcePayload,
+          shortPlayback: shortPlaybackSource,
         });
     dispatch({
       type: "RESET",
       state: buildInitialDocumentState(initialPages, "none"),
     });
-  }, [batchSolutions, normalizedMessages, savedPaperVersions, session, shortSourcePayload, solveTier]);
+  }, [batchSolutions, normalizedMessages, savedPaperVersions, session, shortPlaybackSource, shortSourcePayload, solveTier]);
 
   const tokenUsage = useMemo(() => {
     let input = 0;

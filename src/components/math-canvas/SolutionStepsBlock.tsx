@@ -3,9 +3,10 @@
 import React from "react";
 import type { Editor } from "@tiptap/core";
 import MathRenderer from "@/components/math/MathJaxRenderer";
+import TypingPlaybackMessage from "./TypingPlaybackMessage";
 import RichTextElementEditor from "./RichTextElementEditor";
 import type { RichTextCommitPayload } from "./RichTextElementEditor";
-import { StepRow, VerificationCheck, FinalAnswer, ShortSection, ShortSourcePayload } from "./types";
+import { StepRow, VerificationCheck, FinalAnswer, ShortSection, ShortSourcePayload, PlaybackSegment } from "./types";
 import { parseLatexToBlocks } from "@/lib/final-answer-layout-engine";
 import { useMathOverflowFix } from "@/hooks/useMathOverflowFix";
 import styles from "./MathCanvas.module.css";
@@ -14,6 +15,10 @@ interface SolutionStepsBlockProps {
   steps: StepRow[];
   shortSections?: ShortSection[];
   shortSource?: ShortSourcePayload;
+  playbackMessageId?: string;
+  playbackFallbackContent?: string;
+  playbackSegments?: PlaybackSegment[];
+  playbackSource?: string;
   result?: string;
   finalAnswer?: FinalAnswer;
   verificationChecks?: VerificationCheck[];
@@ -142,6 +147,23 @@ const wrapProblemMath = (value: string): string => {
   return text;
 };
 
+const normalizeForCompare = (value: string): string =>
+  (value || "")
+    .toLowerCase()
+    .replace(/\\\(|\\\)|\\\[|\\\]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const isLikelyDuplicateProblemSection = (problemText: string, candidateSectionText: string): boolean => {
+  const problem = normalizeForCompare(problemText);
+  const candidate = normalizeForCompare(candidateSectionText);
+  if (!problem || !candidate) return false;
+  if (candidate === problem) return true;
+  if (candidate.length > 40 && problem.includes(candidate)) return true;
+  if (problem.length > 40 && candidate.includes(problem)) return true;
+  return false;
+};
+
 /* Section row component for consistent alignment */
 const SectionRow: React.FC<{ label: string; id: string; style?: React.CSSProperties; children: React.ReactNode; hideLabel?: boolean }> = ({ label, id, style, children, hideLabel }) => (
   <div className={styles.stepRow} id={id} style={style}>
@@ -154,6 +176,10 @@ export default function SolutionStepsBlock({
   steps,
   shortSections,
   shortSource,
+  playbackMessageId,
+  playbackFallbackContent,
+  playbackSegments,
+  playbackSource,
   result,
   finalAnswer,
   verificationChecks,
@@ -284,6 +310,49 @@ export default function SolutionStepsBlock({
   const displayValues = finalAnswer?.values || [];
   const hasShortSections = shortPaper && Array.isArray(shortSections) && shortSections.length > 0;
   const hasShortSource = shortPaper && Array.isArray(shortSource?.sections) && shortSource.sections.length > 0;
+  const hasPlaybackSource =
+    shortPaper &&
+    typeof playbackMessageId === "string" &&
+    playbackMessageId.trim().length > 0 &&
+    typeof playbackFallbackContent === "string" &&
+    playbackFallbackContent.trim().length > 0;
+  const playbackContent = hasPlaybackSource ? String(playbackFallbackContent || "") : "";
+  const currentProblemText = wrapProblemMath(normalizedProblem || originalProblem || "");
+  const filteredShortSections = React.useMemo(() => {
+    if (!Array.isArray(shortSections)) return [];
+    return shortSections.filter((section) => {
+      const heading = String(section.heading || section.label || "").toLowerCase();
+      const sectionText = section.steps
+        .flatMap((step) => {
+          const blockText = Array.isArray(step.blocks) ? step.blocks.map((b) => String(b.content || "")).join(" ") : "";
+          return [String(step.raw || ""), blockText];
+        })
+        .join(" ");
+      if (/question\s*q?\d+/i.test(heading) && isLikelyDuplicateProblemSection(currentProblemText, sectionText)) {
+        return false;
+      }
+      return true;
+    });
+  }, [shortSections, currentProblemText]);
+
+  const filteredSourceSections = React.useMemo(() => {
+    const rawSections = Array.isArray(shortSource?.sections) ? shortSource.sections : [];
+    return rawSections.filter((section) => {
+      const heading = String(section.heading || section.label || "").toLowerCase();
+      const steps = Array.isArray(section.steps) ? section.steps : [];
+      const sectionText = steps
+        .flatMap((step) => {
+          const blocks = Array.isArray(step.blocks) ? step.blocks : [];
+          const blockText = blocks.map((block) => String(block?.content || "")).join(" ");
+          return [String(step.raw || ""), blockText];
+        })
+        .join(" ");
+      if (/question\s*q?\d+/i.test(heading) && isLikelyDuplicateProblemSection(currentProblemText, sectionText)) {
+        return false;
+      }
+      return true;
+    });
+  }, [shortSource?.sections, currentProblemText]);
 
   if (finalHandwritten) {
     const finalValue = displayAnswerLatex || displayAnswerText || result || "";
@@ -300,6 +369,28 @@ export default function SolutionStepsBlock({
   }
 
   if (hasShortSections) {
+    if (hasPlaybackSource) {
+      return (
+        <div className={styles.stepsBlock} ref={rootRef}>
+          {(originalProblem || normalizedProblem) && (
+            <SectionRow label={problemSectionLabel} id={`${sectionId}-problem`} hideLabel={false}>
+              <div style={{ whiteSpace: "pre-wrap", fontSize: 13, color: "var(--text-main)", lineHeight: 1.6 }}>
+                <MathRenderer content={wrapProblemMath(normalizedProblem || originalProblem || "")} mode="prose" />
+              </div>
+            </SectionRow>
+          )}
+          <SectionRow label="SOLUTION" id={`${sectionId}-playback-solution`} hideLabel={false}>
+            <div data-playback-source={playbackSource || "unknown"}>
+              <TypingPlaybackMessage
+                messageId={String(playbackMessageId)}
+                fallbackContent={playbackContent}
+                fallbackSegments={playbackSegments}
+              />
+            </div>
+          </SectionRow>
+        </div>
+      );
+    }
     return (
       <div className={styles.stepsBlock} ref={rootRef}>
         {(originalProblem || normalizedProblem) && (
@@ -310,7 +401,7 @@ export default function SolutionStepsBlock({
           </SectionRow>
         )}
 
-        {shortSections.map((section, sectionIndex) => (
+        {filteredShortSections.map((section, sectionIndex) => (
           <SectionRow
             key={`${sectionId}-section-${sectionIndex}`}
             label={(section.heading || section.label || `(${sectionIndex + 1})`).toUpperCase()}
@@ -351,7 +442,12 @@ export default function SolutionStepsBlock({
         ))}
 
         <SectionRow label="RESULT" id={`${sectionId}-final-answer`} hideLabel={false}>
-          {displayAnswerLatex || displayAnswerText ? (
+          {hasPlaybackSource ? (
+            <TypingPlaybackMessage
+              messageId={String(playbackMessageId)}
+              fallbackContent={String(playbackFallbackContent)}
+            />
+          ) : displayAnswerLatex || displayAnswerText ? (
             <MathRenderer content={displayAnswerLatex || displayAnswerText} mode={shouldRenderAsProse(displayAnswerLatex || displayAnswerText) ? "prose" : "block"} />
           ) : (
             <div style={{ fontStyle: "italic", color: "var(--text-muted)" }}>No final answer provided.</div>
@@ -362,10 +458,32 @@ export default function SolutionStepsBlock({
   }
 
   if (hasShortSource) {
+    if (hasPlaybackSource) {
+      return (
+        <div className={styles.stepsBlock} ref={rootRef}>
+          {(originalProblem || normalizedProblem || shortSource?.question) && (
+            <SectionRow label={problemSectionLabel} id={`${sectionId}-problem`} hideLabel={false}>
+              <div style={{ whiteSpace: "pre-wrap", fontSize: 13, color: "var(--text-main)", lineHeight: 1.6 }}>
+                <MathRenderer content={wrapProblemMath(normalizedProblem || originalProblem || shortSource?.question || "")} mode="prose" />
+              </div>
+            </SectionRow>
+          )}
+          <SectionRow label="SOLUTION" id={`${sectionId}-playback-solution`} hideLabel={false}>
+            <div data-playback-source={playbackSource || "unknown"}>
+              <TypingPlaybackMessage
+                messageId={String(playbackMessageId)}
+                fallbackContent={playbackContent}
+                fallbackSegments={playbackSegments}
+              />
+            </div>
+          </SectionRow>
+        </div>
+      );
+    }
     const globalFinal = (shortSource?.global_final_answer || "").trim();
     return (
       <div className={styles.stepsBlock} ref={rootRef}>
-        {shortSource.sections.map((section, sectionIndex) => {
+        {filteredSourceSections.map((section, sectionIndex) => {
           const label = (section.heading || section.label || `(${sectionIndex + 1})`).toString();
           const sectionSteps = Array.isArray(section.steps) ? section.steps : [];
           return (
@@ -432,7 +550,13 @@ export default function SolutionStepsBlock({
         })}
 
         <SectionRow label="RESULT" id={`${sectionId}-final-answer`} hideLabel={false}>
-          {globalFinal ? (
+          {hasPlaybackSource ? (
+            <TypingPlaybackMessage
+              messageId={String(playbackMessageId)}
+              fallbackContent={String(playbackFallbackContent)}
+              fallbackSegments={playbackSegments}
+            />
+          ) : globalFinal ? (
             <MathRenderer content={globalFinal} mode={shouldRenderAsProse(globalFinal) ? "prose" : "block"} />
           ) : (
             <div style={{ fontStyle: "italic", color: "var(--text-muted)" }}>No final answer provided.</div>
